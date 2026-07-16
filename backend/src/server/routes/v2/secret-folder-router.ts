@@ -441,4 +441,68 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       return { folder };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/move",
+    config: {
+      rateLimit: secretsLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "moveSecretFolder",
+      tags: [ApiDocsTags.Folders],
+      description: "Move a folder and its static-secret contents to a new path, optionally in a different environment",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      body: z.object({
+        projectId: z.string().trim(),
+        folderId: z.string().trim().uuid(),
+        destinationEnvironment: z.string().trim(),
+        destinationPath: z.string().trim().default("/").transform(prefixWithSlash).transform(removeTrailingSlash)
+      }),
+      response: {
+        200: z.object({
+          folderId: z.string(),
+          sourceEnvironment: z.string(),
+          sourcePath: z.string(),
+          destinationEnvironment: z.string(),
+          destinationPath: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.folder.moveFolder({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.body.projectId,
+        folderId: req.body.folderId,
+        destinationEnvironment: req.body.destinationEnvironment,
+        destinationPath: req.body.destinationPath
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.MOVE_FOLDER,
+          metadata: {
+            folderId: result.folderId,
+            sourceEnvironment: result.sourceEnvironment,
+            sourcePath: result.sourcePath,
+            destinationEnvironment: result.destinationEnvironment,
+            destinationPath: result.destinationPath
+          }
+        }
+      });
+
+      return result;
+    }
+  });
 };

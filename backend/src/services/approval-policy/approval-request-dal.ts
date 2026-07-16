@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
+import { TableName, TApprovalRequestApprovals, TApprovalRequestSteps } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -11,7 +11,6 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "./approval-policy-enums";
-import { ApprovalPolicyStep } from "./approval-policy-types";
 
 // Approval Request
 export type TApprovalRequestDALFactory = ReturnType<typeof approvalRequestDALFactory>;
@@ -98,7 +97,13 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
         .whereIn("requestId", requestIds)
         .orderBy("stepNumber", "asc");
 
-      const stepsByRequestId: Record<string, ApprovalPolicyStep[]> = {};
+      const stepsByRequestId: Record<
+        string,
+        (TApprovalRequestSteps & {
+          approvers: { type: ApproverType; id: string }[];
+          approvals: TApprovalRequestApprovals[];
+        })[]
+      > = {};
 
       if (steps.length) {
         const stepIds = steps.map((step) => step.id);
@@ -162,29 +167,27 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const markExpiredRequests = async (): Promise<string[]> => {
+  const markExpiredRequests = async (): Promise<number> => {
     try {
-      const expiredRequestIds = await db(TableName.ApprovalRequests)
+      const rows = await db(TableName.ApprovalRequests)
         .where("status", ApprovalRequestStatus.Pending)
         .whereNotNull("expiresAt")
         .where("expiresAt", "<", new Date())
-        .select("id");
-
-      if (expiredRequestIds.length === 0) {
-        return [];
-      }
-
-      const ids = expiredRequestIds.map((r) => r.id);
-
-      await db(TableName.ApprovalRequests).whereIn("id", ids).update({ status: ApprovalRequestStatus.Expired });
-
-      return ids;
+        .update({ status: ApprovalRequestStatus.Expired })
+        .returning<{ id: string }[]>("id");
+      return rows.length;
     } catch (error) {
       throw new DatabaseError({ error, name: "Mark expired approval requests" });
     }
   };
 
-  return { ...orm, findStepsByRequestId, findByProjectId, findByIdForUpdate, markExpiredRequests };
+  return {
+    ...orm,
+    findStepsByRequestId,
+    findByProjectId,
+    findByIdForUpdate,
+    markExpiredRequests
+  };
 };
 
 // Approval Request Steps

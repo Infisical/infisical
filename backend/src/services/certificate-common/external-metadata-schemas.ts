@@ -20,9 +20,17 @@ export const DigiCertExternalMetadataSchema = z.object({
 
 export type TDigiCertExternalMetadata = z.infer<typeof DigiCertExternalMetadataSchema>;
 
+export const GoDaddyExternalMetadataSchema = z.object({
+  type: z.literal(CaType.GODADDY),
+  certificateId: z.string().trim().min(1)
+});
+
+export type TGoDaddyExternalMetadata = z.infer<typeof GoDaddyExternalMetadataSchema>;
+
 export const ExternalMetadataSchema = z.discriminatedUnion("type", [
   AwsAcmPublicCaExternalMetadataSchema,
-  DigiCertExternalMetadataSchema
+  DigiCertExternalMetadataSchema,
+  GoDaddyExternalMetadataSchema
 ]);
 
 export type TExternalMetadata = z.infer<typeof ExternalMetadataSchema>;

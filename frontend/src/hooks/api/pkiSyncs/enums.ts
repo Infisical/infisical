@@ -5,7 +5,26 @@ export enum PkiSync {
   AwsElasticLoadBalancer = "aws-elastic-load-balancer",
   Chef = "chef",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
-  NetScaler = "netscaler"
+  NetScaler = "netscaler",
+  F5BigIp = "f5-big-ip",
+  LinuxServer = "linux-server",
+  WindowsServer = "windows-server"
+}
+
+export enum PkiSyncExportFormat {
+  Pem = "pem",
+  Pkcs12 = "pkcs12"
+}
+
+export enum PemCertificateExtension {
+  Pem = "pem",
+  Crt = "crt"
+}
+
+export enum WindowsFileAccess {
+  Read = "read",
+  Modify = "modify",
+  FullControl = "full-control"
 }
 
 export enum PkiSyncStatus {

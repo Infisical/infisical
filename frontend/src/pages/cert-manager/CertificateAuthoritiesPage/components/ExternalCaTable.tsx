@@ -1,21 +1,18 @@
 import { subject } from "@casl/ability";
-import { faBan, faEllipsis, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import {
-  Badge,
   Empty,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   Skeleton,
   Table,
   TableBody,
@@ -114,14 +111,12 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
               </TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild className="rounded-lg">
-                    <div className="inline-flex hover:text-primary-400 data-[state=open]:text-primary-400">
-                      <Tooltip content="More options">
-                        <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                      </Tooltip>
-                    </div>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton variant="ghost" size="xs" aria-label="CA actions">
+                      <MoreHorizontalIcon />
+                    </IconButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="p-1">
+                  <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
                     <ProjectPermissionCan
                       I={ProjectPermissionCertificateAuthorityActions.Edit}
                       a={subject(ProjectPermissionSub.CertificateAuthorities, {
@@ -130,9 +125,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                     >
                       {(isAllowed) => (
                         <DropdownMenuItem
-                          className={twMerge(
-                            !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                          )}
+                          isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePopUpOpen("ca", {
@@ -141,9 +134,8 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                               type: ca.type
                             });
                           }}
-                          disabled={!isAllowed}
-                          icon={<FontAwesomeIcon icon={faPencil} />}
                         >
+                          <PencilIcon />
                           Edit CA
                         </DropdownMenuItem>
                       )}
@@ -157,9 +149,7 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                       >
                         {(isAllowed) => (
                           <DropdownMenuItem
-                            className={twMerge(
-                              !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                            )}
+                            isDisabled={!isAllowed}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("caStatus", {
@@ -171,9 +161,8 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                                     : CaStatus.ACTIVE
                               });
                             }}
-                            disabled={!isAllowed}
-                            icon={<FontAwesomeIcon icon={faBan} />}
                           >
+                            <BanIcon />
                             {`${ca.status === CaStatus.ACTIVE ? "Disable" : "Enable"} CA`}
                           </DropdownMenuItem>
                         )}
@@ -187,9 +176,8 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                     >
                       {(isAllowed) => (
                         <DropdownMenuItem
-                          className={twMerge(
-                            !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                          )}
+                          variant="danger"
+                          isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePopUpOpen("deleteCa", {
@@ -197,9 +185,8 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                               type: ca.type
                             });
                           }}
-                          disabled={!isAllowed}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
                         >
+                          <Trash2Icon />
                           Delete CA
                         </DropdownMenuItem>
                       )}

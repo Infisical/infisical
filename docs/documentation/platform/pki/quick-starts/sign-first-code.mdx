@@ -16,7 +16,7 @@ Sign a Java JAR file using Infisical-managed keys in about 10 minutes. You'll is
 
 <Steps>
   <Step title="Issue a Code Signing Certificate">
-    First, issue a certificate for code signing. Go to **Certificate Manager → Settings → Certificate Policies** and click **Create**.
+    First, issue a certificate for code signing. Go to **Certificate Manager → Certificate Policies** and click **Create**.
     
     | Field | Value |
     |-------|-------|
@@ -25,7 +25,7 @@ Sign a Java JAR file using Infisical-managed keys in about 10 minutes. You'll is
     
     Then create a profile and issue a certificate following the same flow as the [Issue Certificate quick start](/documentation/platform/pki/quick-starts/issue-first-certificate), but using the `code-signing` policy.
     
-    Download the certificate — you'll need it for the signer.
+    Download the certificate. You'll need it for the signer.
   </Step>
   <Step title="Create a Signer">
     Go to **Code Signing → Signers** and click **Create**.
@@ -73,6 +73,6 @@ You should see `jar verified` with details about the signing certificate.
 
 ## Next Steps
 
-- Add [Signing Policies](/documentation/platform/pki/code-signing/signing-policies) for approval workflows
-- Request signing access with [Grants](/documentation/platform/pki/code-signing/grants)
+- Add an [approval policy](/documentation/platform/pki/code-signing/approvals) for sign-off workflows
+- Learn how [signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) is requested and revoked
 - See the full [jarsigner guide](/documentation/platform/pki/guides/code-signing/jarsigner) for advanced options

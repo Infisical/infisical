@@ -52,6 +52,12 @@ export const useCreateAccessApprovalPolicy = () => {
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
       });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
     }
   });
 };
@@ -93,6 +99,12 @@ export const useUpdateAccessApprovalPolicy = () => {
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
       });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
+      });
     }
   });
 };
@@ -108,6 +120,12 @@ export const useDeleteAccessApprovalPolicy = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestCount(projectSlug)
       });
     }
   });

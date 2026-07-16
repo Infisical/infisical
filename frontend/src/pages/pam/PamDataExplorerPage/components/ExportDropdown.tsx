@@ -26,7 +26,7 @@ export function ExportDropdown({ onExport, onCopy, disabled }: Props) {
           Export
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem onClick={() => onExport("csv")}>
           <DownloadIcon className="size-3.5" />
           Download as CSV

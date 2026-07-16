@@ -1,0 +1,67 @@
+# Seed data for the local OpenLDAP dev container (osixia/openldap).
+# Base DN dc=ldap,dc=com and cn=admin,dc=ldap,dc=com are created automatically
+# by the image from LDAP_DOMAIN/LDAP_ADMIN_PASSWORD. Do not redefine them here.
+#
+# Apply with `make seed-dev-ldap` after the container is up (it pipes this file to
+# ldapadd -c, so it is safe to re-run). See sso.md.
+#
+# Test users (uid / password): john / password123!, alice / password123!, admin / password123!
+# Emails are @ldap.com so they don't collide with the OIDC users (@oidc.com). Sign in by uid
+# (e.g. `john`) or by email (e.g. `admin@ldap.com`).
+
+dn: ou=people,dc=ldap,dc=com
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=ldap,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+dn: uid=john,ou=people,dc=ldap,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: john
+cn: John Doe
+sn: Doe
+givenName: John
+mail: john@ldap.com
+uidNumber: 10000
+gidNumber: 10000
+homeDirectory: /home/john
+userPassword: password123!
+
+dn: uid=alice,ou=people,dc=ldap,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: alice
+cn: Alice Smith
+sn: Smith
+givenName: Alice
+mail: alice@ldap.com
+uidNumber: 10001
+gidNumber: 10001
+homeDirectory: /home/alice
+userPassword: password123!
+
+dn: uid=admin,ou=people,dc=ldap,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: admin
+cn: LDAP Admin
+sn: Admin
+givenName: LDAP
+mail: admin@ldap.com
+uidNumber: 10002
+gidNumber: 10002
+homeDirectory: /home/admin
+userPassword: password123!
+
+dn: cn=infisical-users,ou=groups,dc=ldap,dc=com
+objectClass: groupOfNames
+cn: infisical-users
+member: uid=john,ou=people,dc=ldap,dc=com
+member: uid=alice,ou=people,dc=ldap,dc=com
+member: uid=admin,ou=people,dc=ldap,dc=com

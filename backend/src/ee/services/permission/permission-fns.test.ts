@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
 
-import { expandLegacyForbidActions } from "./permission-fns";
+import { expandLegacyForbidActions, throwIfMissingSecretPersonalOverridePermission } from "./permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -181,5 +181,69 @@ describe("expandLegacyForbidActions", () => {
     // In prod: allow rules still apply
     expect(ability.can(ProjectPermissionSecretActions.ReadValue, prodSecret)).toBe(true);
     expect(ability.can(ProjectPermissionSecretActions.DescribeAndReadValue, prodSecret)).toBe(true);
+  });
+});
+
+describe("throwIfMissingSecretPersonalOverridePermission", () => {
+  const buildAbility = (rules: Rule[]) => createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+
+  test("passes when the actor has PersonalOverride but not the shared fallback action", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.PersonalOverride],
+        subject: ProjectPermissionSub.Secrets
+      })
+    ]);
+    expect(() =>
+      throwIfMissingSecretPersonalOverridePermission(ability, ProjectPermissionSecretActions.Create)
+    ).not.toThrow();
+  });
+
+  test("passes when the actor has the shared fallback action but not PersonalOverride", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.Create],
+        subject: ProjectPermissionSub.Secrets
+      })
+    ]);
+    expect(() =>
+      throwIfMissingSecretPersonalOverridePermission(ability, ProjectPermissionSecretActions.Create)
+    ).not.toThrow();
+  });
+
+  test("throws when the actor has neither PersonalOverride nor the shared fallback action", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.ReadValue],
+        subject: ProjectPermissionSub.Secrets
+      })
+    ]);
+    expect(() =>
+      throwIfMissingSecretPersonalOverridePermission(ability, ProjectPermissionSecretActions.Create)
+    ).toThrow();
+  });
+
+  test("respects conditions on the PersonalOverride rule", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.PersonalOverride],
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { environment: "dev" }
+      })
+    ]);
+
+    expect(() =>
+      throwIfMissingSecretPersonalOverridePermission(ability, ProjectPermissionSecretActions.Create, {
+        environment: "dev",
+        secretPath: "/"
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      throwIfMissingSecretPersonalOverridePermission(ability, ProjectPermissionSecretActions.Create, {
+        environment: "prod",
+        secretPath: "/"
+      })
+    ).toThrow();
   });
 });

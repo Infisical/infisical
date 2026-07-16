@@ -36,9 +36,11 @@ export type Organization = {
   maxSharedSecretLifetime: number;
   maxSharedSecretViewLimit: number | null;
   blockDuplicateSecretSyncDestinations: boolean;
+  allowCrossProjectSecretSharing: boolean;
   parentOrgId: string | null;
   rootOrgId: string | null;
   secretShareBrandConfig?: TSecretShareBrandConfig;
+  pamProjectId: string | null;
 };
 
 export type UpdateOrgDTO = {
@@ -63,6 +65,7 @@ export type UpdateOrgDTO = {
   maxSharedSecretViewLimit?: number | null;
   maxSharedSecretLifetime?: number;
   blockDuplicateSecretSyncDestinations?: boolean;
+  allowCrossProjectSecretSharing?: boolean;
   secretShareBrandConfig?: TSecretShareBrandConfig;
 };
 
@@ -203,7 +206,7 @@ export type TOrgProductStats = {
   };
   pam: {
     accountsCount: number;
-    resourcesCount: number;
-    projectsCount: number;
+    accountTemplatesCount: number;
+    foldersCount: number;
   };
 };

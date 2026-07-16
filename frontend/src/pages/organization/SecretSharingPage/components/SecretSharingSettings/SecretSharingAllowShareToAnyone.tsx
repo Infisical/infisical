@@ -43,7 +43,7 @@ export const SecretSharingAllowShareToAnyone = () => {
           <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>
             {(isAllowed) => (
               <Switch
-                variant="org"
+                variant="project"
                 id="enable-secret-sharing-outside-org"
                 onCheckedChange={(value) => handleSecretSharingToggle(value)}
                 checked={currentOrg?.allowSecretSharingOutsideOrganization ?? false}

@@ -64,15 +64,15 @@ export const codeSigningPolicyFactory: TApprovalResourceFactory<
 
     const now = new Date();
 
-    const hasMatchingGrant = grants.some((grant) => {
-      const attributes = grant.attributes as TCodeSigningGrantAttributes | null;
-      if (!attributes || attributes.signerId !== inputs.signerId) return false;
-      if (attributes.windowStart && new Date(attributes.windowStart) > now) return false;
-      if (grant.expiresAt && new Date(grant.expiresAt) < now) return false;
-      return true;
-    });
-
-    return hasMatchingGrant;
+    return (
+      grants.find((grant) => {
+        const attributes = grant.attributes as TCodeSigningGrantAttributes | null;
+        if (!attributes || attributes.signerId !== inputs.signerId) return false;
+        if (attributes.windowStart && new Date(attributes.windowStart) > now) return false;
+        if (grant.expiresAt && new Date(grant.expiresAt) < now) return false;
+        return true;
+      }) ?? null
+    );
   };
 
   const validateConstraints: TApprovalRequestFactoryValidateConstraints<TCodeSigningPolicy, TCodeSigningRequestData> = (

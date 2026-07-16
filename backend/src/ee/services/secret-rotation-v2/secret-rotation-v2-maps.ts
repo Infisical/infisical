@@ -18,10 +18,14 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.DbtServiceToken]: "DBT Service Token",
   [SecretRotation.WindowsLocalAccount]: "Windows Local Account",
   [SecretRotation.OpenRouterApiKey]: "OpenRouter API Key",
+  [SecretRotation.LiteLLMApiKey]: "LiteLLM API Key",
+  [SecretRotation.OpenAIServiceAccount]: "OpenAI Service Account",
   [SecretRotation.HpIloLocalAccount]: "HP iLO Local Account",
   [SecretRotation.SupabaseApiKey]: "Supabase API Key",
   [SecretRotation.SalesforceOauthCredentials]: "Salesforce OAuth Credentials",
-  [SecretRotation.DatadogApplicationKeySecret]: "Datadog Application Key"
+  [SecretRotation.DatadogApplicationKeySecret]: "Datadog Application Key",
+  [SecretRotation.ConvexAccessKey]: "Convex Access Key",
+  [SecretRotation.FireworksApiKey]: "Fireworks Secret"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -41,8 +45,12 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
   [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
+  [SecretRotation.LiteLLMApiKey]: AppConnection.LiteLLM,
+  [SecretRotation.OpenAIServiceAccount]: AppConnection.OpenAI,
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
-  [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog
+  [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog,
+  [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
+  [SecretRotation.FireworksApiKey]: AppConnection.Fireworks
 };

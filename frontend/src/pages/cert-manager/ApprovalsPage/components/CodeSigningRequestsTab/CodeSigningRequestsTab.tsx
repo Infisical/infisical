@@ -80,6 +80,9 @@ const checkIfUserNeedsToApprove = (
   userId: string,
   userGroups: string[]
 ): boolean => {
+  if (request.type === ApprovalPolicyType.CertCodeSigning && request.requesterId === userId)
+    return false;
+
   const currentStep = request.steps.find(
     (step) => step.status === ApprovalRequestStepStatus.InProgress
   );
@@ -157,7 +160,7 @@ export const CodeSigningRequestsTab = () => {
         <div>
           <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-mineshaft-100">Signing Requests</p>
-            <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signingRequests} />
+            <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.requestToSign} />
           </div>
           <p className="text-sm text-bunker-300">Review and manage signing requests</p>
         </div>

@@ -10,7 +10,9 @@ import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { EncryptionTab } from "./components/EncryptionTab";
-import { SecretSettingsTab } from "./components/ProjectGeneralTab";
+import { EnvironmentsTab } from "./components/EnvironmentsTab";
+import { PoliciesTab } from "./components/PoliciesTab";
+import { TagsTab } from "./components/TagsTab";
 import { WebhooksTab } from "./components/WebhooksTab";
 import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection";
 
@@ -24,27 +26,71 @@ export const SettingsPage = () => {
   });
 
   const tabs = [
-    { key: "tab-project-general", Component: ProjectGeneralTab },
-    { key: "tab-secret-general", Component: SecretSettingsTab },
     {
+      name: "General",
+      description: "Manage your project's name, audit log retention, and delete protection.",
+      key: "tab-project-general",
+      Component: ProjectGeneralTab
+    },
+    {
+      name: "Environments",
+      description:
+        "Define the environments your secrets live in, such as development, staging, and production.",
+      key: "tab-secret-environments",
+      Component: EnvironmentsTab
+    },
+    {
+      name: "Tags",
+      description: "Organize secrets with tags to make them easier to find and govern.",
+      key: "tab-secret-tags",
+      Component: TagsTab
+    },
+    {
+      name: "Policies",
+      description:
+        "Configure validation rules, retention, cross-project sharing, and other behaviors that govern this project's secrets.",
+      key: "tab-secret-policies",
+      Component: PoliciesTab
+    },
+    {
+      name: "Encryption",
+      description: "Choose the Key Management System used to encrypt this project's data.",
       key: "tab-project-encryption",
       isHidden: currentProject?.version !== ProjectVersion.V3,
       Component: EncryptionTab
     },
-    { key: "tab-workflow-integrations", Component: WorkflowIntegrationTab },
-    { key: "tab-project-webhooks", Component: WebhooksTab }
+    {
+      name: "Workflow Integrations",
+      description: "Connect Slack and Microsoft Teams for approval and notification workflows.",
+      key: "tab-workflow-integrations",
+      Component: WorkflowIntegrationTab
+    },
+    {
+      name: "Webhooks",
+      description: "Manage webhooks that notify external services when your secrets change.",
+      key: "tab-project-webhooks",
+      Component: WebhooksTab
+    }
   ];
+
+  const visibleTabs = tabs.filter((tab) => !tab.isHidden);
+  const activeTab =
+    visibleTabs.find((tab) => tab.key === selectedTab) ??
+    visibleTabs.find((tab) => tab.key === "tab-project-general") ??
+    visibleTabs[0];
+  const baseTitle = t("settings.project.title");
+  const pageTitle = activeTab ? `${activeTab.name} - ${baseTitle}` : baseTitle;
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
       <Helmet>
-        <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
+        <title>{t("common.head-title", { title: pageTitle })}</title>
       </Helmet>
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretManager}
-          title="Project Settings"
-          description="Configure your secret manager's encryption, environments, webhooks and other configurations."
+          title={activeTab?.name ?? baseTitle}
+          description={activeTab?.description}
         >
           <Link
             to="/organizations/$orgId/settings"
@@ -57,14 +103,12 @@ export const SettingsPage = () => {
             settings?
           </Link>
         </PageHeader>
-        <Tabs orientation="vertical" value={selectedTab}>
-          {tabs
-            .filter((el) => !el.isHidden)
-            .map(({ key, Component }) => (
-              <TabPanel value={key} key={key}>
-                <Component />
-              </TabPanel>
-            ))}
+        <Tabs orientation="vertical" value={activeTab?.key}>
+          {visibleTabs.map(({ key, Component }) => (
+            <TabPanel value={key} key={key}>
+              <Component />
+            </TabPanel>
+          ))}
         </Tabs>
       </div>
     </div>

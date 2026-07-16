@@ -1,6 +1,7 @@
 export {
   useAddGroupToWorkspace,
   useDeleteGroupFromWorkspace,
+  useEnableSecretBlindIndex,
   useLeaveProject,
   useMigrateProjectToV3,
   useRequestProjectAccess,
@@ -18,6 +19,7 @@ export {
   useGetProjectSshConfig,
   useGetUpgradeProjectStatus,
   useGetUserProjects,
+  useGetUserProjectsByType,
   useGetUserWorkspaceMemberships,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,

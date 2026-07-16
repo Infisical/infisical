@@ -41,7 +41,10 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import {
+  hasSecretPersonalOverridePermission,
+  hasSecretReadValueOrDescribePermission
+} from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEyeSlash,
@@ -127,9 +130,13 @@ export const SecretItem = memo(
 
     const [isFieldFocused, setIsFieldFocused] = useToggle();
 
+    // A personal override is always readable by its owner, so its fetch/display must not depend on the
+    // shared value's `secretValueHidden` (which is true when the user lacks read access to the shared secret).
+    const hasPersonalOverride = Boolean(originalSecret.idOverride);
     const canFetchSecretValue =
-      !originalSecret.secretValueHidden &&
-      !originalSecret.isEmpty &&
+      (hasPersonalOverride
+        ? !originalSecret.isOverrideEmpty
+        : !originalSecret.secretValueHidden && !originalSecret.isEmpty) &&
       pendingAction !== PendingAction.Create;
 
     const fetchSecretValueParams = {
@@ -137,7 +144,7 @@ export const SecretItem = memo(
       secretPath,
       secretKey: originalSecret.originalKey || originalSecret.key,
       projectId: currentProject.id,
-      isOverride: Boolean(originalSecret.idOverride)
+      isOverride: hasPersonalOverride
     };
 
     const {
@@ -197,10 +204,8 @@ export const SecretItem = memo(
     const getOverrideDefaultValue = () => {
       if (isLoadingSecretValue) return undefined;
 
-      if (secret.secretValueHidden && !isPending) {
-        return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
-      }
-
+      // The personal override belongs to the current user and is always readable by them, so it is not
+      // gated on the shared value's `secretValueHidden`.
       if (isErrorFetchingSecretValue) return undefined;
 
       return secret.valueOverride || "";
@@ -249,6 +254,17 @@ export const SecretItem = memo(
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
+    // Adding a personal override creates a personal secret, which the backend gates on the
+    // Create/PersonalOverride permission — so mirror that check for the "add" case.
+    const canAddOverride = hasSecretPersonalOverridePermission(
+      permission,
+      ProjectPermissionSecretActions.Create,
+      { environment, secretPath, secretName, secretTags: selectedTagSlugs }
+    );
+    // Removing an existing override deletes the user's own personal secret, which the backend allows
+    // for any owner without a permission check. So only gate the add case; allow removal whenever the
+    // row is already overridden.
+    const canManageOverride = isOverridden || canAddOverride;
 
     const autoSaveChanges = useCallback(
       async (data: TFormSchema) => {
@@ -733,42 +749,30 @@ export const SecretItem = memo(
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName,
-                      secretTags: selectedTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <IconButton
-                        ariaLabel="override-value"
-                        isDisabled={!isAllowed || isManagedSecret}
-                        variant="plain"
-                        size="sm"
-                        onClick={handleOverrideClick}
-                        className={twMerge(
-                          "w-0 overflow-hidden p-0 group-hover:w-5",
-                          isOverridden && "w-5 text-primary"
-                        )}
-                      >
-                        <Tooltip
-                          content={
-                            isManagedSecret
-                              ? `Unavailable for ${isHoneyTokenSecret ? "honey token" : "rotated"} secrets`
-                              : `${isOverridden ? "Remove" : "Add"} Override`
-                          }
-                        >
-                          <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Override}
-                            className="h-3.5 w-3.5"
-                          />
-                        </Tooltip>
-                      </IconButton>
+                  <IconButton
+                    ariaLabel="override-value"
+                    isDisabled={!canManageOverride || isManagedSecret}
+                    variant="plain"
+                    size="sm"
+                    onClick={handleOverrideClick}
+                    className={twMerge(
+                      "w-0 overflow-hidden p-0 group-hover:w-5",
+                      isOverridden && "w-5 text-primary"
                     )}
-                  </ProjectPermissionCan>
+                  >
+                    <Tooltip
+                      content={
+                        isManagedSecret
+                          ? `Unavailable for ${isHoneyTokenSecret ? "honey token" : "rotated"} secrets`
+                          : `${isOverridden ? "Remove" : "Add"} Override`
+                      }
+                    >
+                      <FontAwesomeSymbol
+                        symbolName={FontAwesomeSpriteName.Override}
+                        className="h-3.5 w-3.5"
+                      />
+                    </Tooltip>
+                  </IconButton>
                   <Popover>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}

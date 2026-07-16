@@ -1,47 +1,34 @@
 ---
 title: "PKCS#11 Module"
 sidebarTitle: "PKCS#11 Module"
-description: "Install and configure the Infisical PKCS#11 module for use with standard signing tools."
+description: "Use jarsigner, cosign, osslsigncode, and other standard signing tools with Infisical Signers."
 ---
 
-<Tip>
-  New to Code Signing? Start with [Sign Your First Artifact](/documentation/platform/pki/quick-starts/sign-first-code).
-</Tip>
+The Infisical **PKCS#11 module** is a small native library (`.so`, `.dylib`, or `.dll`) that exposes your Infisical [Signers](/documentation/platform/pki/code-signing/signers) to any tool that supports the [PKCS#11 v2.40 standard](https://www.oasis-open.org/standard/pkcs-11-v2-40/). Tools like `jarsigner`, `osslsigncode`, `cosign`, `apksigner`, `openssl`, and `gpg` work without modification. They make their usual PKCS#11 calls; the module forwards them to Infisical and returns the signature.
 
-The Infisical PKCS#11 module implements the PKCS#11 v2.40 standard, allowing tools like `jarsigner`, `openssl`, `cosign`, `osslsigncode`, `apksigner`, and `gpg` to use Infisical [Signers](/documentation/platform/pki/code-signing/signers) without code changes.
+<Note>
+  Signing on Windows with `signtool`? Use the [Windows KSP](/documentation/platform/pki/code-signing/windows-ksp) instead.
+</Note>
+
+## Before you start
+
+You authenticate as a member of the Signer, using either a **Machine Identity** or your own Infisical **access token**. To use a Machine Identity, set it up once:
+
+1. **Create a Machine Identity** and enable **[Universal Auth](/documentation/platform/identities/universal-auth)** on it, then copy its **Client ID** and **Client Secret**. The module uses these to authenticate, and you will set them in [Configuration](#configuration) below.
+2. **Add the identity to the Signer** with the Administrator or Operator role, from the Signer's **Members** tab. Auditors cannot sign.
+3. If the Signer has an [approval policy](/documentation/platform/pki/code-signing/approvals), get [active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing (or use [Automatic Signing Access Requests](#automatic-signing-access-requests)).
+
+<Note>
+  To sign as yourself instead, use your own access token (see [Configuration](#configuration)). You still need to be a member of the Signer with the Administrator or Operator role.
+</Note>
 
 <Info>
-  Before using the PKCS#11 module, ensure your Product Admin has created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If a [signing policy](/documentation/platform/pki/code-signing/signing-policies) is attached, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants).
+  The [Signer](/documentation/platform/pki/code-signing/signers) itself is created by a Product Admin. If you do not have one yet, create it first.
 </Info>
-
-## Tool-Specific Guides
-
-For complete step-by-step guides on using the PKCS#11 module with specific signing tools:
-
-<CardGroup cols={3}>
-  <Card title="jarsigner" href="/documentation/platform/pki/guides/code-signing/jarsigner">
-    Sign Java JARs
-  </Card>
-  <Card title="apksigner" href="/documentation/platform/pki/guides/code-signing/apksigner">
-    Sign Android APKs
-  </Card>
-  <Card title="osslsigncode" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
-    Sign Windows executables
-  </Card>
-  <Card title="Cosign" href="/documentation/platform/pki/guides/code-signing/cosign">
-    Sign container images
-  </Card>
-  <Card title="OpenSSL" href="/documentation/platform/pki/guides/code-signing/openssl">
-    Sign with OpenSSL
-  </Card>
-  <Card title="GPG" href="/documentation/platform/pki/guides/code-signing/gpg">
-    Sign with GPG
-  </Card>
-</CardGroup>
 
 ## Installation
 
-Download the pre-built binary for your platform from the [releases page](https://github.com/Infisical/infisical-pkcs-11/releases):
+Grab the pre-built binary for your platform from the [releases page](https://github.com/Infisical/infisical-pkcs-11/releases):
 
 | Platform | File |
 |----------|------|
@@ -51,7 +38,7 @@ Download the pre-built binary for your platform from the [releases page](https:/
 | macOS ARM64 | `libinfisical-pkcs11.dylib` |
 | Windows x86_64 | `libinfisical-pkcs11.dll` |
 
-Place the binary in a known location, for example `/usr/local/lib/`:
+Drop the binary in a known location:
 
 ```bash
 # Linux
@@ -63,9 +50,9 @@ sudo cp libinfisical-pkcs11.dylib /usr/local/lib/
 sudo chmod 755 /usr/local/lib/libinfisical-pkcs11.dylib
 ```
 
-### Building from Source
+### Building from source
 
-If you prefer to build from source, you need Go 1.24+ and a C compiler:
+If you want to build instead of downloading, you need Go 1.24+ and a C compiler:
 
 ```bash
 git clone https://github.com/Infisical/infisical-pkcs-11.git
@@ -73,102 +60,135 @@ cd infisical-pkcs-11
 make build
 ```
 
-The output binary will be in the current directory.
+The output binary lands in the current directory.
 
 ## Configuration
 
-Create a JSON configuration file at `/etc/infisical/pkcs11.conf` (or any path you prefer):
+The module reads its config from `/etc/infisical/pkcs11.conf` (override the path with `INFISICAL_CONFIG`):
 
 ```json
 {
   "server_url": "https://app.infisical.com",
-  "project_id": "<your-project-id>",
   "log_level": "info"
 }
 ```
 
-Then set the authentication credentials via environment variables:
+Then export the authentication credentials as environment variables:
 
 ```bash
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<your-machine-identity-client-id>"
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<your-machine-identity-client-secret>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
 ```
 
 <Note>
-  Credentials can also be placed in the config file under `auth.client_id` and `auth.client_secret`, but we recommend using environment variables to prevent secrets from being committed to version control or exposed in file system backups.
+  Credentials can also live in the config file under `auth.client_id` and `auth.client_secret`, but environment variables are strongly recommended so secrets don't end up in version control, backups, or shared logs.
 </Note>
 
-If using a non-default config path, set:
+#### Sign with an access token instead
+
+Instead of a machine identity, you can hand the module an Infisical access token directly, either your own or a machine identity's. Set `INFISICAL_TOKEN` and the module uses it as-is:
 
 ```bash
-export INFISICAL_PKCS11_CONFIG=/path/to/your/pkcs11.conf
+export INFISICAL_SERVER_URL="https://app.infisical.com"
+export INFISICAL_TOKEN="<your-access-token>"
 ```
 
-### Configuration Reference
+<Warning>
+  JWT tokens expire, so this access is **temporary**. The module does not refresh the token; once it expires, signing fails until you supply a new one. This is handy for signing as yourself or for a quick one-off; for unattended or CI/CD signing use a machine identity with Universal Auth (client ID and secret), which the module re-authenticates automatically.
+</Warning>
+
+If you put the config somewhere other than `/etc/infisical/pkcs11.conf`:
+
+```bash
+export INFISICAL_CONFIG=/path/to/your/pkcs11.conf
+```
+
+### Configuration reference
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `server_url` | Yes | None | Infisical server URL |
-| `project_id` | Yes | None | Project ID containing the signers |
-| `auth.method` | No | `universal-auth` | Authentication method |
-| `auth.client_id` | No | None | Machine identity client ID (prefer env var) |
-| `auth.client_secret` | No | None | Machine identity client secret (prefer env var) |
-| `tls.ca_cert_path` | No | None | Custom CA cert for self-hosted instances |
-| `tls.skip_verify` | No | `false` | Skip TLS verification (development only) |
-| `cache.token_ttl_seconds` | No | `300` | Auth token cache duration |
-| `cache.cert_ttl_seconds` | No | `3600` | Certificate data cache duration |
-| `cache.signer_ttl_seconds` | No | `300` | Signer list cache duration |
-| `approval.signing_duration` | No | None | Auto-request signing access with this time window (e.g. `"8h"`, `"30m"`, `"2d"`). Range: 1m to 30d |
-| `approval.signing_count` | No | None | Auto-request signing access for this many signing operations |
-| `log_level` | No | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error` |
-| `log_file` | No | stderr | Path to log file |
+| `server_url` | Yes | None | Infisical server URL. Must use `http://` (local dev) or `https://`. |
+| `auth.method` | No | inferred | Authentication method: `universal-auth` or `token`. Inferred from the credentials when unset (a token means `token`, otherwise `universal-auth`). |
+| `auth.client_id` | No | None | Machine identity client ID, for `universal-auth`. Prefer the env var. |
+| `auth.client_secret` | No | None | Machine identity client secret, for `universal-auth`. Prefer the env var. |
+| `auth.token` | No | None | An Infisical access token, for `token` auth. Prefer the env var. |
+| `tls.ca_cert_path` | No | None | Custom CA bundle path for self-hosted Infisical with a private CA. |
+| `tls.skip_verify` | No | `false` | Skip TLS verification (development only, never enable in production). |
+| `cache.token_ttl_seconds` | No | `300` | How long the auth token is cached. |
+| `cache.cert_ttl_seconds` | No | `3600` | How long fetched certificates are cached. |
+| `cache.signer_ttl_seconds` | No | `300` | How long the list of Signers is cached. |
+| `approval.signing_duration` | No | None | Auto-request signing access with this window when no active access exists. Valid range: `1m` to `30d`. |
+| `approval.signing_count` | No | None | Auto-request signing access for this many signatures when no active access exists. |
+| `log_level` | No | `info` | One of `trace`, `debug`, `info`, `warn`, `error`. |
+| `log_file` | No | stderr | Optional path to a log file. |
 
-### Environment Variable Reference
+### Environment variable reference
 
 | Variable | Description |
 |----------|-------------|
-| `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | Machine identity client ID |
-| `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | Machine identity client secret |
-| `INFISICAL_PKCS11_SERVER_URL` | Override `server_url` from config |
-| `INFISICAL_PKCS11_CONFIG` | Path to config file (default: `/etc/infisical/pkcs11.conf`) |
+| `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` | Machine identity client ID. Overrides config. |
+| `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` | Machine identity client secret. Overrides config. |
+| `INFISICAL_TOKEN` | An Infisical access token (a user or machine identity token). Selects token auth; used instead of the client ID/secret. |
+| `INFISICAL_SERVER_URL` | The Infisical instance URL. Sets `server_url` (and overrides the config file). |
+| `INFISICAL_CONFIG` | Path to the config file (default `/etc/infisical/pkcs11.conf`). |
 
 <Note>
   Environment variables always take precedence over values in the configuration file.
 </Note>
 
-## Verifying the Module
+## Verify the Module
 
-Use `pkcs11-tool` (from OpenSC) to verify the module is working:
+Use `pkcs11-tool` (from OpenSC: `brew install opensc` or `apt install opensc`) to confirm everything is wired up.
 
 ```bash
-# List available slots (one per signer)
-pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so --list-slots
+pkcs11-tool \
+  --module /usr/local/lib/libinfisical-pkcs11.so \
+  --list-slots
 ```
 
-The output lists one slot per signer in your project:
+You should see one slot per Signer your machine identity is a member of:
 
-```
+```text
 Available slots:
-Slot 0 (0x0): release-signer
-  token label        : release-signer
+Slot 0 (0x0): mobile-app-prod
+  token label        : mobile-app-prod
   token manufacturer : Infisical
+  token model        : Code Signing
+  ...
+Slot 1 (0x1): release-signer
   ...
 ```
 
-To list the objects (private key, certificate, public key) in a slot:
+To list the objects (private key, public key, X.509 cert) in a slot:
 
 ```bash
-pkcs11-tool --module /usr/local/lib/libinfisical-pkcs11.so --slot 0 --list-objects
+pkcs11-tool \
+  --module /usr/local/lib/libinfisical-pkcs11.so \
+  --slot 0 \
+  --list-objects
 ```
+
+A quick smoke-test sign:
+
+```bash
+echo "hello" > /tmp/payload.bin
+pkcs11-tool \
+  --module /usr/local/lib/libinfisical-pkcs11.so \
+  --slot 0 \
+  --sign --mechanism SHA256-RSA-PKCS \
+  --input-file /tmp/payload.bin \
+  --output-file /tmp/payload.sig
+```
+
+If the Signer has an approval policy and you don't have active access, the sign call is rejected with `CKR_GENERAL_ERROR` and the module logs a "signing requires approval" line. See [Automatic Signing Access Requests](#automatic-signing-access-requests) below to make this seamless.
 
 ## Automatic Signing Access Requests
 
-If a signer has a [signing policy](/documentation/platform/pki/code-signing/signing-policies) attached, the module can automatically create a signing request when a sign operation is denied due to a missing grant. This removes the need to manually create requests via the UI or API before signing.
-
-To enable this, add the `approval` section to your config file with at least one of the following:
+When a Signer has a policy attached, sign calls without active access normally fail. The module can automatically open a signing request for you on the first denied call. You just need to add an `approval` block to the config:
 
 ```json
 {
+  "server_url": "https://app.infisical.com",
   "approval": {
     "signing_duration": "8h",
     "signing_count": 10
@@ -176,26 +196,29 @@ To enable this, add the `approval` section to your config file with at least one
 }
 ```
 
-- **`signing_duration`**: Requests a time-window grant of the specified duration (e.g. `"30m"`, `"8h"`, `"2d"`). Valid range: 1 minute to 30 days.
-- **`signing_count`**: Requests a grant for a fixed number of signing operations.
+- **`signing_duration`** requests an access window of this duration (`30m`, `8h`, `2d`; range 1m to 30d).
+- **`signing_count`** requests access good for this many signing operations.
 
-You can set one or both depending on the constraints defined in the signing policy.
+Set one or both depending on what the Signer's policy expects. The values are capped at the policy's `maxWindow` / `maxSignings`.
 
 <Note>
-  The sign operation will fail until an approver approves the request first. Once approved, retrying the sign operation will succeed. The module logs a message indicating that an approval request was created automatically.
+  The first sign call **still fails** until an approver approves the auto-created request. Once approved, retry the sign and it succeeds. The module logs that the request was created so you know what to do.
 </Note>
 
-### Example Workflow
+### Example CI workflow
 
-1. A CI/CD pipeline attempts to sign an artifact
-2. The module detects that no active grant exists for the signer
-3. It automatically creates a signing request with the configured duration/count
-4. An approver reviews and approves the request
-5. The pipeline retries and the sign operation succeeds
+1. Pipeline calls `jarsigner` (or any PKCS#11 tool) against the Infisical module.
+2. No active access exists, so Infisical returns 403.
+3. The module sees the `approval` block and auto-creates a signing request with the configured duration and count.
+4. Pipeline fails on this run.
+5. A reviewer approves the request in the Infisical UI.
+6. Pipeline is rerun and the sign call succeeds under the freshly-issued access record.
+
+For fully unattended CI, have an Administrator **pre-approve** signing access via [Pre-approve signing](/documentation/platform/pki/code-signing/approvals#pre-approve-signing) before the pipeline runs.
 
 ## Troubleshooting
 
-For any issue, start by enabling debug logging in your config file to get detailed output:
+Turn on debug logging in the config first. It'll usually tell you exactly what went wrong:
 
 ```json
 {
@@ -205,24 +228,49 @@ For any issue, start by enabling debug logging in your config file to get detail
 ```
 
 <AccordionGroup>
-  <Accordion title="No slots visible or authentication errors">
-    Verify that your credentials and `project_id` are correct, and that the machine identity has been added to the project with the appropriate permissions.
+  <Accordion title="No slots listed">
+    Almost always one of three things:
+    1. The machine identity is not a member of any Signer in your organization. Have an Admin add it to a Signer (any role works).
+    2. The credentials are wrong. Check the auth token line in the log; if it says `401`, regenerate the universal-auth client secret.
+    3. The `server_url` points at the wrong instance. The module log line `Initialized with universal-auth (auto-authenticated)` confirms a successful login.
   </Accordion>
-  <Accordion title="CKR_GENERAL_ERROR when signing">
-    This typically means the signing request was denied by the server. Check that you have an active signing grant for the signer. You can verify this in **Certificate Manager → Code Signing → Grants**.
+  <Accordion title="CKR_GENERAL_ERROR on sign">
+    Almost always means the server rejected the sign. Common reasons (visible in the debug log):
+    - **No active access.** The Signer has an approval policy and you don't yet have access. See [Request to sign](/documentation/platform/pki/code-signing/approvals#request-to-sign).
+    - **Access expired or signatures exhausted.** Request access again.
+    - **Signer is Disabled.** Re-enable it in the UI.
+    - **Certificate expired.** Issue a new one or wait for auto-renewal.
+  </Accordion>
+  <Accordion title="CKR_DEVICE_ERROR or connection refused">
+    Network or TLS problem. Check `server_url`, confirm the host is reachable from the machine, and verify TLS. If you self-host with a private CA, set `tls.ca_cert_path` to its bundle. As a last resort during local dev, you can set `tls.skip_verify: true` (**never in production**).
+  </Accordion>
+  <Accordion title="server_url scheme must be http or https">
+    The module rejects any other scheme (`file://`, `gopher://`, etc.) to prevent credentials being sent to unintended targets. Make sure your `server_url` starts with `http://` or `https://`.
+  </Accordion>
+  <Accordion title="The PKCS#11 module sees the slot but says 'signer X has no certificate'">
+    The Signer is in **Pending** or **Failed** status; no certificate has been issued yet. Check the Signer's status in the UI; for external CAs (AWS Private CA, Azure AD CS), issuance can take minutes. Once the Signer becomes Active, the cert is fetched automatically.
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next
 
 <CardGroup cols={3}>
   <Card title="Sign JARs" icon="java" href="/documentation/platform/pki/guides/code-signing/jarsigner">
-    Sign Java artifacts with jarsigner
+    `jarsigner` with the PKCS#11 module.
   </Card>
-  <Card title="Sign Containers" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
-    Sign container images with Cosign
+  <Card title="Sign containers" icon="docker" href="/documentation/platform/pki/guides/code-signing/cosign">
+    `cosign sign` with Infisical.
+  </Card>
+  <Card title="Sign Windows binaries" icon="windows" href="/documentation/platform/pki/guides/code-signing/osslsigncode">
+    `osslsigncode` for `.exe` / `.dll` / `.msi`.
+  </Card>
+  <Card title="Sign APKs" icon="android" href="/documentation/platform/pki/guides/code-signing/apksigner">
+    `apksigner` for Android.
+  </Card>
+  <Card title="Sign with OpenSSL" icon="lock" href="/documentation/platform/pki/guides/code-signing/openssl">
+    Raw signing primitives.
   </Card>
   <Card title="Sign with GPG" icon="key" href="/documentation/platform/pki/guides/code-signing/gpg">
-    Use GPG with the PKCS#11 module
+    Use GPG via the PKCS#11 module.
   </Card>
 </CardGroup>

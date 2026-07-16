@@ -73,6 +73,7 @@ import { OrgPermissionSubOrgActions } from "@app/context/OrgPermissionContext/ty
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
+  adminQueryKeys,
   projectKeys,
   subOrganizationsQuery,
   useGetOrganizations,
@@ -82,8 +83,9 @@ import {
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
+import { getSubscriptionPlanLabel } from "@app/hooks/api/subscriptions";
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
-import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
+import { Organization } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import {
   ApplicationSelect,
@@ -96,12 +98,6 @@ import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { VersionBadge } from "./VersionBadge";
-
-const getPlan = (subscription: SubscriptionPlan) => {
-  if (subscription.groups) return "Enterprise";
-  if (subscription.pitRecovery) return "Pro";
-  return "Free";
-};
 
 const getFormattedSupportEmailLink = (variables: {
   org_id: string;
@@ -221,10 +217,12 @@ export const Navbar = () => {
     }
 
     SecurityClient.setToken(token);
+    queryClient.removeQueries({ queryKey: adminQueryKeys.serverConfig() });
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
 
     await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+    await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
     await navigateUserToOrg({ navigate, organizationId, navigateTo });
     queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
@@ -307,9 +305,11 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
+  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
   const isProjectScope =
-    location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
-    location.pathname !== `/organizations/${currentOrg.id}/projects`;
+    isPamScope ||
+    (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
+      location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -320,7 +320,8 @@ export const Navbar = () => {
 
       await logout.mutateAsync();
       if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?domain=${org.slug}`);
+        // orgSlug, not domain: the domain param is a verified email-domain lookup and 403s on a slug
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
       } else {
         window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
       }
@@ -343,7 +344,8 @@ export const Navbar = () => {
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isProjectScope && "from-project/5",
+        !isServerAdminPanel && isPamScope && "from-product-pam/5",
+        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
@@ -619,7 +621,7 @@ export const Navbar = () => {
         </Tooltip>
       ) : (
         <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">
-          {getPlan(subscription)}
+          {getSubscriptionPlanLabel(subscription)}
         </Badge>
       )}
       <VersionBadge />

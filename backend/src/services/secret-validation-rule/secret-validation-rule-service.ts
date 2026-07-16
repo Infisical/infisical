@@ -15,14 +15,21 @@ import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretValidationRuleDALFactory } from "./secret-validation-rule-dal";
 import { checkForOverlappingRules, enforceSecretValidationRules } from "./secret-validation-rule-fns";
+import { assertConstraintsProduceSafePasswords } from "./secret-validation-rule-password-generator";
 import { MAX_PREVENT_VALUE_REUSE_VERSIONS, parseSecretValidationRuleInputs } from "./secret-validation-rule-schemas";
 import {
   ConstraintTarget,
   ConstraintType,
+  DynamicSecretRuleProvider,
+  SecretRotationRuleProvider,
   SecretValidationRuleType,
+  TConstraint,
   TCreateSecretValidationRuleDTO,
   TDeleteSecretValidationRuleDTO,
+  TDynamicSecretsInputs,
   TListSecretValidationRulesDTO,
+  TSecretRotationsInputs,
+  TSecretValidationRuleRecord,
   TUpdateSecretValidationRuleDTO
 } from "./secret-validation-rule-types";
 
@@ -71,14 +78,17 @@ export const secretValidationRuleServiceFactory = ({
       projectId
     });
 
-    const finalRules = (rules || []).map((rule) => ({
-      ...rule,
-      type: rule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(
-        rule.type,
-        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
-      )
-    }));
+    const finalRules = (rules || []).map(
+      (rule) =>
+        ({
+          ...rule,
+          type: rule.type as SecretValidationRuleType,
+          inputs: parseSecretValidationRuleInputs(
+            rule.type,
+            JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+          )
+        }) as TSecretValidationRuleRecord
+    );
 
     return finalRules;
   };
@@ -116,6 +126,15 @@ export const secretValidationRuleServiceFactory = ({
     }
 
     const parsedInputs = parseSecretValidationRuleInputs(type, inputs);
+
+    // For generated-credential rules, do a dry run before storing the rule so
+    // infeasible constraints (impossible length window, bad regex, etc.) fail
+    // at save time rather than silently breaking lease/rotation creation later.
+    if (type === SecretValidationRuleType.DynamicSecrets || type === SecretValidationRuleType.SecretRotations) {
+      assertConstraintsProduceSafePasswords(
+        (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
+      );
+    }
 
     const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -160,7 +179,11 @@ export const secretValidationRuleServiceFactory = ({
       encryptedInputs: encryptedRuleInputs
     });
 
-    return { ...rule, type: rule.type as SecretValidationRuleType, inputs: parsedInputs };
+    return {
+      ...rule,
+      type: rule.type as SecretValidationRuleType,
+      inputs: parsedInputs
+    } as TSecretValidationRuleRecord;
   };
 
   const updateRule = async ({
@@ -215,6 +238,12 @@ export const secretValidationRuleServiceFactory = ({
     const ruleInputs = inputs ?? (JSON.parse(decryptedExistingRuleInputs.toString()) as unknown);
     const parsedInputs = parseSecretValidationRuleInputs(ruleType, ruleInputs);
 
+    if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
+      assertConstraintsProduceSafePasswords(
+        (parsedInputs as TDynamicSecretsInputs | TSecretRotationsInputs).constraints
+      );
+    }
+
     const finalEnvId = envId !== undefined ? envId : (existingRule.envId as string | null);
     const finalSecretPath = dto.secretPath ?? existingRule.secretPath;
 
@@ -265,7 +294,7 @@ export const secretValidationRuleServiceFactory = ({
         updatedRule.type,
         JSON.parse(ruleInputsDecryptor({ cipherTextBlob: updatedRule.encryptedInputs }).toString()) as unknown
       )
-    };
+    } as TSecretValidationRuleRecord;
   };
 
   const deleteRule = async ({
@@ -304,7 +333,7 @@ export const secretValidationRuleServiceFactory = ({
         existingRule.type,
         JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown
       )
-    };
+    } as TSecretValidationRuleRecord;
   };
 
   /**
@@ -422,11 +451,73 @@ export const secretValidationRuleServiceFactory = ({
     });
   };
 
+  /**
+   * Finds active validation rules that match a generated-credential flow
+   * (dynamic secret lease or secret rotation) and returns the union of
+   * their constraints for the password target.
+   *
+   * Multiple matching rules contribute their constraints additively — the
+   * generator must satisfy all of them. Overlap is prevented at rule
+   * creation time, so contradictions across rules are not expected here.
+   */
+  const findConstraintsForGeneratedSecret = async ({
+    projectId,
+    envId,
+    secretPath,
+    type,
+    provider
+  }: {
+    projectId: string;
+    envId: string;
+    secretPath: string;
+    type: SecretValidationRuleType.DynamicSecrets | SecretValidationRuleType.SecretRotations;
+    provider: DynamicSecretRuleProvider | SecretRotationRuleProvider;
+  }): Promise<{ constraints: TConstraint[]; ruleNames: string[] }> => {
+    const rules = await secretValidationRuleDAL.find({ projectId, isActive: true, type });
+    if (!rules.length) return { constraints: [], ruleNames: [] };
+
+    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const constraints: TConstraint[] = [];
+    const ruleNames: string[] = [];
+
+    for (const rule of rules) {
+      // Scope: rule envId null = applies to all environments
+      if (rule.envId && rule.envId !== envId) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+      if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      const parsed = parseSecretValidationRuleInputs(
+        rule.type,
+        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+      ) as TDynamicSecretsInputs | TSecretRotationsInputs;
+
+      if (!parsed.providers?.includes(provider as never)) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      constraints.push(...parsed.constraints);
+      ruleNames.push(rule.name);
+    }
+
+    return { constraints, ruleNames };
+  };
+
   return {
     listByProjectId,
     createRule,
     updateRule,
     deleteRule,
-    validateSecrets
+    validateSecrets,
+    findConstraintsForGeneratedSecret
   };
 };

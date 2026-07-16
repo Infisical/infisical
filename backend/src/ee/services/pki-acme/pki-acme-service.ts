@@ -887,7 +887,7 @@ export const pkiAcmeServiceFactory = ({
       status: 201,
       body: buildAcmeOrderResource({
         profileId,
-        order
+        order: order as Parameters<typeof buildAcmeOrderResource>[0]["order"]
       }),
       headers: {
         Location: buildUrl(profileId, `/orders/${order.id}`),
@@ -1045,6 +1045,11 @@ export const pkiAcmeServiceFactory = ({
       csr,
       ttl: updatedCertificateRequest.validity?.ttl,
       enrollmentType: EnrollmentType.ACME,
+      organization: updatedCertificateRequest.organization || undefined,
+      organizationalUnit: updatedCertificateRequest.organizationalUnit || undefined,
+      country: updatedCertificateRequest.country || undefined,
+      state: updatedCertificateRequest.state || undefined,
+      locality: updatedCertificateRequest.locality || undefined,
       tx
     });
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
@@ -1064,6 +1069,11 @@ export const pkiAcmeServiceFactory = ({
         extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
         certificateRequestId: certRequest.id,
         csr: csrPem,
+        organization: updatedCertificateRequest.organization,
+        organizationalUnit: updatedCertificateRequest.organizationalUnit,
+        country: updatedCertificateRequest.country,
+        state: updatedCertificateRequest.state,
+        locality: updatedCertificateRequest.locality,
         ...(applicationId && { applicationId })
       }
     };

@@ -1,24 +1,78 @@
+import RE2 from "re2";
+import { z } from "zod";
+
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TProjectPermission } from "@app/lib/types";
 
-import { SignerStatus, SigningOperationStatus } from "./signer-enums";
+import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = Omit<TProjectPermission, "projectId">;
+
+export type TCreateSignerMemberInput = {
+  kind: "user" | "identity" | "group";
+  id: string;
+  role: string;
+};
+
+export type TCreateSignerApprovalPolicyInput = {
+  steps: TSignerPolicyStepInput[];
+  constraints?: TSignerPolicyConstraints;
+};
+
+export type TSignerCertificateInput = {
+  keySource?: CertKeySource;
+  hsmConnectorId?: string;
+};
+
+export type TSignerExternalConfigurationInput =
+  | {
+      caType: CaType.DIGICERT;
+      reissueFromExternalOrderId?: string;
+    }
+  | {
+      caType: CaType.ADCS;
+      template?: string;
+    };
+
+const RE_NO_NEWLINES = new RE2("^[^\\r\\n]+$");
+
+export const SignerExternalCaConfigSchema = z.discriminatedUnion("caType", [
+  z.object({
+    caType: z.literal(CaType.ADCS),
+    template: z
+      .string()
+      .trim()
+      .min(1)
+      .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters")
+      .optional()
+  })
+]);
+
+export type TSignerExternalCaConfig = z.infer<typeof SignerExternalCaConfigSchema>;
 
 export type TCreateSignerDTO = {
   name: string;
   description?: string;
-  certificateId: string;
+  caId?: string;
+  commonName?: string;
+  certificateTtlDays?: number;
+  certificateRenewBeforeDays?: number | null;
+  keyAlgorithm?: CertKeyAlgorithm;
+  certificateId?: string;
   approvalPolicyId?: string;
+  members?: TCreateSignerMemberInput[];
+  approvalPolicy?: TCreateSignerApprovalPolicyInput;
+  certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfigurationInput;
 } & TProjectPermission;
 
 export type TUpdateSignerDTO = {
   signerId: string;
   name?: string;
   description?: string | null;
-  status?: SignerStatus;
-  certificateId?: string;
-  approvalPolicyId?: string | null;
+  certificateRenewBeforeDays?: number | null;
 } & TActorPermission;
 
 export type TDeleteSignerDTO = {
@@ -58,3 +112,82 @@ export type TListSigningOperationsDTO = {
   limit?: number;
   status?: SigningOperationStatus;
 } & TActorPermission;
+
+export type TEnableSignerDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TDisableSignerDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TReissueCertificateDTO = {
+  signerId: string;
+  caId: string;
+  commonName?: string;
+  certificateTtlDays?: number;
+  keyAlgorithm?: CertKeyAlgorithm;
+  certificate?: TSignerCertificateInput;
+  externalConfiguration?: TSignerExternalConfigurationInput;
+} & TActorPermission;
+
+export type TExportCertificateDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TSignerPolicyStepInput = {
+  stepNumber: number;
+  name?: string | null;
+  requiredApprovals: number;
+  approverUserIds: string[];
+  approverGroupIds?: string[];
+};
+
+export type TSignerPolicyConstraints = {
+  maxSignings?: number | null;
+  maxWindowDuration?: string | null;
+};
+
+export type TGetSignerPolicyDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TUpdateSignerPolicyDTO = {
+  signerId: string;
+  steps: TSignerPolicyStepInput[];
+  constraints?: TSignerPolicyConstraints;
+} & TActorPermission;
+
+export type TSignerRequestStatusFilter = "pending" | "approved" | "expired" | "revoked";
+
+export type TListSignerRequestsDTO = {
+  signerId: string;
+  statuses?: TSignerRequestStatusFilter[];
+  offset?: number;
+  limit?: number;
+} & TActorPermission;
+
+export type TRequestToSignDTO = {
+  signerId: string;
+  justification: string;
+  requestedSignings?: number;
+  requestedWindowStart?: string;
+  requestedWindowEnd?: string;
+} & TActorPermission;
+
+export type TPreApproveSigningDTO = {
+  signerId: string;
+  granteeUserId?: string;
+  granteeIdentityId?: string;
+  justification: string;
+  requestedSignings?: number;
+  requestedWindowStart?: string;
+  requestedWindowEnd?: string;
+} & TActorPermission;
+
+export type TRevokeSignerRequestDTO = {
+  signerId: string;
+  requestId: string;
+} & TActorPermission;
+
+export type { SignerStatus };

@@ -267,7 +267,7 @@ export const OrgSecretShareLimitSection = () => {
               </div>
               <div>
                 <Button
-                  variant={!isDirty || !isAllowed ? "outline" : "org"}
+                  variant={!isDirty || !isAllowed ? "outline" : "project"}
                   type="submit"
                   isPending={isSubmitting}
                   isDisabled={!isDirty || !isAllowed}

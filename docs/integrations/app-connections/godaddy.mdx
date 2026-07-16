@@ -1,0 +1,103 @@
+---
+title: "GoDaddy Connection"
+description: "Learn how to configure a GoDaddy connection for Infisical."
+---
+
+Infisical supports connecting to the [GoDaddy Certificates API](https://developer.godaddy.com/doc/endpoint/certificates) using a **GoDaddy API Key and Secret**. This connection powers the [GoDaddy Certificate Authority](/documentation/platform/pki/ca/godaddy) for issuing Domain Validated (DV) certificates.
+
+<Note>
+  Only **production** GoDaddy API credentials are supported. GoDaddy's OTE (test) environment
+  cannot issue certificates without a provisioned product, so Infisical always targets
+  `api.godaddy.com`.
+</Note>
+
+## Prerequisites
+
+- A GoDaddy account with API access
+- A **production** API Key and Secret (the first key you create on GoDaddy is an OTE/test key, so create a separate production key)
+
+## Create a GoDaddy API Key
+
+<Steps>
+  <Step title="Open the GoDaddy developer keys page">
+    Sign in to your GoDaddy account and go to [developer.godaddy.com/keys](https://developer.godaddy.com/keys).
+  </Step>
+  <Step title="Create a production key">
+    Click **Create New API Key**, give it a name (e.g. `infisical`), and select **Production** under **Environment**. Click **Next**.
+
+    Copy both the **Key** and the **Secret**. The secret is shown only once.
+  </Step>
+</Steps>
+
+<Tip>
+  Create a dedicated API key for Infisical rather than reusing an existing one so you can rotate or
+  revoke access independently.
+</Tip>
+
+## Create GoDaddy Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, go to **Organization Settings** → **App Connections**.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select GoDaddy Connection">
+        Click **Add Connection** and choose **GoDaddy** from the list of available connections.
+      </Step>
+      <Step title="Fill out Connection Form">
+        Complete the form with:
+        - A **name** for the connection (e.g. `godaddy-prod`)
+        - An optional **description**
+        - Your GoDaddy **API Key**
+        - Your GoDaddy **API Secret**
+      </Step>
+      <Step title="Connection Created">
+        After clicking **Create**, Infisical validates the credentials against the GoDaddy
+        Certificates API. Once confirmed, the connection is ready to use in a GoDaddy Certificate
+        Authority.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a GoDaddy Connection, make an API request to the [Create GoDaddy Connection](/api-reference/endpoints/app-connections/godaddy/create) API endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/godaddy \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-godaddy-connection",
+        "method": "api-key",
+        "credentials": {
+          "apiKey": "<YOUR-GODADDY-API-KEY>",
+          "apiSecret": "<YOUR-GODADDY-API-SECRET>"
+        }
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+        "id": "a1b2c3d4-86f7-4026-a95e-efb8aeb0d8e6",
+        "name": "my-godaddy-connection",
+        "description": null,
+        "version": 1,
+        "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+        "createdAt": "2026-06-01T00:00:00.000Z",
+        "updatedAt": "2026-06-01T00:00:00.000Z",
+        "isPlatformManagedCredentials": false,
+        "app": "godaddy",
+        "method": "api-key",
+        "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

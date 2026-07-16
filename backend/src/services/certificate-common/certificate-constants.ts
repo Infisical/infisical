@@ -246,6 +246,17 @@ export const CERTIFICATE_RENEWAL_CONFIG = {
 
 export const DEFAULT_CRL_VALIDITY_DAYS = 7;
 
+export const ALGORITHM_FAMILIES = {
+  ECDSA: {
+    signature: ["SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"],
+    key: ["ECDSA-P256", "ECDSA-P384", "ECDSA-P521"]
+  },
+  RSA: {
+    signature: ["SHA256-RSA", "SHA384-RSA", "SHA512-RSA"],
+    key: ["RSA-2048", "RSA-3072", "RSA-4096"]
+  }
+} as const;
+
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);

@@ -3,9 +3,9 @@ import { packRules } from "@casl/ability/extra";
 
 import {
   ActionProjectType,
-  ApplicationMembershipRole,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
+  ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -176,7 +176,7 @@ export const pkiApplicationServiceFactory = ({
             },
             tx
           );
-          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ApplicationMembershipRole.Admin }, tx);
+          await membershipRoleDAL.create({ membershipId: newMembership.id, role: ResourceMembershipRole.Admin }, tx);
         }
 
         return application;
@@ -249,6 +249,7 @@ export const pkiApplicationServiceFactory = ({
     search,
     limit,
     offset,
+    applicationIds,
     projectId,
     actor,
     actorId,
@@ -269,8 +270,8 @@ export const pkiApplicationServiceFactory = ({
 
     if (hasRole(ProjectMembershipRole.Admin)) {
       const [applications, total] = await Promise.all([
-        pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset }),
-        pkiApplicationDAL.countByProjectId(projectId, search)
+        pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset, applicationIds }),
+        pkiApplicationDAL.countByProjectId(projectId, search, undefined, applicationIds)
       ]);
       return { applications, total };
     }
@@ -286,7 +287,9 @@ export const pkiApplicationServiceFactory = ({
       new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
     );
 
-    if (allowedIds.length === 0) {
+    const scopedIds = applicationIds ? allowedIds.filter((id) => applicationIds.includes(id)) : allowedIds;
+
+    if (scopedIds.length === 0) {
       return { applications: [], total: 0 };
     }
 
@@ -295,9 +298,9 @@ export const pkiApplicationServiceFactory = ({
         search,
         limit,
         offset,
-        applicationIds: allowedIds
+        applicationIds: scopedIds
       }),
-      pkiApplicationDAL.countByProjectId(projectId, search, undefined, allowedIds)
+      pkiApplicationDAL.countByProjectId(projectId, search, undefined, scopedIds)
     ]);
     return { applications, total };
   };

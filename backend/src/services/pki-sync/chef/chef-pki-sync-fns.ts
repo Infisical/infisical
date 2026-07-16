@@ -13,6 +13,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
+import { certificateNameSchemaHasFreeTextPlaceholder } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { matchesCertificateNameSchema } from "@app/services/pki-sync/pki-sync-fns";
 import { TCertificateMap, TPkiSyncWithCredentials } from "@app/services/pki-sync/pki-sync-types";
 
@@ -35,8 +36,7 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
   const certificateNameSchema = syncOptions?.certificateNameSchema;
 
   if (certificateNameSchema) {
-    const environment = CHEF_PKI_SYNC_DEFAULTS.DEFAULT_ENVIRONMENT;
-    return matchesCertificateNameSchema(certificateName, environment, certificateNameSchema);
+    return matchesCertificateNameSchema(certificateName, certificateNameSchema);
   }
 
   return certificateName.startsWith(CHEF_PKI_SYNC_DEFAULTS.INFISICAL_PREFIX);
@@ -154,6 +154,7 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
       | {
           canRemoveCertificates?: boolean;
           preserveItemOnRenewal?: boolean;
+          certificateNameSchema?: string;
           fieldMappings?: {
             certificate?: string;
             privateKey?: string;
@@ -345,8 +346,15 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
     if (canRemoveCertificates) {
       const itemsToRemove: string[] = [];
 
+      const trackedExternalIds = new Set(
+        existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
+      );
+      const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
+
       Object.keys(chefDataBagItems).forEach((itemName) => {
-        if (!activeExternalIdentifiers.has(itemName) && isInfisicalManagedCertificate(itemName, pkiSync)) {
+        if (activeExternalIdentifiers.has(itemName)) return;
+        const isTracked = trackedExternalIds.has(itemName);
+        if (isTracked || (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync))) {
           itemsToRemove.push(itemName);
         }
       });

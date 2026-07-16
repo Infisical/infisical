@@ -70,7 +70,10 @@ const Page = () => {
     from: ROUTE_PATHS.CertManager.CertificateDetailsByIDPage.id
   });
   const { certificateId } = params as { certificateId: string };
-  const { fromApplication } = useSearch({ strict: false }) as { fromApplication?: string };
+  const { fromApplication, fromHsmConnector } = useSearch({ strict: false }) as {
+    fromApplication?: string;
+    fromHsmConnector?: string;
+  };
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
   const isInventoryView = !fromApplication;
@@ -114,13 +117,25 @@ const Page = () => {
     });
 
     handlePopUpClose("deleteCertificate");
-    navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
-      params: {
-        orgId: currentOrg.id,
-        projectId
-      }
-    });
+    if (fromApplication) {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        params: {
+          orgId: currentOrg.id,
+          projectId,
+          applicationName: fromApplication
+        },
+        search: { selectedTab: "certificates" }
+      });
+    } else {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
+        params: {
+          orgId: currentOrg.id,
+          projectId
+        }
+      });
+    }
   };
 
   const handleCertificateExport = async (
@@ -253,7 +268,7 @@ const Page = () => {
   } else {
     pageBody = (
       <div className="mx-auto mb-6 w-full max-w-8xl">
-        {fromApplication ? (
+        {fromApplication && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
             params={{
@@ -267,7 +282,22 @@ const Page = () => {
             <ChevronLeftIcon size={16} />
             Go back to Application
           </Link>
-        ) : (
+        )}
+        {!fromApplication && fromHsmConnector && (
+          <Link
+            to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
+            params={{
+              orgId: currentOrg.id,
+              projectId,
+              connectorId: fromHsmConnector
+            }}
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+          >
+            <ChevronLeftIcon size={16} />
+            HSM Connector
+          </Link>
+        )}
+        {!fromApplication && !fromHsmConnector && (
           <Link
             to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
             params={{

@@ -1,14 +1,26 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, SecretInput } from "@app/components/v2";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   OVHConnectionMethod,
   TOvhConnection
 } from "@app/hooks/api/appConnections/types/ovh-connection";
 
+import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -79,11 +91,7 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
         }
   });
 
-  const {
-    handleSubmit,
-    control,
-    formState: { isSubmitting, isDirty }
-  } = form;
+  const { handleSubmit, control } = form;
 
   return (
     <FormProvider {...form}>
@@ -101,18 +109,22 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Private Key (PEM)"
-              tooltipText="Paste the PEM-encoded private key issued by OVH OKMS, including the -----BEGIN/END PRIVATE KEY----- markers."
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="private-key">
+                Private Key (PEM)
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Paste the PEM-encoded private key issued by OVH OKMS, including the
+                    -----BEGIN/END PRIVATE KEY----- markers.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -120,18 +132,22 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Certificate (PEM)"
-              tooltipText="Paste the PEM-encoded public certificate issued by OVH OKMS, including the -----BEGIN/END CERTIFICATE----- markers."
-            >
-              <SecretInput
-                containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="certificate">
+                Certificate (PEM)
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Paste the PEM-encoded public certificate issued by OVH OKMS, including the
+                    -----BEGIN/END CERTIFICATE----- markers.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <SecretInput value={value} onChange={(e) => onChange(e.target.value)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -139,14 +155,26 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="OKMS Domain"
-              tooltipText="The OKMS base URL, e.g. 'https://ca-east-bhs.okms.ovh.net'."
-            >
-              <Input {...field} placeholder="https://ca-east-bhs.okms.ovh.net" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="okms-domain">
+                OKMS Domain
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The OKMS base URL, e.g. &apos;https://ca-east-bhs.okms.ovh.net&apos;.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="okms-domain"
+                {...field}
+                placeholder="https://ca-east-bhs.okms.ovh.net"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
         <Controller
@@ -154,33 +182,24 @@ export const OVHConnectionForm = ({ appConnection, onSubmit }: Props) => {
           control={control}
           shouldUnregister
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="OKMS ID"
-              helperText="Your OKMS instance identifier from the OVH Control Panel."
-            >
-              <Input {...field} placeholder="your-okms-instance-id" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="okms-id">OKMS ID</FieldLabel>
+              <Input
+                id="okms-id"
+                {...field}
+                placeholder="your-okms-instance-id"
+                isError={Boolean(error?.message)}
+              />
+              {!error && (
+                <FieldDescription>
+                  Your OKMS instance identifier from the OVH Control Panel.
+                </FieldDescription>
+              )}
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
-        <div className="mt-8 flex items-center">
-          <Button
-            className="mr-4"
-            size="sm"
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            {isUpdate ? "Update Credentials" : "Connect to OVH"}
-          </Button>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain">
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        <AppConnectionFormFooter submitLabel={isUpdate ? "Update Credentials" : "Connect to OVH"} />
       </form>
     </FormProvider>
   );

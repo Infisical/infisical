@@ -7,6 +7,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { openApiHidden } from "@app/server/lib/schemas";
@@ -25,7 +26,6 @@ import { extractCertificateRequestFromCSR } from "@app/services/certificate-comm
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 import { TCertificateIssuanceResponse } from "@app/services/certificate-v3/certificate-v3-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -33,6 +33,11 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { booleanSchema } from "../sanitizedSchemas";
 
 type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertificateIssuanceResponse, "privateKey">;
+
+// Subject attributes are the requester's own certificate fields and flow into a structured
+// distinguished name (no string concatenation), so there's no injection risk. We don't constrain
+// their format here (wildcards like *.example.com are valid); only bound the length.
+const subjectAttributeField = z.string().trim().max(255);
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -135,12 +140,12 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional(),
           attributes: z
             .object({
-              commonName: validateTemplateRegexField.nullish(),
-              organization: validateTemplateRegexField.nullish(),
-              organizationalUnit: validateTemplateRegexField.nullish(),
-              country: validateTemplateRegexField.nullish(),
-              state: validateTemplateRegexField.nullish(),
-              locality: validateTemplateRegexField.nullish(),
+              commonName: subjectAttributeField.nullish(),
+              organization: subjectAttributeField.nullish(),
+              organizationalUnit: subjectAttributeField.nullish(),
+              country: subjectAttributeField.nullish(),
+              state: subjectAttributeField.nullish(),
+              locality: subjectAttributeField.nullish(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
@@ -241,7 +246,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           locality: attributes?.locality ?? undefined
         };
 
-        const data = await server.services.certificateV3.orderCertificateFromProfile({
+        const data = await server.services.certificateV3.orderCertificate({
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
@@ -841,7 +846,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           profileId: z.string().uuid(),
-          commonName: validateTemplateRegexField.optional(),
+          commonName: subjectAttributeField.optional(),
           ttl: z
             .string()
             .trim()
@@ -1063,7 +1068,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
-          commonName: validateTemplateRegexField.optional(),
+          commonName: subjectAttributeField.optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
           keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
           removeRootsFromChain: booleanSchema.default(false).optional()
@@ -1110,7 +1115,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         keyAlgorithm: req.body.keyAlgorithm
       };
 
-      const data = await server.services.certificateV3.orderCertificateFromProfile({
+      const data = await server.services.certificateV3.orderCertificate({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -1649,8 +1654,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
+      const { id: identifier } = req.params;
       const { revokedAt, cert, ca } = await server.services.certificate.revokeCert({
-        id: req.params.id,
+        ...(isUuidV4(identifier) ? { id: identifier } : { thumbprint: identifier }),
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

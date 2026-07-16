@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   constructPermissionErrorMessage,
@@ -16,6 +16,7 @@ import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
 import { TMembershipGroupScopeFactory } from "../membership-group-types";
@@ -25,13 +26,15 @@ type TProjectMembershipGroupScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "findOne">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectMembershipGroupFactory = ({
   permissionService,
   orgDAL,
   membershipGroupDAL,
-  groupDAL
+  groupDAL,
+  projectDAL
 }: TProjectMembershipGroupScopeFactoryDep): TMembershipGroupScopeFactory => {
   const getScopeField: TMembershipGroupScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -60,6 +63,21 @@ export const newProjectMembershipGroupFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Create, ProjectPermissionSub.Groups);
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    if (project?.type === ProjectType.CertificateManager) {
+      const invalidRoles = dto.data.roles.filter(
+        (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+      );
+      if (invalidRoles.length > 0) {
+        throw new BadRequestError({
+          message: "Certificate Manager only supports Admin and Member roles."
+        });
+      }
+    }
+
     const orgMembership = await membershipGroupDAL.findOne({
       actorGroupId: dto.data.groupId,
       scopeOrgId: dto.permission.orgId,
@@ -117,6 +135,20 @@ export const newProjectMembershipGroupFactory = ({
       actorOrgId: dto.permission.orgId
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Edit, ProjectPermissionSub.Groups);
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
+      projectDAL.findById(scope.value)
+    );
+    if (project?.type === ProjectType.CertificateManager) {
+      const invalidRoles = dto.data.roles.filter(
+        (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
+      );
+      if (invalidRoles.length > 0) {
+        throw new BadRequestError({
+          message: "Certificate Manager only supports Admin and Member roles."
+        });
+      }
+    }
 
     const orgMembership = await membershipGroupDAL.findOne({
       actorGroupId: dto.selector.groupId,

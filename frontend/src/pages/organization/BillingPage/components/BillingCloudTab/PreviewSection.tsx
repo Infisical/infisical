@@ -111,6 +111,7 @@ export const PreviewSection = () => {
     <div>
       {subscription &&
         subscription?.slug !== SubscriptionPlanTypes.Enterprise &&
+        subscription?.slug !== SubscriptionPlanTypes.Advanced &&
         subscription?.slug !== SubscriptionPlanTypes.Pro &&
         subscription?.slug !== SubscriptionPlanTypes.ProAnnual && (
           <div className="flex flex-row space-x-6">

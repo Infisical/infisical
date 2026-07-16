@@ -5,21 +5,51 @@ description: "Use the Infisical PKCS#11 module to sign OCI container images with
 ---
 
 <Info>
-  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has a signing policy, you'll also need an approved [grant](/documentation/platform/pki/code-signing/grants) before signing.
+  This guide assumes your Product Admin has already created a [Signer](/documentation/platform/pki/code-signing/signers) and assigned you to it. If the signer has an approval policy, you'll also need [active access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) before signing.
 </Info>
 
-Sign OCI container images using `cosign` (from the Sigstore project) with the Infisical PKCS#11 module. Container image signing is a critical part of securing software supply chains — it lets you verify that images in your registry were built by trusted pipelines.
+Sign OCI container images using `cosign` (from the Sigstore project) with the Infisical PKCS#11 module. Container image signing is a critical part of securing software supply chains. It lets you verify that images in your registry were built by trusted pipelines.
 
 ## Prerequisites
 
 - A [Signer](/documentation/platform/pki/code-signing/signers) created by your Product Admin
-- An active [signing grant](/documentation/platform/pki/code-signing/grants) (if a signing policy is attached)
+- [Active signing access](/documentation/platform/pki/code-signing/approvals#access-lifecycle) (if an approval policy is attached)
 - A [machine identity](/documentation/platform/identities/machine-identities) added to the Signer
 - The Infisical [PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module) installed and configured
 - `cosign` v2.0 or later, **built with PKCS#11 support** (see below)
 - Write access to an OCI-compatible container registry
 
-## Step 1: Install cosign with PKCS#11 Support
+## Step 1: Set Up Authentication
+
+Configure the Infisical PKCS#11 module with your machine identity credentials. Without this, the signing commands below fail with an auth error.
+
+Create `/etc/infisical/pkcs11.conf` (or set `INFISICAL_CONFIG` to point elsewhere):
+
+```yaml
+auth:
+  method: universal-auth
+  universal_auth:
+    client_id: "<machine-identity-client-id>"
+    client_secret: "<machine-identity-client-secret>"
+
+signer:
+  id: "<signer-id>"
+```
+
+You can also pass the credentials via environment variables:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="<machine-identity-client-id>"
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="<machine-identity-client-secret>"
+```
+
+<Note>
+  Environment variables override values from the config file.
+</Note>
+
+For the full set of options, see the [PKCS#11 module configuration reference](/documentation/platform/pki/code-signing/pkcs11-module#configuration).
+
+## Step 2: Install cosign with PKCS#11 Support
 
 <Warning>
   Pre-built cosign binaries (including Homebrew) do **not** include PKCS#11 support. You must build cosign from source with the `pkcs11key` build tag enabled.
@@ -49,7 +79,7 @@ cosign pkcs11-tool --help
 
 If you see `This cosign was not built with pkcs11-tool support!`, you need to rebuild with the `pkcs11key` tag.
 
-## Step 2: Sign a Container Image
+## Step 3: Sign a Container Image
 
 First, list the available tokens and key URIs to find the correct PKCS#11 URI for your signer:
 
@@ -82,7 +112,7 @@ cosign sign \
   - Prefer signing by digest (`@sha256:...`) rather than tag for reproducible builds.
 </Note>
 
-## Step 3: Verify the Signature
+## Step 4: Verify the Signature
 
 Verify a signed image using the public key or certificate from the signer:
 
@@ -111,7 +141,7 @@ Example for a container build pipeline:
 ```bash
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID="${INFISICAL_CLIENT_ID}"
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET="${INFISICAL_CLIENT_SECRET}"
-export INFISICAL_PKCS11_CONFIG="/path/to/pkcs11.conf"
+export INFISICAL_CONFIG="/path/to/pkcs11.conf"
 export COSIGN_PKCS11_MODULE_PATH="/usr/local/lib/libinfisical-pkcs11.so"
 
 # Build and push the image

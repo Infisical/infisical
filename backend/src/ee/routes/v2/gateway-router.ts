@@ -14,7 +14,8 @@ const SanitizedGatewayV2Schema = GatewaysV2Schema.pick({
   createdAt: true,
   updatedAt: true,
   heartbeat: true,
-  heartbeatTTL: true
+  heartbeatTTL: true,
+  capabilities: true
 });
 
 export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
@@ -25,7 +26,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
       operationId: "registerGateway",
       body: z.object({
         relayName: slugSchema({ min: 1, max: 32, field: "relayName" }),
-        name: slugSchema({ min: 1, max: 32, field: "name" })
+        name: slugSchema({ min: 1, max: 64, field: "name" })
       }),
       response: {
         200: z.object({
@@ -68,6 +69,15 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "gatewayHeartbeat",
+      body: z
+        .object({
+          capabilities: z
+            .object({
+              pkcs11: z.boolean().optional()
+            })
+            .optional()
+        })
+        .nullish(),
       response: {
         200: z.object({
           message: z.string()
@@ -77,7 +87,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.gatewayV2.heartbeat({
-        orgPermission: req.permission
+        orgPermission: req.permission,
+        capabilities: req.body?.capabilities
       });
 
       return { message: "Successfully triggered heartbeat" };
@@ -214,24 +225,6 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               projectId: z.string(),
               projectName: z.string(),
               environmentSlug: z.string()
-            })
-          ),
-          pamResources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              resourceType: z.string()
-            })
-          ),
-          pamDiscoverySources: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string(),
-              discoveryType: z.string()
             })
           ),
           kubernetesAuths: z.array(

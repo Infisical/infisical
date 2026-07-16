@@ -2,9 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
+import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -25,6 +27,7 @@ type TSubOrgServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
+  certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -35,7 +38,8 @@ export const subOrgServiceFactory = ({
   licenseService,
   membershipDAL,
   membershipRoleDAL,
-  projectDAL
+  projectDAL,
+  certificatePolicyDAL
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -94,6 +98,16 @@ export const subOrgServiceFactory = ({
       );
 
       await bootstrapCertManagerProject(
+        {
+          orgId: org.id,
+          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
+          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL, certificatePolicyDAL },
+        tx
+      );
+
+      await bootstrapPamProject(
         {
           orgId: org.id,
           adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],

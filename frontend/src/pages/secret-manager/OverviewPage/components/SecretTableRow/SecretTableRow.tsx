@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
+  BanIcon,
   ChevronDownIcon,
   ClipboardCheckIcon,
   CopyIcon,
@@ -19,6 +20,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { Modal, ModalContent } from "@app/components/v2";
 import {
+  Badge,
   Button,
   Checkbox,
   IconButton,
@@ -305,7 +307,9 @@ export const SecretTableRow = ({
             secretPath={secretPath}
             isVisible={isSecretVisible || isSingleEnvSecretsVisible}
             secretName={secretKey}
-            isEmpty={singleEnvSecret?.isEmpty || singleEnvImportedSecret?.secret?.isEmpty}
+            isEmpty={
+              singleEnvSecret ? singleEnvSecret.isEmpty : singleEnvImportedSecret?.secret?.isEmpty
+            }
             secretValueHidden={singleEnvSecret?.secretValueHidden || false}
             defaultValue={getDefaultValue(singleEnvSecret, singleEnvImportedSecret)}
             secretId={singleEnvSecret?.id}
@@ -330,6 +334,7 @@ export const SecretTableRow = ({
             secretMetadata={singleEnvSecret?.secretMetadata}
             skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
             reminder={singleEnvSecret?.reminder}
+            revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
           />
         ) : (
           <TableCell
@@ -339,13 +344,24 @@ export const SecretTableRow = ({
               isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
             )}
           >
-            <span
-              className={twMerge(
-                singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
-              )}
-            >
-              {secretKey}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={twMerge(
+                  singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
+                )}
+              >
+                {secretKey}
+              </span>
+              {!isFormExpanded &&
+                environments.some(
+                  ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
+                ) && (
+                  <Badge variant="danger">
+                    <BanIcon className="size-3.5" />
+                    Secret share revoked
+                  </Badge>
+                )}
+            </div>
             <div
               className={twMerge(
                 "absolute z-20",
@@ -569,7 +585,7 @@ export const SecretTableRow = ({
                               secretPath={secretPath}
                               isVisible={isSecretVisible}
                               secretName={secretKey}
-                              isEmpty={secret?.isEmpty || importedSecret?.secret?.isEmpty}
+                              isEmpty={secret ? secret.isEmpty : importedSecret?.secret?.isEmpty}
                               secretValueHidden={secret?.secretValueHidden || false}
                               defaultValue={getDefaultValue(secret, importedSecret)}
                               secretId={secret?.id}
@@ -594,6 +610,7 @@ export const SecretTableRow = ({
                               secretMetadata={secret?.secretMetadata}
                               skipMultilineEncoding={secret?.skipMultilineEncoding}
                               reminder={secret?.reminder}
+                              revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
                             />
                           </TableCell>
                         </TableRow>

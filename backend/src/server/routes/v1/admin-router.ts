@@ -21,6 +21,7 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
+import { canUseCrossProjectSecretSharing } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -51,9 +52,11 @@ const SanitizedSuperAdminSchema = z.object({
   isMigrationModeOn: z.boolean().optional(),
   isSecretScanningDisabled: z.boolean().optional(),
   isPublicSecretSharingDisabled: z.boolean().optional(),
+  licenseServerV2Enabled: z.boolean().optional(),
   kubernetesAutoFetchServiceAccountToken: z.boolean().optional(),
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
+  isCrossProjectSecretSharingEnabled: z.boolean().optional(),
   // Always returned
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
@@ -83,6 +86,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
+      const orgId = req.auth?.orgId ?? "";
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -99,7 +103,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             enabledLoginMethods: config.enabledLoginMethods,
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
-            isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING
+            isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
+            licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
+            isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId)
           }
         };
       }
@@ -111,9 +117,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
+          licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
-          isOfflineUsageReportsEnabled: hasOfflineLicense
+          isOfflineUsageReportsEnabled: hasOfflineLicense,
+          isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId)
         }
       };
     }

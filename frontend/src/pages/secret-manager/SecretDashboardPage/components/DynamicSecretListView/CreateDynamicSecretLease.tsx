@@ -413,6 +413,24 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.IbmApiConnect) {
+    const { CLIENT_ID, CLIENT_SECRET } = data as {
+      CLIENT_ID: string;
+      CLIENT_SECRET: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Client ID" value={CLIENT_ID} />
+        <OutputDisplay
+          label="Client Secret"
+          value={CLIENT_SECRET}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 

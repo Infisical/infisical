@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { subject } from "@casl/ability";
 import {
   CopyIcon,
   EditIcon,
@@ -13,7 +12,6 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
@@ -30,10 +28,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretType } from "@app/hooks/api/types";
+import { hasSecretPersonalOverridePermission } from "@app/lib/fn/permission";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 type Props = {
@@ -81,6 +81,14 @@ export const SecretOverrideRow = ({
   isSingleEnvView
 }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
+  const canSaveOverride = hasSecretPersonalOverridePermission(
+    permission,
+    isCreatingOverride
+      ? ProjectPermissionSecretActions.Create
+      : ProjectPermissionSecretActions.Edit,
+    { environment, secretPath, secretName, secretTags: ["*"] }
+  );
   const [isOverrideFieldFocused, setIsOverrideFieldFocused] = useToggle();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isHoveringActionZone, setIsHoveringActionZone] = useState(false);
@@ -226,35 +234,23 @@ export const SecretOverrideRow = ({
             isSingleEnvView ? "-top-[1.5px] -right-2.5" : "top-[0px] -right-1.5"
           )}
         >
-          <ProjectPermissionCan
-            I={isCreatingOverride ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-            a={subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath,
-              secretName,
-              secretTags: ["*"]
-            })}
-          >
-            {(isAllowed) => (
-              <div>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <IconButton
-                      size="xs"
-                      variant="success"
-                      isDisabled={isSubmitting || !isAllowed}
-                      onClick={handleSubmit(handleFormSubmit)}
-                    >
-                      <SaveIcon />
-                    </IconButton>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isCreatingOverride ? "Create Override" : "Save Override"}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-          </ProjectPermissionCan>
+          <div>
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  size="xs"
+                  variant="success"
+                  isDisabled={isSubmitting || !canSaveOverride}
+                  onClick={handleSubmit(handleFormSubmit)}
+                >
+                  <SaveIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isCreatingOverride ? "Create Override" : "Save Override"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
           <div>
             <Tooltip>
               <TooltipTrigger asChild>

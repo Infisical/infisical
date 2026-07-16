@@ -12,6 +12,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
@@ -28,6 +29,7 @@ type TDependencies = {
   envConfig: TMigrationEnvConfig;
   db: Knex;
   keyStore: TKeyStoreFactory;
+  skipHsmLicenseCheck?: boolean;
 };
 
 type THsmServiceDependencies = {
@@ -48,7 +50,12 @@ export const getMigrationHsmService = async ({ envConfig }: THsmServiceDependenc
   return { hsmService };
 };
 
-export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }: TDependencies) => {
+export const getMigrationEncryptionServices = async ({
+  envConfig,
+  db,
+  keyStore,
+  skipHsmLicenseCheck = false
+}: TDependencies) => {
   // ----- DAL dependencies -----
   const orgDAL = orgDALFactory(db);
   const licenseDAL = licenseDALFactory(db);
@@ -61,6 +68,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
+  const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const groupDAL = groupDALFactory(db);
 
@@ -93,7 +101,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
     kmsRootConfigDAL,
-    licenseService
+    licenseService: skipHsmLicenseCheck ? undefined : licenseService
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key
@@ -117,6 +125,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     kmsRootConfigDAL,
     kmsDAL,
     internalKmsDAL,
+    internalKmsKeyVersionDAL,
     orgDAL,
     projectDAL,
     hsmService,

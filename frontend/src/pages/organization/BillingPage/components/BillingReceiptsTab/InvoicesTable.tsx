@@ -53,14 +53,16 @@ export const InvoicesTable = () => {
                   <Td>{paid ? "Paid" : "Not Paid"}</Td>
                   <Td>{formattedTotal}</Td>
                   <Td>
-                    <IconButton
-                      onClick={async () => window.open(invoice_pdf)}
-                      size="lg"
-                      variant="plain"
-                      ariaLabel="update"
-                    >
-                      <FontAwesomeIcon icon={faDownload} />
-                    </IconButton>
+                    {invoice_pdf && (
+                      <IconButton
+                        onClick={async () => window.open(invoice_pdf)}
+                        size="lg"
+                        variant="plain"
+                        ariaLabel="download invoice"
+                      >
+                        <FontAwesomeIcon icon={faDownload} />
+                      </IconButton>
+                    )}
                   </Td>
                 </Tr>
               );

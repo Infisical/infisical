@@ -340,7 +340,25 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 
 ## Available Metrics
 
-Infisical exposes the following key metrics in OpenTelemetry format:
+Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
+
+- **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
+
+All meters emit at the same time. If you are a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
+
+To eliminate the in-memory cost of the high-cardinality meters entirely, set `OTEL_DROP_HIGH_CARDINALITY_METERS=true`. When enabled, the SDK discards all data points from the `Infisical`, `API`, `SecretSyncs`, `PkiSyncs`, and `Integrations` meters before aggregation. The instruments still exist in code (no errors), but nothing is stored or exported. Only `InfisicalCore` metrics are emitted. Defaults to `false`.
+
+For per-user / per-identity / per-IP / per-project breakdowns, query the audit log table. It carries `actorId`, `actorType`, `projectId`, `ip`, `userAgent` and full event detail. Metrics give you the *rate* and *latency*; audit logs give you the *who* and *where*.
+
+### Resource attributes (every metric)
+
+Every emitted metric carries these resource-level attributes (no per-metric cardinality cost):
+
+- `service.name` — the fixed identifier for the Infisical backend service
+- `service.version` — the release version or git SHA of the running Infisical instance
+- `git.commit.sha` — the exact commit the build was produced from, when available
+- `deployment.environment` — the environment the instance is running in (e.g. `production`, `staging`, `development`)
 
 ### Core API Metrics
 
@@ -422,6 +440,21 @@ These metrics track all HTTP API requests to Infisical, including request counts
       - `client.address` (string, optional): IP address
       - `user_agent.original` (string, optional): User agent information
   </Accordion>
+
+  <Accordion title="API Errors (InfisicalCore)">
+    **Metric Name**: `infisical.core.http.error.count`
+
+    **Type**: Counter
+
+    **Unit**: `{error}`
+
+    **Description**: API errors with bounded error classification. The low-cardinality counterpart to `infisical.http.server.error.count`; same error volume, but labels are restricted to the InfisicalCore allowlist so the series count stays independent of org/user/identity count. Use this for alerting and dashboards at scale; use `infisical.http.server.error.count` (high-cardinality meter) when you need per-actor attribution. For per-org error breakdowns, query the audit log.
+
+    **Attributes**:
+      - `http.request.method` (string): HTTP method
+      - `http.route` (string): Parameterized route template where the error occurred (e.g. `/api/v1/secrets/:secretName`), never the raw path
+      - `error.type` (string): Bounded error classification
+  </Accordion>
 </AccordionGroup>
 
 ### Secret Operations Metrics
@@ -482,6 +515,112 @@ These metrics track authentication attempts and outcomes, enabling you to monito
       - `client.address` (string): IP address
       - `user_agent.original` (string, optional): User agent/client information
       - `infisical.auth.attempt.username` (string, optional): Attempted username/email (if available)
+  </Accordion>
+  <Accordion title="Authentication Latency (InfisicalCore)">
+    **Metric Name**: `infisical.auth.attempt.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s` (seconds)
+
+    **Description**: Authentication attempt latency by method and result. External verifications (SAML, OIDC, Kubernetes, AWS, GCP, Azure, OCI, AliCloud, ...) include the IdP/provider network round trip, so this is what tells you "SAML logins suddenly got slow" or "Kubernetes auth verification is timing out". Covers every user and machine identity login flow, including LDAP user login.
+
+    **Attributes** (bounded):
+      - `infisical.auth.method` (string): Authentication method (`email`, `saml`, `oidc`, `google`, `github`, `gitlab`, `ldap`, `universal-auth`, `kubernetes-auth`, `aws-auth`, `gcp-auth`, `azure-auth`, `oci-auth`, `alicloud-auth`, `tls-cert-auth`, `oidc-auth`, `jwt-auth`, `ldap-auth`, `spiffe-auth`)
+      - `infisical.auth.result` (string): `success` or `failure`
+      - `error.type` (string, optional): Bounded failure classification (present on failures)
+  </Accordion>
+  <Accordion title="Token Renewal (InfisicalCore)">
+    **Metric Name**: `infisical.auth.token.renewal.count`
+
+    **Type**: Counter
+
+    **Unit**: `{renewal}`
+
+    **Description**: Machine identity access token renewal attempts by outcome. Distinct from `infisical.auth.attempt.*`, which tracks initial logins.
+
+    **Attributes** (bounded):
+      - `outcome` (string): `success` or `failure`
+      - `infisical.auth.method` (string, optional): Identity auth method when known
+      - `error.type` (string, optional): Bounded failure classification (present on failures)
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  The `infisical.auth.attempt.count` counter lives on the high-cardinality `Infisical` meter, while
+  `infisical.auth.attempt.duration` and `infisical.auth.token.renewal.count` live on the bounded
+  `InfisicalCore` meter. There is no per-identity "active identity" gauge: there is no reliable
+  last-authenticated timestamp in the schema, so monthly/weekly active identity counts are best derived
+  from the `infisical.auth.attempt.*` series in your metrics backend (e.g. `count by (...)` over a time
+  window) rather than a snapshot gauge.
+</Note>
+
+### SSO Configuration Metrics (InfisicalCore)
+
+These metrics track changes to SSO configuration, helping you detect unexpected reconfiguration of identity providers.
+
+<AccordionGroup>
+  <Accordion title="SSO Config Changes">
+    **Metric Name**: `infisical.sso.config.change.count`
+
+    **Type**: Counter
+
+    **Unit**: `{change}`
+
+    **Description**: SSO configuration create/update events by provider.
+
+    **Attributes** (bounded):
+      - `sso.provider` (string): `saml`, `oidc`, or `ldap`
+      - `sso.action` (string): `create` or `update`
+  </Accordion>
+</AccordionGroup>
+
+### SCIM Provisioning Metrics (InfisicalCore)
+
+These metrics track SCIM provisioning operations (user and group lifecycle), enabling you to monitor directory-sync throughput and failures.
+
+<AccordionGroup>
+  <Accordion title="SCIM Operations">
+    **Metric Name**: `infisical.scim.operation.count`
+
+    **Type**: Counter
+
+    **Unit**: `{operation}`
+
+    **Description**: SCIM provisioning operations by type and outcome.
+
+    **Attributes** (bounded):
+      - `scim.operation` (string): `create_user`, `update_user`, `replace_user`, `delete_user`, `create_group`, `update_group`, `replace_group`, `delete_group`
+      - `outcome` (string): `success` or `failure`
+      - `error.type` (string, optional): Bounded failure classification (present on failures)
+  </Accordion>
+  <Accordion title="SCIM Operation Latency">
+    **Metric Name**: `infisical.scim.operation.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s` (seconds)
+
+    **Description**: Latency of SCIM provisioning operations. Same attributes as `infisical.scim.operation.count`.
+  </Accordion>
+</AccordionGroup>
+
+### Database Metrics (InfisicalCore)
+
+This metric provides visibility into connection pool health. Query latency is intentionally not emitted, as managed databases (for example, Amazon RDS Performance Insights) already report per-statement latency at the server.
+
+<AccordionGroup>
+  <Accordion title="Connection Pool">
+    **Metric Name**: `infisical.db.pool.connections`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `{connection}`
+
+    **Description**: Knex/tarn connection pool counts, observed on each export. Watch `pending` rising with `used` saturated for pool exhaustion.
+
+    **Attributes** (bounded):
+      - `db.pool.state` (string): `used`, `free`, or `pending`
   </Accordion>
 </AccordionGroup>
 
@@ -546,6 +685,281 @@ These metrics monitor secret synchronization operations between Infisical and ex
     - **Example**: Track secret removal operation failures
   </Accordion>
 </AccordionGroup>
+
+### Job Queue Metrics (InfisicalCore)
+
+These metrics give per-queue visibility into BullMQ worker health: throughput, latency, contention, failures, and stalls. Use these to detect stuck workers, queue backlog, and which queues are failing.
+
+<AccordionGroup>
+  <Accordion title="Queue Job Count">
+    **Metric Name**: `infisical.queue.job.count`
+
+    **Type**: Counter
+
+    **Unit**: `{job}`
+
+    **Description**: Jobs processed by outcome.
+
+    **Attributes**:
+      - `queue.name` (string): e.g. `audit-log`, `secret-sync`, `secret-rotation-v2`
+      - `job.name` (string): BullMQ job name
+      - `outcome` (string): `completed` or `failed`
+  </Accordion>
+
+  <Accordion title="Queue Job Duration">
+    **Metric Name**: `infisical.queue.job.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s`
+
+    **Description**: Job processing duration (worker pickup to completion). Skipped on framework-level failures where `processedOn` is undefined, so the histogram is not polluted with phantom zero-duration points.
+
+    **Attributes**: `queue.name`, `job.name`, `outcome`
+  </Accordion>
+
+  <Accordion title="Queue Job Wait">
+    **Metric Name**: `infisical.queue.job.wait`
+
+    **Type**: Histogram
+
+    **Unit**: `s`
+
+    **Description**: Time the job spent waiting for a worker (queue contention). Subtracts the configured `job.opts.delay` so intentional scheduling doesn't inflate percentiles. Only recorded on `completed` jobs.
+
+    **Attributes**: `queue.name`, `job.name`
+  </Accordion>
+
+  <Accordion title="Queue Job Failure (classified)">
+    **Metric Name**: `infisical.queue.job.failure.count`
+
+    **Type**: Counter
+
+    **Unit**: `{failure}`
+
+    **Description**: Failures classified by error type. Alert when `attempts.exhausted="true"` — those are real failures (all retries spent), not transient errors.
+
+    **Attributes**:
+      - `queue.name`, `job.name`
+      - `error.type` (string): one of `validation`, `auth`, `permission`, `not_found`, `rate_limit`, `db`, `timeout`, `network`, `cryptography`, `policy`, `scim`, `oidc`, `internal`, `unknown`
+      - `attempts.exhausted` (string): `"true"` or `"false"`
+  </Accordion>
+
+  <Accordion title="Queue Stalled">
+    **Metric Name**: `infisical.queue.stalled.count`
+
+    **Type**: Counter
+
+    **Unit**: `{job}`
+
+    **Description**: Stalled jobs (the worker's lock on a job expired without completing it). Strongest signal of a stuck worker, OOM, or network partition. Previously invisible.
+
+    **Attributes**: `queue.name`
+  </Accordion>
+
+  <Accordion title="Queue Depth">
+    **Metric Name**: `infisical.queue.depth`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `{job}`
+
+    **Description**: Current number of jobs in each queue state. The SDK invokes the callback on each scrape / push interval.
+
+    **Attributes**:
+      - `queue.name` (string)
+      - `queue.state` (string): `waiting`, `active`, `delayed`, `failed`, `completed`, etc.
+  </Accordion>
+</AccordionGroup>
+
+### Audit Log Metrics (InfisicalCore)
+
+End-to-end audit-log pipeline observability: how many events get enqueued per event type / actor, how long persistence takes, and how many are ultimately dropped.
+
+<AccordionGroup>
+  <Accordion title="Audit Log Enqueued">
+    **Metric Name**: `infisical.audit_log.enqueued.count`
+
+    **Type**: Counter
+
+    **Unit**: `{event}`
+
+    **Description**: Audit log events enqueued to BullMQ for persistence.
+
+    **Attributes**:
+      - `audit_log.event_type` (string): e.g. `LOGIN_USER`, `CREATE_SECRET`, ...
+      - `audit_log.actor_type` (string): `user`, `identity`, `service`
+  </Accordion>
+
+  <Accordion title="Audit Log Persist Duration">
+    **Metric Name**: `infisical.audit_log.persist.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s`
+
+    **Description**: Latency from worker pickup to durable storage.
+
+    **Attributes**:
+      - `audit_log.backend` (string): `postgres` or `clickhouse`
+      - `audit_log.event_type` (string)
+  </Accordion>
+
+  <Accordion title="Audit Log Dropped">
+    **Metric Name**: `infisical.audit_log.dropped.count`
+
+    **Type**: Counter
+
+    **Unit**: `{event}`
+
+    **Description**: Audit log events that exhausted BullMQ retries and were not persisted. **Operators should alert when this is non-zero** — a dropped audit event is a compliance signal.
+
+    **Attributes**:
+      - `audit_log.event_type` (string)
+      - `audit_log.drop_reason` (string): `max_retries`
+  </Accordion>
+</AccordionGroup>
+
+### Audit Log Stream Metrics (InfisicalCore)
+
+Per-provider observability for the audit-log stream feature (Datadog, Splunk, Custom HTTP, Azure, Cribl).
+
+<AccordionGroup>
+  <Accordion title="Audit Log Stream Delivery">
+    **Metric Name**: `infisical.audit_log_stream.delivery.count`
+
+    **Type**: Counter
+
+    **Unit**: `{delivery}`
+
+    **Description**: Per-provider stream delivery attempts.
+
+    **Attributes**:
+      - `audit_log_stream.provider` (string): `datadog`, `splunk`, `custom`, `azure`, `cribl`
+      - `audit_log_stream.id` (string): stream config ID (on the exhausted-drop counter)
+      - `outcome` (string): `success` or `failure`
+      - `error.type` (string, only on failure): one of the closed enum values
+  </Accordion>
+
+  <Accordion title="Audit Log Stream Delivery Duration">
+    **Metric Name**: `infisical.audit_log_stream.delivery.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s`
+
+    **Description**: Per-provider stream delivery latency (HTTP round trip to the SIEM).
+
+    **Attributes**: `audit_log_stream.provider`, `outcome`, `error.type` (on failure)
+  </Accordion>
+</AccordionGroup>
+
+### Permission Cache Metrics (InfisicalCore)
+
+The CASL permission cache uses a fingerprint-based two-tier scheme. These metrics tell you whether the cache is doing its job.
+
+<AccordionGroup>
+  <Accordion title="Permission Cache Lookup">
+    **Metric Name**: `infisical.permission_cache.lookup.count`
+
+    **Type**: Counter
+
+    **Unit**: `{lookup}`
+
+    **Description**: Per-lookup branch: `marker_hit` (fast path, 0 DB reads), `fingerprint_match` (1 DB read, cached data returned), `full_refetch` (full DB re-fetch), or `fingerprint_error` (fingerprint fetch failed, bypassing cache).
+
+    **Attributes**:
+      - `cache.result` (string): `marker_hit`, `fingerprint_match`, `full_refetch`, `fingerprint_error`
+  </Accordion>
+
+  <Accordion title="Permission Cache Fingerprint Duration">
+    **Metric Name**: `infisical.permission_cache.fingerprint.duration`
+
+    **Type**: Histogram
+
+    **Unit**: `s`
+
+    **Description**: Time to compute the lightweight permission fingerprint (1 DB read on marker expiry).
+  </Accordion>
+</AccordionGroup>
+
+### Secret Cache Metrics (InfisicalCore)
+
+The secret service caches encrypted secret payloads to avoid redundant decryption on repeated reads. These metrics tell you whether the cache is effective and whether entries are being skipped for exceeding the size cap.
+
+<AccordionGroup>
+  <Accordion title="Secret Cache Access">
+    **Metric Name**: `infisical.secret.cache.access.count`
+
+    **Type**: Counter
+
+    **Unit**: `{access}`
+
+    **Description**: Secret service-layer cache accesses by outcome. `not_modified` (client revalidation returned 304), `hit` (served from cache), or `miss` (cache empty/stale, full read performed).
+
+    **Attributes**:
+      - `cache.result` (string): `not_modified`, `hit`, `miss`
+  </Accordion>
+
+  <Accordion title="Secret Cache Entry Bytes">
+    **Metric Name**: `infisical.secret.cache.entry.bytes`
+
+    **Type**: Histogram
+
+    **Unit**: `By`
+
+    **Description**: Encrypted secret cache entry size computed at write time. Use this to size the cache and tune the per-entry byte cap.
+  </Accordion>
+
+  <Accordion title="Secret Cache Oversize Skip">
+    **Metric Name**: `infisical.secret.cache.oversize_skip.count`
+
+    **Type**: Counter
+
+    **Unit**: `{skip}`
+
+    **Description**: Secret cache writes skipped because the entry exceeded the max byte cap. A high rate means large payloads are never being cached and will always incur a full read.
+  </Accordion>
+</AccordionGroup>
+
+### Rate Limit Metrics (InfisicalCore)
+
+<AccordionGroup>
+  <Accordion title="Rate Limit Exceeded">
+    **Metric Name**: `infisical.rate_limit.exceeded.count`
+
+    **Type**: Counter
+
+    **Unit**: `{request}`
+
+    **Description**: HTTP 429 responses (rate limit exceeded). Labels are intentionally bounded to `http.route` only — for per-actor breakdowns, query the audit log.
+
+    **Attributes**:
+      - `http.route` (string)
+      - `http.request.method` (string)
+  </Accordion>
+</AccordionGroup>
+
+### Build Info (InfisicalCore)
+
+<AccordionGroup>
+  <Accordion title="Build Info">
+    **Metric Name**: `infisical.build.info`
+
+    **Type**: Observable Gauge
+
+    **Description**: Always emits `1`. The labels carry the deployed version, git SHA, and Node version. Use this to filter Grafana dashboards by deployed version without paying per-metric cardinality.
+
+    **Attributes**:
+      - `service.version` (string)
+      - `git.commit.sha` (string)
+      - `node.version` (string)
+  </Accordion>
+</AccordionGroup>
+
+### Node Runtime Metrics (auto)
+
+Heap usage, GC pause, event loop lag, and other Node runtime metrics are auto-emitted via `@opentelemetry/instrumentation-runtime-node`. Metric names follow the OTel runtime semantic conventions (`nodejs.eventloop.delay.*`, `v8js.heap.size.*`, etc.).
 
 ### System Metrics
 

@@ -9,8 +9,18 @@ import { OrgPermissionSubjects } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useOrgAdminAccessProject, useSearchProjects } from "@app/hooks/api";
+import { useGetOrganizationById } from "@app/hooks/api/organization/queries";
 
-export const ProjectAccessError = () => {
+type ProjectAccessErrorProps = {
+  projectId?: string;
+};
+
+// PAM has no $projectId route param, and TanStack attributes beforeLoad failures to the nearest
+// matched ancestor rather than the failing route, so derive the org id from the URL. Keep in sync with pam/layout.tsx.
+const getPamOrgIdFromPath = () =>
+  window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
+
+export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessErrorProps = {}) => {
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
   const navigate = useNavigate();
@@ -19,9 +29,17 @@ export const ProjectAccessError = () => {
     "requestAccessConfirmation"
   ] as const);
 
-  const { projectId } = useParams({
+  const { projectId: routeProjectId } = useParams({
     strict: false
   });
+
+  const needsPamFallback = !projectIdProp && !routeProjectId;
+  const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
+  const { data: pamOrg } = useGetOrganizationById(pamOrgId ?? "", {
+    enabled: Boolean(pamOrgId)
+  });
+
+  const projectId = projectIdProp ?? routeProjectId ?? pamOrg?.pamProjectId ?? undefined;
 
   const { data, isPending: isProjectLoading } = useSearchProjects({
     projectIds: projectId ? [projectId] : [],
@@ -43,7 +61,11 @@ export const ProjectAccessError = () => {
   };
 
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div
+      className={`flex h-full w-full items-center justify-center ${
+        needsPamFallback ? "min-h-screen bg-background" : ""
+      }`}
+    >
       <AccessRestrictedBanner
         body={
           <>

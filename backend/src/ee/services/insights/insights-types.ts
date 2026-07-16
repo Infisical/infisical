@@ -23,3 +23,11 @@ export type TGetInsightsSummaryDTO = {
   staleSecretsOffset?: number;
   staleSecretsLimit?: number;
 };
+
+export type TGetSecretsDuplicationDTO = {
+  projectId: string;
+};
+
+export type TGetInsightsCountsDTO = {
+  projectId: string;
+};

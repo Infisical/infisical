@@ -9,6 +9,7 @@ import { ApprovalRequestDetailPage } from "./ApprovalRequestDetailPage";
 const ApprovalRequestSearchSchema = z.object({
   policyType: z.nativeEnum(ApprovalPolicyType).optional(),
   applicationName: z.string().optional(),
+  signerId: z.string().optional(),
   from: z.enum(["root-requests"]).optional()
 });
 

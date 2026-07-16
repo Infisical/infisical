@@ -28,7 +28,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   identityAccessTokenRevocationDAL: Pick<TIdentityAccessTokenRevocationDALFactory, "removeExpiredRevocations">;
   identityUniversalAuthClientSecretDAL: Pick<TIdentityUaClientSecretDALFactory, "removeExpiredClientSecrets">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "pruneExcessVersions">;
-  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "pruneExcessVersions">;
+  secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "pruneExcessVersions" | "pruneOrphanedVersions">;
   secretFolderVersionDAL: Pick<TSecretFolderVersionDALFactory, "pruneExcessVersions">;
   snapshotDAL: Pick<TSnapshotDALFactory, "pruneExcessSnapshots">;
   secretSharingDAL: Pick<TSecretSharingDALFactory, "pruneExpiredSharedSecrets" | "pruneExpiredSecretRequests">;
@@ -75,44 +75,93 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   }
 
   const init = () => {
-    const dailyCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 45 * 60_000;
-    const frequentCleanupTimeoutMs = appCfg.isDailyResourceCleanUpDevelopmentMode ? 5 * 60_000 : 10 * 60_000;
+    const devMode = appCfg.isDailyResourceCleanUpDevelopmentMode;
+
+    const heavyCleanupTimeoutMs = devMode ? 5 * 60_000 : 45 * 60_000;
+    const lightCleanupTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
+    const dailyNotificationTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
+    const frequentCleanupTimeoutMs = devMode ? 5 * 60_000 : 10 * 60_000;
+
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
-      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
+      pattern: devMode ? "*/5 * * * *" : "30 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
-      handlerTimeoutMs: dailyCleanupTimeoutMs,
-      leaseDurationMs: dailyCleanupTimeoutMs,
+      handlerTimeoutMs: lightCleanupTimeoutMs,
+      leaseDurationMs: lightCleanupTimeoutMs,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         logger.info(`cron[${CronJobName.DailyResourceCleanup}]: task started`);
         await identityUniversalAuthClientSecretDAL.removeExpiredClientSecrets();
         await secretSharingDAL.pruneExpiredSharedSecrets();
         await secretSharingDAL.pruneExpiredSecretRequests();
-        await snapshotDAL.pruneExcessSnapshots();
-        await secretVersionDAL.pruneExcessVersions();
-        await secretVersionV2DAL.pruneExcessVersions();
-        await secretFolderVersionDAL.pruneExcessVersions();
-        await serviceTokenService.notifyExpiringTokens();
-        await scimService.notifyExpiringTokens();
-        await orgService.notifyInvitedUsers();
-        await auditLogService.checkPostgresAuditLogVolumeMigrationAlert();
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await scepTransactionDAL.pruneExpiredTransactions();
-        const expiredApprovalRequestIds = await approvalRequestDAL.markExpiredRequests();
-        if (expiredApprovalRequestIds.length > 0) {
-          await certificateRequestDAL.markExpiredApprovalRequests(expiredApprovalRequestIds);
-        }
-        await approvalRequestGrantsDAL.markExpiredGrants();
         await identityAccessTokenRevocationDAL.removeExpiredRevocations();
+      }
+    });
+
+    cronJob.register({
+      name: CronJobName.DailySecretVersionCleanup,
+      pattern: devMode ? "*/5 * * * *" : "30 1 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: heavyCleanupTimeoutMs,
+      leaseDurationMs: heavyCleanupTimeoutMs,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.DailySecretVersionCleanup}]: task started`);
+        await secretVersionV2DAL.pruneOrphanedVersions();
+        await secretVersionDAL.pruneExcessVersions();
+        await secretVersionV2DAL.pruneExcessVersions();
+        await secretFolderVersionDAL.pruneExcessVersions();
+      }
+    });
+
+    cronJob.register({
+      name: CronJobName.DailySnapshotCleanup,
+      pattern: devMode ? "*/5 * * * *" : "30 2 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: heavyCleanupTimeoutMs,
+      leaseDurationMs: heavyCleanupTimeoutMs,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.DailySnapshotCleanup}]: task started`);
+        await snapshotDAL.pruneExcessSnapshots();
+      }
+    });
+
+    cronJob.register({
+      name: CronJobName.DailyAuditLogCleanup,
+      pattern: devMode ? "*/5 * * * *" : "30 3 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: heavyCleanupTimeoutMs,
+      leaseDurationMs: heavyCleanupTimeoutMs,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.DailyAuditLogCleanup}]: task started`);
         await auditLogDAL.pruneAuditLog();
       }
     });
 
     cronJob.register({
+      name: CronJobName.DailyResourceNotification,
+      pattern: devMode ? "*/5 * * * *" : "0 0 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      handlerTimeoutMs: dailyNotificationTimeoutMs,
+      leaseDurationMs: dailyNotificationTimeoutMs,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        logger.info(`cron[${CronJobName.DailyResourceNotification}]: task started`);
+        await serviceTokenService.notifyExpiringTokens();
+        await scimService.notifyExpiringTokens();
+        await orgService.notifyInvitedUsers();
+        await auditLogService.checkPostgresAuditLogVolumeMigrationAlert();
+      }
+    });
+
+    cronJob.register({
       name: CronJobName.FrequentResourceCleanup,
-      pattern: appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 * * * *",
+      pattern: devMode ? "*/5 * * * *" : "0 * * * *",
       runHashTtlS: 1 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handlerTimeoutMs: frequentCleanupTimeoutMs,
@@ -120,6 +169,11 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       handler: async () => {
         logger.info(`cron[${CronJobName.FrequentResourceCleanup}]: task started`);
         await identityAccessTokenDAL.removeExpiredTokens();
+        const newlyExpired = await approvalRequestDAL.markExpiredRequests();
+        if (newlyExpired > 0) {
+          await certificateRequestDAL.markExpiredApprovalRequests();
+        }
+        await approvalRequestGrantsDAL.markExpiredGrants();
       }
     });
   };

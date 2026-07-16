@@ -1,0 +1,56 @@
+version: v0.160.8
+releasedAt: 2026-05-29T18:08:56-03:00
+sourceTag: v0.160.8
+previousTag: v0.160.7
+impactLevel: low
+summary: Adds additive database migrations for secret blind indexes, environment
+  soft delete metadata, and project access requests. No operator configuration
+  changes are required.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Secret blind index migration
+    description: Adds nullable blind-index columns to secrets tables and a
+      concurrent partial index on secrets_v2. Existing data remains compatible.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260522180000_add-secret-value-blind-index.ts
+        path: backend/src/db/migrations/20260522180000_add-secret-value-blind-index.ts
+      - type: file
+        ref: backend/src/db/migrations/20260522180100_add-secret-value-blind-index-idx.ts
+        path: backend/src/db/migrations/20260522180100_add-secret-value-blind-index-idx.ts
+  - title: Project environments soft delete migration
+    description: Adds nullable soft-delete metadata and a concurrent partial index
+      for project environments. Existing environments remain valid.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260527120000_add-delete-after-and-soft-deleted-at-to-project-environments.ts
+        path: backend/src/db/migrations/20260527120000_add-delete-after-and-soft-deleted-at-to-project-environments.ts
+      - type: file
+        ref: backend/src/db/migrations/20260527140000_add-project-environments-soft-deleted-index.ts
+        path: backend/src/db/migrations/20260527140000_add-project-environments-soft-deleted-index.ts
+  - title: Project access requests table
+    description: Creates a new project_access_requests table with foreign keys,
+      uniqueness, and update trigger support. It does not modify existing
+      project membership records.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260528192810_project-access-requests.ts
+        path: backend/src/db/migrations/20260528192810_project-access-requests.ts
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-05-29T21:51:22.227Z
+  sourceRange:
+    from: v0.160.7
+    to: v0.160.8

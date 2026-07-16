@@ -26,6 +26,7 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
+import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
 import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
 
 type TDynamicSecretServiceFactoryDep = {
@@ -939,6 +940,40 @@ export const dynamicSecretServiceFactory = ({
     return azureEntraIdUsers;
   };
 
+  const fetchIbmApiConnectOrgs: TDynamicSecretServiceFactory["fetchIbmApiConnectOrgs"] = async ({
+    instanceUrl,
+    apiKey,
+    clientId,
+    clientSecret
+  }) => {
+    return IbmApiConnectProvider().fetchOrganizations({ instanceUrl, apiKey, clientId, clientSecret });
+  };
+
+  const fetchIbmApiConnectOrgCatalogs: TDynamicSecretServiceFactory["fetchIbmApiConnectOrgCatalogs"] = async ({
+    instanceUrl,
+    apiKey,
+    clientId,
+    clientSecret,
+    orgId
+  }) => {
+    return IbmApiConnectProvider().fetchOrganizationCatalogs({ instanceUrl, apiKey, clientId, clientSecret }, orgId);
+  };
+
+  const fetchIbmApiConnectOrgApps: TDynamicSecretServiceFactory["fetchIbmApiConnectOrgApps"] = async ({
+    instanceUrl,
+    apiKey,
+    clientId,
+    clientSecret,
+    orgId,
+    catalogId
+  }) => {
+    return IbmApiConnectProvider().fetchOrganizationApps(
+      { instanceUrl, apiKey, clientId, clientSecret },
+      orgId,
+      catalogId
+    );
+  };
+
   return {
     create,
     updateByName,
@@ -949,6 +984,9 @@ export const dynamicSecretServiceFactory = ({
     getDynamicSecretCount,
     getCountMultiEnv,
     fetchAzureEntraIdUsers,
+    fetchIbmApiConnectOrgs,
+    fetchIbmApiConnectOrgCatalogs,
+    fetchIbmApiConnectOrgApps,
     listDynamicSecretsByFolderIds,
     getSshCaPublicKey
   };

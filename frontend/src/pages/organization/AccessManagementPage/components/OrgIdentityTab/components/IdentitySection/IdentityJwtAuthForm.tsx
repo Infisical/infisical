@@ -1,48 +1,56 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "@tanstack/react-router";
+import { HelpCircleIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { BashGlobPatternTooltip } from "@app/components/permissions";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   IconButton,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
+  SelectTrigger,
+  SelectValue,
   Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
-import { SECONDS_PER_DAY } from "@app/helpers/datetime";
-import { accessTokenTtlSchema } from "@app/helpers/identityAuthSchemas";
+import {
+  accessTokenTtlSchema,
+  DEFAULT_TRUSTED_IPS,
+  mapTrustedIpsFromServer,
+  superRefineAccessTokenTtl,
+  trustedIpsSchema
+} from "@app/helpers/identityAuthSchemas";
+import { useScopeVariant } from "@app/hooks";
 import { useAddIdentityJwtAuth, useUpdateIdentityJwtAuth } from "@app/hooks/api";
 import { IdentityJwtConfigurationType } from "@app/hooks/api/identities/enums";
 import { useGetIdentityJwtAuth } from "@app/hooks/api/identities/queries";
-import { IdentityTrustedIp } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { IdentityFormTab } from "./types";
+import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
+import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
+import { TrustedIpsField } from "./shared/TrustedIpsField";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) => {
   const common = z.object({
-    accessTokenTrustedIps: z
-      .array(
-        z.object({
-          ipAddress: z.string().max(50)
-        })
-      )
-      .min(1),
+    accessTokenTrustedIps: trustedIpsSchema,
     accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
     accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
     accessTokenNumUsesLimit: z.string(),
@@ -57,34 +65,36 @@ const buildSchema = (maxAccessTokenTTL: number) => {
     boundSubject: z.string().optional().default("")
   });
 
-  return z.discriminatedUnion("configurationType", [
-    z
-      .object({
-        configurationType: z.literal(IdentityJwtConfigurationType.JWKS),
-        jwksUrl: z.string().trim().url(),
-        jwksCaCert: z.string().trim().default(""),
-        publicKeys: z
-          .object({
-            value: z.string()
-          })
-          .array()
-          .optional()
-      })
-      .merge(common),
-    z
-      .object({
-        configurationType: z.literal(IdentityJwtConfigurationType.STATIC),
-        jwksUrl: z.string().trim().optional(),
-        jwksCaCert: z.string().trim().optional().default(""),
-        publicKeys: z
-          .object({
-            value: z.string().min(1)
-          })
-          .array()
-          .min(1)
-      })
-      .merge(common)
-  ]);
+  return z
+    .discriminatedUnion("configurationType", [
+      z
+        .object({
+          configurationType: z.literal(IdentityJwtConfigurationType.JWKS),
+          jwksUrl: z.string().trim().url(),
+          jwksCaCert: z.string().trim().default(""),
+          publicKeys: z
+            .object({
+              value: z.string()
+            })
+            .array()
+            .optional()
+        })
+        .merge(common),
+      z
+        .object({
+          configurationType: z.literal(IdentityJwtConfigurationType.STATIC),
+          jwksUrl: z.string().trim().optional(),
+          jwksCaCert: z.string().trim().optional().default(""),
+          publicKeys: z
+            .object({
+              value: z.string().min(1)
+            })
+            .array()
+            .min(1)
+        })
+        .merge(common)
+    ])
+    .superRefine(superRefineAccessTokenTtl);
 };
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
@@ -101,6 +111,7 @@ type Props = {
   identityId?: string;
   isUpdate?: boolean;
   maxAccessTokenTTL: number;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const IdentityJwtAuthForm = ({
@@ -108,7 +119,8 @@ export const IdentityJwtAuthForm = ({
   handlePopUpToggle,
   identityId,
   isUpdate,
-  maxAccessTokenTTL
+  maxAccessTokenTTL,
+  onSubmittingChange
 }: Props) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -116,6 +128,7 @@ export const IdentityJwtAuthForm = ({
   const { projectId } = useParams({
     strict: false
   });
+  const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityJwtAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityJwtAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -139,7 +152,7 @@ export const IdentityJwtAuthForm = ({
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
-      accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+      accessTokenTrustedIps: DEFAULT_TRUSTED_IPS,
       configurationType: IdentityJwtConfigurationType.JWKS
     }
   });
@@ -164,12 +177,6 @@ export const IdentityJwtAuthForm = ({
     name: "boundClaims"
   });
 
-  const {
-    fields: accessTokenTrustedIpsFields,
-    append: appendAccessTokenTrustedIp,
-    remove: removeAccessTokenTrustedIp
-  } = useFieldArray({ control, name: "accessTokenTrustedIps" });
-
   useEffect(() => {
     if (data) {
       reset({
@@ -191,13 +198,7 @@ export const IdentityJwtAuthForm = ({
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
           ? String(data.accessTokenNumUsesLimit)
           : "",
-        accessTokenTrustedIps: data.accessTokenTrustedIps.map(
-          ({ ipAddress, prefix }: IdentityTrustedIp) => {
-            return {
-              ipAddress: `${ipAddress}${prefix !== undefined ? `/${prefix}` : ""}`
-            };
-          }
-        )
+        accessTokenTrustedIps: mapTrustedIpsFromServer(data.accessTokenTrustedIps)
       });
     } else {
       reset({
@@ -211,10 +212,14 @@ export const IdentityJwtAuthForm = ({
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }]
+        accessTokenTrustedIps: DEFAULT_TRUSTED_IPS
       });
     }
   }, [data]);
+
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+  }, [isSubmitting, onSubmittingChange]);
 
   const onFormSubmit = async ({
     accessTokenTrustedIps,
@@ -281,6 +286,7 @@ export const IdentityJwtAuthForm = ({
 
   return (
     <form
+      id={IDENTITY_AUTH_FORM_ID}
       onSubmit={handleSubmit(onFormSubmit, (fields) => {
         setTabValue(
           ["accessTokenTrustedIps"].includes(Object.keys(fields)[0])
@@ -290,407 +296,317 @@ export const IdentityJwtAuthForm = ({
       })}
     >
       <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as IdentityFormTab)}>
-        <TabList>
-          <Tab value={IdentityFormTab.Configuration}>Configuration</Tab>
-          <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
-        </TabList>
-        <TabPanel value={IdentityFormTab.Configuration}>
-          <Controller
-            control={control}
-            name="configurationType"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Configuration Type"
-                isError={Boolean(error)}
-                errorText={error?.message}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => {
-                    if (e === IdentityJwtConfigurationType.JWKS) {
-                      setValue("publicKeys", []);
-                    } else {
-                      setValue("publicKeys", [
-                        {
-                          value: ""
-                        }
-                      ]);
-                      setValue("jwksUrl", "");
-                      setValue("jwksCaCert", "");
-                    }
-                    onChange(e);
-                  }}
-                  className="w-full"
-                >
-                  <SelectItem value={IdentityJwtConfigurationType.JWKS} key="jwks">
-                    JWKS
-                  </SelectItem>
-                  <SelectItem value={IdentityJwtConfigurationType.STATIC} key="static">
-                    Static
-                  </SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          />
-          {selectedConfigurationType === IdentityJwtConfigurationType.JWKS && (
-            <>
-              <Controller
-                control={control}
-                name="jwksUrl"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isRequired
-                    label="JWKS URL"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input {...field} type="text" />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="jwksCaCert"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="JWKS CA Certificate"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          {selectedConfigurationType === IdentityJwtConfigurationType.STATIC && (
-            <>
-              {publicKeyFields.map(({ id }, index) => (
-                <div key={id} className="flex gap-2">
-                  <Controller
-                    control={control}
-                    name={`publicKeys.${index}.value`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        className="grow"
-                        label={`Public Key ${index + 1}`}
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                        icon={
-                          <Tooltip
-                            className="text-center"
-                            content={<span>This field only accepts PEM-formatted public keys</span>}
-                          >
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                          </Tooltip>
-                        }
-                      >
-                        <TextArea {...field} placeholder="-----BEGIN PUBLIC KEY----- ..." />
-                      </FormControl>
-                    )}
-                  />
-                  <IconButton
-                    onClick={() => {
-                      if (publicKeyFields.length === 1) {
-                        createNotification({
-                          type: "error",
-                          text: "A public key is required for static configurations"
-                        });
-                        return;
+        <TabsList variant={scopeVariant}>
+          <TabsTrigger value={IdentityFormTab.Configuration}>Configuration</TabsTrigger>
+          <TabsTrigger value={IdentityFormTab.Advanced}>Advanced</TabsTrigger>
+        </TabsList>
+        <TabsContent value={IdentityFormTab.Configuration}>
+          <FieldGroup>
+            <Controller
+              control={control}
+              name="configurationType"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="configurationType">Configuration Type</FieldLabel>
+                  <Select
+                    value={value}
+                    onValueChange={(e) => {
+                      if (e === IdentityJwtConfigurationType.JWKS) {
+                        setValue("publicKeys", []);
+                      } else {
+                        setValue("publicKeys", [
+                          {
+                            value: ""
+                          }
+                        ]);
+                        setValue("jwksUrl", "");
+                        setValue("jwksCaCert", "");
                       }
-
-                      removePublicKeyFields(index);
+                      onChange(e);
                     }}
-                    size="lg"
-                    colorSchema="danger"
-                    variant="plain"
-                    ariaLabel="update"
-                    className="p-3"
                   >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
-                </div>
-              ))}
-              <div className="my-4 ml-1">
+                    <SelectTrigger
+                      id="configurationType"
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue placeholder="Select configuration type" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value={IdentityJwtConfigurationType.JWKS} key="jwks">
+                        JWKS
+                      </SelectItem>
+                      <SelectItem value={IdentityJwtConfigurationType.STATIC} key="static">
+                        Static
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            {selectedConfigurationType === IdentityJwtConfigurationType.JWKS && (
+              <>
+                <Controller
+                  control={control}
+                  name="jwksUrl"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="jwksUrl">JWKS URL</FieldLabel>
+                      <Input {...field} id="jwksUrl" type="text" isError={Boolean(error)} />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="jwksCaCert"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="jwksCaCert">JWKS CA Certificate (optional)</FieldLabel>
+                      <TextArea
+                        {...field}
+                        id="jwksCaCert"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        isError={Boolean(error)}
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </>
+            )}
+            {selectedConfigurationType === IdentityJwtConfigurationType.STATIC && (
+              <div className="flex flex-col gap-3">
+                {publicKeyFields.map(({ id }, index) => (
+                  <div key={id} className="flex items-start gap-2">
+                    <Controller
+                      control={control}
+                      name={`publicKeys.${index}.value`}
+                      render={({ field, fieldState: { error } }) => (
+                        <Field className="flex-1">
+                          <FieldLabel
+                            htmlFor={`publicKey-${index}`}
+                            className="inline-flex items-center gap-1.5"
+                          >
+                            Public Key {index + 1}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircleIcon className="size-3.5 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-md text-center">
+                                This field only accepts PEM-formatted public keys
+                              </TooltipContent>
+                            </Tooltip>
+                          </FieldLabel>
+                          <TextArea
+                            {...field}
+                            id={`publicKey-${index}`}
+                            placeholder="-----BEGIN PUBLIC KEY----- ..."
+                            isError={Boolean(error)}
+                          />
+                          <FieldError>{error?.message}</FieldError>
+                        </Field>
+                      )}
+                    />
+                    <IconButton
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Remove public key"
+                      className="mt-[1.625rem]"
+                      onClick={() => {
+                        if (publicKeyFields.length === 1) {
+                          createNotification({
+                            type: "error",
+                            text: "A public key is required for static configurations"
+                          });
+                          return;
+                        }
+                        removePublicKeyFields(index);
+                      }}
+                    >
+                      <XIcon />
+                    </IconButton>
+                  </div>
+                ))}
                 <Button
-                  variant="outline_bg"
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  className="w-fit"
                   onClick={() =>
                     appendPublicKeyFields({
                       value: ""
                     })
                   }
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  size="xs"
                 >
+                  <PlusIcon />
                   Add Public Key
                 </Button>
               </div>
-            </>
-          )}
-          <Controller
-            control={control}
-            name="boundIssuer"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Issuer" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} type="text" />
-              </FormControl>
             )}
-          />
-          <Controller
-            control={control}
-            name="boundSubject"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Subject"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                icon={
-                  <Tooltip content={<BashGlobPatternTooltip />}>
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
+            <Controller
+              control={control}
+              name="boundIssuer"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="boundIssuer">Issuer</FieldLabel>
+                  <Input {...field} id="boundIssuer" type="text" isError={Boolean(error)} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="boundSubject"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="boundSubject" className="inline-flex items-center gap-1.5">
+                    Subject (optional)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircleIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        <BashGlobPatternTooltip />
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input {...field} id="boundSubject" type="text" isError={Boolean(error)} />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="boundAudiences"
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="boundAudiences" className="inline-flex items-center gap-1.5">
+                    Audiences (optional)
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircleIcon className="size-3.5 text-muted" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-md">
+                        <BashGlobPatternTooltip />
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="boundAudiences"
+                    type="text"
+                    placeholder="service1, service2"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <div className="flex flex-col gap-3">
+              {boundClaimsFields.map(({ id }, index) => (
+                <div className="flex items-start gap-2" key={id}>
+                  <Controller
+                    control={control}
+                    name={`boundClaims.${index}.key`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel
+                            htmlFor={`boundClaim-key-${index}`}
+                            className="inline-flex items-center gap-1.5"
+                          >
+                            Claims
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircleIcon className="size-3.5 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-md">
+                                <BashGlobPatternTooltip />
+                              </TooltipContent>
+                            </Tooltip>
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`boundClaim-key-${index}`}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e)}
+                          placeholder="property"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name={`boundClaims.${index}.value`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="flex-1">
+                        {index === 0 && (
+                          <FieldLabel htmlFor={`boundClaim-value-${index}`} className="invisible">
+                            Value
+                          </FieldLabel>
+                        )}
+                        <Input
+                          id={`boundClaim-value-${index}`}
+                          value={field.value}
+                          onChange={(e) => field.onChange(e)}
+                          placeholder="value1, value2"
+                          isError={Boolean(error)}
+                        />
+                        <FieldError>{error?.message}</FieldError>
+                      </Field>
+                    )}
+                  />
+                  <IconButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Remove claim"
+                    className={index === 0 ? "mt-[1.625rem]" : "mt-0.5"}
+                    onClick={() => removeBoundClaimField(index)}
+                  >
+                    <XIcon />
+                  </IconButton>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="w-fit"
+                onClick={() =>
+                  appendBoundClaimField({
+                    key: "",
+                    value: ""
+                  })
                 }
               >
-                <Input {...field} type="text" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="boundAudiences"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Audiences"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                icon={
-                  <Tooltip content={<BashGlobPatternTooltip />}>
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                  </Tooltip>
-                }
-              >
-                <Input {...field} type="text" placeholder="service1, service2" />
-              </FormControl>
-            )}
-          />
-          {boundClaimsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`boundClaims.${index}.key`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Claims" : undefined}
-                      icon={
-                        index === 0 ? (
-                          <Tooltip content={<BashGlobPatternTooltip />}>
-                            <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                          </Tooltip>
-                        ) : undefined
-                      }
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="property"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <Controller
-                control={control}
-                name={`boundClaims.${index}.value`}
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => field.onChange(e)}
-                        placeholder="value1, value2"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-
-              <IconButton
-                onClick={() => removeBoundClaimField(index)}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
+                <PlusIcon />
+                Add Claims
+              </Button>
             </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() =>
-                appendBoundClaimField({
-                  key: "",
-                  value: ""
-                })
+            <AccessTokenTtlFields control={control} maxAccessTokenTTL={maxAccessTokenTTL} />
+            <AccessTokenNumUsesLimitField control={control} />
+          </FieldGroup>
+        </TabsContent>
+        <TabsContent value={IdentityFormTab.Advanced}>
+          <FieldGroup>
+            <TrustedIpsField
+              control={control}
+              name="accessTokenTrustedIps"
+              label="Access Token Trusted IPs"
+              isAllowed={Boolean(subscription?.ipAllowlisting)}
+              onUpgradeRequired={() =>
+                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
               }
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add Claims
-            </Button>
-          </div>
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="2592000"
-            name="accessTokenMaxTTL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max TTL (seconds)"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText={`Max: ${Math.floor(maxAccessTokenTTL / SECONDS_PER_DAY)} days`}
-              >
-                <Input {...field} placeholder="2592000" type="number" min="1" step="1" />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue="0"
-            name="accessTokenNumUsesLimit"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Token Max Number of Uses"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                tooltipText="The maximum number of times that an access token can be used; Leave blank for unlimited uses."
-              >
-                <Input {...field} placeholder="Unlimited uses" type="number" min="0" step="1" />
-              </FormControl>
-            )}
-          />
-        </TabPanel>
-        <TabPanel value={IdentityFormTab.Advanced}>
-          {accessTokenTrustedIpsFields.map(({ id }, index) => (
-            <div className="mb-3 flex items-end space-x-2" key={id}>
-              <Controller
-                control={control}
-                name={`accessTokenTrustedIps.${index}.ipAddress`}
-                defaultValue="0.0.0.0/0"
-                render={({ field, fieldState: { error } }) => {
-                  return (
-                    <FormControl
-                      className="mb-0 grow"
-                      label={index === 0 ? "Access Token Trusted IPs" : undefined}
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input
-                        value={field.value}
-                        onChange={(e) => {
-                          if (subscription?.ipAllowlisting) {
-                            field.onChange(e);
-                            return;
-                          }
-
-                          handlePopUpOpen("upgradePlan", {
-                            featureName: "IP allowlisting"
-                          });
-                        }}
-                        placeholder="123.456.789.0"
-                      />
-                    </FormControl>
-                  );
-                }}
-              />
-              <IconButton
-                onClick={() => {
-                  if (subscription?.ipAllowlisting) {
-                    removeAccessTokenTrustedIp(index);
-                    return;
-                  }
-
-                  handlePopUpOpen("upgradePlan", {
-                    featureName: "IP allowlisting"
-                  });
-                }}
-                size="lg"
-                colorSchema="danger"
-                variant="plain"
-                ariaLabel="update"
-                className="p-3"
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </div>
-          ))}
-          <div className="my-4 ml-1">
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                if (subscription?.ipAllowlisting) {
-                  appendAccessTokenTrustedIp({
-                    ipAddress: "0.0.0.0/0"
-                  });
-                  return;
-                }
-
-                handlePopUpOpen("upgradePlan", {
-                  featureName: "IP allowlisting"
-                });
-              }}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              size="xs"
-            >
-              Add IP Address
-            </Button>
-          </div>
-        </TabPanel>
+            />
+          </FieldGroup>
+        </TabsContent>
       </Tabs>
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
-          {isUpdate ? "Update" : "Create"}
-        </Button>
-
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("identityAuthMethod", false)}
-        >
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };

@@ -1,28 +1,48 @@
-import { RefObject, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faGripVertical, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { GripVerticalIcon, InfoIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  Badge,
   Button,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldTitle,
   FilterableSelect,
-  FormControl,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemGroup,
+  ItemMedia,
+  ItemSeparator,
+  SecretPathInput,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Switch,
-  Tag,
-  Tooltip
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
@@ -44,7 +64,7 @@ import {
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
-import { PolicyMemberOption } from "./PolicyMemberOption";
+import { ApproverMultiValueLabel, ApproverOption, ApproverOptionData } from "./ApproverOption";
 
 type Props = {
   isOpen?: boolean;
@@ -172,9 +192,8 @@ const Form = ({
   projectId,
   projectSlug,
   editValues,
-  modalContainer,
   isEditMode
-}: Props & { modalContainer: RefObject<HTMLDivElement>; isEditMode: boolean }) => {
+}: Props & { isEditMode: boolean }) => {
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverItem, setDragOverItem] = useState<number | null>(null);
   const {
@@ -182,7 +201,8 @@ const Form = ({
     handleSubmit,
     watch,
     resetField,
-    formState: { isSubmitting }
+    setValue,
+    formState: { isSubmitting, errors }
   } = useForm<TFormSchema>({
     resolver: zodResolver(formSchema),
     values: editValues
@@ -225,10 +245,10 @@ const Form = ({
                   ? {
                       user: [curr],
                       group: [],
-                      sequence: 1,
+                      sequence: curr.sequence,
                       approvals
                     }
-                  : { group: [curr], user: [], sequence: 1, approvals }
+                  : { group: [curr], user: [], sequence: curr.sequence, approvals }
               );
               return acc;
             },
@@ -262,6 +282,8 @@ const Form = ({
 
   const enforcementLevel = watch("enforcementLevel");
 
+  const formUserApprovers = watch("userApprovers");
+  const formGroupApprovers = watch("groupApprovers");
   const formUserBypassers = watch("userBypassers");
   const formGroupBypassers = watch("groupBypassers");
   const formEnvironments = watch("environments");
@@ -392,6 +414,34 @@ const Form = ({
     [groups]
   );
 
+  const approverOptions = useMemo<ApproverOptionData[]>(
+    () => [...memberOptions, ...(groupOptions ?? [])],
+    [memberOptions, groupOptions]
+  );
+
+  const getApproverLabel = (option: ApproverOptionData) => {
+    if (option.type === ApproverType.Group) {
+      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
+    }
+    const member = members?.find((m) => m.user.id === option.id);
+    if (!member) return option.name || option.id;
+    return getMemberLabel(member);
+  };
+
+  const splitSelectedApprovers = (selected: readonly ApproverOptionData[]) => ({
+    users: selected
+      .filter((option) => option.type === ApproverType.User)
+      .map((option) => ({
+        type: ApproverType.User as const,
+        id: option.id,
+        name: option.name,
+        isOrgMembershipActive: option.isOrgMembershipActive
+      })),
+    groups: selected
+      .filter((option) => option.type === ApproverType.Group)
+      .map((option) => ({ type: ApproverType.Group as const, id: option.id }))
+  });
+
   const bypasserMemberOptions = useMemo(
     () =>
       members.map((member) => ({
@@ -410,6 +460,33 @@ const Form = ({
       })),
     [groups]
   );
+
+  const bypasserOptions = useMemo<ApproverOptionData[]>(
+    () => [...bypasserMemberOptions, ...(bypasserGroupOptions ?? [])],
+    [bypasserMemberOptions, bypasserGroupOptions]
+  );
+
+  const getBypasserLabel = (option: ApproverOptionData) => {
+    if (option.type === BypasserType.Group) {
+      return groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id;
+    }
+    const member = members?.find((m) => m.user.id === option.id);
+    if (!member) return option.name || option.id;
+    return getMemberLabel(member);
+  };
+
+  const splitSelectedBypassers = (selected: readonly ApproverOptionData[]) => ({
+    users: selected
+      .filter((option) => option.type === BypasserType.User)
+      .map((option) => ({
+        type: BypasserType.User as const,
+        id: option.id,
+        isOrgMembershipActive: option.isOrgMembershipActive
+      })),
+    groups: selected
+      .filter((option) => option.type === BypasserType.Group)
+      .map((option) => ({ type: BypasserType.Group as const, id: option.id }))
+  });
 
   const handleDragStart = (_: React.DragEvent, index: number) => {
     setDraggedItem(index);
@@ -440,150 +517,157 @@ const Form = ({
     setDragOverItem(null);
   };
 
+  const renderApproverSelect = (index: number) => (
+    <FilterableSelect
+      menuPosition="fixed"
+      isMulti
+      placeholder="Select members or groups..."
+      options={approverOptions}
+      components={{
+        Option: ApproverOption,
+        MultiValueLabel: ApproverMultiValueLabel
+      }}
+      getOptionValue={(option) => `${option.type}-${option.id}`}
+      getOptionLabel={getApproverLabel}
+      value={[
+        ...(watch(`sequenceApprovers.${index}.user`) ?? []),
+        ...(watch(`sequenceApprovers.${index}.group`) ?? [])
+      ]}
+      onChange={(newValue) => {
+        const { users, groups: selectedGroups } = splitSelectedApprovers(
+          newValue as ApproverOptionData[]
+        );
+        setValue(`sequenceApprovers.${index}.user`, users, { shouldValidate: true });
+        setValue(`sequenceApprovers.${index}.group`, selectedGroups, { shouldValidate: true });
+      }}
+    />
+  );
+
+  const renderMinApprovals = (index: number, inputClassName: string) => (
+    <Controller
+      control={control}
+      name={`sequenceApprovers.${index}.approvals` as const}
+      defaultValue={1}
+      render={({ field }) => (
+        <Input
+          {...field}
+          type="number"
+          min={1}
+          className={inputClassName}
+          onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
+        />
+      )}
+    />
+  );
+
   return (
-    <div className="flex flex-col space-y-3">
-      <form onSubmit={handleSubmit(handleFormSubmit)}>
-        <div className="flex items-center gap-x-3">
-          <Controller
-            control={control}
-            name="policyType"
-            defaultValue={PolicyType.ChangePolicy}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Policy Type"
-                isRequired
-                isError={Boolean(error)}
-                tooltipText="Change policies govern secret changes within a given environment and secret path. Access policies allow underprivileged user to request access to environment/secret path."
-                errorText={error?.message}
-                className="flex-1"
-              >
+    <form
+      onSubmit={handleSubmit(handleFormSubmit)}
+      className="flex flex-1 flex-col gap-4 overflow-hidden"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <Controller
+          control={control}
+          name="policyType"
+          defaultValue={PolicyType.ChangePolicy}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Policy Type
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Change policies govern secret changes within a given environment and secret
+                    path. Access policies allow underprivileged user to request access to
+                    environment/secret path.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FieldContent>
                 <Select
-                  isDisabled={isEditMode}
                   value={value}
                   onValueChange={(val) => {
                     onChange(val as PolicyType);
                     resetField("secretPath");
                   }}
-                  className="w-full border border-mineshaft-500"
+                  disabled={isEditMode}
                 >
-                  {Object.values(PolicyType).map((policyType) => {
-                    return (
+                  <SelectTrigger className="w-full" isError={Boolean(error)}>
+                    <SelectValue placeholder="Select policy type" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(PolicyType).map((policyType) => (
                       <SelectItem value={policyType} key={`policy-type-${policyType}`}>
                         {policyDetails[policyType].name}
                       </SelectItem>
-                    );
-                  })}
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Policy Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="min-w-0 flex-[2]"
-              >
-                <Input {...field} value={field.value || ""} />
-              </FormControl>
-            )}
-          />
-
-          {isAccessPolicyType && (
-            <Controller
-              control={control}
-              name="maxTimePeriod"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Max. Time Period"
-                  tooltipText="The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-36 shrink-0"
-                >
-                  <Input {...field} value={field.value || ""} placeholder="permanent" />
-                </FormControl>
-              )}
-            />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
-
-          {isAccessPolicyType && (
-            <Controller
-              control={control}
-              name="requestExpirationTime"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Request Expiration"
-                  tooltipText="Time before unapproved requests expire. Ex: 1h, 3d, 72h"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-36 shrink-0"
-                >
-                  <Input {...field} value={field.value || ""} placeholder="never expires" />
-                </FormControl>
-              )}
-            />
-          )}
-
-          {!isAccessPolicyType && (
-            <Controller
-              control={control}
-              name="approvals"
-              defaultValue={1}
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Min. Approvals Required"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="shrink"
-                >
-                  <Input
-                    {...field}
-                    type="number"
-                    min={1}
-                    onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
-                  />
-                </FormControl>
-              )}
-            />
-          )}
-        </div>
-        <div className="flex items-center gap-x-3">
-          <Controller
-            control={control}
-            name="secretPath"
-            defaultValue="/"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                tooltipText="Secret paths support glob patterns. Use * to match a single level and ** to match all nested levels. Example: /** matches all paths, /services/* matches immediate children."
-                label="Secret Path"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="flex-1"
-              >
-                <SecretPathInput
+        />
+        <Controller
+          control={control}
+          name="name"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Policy Name</FieldLabel>
+              <FieldContent>
+                <Input
                   {...field}
                   value={field.value || ""}
-                  environment={formEnvironments?.[0]?.slug || ""}
+                  placeholder="e.g. Production Approvals"
+                  isError={Boolean(error)}
                 />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="environments"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                label="Environments"
-                isRequired
-                isError={Boolean(error)}
-                errorText={error?.message}
-                className="flex-1"
-              >
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="secretPath"
+          defaultValue="/"
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Secret Path
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Secret paths support glob patterns. Use * to match a single level and ** to
+                    match all nested levels. Example: /** matches all paths, /services/* matches
+                    immediate children.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FieldContent>
+                <SecretPathInput
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  environment={formEnvironments?.[0]?.slug || ""}
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name="environments"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Environments</FieldLabel>
+              <FieldContent>
                 <FilterableSelect
                   value={value}
                   isMulti
@@ -592,141 +676,175 @@ const Form = ({
                   options={availableEnvironments}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
+                  isError={Boolean(error)}
                 />
-              </FormControl>
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+        {isAccessPolicyType && (
+          <div className="flex items-start gap-x-3">
+            <Controller
+              control={control}
+              name="maxTimePeriod"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel>
+                    Max. Time Period
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The maximum amount of time someone can request access for. Ex: 1h, 3w, 30d
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      placeholder="permanent"
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="requestExpirationTime"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="flex-1">
+                  <FieldLabel>
+                    Request Expiration
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Time before unapproved requests expire. Ex: 1h, 3d, 72h
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      placeholder="never expires"
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          </div>
+        )}
+        {!isAccessPolicyType && (
+          <Controller
+            control={control}
+            name="approvals"
+            defaultValue={1}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>Min. Approvals Required</FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    type="number"
+                    min={1}
+                    isError={Boolean(error)}
+                    onChange={(el) => field.onChange(parseInt(el.target.value, 10))}
+                  />
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
             )}
           />
-        </div>
-        <div className="mb-2">
-          <p>Approvers</p>
-          <p className="font-inter text-xs text-mineshaft-300 opacity-90">
+        )}
+        <div>
+          <p className="text-sm font-medium text-foreground">Approvers</p>
+          <p className="text-xs text-muted">
             Select members or groups that are allowed to approve requests from this policy.
           </p>
         </div>
         {isAccessPolicyType ? (
           <>
-            <div className="max-h-64 thin-scrollbar space-y-2 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-900 p-2">
-              {sequenceApproversFieldArray.fields.map((el, index) => (
-                <div
-                  className={twMerge(
-                    "rounded-sm border border-mineshaft-500 bg-mineshaft-700 p-3 pb-0 shadow-inner",
-                    dragOverItem === index ? "border-2 border-blue-400" : "",
-                    draggedItem === index ? "opacity-50" : ""
-                  )}
-                  key={el.id}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDrop={handleDrop}
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <Tag>Step {index + 1}</Tag>
-                    <div className="flex items-center gap-3">
-                      <div className="inline text-xs text-mineshaft-400">Min. Approvals</div>
-                      <div className="mr-2 w-20 border-r border-mineshaft-400 pr-3">
-                        <Controller
-                          control={control}
-                          name={`sequenceApprovers.${index}.approvals` as const}
-                          defaultValue={1}
-                          render={({ field }) => (
-                            <Input
-                              {...field}
-                              type="number"
-                              size="xs"
-                              min={1}
-                              onChange={(val) => field.onChange(parseInt(val.target.value, 10))}
-                            />
-                          )}
-                        />
-                      </div>
-                      <Tooltip content="Remove step">
-                        <IconButton
-                          ariaLabel="delete"
-                          variant="plain"
-                          onClick={() => sequenceApproversFieldArray.remove(index)}
-                          className="text-red-500 hover:text-gray-200"
-                        >
-                          <FontAwesomeIcon icon={faTrash} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content="Drag to reorder permission">
-                        <div
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, index)}
-                          onDragEnd={handleDragEnd}
-                          className="mr-2 cursor-move text-gray-400 hover:text-gray-200"
-                        >
-                          <FontAwesomeIcon icon={faGripVertical} />
+            {sequenceApproversFieldArray.fields.length === 1 ? (
+              <div className="flex items-start gap-3">
+                <Field className="min-w-0 flex-1">
+                  <FieldLabel>Approvers</FieldLabel>
+                  <FieldContent>{renderApproverSelect(0)}</FieldContent>
+                </Field>
+                <Field className="w-28">
+                  <FieldLabel>Min. Approvals</FieldLabel>
+                  <FieldContent>{renderMinApprovals(0, "h-9 w-full")}</FieldContent>
+                </Field>
+              </div>
+            ) : (
+              <ItemGroup className="max-h-[12rem] thin-scrollbar shrink-0 gap-0 overflow-y-auto rounded-lg border border-border bg-container">
+                {sequenceApproversFieldArray.fields.map((el, index) => (
+                  <Fragment key={el.id}>
+                    {index > 0 && <ItemSeparator className="m-0" />}
+                    <Item
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={handleDrop}
+                      className={twMerge(
+                        "rounded-none border-0",
+                        dragOverItem === index && "bg-container-hover",
+                        draggedItem === index && "opacity-50"
+                      )}
+                    >
+                      <ItemMedia>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, index)}
+                              onDragEnd={handleDragEnd}
+                              className="cursor-move text-muted hover:text-foreground"
+                            >
+                              <GripVerticalIcon className="size-4" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>Drag to reorder</TooltipContent>
+                        </Tooltip>
+                        <Badge variant="neutral">Step {index + 1}</Badge>
+                      </ItemMedia>
+                      <ItemContent className="min-w-0">{renderApproverSelect(index)}</ItemContent>
+                      <ItemActions>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted">Min</span>
+                          {renderMinApprovals(index, "h-8 w-14")}
                         </div>
-                      </Tooltip>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Controller
-                      control={control}
-                      name={`sequenceApprovers.${index}.user` as const}
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          label="User Approvers"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          className="flex-1"
-                        >
-                          <FilterableSelect
-                            menuPortalTarget={modalContainer.current}
-                            menuPlacement="top"
-                            isMulti
-                            placeholder="Select members..."
-                            options={memberOptions}
-                            components={{ Option: PolicyMemberOption }}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) => {
-                              const member = members?.find((m) => m.user.id === option.id);
-
-                              if (!member)
-                                return ("name" in option && (option.name as string)) || option.id;
-
-                              return getMemberLabel(member);
-                            }}
-                            value={value}
-                            onChange={onChange}
-                          />
-                        </FormControl>
-                      )}
-                    />
-                    <Controller
-                      control={control}
-                      name={`sequenceApprovers.${index}.group` as const}
-                      render={({ field: { value, onChange }, fieldState: { error } }) => (
-                        <FormControl
-                          label="Group Approvers"
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                          className="flex-1"
-                        >
-                          <FilterableSelect
-                            menuPortalTarget={modalContainer.current}
-                            menuPlacement="top"
-                            isMulti
-                            placeholder="Select groups..."
-                            options={groupOptions}
-                            getOptionValue={(option) => option.id}
-                            getOptionLabel={(option) =>
-                              groups?.find(({ group }) => group.id === option.id)?.group.name ??
-                              option.id
-                            }
-                            value={value}
-                            onChange={onChange}
-                          />
-                        </FormControl>
-                      )}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="my-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <IconButton
+                              aria-label="Remove step"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => sequenceApproversFieldArray.remove(index)}
+                              className="text-danger hover:text-danger"
+                            >
+                              <Trash2Icon />
+                            </IconButton>
+                          </TooltipTrigger>
+                          <TooltipContent>Remove step</TooltipContent>
+                        </Tooltip>
+                      </ItemActions>
+                    </Item>
+                  </Fragment>
+                ))}
+              </ItemGroup>
+            )}
+            <div>
               <Button
                 size="xs"
-                variant="outline_bg"
+                variant="outline"
+                type="button"
                 onClick={() =>
                   sequenceApproversFieldArray.append({
                     approvals: 1,
@@ -735,214 +853,142 @@ const Form = ({
                   })
                 }
               >
+                <PlusIcon />
                 Add Step
               </Button>
             </div>
           </>
         ) : (
-          <div className="flex gap-2">
-            <Controller
-              control={control}
-              name="userApprovers"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="User Approvers"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-1/2"
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
-                    isMulti
-                    placeholder="Select members..."
-                    components={{ Option: PolicyMemberOption }}
-                    options={memberOptions}
-                    getOptionValue={(option) => option.id}
-                    getOptionLabel={(option) => {
-                      const member = members?.find((m) => m.user.id === option.id);
-
-                      if (!member)
-                        return ("name" in option && (option.name as string)) || option.id;
-
-                      return getMemberLabel(member);
-                    }}
-                    value={value}
-                    onChange={onChange}
-                  />
-                </FormControl>
-              )}
-            />
-            <Controller
-              control={control}
-              name="groupApprovers"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  label="Group Approvers"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="w-1/2"
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
-                    isMulti
-                    placeholder="Select groups..."
-                    options={groupOptions}
-                    getOptionValue={(option) => option.id}
-                    getOptionLabel={(option) =>
-                      groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id
-                    }
-                    value={value}
-                    onChange={onChange}
-                  />
-                </FormControl>
-              )}
-            />
-          </div>
+          <Field>
+            <FieldLabel>Approvers</FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                isMulti
+                placeholder="Select members or groups..."
+                options={approverOptions}
+                components={{
+                  Option: ApproverOption,
+                  MultiValueLabel: ApproverMultiValueLabel
+                }}
+                getOptionValue={(option) => `${option.type}-${option.id}`}
+                getOptionLabel={getApproverLabel}
+                value={[...(formUserApprovers ?? []), ...(formGroupApprovers ?? [])]}
+                onChange={(newValue) => {
+                  const { users, groups: selectedGroups } = splitSelectedApprovers(
+                    newValue as ApproverOptionData[]
+                  );
+                  setValue("userApprovers", users, { shouldValidate: true });
+                  setValue("groupApprovers", selectedGroups, { shouldValidate: true });
+                }}
+                isError={Boolean(errors.userApprovers || errors.groupApprovers)}
+              />
+              <FieldError errors={[errors.userApprovers, errors.groupApprovers]} />
+            </FieldContent>
+          </Field>
         )}
         <Controller
           control={control}
           name="allowedSelfApprovals"
           defaultValue
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl label="Self Approvals" isError={Boolean(error)} errorText={error?.message}>
+          render={({ field: { value, onChange } }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Self Approvals</FieldTitle>
+                <FieldDescription>Allow approvers to review their own requests</FieldDescription>
+              </FieldContent>
               <Switch
                 id="self-approvals"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value}
+                variant="project"
+                checked={value}
                 onCheckedChange={onChange}
-              >
-                Allow approvers to review their own requests
-              </Switch>
-            </FormControl>
+              />
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="enforcementLevel"
           defaultValue={EnforcementLevel.Hard}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              label="Bypass Approvals"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              className="mb-3"
-            >
+          render={({ field: { value, onChange } }) => (
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldTitle>Bypass Approvals</FieldTitle>
+                <FieldDescription>
+                  Allow certain users to bypass policy in break-glass situations
+                </FieldDescription>
+              </FieldContent>
               <Switch
                 id="bypass-approvals"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value === EnforcementLevel.Soft}
+                variant="project"
+                checked={value === EnforcementLevel.Soft}
                 onCheckedChange={(v) => onChange(v ? EnforcementLevel.Soft : EnforcementLevel.Hard)}
-              >
-                Allow certain users to bypass policy in break-glass situations
-              </Switch>
-            </FormControl>
+              />
+            </Field>
           )}
         />
         {enforcementLevel === EnforcementLevel.Soft && (
           <>
-            <div className="flex gap-2">
-              <Controller
-                control={control}
-                name="userBypassers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="User Bypassers"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="mb-2 w-1/2"
-                  >
-                    <FilterableSelect
-                      menuPlacement="top"
-                      isMulti
-                      placeholder="Select members..."
-                      components={{ Option: PolicyMemberOption }}
-                      options={bypasserMemberOptions}
-                      getOptionValue={(option) => option.id}
-                      getOptionLabel={(option) => {
-                        const member = members?.find((m) => m.user.id === option.id);
-
-                        if (!member) return option.id;
-
-                        return getMemberLabel(member);
-                      }}
-                      value={value}
-                      onChange={onChange}
-                    />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="groupBypassers"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Group Bypassers"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    className="mb-2 w-1/2"
-                  >
-                    <FilterableSelect
-                      menuPlacement="top"
-                      isMulti
-                      placeholder="Select groups..."
-                      options={bypasserGroupOptions}
-                      getOptionValue={(option) => option.id}
-                      getOptionLabel={(option) =>
-                        groups?.find(({ group }) => group.id === option.id)?.group.name ?? option.id
-                      }
-                      value={value}
-                      onChange={onChange}
-                    />
-                  </FormControl>
-                )}
-              />
-            </div>
+            <Field>
+              <FieldLabel>Bypassers</FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isMulti
+                  placeholder="Select members or groups..."
+                  options={bypasserOptions}
+                  components={{
+                    Option: ApproverOption,
+                    MultiValueLabel: ApproverMultiValueLabel
+                  }}
+                  getOptionValue={(option) => `${option.type}-${option.id}`}
+                  getOptionLabel={getBypasserLabel}
+                  value={[...(formUserBypassers ?? []), ...(formGroupBypassers ?? [])]}
+                  onChange={(newValue) => {
+                    const { users, groups: selectedGroups } = splitSelectedBypassers(
+                      newValue as ApproverOptionData[]
+                    );
+                    setValue("userBypassers", users, { shouldValidate: true });
+                    setValue("groupBypassers", selectedGroups, { shouldValidate: true });
+                  }}
+                  isError={Boolean(errors.userBypassers || errors.groupBypassers)}
+                />
+                <FieldError errors={[errors.userBypassers, errors.groupBypassers]} />
+              </FieldContent>
+            </Field>
 
             {bypasserCount <= 0 && (
-              <div className="mt-1 flex rounded-r border-l-2 border-l-red-500 bg-mineshaft-300/5 px-4 py-2.5 text-sm text-bunker-300">
-                Not selecting specific users or groups will allow anyone to bypass this policy.
-              </div>
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertDescription>
+                  Not selecting specific users or groups will allow anyone to bypass this policy.
+                </AlertDescription>
+              </Alert>
             )}
           </>
         )}
-        <div className="mt-8 flex items-center space-x-4">
-          <Button
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting}
-          >
-            Save
-          </Button>
-          <Button onClick={() => onToggle(false)} colorSchema="secondary" variant="plain">
-            Close
-          </Button>
-        </div>
-      </form>
-    </div>
+      </div>
+      <SheetFooter className="border-t">
+        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+          {isEditMode ? "Update Policy" : "Add Policy"}
+        </Button>
+        <Button onClick={() => onToggle(false)} variant="outline" type="button">
+          Close
+        </Button>
+      </SheetFooter>
+    </form>
   );
 };
 
 export const AccessPolicyForm = ({ isOpen, onToggle, editValues, ...props }: Props) => {
-  const modalContainer = useRef<HTMLDivElement>(null);
   const isEditMode = Boolean(editValues);
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onToggle}>
-      <ModalContent
-        className="max-w-3xl"
-        ref={modalContainer}
-        title={isEditMode ? "Edit Policy" : "Create Policy"}
-      >
-        <Form
-          {...props}
-          isOpen={isOpen}
-          onToggle={onToggle}
-          editValues={editValues}
-          modalContainer={modalContainer}
-          isEditMode={isEditMode}
-        />
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={onToggle}>
+      <SheetContent className="flex h-full flex-col gap-y-0 overflow-y-auto sm:max-w-xl">
+        <SheetHeader className="border-b">
+          <SheetTitle>{isEditMode ? "Edit Policy" : "Add Policy"}</SheetTitle>
+        </SheetHeader>
+        <Form {...props} onToggle={onToggle} editValues={editValues} isEditMode={isEditMode} />
+      </SheetContent>
+    </Sheet>
   );
 };

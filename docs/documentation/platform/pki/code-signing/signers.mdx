@@ -1,125 +1,219 @@
 ---
 title: "Signers"
 sidebarTitle: "Signers"
-description: "Create and manage code-signing identities."
+description: "Create, configure, and manage code-signing identities for your team."
 ---
 
-A Signer is a named code-signing identity bound to an X.509 certificate with the `codeSigning` extended key usage (EKU). Signers represent signing capabilities—for example, `release-signer` for production releases or `ci-signer` for CI pipeline artifacts.
+A Signer is a single signing identity inside Code Signing. It bundles three things:
+
+- A code-signing certificate issued by a Certificate Authority
+- A list of members who are allowed to use it
+- An optional approval policy that decides whether signing needs sign-off
+
+You'll typically have one Signer per real-world signing concern, such as `mobile-app-prod`, `firmware-release`, or `ci-staging-builds`.
+
+## What's in a Signer?
+
+<CardGroup cols={2}>
+  <Card title="Certificate" icon="certificate">
+    The X.509 code-signing certificate the Signer uses, backed by an internal or external CA.
+  </Card>
+  <Card title="Members" icon="users">
+    Users, machine identities, and groups. Each member has an Administrator, Operator, or Auditor role on this Signer.
+  </Card>
+  <Card title="Approval policy" icon="check-double">
+    Optional. Decides whether signing needs approval, who approves, and how each approval is bounded. See [Approvals](/documentation/platform/pki/code-signing/approvals).
+  </Card>
+  <Card title="Activity" icon="clock-rotate-left">
+    Audit trail of every successful, failed, and denied signing operation.
+  </Card>
+</CardGroup>
+
+## Signer roles
+
+| Role | Capabilities |
+|------|--------------|
+| **Administrator** | Edit settings, manage members, edit the approval policy, pre-approve signing for others, sign, and export the certificate. |
+| **Operator** | Sign artifacts and submit signing requests. Export the certificate. Cannot manage members or the policy. |
+| **Auditor** | View members, activity, and the audit log. Export the certificate. Cannot sign or change anything. |
 
 <Info>
-  Signers are created by product admins. Team members are assigned to Signers and can then request signing access or sign directly (depending on policy).
+  The user who creates a Signer becomes its Administrator automatically.
 </Info>
-
-Private keys never leave the Infisical server. When a signing operation is requested, the server retrieves the key, computes the signature, and returns only the signature bytes.
-
-## Key Characteristics
-
-| Feature | Description |
-|---------|-------------|
-| **Bound to certificate** | Every signer must be linked to a certificate with the `codeSigning` EKU |
-| **Optional signing policy** | Attach a [signing policy](/documentation/platform/pki/code-signing/signing-policies) to require approval before signing |
-| **RSA and ECDSA** | Supports RSA (2048, 3072, 4096-bit) and ECDSA (P-256, P-384, P-521) |
-| **Audit trail** | Every signing operation is recorded with actor, algorithm, and grant information |
 
 ## Create a Signer
 
+In **Certificate Manager → Code Signing → Signers**, click **Create Signer**. The wizard walks you through five steps in order: Basics, Certificate, Signing Key, Members, and Approval Policy.
+
 <Steps>
-  <Step title="Issue a code-signing certificate">
-    You need a certificate with the `codeSigning` extended key usage. Follow the [certificate issuance guide](/documentation/platform/pki/applications/certificates#issuing-certificates) and specify `codeSigning` in the extended key usage field.
+  <Step title="Basics">
+    Pick a name for the Signer and (optionally) describe what it's for.
+
+    | Field | Description |
+    |-------|-------------|
+    | **Signer name** | A short, slug-friendly identifier (lowercase, dashes). Example: `mobile-app-prod`. The PKCS#11 module shows this as the **token label**. |
+    | **Description** | Optional. What this Signer is for, in plain English. Example: *iOS and Android production bundles*. |
+
+    Click **Next** to move on to the certificate.
+  </Step>
+
+  <Step title="Certificate">
+    Choose which Certificate Authority issues the Signer's certificate and the identity on it.
+
+    | Field | Description |
+    |-------|-------------|
+    | **Certificate Authority** | The CA that issues the certificate. Internal CAs issue immediately. External CAs (AWS Private CA, Azure AD CS, ADCS, DigiCert) issue asynchronously and the Signer enters **Pending** until the cert lands. |
+    | **Certificate Template** | ADCS CAs only, required. The AD CS template this Signer requests. Pick a code-signing template published on your CA. |
+    | **Common Name** | The legal name shown on the certificate, for example `Acme Mobile, Inc.`. You can change it later; doing so reissues the certificate. |
+    | **Validity (days)** | How long each issued certificate is valid for. Default 365. |
+    | **Renew before (days)** | Optional, 1 to 30. Auto-renew this many days before expiry. Must be less than Validity. Leave empty to disable auto-renewal. |
 
     <Note>
-      Only certificates with the `codeSigning` EKU appear when creating a signer.
+      Some CAs add extra fields on this step. Check your CA's documentation for any CA-specific options.
     </Note>
+
+    Click **Next** to choose the signing key.
   </Step>
-  <Step title="(Optional) Create a signing policy">
-    To require approval before signing, create a [Signing Policy](/documentation/platform/pki/code-signing/signing-policies) first.
-    
-    Without a policy, any authorized user or identity can sign immediately.
+
+  <Step title="Signing Key">
+    Decide where the signing key lives and which algorithm to use.
+
+    | Field | Description |
+    |-------|-------------|
+    | **Key source** | Where the signing key is generated. **Infisical** (default) lets Infisical generate and manage the key for you. **HSM** generates the key inside your own HSM through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). Some CAs require an HSM-backed key and lock this to **HSM** (DigiCert code signing is one of them). |
+    | **HSM Connector** | The HSM Connector Infisical uses to reach your HSM. Set the Connector up first under **Certificate Manager > Settings > HSM Connectors**. Shown only when **Key source = HSM**. See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors). |
+    | **Key algorithm** | The signing key algorithm: `RSA-2048`, `RSA-3072`, `RSA-4096`, `ECDSA P-256`, `ECDSA P-384`, or `ECDSA P-521`. When **Key source = HSM** the choice is restricted to `RSA-2048`, `RSA-4096`, `ECDSA P-256`, or `ECDSA P-384`. |
+
+    Click **Next** to add members.
   </Step>
-  <Step title="Create the signer">
-    Go to **Certificate Manager → Code Signing → Signers** and click **Create Signer**.
 
-    Fill in the following fields:
+  <Step title="Members">
+    Add the people and machine identities who will work with this Signer:
 
-    - **Name**: A slug-friendly name for the signer such as `release-signer`.
-    - **Description**: An optional description of the signer's purpose.
-    - **Certificate**: The code-signing certificate to bind to this signer.
-    - **Signing Policy** (optional): The signing policy that governs signing access for this signer. If omitted, signing is allowed without approval.
+    - **User**
+    - **Machine Identity**: a non-human caller (CI runner, build job, deploy script). Operator is the typical role.
+    - **Group**: a directory group. Everyone in the group inherits the role on this Signer.
 
-    Press **Create** to save the signer.
+    The user who creates the Signer is added as Administrator automatically and cannot be removed at creation time. You can manage members later from the Signer's **Members** tab.
+
+    Click **Next** to set up the approval policy.
+  </Step>
+
+  <Step title="Approval policy">
+    Decide whether this Signer needs approval before signing.
+
+    - **No approval required**: leave the policy empty. Members with sign rights can sign immediately. Recommended for dev and internal Signers.
+    - **Add approval steps**: require one or more sign-offs. See [Approvals → Configure the approval policy](/documentation/platform/pki/code-signing/approvals#configure-the-approval-policy) for the step editor and per-approval limits.
+
+    Press **Create Signer** to finish. Infisical issues the certificate (synchronously for internal CAs, asynchronously for external CAs) and the Signer appears in the list with a status badge.
   </Step>
 </Steps>
 
-## Supported Signing Algorithms
+## HSM-backed Signers
 
-The available signing algorithms depend on the certificate's key type:
+When you pick **Key source = HSM** on the Signing Key step, pick the [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical should use. The Key algorithm choices narrow to the HSM-supported subset. The private key never leaves the HSM and every sign operation routes through the linked Connector. Infisical only holds the public key and the issued certificate.
 
-### RSA
+You can later switch an existing Signer between Infisical and HSM by reissuing the certificate with a different key source. Hit the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) with a `certificate.keySource` body, plus `hsmConnectorId` when switching to HSM. The signer keeps its name, members, policy, and CA. Only the underlying key and the cert wrapping it change.
 
-| Algorithm | Description |
-|-----------|-------------|
-| `RSASSA_PKCS1_V1_5_SHA256` | RSA PKCS#1 v1.5 with SHA-256 |
-| `RSASSA_PKCS1_V1_5_SHA384` | RSA PKCS#1 v1.5 with SHA-384 |
-| `RSASSA_PKCS1_V1_5_SHA512` | RSA PKCS#1 v1.5 with SHA-512 |
-| `RSASSA_PSS_SHA256` | RSA-PSS with SHA-256 |
-| `RSASSA_PSS_SHA384` | RSA-PSS with SHA-384 |
-| `RSASSA_PSS_SHA512` | RSA-PSS with SHA-512 |
+See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for the setup.
 
-### ECDSA
+## Signer statuses
 
-| Algorithm | Description |
-|-----------|-------------|
-| `ECDSA_SHA256` | ECDSA with SHA-256 |
-| `ECDSA_SHA384` | ECDSA with SHA-384 |
-| `ECDSA_SHA512` | ECDSA with SHA-512 |
+| Status | Meaning |
+|--------|---------|
+| **Pending** | The Signer is created but the certificate has not been issued yet. Most common with external CAs that take time to respond. The PKCS#11 module sees this slot but signing is rejected until the certificate lands. |
+| **Active** | Certificate issued and bound. Signing works, subject to the approval policy. |
+| **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
+| **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
+| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Reissue with a new validity period. |
 
-## Signing via API
+## Edit a Signer
 
-You can also sign data programmatically by making an API request to the Sign endpoint:
+Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
 
-```bash
-curl --request POST \
-  --url https://app.infisical.com/api/v1/pki/signers/{signerId}/sign \
-  --header 'Authorization: Bearer <access-token>' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "data": "<base64-encoded-data>",
-    "signingAlgorithm": "RSASSA_PKCS1_V1_5_SHA256",
-    "isDigest": true,
-    "clientMetadata": {
-      "tool": "custom-pipeline",
-      "hostname": "build-server-1"
-    }
-  }'
-```
+<Steps>
+  <Step title="Basics">
+    Update the Signer's identifying information. These never reissue the certificate.
 
-<Note>
-  - The `data` field must be base64-encoded and no larger than 128 bytes (the digest of what you want to sign).
-  - Set `isDigest` to `true` if the data is already a hash digest, or `false` if you want the server to hash it.
-  - The `clientMetadata` field is optional and recorded in the signing operation audit log.
-</Note>
+    - **Signer name**: rename freely. The PKCS#11 token label updates on the next refresh.
+    - **Description**: edit at will.
+
+    Click **Next** to edit the certificate.
+  </Step>
+
+  <Step title="Certificate">
+    Change which CA issues the certificate and its identity.
+
+    - **Certificate Authority**: swap to another CA. Saving with a different CA reissues the certificate immediately from the new CA.
+    - **Reuse an existing order**: offered by some CAs (DigiCert code signing). Point the Signer at an existing order to reuse that order slot instead of placing a new one. Common Name and Validity are inherited from the order.
+    - **Common Name** and **Validity (days)**: edit them to change the identity on the certificate. Saving reissues the certificate with the new values, and the signer switches to the new certificate.
+    - **Renew before (days)**: edit any time, 1 to 30, must be less than Validity.
+
+    Click **Next** to edit the signing key.
+  </Step>
+
+  <Step title="Signing Key">
+    Change where the key lives or which algorithm it uses. Both reissue the certificate with a new key.
+
+    - **Key source**: switch between Infisical and HSM. Switching to HSM requires picking an HSM Connector and a supported algorithm. CAs that require an HSM-backed key (such as DigiCert code signing) lock this to **HSM**.
+    - **HSM Connector**: shown when Key source is HSM.
+    - **Key algorithm**: pick a different algorithm. Changing it generates a new key and reissues the certificate.
+
+    <Note>
+      Renewals always issue a new certificate from the same CA with a fresh key pair. Old artifacts remain valid under the old certificate. New sign operations use the new one.
+    </Note>
+
+    Press **Save** to apply the changes.
+  </Step>
+</Steps>
+
+## Signing with a Signer
+
+To sign with a Signer, pick the integration that matches your tooling:
+
+- **[PKCS#11 module](/documentation/platform/pki/code-signing/pkcs11-module)** for cross-platform tools (`jarsigner`, `cosign`, `osslsigncode`, `apksigner`, `openssl`, `gpg`, and more).
+- **[Windows KSP](/documentation/platform/pki/code-signing/windows-ksp)** for native `signtool` Authenticode signing on Windows.
+- **[Sign API](/api-reference/endpoints/code-signing/signers/sign)** to sign directly over HTTP.
 
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Can I use the same certificate for multiple signers?">
-    Yes. Multiple signers can reference the same certificate, each with a different signing policy. This is useful if you want different approval workflows for different teams using the same signing key.
+  <Accordion title="Can I reuse one certificate across multiple Signers?">
+    No. Every Signer has its own certificate. If you want different teams or different approval workflows against the same CA, create one Signer per team or workflow. Each gets its own certificate from that CA.
   </Accordion>
-  <Accordion title="What happens if my certificate expires?">
-    Signing requests will be rejected if the signer's certificate has expired. You should issue a new certificate and update the signer's certificate binding before expiry.
+  <Accordion title="What's the difference between Disable and Delete?">
+    **Disable** is reversible. The Signer, its members, its policy, its history, and the certificate are all preserved, and sign calls just get rejected. Re-enable to resume.
+
+    **Delete** is permanent. The Signer and everything attached to it (members, policy, access records, audit log) is removed. The certificate object remains in the inventory unless you delete that separately.
   </Accordion>
-  <Accordion title="Can machine identities sign without human approval?">
-    Yes, depending on the signing policy configuration. If the policy allows machine identity bypass, machine identities can sign without human intervention after obtaining a grant.
+  <Accordion title="Why is my new Signer stuck in Pending?">
+    External CAs (AWS Private CA, Azure AD CS, DigiCert) issue asynchronously. Infisical polls the CA in the background and flips the Signer to **Active** once the certificate is delivered. AWS and Azure usually take seconds. DigiCert takes minutes to hours for an already-validated organization, and up to 3 business days the first time an organization is used for code signing while DigiCert validates it. If it stays Pending well beyond those windows, hover the badge. The failure reason appears there once the polling job gives up.
+  </Accordion>
+  <Accordion title="What happens to signed artifacts when I delete a Signer?">
+    Artifacts already signed remain valid as long as the certificate they were signed with is still valid and the verifier trusts the issuing CA's chain. Deleting the Signer in Infisical only removes Infisical's ability to sign new artifacts with that certificate. It does not invalidate past signatures.
+  </Accordion>
+  <Accordion title="Can I migrate an existing Signer between Infisical and an HSM?">
+    Yes. From the Signer detail page, open **Edit Signer > Signing Key** and change **Key source**. When switching to HSM, pick an HSM Connector and a supported algorithm (RSA-2048, RSA-4096, ECDSA P-256, or ECDSA P-384). Saving reissues the certificate with the new key. The signer keeps its name, members, approval policy, and CA. Only the key and the cert wrapping it change.
+
+    The same operation is available via the [reissue endpoint](/api-reference/endpoints/code-signing/signers/reissue) by passing `certificate.keySource` and (when switching to HSM) `hsmConnectorId`.
+
+    The previous certificate stays in the inventory. Delete or retire the old certificate before you try to delete the HSM Connector it referenced.
   </Accordion>
 </AccordionGroup>
 
-## What's Next?
+## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Configure Signing Policies" icon="file-contract" href="/documentation/platform/pki/code-signing/signing-policies">
-    Add approval workflows before signing operations.
+  <Card title="Approvals" icon="check-double" href="/documentation/platform/pki/code-signing/approvals">
+    Add approval steps and per-approval limits to a Signer.
+  </Card>
+  <Card title="HSM Connectors" icon="shield-halved" href="/documentation/platform/pki/settings/hsm-connectors">
+    Route the Signer's key operations to your own HSM.
   </Card>
   <Card title="PKCS#11 Module" icon="plug" href="/documentation/platform/pki/code-signing/pkcs11-module">
-    Use standard signing tools with your signer.
+    Use jarsigner, cosign, osslsigncode, and friends with this Signer.
+  </Card>
+  <Card title="Windows KSP" icon="windows" href="/documentation/platform/pki/code-signing/windows-ksp">
+    Sign with native `signtool` on Windows.
   </Card>
 </CardGroup>

@@ -216,11 +216,15 @@ Supports conditions and permission inversion
 | `edit`   | Modify KMS settings                  |
 | `delete` | Remove KMS configurations            |
 
-#### Subject: `kmip`
+#### Subject: `kmip-server`
 
-| Action  | Description                        |
-| ------- | ---------------------------------- |
-| `proxy` | Act as a proxy for KMIP operations |
+| Action                      | Description                                             |
+| --------------------------- | ------------------------------------------------------- |
+| `list-kmip-servers`         | View organization KMIP servers                          |
+| `create-kmip-servers`       | Create new KMIP servers                                 |
+| `edit-kmip-servers`         | Modify KMIP server settings and authentication          |
+| `delete-kmip-servers`       | Remove KMIP servers from the organization               |
+| `revoke-kmip-server-access` | Revoke a KMIP server's access and invalidate its tokens |
 
 ### Honey Tokens
 

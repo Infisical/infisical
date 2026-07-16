@@ -1,5 +1,13 @@
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "../certificates/enums";
-import { AcmeDnsProvider, CaRenewalType, CaStatus, CaType, InternalCaType } from "./enums";
+import { CertKeySource } from "../signers/types";
+import {
+  AcmeDnsProvider,
+  CaRenewalType,
+  CaStatus,
+  CaType,
+  GoDaddyProductType,
+  InternalCaType
+} from "./enums";
 
 export type TAcmeCertificateAuthority = {
   id: string;
@@ -17,7 +25,6 @@ export type TAcmeCertificateAuthority = {
     directoryUrl: string;
     accountEmail: string;
     eabKid?: string;
-    eabHmacKey?: string;
     dnsResolver?: string;
   };
 };
@@ -35,6 +42,19 @@ export type TAzureAdCsCertificateAuthority = {
   };
 };
 
+export type TAdcsCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.ADCS;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    caName: string;
+  };
+};
+
 export type TAwsPcaCertificateAuthority = {
   id: string;
   projectId: string;
@@ -49,6 +69,19 @@ export type TAwsPcaCertificateAuthority = {
   };
 };
 
+export enum DigiCertCaPurpose {
+  Ssl = "ssl",
+  CodeSigning = "code_signing"
+}
+
+export type TDigiCertVerifiedContact = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  jobTitle: string;
+  telephone: string;
+};
+
 export type TDigiCertCertificateAuthority = {
   id: string;
   projectId: string;
@@ -60,6 +93,21 @@ export type TDigiCertCertificateAuthority = {
     appConnectionId: string;
     organizationId: number;
     productNameId: string;
+    purpose?: DigiCertCaPurpose;
+    verifiedContact?: TDigiCertVerifiedContact;
+  };
+};
+
+export type TGoDaddyCertificateAuthority = {
+  id: string;
+  projectId: string;
+  type: CaType.GODADDY;
+  status: CaStatus;
+  name: string;
+  enableDirectIssuance: boolean;
+  configuration: {
+    appConnectionId: string;
+    productType: GoDaddyProductType;
   };
 };
 
@@ -109,6 +157,9 @@ export type TInternalCertificateAuthority = {
     locality: string;
     maxPathLength: number;
     keyAlgorithm: CertKeyAlgorithm;
+    keySource?: CertKeySource;
+    hsmConnectorId?: string;
+    hsmKeyLabel?: string;
     notAfter?: string;
     notBefore?: string;
     dn?: string;
@@ -126,8 +177,10 @@ export const MAX_DISTRIBUTION_POINT_URL_LENGTH = 2048;
 export type TUnifiedCertificateAuthority =
   | TAcmeCertificateAuthority
   | TAzureAdCsCertificateAuthority
+  | TAdcsCertificateAuthority
   | TAwsPcaCertificateAuthority
   | TDigiCertCertificateAuthority
+  | TGoDaddyCertificateAuthority
   | TAwsAcmPublicCaCertificateAuthority
   | TVenafiTppCertificateAuthority
   | TInternalCertificateAuthority;
@@ -201,6 +254,11 @@ export type TAzureAdCsTemplate = {
   id: string;
   name: string;
   description?: string;
+};
+
+export type TAdcsTemplate = {
+  id: string;
+  name: string;
 };
 
 export type TImportCaCertificateDTO = {

@@ -76,7 +76,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
-import { createApprovalRequestWithSteps, notifyApproversForStep } from "./approval-request-fns";
+import { createApprovalRequestWithSteps, notifyStepApprovers } from "./approval-request-fns";
 import { TPamAccessRequestData } from "./pam-access/pam-access-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
@@ -130,7 +130,12 @@ export const approvalPolicyServiceFactory = ({
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
-    notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
+    notifyStepApprovers(step, request, {
+      userGroupMembershipDAL,
+      notificationService,
+      userDAL,
+      smtpService
+    });
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;
@@ -1165,6 +1170,10 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
     }
 
+    if (policyType === ApprovalPolicyType.CertCodeSigning && request.requesterId === actor.id) {
+      throw new ForbiddenRequestError({ message: "You cannot approve your own signing request" });
+    }
+
     const hasApproved = currentStep.approvals.some((a) => a.approverUserId === actor.id);
     if (hasApproved) {
       throw new BadRequestError({ message: "You have already approved this request" });
@@ -1216,9 +1225,7 @@ export const approvalPolicyServiceFactory = ({
             tx
           );
 
-          if (nextStep.notifyApprovers) {
-            nextStepToNotifyInner = nextStep;
-          }
+          nextStepToNotifyInner = nextStep;
         } else {
           // All steps completed
           const completedReq = await approvalRequestDAL.updateById(
@@ -1642,7 +1649,7 @@ export const approvalPolicyServiceFactory = ({
       return { requiresApproval: false, hasActiveGrant: false };
     }
 
-    const hasActiveGrant = await fac.canAccess(approvalRequestGrantsDAL, projectId, actor.id, inputs);
+    const activeGrant = await fac.canAccess(approvalRequestGrantsDAL, projectId, actor.id, inputs);
 
     const innerConstraints = policy.constraints?.constraints;
     const constraints =
@@ -1651,8 +1658,8 @@ export const approvalPolicyServiceFactory = ({
         : undefined;
 
     return {
-      requiresApproval: !hasActiveGrant,
-      hasActiveGrant,
+      requiresApproval: !activeGrant,
+      hasActiveGrant: !!activeGrant,
       constraints
     };
   };

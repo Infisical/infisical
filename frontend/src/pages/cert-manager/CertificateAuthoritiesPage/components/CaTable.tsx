@@ -1,23 +1,20 @@
 import { subject } from "@casl/ability";
-import { faBan, faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { BanIcon, MoreHorizontalIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import {
-  Badge,
   Empty,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   Skeleton,
   Table,
   TableBody,
@@ -44,7 +41,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["installCaCert", "caCert", "ca", "deleteCa", "caStatus"]>,
+    popUpName: keyof UsePopUpState<["installCaCert", "caCert", "deleteCa", "caStatus"]>,
     data?: {
       caId?: string;
       caName?: string;
@@ -136,14 +133,12 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
               </TableCell>
               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild className="rounded-lg">
-                    <div className="inline-flex hover:text-primary-400 data-[state=open]:text-primary-400">
-                      <Tooltip content="More options">
-                        <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                      </Tooltip>
-                    </div>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton variant="ghost" size="xs" aria-label="CA actions">
+                      <MoreHorizontalIcon />
+                    </IconButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="p-1">
+                  <DropdownMenuContent className="min-w-40" align="end" sideOffset={2}>
                     {ca.status === CaStatus.PENDING_CERTIFICATE && (
                       <ProjectPermissionCan
                         I={ProjectPermissionCertificateAuthorityActions.Create}
@@ -153,18 +148,15 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                       >
                         {(isAllowed) => (
                           <DropdownMenuItem
-                            className={twMerge(
-                              !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                            )}
+                            isDisabled={!isAllowed}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("installCaCert", {
                                 caId: ca.id
                               });
                             }}
-                            disabled={!isAllowed}
-                            icon={<FontAwesomeIcon icon={faCertificate} />}
                           >
+                            <ScrollTextIcon />
                             Install CA Certificate
                           </DropdownMenuItem>
                         )}
@@ -179,18 +171,15 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                       >
                         {(isAllowed) => (
                           <DropdownMenuItem
-                            className={twMerge(
-                              !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                            )}
+                            isDisabled={!isAllowed}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("caCert", {
                                 caId: ca.id
                               });
                             }}
-                            disabled={!isAllowed}
-                            icon={<FontAwesomeIcon icon={faCertificate} />}
                           >
+                            <ScrollTextIcon />
                             View Certificate
                           </DropdownMenuItem>
                         )}
@@ -205,9 +194,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                       >
                         {(isAllowed) => (
                           <DropdownMenuItem
-                            className={twMerge(
-                              !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                            )}
+                            isDisabled={!isAllowed}
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("caStatus", {
@@ -218,9 +205,8 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                     : CaStatus.ACTIVE
                               });
                             }}
-                            disabled={!isAllowed}
-                            icon={<FontAwesomeIcon icon={faBan} />}
                           >
+                            <BanIcon />
                             {`${ca.status === CaStatus.ACTIVE ? "Disable" : "Enable"} CA`}
                           </DropdownMenuItem>
                         )}
@@ -234,18 +220,16 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     >
                       {(isAllowed) => (
                         <DropdownMenuItem
-                          className={twMerge(
-                            !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                          )}
+                          variant="danger"
+                          isDisabled={!isAllowed}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePopUpOpen("deleteCa", {
                               caId: ca.id
                             });
                           }}
-                          disabled={!isAllowed}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
                         >
+                          <Trash2Icon />
                           Delete CA
                         </DropdownMenuItem>
                       )}

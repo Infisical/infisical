@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -31,50 +32,76 @@ type AssumePrivilegeVerifier interface {
 	VerifyAssumePrivilegeToken(ctx context.Context, opts *assumeprivilege.VerifyTokenOpts) (*auth.AssumedPrivilegeDetails, error)
 }
 
-// Authenticator performs token validation for various auth methods.
+// ErrorHandler handles HTTP error responses with proper logging.
+// This interface matches shared.ErrorHandler to avoid import cycles.
+type ErrorHandler interface {
+	HandleError(w http.ResponseWriter, r *http.Request, statusCode int, err error)
+}
+
+// ApiAuthenticator performs token validation for various auth methods.
 // It's an exact port of the Node.js inject-identity logic.
-type Authenticator struct {
+type ApiAuthenticator struct {
+	logger          *slog.Logger
 	db              pg.DB
 	keyStore        keystore.KeyStore
 	authSecret      []byte
 	assumePrivilege AssumePrivilegeVerifier
+	errorHandler    ErrorHandler
 }
 
-// NewAuthenticator creates an Authenticator with real validation backed by pg.DB.
+// NewApiAuthenticator creates an ApiAuthenticator with real validation backed by pg.DB.
 // keyStore can be nil for tests that don't need Redis-backed features.
 // assumePrivilege can be nil if assume privilege feature is not needed.
-func NewAuthenticator(db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier) Authenticator {
-	return Authenticator{db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege}
+func NewApiAuthenticator(logger *slog.Logger, db pg.DB, authSecret string, keyStore keystore.KeyStore, assumePrivilege AssumePrivilegeVerifier, errorHandler ErrorHandler) *ApiAuthenticator {
+	return &ApiAuthenticator{logger: logger, db: db, authSecret: []byte(authSecret), keyStore: keyStore, assumePrivilege: assumePrivilege, errorHandler: errorHandler}
 }
 
 // AssumePrivilege returns the assume privilege verifier.
-func (a Authenticator) AssumePrivilege() AssumePrivilegeVerifier {
+func (a *ApiAuthenticator) AssumePrivilege() AssumePrivilegeVerifier {
 	return a.assumePrivilege
 }
 
-// TODO(gov0): Missing test
-// ValidateJWT performs real JWT validation.
-// Exact port of fnValidateJwtIdentity in auth-token-service.ts:212-285.
-func (a Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
-	// 1. Parse and verify JWT signature (HS256 only).
-	claims := &UserJWTClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return a.authSecret, nil
-	})
+// ValidateJWTToken parses a JWT once, routes based on authTokenType, and validates.
+// This is the unified entry point for all JWT validation.
+// Returns (identity, authMode, error) where authMode indicates the actual token type.
+func (a *ApiAuthenticator) ValidateJWTToken(ctx context.Context, token, ipAddress string) (*auth.Identity, auth.AuthMode, error) {
+	claims, err := parseJWT(token, a.authSecret)
+	if err != nil {
+		return nil, "", errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWTToken: %w", err)
+	}
 
+	switch claims.AuthTokenType {
+	case auth.AuthTokenTypeAccessToken:
+		identity, err := a.validateUserTokenClaims(ctx, claims.ToUserClaims())
+		return identity, auth.AuthModeJWT, err
+
+	case auth.AuthTokenTypeIdentityAccessToken:
+		identity, err := a.validateIdentityTokenClaims(ctx, claims.ToIdentityClaims(), ipAddress)
+		return identity, auth.AuthModeIdentityAccessToken, err
+
+	default:
+		return nil, "", errutil.Unauthorized("Unsupported token type").WithErrf("validateJWTToken: unsupported authTokenType %s", claims.AuthTokenType)
+	}
+}
+
+// ValidateJWT validates a user JWT token.
+// For unified JWT handling that auto-routes based on token type, use ValidateJWTToken.
+func (a *ApiAuthenticator) ValidateJWT(ctx context.Context, token string) (*auth.Identity, error) {
+	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, errutil.Unauthorized("Invalid JWT token").WithErrf("validateJWT: %w", err)
 	}
 
-	// 2. Validate authTokenType.
 	if claims.AuthTokenType != auth.AuthTokenTypeAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateJWT: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
-	// 3. Find session by tokenVersionId + userId.
+	return a.validateUserTokenClaims(ctx, claims.ToUserClaims())
+}
+
+// validateUserTokenClaims validates pre-parsed user JWT claims.
+func (a *ApiAuthenticator) validateUserTokenClaims(ctx context.Context, claims *UserJWTClaims) (*auth.Identity, error) {
+	// 1. Find session by tokenVersionId + userId.
 	session, err := a.findSessionByIDAndUserID(ctx, claims.TokenVersionID, claims.UserID)
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to validate session").WithErrf("validateJWT(sessionId=%s, userId=%s): %w", claims.TokenVersionID, claims.UserID, err)
@@ -151,6 +178,12 @@ func (a Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Ide
 			if err != nil {
 				return nil, errutil.DatabaseErr("Failed to find organization").WithErrf("validateJWT(orgId=%s): %w", claims.OrganizationID, err)
 			}
+			if org == nil {
+				// findOrgByID returns (nil, nil) on pgx.ErrNoRows. The org row can be
+				// missing if it was deleted between JWT issue and validation; without
+				// this guard `org.Name` below panics.
+				return nil, errutil.NotFound("Organization %s not found", claims.OrganizationID).WithErrf("validateJWT(orgId=%s): organization not found", claims.OrganizationID)
+			}
 
 			orgMembership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeUser, user.ID, claims.OrganizationID, "accepted")
 			if err != nil {
@@ -204,29 +237,24 @@ func (a Authenticator) ValidateJWT(ctx context.Context, token string) (*auth.Ide
 	}, nil
 }
 
-// ValidateIdentityAccessToken performs real identity access token validation.
-// Port of fnValidateIdentityAccessTokenFast in identity-access-token-service.ts.
-// New-format tokens carry all claims in the JWT for stateless validation; legacy tokens
-// fall back to DB lookup.
-func (a Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
-	// 1. Parse and verify JWT signature (HS256 only).
-	claims := &IdentityJWTClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
-		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return a.authSecret, nil
-	})
+// ValidateIdentityAccessToken validates an identity access token.
+// For unified JWT handling that auto-routes based on token type, use ValidateJWTToken.
+func (a *ApiAuthenticator) ValidateIdentityAccessToken(ctx context.Context, token, ipAddress string) (*auth.Identity, error) {
+	claims, err := parseJWT(token, a.authSecret)
 	if err != nil {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: JWT parse failed: %w", err)
 	}
 
-	// 2. Validate authTokenType.
 	if claims.AuthTokenType != auth.AuthTokenTypeIdentityAccessToken {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateIdentityAccessToken: invalid authTokenType %s", claims.AuthTokenType)
 	}
 
-	// 3. Resolve token source - new format uses JWT claims, legacy falls back to DB.
+	return a.validateIdentityTokenClaims(ctx, claims.ToIdentityClaims(), ipAddress)
+}
+
+// validateIdentityTokenClaims validates pre-parsed identity JWT claims.
+func (a *ApiAuthenticator) validateIdentityTokenClaims(ctx context.Context, claims *IdentityJWTClaims, ipAddress string) (*auth.Identity, error) {
+	// 1. Resolve token source - new format uses JWT claims, legacy falls back to DB.
 	var (
 		identityID   = claims.IdentityID
 		identityName string
@@ -359,16 +387,16 @@ func (a Authenticator) ValidateIdentityAccessToken(ctx context.Context, token, i
 }
 
 // ValidateServiceToken performs real service token validation.
-// Exact port of fnValidateServiceToken in service-token-service.ts:172-199.
-func (a Authenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
-	// 1. Split token: "st.<tokenID>.<tokenSecret>"
-	parts := strings.SplitN(token, ".", 3)
-	if len(parts) != 3 || parts[0] != "st" {
+// TODO(go): FIPS mode changes in bcrypt to the other one is needed
+func (a *ApiAuthenticator) ValidateServiceToken(ctx context.Context, token string) (*auth.Identity, error) {
+	// 1. Split token: "st.<tokenID>.<tokenSecret>[.<extra>]"
+	// Legacy tokens may have a 4th segment that should be ignored.
+	parts := strings.SplitN(token, ".", 4)
+	if len(parts) < 3 || parts[0] != "st" {
 		return nil, errutil.Unauthorized("You are not allowed to access this resource").WithErrf("validateServiceToken: invalid token format")
 	}
 	tokenID := parts[1]
 	tokenSecret := parts[2]
-
 	// 2. Find service token.
 	serviceToken, err := a.findServiceTokenByID(ctx, tokenID)
 	if err != nil {
@@ -389,7 +417,9 @@ func (a Authenticator) ValidateServiceToken(ctx context.Context, token string) (
 
 	// 4. Check expiration.
 	if serviceToken.ExpiresAt.Valid && serviceToken.ExpiresAt.V.Before(time.Now()) {
-		_ = a.deleteServiceTokenByID(ctx, serviceToken.ID)
+		if err := a.deleteServiceTokenByID(ctx, serviceToken.ID); err != nil {
+			a.logger.WarnContext(ctx, "failed to delete expired service token", slog.String("tokenID", serviceToken.ID.String()), slog.Any("error", err))
+		}
 		return nil, errutil.Forbidden("Service token has expired").WithErrf("validateServiceToken(tokenId=%s): token expired", serviceToken.ID)
 	}
 
@@ -397,8 +427,6 @@ func (a Authenticator) ValidateServiceToken(ctx context.Context, token string) (
 	if err := bcrypt.CompareHashAndPassword([]byte(serviceToken.SecretHash), []byte(tokenSecret)); err != nil {
 		return nil, errutil.Unauthorized("Invalid service token").WithErrf("validateServiceToken(tokenId=%s): secret hash mismatch", serviceToken.ID)
 	}
-
-	// TODO(go): accessTokenQueue.updateServiceTokenStatus — update lastUsed timestamp
 
 	// 6. Find org.
 	org, err := a.findOrgByID(ctx, project.OrgID)
@@ -505,7 +533,7 @@ type membershipRow struct {
 // --- Query methods ---
 
 // findSessionByIDAndUserID returns the session matching id + userId, or nil if not found.
-func (a Authenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, userID uuid.UUID) (*sessionRow, error) {
+func (a *ApiAuthenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, userID uuid.UUID) (*sessionRow, error) {
 	query := `
 		SELECT "accessVersion", "userId"
 		FROM auth_token_sessions
@@ -526,7 +554,7 @@ func (a Authenticator) findSessionByIDAndUserID(ctx context.Context, sessionID, 
 }
 
 // findUserByID returns the user matching id, or nil if not found.
-func (a Authenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
+func (a *ApiAuthenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
 	query := `
 		SELECT id, email, username, "isAccepted", "superAdmin", "isLocked", "temporaryLockDateEnd"
 		FROM users
@@ -547,7 +575,7 @@ func (a Authenticator) findUserByID(ctx context.Context, id uuid.UUID) (*userRow
 }
 
 // findOrgByID returns the organization matching id, or nil if not found.
-func (a Authenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, error) {
+func (a *ApiAuthenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, error) {
 	query := `
 		SELECT id, name, "rootOrgId", "parentOrgId"
 		FROM organizations
@@ -568,7 +596,7 @@ func (a Authenticator) findOrgByID(ctx context.Context, id uuid.UUID) (*orgRow, 
 }
 
 // findProjectByID returns the project matching id, or nil if not found.
-func (a Authenticator) findProjectByID(ctx context.Context, id string) (*projectRow, error) {
+func (a *ApiAuthenticator) findProjectByID(ctx context.Context, id string) (*projectRow, error) {
 	query := `
 		SELECT "orgId"
 		FROM projects
@@ -589,7 +617,7 @@ func (a Authenticator) findProjectByID(ctx context.Context, id string) (*project
 }
 
 // findIdentityAccessTokenByID returns the token (joined with identity), or nil if not found.
-func (a Authenticator) findIdentityAccessTokenByID(ctx context.Context, id string) (*identityAccessTokenRow, error) {
+func (a *ApiAuthenticator) findIdentityAccessTokenByID(ctx context.Context, id string) (*identityAccessTokenRow, error) {
 	query := `
 		SELECT
 			token.id,
@@ -640,7 +668,7 @@ func (a Authenticator) findIdentityAccessTokenByID(ctx context.Context, id strin
 }
 
 // findServiceTokenByID returns the service token matching id, or nil.
-func (a Authenticator) findServiceTokenByID(ctx context.Context, id string) (*serviceTokenRow, error) {
+func (a *ApiAuthenticator) findServiceTokenByID(ctx context.Context, id string) (*serviceTokenRow, error) {
 	query := `
 		SELECT id, name, "projectId", "expiresAt", "secretHash"
 		FROM service_tokens
@@ -661,7 +689,7 @@ func (a Authenticator) findServiceTokenByID(ctx context.Context, id string) (*se
 }
 
 // deleteServiceTokenByID deletes the service token on primary. Used for expired tokens.
-func (a Authenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID) error {
+func (a *ApiAuthenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM service_tokens WHERE id = @id`
 	args := pgx.NamedArgs{"id": id}
 	_, err := a.db.Primary().Exec(ctx, query, args)
@@ -671,7 +699,7 @@ func (a Authenticator) deleteServiceTokenByID(ctx context.Context, id uuid.UUID)
 // findEffectiveOrgMembership returns the first effective org membership for an actor (user or identity),
 // including direct membership and membership via groups.
 // Exact port of Node.js orgDAL.findEffectiveOrgMembership.
-func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType auth.ActorType, actorID, orgID uuid.UUID, filterStatus string) (*membershipRow, error) {
+func (a *ApiAuthenticator) findEffectiveOrgMembership(ctx context.Context, actorType auth.ActorType, actorID, orgID uuid.UUID, filterStatus string) (*membershipRow, error) {
 	var actorCondition string
 	if actorType == auth.ActorTypeUser {
 		actorCondition = `(
@@ -728,7 +756,7 @@ func (a Authenticator) findEffectiveOrgMembership(ctx context.Context, actorType
 
 // findTrustedIPsByAuthMethod returns the parsed trusted IPs for an identity's auth method.
 // Exact port of Node.js identityDAL.getTrustedIpsByAuthMethod.
-func (a Authenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod auth.IdentityAuthMethod) ([]TrustedIP, error) {
+func (a *ApiAuthenticator) findTrustedIPsByAuthMethod(ctx context.Context, identityID uuid.UUID, authMethod auth.IdentityAuthMethod) ([]TrustedIP, error) {
 	var tableName string
 	switch authMethod {
 	case auth.IdentityAuthMethodUniversal:
@@ -794,7 +822,7 @@ type revocationRow struct {
 
 // assertTokenIsNotRevoked checks if the token or identity has been revoked.
 // Port of assertTokenIsNotRevoked in identity-access-token-service.ts:92-120.
-func (a Authenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID string, identityID uuid.UUID, issuedAtMs int64) error {
+func (a *ApiAuthenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID string, identityID uuid.UUID, issuedAtMs int64) error {
 	revocations, err := a.findActiveRevocationsForToken(ctx, tokenID, identityID)
 	if err != nil {
 		return errutil.DatabaseErr("Failed to check token revocation").WithErrf("assertTokenIsNotRevoked(tokenId=%s, identityId=%s): %w", tokenID, identityID, err)
@@ -823,7 +851,7 @@ func (a Authenticator) assertTokenIsNotRevoked(ctx context.Context, tokenID stri
 
 // findActiveRevocationsForToken returns active revocations for the token or identity.
 // Port of findActiveRevocationsForToken in identity-access-token-revocation-dal.ts:36-56.
-func (a Authenticator) findActiveRevocationsForToken(ctx context.Context, tokenID string, identityID uuid.UUID) ([]revocationRow, error) {
+func (a *ApiAuthenticator) findActiveRevocationsForToken(ctx context.Context, tokenID string, identityID uuid.UUID) ([]revocationRow, error) {
 	query := `
 		SELECT id, "revokedAt", "createdAt"
 		FROM identity_access_token_revocations
@@ -856,7 +884,7 @@ func (a Authenticator) findActiveRevocationsForToken(ctx context.Context, tokenI
 
 // checkAndDecrementUsesRemaining checks and decrements the usage counter for the token.
 // Port of usage tracking logic in fnValidateIdentityAccessTokenFast.
-func (a Authenticator) checkAndDecrementUsesRemaining(ctx context.Context, identityID uuid.UUID, tokenID string, numUsesLimit int64) error {
+func (a *ApiAuthenticator) checkAndDecrementUsesRemaining(ctx context.Context, identityID uuid.UUID, tokenID string, numUsesLimit int64) error {
 	key := identityTokenUsesRemainingKey(identityID.String(), tokenID)
 
 	// Get current usage counter

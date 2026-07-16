@@ -21,7 +21,7 @@ export const PkiSyncModalHeader = ({ destination, isConfigured }: Props) => {
         <div className="flex items-center gap-x-2 text-mineshaft-300">
           {destinationDetails.name} Certificate Sync
           <DocumentationLinkBadge
-            href={`https://infisical.com/docs/documentation/platform/pki/certificate-syncs/${destination}`}
+            href={`https://infisical.com/docs/documentation/platform/pki/applications/certificate-syncs/${destination}`}
           />
         </div>
         <p className="text-sm leading-4 text-mineshaft-400">

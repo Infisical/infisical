@@ -209,6 +209,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .where(`${TableName.Users}.id`, userId)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .select(
@@ -305,6 +306,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .whereIn(`${TableName.Users}.id`, userIds)
         .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
@@ -399,11 +401,34 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findProjectMembershipsByGroupIds = async (orgId: string, groupIds: string[]) => {
+    try {
+      const docs = await db
+        .replicaNode()(TableName.Membership)
+        .where({ [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project })
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .whereIn(`${TableName.Membership}.actorGroupId`, groupIds)
+        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("actorGroupId").withSchema(TableName.Membership).as("groupId"),
+          db.ref("id").as("projectId").withSchema(TableName.Project)
+        );
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project memberships by group ids" });
+    }
+  };
+
   return {
     findAllProjectMembers,
     findProjectGhostUser,
     findMembershipsByUsername,
     findProjectMembershipsByUserId,
-    findProjectMembershipsByUserIds
+    findProjectMembershipsByUserIds,
+    findProjectMembershipsByGroupIds
   };
 };

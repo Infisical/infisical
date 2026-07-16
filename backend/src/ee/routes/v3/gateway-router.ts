@@ -8,6 +8,7 @@ import { ApiDocsTags, GATEWAYS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
@@ -60,10 +61,13 @@ const AwsAuthMethodInputSchema = z
       .string()
       .trim()
       .min(1)
+      .max(255)
       .default("https://sts.amazonaws.com/")
       .describe(GATEWAYS.AUTH_METHOD.stsEndpoint),
     allowedPrincipalArns: validatePrincipalArns.describe(GATEWAYS.AUTH_METHOD.allowedPrincipalArns),
-    allowedAccountIds: validateAccountIds.describe(GATEWAYS.AUTH_METHOD.allowedAccountIds)
+    allowedAccountIds: validateAccountIds
+      .refine((val) => val.length <= 2048, "Allowed account IDs must be at most 2048 characters")
+      .describe(GATEWAYS.AUTH_METHOD.allowedAccountIds)
   })
   .refine((data) => data.allowedPrincipalArns.trim().length > 0 || data.allowedAccountIds.trim().length > 0, {
     message: "At least one of allowedPrincipalArns or allowedAccountIds must be set",
@@ -85,10 +89,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "createGateway",
       tags: [ApiDocsTags.GatewaysV3],
       body: z.object({
-        name: z.string().trim().min(1).max(64).describe(GATEWAYS.CREATE.name),
+        name: slugSchema({ field: "name" }).describe(GATEWAYS.CREATE.name),
         authMethod: SettableAuthMethodInputSchema.describe(GATEWAYS.CREATE.authMethod)
       }),
       response: {
@@ -142,6 +147,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/:gatewayId",
     config: { rateLimit: readLimit },
     schema: {
+      hide: false,
       operationId: "getGateway",
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
@@ -165,6 +171,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/:gatewayId",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "updateGateway",
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
@@ -246,6 +253,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     url: "/:gatewayId/token-auth/generate-enrollment-token",
     config: { rateLimit: writeLimit },
     schema: {
+      hide: false,
       operationId: "mintGatewayEnrollmentToken",
       tags: [ApiDocsTags.GatewaysV3],
       params: z.object({ gatewayId: z.string().trim().uuid() }),
@@ -288,8 +296,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       params: z.object({ gatewayId: z.string().trim().uuid() }),
       response: {
         200: z.object({
-          method: z.enum(["aws", "token"]),
-          deletedTokenCount: z.number()
+          method: z.enum(["aws", "token"])
         })
       }
     },
@@ -309,13 +316,12 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
             resourceType: "gateway",
             resourceId: req.params.gatewayId,
             method: result.method,
-            resourceName: result.resourceName,
-            deletedTokenCount: result.deletedTokenCount
+            resourceName: result.resourceName
           }
         }
       });
 
-      return { method: result.method, deletedTokenCount: result.deletedTokenCount };
+      return { method: result.method };
     }
   });
 

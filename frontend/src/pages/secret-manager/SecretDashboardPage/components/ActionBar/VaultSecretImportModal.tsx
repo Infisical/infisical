@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   defaultVaultConnectionId,
@@ -13,8 +14,12 @@ import {
   FormControl,
   Modal,
   ModalClose,
-  ModalContent
+  ModalContent,
+  Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle } from "@app/components/v3/generic/Alert";
+import { useBadgeOverflow } from "@app/components/v3/generic/DataGrid/hooks/use-badge-overflow";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultMounts, useGetVaultSecretPaths } from "@app/hooks/api/migration/queries";
 
@@ -35,6 +40,39 @@ type ContentProps = {
   onImport: (vaultPaths: string[], namespace: string, connectionId: string) => void;
 };
 
+// Cap the rendered path length so every badge stays a predictable size. Longer
+// paths are truncated from the start with a leading ellipsis so the meaningful
+// tail (including the wildcard `+`) stays visible.
+const MAX_PATH_LENGTH = 30;
+
+const getDisplayPath = (path: string) =>
+  path.length > MAX_PATH_LENGTH ? `…${path.slice(path.length - MAX_PATH_LENGTH)}` : path;
+
+const renderWildcardPath = (path: string) => {
+  const isTruncated = path.length > MAX_PATH_LENGTH;
+  const visiblePath = isTruncated ? path.slice(path.length - MAX_PATH_LENGTH) : path;
+
+  let position = 0;
+
+  return (
+    <span title={path}>
+      {isTruncated && "…"}
+      {visiblePath.split(/(\+)/).map((part) => {
+        const key = `${path}-${position}`;
+        position += part.length;
+
+        return part === "+" ? (
+          <code key={key} className="font-semibold text-warning">
+            +
+          </code>
+        ) : (
+          part
+        );
+      })}
+    </span>
+  );
+};
+
 const Content = ({ onClose, environment, secretPath, appConnections, onImport }: ContentProps) => {
   const hasAppConnections = appConnections.length > 0;
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(
@@ -48,12 +86,14 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
 
   const activeConnectionId = hasAppConnections ? (selectedConnectionId ?? undefined) : undefined;
 
-  const { data: secretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
+  const { data: vaultSecretPaths, isLoading: isLoadingPaths } = useGetVaultSecretPaths(
     shouldFetchPaths,
     selectedNamespace ?? undefined,
     selectedMountPath ?? undefined,
     activeConnectionId
   );
+  const secretPaths = vaultSecretPaths?.secretPaths;
+  const skippedWildcardPaths = vaultSecretPaths?.skippedWildcardPaths ?? [];
   const { data: mounts, isLoading: isLoadingMounts } = useGetVaultMounts(
     shouldFetchMounts,
     selectedNamespace ?? undefined,
@@ -61,6 +101,17 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
   );
 
   const kvMounts = mounts?.filter((mount) => mount.type === "kv" || mount.type.startsWith("kv"));
+
+  const badgeContainerRef = useRef<HTMLDivElement>(null);
+  const { visibleItems: visibleSkippedPaths, hiddenCount } = useBadgeOverflow({
+    items: skippedWildcardPaths,
+    getLabel: (path) => getDisplayPath(path),
+    containerRef: badgeContainerRef,
+    lineCount: 3,
+    className: "font-mono",
+    overflowBadgeWidth: 60
+  });
+  const hiddenSkippedPaths = skippedWildcardPaths.slice(visibleSkippedPaths.length);
 
   const handleConnectionChange = (id: string) => {
     setSelectedConnectionId(id);
@@ -209,6 +260,55 @@ const Content = ({ onClose, environment, secretPath, appConnections, onImport }:
           </p>
         </>
       </FormControl>
+
+      {skippedWildcardPaths.length > 0 && (
+        <Alert variant="warning" className="mb-4">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {skippedWildcardPaths.length} secret path
+            {skippedWildcardPaths.length > 1 ? "s are" : " is"} unavailable
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              {skippedWildcardPaths.length} secret path
+              {skippedWildcardPaths.length > 1 ? "s are" : " is"} not available for selection. Vault
+              imports don&apos;t support wildcard (<code className="text-yellow-500/80">+</code>){" "}
+              paths. In Vault, update the policy on the App role or token behind this App Connection
+              to grant access to absolute paths instead.
+            </p>
+            <div ref={badgeContainerRef} className="mt-2 flex flex-wrap items-start gap-1">
+              {visibleSkippedPaths.map((path) => (
+                <Badge key={path} variant="warning" className="font-mono text-foreground/80">
+                  {renderWildcardPath(path)}
+                </Badge>
+              ))}
+              {hiddenCount > 0 && (
+                <Tooltip
+                  className="max-w-sm p-2"
+                  content={
+                    <div className="flex flex-wrap gap-1">
+                      {hiddenSkippedPaths.map((path) => (
+                        <Badge
+                          isTruncatable
+                          key={path}
+                          variant="warning"
+                          className="font-mono text-foreground/80"
+                        >
+                          {renderWildcardPath(path)}
+                        </Badge>
+                      ))}
+                    </div>
+                  }
+                >
+                  <Badge variant="warning" className="cursor-default font-mono">
+                    +{hiddenCount} more
+                  </Badge>
+                </Tooltip>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="mt-8 flex space-x-4">
         <Button

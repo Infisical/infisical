@@ -115,12 +115,13 @@ export const fetchOrganizationById = async (id: string) => {
   return organization;
 };
 
-export const useGetOrganizationById = (id: string) => {
+export const useGetOrganizationById = (id: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: organizationKeys.getOrgById(id),
     queryFn: async () => {
       return fetchOrganizationById(id);
-    }
+    },
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -170,6 +171,7 @@ export const useUpdateOrg = () => {
       maxSharedSecretLifetime,
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
+      allowCrossProjectSecretSharing,
       secretShareBrandConfig
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
@@ -193,11 +195,30 @@ export const useUpdateOrg = () => {
         maxSharedSecretLifetime,
         maxSharedSecretViewLimit,
         blockDuplicateSecretSyncDestinations,
+        allowCrossProjectSecretSharing,
         secretShareBrandConfig
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+
+      if (variables.allowCrossProjectSecretSharing !== undefined) {
+        const secretLabels = new Set([
+          "secrets",
+          "secrets-import-sec",
+          "imported-folders-all-envs",
+          "secret-reference-tree",
+          "secret-references"
+        ]);
+        queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) &&
+            query.queryKey.length >= 2 &&
+            (secretLabels.has(query.queryKey[0] as string) ||
+              secretLabels.has(query.queryKey[1] as string) ||
+              query.queryKey[0] === "dashboard")
+        });
+      }
     }
   });
 };

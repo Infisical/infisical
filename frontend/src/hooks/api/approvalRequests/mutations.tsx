@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { signerKeys } from "@app/hooks/api/signers/queries";
 
 import { approvalRequestQuery } from "./queries";
 import {
@@ -10,6 +11,11 @@ import {
   TCreateApprovalRequestDTO,
   TRejectApprovalRequestDTO
 } from "./types";
+
+const invalidateApprovalRequests = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+  queryClient.invalidateQueries({ queryKey: signerKeys.requestsAll() });
+};
 
 export const useCreateApprovalRequest = () => {
   const queryClient = useQueryClient();
@@ -21,9 +27,7 @@ export const useCreateApprovalRequest = () => {
       );
       return data.request;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
-    }
+    onSuccess: () => invalidateApprovalRequests(queryClient)
   });
 };
 
@@ -42,9 +46,7 @@ export const useApproveApprovalRequest = () => {
       );
       return data.request;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
-    }
+    onSuccess: () => invalidateApprovalRequests(queryClient)
   });
 };
 
@@ -58,9 +60,7 @@ export const useRejectApprovalRequest = () => {
       );
       return data.request;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
-    }
+    onSuccess: () => invalidateApprovalRequests(queryClient)
   });
 };
 
@@ -73,8 +73,6 @@ export const useCancelApprovalRequest = () => {
       );
       return data.request;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
-    }
+    onSuccess: () => invalidateApprovalRequests(queryClient)
   });
 };

@@ -27,6 +27,7 @@ import { sanitizedSshHostGroup } from "@app/ee/services/ssh-host-group/ssh-host-
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
+import { JobState } from "@app/queue/queue-service";
 import { projectCreationLimit, readLimit, requestAccessLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -217,7 +218,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.CREATE.projectDescription),
-        slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
+        slug: slugSchema({ min: 5, max: 64 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
@@ -435,24 +436,30 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      // Soft delete: returns fast (single UPDATE). The async cleanup worker hard-deletes the project
+      // after its grace period.
       const project = await server.services.project.deleteProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
         filter: {
           type: ProjectFilterType.ID,
           projectId: req.params.projectId
-        },
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        }
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.params.projectId,
+        projectId: project.id,
         event: {
           type: EventType.DELETE_PROJECT,
-          metadata: project
+          metadata: {
+            id: project.id,
+            name: project.name,
+            softDelete: true
+          }
         }
       });
 
@@ -560,6 +567,83 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       return {
         project
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/secret-blind-index",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "enableProjectSecretBlindIndex",
+      tags: [ApiDocsTags.Projects],
+      description: "Enable secret blind indexing for duplicate detection",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      await server.services.project.enableSecretBlindIndex({
+        projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
+
+      return { message: "Successfully enabled secret blind indexing" };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secret-blind-index/status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getProjectSecretBlindIndexStatus",
+      tags: [ApiDocsTags.Projects],
+      description: "Get secret blind index migration status",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          status: z.nativeEnum(JobState),
+          message: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      return server.services.project.getSecretBlindIndexMigrationStatus({
+        projectId: req.params.projectId,
+        actorAuthMethod: req.permission.authMethod,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId
+      });
     }
   });
 

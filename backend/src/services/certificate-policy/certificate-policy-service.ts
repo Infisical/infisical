@@ -1007,7 +1007,7 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Failed to delete certificate policy" });
     }
 
-    return deletedTemplate as TCertificatePolicy;
+    return deletedTemplate;
   };
 
   const validateCertificateRequest = async (

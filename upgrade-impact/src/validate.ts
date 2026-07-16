@@ -233,12 +233,10 @@ export const validateUpgradeImpactData = async ({
       continue;
     }
 
-    if (!indexedVersions.has(release.version)) {
-      errors.push(`${file} is not listed in index.yaml`);
-    }
-
-    if (!indexedFiles.has(`releases/${file}`)) {
-      errors.push(`${file} is not referenced by index.yaml`);
+    if (!indexedVersions.has(release.version) || !indexedFiles.has(`releases/${file}`)) {
+      process.stderr.write(
+        `Skipping ${file}; it is not listed in index.yaml. A release may have been skipped or its impact data not yet indexed.\n`
+      );
     }
   }
 

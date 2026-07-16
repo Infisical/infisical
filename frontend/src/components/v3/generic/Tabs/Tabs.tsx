@@ -28,12 +28,13 @@ const tabsListVariants = cva(
       variant: {
         filled: "border p-1 border-border",
         project:
-          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
-        org: "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
+          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
+        org: "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
         "sub-org":
-          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
+          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
         admin:
-          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2"
+          "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2",
+        pam: "bg-transparent group-data-[orientation=horizontal]/tabs:h-11 group-data-[orientation=horizontal]/tabs:w-full group-data-[orientation=horizontal]/tabs:justify-start group-data-[orientation=horizontal]/tabs:border-b group-data-[orientation=horizontal]/tabs:border-border group-data-[orientation=vertical]/tabs:gap-2"
       }
     },
     defaultVariants: {
@@ -47,7 +48,8 @@ const STYLE_BY_VARIANT = {
   project: "underline",
   org: "underline",
   "sub-org": "underline",
-  admin: "underline"
+  admin: "underline",
+  pam: "underline"
 } as const;
 
 function TabsList({
@@ -79,7 +81,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
         "group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px]",
         "focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50",
         "has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 [&_svg]:pointer-events-none",
-        "group-data-[style=underline]/tabs-list:bg-transparent [&_svg]:shrink-0",
+        "group-data-[style=underline]/tabs-list:bg-transparent group-data-[orientation=horizontal]/tabs:group-data-[style=underline]/tabs-list:flex-none [&_svg]:shrink-0",
         "[&_svg:not([class*='size-'])]:size-4",
         "data-[state=active]:text-foreground",
         "group-data-[style=filled]/tabs-list:data-[state=active]:border-container-hover group-data-[style=filled]/tabs-list:data-[state=active]:bg-container-hover",
@@ -92,6 +94,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
         "group-data-[variant=org]/tabs-list:after:bg-org",
         "group-data-[variant=sub-org]/tabs-list:after:bg-sub-org",
         "group-data-[variant=admin]/tabs-list:after:bg-admin",
+        "group-data-[variant=pam]/tabs-list:after:bg-product-pam",
         className
       )}
       {...props}
@@ -103,7 +106,7 @@ function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 text-sm text-foreground outline-none", className)}
+      className={cn("mt-3 flex-1 text-sm text-foreground outline-none", className)}
       {...props}
     />
   );

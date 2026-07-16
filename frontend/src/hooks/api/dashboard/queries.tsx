@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -11,8 +11,11 @@ import {
   DashboardProjectSecretsOverviewResponse,
   DashboardSecretsOrderBy,
   DashboardSecretValue,
+  FolderMoveBlockingType,
+  FolderMoveEligibilityResponse,
   TDashboardProjectSecretsQuickSearch,
   TDashboardProjectSecretsQuickSearchResponse,
+  TFolderMoveDestinationCheck,
   TGetAccessibleSecretsDTO,
   TGetDashboardProjectSecretsByKeys,
   TGetDashboardProjectSecretsDetailsDTO,
@@ -77,13 +80,34 @@ export const dashboardKeys = {
       { projectId, secretPath, environment, filterByAction }
     ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
-  getSecretValue: ({ environment, secretPath, secretKey, isOverride }: TGetSecretValueDTO) =>
+  getSecretValue: ({
+    projectId,
+    environment,
+    secretPath,
+    secretKey,
+    isOverride
+  }: TGetSecretValueDTO) =>
     [
       ...dashboardKeys.getSecretValuesRoot(),
+      projectId,
       environment,
       secretPath,
       secretKey,
       isOverride
+    ] as const,
+  getFolderMoveEligibility: (folderId: string) =>
+    [...dashboardKeys.all(), "folder-move-eligibility", folderId] as const,
+  getFolderMoveDestinationEligibility: ({
+    folderId,
+    destinationEnvironment,
+    destinationPath
+  }: TFolderMoveDestinationCheck) =>
+    [
+      ...dashboardKeys.all(),
+      "folder-move-destination-eligibility",
+      folderId,
+      destinationEnvironment,
+      destinationPath
     ] as const
 };
 
@@ -183,6 +207,7 @@ export const useGetProjectSecretsOverview = (
     includeDynamicSecrets,
     includeSecretRotations,
     includeHoneyTokens,
+    includeProxiedServices,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -216,6 +241,7 @@ export const useGetProjectSecretsOverview = (
       includeDynamicSecrets,
       includeSecretRotations,
       includeHoneyTokens,
+      includeProxiedServices,
       environments
     }),
     queryFn: async () => {
@@ -234,6 +260,7 @@ export const useGetProjectSecretsOverview = (
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
+        includeProxiedServices,
         environments
       });
 
@@ -256,6 +283,9 @@ export const useGetProjectSecretsOverview = (
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
       const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
       const uniqueHoneyTokens = honeyTokens ? unique(honeyTokens, (i) => i.name) : [];
+      const uniqueProxiedServices = select.proxiedServices
+        ? unique(select.proxiedServices, (i) => i.name)
+        : [];
 
       return {
         ...select,
@@ -272,7 +302,8 @@ export const useGetProjectSecretsOverview = (
         totalUniqueFoldersInPage: uniqueFolders.length,
         totalUniqueSecretImportsInPage: uniqueSecretImports.length,
         totalUniqueSecretRotationsInPage: uniqueSecretRotations.length,
-        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length
+        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length,
+        totalUniqueProxiedServicesInPage: uniqueProxiedServices.length
       };
     }, []),
     placeholderData: (previousData) => previousData
@@ -295,6 +326,7 @@ export const useGetProjectSecretsDetails = (
     includeDynamicSecrets,
     includeSecretRotations,
     includeHoneyTokens,
+    includeProxiedServices,
     tags
   }: TGetDashboardProjectSecretsDetailsDTO,
   options?: Omit<
@@ -334,6 +366,7 @@ export const useGetProjectSecretsDetails = (
       includeDynamicSecrets,
       includeSecretRotations,
       includeHoneyTokens,
+      includeProxiedServices,
       tags
     }),
     queryFn: async () => {
@@ -352,6 +385,7 @@ export const useGetProjectSecretsDetails = (
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
+        includeProxiedServices,
         tags
       });
 
@@ -545,3 +579,117 @@ export const useGetSecretValue = (
     ...options
   });
 };
+
+export const fetchFolderMoveEligibility = async (
+  folderId: string,
+  destination?: { destinationEnvironment: string; destinationPath: string }
+) => {
+  const { data } = await apiRequest.get<FolderMoveEligibilityResponse>(
+    `/api/v1/dashboard/folder/move-check/${folderId}`,
+    {
+      params: destination
+        ? {
+            destinationEnvironment: destination.destinationEnvironment,
+            destinationPath: destination.destinationPath
+          }
+        : undefined
+    }
+  );
+
+  return data;
+};
+
+// fans out a recursive move-eligibility check per selected folder id and aggregates the results.
+// a move is only allowed when every selected folder resolves to canMove === true.
+export const useGetFoldersMoveEligibility = (folderIds: string[], enabled = true) =>
+  useQueries({
+    queries: folderIds.map((folderId) => ({
+      queryKey: dashboardKeys.getFolderMoveEligibility(folderId),
+      queryFn: () => fetchFolderMoveEligibility(folderId),
+      enabled: enabled && Boolean(folderId),
+
+      staleTime: 0,
+      gcTime: 0
+    })),
+    combine: (results) => {
+      const isChecking = results.some((result) => result.isLoading || result.isFetching);
+      const canMove =
+        results.length > 0 &&
+        results.every((result) => result.isSuccess && Boolean(result.data?.canMove));
+
+      // the same folder name can appear once per environment, so dedupe by name. the UI only needs
+      // to surface which folder is blocked and why (type), not the per-folder path.
+      const seen = new Set<string>();
+      const blockedFolders: {
+        folderName: string;
+        blockingType?: FolderMoveBlockingType;
+        blockingPath?: string;
+      }[] = [];
+      results.forEach((result) => {
+        const { data } = result;
+        if (data && !data.canMove && !seen.has(data.folderName)) {
+          seen.add(data.folderName);
+          blockedFolders.push({
+            folderName: data.folderName,
+            blockingType: data.blockingType,
+            blockingPath: data.blockingPath
+          });
+        }
+      });
+
+      return { isChecking, canMove, blockedFolders };
+    }
+  });
+
+export type FolderMoveBlockedDestination = {
+  folderName: string;
+  destinationEnvironment: string;
+  blockingPath?: string;
+  policyName?: string;
+};
+
+// fans out a per-(folder, destination) check to see whether the chosen destination is governed by a secret
+// approval policy. the move is blocked when any check reports destinationBlocked, and fail-closed on error (the
+// backend move would reject it anyway), so the modal never enables a move it cannot complete.
+export const useGetFoldersMoveDestinationEligibility = (checks: TFolderMoveDestinationCheck[]) =>
+  useQueries({
+    queries: checks.map((check) => ({
+      queryKey: dashboardKeys.getFolderMoveDestinationEligibility(check),
+      queryFn: () =>
+        fetchFolderMoveEligibility(check.folderId, {
+          destinationEnvironment: check.destinationEnvironment,
+          destinationPath: check.destinationPath
+        }),
+      enabled: Boolean(check.folderId && check.destinationEnvironment)
+    })),
+    combine: (results) => {
+      const isChecking = results.some((result) => result.isLoading);
+      const hasError = results.some((result) => result.isError);
+
+      // dedupe by folder + destination environment, since the same folder name can be blocked in one
+      // environment but not another (relevant for the multi-environment move).
+      const seen = new Set<string>();
+      const blockedDestinations: FolderMoveBlockedDestination[] = [];
+      results.forEach((result, index) => {
+        const check = checks[index];
+        if (!check) return;
+        const { data } = result;
+        if (result.isSuccess && data?.destinationBlocked) {
+          const key = `${check.folderName}:${check.destinationEnvironment}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            blockedDestinations.push({
+              folderName: check.folderName,
+              destinationEnvironment: check.destinationEnvironment,
+              blockingPath: data.destinationBlockingPath,
+              policyName: data.destinationPolicyName
+            });
+          }
+        }
+      });
+
+      const isDestinationBlocked = hasError || blockedDestinations.length > 0;
+
+      return { isChecking, isDestinationBlocked, blockedDestinations, hasError };
+    }
+  });

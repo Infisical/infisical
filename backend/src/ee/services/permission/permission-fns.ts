@@ -1,5 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import handlebars from "handlebars";
 import { z } from "zod";
 
 import { TOrganizations } from "@app/db/schemas";
@@ -49,6 +50,41 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
   }
 }
 
+// Personal secret overrides can be managed either by the dedicated PersonalOverride action or by
+// whoever already has the matching shared-secret action (Create/Edit/Delete). This lets a role grant
+// personal-override-only access while existing shared-secret writers keep managing overrides.
+export function throwIfMissingSecretPersonalOverridePermission(
+  permission: MongoAbility<ProjectPermissionSet> | PureAbility,
+  fallbackAction: Extract<
+    ProjectPermissionSecretActions,
+    ProjectPermissionSecretActions.Create | ProjectPermissionSecretActions.Edit | ProjectPermissionSecretActions.Delete
+  >,
+  subjectFields?: SecretSubjectFields
+) {
+  try {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.PersonalOverride,
+        subject(ProjectPermissionSub.Secrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.PersonalOverride,
+        ProjectPermissionSub.Secrets
+      );
+    }
+  } catch {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        fallbackAction,
+        subject(ProjectPermissionSub.Secrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(fallbackAction, ProjectPermissionSub.Secrets);
+    }
+  }
+}
+
 export function hasSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet>,
   action: Extract<
@@ -75,6 +111,62 @@ export function hasSecretReadValueOrDescribePermission(
   }
 
   return canNewPermission || canOldPermission;
+}
+
+// authorizes moving secrets from one (environment, path) to another at the path level: a move is a
+// delete-at-source + create/edit-at-destination, and the source read also requires read-value/describe.
+// this is path-scoped (no per-secret name/tag conditions), so a single call covers a whole batch of
+// secrets sharing the same source and destination path. throws ForbiddenError on the first missing grant.
+export function validateSecretMovePermissions(
+  permission: MongoAbility<ProjectPermissionSet> | PureAbility,
+  {
+    sourceEnvironment,
+    sourceSecretPath,
+    destinationEnvironment,
+    destinationSecretPath
+  }: {
+    sourceEnvironment: string;
+    sourceSecretPath: string;
+    destinationEnvironment: string;
+    destinationSecretPath: string;
+  }
+) {
+  const sourceActions = [
+    ProjectPermissionSecretActions.Delete,
+    ProjectPermissionSecretActions.DescribeSecret,
+    ProjectPermissionSecretActions.ReadValue
+  ] as const;
+  const destinationActions = [ProjectPermissionSecretActions.Create, ProjectPermissionSecretActions.Edit] as const;
+
+  for (const destinationAction of destinationActions) {
+    ForbiddenError.from(permission).throwUnlessCan(
+      destinationAction,
+      subject(ProjectPermissionSub.Secrets, {
+        environment: destinationEnvironment,
+        secretPath: destinationSecretPath
+      })
+    );
+  }
+
+  for (const sourceAction of sourceActions) {
+    if (
+      sourceAction === ProjectPermissionSecretActions.ReadValue ||
+      sourceAction === ProjectPermissionSecretActions.DescribeSecret
+    ) {
+      throwIfMissingSecretReadValueOrDescribePermission(permission, sourceAction, {
+        environment: sourceEnvironment,
+        secretPath: sourceSecretPath
+      });
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        sourceAction,
+        subject(ProjectPermissionSub.Secrets, {
+          environment: sourceEnvironment,
+          secretPath: sourceSecretPath
+        })
+      );
+    }
+  }
 }
 
 const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
@@ -366,11 +458,27 @@ const expandLegacyForbidActions = <T extends RawRuleOf<MongoAbility<ProjectPermi
   });
 };
 
+const hbsStripPrefix = (text: string, prefix: string) => {
+  const textStr = String(text || "");
+  if (!textStr) return textStr;
+
+  return textStr.startsWith(prefix) ? textStr.substring(prefix.length) : textStr;
+};
+
+const handlebarsClient = (() => {
+  const hbs = handlebars.create();
+
+  hbs.registerHelper("stripPrefix", hbsStripPrefix);
+
+  return hbs;
+})();
+
 export {
   assertPermissionBoundary,
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   expandLegacyForbidActions,
+  handlebarsClient,
   isAuthMethodSaml,
   validateOrgSSO,
   validatePrivilegeChangeOperation

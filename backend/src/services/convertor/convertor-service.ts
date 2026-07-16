@@ -9,7 +9,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 type TConvertorServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
-  groupDAL: Pick<TGroupDALFactory, "findOne">;
+  groupDAL: Pick<TGroupDALFactory, "findOneByNameAndOrgScope">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
 };
 
@@ -110,7 +110,7 @@ export const convertorServiceFactory = ({
   };
 
   const getGroupIdFromName = async (name: string, orgId: string) => {
-    const group = await groupDAL.findOne({ orgId, name });
+    const group = await groupDAL.findOneByNameAndOrgScope(name, orgId);
     if (!group) throw new NotFoundError({ message: `Failed to find group with name ${name}` });
     return { groupId: group.id, group };
   };

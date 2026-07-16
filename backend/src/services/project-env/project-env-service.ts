@@ -14,7 +14,14 @@ import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
-import { TCreateEnvDTO, TDeleteEnvDTO, TGetEnvDTO, TRestoreEnvDTO, TUpdateEnvDTO } from "./project-env-types";
+import {
+  TCreateEnvDTO,
+  TDeleteEnvDTO,
+  TGetEnvBySlugDTO,
+  TGetEnvDTO,
+  TRestoreEnvDTO,
+  TUpdateEnvDTO
+} from "./project-env-types";
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
@@ -371,9 +378,16 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.deleteAfter === null) {
+        if (!target || target.projectId !== projectId || !target.deleteAfter) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "RestoreEnvironment"
+          });
+        }
+
+        if (new Date(target.deleteAfter).getTime() <= Date.now()) {
+          throw new BadRequestError({
+            message: "Cannot restore environment: its deletion grace period has already elapsed.",
             name: "RestoreEnvironment"
           });
         }
@@ -438,11 +452,42 @@ export const projectEnvServiceFactory = ({
     return environment;
   };
 
+  const getEnvironmentBySlug = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    slug
+  }: TGetEnvBySlugDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+
+    const environment = await projectEnvDAL.findOne({ projectId, slug });
+
+    if (!environment) {
+      throw new NotFoundError({
+        message: `Environment with slug '${slug}' in project with ID '${projectId}' not found`
+      });
+    }
+
+    return environment;
+  };
+
   return {
     createEnvironment,
     updateEnvironment,
     deleteEnvironment,
     restoreEnvironment,
-    getEnvironmentById
+    getEnvironmentById,
+    getEnvironmentBySlug
   };
 };

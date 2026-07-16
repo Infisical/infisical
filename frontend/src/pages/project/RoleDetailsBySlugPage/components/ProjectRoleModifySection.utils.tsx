@@ -21,21 +21,19 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,
   ProjectPermissionHoneyTokenActions,
+  ProjectPermissionHsmConnectorActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
-  ProjectPermissionPamAccountActions,
-  ProjectPermissionPamAccountPolicyActions,
-  ProjectPermissionPamDiscoveryActions,
-  ProjectPermissionPamInsightsActions,
-  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
+  ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -63,7 +61,9 @@ const AuditLogsPolicyActionSchema = z.object({
 });
 
 const InsightsPolicyActionSchema = z.object({
-  [ProjectPermissionInsightsActions.Read]: z.boolean().optional()
+  [ProjectPermissionInsightsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionInsightsActions.GenerateReport]: z.boolean().optional(),
+  [ProjectPermissionInsightsActions.DeleteReport]: z.boolean().optional()
 });
 
 const HoneyTokenPolicyActionSchema = z.object({
@@ -73,6 +73,14 @@ const HoneyTokenPolicyActionSchema = z.object({
   [ProjectPermissionHoneyTokenActions.Edit]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Reset]: z.boolean().optional(),
   [ProjectPermissionHoneyTokenActions.Revoke]: z.boolean().optional()
+});
+
+const ProxiedServicePolicyActionSchema = z.object({
+  [ProjectPermissionProxiedServiceActions.Read]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Create]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.Proxy]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -100,7 +108,8 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional(),
+  [ProjectPermissionSecretActions.PersonalOverride]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -119,6 +128,7 @@ const CmekPolicyActionSchema = z.object({
   [ProjectPermissionCmekActions.Decrypt]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Sign]: z.boolean().optional(),
   [ProjectPermissionCmekActions.Verify]: z.boolean().optional(),
+  [ProjectPermissionCmekActions.Rotate]: z.boolean().optional(),
   [ProjectPermissionCmekActions.ExportPrivateKey]: z.boolean().optional()
 });
 
@@ -193,6 +203,15 @@ const AppConnectionPolicyActionSchema = z.object({
   [ProjectPermissionAppConnectionActions.RotateCredentials]: z.boolean().optional()
 });
 
+const HsmConnectorPolicyActionSchema = z.object({
+  [ProjectPermissionHsmConnectorActions.Read]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Create]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Test]: z.boolean().optional(),
+  [ProjectPermissionHsmConnectorActions.Attach]: z.boolean().optional()
+});
+
 const KmipPolicyActionSchema = z.object({
   [ProjectPermissionKmipActions.ReadClients]: z.boolean().optional(),
   [ProjectPermissionKmipActions.CreateClients]: z.boolean().optional(),
@@ -249,39 +268,6 @@ const SecretEventsPolicyActionSchema = z.object({
   [ProjectPermissionSecretEventActions.SubscribeToImportMutationEvents]: z.boolean().optional()
 });
 
-const PamAccountPolicyActionSchema = z.object({
-  [ProjectPermissionPamAccountActions.Access]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Create]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Read]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionPamAccountActions.ReadCredentials]: z.boolean().optional()
-});
-
-const PamSessionPolicyActionSchema = z.object({
-  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional(),
-  [ProjectPermissionPamSessionActions.Terminate]: z.boolean().optional()
-});
-
-const PamAccountPolicyPolicyActionSchema = z.object({
-  [ProjectPermissionPamAccountPolicyActions.Read]: z.boolean().optional(),
-  [ProjectPermissionPamAccountPolicyActions.Create]: z.boolean().optional(),
-  [ProjectPermissionPamAccountPolicyActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionPamAccountPolicyActions.Delete]: z.boolean().optional()
-});
-
-const PamDiscoveryPolicyActionSchema = z.object({
-  [ProjectPermissionPamDiscoveryActions.RunScan]: z.boolean().optional(),
-  [ProjectPermissionPamDiscoveryActions.Create]: z.boolean().optional(),
-  [ProjectPermissionPamDiscoveryActions.Read]: z.boolean().optional(),
-  [ProjectPermissionPamDiscoveryActions.Edit]: z.boolean().optional(),
-  [ProjectPermissionPamDiscoveryActions.Delete]: z.boolean().optional()
-});
-
-const PamInsightsPolicyActionSchema = z.object({
-  [ProjectPermissionPamInsightsActions.Read]: z.boolean().optional()
-});
-
 const McpEndpointPolicyActionSchema = z.object({
   [ProjectPermissionMcpEndpointActions.Read]: z.boolean().optional(),
   [ProjectPermissionMcpEndpointActions.Create]: z.boolean().optional(),
@@ -309,6 +295,12 @@ const ApprovalRequestPolicyActionSchema = z.object({
 const ApprovalRequestGrantPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestGrantActions.Read]: z.boolean().optional(),
   [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
+});
+
+const ProjectFolderGrantPolicyActionSchema = z.object({
+  [ProjectPermissionProjectFolderGrantActions.ReadGrant]: z.boolean().optional(),
+  [ProjectPermissionProjectFolderGrantActions.CreateGrant]: z.boolean().optional(),
+  [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: z.boolean().optional()
 });
 
 const SecretApprovalRequestPolicyActionSchema = z.object({
@@ -693,6 +685,7 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.HsmConnectors]: HsmConnectorPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.PkiSyncs]: PkiSyncPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -712,7 +705,18 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Integrations]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Webhooks]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.ServiceTokens]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.HoneyTokens]: HoneyTokenPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.HoneyTokens]: HoneyTokenPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.ProxiedServices]: ProxiedServicePolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.Settings]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
@@ -823,31 +827,6 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.PamFolders]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.PamResources]: GeneralPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
-      [ProjectPermissionSub.PamDomains]: GeneralPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
-      [ProjectPermissionSub.PamAccounts]: PamAccountPolicyActionSchema.extend({
-        inverted: z.boolean().optional(),
-        conditions: ConditionSchema
-      })
-        .array()
-        .default([]),
-      [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.PamAccountPolicies]: PamAccountPolicyPolicyActionSchema.array().default(
-        []
-      ),
-      [ProjectPermissionSub.PamDiscovery]: PamDiscoveryPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.PamInsights]: PamInsightsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.McpEndpoints]: McpEndpointPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -861,6 +840,12 @@ export const projectRoleFormSchema = z.object({
       ),
       [ProjectPermissionSub.ApprovalRequestGrants]:
         ApprovalRequestGrantPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.ProjectFolderGrant]: ProjectFolderGrantPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SecretApprovalRequest]:
         SecretApprovalRequestPolicyActionSchema.array().default([])
     })
@@ -910,13 +895,13 @@ type TConditionalFields =
   | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.SecretEventSubscriptions
   | ProjectPermissionSub.AppConnections
-  | ProjectPermissionSub.PamAccounts
-  | ProjectPermissionSub.PamResources
-  | ProjectPermissionSub.PamDomains
   | ProjectPermissionSub.McpEndpoints
   | ProjectPermissionSub.Member
   | ProjectPermissionSub.Groups
-  | ProjectPermissionSub.Commits;
+  | ProjectPermissionSub.Commits
+  | ProjectPermissionSub.HoneyTokens
+  | ProjectPermissionSub.ProxiedServices
+  | ProjectPermissionSub.ProjectFolderGrant;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -938,13 +923,13 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEventSubscriptions ||
   subject === ProjectPermissionSub.AppConnections ||
-  subject === ProjectPermissionSub.PamAccounts ||
-  subject === ProjectPermissionSub.PamResources ||
-  subject === ProjectPermissionSub.PamDomains ||
   subject === ProjectPermissionSub.McpEndpoints ||
   subject === ProjectPermissionSub.Member ||
   subject === ProjectPermissionSub.Groups ||
-  subject === ProjectPermissionSub.Commits;
+  subject === ProjectPermissionSub.Commits ||
+  subject === ProjectPermissionSub.HoneyTokens ||
+  subject === ProjectPermissionSub.ProxiedServices ||
+  subject === ProjectPermissionSub.ProjectFolderGrant;
 
 const CONDITION_DISPLAY_ORDER = [
   "userEmail",
@@ -1064,6 +1049,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.Webhooks,
         ProjectPermissionSub.ServiceTokens,
         ProjectPermissionSub.HoneyTokens,
+        ProjectPermissionSub.ProxiedServices,
         ProjectPermissionSub.Settings,
         ProjectPermissionSub.Environments,
         ProjectPermissionSub.AuditLogs,
@@ -1086,13 +1072,12 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEventSubscriptions,
         ProjectPermissionSub.AppConnections,
-        ProjectPermissionSub.PamFolders,
-        ProjectPermissionSub.PamResources,
-        ProjectPermissionSub.PamDomains,
+        ProjectPermissionSub.HsmConnectors,
         ProjectPermissionSub.McpEndpoints,
         ProjectPermissionSub.McpServers,
         ProjectPermissionSub.McpActivityLogs,
-        ProjectPermissionSub.Insights
+        ProjectPermissionSub.Insights,
+        ProjectPermissionSub.ProjectFolderGrant
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -1220,6 +1205,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
+          const canPersonalOverride = action.includes(
+            ProjectPermissionSecretActions.PersonalOverride
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1230,6 +1218,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
+            [ProjectPermissionSecretActions.PersonalOverride]: canPersonalOverride,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1412,6 +1401,72 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.HoneyTokens) {
+          formVal[subject]!.push({
+            [ProjectPermissionHoneyTokenActions.Read]: action.includes(
+              ProjectPermissionHoneyTokenActions.Read
+            ),
+            [ProjectPermissionHoneyTokenActions.ReadCredentials]: action.includes(
+              ProjectPermissionHoneyTokenActions.ReadCredentials
+            ),
+            [ProjectPermissionHoneyTokenActions.Create]: action.includes(
+              ProjectPermissionHoneyTokenActions.Create
+            ),
+            [ProjectPermissionHoneyTokenActions.Edit]: action.includes(
+              ProjectPermissionHoneyTokenActions.Edit
+            ),
+            [ProjectPermissionHoneyTokenActions.Reset]: action.includes(
+              ProjectPermissionHoneyTokenActions.Reset
+            ),
+            [ProjectPermissionHoneyTokenActions.Revoke]: action.includes(
+              ProjectPermissionHoneyTokenActions.Revoke
+            ),
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.ProxiedServices) {
+          formVal[subject]!.push({
+            [ProjectPermissionProxiedServiceActions.Read]: action.includes(
+              ProjectPermissionProxiedServiceActions.Read
+            ),
+            [ProjectPermissionProxiedServiceActions.Create]: action.includes(
+              ProjectPermissionProxiedServiceActions.Create
+            ),
+            [ProjectPermissionProxiedServiceActions.Edit]: action.includes(
+              ProjectPermissionProxiedServiceActions.Edit
+            ),
+            [ProjectPermissionProxiedServiceActions.Delete]: action.includes(
+              ProjectPermissionProxiedServiceActions.Delete
+            ),
+            [ProjectPermissionProxiedServiceActions.Proxy]: action.includes(
+              ProjectPermissionProxiedServiceActions.Proxy
+            ),
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
+        if (subject === ProjectPermissionSub.ProjectFolderGrant) {
+          formVal[subject]!.push({
+            [ProjectPermissionProjectFolderGrantActions.ReadGrant]: action.includes(
+              ProjectPermissionProjectFolderGrantActions.ReadGrant
+            ),
+            [ProjectPermissionProjectFolderGrantActions.CreateGrant]: action.includes(
+              ProjectPermissionProjectFolderGrantActions.CreateGrant
+            ),
+            [ProjectPermissionProjectFolderGrantActions.RevokeGrant]: action.includes(
+              ProjectPermissionProjectFolderGrantActions.RevokeGrant
+            ),
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -1438,28 +1493,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
           inverted
         });
-        return;
-      }
-
-      if (subject === ProjectPermissionSub.HoneyTokens) {
-        const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
-        const canReadCredentials = action.includes(
-          ProjectPermissionHoneyTokenActions.ReadCredentials
-        );
-        const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-        const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
-        const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
-        const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
-
-        if (!formVal[subject]) formVal[subject] = [{}];
-
-        if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
-        if (canReadCredentials)
-          formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
-        if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
-        if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
-        if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
-        if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
         return;
       }
 
@@ -1499,6 +1532,25 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.HsmConnectors) {
+      const canRead = action.includes(ProjectPermissionHsmConnectorActions.Read);
+      const canCreate = action.includes(ProjectPermissionHsmConnectorActions.Create);
+      const canEdit = action.includes(ProjectPermissionHsmConnectorActions.Edit);
+      const canDelete = action.includes(ProjectPermissionHsmConnectorActions.Delete);
+      const canTest = action.includes(ProjectPermissionHsmConnectorActions.Test);
+      const canAttach = action.includes(ProjectPermissionHsmConnectorActions.Attach);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Create] = true;
+      if (canEdit) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Edit] = true;
+      if (canDelete) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Delete] = true;
+      if (canTest) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Test] = true;
+      if (canAttach) formVal[subject]![0][ProjectPermissionHsmConnectorActions.Attach] = true;
       return;
     }
 
@@ -1599,6 +1651,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDecrypt = action.includes(ProjectPermissionCmekActions.Decrypt);
       const canSign = action.includes(ProjectPermissionCmekActions.Sign);
       const canVerify = action.includes(ProjectPermissionCmekActions.Verify);
+      const canRotate = action.includes(ProjectPermissionCmekActions.Rotate);
       const canExportPrivateKey = action.includes(ProjectPermissionCmekActions.ExportPrivateKey);
 
       if (!formVal[subject]) formVal[subject] = [{}];
@@ -1612,6 +1665,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canDecrypt) formVal[subject]![0][ProjectPermissionCmekActions.Decrypt] = true;
       if (canSign) formVal[subject]![0][ProjectPermissionCmekActions.Sign] = true;
       if (canVerify) formVal[subject]![0][ProjectPermissionCmekActions.Verify] = true;
+      if (canRotate) formVal[subject]![0][ProjectPermissionCmekActions.Rotate] = true;
       if (canExportPrivateKey)
         formVal[subject]![0][ProjectPermissionCmekActions.ExportPrivateKey] = true;
       return;
@@ -1743,28 +1797,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       return;
     }
 
-    if (subject === ProjectPermissionSub.HoneyTokens) {
-      const canRead = action.includes(ProjectPermissionHoneyTokenActions.Read);
-      const canReadCredentials = action.includes(
-        ProjectPermissionHoneyTokenActions.ReadCredentials
-      );
-      const canCreate = action.includes(ProjectPermissionHoneyTokenActions.Create);
-      const canEdit = action.includes(ProjectPermissionHoneyTokenActions.Edit);
-      const canReset = action.includes(ProjectPermissionHoneyTokenActions.Reset);
-      const canRevoke = action.includes(ProjectPermissionHoneyTokenActions.Revoke);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Read] = true;
-      if (canReadCredentials)
-        formVal[subject]![0][ProjectPermissionHoneyTokenActions.ReadCredentials] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Edit] = true;
-      if (canReset) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Reset] = true;
-      if (canRevoke) formVal[subject]![0][ProjectPermissionHoneyTokenActions.Revoke] = true;
-      return;
-    }
-
     if (subject === ProjectPermissionSub.PkiSubscribers) {
       if (!formVal[subject]) formVal[subject] = [];
 
@@ -1868,82 +1900,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       });
 
       return;
-    }
-
-    if (subject === ProjectPermissionSub.PamAccounts) {
-      if (!formVal[subject]) formVal[subject] = [];
-
-      formVal[subject]!.push({
-        [ProjectPermissionPamAccountActions.Access]: action.includes(
-          ProjectPermissionPamAccountActions.Access
-        ),
-        [ProjectPermissionPamAccountActions.Create]: action.includes(
-          ProjectPermissionPamAccountActions.Create
-        ),
-        [ProjectPermissionPamAccountActions.Delete]: action.includes(
-          ProjectPermissionPamAccountActions.Delete
-        ),
-        [ProjectPermissionPamAccountActions.Edit]: action.includes(
-          ProjectPermissionPamAccountActions.Edit
-        ),
-        [ProjectPermissionPamAccountActions.Read]: action.includes(
-          ProjectPermissionPamAccountActions.Read
-        ),
-        [ProjectPermissionPamAccountActions.ReadCredentials]: action.includes(
-          ProjectPermissionPamAccountActions.ReadCredentials
-        ),
-        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
-        inverted
-      });
-      return;
-    }
-
-    if (subject === ProjectPermissionSub.PamSessions) {
-      const canRead = action.includes(ProjectPermissionPamSessionActions.Read);
-      const canTerminate = action.includes(ProjectPermissionPamSessionActions.Terminate);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionPamSessionActions.Read] = true;
-      if (canTerminate) formVal[subject]![0][ProjectPermissionPamSessionActions.Terminate] = true;
-    }
-
-    if (subject === ProjectPermissionSub.PamInsights) {
-      const canRead = action.includes(ProjectPermissionPamInsightsActions.Read);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionPamInsightsActions.Read] = true;
-    }
-
-    if (subject === ProjectPermissionSub.PamAccountPolicies) {
-      const canRead = action.includes(ProjectPermissionPamAccountPolicyActions.Read);
-      const canCreate = action.includes(ProjectPermissionPamAccountPolicyActions.Create);
-      const canDelete = action.includes(ProjectPermissionPamAccountPolicyActions.Delete);
-      const canEdit = action.includes(ProjectPermissionPamAccountPolicyActions.Edit);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Create] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Delete] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionPamAccountPolicyActions.Edit] = true;
-    }
-
-    if (subject === ProjectPermissionSub.PamDiscovery) {
-      const canRead = action.includes(ProjectPermissionPamDiscoveryActions.Read);
-      const canCreate = action.includes(ProjectPermissionPamDiscoveryActions.Create);
-      const canDelete = action.includes(ProjectPermissionPamDiscoveryActions.Delete);
-      const canEdit = action.includes(ProjectPermissionPamDiscoveryActions.Edit);
-      const canRunScan = action.includes(ProjectPermissionPamDiscoveryActions.RunScan);
-
-      if (!formVal[subject]) formVal[subject] = [{}];
-
-      if (canRead) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Create] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Delete] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.Edit] = true;
-      if (canRunScan) formVal[subject]![0][ProjectPermissionPamDiscoveryActions.RunScan] = true;
     }
 
     if (subject === ProjectPermissionSub.McpEndpoints) {
@@ -2166,6 +2122,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         description: "Create new secrets in the project",
         value: ProjectPermissionSecretActions.Create
+      },
+      {
+        label: "Personal Override",
+        description:
+          "Create, modify, and delete personal secret overrides. Does not grant access to shared secrets.",
+        value: ProjectPermissionSecretActions.PersonalOverride
       }
     ]
   },
@@ -2262,6 +2224,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Verify",
         value: ProjectPermissionCmekActions.Verify,
         description: "Verify signatures using KMS keys"
+      },
+      {
+        label: "Rotate",
+        value: ProjectPermissionCmekActions.Rotate,
+        description: "Rotate KMS key material"
       },
       {
         label: "Export Private Key",
@@ -2535,6 +2502,37 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
+  [ProjectPermissionSub.ProxiedServices]: {
+    title: "Proxied Services",
+    description: "Manage proxied services and route agent traffic through them",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionProxiedServiceActions.Read,
+        description: "View proxied services"
+      },
+      {
+        label: "Create",
+        value: ProjectPermissionProxiedServiceActions.Create,
+        description: "Create proxied services"
+      },
+      {
+        label: "Modify",
+        value: ProjectPermissionProxiedServiceActions.Edit,
+        description: "Update proxied service configuration"
+      },
+      {
+        label: "Remove",
+        value: ProjectPermissionProxiedServiceActions.Delete,
+        description: "Delete proxied services"
+      },
+      {
+        label: "Proxy",
+        value: ProjectPermissionProxiedServiceActions.Proxy,
+        description: "Route traffic through proxied services (for agent identities)"
+      }
+    ]
+  },
   [ProjectPermissionSub.Settings]: {
     title: "Settings",
     description: "Configure project-level settings and preferences",
@@ -2592,12 +2590,23 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.Insights]: {
     title: "Insights",
-    description: "View project analytics and insights dashboards",
+    description: "View project analytics and insights dashboards, and generate reports",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionInsightsActions.Read,
-        description: "View secret access volume, locations, auth methods, and calendar insights"
+        description:
+          "View secret access volume, locations, auth methods, calendar insights, and reports"
+      },
+      {
+        label: "Generate Report",
+        value: ProjectPermissionInsightsActions.GenerateReport,
+        description: "Generate new reports"
+      },
+      {
+        label: "Delete Report",
+        value: ProjectPermissionInsightsActions.DeleteReport,
+        description: "Delete reports"
       }
     ]
   },
@@ -3255,185 +3264,40 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       }
     ]
   },
-  [ProjectPermissionSub.PamFolders]: {
-    title: "Folders",
-    description: "Organize PAM resources into folders",
-    actions: [
-      { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM folders" },
-      {
-        label: "Create",
-        value: ProjectPermissionActions.Create,
-        description: "Create new PAM folders"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionActions.Edit,
-        description: "Update folder properties"
-      },
-      { label: "Remove", value: ProjectPermissionActions.Delete, description: "Delete PAM folders" }
-    ]
-  },
-  [ProjectPermissionSub.PamResources]: {
-    title: "Resources",
-    description: "Manage privileged access resources",
-    actions: [
-      { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM resources" },
-      {
-        label: "Create",
-        value: ProjectPermissionActions.Create,
-        description: "Add new resources to PAM"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionActions.Edit,
-        description: "Update resource configuration"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionActions.Delete,
-        description: "Remove PAM resources"
-      }
-    ]
-  },
-  [ProjectPermissionSub.PamDomains]: {
-    title: "Domains",
-    description: "Manage PAM domains such as Active Directory",
-    actions: [
-      { label: "Read", value: ProjectPermissionActions.Read, description: "View PAM domains" },
-      {
-        label: "Create",
-        value: ProjectPermissionActions.Create,
-        description: "Add new domains to PAM"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionActions.Edit,
-        description: "Update domain configuration"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionActions.Delete,
-        description: "Remove PAM domains"
-      }
-    ]
-  },
-  [ProjectPermissionSub.PamAccounts]: {
-    title: "Accounts",
-    description: "Manage privileged account credentials",
-    actions: [
-      {
-        label: "Access",
-        value: ProjectPermissionPamAccountActions.Access,
-        description: "Connect to and use PAM accounts"
-      },
-      {
-        label: "Read",
-        value: ProjectPermissionPamAccountActions.Read,
-        description: "View PAM account details"
-      },
-      {
-        label: "Create",
-        value: ProjectPermissionPamAccountActions.Create,
-        description: "Create new PAM accounts"
-      },
-      {
-        label: "Modify",
-        value: ProjectPermissionPamAccountActions.Edit,
-        description: "Update PAM account settings"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionPamAccountActions.Delete,
-        description: "Delete PAM accounts"
-      },
-      {
-        label: "Read Credentials",
-        value: ProjectPermissionPamAccountActions.ReadCredentials,
-        description: "View sensitive account credentials like passwords and private keys"
-      }
-    ]
-  },
-  [ProjectPermissionSub.PamSessions]: {
-    title: "Sessions",
-    description: "View and manage privileged access sessions",
+  [ProjectPermissionSub.HsmConnectors]: {
+    title: "HSM Connectors",
+    description: "Manage HSM Connectors that bridge Infisical to your HSM",
     actions: [
       {
         label: "Read",
-        value: ProjectPermissionPamSessionActions.Read,
-        description: "View PAM session history and recordings"
-      },
-      {
-        label: "Terminate",
-        value: ProjectPermissionPamSessionActions.Terminate,
-        description: "Terminate active PAM sessions"
-      }
-    ]
-  },
-  [ProjectPermissionSub.PamAccountPolicies]: {
-    title: "Account Policies",
-    description: "Manage behavioral rules for PAM accounts",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionPamAccountPolicyActions.Read,
-        description: "View PAM account policies"
+        value: ProjectPermissionHsmConnectorActions.Read,
+        description: "View HSM Connectors and their configuration (PIN is never returned)"
       },
       {
         label: "Create",
-        value: ProjectPermissionPamAccountPolicyActions.Create,
-        description: "Create PAM account policies"
+        value: ProjectPermissionHsmConnectorActions.Create,
+        description: "Create a new HSM Connector"
       },
       {
-        label: "Modify",
-        value: ProjectPermissionPamAccountPolicyActions.Edit,
-        description: "Update PAM account policies"
+        label: "Update",
+        value: ProjectPermissionHsmConnectorActions.Edit,
+        description: "Edit name, description, key name prefix, routing, or rotate the PIN"
       },
       {
-        label: "Remove",
-        value: ProjectPermissionPamAccountPolicyActions.Delete,
-        description: "Delete PAM account policies"
-      }
-    ]
-  },
-  [ProjectPermissionSub.PamDiscovery]: {
-    title: "Discovery",
-    description: "Manage privileged access discovery",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionPamDiscoveryActions.Read,
-        description: "View PAM discovery sources"
+        label: "Delete",
+        value: ProjectPermissionHsmConnectorActions.Delete,
+        description: "Delete an HSM Connector (blocked if any certificate references it)"
       },
       {
-        label: "Create",
-        value: ProjectPermissionPamDiscoveryActions.Create,
-        description: "Create PAM discovery sources"
+        label: "Verify",
+        value: ProjectPermissionHsmConnectorActions.Test,
+        description: "Verify the connector reaches the HSM through the gateway"
       },
       {
-        label: "Modify",
-        value: ProjectPermissionPamDiscoveryActions.Edit,
-        description: "Update PAM discovery sources"
-      },
-      {
-        label: "Remove",
-        value: ProjectPermissionPamDiscoveryActions.Delete,
-        description: "Delete PAM discovery sources"
-      },
-      {
-        label: "Run Scan",
-        value: ProjectPermissionPamDiscoveryActions.RunScan,
-        description: "Run PAM discovery source scans"
-      }
-    ]
-  },
-  [ProjectPermissionSub.PamInsights]: {
-    title: "Insights",
-    description: "View the PAM insights dashboard",
-    actions: [
-      {
-        label: "Read",
-        value: ProjectPermissionPamInsightsActions.Read,
-        description: "View the PAM insights dashboard"
+        label: "Attach",
+        value: ProjectPermissionHsmConnectorActions.Attach,
+        description:
+          "Attach an HSM Connector when issuing a certificate (mints a fresh keypair on the HSM)"
       }
     ]
   },
@@ -3466,6 +3330,27 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Revoke",
         value: ProjectPermissionApprovalRequestGrantActions.Revoke,
         description: "Revoke active access grants"
+      }
+    ]
+  },
+  [ProjectPermissionSub.ProjectFolderGrant]: {
+    title: "Project Folder Grants",
+    description: "Grant or revoke access to secrets in specific environments and paths",
+    actions: [
+      {
+        label: "Read",
+        value: ProjectPermissionProjectFolderGrantActions.ReadGrant,
+        description: "View existing project folder grants"
+      },
+      {
+        label: "Create Grant",
+        value: ProjectPermissionProjectFolderGrantActions.CreateGrant,
+        description: "Grant access to secrets in specified environments and secret paths"
+      },
+      {
+        label: "Revoke Grant",
+        value: ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+        description: "Revoke previously granted access to secrets"
       }
     ]
   },
@@ -3571,10 +3456,12 @@ const SecretsManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.SecretRotation]: enabled,
   [ProjectPermissionSub.ServiceTokens]: enabled,
   [ProjectPermissionSub.HoneyTokens]: enabled,
+  [ProjectPermissionSub.ProxiedServices]: enabled,
   [ProjectPermissionSub.Commits]: enabled,
   [ProjectPermissionSub.Insights]: enabled,
   [ProjectPermissionSub.SecretEventSubscriptions]: enabled,
-  [ProjectPermissionSub.SecretApprovalRequest]: enabled
+  [ProjectPermissionSub.SecretApprovalRequest]: enabled,
+  [ProjectPermissionSub.ProjectFolderGrant]: enabled
 });
 
 const KmsPermissionSubjects = (enabled = false) => ({
@@ -3595,7 +3482,8 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.Certificates]: enabled,
   [ProjectPermissionSub.PkiDiscovery]: enabled,
   [ProjectPermissionSub.PkiCertificateInstallations]: enabled,
-  [ProjectPermissionSub.CodeSigners]: enabled
+  [ProjectPermissionSub.CodeSigners]: enabled,
+  [ProjectPermissionSub.HsmConnectors]: enabled
 });
 
 const SshPermissionSubjects = (enabled = false) => ({
@@ -3610,17 +3498,6 @@ const SecretScanningSubject = (enabled = false) => ({
   [ProjectPermissionSub.SecretScanningDataSources]: enabled,
   [ProjectPermissionSub.SecretScanningFindings]: enabled,
   [ProjectPermissionSub.SecretScanningConfigs]: enabled
-});
-
-const PamPermissionSubjects = (enabled = false) => ({
-  [ProjectPermissionSub.PamFolders]: enabled,
-  [ProjectPermissionSub.PamResources]: enabled,
-  [ProjectPermissionSub.PamDomains]: enabled,
-  [ProjectPermissionSub.PamAccounts]: enabled,
-  [ProjectPermissionSub.PamSessions]: enabled,
-  [ProjectPermissionSub.PamAccountPolicies]: enabled,
-  [ProjectPermissionSub.PamDiscovery]: enabled,
-  [ProjectPermissionSub.PamInsights]: enabled
 });
 
 const AiPermissionSubjects = (enabled = false) => ({
@@ -3641,7 +3518,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...PamPermissionSubjects(),
     ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true,
     // Approval Requests / Grants are not used in Secret Manager (secret approvals use SecretApproval policy)
@@ -3655,7 +3531,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...PamPermissionSubjects(),
     ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
@@ -3666,7 +3541,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...PamPermissionSubjects(),
     ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
@@ -3677,7 +3551,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...PamPermissionSubjects(),
     ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
@@ -3688,7 +3561,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...PamPermissionSubjects(),
     ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
@@ -3699,7 +3571,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
-    ...PamPermissionSubjects(true),
     ...AiPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
@@ -3710,7 +3581,6 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
-    ...PamPermissionSubjects(),
     ...AiPermissionSubjects(true),
     [ProjectPermissionSub.AppConnections]: false
   }
@@ -4056,6 +3926,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.HoneyTokens,
           actions: [ProjectPermissionHoneyTokenActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: [ProjectPermissionProxiedServiceActions.Read]
         }
       ]
     },
@@ -4121,6 +3995,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.HoneyTokens,
           actions: Object.values(ProjectPermissionHoneyTokenActions)
+        },
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: Object.values(ProjectPermissionProxiedServiceActions)
         }
       ]
     },
@@ -4146,78 +4024,15 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         actions: Object.values(ProjectPermissionHoneyTokenActions)
       },
       {
+        subject: ProjectPermissionSub.ProxiedServices,
+        actions: Object.values(ProjectPermissionProxiedServiceActions)
+      },
+      {
         subject: ProjectPermissionSub.Webhooks,
         actions: Object.values(ProjectPermissionActions)
       }
     ])
   ],
-  [ProjectType.PAM]: [
-    {
-      id: "pam-viewer",
-      name: "PAM Viewing Policies",
-      description: "Grants read access to PAM accounts and resources",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.PamFolders,
-          actions: [ProjectPermissionActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.PamResources,
-          actions: [ProjectPermissionActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.PamDomains,
-          actions: [ProjectPermissionActions.Read]
-        },
-        {
-          subject: ProjectPermissionSub.PamAccounts,
-          actions: [ProjectPermissionPamAccountActions.Read]
-        }
-      ]
-    },
-    {
-      id: "pam-accessor",
-      name: "PAM Accessing Policies",
-      description: "Grants the right to access all PAM accounts",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.PamAccounts,
-          actions: [
-            ProjectPermissionPamAccountActions.Access,
-            ProjectPermissionPamAccountActions.Read
-          ]
-        }
-      ]
-    },
-    {
-      id: "pam-editor",
-      name: "PAM Editing Policies",
-      description: "Grants read and edit access to PAM accounts and resources",
-      permissions: [
-        {
-          subject: ProjectPermissionSub.PamFolders,
-          actions: Object.values(ProjectPermissionActions)
-        },
-        {
-          subject: ProjectPermissionSub.PamResources,
-          actions: Object.values(ProjectPermissionActions)
-        },
-        {
-          subject: ProjectPermissionSub.PamDomains,
-          actions: Object.values(ProjectPermissionActions)
-        },
-        {
-          subject: ProjectPermissionSub.PamAccounts,
-          actions: [
-            ProjectPermissionPamAccountActions.Read,
-            ProjectPermissionPamAccountActions.Edit,
-            ProjectPermissionPamAccountActions.Create,
-            ProjectPermissionPamAccountActions.Delete
-          ]
-        }
-      ]
-    },
-    projectManagerTemplate()
-  ],
+  [ProjectType.PAM]: [projectManagerTemplate()],
   [ProjectType.AI]: [projectManagerTemplate()]
 };

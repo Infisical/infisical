@@ -22,6 +22,7 @@ import {
   ConstraintTarget,
   ConstraintType,
   MAX_PREVENT_VALUE_REUSE_VERSIONS,
+  RuleType,
   TRuleForm
 } from "./SecretValidationRulesSection.utils";
 
@@ -34,6 +35,10 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
   const { control, watch } = useFormContext<TRuleForm>();
   const constraintType = watch(`enforcement.inputs.constraints.${index}.type`);
   const allConstraints = watch("enforcement.inputs.constraints");
+  const ruleType = watch("enforcement.type");
+  // Generated-credential rules currently only target the generated password.
+  const isGeneratedCredentialRule =
+    ruleType === RuleType.DynamicSecrets || ruleType === RuleType.SecretRotations;
 
   const constraintOption = CONSTRAINT_OPTIONS.find((o) => o.type === constraintType);
 
@@ -71,41 +76,54 @@ export const ConstraintCard = ({ index, onRemove }: Props) => {
       )}
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        {isPreventValueReuse ? (
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">Applies to</label>
-            <Input value="Secret Value" readOnly className="cursor-default opacity-60" />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted">Applies to</label>
-            <Controller
-              control={control}
-              name={`enforcement.inputs.constraints.${index}.appliesTo`}
-              render={({ field: { value, onChange } }) => (
-                <Select value={value} onValueChange={onChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem
-                      value={ConstraintTarget.SecretKey}
-                      disabled={otherTargets.has(ConstraintTarget.SecretKey)}
-                    >
-                      Secret Key
-                    </SelectItem>
-                    <SelectItem
-                      value={ConstraintTarget.SecretValue}
-                      disabled={otherTargets.has(ConstraintTarget.SecretValue)}
-                    >
-                      Secret Value
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-        )}
+        {(() => {
+          if (isGeneratedCredentialRule) {
+            return (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">Applies to</label>
+                <Input value="Generated Password" readOnly className="cursor-default opacity-60" />
+              </div>
+            );
+          }
+          if (isPreventValueReuse) {
+            return (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-muted">Applies to</label>
+                <Input value="Secret Value" readOnly className="cursor-default opacity-60" />
+              </div>
+            );
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted">Applies to</label>
+              <Controller
+                control={control}
+                name={`enforcement.inputs.constraints.${index}.appliesTo`}
+                render={({ field: { value, onChange } }) => (
+                  <Select value={value} onValueChange={onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem
+                        value={ConstraintTarget.SecretKey}
+                        disabled={otherTargets.has(ConstraintTarget.SecretKey)}
+                      >
+                        Secret Key
+                      </SelectItem>
+                      <SelectItem
+                        value={ConstraintTarget.SecretValue}
+                        disabled={otherTargets.has(ConstraintTarget.SecretValue)}
+                      >
+                        Secret Value
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          );
+        })()}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted">
             <div className="flex items-center gap-1">

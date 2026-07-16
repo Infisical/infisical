@@ -41,7 +41,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   TCreateVenafiTppCertificateAuthorityDTO,
@@ -539,7 +539,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     return cas.map(castDbEntryToVenafiTppCertificateAuthority);
   };
 
-  const orderCertificateFromProfile = async ({
+  const orderCertificate = async ({
     caId,
     profileId,
     commonName,
@@ -671,13 +671,16 @@ export const VenafiTppCertificateAuthorityFns = ({
       const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
       skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-      const dnParts: string[] = [`CN=${commonName}`];
-      if (organization) dnParts.push(`O=${organization}`);
-      if (organizationalUnit) dnParts.push(`OU=${organizationalUnit}`);
-      if (locality) dnParts.push(`L=${locality}`);
-      if (state) dnParts.push(`ST=${state}`);
-      if (country) dnParts.push(`C=${country}`);
-      const subjectDN = dnParts.join(", ");
+      // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
+      // special characters in the attributes cannot inject additional RDNs.
+      const subjectDN = createDistinguishedName({
+        commonName,
+        organization,
+        ou: organizationalUnit,
+        locality,
+        province: state,
+        country
+      });
 
       const sanExtensions: x509.SubjectAlternativeNameExtension[] = [];
       if (altNames.length > 0) {
@@ -962,6 +965,6 @@ export const VenafiTppCertificateAuthorityFns = ({
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderCertificateFromProfile
+    orderCertificate
   };
 };

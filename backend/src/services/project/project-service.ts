@@ -104,6 +104,7 @@ import {
   TCreateProjectDTO,
   TDeleteProjectDTO,
   TDeleteProjectWorkflowIntegration,
+  TEnableSecretBlindIndexDTO,
   TGetActivityTrendDTO,
   TGetDashboardStatsDTO,
   TGetProjectDTO,
@@ -194,7 +195,7 @@ type TProjectServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry">;
+  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -215,6 +216,17 @@ type TProjectServiceFactoryDep = {
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
+
+// Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
+const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.SecretManager]: "secret-management",
+  [ProjectType.CertificateManager]: "cert-manager"
+};
+
+const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.PAM]: "Privileged Access Manager"
+};
 
 export const projectServiceFactory = ({
   projectDAL,
@@ -303,7 +315,7 @@ export const projectServiceFactory = ({
       // We count directly from the database to get the accurate count, not the cached plan value
       const plan = await licenseService.getPlan(organization.id);
       if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-        const currentProjectCount = await projectDAL.countOfOrgProjects(organization.id, tx);
+        const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
         if (currentProjectCount >= plan.workspaceLimit) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
@@ -790,6 +802,13 @@ export const projectServiceFactory = ({
       });
     }
 
+    // PAM projects are managed (one per org); deleting would also cascade FK-referenced migrated data.
+    if (project.type === ProjectType.PAM) {
+      throw new BadRequestError({
+        message: "Privileged Access Manager projects cannot be deleted."
+      });
+    }
+
     if (project.type === ProjectType.CertificateManager) {
       const certManagerProjects = await projectDAL.find({
         orgId: project.orgId,
@@ -822,47 +841,27 @@ export const projectServiceFactory = ({
     }
 
     try {
-      const deletedProject = await projectDAL.transaction(async (tx) => {
-        // delete these so that project custom roles can be deleted in cascade effect
-        // direct deletion of project without these will cause fk error
-        // this will clean up all memberships
-        await membershipUserDAL.delete(
-          { scopeOrgId: project.orgId, scopeProjectId: project.id, scope: AccessScope.Project },
-          tx
-        );
-        const delProject = await projectDAL.deleteById(project.id, tx);
-        const projectGhostUser = await projectMembershipDAL.findProjectGhostUser(project.id, tx).catch(() => null);
-        // akhilmhdh: before removing those kms checking any other project uses it
-        // happened due to project split
-        if (delProject.kmsCertificateKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsCertificateKeyId: delProject.kmsCertificateKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsCertificateKeyId, delProject.orgId, tx);
-          }
-        }
-
-        if (delProject.kmsSecretManagerKeyId) {
-          const projectsLinkedToForiegnKey = await projectDAL.find(
-            { kmsSecretManagerKeyId: delProject.kmsSecretManagerKeyId },
-            { tx }
-          );
-          if (!projectsLinkedToForiegnKey.length) {
-            await kmsService.deleteInternalKms(delProject.kmsSecretManagerKeyId, delProject.orgId, tx);
-          }
-        }
-        // Delete the org membership for the ghost user if it's found.
-        if (projectGhostUser) {
-          await userDAL.deleteById(projectGhostUser.id, tx);
-        }
-
-        return delProject;
+      // "Real delete" from the caller's perspective: this returns immediately (one UPDATE) and the
+      // project disappears from every read, but the expensive cascade runs asynchronously in the
+      // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick
+      // (no grace period). The slug is freed so a same-named project can be recreated right away.
+      const now = new Date();
+      const softDeletedProject = await projectDAL.softDeleteById(project.id, {
+        deleteAfter: now,
+        softDeletedAt: now,
+        deletedByActorType: actor,
+        deletedByActorId: actorId,
+        slug: `del-${alphaNumericNanoId(20)}`
       });
 
+      if (!softDeletedProject) {
+        throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
+      }
+
+      // refresh the cached plan so the freed workspace slot is reflected immediately
+      // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-      return deletedProject;
+      return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();
     }
@@ -2535,16 +2534,16 @@ export const projectServiceFactory = ({
     );
     const appCfg = getConfig();
 
-    let projectTypeUrl = project.type;
-    if (project.type === ProjectType.SecretManager) {
-      projectTypeUrl = "secret-management";
-    } else if (project.type === ProjectType.CertificateManager) {
-      projectTypeUrl = "cert-manager";
-    }
+    const projectTypeUrl = PROJECT_ACCESS_REQUEST_URL_SLUGS[project.type as ProjectType] ?? project.type;
+    const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
-    const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
+    // PAM is a per-org singleton with no project-scoped route, unlike other product types
+    const callbackPath =
+      project.type === ProjectType.PAM
+        ? `/organizations/${project.orgId}/pam/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`
+        : `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${encodedRequesterEmail}`;
 
-    const productLabel = project.type === ProjectType.CertificateManager ? "Certificate Manager" : null;
+    const productLabel = PROJECT_ACCESS_REQUEST_PRODUCT_LABELS[project.type as ProjectType] ?? null;
     const notificationTitle = productLabel ? `${productLabel} Access Request` : "Project Access Request";
     const notificationBody = productLabel
       ? `**${userDetails.firstName} ${userDetails.lastName}** (${userDetails.email}) has requested access to **${productLabel}**.`
@@ -2593,6 +2592,56 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
+  const enableSecretBlindIndex = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    if (project.secretBlindIndexEnabled) {
+      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
+    }
+
+    await projectQueue.startSecretBlindIndexMigration(project.id);
+  };
+
+  const getSecretBlindIndexMigrationStatus = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TEnableSecretBlindIndexDTO) => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: project.id,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+
+    return projectQueue.getJobState(project.id);
+  };
+
   return {
     createProject,
     deleteProject,
@@ -2632,6 +2681,8 @@ export const projectServiceFactory = ({
     requestProjectAccess,
     getMyPendingProjectAccessRequests,
     searchProjects,
-    extractProjectIdFromSlug
+    extractProjectIdFromSlug,
+    enableSecretBlindIndex,
+    getSecretBlindIndexMigrationStatus
   };
 };
