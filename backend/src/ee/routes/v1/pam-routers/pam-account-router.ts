@@ -772,7 +772,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
-      const caPublicKey = result.publicKey;
+      // Trim trailing newline; otherwise the script's echo/grep treat it as a blank line and skip later keys.
+      const caPublicKey = result.publicKey.trim();
 
       if (result.created) {
         await server.services.auditLog.createAuditLog({
@@ -804,21 +805,32 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-echo "==> Writing CA public key to \${CA_FILE}..."
-echo "\${CA_PUBLIC_KEY}" > "\${CA_FILE}"
-chmod 644 "\${CA_FILE}"
-echo "    Done."
+echo "==> Configuring the trusted CA file..."
 
-if grep -q "^TrustedUserCAKeys" "\${SSHD_CONFIG}"; then
-    EXISTING_CA_FILE=$(grep "^TrustedUserCAKeys" "\${SSHD_CONFIG}" | awk '{print $2}')
-    if [ "\${EXISTING_CA_FILE}" = "\${CA_FILE}" ]; then
-        echo "==> TrustedUserCAKeys already configured for \${CA_FILE}"
-    else
-        echo "Warning: TrustedUserCAKeys is already set to \${EXISTING_CA_FILE}"
-        echo "         You may need to manually update sshd_config to use \${CA_FILE}"
-        echo "         or combine multiple CA keys into a single file."
+# Reuse the host's existing TrustedUserCAKeys file if set (sshd honors only the first); else use our own.
+CONFIGURE_SSHD=true
+if grep -qE "^[[:space:]]*TrustedUserCAKeys[[:space:]]" "\${SSHD_CONFIG}"; then
+    EXISTING_CA_FILE=$(grep -E "^[[:space:]]*TrustedUserCAKeys[[:space:]]" "\${SSHD_CONFIG}" | head -n1 | awk '{print $2}')
+    if [ -n "\${EXISTING_CA_FILE}" ]; then
+        CA_FILE="\${EXISTING_CA_FILE}"
+        CONFIGURE_SSHD=false
+        echo "    Adding to existing TrustedUserCAKeys file: \${CA_FILE}"
     fi
+fi
+
+# Ensure the file exists and is sshd-readable (public keys are not secret)
+touch "\${CA_FILE}"
+chmod 644 "\${CA_FILE}"
+
+# Additive + idempotent: append only if not already trusted; never removes existing CAs
+if grep -qxF "\${CA_PUBLIC_KEY}" "\${CA_FILE}"; then
+    echo "    CA key already present in \${CA_FILE}"
 else
+    echo "\${CA_PUBLIC_KEY}" >> "\${CA_FILE}"
+    echo "    Added Infisical CA key to \${CA_FILE}"
+fi
+
+if [ "\${CONFIGURE_SSHD}" = "true" ]; then
     echo "==> Adding TrustedUserCAKeys to \${SSHD_CONFIG}..."
     echo "" >> "\${SSHD_CONFIG}"
     echo "# Infisical SSH CA - Added by setup script" >> "\${SSHD_CONFIG}"
