@@ -251,9 +251,9 @@ describe("createDistinguishedName", () => {
   it("should emit one DC RDN per domain component, in the given order, after the CN", () => {
     const dn = createDistinguishedName({
       commonName: "auth-AD-MANAGER02-CA",
-      domainComponents: ["app", "lucidgov", "auth"]
+      domainComponents: ["app", "example", "auth"]
     });
-    expect(dn).toBe("CN=auth-AD-MANAGER02-CA, DC=app, DC=lucidgov, DC=auth");
+    expect(dn).toBe("CN=auth-AD-MANAGER02-CA, DC=app, DC=example, DC=auth");
   });
 
   it("should skip empty domain component values", () => {
