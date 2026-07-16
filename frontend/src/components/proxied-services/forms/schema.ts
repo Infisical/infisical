@@ -124,13 +124,6 @@ export const proxiedServiceFormSchema = z
           seenHeaderNames.set(key, i);
         }
       });
-      if (!form.headers.length && !form.substitutions.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Add at least one header or substitution",
-          path: ["headers"]
-        });
-      }
     } else if (!form.basicAuth?.usernameSecretKey) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -155,3 +148,32 @@ export const proxiedServiceFormSchema = z
   });
 
 export type TProxiedServiceForm = z.infer<typeof proxiedServiceFormSchema>;
+
+export enum ProxiedServiceStep {
+  Details = "details",
+  Headers = "headers",
+  Substitution = "substitution",
+  Review = "review"
+}
+
+// Field names validated when advancing past each step (via react-hook-form `trigger`).
+export const PROXIED_SERVICE_STEP_FIELDS: Record<
+  ProxiedServiceStep,
+  (keyof TProxiedServiceForm)[]
+> = {
+  [ProxiedServiceStep.Details]: ["name", "hostPattern", "isEnabled"],
+  [ProxiedServiceStep.Headers]: ["headerMode", "headers", "basicAuth"],
+  [ProxiedServiceStep.Substitution]: ["substitutions"],
+  [ProxiedServiceStep.Review]: []
+};
+
+// The "at least one credential" rule lives here rather than in the zod schema: in zod it would
+// attach to the headers node and block a substitution-only (or basic-auth-only) config on the
+// empty Header Rewrites step. Enforced imperatively when leaving Substitution / on submit.
+export const hasAtLeastOneCredential = (form: TProxiedServiceForm) => {
+  if (form.substitutions.length) return true;
+  if (form.headerMode === HeaderRewritingMode.BasicAuth) {
+    return Boolean(form.basicAuth?.usernameSecretKey);
+  }
+  return form.headers.length > 0;
+};
