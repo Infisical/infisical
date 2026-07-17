@@ -173,7 +173,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
                 .omit({ createdAt: true, updatedAt: true })
                 .extend({
                   secretValueHidden: z.boolean(),
-                  secretPath: z.string(),
+                  secretPath: z.string().optional(),
                   secretMetadata: ResourceMetadataWithEncryptionSchema.optional()
                 })
                 .array()
