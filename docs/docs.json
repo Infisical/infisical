@@ -625,6 +625,7 @@
                       "documentation/platform/agent-proxy/overview",
                       "documentation/platform/agent-proxy/quickstart",
                       "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/activity-logs",
                       "documentation/platform/agent-proxy/security"
                     ]
                   }
