@@ -32,6 +32,17 @@ import {
   TVerifyCurrentEmailOTPDTO
 } from "./user-types";
 
+// Enforce a minimum execution time so response timing cannot disclose whether an email
+// address already has an account.
+const enforceMinimumExecutionTime = async (startTime: Date, minimumMs = 2000) => {
+  const elapsedMs = new Date().getTime() - startTime.getTime();
+  if (elapsedMs < minimumMs) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, minimumMs - elapsedMs);
+    });
+  }
+};
+
 type TUserServiceFactoryDep = {
   userDAL: Pick<
     TUserDALFactory,
@@ -288,6 +299,13 @@ export const userServiceFactory = ({
         });
       }
 
+      if (normalizedNewEmail === user.email.toLowerCase() || normalizedNewEmail === user.username.toLowerCase()) {
+        throw new BadRequestError({
+          message: "The new email address must be different from your current email address.",
+          name: "RequestEmailChangeOTP"
+        });
+      }
+
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
         throw new BadRequestError({
@@ -296,44 +314,39 @@ export const userServiceFactory = ({
         });
       }
 
-      // Silently check if another user already has this email - don't send OTP if email is taken
-      const existingUser = await userDAL.findOne({ username: normalizedNewEmail }, tx);
-      if (!existingUser) {
-        // Step 1 of 2: send OTP to the CURRENT email so the legitimate owner must approve
-        // the change before any code is sent to the new address.
-        const otpCode = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP,
-          userId,
-          payload: newEmail.toLowerCase()
-        });
+      // Availability of the requested address is deliberately NOT checked here: step 1
+      // behaves identically whether or not the address is taken (anti-enumeration). The
+      // outcome is only ever disclosed to the requested address itself, in step 2.
 
-        await smtpService.sendMail({
-          template: SmtpTemplates.EmailChangeRequestNotification,
-          subjectLine: "Confirm your Infisical email change",
-          recipients: [user.email],
-          substitutions: {
-            currentEmail: user.email,
-            requestedEmail: newEmail.toLowerCase(),
-            code: otpCode
-          }
-        });
-      }
+      // Step 1 of 2: send OTP to the CURRENT email so the legitimate owner must approve
+      // the change before anything is sent to the new address.
+      const otpCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP,
+        userId,
+        payload: newEmail.toLowerCase()
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailChangeRequestNotification,
+        subjectLine: "Confirm your Infisical email change",
+        recipients: [user.email],
+        substitutions: {
+          currentEmail: user.email,
+          requestedEmail: newEmail.toLowerCase(),
+          code: otpCode
+        }
+      });
 
       return { success: true, message: "Verification code sent to current email address" };
     });
-    // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
-    const endTime = new Date();
-    const timeDiff = endTime.getTime() - startTime.getTime();
-    if (timeDiff < 2000) {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 2000 - timeDiff);
-      });
-    }
+    // Keep response timing uniform so it cannot disclose anything about existing users
+    await enforceMinimumExecutionTime(startTime);
     return changeEmailOTP;
   };
 
   const verifyCurrentEmailOTP = async ({ userId, otpCode }: TVerifyCurrentEmailOTPDTO) => {
-    return userDAL.transaction(async (tx) => {
+    const startTime = new Date();
+    const result = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user)
         throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "VerifyCurrentEmailOTP" });
@@ -366,30 +379,44 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Invalid verification code", name: "VerifyCurrentEmailOTP" });
       }
 
-      // Re-check availability — someone else may have claimed this email since the request was issued
+      // Step 2 of 2: current-email control is proven, so only now is availability of the
+      // requested address consulted. The API response stays identical whether the address
+      // is taken or free (anti-enumeration); the outcome is disclosed only to the requested
+      // address itself: a verification code if it is free, or an explanatory notice if it
+      // already belongs to an account (its owner is the one party who already knows that
+      // account exists).
       const existingUser = await userDAL.findOne({ username: newEmail }, tx);
       if (existingUser) {
-        throw new BadRequestError({ message: "Email is no longer available", name: "VerifyCurrentEmailOTP" });
+        await smtpService.sendMail({
+          template: SmtpTemplates.EmailChangeExistingAccount,
+          subjectLine: "Email Change Request for Your Infisical Account",
+          recipients: [newEmail],
+          substitutions: {
+            email: newEmail
+          }
+        });
+      } else {
+        const newEmailOtpCode = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          userId,
+          payload: newEmail
+        });
+
+        await smtpService.sendMail({
+          template: SmtpTemplates.EmailVerification,
+          subjectLine: "Infisical email change verification",
+          recipients: [newEmail],
+          substitutions: {
+            code: newEmailOtpCode
+          }
+        });
       }
-
-      // Step 2 of 2: now that current-email control is proven, send OTP to the NEW address
-      const newEmailOtpCode = await tokenService.createTokenForUser({
-        type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
-        userId,
-        payload: newEmail
-      });
-
-      await smtpService.sendMail({
-        template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical email change verification",
-        recipients: [newEmail],
-        substitutions: {
-          code: newEmailOtpCode
-        }
-      });
 
       return { success: true, newEmail };
     });
+    // Keep response timing uniform between the taken/free branches (anti-enumeration)
+    await enforceMinimumExecutionTime(startTime);
+    return result;
   };
 
   const updateUserEmail = async ({

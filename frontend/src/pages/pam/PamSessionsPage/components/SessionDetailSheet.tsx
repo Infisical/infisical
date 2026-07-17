@@ -62,12 +62,27 @@ const decodeBase64Utf8 = (b64: string): string => {
   }
 };
 
+// matches ANSI/VT escape sequences emitted by a terminal (colors, cursor moves, etc.)
+const ANSI_ESCAPE_REGEX =
+  // eslint-disable-next-line no-control-regex
+  /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[a-zA-Z\d]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
+
+// turns raw terminal bytes into readable log text by stripping escape sequences
+const cleanTerminalOutput = (raw: string): string =>
+  raw
+    .replace(ANSI_ESCAPE_REGEX, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, "")
+    .trim();
+
 const getLogText = (log: TPamSessionLog): string => {
   if ("input" in log && "output" in log) {
     return [log.input, log.output].filter(Boolean).join(" ");
   }
   if ("data" in log) {
-    return decodeBase64Utf8(log.data);
+    // resize events carry window dimensions, not terminal content. skip them
+    if (log.eventType === "resize") return "";
+    return cleanTerminalOutput(decodeBase64Utf8(log.data));
   }
   if ("method" in log) {
     return `${log.method} ${log.url}`;
@@ -96,15 +111,21 @@ const isDestructiveQuery = (text: string): boolean => {
 };
 
 const LogEntry = ({
-  log,
   text,
   bodyText,
-  highlight
+  highlight,
+  showTimestamp,
+  timestampLabel,
+  separatorAbove,
+  isGroupEnd
 }: {
-  log: TPamSessionLog;
   text: string;
   bodyText: string | null;
   highlight: string;
+  showTimestamp: boolean;
+  timestampLabel: string;
+  separatorAbove: boolean;
+  isGroupEnd: boolean;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
@@ -129,17 +150,21 @@ const LogEntry = ({
 
   const body = (
     <>
-      <div className="mb-1 flex items-center gap-2">
-        <span className="font-mono text-[11px] tracking-tight text-muted">
-          {format(new Date(log.timestamp), "MMM d, h:mm:ss a")}
-        </span>
-        {destructive && (
-          <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
-            <AlertTriangleIcon className="size-3" />
-            Destructive
-          </span>
-        )}
-      </div>
+      {(showTimestamp || destructive) && (
+        <div className="mb-1 flex items-center gap-2">
+          {showTimestamp && (
+            <span className="font-mono text-[11px] tracking-tight text-muted">
+              {timestampLabel}
+            </span>
+          )}
+          {destructive && (
+            <span className="flex items-center gap-1 text-[11px] font-medium text-danger">
+              <AlertTriangleIcon className="size-3" />
+              Destructive
+            </span>
+          )}
+        </div>
+      )}
       <div className="flex items-start gap-2">
         {expandable && (
           <ChevronRightIcon
@@ -163,9 +188,10 @@ const LogEntry = ({
     </>
   );
 
-  const rowClass = `border-b border-border px-4 py-2.5 transition-colors last:border-b-0 ${
-    destructive ? "bg-danger/5" : ""
-  }`;
+  // lines in the same timestamp group flow together tightly with no separators
+  const rowClass = `px-4 transition-colors ${separatorAbove ? "border-t border-border" : ""} ${
+    showTimestamp ? "pt-2.5" : "pt-0.5"
+  } ${isGroupEnd ? "pb-2.5" : "pb-0.5"} ${destructive ? "bg-danger/5" : ""}`;
 
   if (expandable) {
     return (
@@ -310,35 +336,97 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
       </div>
     );
   } else {
-    logContent = (
-      <div>
-        {filteredEvents.map((event, i) => {
-          if (isBrokenChunkMarker(event)) {
-            return (
-              <div
-                key={`broken-chunk-${event.chunkIndex}`}
-                className="flex items-center gap-2 border-b border-border bg-warning/5 px-4 py-2 text-xs text-warning last:border-b-0"
-              >
-                <AlertTriangleIcon className="size-3.5 shrink-0" />
-                <span>{event.message}</span>
-              </div>
-            );
-          }
+    // first pass: resolve which rows render and collapse repeated timestamps
+    let prevTimestampLabel: string | null = null;
+    const items: (
+      | { kind: "marker"; key: string; message: string }
+      | {
+          kind: "log";
+          key: string;
+          text: string;
+          bodyText: string | null;
+          showTimestamp: boolean;
+          timestampLabel: string;
+        }
+    )[] = [];
 
-          const log = event as TPamSessionLog;
-          const d = decoded.get(event);
-          return (
-            <LogEntry
-              key={`log-${log.timestamp}-${i + 1}`}
-              log={log}
-              text={d?.text ?? ""}
-              bodyText={d?.body ?? null}
-              highlight={logSearch}
-            />
-          );
-        })}
-      </div>
-    );
+    filteredEvents.forEach((event, i) => {
+      if (isBrokenChunkMarker(event)) {
+        prevTimestampLabel = null;
+        items.push({
+          kind: "marker",
+          key: `broken-chunk-${event.chunkIndex}`,
+          message: event.message
+        });
+        return;
+      }
+
+      const log = event as TPamSessionLog;
+      const d = decoded.get(event);
+      const text = d?.text ?? "";
+
+      if (!text) return;
+
+      const timestampLabel = format(new Date(log.timestamp), "MMM d, h:mm:ss a");
+      const showTimestamp = timestampLabel !== prevTimestampLabel;
+      prevTimestampLabel = timestampLabel;
+
+      items.push({
+        kind: "log",
+        key: `log-${log.timestamp}-${i + 1}`,
+        text,
+        bodyText: d?.body ?? null,
+        showTimestamp,
+        timestampLabel
+      });
+    });
+
+    // second pass: a log line ends its group when the next rendered row starts a new group or isn't a log line
+    const rows = items.map((item, idx) => {
+      const separatorAbove = idx > 0 && (item.kind === "marker" || item.showTimestamp);
+
+      if (item.kind === "marker") {
+        return (
+          <div
+            key={item.key}
+            className={`flex items-center gap-2 bg-warning/5 px-4 py-2 text-xs text-warning ${
+              separatorAbove ? "border-t border-border" : ""
+            }`}
+          >
+            <AlertTriangleIcon className="size-3.5 shrink-0" />
+            <span>{item.message}</span>
+          </div>
+        );
+      }
+
+      const next = items[idx + 1];
+      const isGroupEnd = !next || next.kind === "marker" || next.showTimestamp;
+
+      return (
+        <LogEntry
+          key={item.key}
+          text={item.text}
+          bodyText={item.bodyText}
+          highlight={logSearch}
+          showTimestamp={item.showTimestamp}
+          timestampLabel={item.timestampLabel}
+          separatorAbove={separatorAbove}
+          isGroupEnd={isGroupEnd}
+        />
+      );
+    });
+
+    logContent =
+      rows.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 p-10 text-center">
+          <ClipboardListIcon className="size-6 text-muted" />
+          <p className="text-sm text-muted">
+            {logSearch ? "No logs match your search" : "No logs recorded for this session"}
+          </p>
+        </div>
+      ) : (
+        <div>{rows}</div>
+      );
   }
 
   const isRdpSession =

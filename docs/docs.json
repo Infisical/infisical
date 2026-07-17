@@ -216,6 +216,7 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
+                  "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-pools",
                   "documentation/platform/gateways/gateway-deployment",
                   {
@@ -375,6 +376,7 @@
                 ]
               },
               "self-hosting/guides/replication",
+              "self-hosting/guides/hsm-integration",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -590,7 +592,8 @@
                           "documentation/platform/dynamic-secrets/gcp-iam",
                           "documentation/platform/dynamic-secrets/github",
                           "documentation/platform/dynamic-secrets/kubernetes",
-                          "documentation/platform/dynamic-secrets/ldap"
+                          "documentation/platform/dynamic-secrets/ldap",
+                          "documentation/platform/dynamic-secrets/tailscale"
                         ]
                       },
                       {
@@ -1034,7 +1037,6 @@
                 "group": "Infisical KMS",
                 "pages": [
                   "documentation/platform/kms/overview",
-                  "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
                   {
                     "group": "KMIP Integration",
@@ -3983,6 +3985,13 @@
                   "api-reference/endpoints/kms/signing/verify",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
+              },
+              {
+                "group": "Message Authentication",
+                "pages": [
+                  "api-reference/endpoints/kms/mac/generate-mac",
+                  "api-reference/endpoints/kms/mac/verify-mac"
+                ]
               }
             ]
           },
@@ -4278,6 +4287,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/kms/hsm-integration",
+      "destination": "/self-hosting/guides/hsm-integration"
+    },
     {
       "source": "/documentation/guides/introduction",
       "destination": "/documentation/platform/secrets-mgmt/overview"

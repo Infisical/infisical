@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { FingerprintIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { FingerprintIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 
 import { ContentLoader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -11,6 +13,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertTitle,
   Button,
   Input,
   Sheet,
@@ -29,7 +32,8 @@ type Props = {
 };
 
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
-  const { data: credentials = [], isPending } = useGetWebAuthnCredentials();
+  const { data, isPending } = useGetWebAuthnCredentials();
+  const credentials = data?.credentials ?? [];
   const { registerPasskey, isRegistering } = useRegisterPasskey();
   const { removePasskey, isBusy: isRemoving } = useRemovePasskey();
 
@@ -43,6 +47,22 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
       setName("");
     }
   };
+
+  // Hardware security keys registered before the server pinned ES256/RS256 may hold an
+  // EdDSA credential that FIPS instances cannot verify at sign-in. We can't inspect the
+  // credential's algorithm client-side, so on FIPS instances surface a soft notice
+  // whenever a security-key credential is present. Platform and phone passkeys always
+  // report "internal"/"hybrid" transports and are unaffected, and non-FIPS instances
+  // verify EdDSA fine.
+  const hasSecurityKeyCredential =
+    Boolean(data?.fipsEnabled) &&
+    credentials.some(
+      (credential) =>
+        !credential.transports?.length ||
+        !credential.transports.some(
+          (transport) => transport === "internal" || transport === "hybrid"
+        )
+    );
 
   // Removing weakens a login second factor, so it goes through the step-up MFA
   // challenge; the confirm dialog stays open until the challenge completes and the
@@ -76,6 +96,20 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
                 <PlusIcon /> Add
               </Button>
             </div>
+
+            {hasSecurityKeyCredential && (
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertTitle>Using a hardware security key?</AlertTitle>
+                <AlertDescription>
+                  <p>
+                    Previously added security keys (like YubiKey) may use a signing algorithm that
+                    fails two-factor authentication on some instances. If signing in with your
+                    security key fails, remove it here and add it again.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {isPending ? (
               <ContentLoader />

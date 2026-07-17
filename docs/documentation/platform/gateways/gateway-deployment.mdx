@@ -43,6 +43,10 @@ This guide covers everything you need to deploy and configure Infisical Gateways
     For managed relays, allow outbound traffic to the provided relay server IP/hostname. For self-hosted relays, allow outbound traffic to your own relay server address.
 
     If you are in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
+
+    <Tip>
+      For the full connection model, a complete port reference, and firewall details (including self-hosted relays and HTTP forward proxies), see the [Network Architecture](/documentation/platform/gateways/network-architecture) page.
+    </Tip>
   </Step>
   <Step title="Run the CLI Command">
     Run the command you copied from the UI on the target machine. This single command enrolls the gateway and starts it immediately.

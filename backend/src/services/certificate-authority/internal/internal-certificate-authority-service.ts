@@ -1813,6 +1813,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     state,
     locality,
     ou,
+    domainComponents,
     tx
   }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
@@ -1956,7 +1957,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       ou,
       country,
       province: state,
-      locality
+      locality,
+      domainComponents
     });
 
     // eslint-disable-next-line no-bitwise

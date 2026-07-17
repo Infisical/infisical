@@ -324,6 +324,7 @@ export const PamAccountsPage = () => {
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("createAccount");
         }}
+        onCreated={(accountId) => accountSheet.openSheet(accountId)}
       />
 
       <CreateFolderModal

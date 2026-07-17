@@ -52,28 +52,64 @@ const hostPatternField = z
       });
   });
 
-// Required-ness is enforced conditionally in the top-level superRefine so fields of the inactive header mode don't block submission.
-const headerCredentialSchema = z.object({
-  secretKey: z.string().trim(),
+const leaseConfigSchema = z.object({
+  namespace: z.string().trim().optional(),
+  principals: z.array(z.string().trim().min(1)).optional()
+});
+
+export type TLeaseConfig = z.infer<typeof leaseConfigSchema>;
+
+const credentialSourceSchema = z.object({
+  secretKey: z.string().trim().default(""),
+  dynamicSecretName: z.string().trim().default(""),
+  dynamicSecretField: z.string().trim().default("")
+});
+
+export type TCredentialSourceForm = z.infer<typeof credentialSourceSchema>;
+
+const headerCredentialSchema = credentialSourceSchema.extend({
   headerName: z.string().trim(),
   headerPrefix: z.string().trim().optional()
 });
 
 const basicAuthSchema = z.object({
-  usernameSecretKey: z.string().trim(),
-  passwordSecretKey: z.string().trim().optional()
+  username: credentialSourceSchema,
+  password: credentialSourceSchema
 });
 
-const substitutionSchema = z.object({
+const substitutionSchema = credentialSourceSchema.extend({
   placeholderKey: z
     .string()
     .trim()
     .min(1, "Environment variable name is required")
     .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "Must be a valid environment variable name"),
   placeholderValue: z.string().trim().min(1),
-  secretKey: z.string().trim().min(1, "Select a secret"),
   surfaces: z.array(z.nativeEnum(ProxiedServiceSubstitutionSurface)).min(1, "Select at least one")
 });
+
+const refineCredentialSource = (
+  row: TCredentialSourceForm,
+  ctx: z.RefinementCtx,
+  path: (string | number)[]
+) => {
+  const hasStatic = Boolean(row.secretKey);
+  const hasDynamic = Boolean(row.dynamicSecretName);
+  if (hasStatic === hasDynamic) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select a secret",
+      path: [...path, "secretKey"]
+    });
+    return;
+  }
+  if (hasDynamic && !row.dynamicSecretField) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select an output field",
+      path: [...path, "dynamicSecretField"]
+    });
+  }
+};
 
 export enum HeaderRewritingMode {
   Headers = "headers",
@@ -93,19 +129,14 @@ export const proxiedServiceFormSchema = z
     headerMode: z.nativeEnum(HeaderRewritingMode).default(HeaderRewritingMode.Headers),
     headers: z.array(headerCredentialSchema).default([]),
     basicAuth: basicAuthSchema.optional(),
-    substitutions: z.array(substitutionSchema).default([])
+    substitutions: z.array(substitutionSchema).default([]),
+    dynamicSecretConfigs: z.record(z.string(), leaseConfigSchema).default({})
   })
   .superRefine((form, ctx) => {
     if (form.headerMode === HeaderRewritingMode.Headers) {
       const seenHeaderNames = new Map<string, number>();
       form.headers.forEach((row, i) => {
-        if (!row.secretKey) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Select a secret",
-            path: ["headers", i, "secretKey"]
-          });
-        }
+        refineCredentialSource(row, ctx, ["headers", i]);
         if (!row.headerName) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -131,13 +162,16 @@ export const proxiedServiceFormSchema = z
           path: ["headers"]
         });
       }
-    } else if (!form.basicAuth?.usernameSecretKey) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Select a secret",
-        path: ["basicAuth", "usernameSecretKey"]
-      });
+    } else if (form.basicAuth) {
+      refineCredentialSource(form.basicAuth.username, ctx, ["basicAuth", "username"]);
+      if (form.basicAuth.password.secretKey || form.basicAuth.password.dynamicSecretName) {
+        refineCredentialSource(form.basicAuth.password, ctx, ["basicAuth", "password"]);
+      }
     }
+
+    form.substitutions.forEach((row, i) => {
+      refineCredentialSource(row, ctx, ["substitutions", i]);
+    });
 
     const seenPlaceholderKeys = new Map<string, number>();
     form.substitutions.forEach((row, i) => {
