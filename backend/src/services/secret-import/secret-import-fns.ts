@@ -476,6 +476,7 @@ export const fnSecretsV2FromImports = async ({
           secretTags: item.tags,
           secretComment: activeDecryptor(item.encryptedComment),
           environment: importEnv.slug,
+          secretPath: importAccessScopeByFolderId?.get(folderId)?.secretPath ?? importPath,
           workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
           _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
         }));
