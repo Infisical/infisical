@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import {
   buildCertificateBundle,
   buildIntermediateIdentifier,
@@ -78,15 +80,15 @@ describe("Kemp buildIntermediateIdentifier", () => {
     const a = buildIntermediateIdentifier(TEST_CA_PEM, "Infisical-ca-{{fingerprint}}");
     const b = buildIntermediateIdentifier(TEST_CA_PEM, "Infisical-ca-{{fingerprint}}");
     expect(a).toBe(b);
-    expect(a).toMatch(/^Infisical-ca-[0-9a-f]{24}$/);
+    expect(new RE2("^Infisical-ca-[0-9a-f]{24}$").test(a)).toBe(true);
     expect(buildIntermediateIdentifier("different-content", "Infisical-ca-{{fingerprint}}")).not.toBe(a);
   });
 
   test("compiles {{commonName}} from the certificate subject, sanitizing to Kemp-safe characters", () => {
-    // CN is "Test CA"; the space is sanitized to a dash.
-    expect(buildIntermediateIdentifier(TEST_CA_PEM, "{{commonName}}-{{fingerprint}}")).toMatch(
-      /^Test-CA-[0-9a-f]{24}$/
-    );
+    // CN is "Test CA", the space is sanitized to a dash.
+    expect(
+      new RE2("^Test-CA-[0-9a-f]{24}$").test(buildIntermediateIdentifier(TEST_CA_PEM, "{{commonName}}-{{fingerprint}}"))
+    ).toBe(true);
   });
 
   test("falls back to 'ca' for {{commonName}} when the certificate cannot be parsed", () => {

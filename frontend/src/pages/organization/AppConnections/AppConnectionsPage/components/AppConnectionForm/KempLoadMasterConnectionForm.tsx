@@ -102,7 +102,7 @@ export const KempLoadMasterConnectionForm = ({ appConnection, onSubmit }: Props)
       gatewayId: null,
       gatewayPoolId: null,
       credentials: {
-        sslRejectUnauthorized: false,
+        sslRejectUnauthorized: true,
         sslCertificate: undefined
       }
     }

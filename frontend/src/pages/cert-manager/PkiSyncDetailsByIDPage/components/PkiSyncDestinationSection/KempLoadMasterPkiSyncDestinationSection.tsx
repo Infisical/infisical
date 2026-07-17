@@ -1,4 +1,3 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
 import { TKempLoadMasterPkiSync } from "@app/hooks/api/pkiSyncs/types/kemp-loadmaster-sync";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (

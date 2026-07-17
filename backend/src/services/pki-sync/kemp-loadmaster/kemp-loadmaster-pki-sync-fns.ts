@@ -618,13 +618,20 @@ export const kempLoadMasterPkiSyncFactory = ({
           }
         }
 
+        const managedCertificateIds = new Set<string>();
+        for (const certData of Object.values(certificateMap)) {
+          if (certData.certificateId) managedCertificateIds.add(certData.certificateId);
+        }
+        const attemptedIdentifiers = new Set(certificatesToUpload.map((entry) => entry.targetIdentifier));
+
         const identifiersToRemove = new Set<string>();
         if (canRemoveCertificates) {
           for (const syncRecord of existingSyncRecords) {
             if (
               syncRecord.externalIdentifier &&
               !activeIdentifiers.has(syncRecord.externalIdentifier) &&
-              existingCertNames.has(syncRecord.externalIdentifier)
+              existingCertNames.has(syncRecord.externalIdentifier) &&
+              !(syncRecord.certificateId && managedCertificateIds.has(syncRecord.certificateId))
             ) {
               identifiersToRemove.add(syncRecord.externalIdentifier);
             }
@@ -633,7 +640,11 @@ export const kempLoadMasterPkiSyncFactory = ({
           if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
             const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
             for (const certName of existingCertNames) {
-              if (managedCertNamePattern.test(certName) && !activeIdentifiers.has(certName)) {
+              if (
+                managedCertNamePattern.test(certName) &&
+                !activeIdentifiers.has(certName) &&
+                !attemptedIdentifiers.has(certName)
+              ) {
                 identifiersToRemove.add(certName);
               }
             }
