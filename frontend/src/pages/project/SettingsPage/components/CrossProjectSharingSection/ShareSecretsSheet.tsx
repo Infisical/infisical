@@ -104,9 +104,10 @@ const PathAdder = ({ environment, existingPaths, onAdd }: PathAdderProps) => {
           }}
         />
       </div>
-      <IconButton variant="ghost-muted" size="sm" onClick={handleAdd} isDisabled={!canAdd}>
+      <Button variant="project" size="sm" onClick={handleAdd} isDisabled={!canAdd}>
         <Plus />
-      </IconButton>
+        Add
+      </Button>
     </div>
   );
 };
@@ -137,7 +138,14 @@ const EnvironmentGroupRow = ({
       <div className="flex items-center gap-2 px-3 py-2.5">
         <Layers className="size-4 shrink-0 text-muted" />
         {group.environment ? (
-          <span className="flex-1 text-sm font-medium">{envName ?? group.environment}</span>
+          <span className="flex-1 text-sm font-medium">
+            {envName ?? group.environment}
+            <span className="ml-2 text-xs font-normal text-muted">
+              {group.secretPaths.length === 0
+                ? "No paths selected"
+                : `${String(group.secretPaths.length)} path${group.secretPaths.length === 1 ? "" : "s"}`}
+            </span>
+          </span>
         ) : (
           <div className="flex-1">
             <Select
@@ -251,7 +259,7 @@ export const ShareSecretsSheet = ({
 
   const handleChangeEnvironment = (index: number, env: string) => {
     setGroups((prev) =>
-      prev.map((g, i) => (i === index ? { ...g, environment: env, secretPaths: ["/"] } : g))
+      prev.map((g, i) => (i === index ? { ...g, environment: env, secretPaths: [] } : g))
     );
   };
 
