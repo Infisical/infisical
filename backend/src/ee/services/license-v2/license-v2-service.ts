@@ -32,6 +32,7 @@ import {
   TAddBillingV2PaymentMethodDTO,
   TAddBillingV2ProductDTO,
   TBillingV2SubscriptionLifecycleDTO,
+  TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
@@ -65,6 +66,8 @@ type TLicenseV2ServiceFactoryDep = {
     | "removeSubscriptionItem"
     | "changeCommitment"
     | "startTrial"
+    | "cancelTrial"
+    | "getTrials"
     | "cancelSubscription"
     | "resumeSubscription"
   >;
@@ -679,6 +682,19 @@ export const licenseV2ServiceFactory = ({
       0
     );
 
+    // Products whose one-per-product trial is used up (any outcome — trialing/converted/expired/
+    // canceled/completed). The UI gates the trial CTA on this so a canceled trial isn't re-offered.
+    // A failed lookup degrades to empty: the server still blocks a repeat trial with a 409 on start.
+    let trialedProductKeys: string[] = [];
+    if (!isSelfHostedLicense) {
+      try {
+        const trials = await licenseClient.getTrials(orgId);
+        trialedProductKeys = [...new Set(trials.trials.map((trial) => trial.product_key))];
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read trial history [orgId=${orgId}]`);
+      }
+    }
+
     // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
     // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
     // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
@@ -720,6 +736,7 @@ export const licenseV2ServiceFactory = ({
       billingDetails,
       invoices,
       entitlements,
+      trialedProductKeys,
       onDemandAmount
     };
 
@@ -888,13 +905,30 @@ export const licenseV2ServiceFactory = ({
     return { subscriptionId };
   };
 
-  // Start a plan-scoped self-serve trial. trial_started attaches directly; collect_payment_method
-  // returns a setup-mode checkout URL to add a card (the trial then auto-starts via webhook).
-  const startTrial = async ({ orgId, actor, productId, plan }: TStartBillingV2TrialDTO) => {
+  // Start a plan-scoped self-serve trial. The trial is granted immediately (no upfront charge);
+  // cardSetupUrl, when present, is a best-effort card-setup checkout the client redirects to.
+  const startTrial = async ({ orgId, actor, productId, plan, email }: TStartBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.startTrial(orgId, { productKey: productId, planKey: plan });
+    // The trial has no Stripe customer yet, so the server creates one from the org's own name + the
+    // authenticated user's email; neither is client-supplied.
+    const organization = await orgDAL.findById(orgId);
+    const result = await licenseClient.startTrial(orgId, {
+      productKey: productId,
+      planKey: plan,
+      email,
+      name: organization?.name
+    });
     await licenseClient.invalidateEntitlements(orgId);
-    return { outcome: result.outcome, checkoutUrl: result.checkoutUrl };
+    return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
+  };
+
+  // Cancel an in-progress trial: the product drops to free and the trial never converts. A 404 from
+  // the server (no active trial) propagates so the UI can surface it.
+  const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
+    await licenseClient.invalidateEntitlements(orgId);
+    return { outcome: result.outcome };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer
@@ -933,6 +967,7 @@ export const licenseV2ServiceFactory = ({
     removeProduct,
     changeCommitment,
     startTrial,
+    cancelTrial,
     cancelSubscription,
     resumeSubscription
   };

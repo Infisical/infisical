@@ -2,6 +2,7 @@ export {
   useAddBillingV2PaymentMethod,
   useAddBillingV2Product,
   useCancelBillingV2Subscription,
+  useCancelBillingV2Trial,
   useChangeBillingV2Commitment,
   useCreateBillingV2CheckoutSession,
   useCreateBillingV2PortalSession,

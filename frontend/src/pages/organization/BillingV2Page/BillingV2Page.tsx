@@ -180,6 +180,7 @@ export const BillingV2Page = () => {
           billingEmail={billingEmail}
           returnPath={window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
+          trialUsed={overview?.trialedProductKeys.includes(flow.prodId) ?? false}
           onClose={close}
           onRemove={setRemoveProdId}
           onContact={() => {

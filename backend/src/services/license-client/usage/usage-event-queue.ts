@@ -73,6 +73,9 @@ export const usageEventQueueFactory = ({
       }
     ]);
 
+    logger.info(
+      `usage-event-queue: reported usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}] [value=${value}]`
+    );
     await keyStore.setItemWithExpiry(lastReportedKey, KeyStoreTtls.LicenseUsageLastReportedInSeconds, String(value));
   };
 

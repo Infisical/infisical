@@ -369,18 +369,49 @@ export type TChangeCommitmentPayload = {
 export type TStartTrialPayload = {
   productKey: string;
   planKey: string;
+  // A trial starts with no Stripe customer yet, so the server needs an email + org name to create one.
+  email?: string;
+  name?: string;
 };
 
-// trial_started: attached directly (card on file). collect_payment_method: caller must complete the
-// setup-mode Checkout at checkoutUrl to add a card; the trial then auto-starts via webhook.
+// The trial is always granted immediately (our-side, no Stripe subscription, no upfront charge), so
+// outcome is always "trial_started". cardSetupUrl is a best-effort setup-mode Checkout to add a card;
+// omitted when there's no customer / the portal isn't configured / the session couldn't open. The
+// card never gates the trial — at trial end a worker converts (card on file) or expires to free.
 const trialResultSchema = z
   .object({
-    outcome: z.enum(["trial_started", "collect_payment_method"]),
-    checkout_url: z.string().optional()
+    outcome: z.literal("trial_started"),
+    card_setup_url: z.string().optional()
   })
   .passthrough();
-export type TTrialResult = { outcome: "trial_started" | "collect_payment_method"; checkoutUrl?: string };
+export type TTrialResult = { outcome: "trial_started"; cardSetupUrl?: string };
 export { trialResultSchema };
+
+export type TCancelTrialPayload = {
+  productKey: string;
+};
+
+// Revokes the trialing entitlement immediately (product → free) and marks the trial completed so it
+// never converts. Idempotent-ish: the server 404s when there's no active trial to cancel.
+const trialCancelResultSchema = z.object({ outcome: z.literal("trial_completed") }).passthrough();
+export type TTrialCancelResult = { outcome: "trial_completed" };
+export { trialCancelResultSchema };
+
+// The org's trial history: any product listed here has used up its one-per-product trial (regardless
+// of how it ended), so the client can gate the trial CTA instead of discovering it via a 409 on start.
+const trialHistoryItemSchema = z
+  .object({
+    product_key: z.string(),
+    plan_key: z.string().nullish(),
+    // trialing | converted | expired | canceled | completed
+    outcome: z.string(),
+    started_at: z.number().nullish(),
+    trial_ends_at: z.number().nullish()
+  })
+  .passthrough();
+const trialsResponseSchema = z.object({ trials: z.array(trialHistoryItemSchema).default([]) }).passthrough();
+export type TTrialsResponse = z.infer<typeof trialsResponseSchema>;
+export { trialsResponseSchema };
 
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
@@ -399,6 +430,10 @@ export type TLicenseClientBackend = {
   changeCommitment: (orgId: string, payload: TChangeCommitmentPayload) => Promise<TCheckoutResult>;
   // Start a plan-scoped self-serve trial.
   startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
+  // Cancel an in-progress trial for a product (product → free; the trial never converts).
+  cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
+  // The org's trial history, used to tell which products have already used their one-time trial.
+  fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };

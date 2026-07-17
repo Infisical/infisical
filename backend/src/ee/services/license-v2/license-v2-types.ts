@@ -162,6 +162,8 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  // Product keys whose one-per-product trial is used up (any outcome); the UI gates the trial CTA on it.
+  trialedProductKeys: string[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;
 };
@@ -267,6 +269,14 @@ export type TStartBillingV2TrialDTO = {
   actor: OrgServiceActor;
   productId: string;
   plan: string;
+  // Billing email for the trial; a trial has no Stripe customer yet, so the server needs it up front.
+  email?: string;
+};
+
+export type TCancelBillingV2TrialDTO = {
+  orgId: string;
+  actor: OrgServiceActor;
+  productId: string;
 };
 
 export type TBillingV2SubscriptionLifecycleDTO = {

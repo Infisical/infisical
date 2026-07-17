@@ -157,6 +157,8 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  // Product keys whose one-per-product trial is used up (any outcome); gates the trial CTA.
+  trialedProductKeys: string[];
 };
 
 export type BillingV2CheckoutResult = {
@@ -253,11 +255,21 @@ export type TStartBillingV2TrialDTO = {
   plan: string;
 };
 
-// trial_started: attached directly. collect_payment_method: complete the setup Checkout at checkoutUrl
-// to add a card (the trial then auto-starts via webhook).
+export type TCancelBillingV2TrialDTO = {
+  orgId: string;
+  productId: string;
+};
+
+// The trial is granted immediately (outcome is always trial_started). cardSetupUrl, when present, is a
+// best-effort setup-mode Checkout to add a card; the client redirects to it, else shows a card-required
+// banner. The card never gates the trial.
 export type BillingV2TrialResult = {
-  outcome: "trial_started" | "collect_payment_method";
-  checkoutUrl?: string;
+  outcome: "trial_started";
+  cardSetupUrl?: string;
+};
+
+export type BillingV2TrialCancelResult = {
+  outcome: "trial_completed";
 };
 
 export type TBillingV2LifecycleDTO = {

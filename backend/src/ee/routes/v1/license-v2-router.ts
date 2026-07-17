@@ -147,6 +147,7 @@ const BillingV2OverviewSchema = z.object({
     .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
+  trialedProductKeys: z.string().array(),
   onDemandAmount: z.number()
 });
 
@@ -455,18 +456,49 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.enum(["trial_started", "collect_payment_method"]),
-          checkoutUrl: z.string().optional()
+          outcome: z.literal("trial_started"),
+          cardSetupUrl: z.string().optional()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
+      // user (this route is JWT-only) rather than trusting a client-supplied value.
+      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
       return server.services.licenseV2.startTrial({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
-        plan: req.body.plan
+        plan: req.body.plan,
+        email
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/trial/cancel",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z.object({
+        productId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          outcome: z.literal("trial_completed")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.cancelTrial({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        productId: req.body.productId
       });
     }
   });

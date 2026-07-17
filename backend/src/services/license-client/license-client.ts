@@ -7,6 +7,7 @@ import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
   TAddSubscriptionItemsPayload,
+  TCancelTrialPayload,
   TChangeCommitmentPayload,
   TCreateCheckoutPayload,
   TCreatePortalPayload,
@@ -182,6 +183,21 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.startTrial(orgId, payload);
   };
 
+  const cancelTrial = async (orgId: string, payload: TCancelTrialPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.cancelTrial(orgId, payload);
+  };
+
+  // The org's trial history; returns an empty history when no backend is configured (self-hosted).
+  const getTrials = async (orgId: string) => {
+    if (!backend) {
+      return { trials: [] };
+    }
+    return backend.fetchTrials(orgId);
+  };
+
   const cancelSubscription = async (orgId: string) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -212,6 +228,8 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     removeSubscriptionItem,
     changeCommitment,
     startTrial,
+    cancelTrial,
+    getTrials,
     cancelSubscription,
     resumeSubscription
   };

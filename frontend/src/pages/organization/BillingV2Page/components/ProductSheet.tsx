@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Check, PlusIcon, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarX2Icon, Check, PlusIcon, Sparkles } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -34,6 +34,7 @@ import {
   BillingV2Dim,
   BillingV2Entitlement,
   BillingV2Plan,
+  useCancelBillingV2Trial,
   useStartBillingV2Trial
 } from "@app/hooks/api";
 
@@ -147,6 +148,8 @@ type PlanCardProps = {
   cadence: BillingV2Cadence;
   isCurrent: boolean;
   entitled: boolean;
+  // This product's one-per-product trial is already used up (any outcome), so no trial CTA.
+  trialUsed: boolean;
   canChangeCommitment: boolean;
   onActivate: (planTier: string) => void;
   onStartTrial: (planTier: string) => void;
@@ -159,6 +162,7 @@ const PlanCard = ({
   cadence,
   isCurrent,
   entitled,
+  trialUsed,
   canChangeCommitment,
   onActivate,
   onStartTrial,
@@ -166,7 +170,9 @@ const PlanCard = ({
   onContact
 }: PlanCardProps) => {
   const isCustom = plan.salesLed && !plan.base && plan.dims.length === 0;
-  const offersTrial = plan.selfServe && plan.trialable && !entitled;
+  // A trial is offered only when the plan supports it, the org isn't already on the product, and it
+  // hasn't used its one-time trial for this product yet.
+  const offersTrial = plan.selfServe && plan.trialable && !entitled && !trialUsed;
 
   let cta = null;
   if (plan.salesLed && !isCurrent) {
@@ -328,6 +334,8 @@ type ProductSheetProps = {
   billingEmail?: string;
   returnPath: string;
   renewsOn: string | null;
+  // This product's one-per-product trial is already used up (backend-computed from trial history).
+  trialUsed: boolean;
   onClose: () => void;
   onRemove: (prodId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -343,6 +351,7 @@ export const ProductSheet = ({
   billingEmail,
   returnPath,
   renewsOn,
+  trialUsed,
   onClose,
   onRemove,
   onContact
@@ -352,14 +361,19 @@ export const ProductSheet = ({
   const [activatePlan, setActivatePlan] = useState<string | null>(null);
   // The plan tier awaiting trial confirmation (drives the confirm dialog).
   const [trialConfirmTier, setTrialConfirmTier] = useState<string | null>(null);
+  // Whether the cancel-trial confirm dialog is open.
+  const [showCancelTrial, setShowCancelTrial] = useState(false);
 
   const startTrial = useStartBillingV2Trial();
+  const cancelTrial = useCancelBillingV2Trial();
 
   if (!prod) {
     return null;
   }
 
   const entitled = Boolean(entitlement?.entitled);
+  // A trialing product is canceled (trial → free), not removed like a paid product line.
+  const isTrialing = Boolean(entitlement?.isTrialing);
   const selfServePlan = prod.plans.find((plan) => plan.selfServe && !plan.salesLed);
   // The active product's plan-card price renders in its billing cadence; a new one defaults to monthly.
   const displayCadence: BillingV2Cadence = entitlement?.cadence === "annual" ? "annual" : "monthly";
@@ -387,19 +401,34 @@ export const ProductSheet = ({
         productId: prod.id,
         plan: trialConfirmTier
       });
-      // No card on file: finish the Stripe setup checkout, which auto-starts the trial via webhook.
-      if (result.outcome === "collect_payment_method" && result.checkoutUrl) {
-        window.location.href = result.checkoutUrl;
+      // The trial is already active. Redirect to the card-setup checkout when the server returns one so
+      // it can convert at trial end; otherwise nudge the user to add a card before then.
+      if (result.cardSetupUrl) {
+        window.location.href = result.cardSetupUrl;
         return;
       }
       createNotification({
         type: "success",
-        text: `Your ${prod.name} trial has started. It may take a moment to update here.`
+        text: `Your ${prod.name} trial has started. Add a card before it ends to keep the product.`
       });
       onClose();
     } catch {
       createNotification({ type: "error", text: `Failed to start the ${prod.name} trial.` });
       setTrialConfirmTier(null);
+    }
+  };
+
+  const handleCancelTrial = async () => {
+    try {
+      await cancelTrial.mutateAsync({ orgId, productId: prod.id });
+      createNotification({
+        type: "success",
+        text: `Your ${prod.name} trial has been canceled.`
+      });
+      onClose();
+    } catch {
+      createNotification({ type: "error", text: `Failed to cancel the ${prod.name} trial.` });
+      setShowCancelTrial(false);
     }
   };
 
@@ -470,6 +499,7 @@ export const ProductSheet = ({
                       plan={plan}
                       cadence={displayCadence}
                       entitled={entitled}
+                      trialUsed={trialUsed}
                       isCurrent={entitled && plan.tier === currentTier}
                       canChangeCommitment={canChangeCommitment}
                       onActivate={openActivate}
@@ -491,13 +521,23 @@ export const ProductSheet = ({
               <SheetFooter className="flex-row items-center justify-between border-t">
                 {entitled ? (
                   <>
-                    <Button
-                      variant="ghost"
-                      className="text-danger"
-                      onClick={() => onRemove(prod.id)}
-                    >
-                      Remove product
-                    </Button>
+                    {isTrialing ? (
+                      <Button
+                        variant="ghost"
+                        className="text-danger"
+                        onClick={() => setShowCancelTrial(true)}
+                      >
+                        Cancel trial
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        className="text-danger"
+                        onClick={() => onRemove(prod.id)}
+                      >
+                        Remove product
+                      </Button>
+                    )}
                     <Button variant="outline" onClick={onClose}>
                       Close
                     </Button>
@@ -558,6 +598,42 @@ export const ProductSheet = ({
               }}
             >
               Start free trial
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={showCancelTrial}
+        onOpenChange={(open) => {
+          if (!open && !cancelTrial.isPending) {
+            setShowCancelTrial(false);
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-lg!">
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <CalendarX2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Cancel your {prod.name} trial?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {prod.name} drops back to the free tier right away and the trial won&apos;t convert to
+              a paid plan. You can&apos;t restart this trial later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep trial</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isDisabled={cancelTrial.isPending}
+              isPending={cancelTrial.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelTrial();
+              }}
+            >
+              Cancel trial
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

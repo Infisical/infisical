@@ -46,7 +46,7 @@ import {
   BillingV2Overview
 } from "@app/hooks/api";
 
-import { byDisplayOrder, cadencePeriod, fmtMoney, productBreakdown } from "../billing-v2-data";
+import { byDisplayOrder, fmtMoney, productAnnualCommitted } from "../billing-v2-data";
 import { ActiveBadge, CadenceBadge, DimensionMeter, ProductIcon } from "./shared";
 
 export type BillingV2Mode = "self-serve" | "managed";
@@ -232,7 +232,7 @@ const StatusBadge = ({ subState }: { subState: BillingV2RenderState }) => {
 };
 
 const HeaderColumn = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex flex-1 flex-col gap-3 px-6 py-5 first:pl-0">
+  <div className="flex flex-1 flex-col gap-3 px-6 py-5">
     <div className="text-xs font-medium tracking-wide text-muted uppercase">{label}</div>
     {children}
   </div>
@@ -407,12 +407,15 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
     );
   }
 
-  // Active product: cadence badge, renewal (or trial) line, headline recurring + on-demand, price
-  // breakdown, and one usage bar per dimension.
+  // Active product: cadence badge, renewal (or trial) line, and the price as two independent clocks
+  // (never summed) — the annual prepaid commitment and the monthly charge — plus one bar per dimension.
   const dims = entitlement?.dimensions ?? [];
-  const amount = entitlement?.amount ?? 0;
   const onDemand = entitlement?.onDemandAmount ?? 0;
-  const breakdown = productBreakdown(entitlement);
+  const annualCommitted = productAnnualCommitted(entitlement);
+  // Monthly recurring applies to non-annual products (item.amount is their monthly charge); an annual
+  // product carries no monthly recurring, only optional usage-driven on-demand overage.
+  const monthlyRecurring = entitlement?.cadence === "annual" ? 0 : (entitlement?.amount ?? 0);
+  const hasPrice = annualCommitted > 0 || monthlyRecurring > 0 || onDemand > 0;
   const isTrialing = Boolean(entitlement?.isTrialing);
 
   return (
@@ -438,18 +441,28 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-0.5">
-          <div className="flex items-baseline gap-1">
-            <span className="text-sm font-semibold text-foreground tabular-nums">
-              {fmtMoney(amount)}
-            </span>
-            <span className="text-xs text-muted">/ {cadencePeriod(entitlement?.cadence)}</span>
-          </div>
-          {breakdown && <span className="text-xs text-muted">{breakdown}</span>}
+          {annualCommitted > 0 && (
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                {fmtMoney(annualCommitted)}
+              </span>
+              <span className="text-xs text-muted">/ yr </span>
+            </div>
+          )}
+          {monthlyRecurring > 0 && (
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                {fmtMoney(monthlyRecurring)}
+              </span>
+              <span className="text-xs text-muted">/ mo</span>
+            </div>
+          )}
           {onDemand > 0 && (
             <span className="text-xs font-medium text-warning">
               + {fmtMoney(onDemand)} / mo on-demand
             </span>
           )}
+          {!hasPrice && <span className="text-sm text-muted">Included</span>}
         </div>
         {action && <div className="flex shrink-0 items-center gap-1.5">{action}</div>}
       </div>

@@ -7,10 +7,12 @@ import {
   BillingV2CheckoutResult,
   BillingV2MutationResult,
   BillingV2Preview,
+  BillingV2TrialCancelResult,
   BillingV2TrialResult,
   TAddBillingV2PaymentMethodDTO,
   TAddBillingV2ProductDTO,
   TBillingV2LifecycleDTO,
+  TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
@@ -136,7 +138,8 @@ export const useChangeBillingV2Commitment = () => {
   });
 };
 
-// Start a plan-scoped self-serve trial. collect_payment_method returns a Stripe setup checkout URL.
+// Start a plan-scoped self-serve trial. The trial is granted immediately; cardSetupUrl (when present)
+// is a best-effort Stripe setup checkout the caller redirects to for adding a card.
 export const useStartBillingV2Trial = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -144,6 +147,24 @@ export const useStartBillingV2Trial = () => {
       const { data } = await apiRequest.post<BillingV2TrialResult>(
         `/api/v1/organizations/${orgId}/billing/v2/trial`,
         { productId, plan }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+// Cancel an in-progress trial for a product (product drops to free; the trial never converts).
+export const useCancelBillingV2Trial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId }: TCancelBillingV2TrialDTO) => {
+      const { data } = await apiRequest.post<BillingV2TrialCancelResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial/cancel`,
+        { productId }
       );
 
       return data;

@@ -122,42 +122,15 @@ export const dimBarSegments = (
   return { committedPct: usagePct(dim.used, dim.limit) ?? 0, onDemandPct: 0 };
 };
 
-// Headline price breakdown for a product card, e.g. "55 seats committed × $20",
-// "1 CA committed × $435 + 100 certificates committed × $3", "140 active contributors × $7", or
-// "Flat · up to 10 resources". Annual committed dims read as "{committed} {units} committed × $rate";
-// monthly priced dims as "{used} {units} × $rate"; a capped flat dim as "up to {limit} {units}".
-export const productBreakdown = (entitlement?: BillingV2Entitlement): string | null => {
+// Annual committed total for a product (dollars/yr): committed quantity × pinned annual rate, summed
+// across its annually-committed dimensions. This is the prepaid yearly figure, shown separately from
+// any monthly on-demand overage (the two are never summed into one headline).
+export const productAnnualCommitted = (entitlement?: BillingV2Entitlement): number => {
   const dims = entitlement?.dimensions ?? [];
-  if (dims.length === 0) {
-    return null;
-  }
-
-  const pricedTerms: string[] = [];
-  const flatTerms: string[] = [];
-  dims.forEach((dim) => {
+  return dims.reduce((sum, dim) => {
     if (dimAnnualCommitted(dim) && dim.committedRate) {
-      const committed = dim.committed ?? 0;
-      pricedTerms.push(
-        `${committed.toLocaleString()} ${pluralizeUnit(dim.noun)} committed × ${fmtMoney(dim.committedRate)}`
-      );
-      return;
+      return sum + (dim.committed ?? 0) * dim.committedRate;
     }
-    const rate = dimMonthlyRate(dim);
-    if (rate > 0) {
-      const qty = dim.metered ? Math.max(0, dim.used - (dim.freeBand ?? 0)) : dim.used;
-      pricedTerms.push(`${qty.toLocaleString()} ${pluralizeUnit(dim.noun)} × ${fmtMoney(rate)}`);
-      return;
-    }
-    if (dim.limit !== null) {
-      flatTerms.push(`up to ${dim.limit.toLocaleString()} ${pluralizeUnit(dim.noun)}`);
-    }
-  });
-
-  if (pricedTerms.length > 0) {
-    return [...pricedTerms, ...flatTerms].join(" + ");
-  }
-  if (flatTerms.length > 0) {
-    return `Flat · ${flatTerms.join(" + ")}`;
-  }
-  return null;
+    return sum;
+  }, 0);
 };
