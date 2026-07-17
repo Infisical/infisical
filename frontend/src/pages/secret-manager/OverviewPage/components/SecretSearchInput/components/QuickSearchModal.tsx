@@ -55,12 +55,11 @@ import { QuickSearchEnvTable } from "./QuickSearchEnvTable";
 import { QuickSearchFolderItem } from "./QuickSearchFolderItem";
 import { QuickSearchMetadataSecretItem } from "./QuickSearchMetadataSecretItem";
 import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
-import { SecretMetadataFilterChips } from "./SecretMetadataFilterChips";
 import {
   MetadataMatchType,
   MetadataSearchCondition,
-  SecretMetadataSearchBuilder
-} from "./SecretMetadataSearchBuilder";
+  SecretMetadataSearchInput
+} from "./SecretMetadataSearchInput";
 
 export type QuickSearchModalProps = {
   environments: ProjectEnv[];
@@ -118,11 +117,6 @@ const Content = ({
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const conditionIdRef = useRef(0);
 
-  const createCondition = (): MetadataSearchCondition => {
-    conditionIdRef.current += 1;
-    return { id: `cond-${conditionIdRef.current}`, key: "", value: "" };
-  };
-
   const activeConditions = useMemo(
     () => metadataConditions.filter((condition) => condition.key.trim() && condition.value.trim()),
     [metadataConditions]
@@ -136,7 +130,7 @@ const Content = ({
       debouncedConditions.map((condition) => ({
         key: condition.key.trim(),
         value: condition.value.trim(),
-        operator: SecretMetadataSearchOperator.Is
+        operator: condition.operator
       })),
     [debouncedConditions]
   );
@@ -274,19 +268,38 @@ const Content = ({
 
   const handleOpenMetadata = () => {
     setIsBuilderOpen(true);
-    setMetadataConditions((prev) => (prev.length ? prev : [createCondition()]));
   };
 
-  const handleAddCondition = () => {
-    setMetadataConditions((prev) => [...prev, createCondition()]);
+  const handleAddCondition = (
+    key: string,
+    value: string,
+    operator: SecretMetadataSearchOperator
+  ) => {
+    setMetadataConditions((prev) => {
+      // ignore exact duplicates, but allow the same key/value with a different operator
+      if (
+        prev.some(
+          (condition) =>
+            condition.key === key && condition.value === value && condition.operator === operator
+        )
+      ) {
+        return prev;
+      }
+      conditionIdRef.current += 1;
+      return [...prev, { id: `cond-${conditionIdRef.current}`, key, value, operator }];
+    });
   };
 
-  const handleUpdateCondition = (
+  const handleEditCondition = (
     id: string,
-    patch: Partial<Pick<MetadataSearchCondition, "key" | "value">>
+    key: string,
+    value: string,
+    operator: SecretMetadataSearchOperator
   ) => {
     setMetadataConditions((prev) =>
-      prev.map((condition) => (condition.id === id ? { ...condition, ...patch } : condition))
+      prev.map((condition) =>
+        condition.id === id ? { ...condition, key, value, operator } : condition
+      )
     );
   };
 
@@ -464,16 +477,9 @@ const Content = ({
         </InputGroup>
       </div>
 
-      <SecretMetadataFilterChips
-        conditions={activeConditions}
-        match={metadataMatch}
-        onRemoveCondition={handleRemoveCondition}
-        onClear={handleClearMetadata}
-      />
-
       <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto pt-4">
         {isBuilderOpen && (
-          <SecretMetadataSearchBuilder
+          <SecretMetadataSearchInput
             conditions={metadataConditions}
             match={metadataMatch}
             matchingCount={metadataResultCount}
@@ -481,7 +487,7 @@ const Content = ({
             hasActiveConditions={isMetadataMode}
             onChangeMatch={setMetadataMatch}
             onAddCondition={handleAddCondition}
-            onUpdateCondition={handleUpdateCondition}
+            onEditCondition={handleEditCondition}
             onRemoveCondition={handleRemoveCondition}
             onClear={handleClearMetadata}
             onClose={handleCloseBuilder}
