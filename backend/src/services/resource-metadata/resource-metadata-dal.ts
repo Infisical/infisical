@@ -9,10 +9,6 @@ import { SecretMetadataSearchLogicalOperator, TSearchSecretMetadataDALDTO } from
 
 export type TResourceMetadataDALFactory = ReturnType<typeof resourceMetadataDALFactory>;
 
-// defensive cap on the number of matched secrets scanned before permission filtering.
-// full pagination is intentionally out of scope for now.
-const MAX_SECRET_METADATA_SEARCH_SECRETS = 100;
-
 export const resourceMetadataDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ResourceMetadata);
 
@@ -33,7 +29,7 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
   //  - and -> a secret matches only if every condition matches some row of that secret
   // Only plaintext `value` is matched (encrypted metadata values cannot be matched by equality).
   const searchSecretMetadata = async (
-    { orgId, projectId, filters, operator, limit = MAX_SECRET_METADATA_SEARCH_SECRETS }: TSearchSecretMetadataDALDTO,
+    { orgId, projectId, filters, operator }: TSearchSecretMetadataDALDTO,
     tx?: Knex
   ) => {
     try {
@@ -79,8 +75,7 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
 
       const matchedSecretRows = await matchedSecretIdsQuery
         .distinct(`${TableName.ResourceMetadata}.secretId`)
-        .orderBy(`${TableName.ResourceMetadata}.secretId`)
-        .limit(limit);
+        .orderBy(`${TableName.ResourceMetadata}.secretId`);
 
       const secretIds = matchedSecretRows.map((row) => row.secretId as string);
       if (!secretIds.length) return [];

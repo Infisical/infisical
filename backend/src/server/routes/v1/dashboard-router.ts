@@ -10,6 +10,7 @@ import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secr
 import { DASHBOARD } from "@app/lib/api-docs";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -130,6 +131,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const rawQueryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
       const { filters, operator } = SecretMetadataSearchQuerySchema.parse(qs.parse(rawQueryString));
+      logger.info(`Filters: ${JSON.stringify(filters)}`);
+      logger.info(`Operator: ${operator}`);
       const { projectId } = req.query;
 
       const { secrets } = await server.services.resourceMetadata.searchSecretMetadata({

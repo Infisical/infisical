@@ -31,7 +31,8 @@ export const QuickSearchMetadataSecretItem = ({ secret, envSlug, onClose }: Prop
         secretPath: secret.secretPath,
         search: secret.secretKey,
         filterBy: "secret",
-        environments: [envSlug]
+        environments: [envSlug],
+        tags: undefined
       })
     });
     onClose();
