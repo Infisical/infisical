@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { format } from "date-fns";
-import { Box, ChevronRight, FolderIcon, Layers, Pencil, Plus, Trash2 } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import {
+  Box,
+  ChevronRight,
+  EllipsisVerticalIcon,
+  FolderIcon,
+  Layers,
+  PencilIcon,
+  Plus,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -25,12 +34,19 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  Input
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
@@ -46,7 +62,6 @@ type ProjectGroup = {
   targetProjectId: string;
   targetProjectName: string;
   totalSecrets: number;
-  oldestGrantDate: string;
   grants: TProjectFolderGrant[];
 };
 
@@ -58,20 +73,12 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
     return map;
   }, new Map<string, TProjectFolderGrant[]>());
 
-  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => {
-    let oldestDate = projectGrants[0].createdAt;
-    projectGrants.forEach((g) => {
-      if (g.createdAt < oldestDate) oldestDate = g.createdAt;
-    });
-
-    return {
-      targetProjectId,
-      targetProjectName: projectGrants[0].targetProjectName,
-      totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
-      oldestGrantDate: oldestDate,
-      grants: projectGrants
-    };
-  });
+  return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => ({
+    targetProjectId,
+    targetProjectName: projectGrants[0].targetProjectName,
+    totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
+    grants: projectGrants
+  }));
 };
 
 type DeleteProjectGrantsDialogProps = {
@@ -267,37 +274,40 @@ export const CrossProjectSharingSection = () => {
                       {projectGroup.totalSecrets === 1 ? "secret" : "secrets"} shared
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 pr-2">
-                    <span className="text-xs text-muted">
-                      {format(new Date(projectGroup.oldestGrantDate), "MMM d, yyyy")}
-                    </span>
-                    <IconButton
-                      variant="ghost-muted"
-                      size="xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(projectGroup);
-                      }}
-                    >
-                      <Pencil />
-                    </IconButton>
-                    <IconButton
-                      variant="ghost-muted"
-                      size="xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(projectGroup);
-                      }}
-                    >
-                      <Trash2 />
-                    </IconButton>
+                  <div
+                    className="pr-2"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    role="presentation"
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton aria-label="Actions" variant="ghost-muted" size="xs">
+                          <EllipsisVerticalIcon className="size-4" />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(projectGroup)}>
+                          <PencilIcon className="mr-2 size-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="danger"
+                          onClick={() => setDeleteTarget(projectGroup)}
+                        >
+                          <TrashIcon className="mr-2 size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="rounded-md border border-mineshaft-600">
-                    <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
-                      <span>Shared locations in this project</span>
-                      <span>Secrets shared</span>
+                    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
+                      <span>Shared location in this project</span>
+                      <span className="w-24 text-right">Secrets shared</span>
+                      <span className="w-32 text-right">Shared</span>
                     </div>
                     {projectGroup.grants
                       .sort((a, b) => {
@@ -308,7 +318,7 @@ export const CrossProjectSharingSection = () => {
                       .map((grant) => (
                         <div
                           key={grant.id}
-                          className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
+                          className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
                         >
                           <div className="flex items-center gap-2 text-sm">
                             <Badge variant="neutral" className="gap-1.5">
@@ -319,7 +329,21 @@ export const CrossProjectSharingSection = () => {
                             <FolderIcon className="size-3.5 text-muted" />
                             <span>{grant.secretPath}</span>
                           </div>
-                          <span className="text-sm tabular-nums">{grant.secretCount}</span>
+                          <span className="w-24 text-right text-sm tabular-nums">
+                            {grant.secretCount}
+                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="w-32 text-right text-sm whitespace-nowrap text-muted">
+                                {formatDistanceToNow(new Date(grant.createdAt), {
+                                  addSuffix: true
+                                }).replace(/^about /, "")}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       ))}
                   </div>
