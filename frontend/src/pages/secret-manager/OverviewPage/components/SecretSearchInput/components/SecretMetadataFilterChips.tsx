@@ -29,9 +29,9 @@ const ConditionChip = ({
   onRemoveCondition: (id: string) => void;
 }) => (
   <span className="flex min-w-0 items-center gap-1.5 font-mono text-sm">
-    <span className="shrink-0 text-foreground">{condition.key}</span>
+    <span className="shrink-0 text-muted">{condition.key}</span>
     <span className="shrink-0 text-muted">=</span>
-    <span className="max-w-40 truncate font-semibold text-project" title={condition.value}>
+    <span className="max-w-40 truncate text-foreground" title={condition.value}>
       {condition.value}
     </span>
     <button
@@ -67,7 +67,7 @@ export const SecretMetadataFilterChips = ({
   return (
     <div className="flex items-center gap-3 pt-3.5">
       <span className="shrink-0 text-xs tracking-wide text-muted uppercase">Filters</span>
-      <div className="flex min-w-0 items-center gap-2 rounded-md border border-project/40 bg-project/10 px-3 py-1.5">
+      <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-container px-3 py-1.5">
         <BracesIcon className="size-3.5 shrink-0 text-muted" />
         <span className="shrink-0 text-sm text-foreground">Metadata</span>
         <div className="flex min-w-0 flex-nowrap items-center gap-2">
