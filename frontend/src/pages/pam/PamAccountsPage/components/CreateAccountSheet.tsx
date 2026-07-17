@@ -48,6 +48,7 @@ import {
   accountTypeRequiresRecording,
   PamAccountType,
   useCreatePamAccount,
+  useGetPamAccessCapabilities,
   useListPamAccountTemplates,
   useListPamAccountTypes,
   useListPamFoldersAdmin,
@@ -80,6 +81,8 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
   const createAccount = useCreatePamAccount();
 
   const { currentOrg } = useOrganization();
+  const { data: capabilities } = useGetPamAccessCapabilities();
+  const isProductAdmin = Boolean(capabilities?.isProductAdmin);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -260,7 +263,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
     <>
       <Sheet open={isOpen} onOpenChange={handleOpenChange}>
         <SheetContent>
-          <SheetHeader className="border-b">
+          <SheetHeader>
             <SheetTitle>Add Account</SheetTitle>
             <SheetDescription>
               Pick a folder and an account template. The account inherits its type and governance
@@ -322,21 +325,23 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                         <FieldLabel>
                           Account Template<span className="text-product-pam">*</span>
                         </FieldLabel>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          className="text-muted hover:text-foreground"
-                          asChild
-                        >
-                          <Link
-                            to="/organizations/$orgId/pam/templates"
-                            params={{ orgId: currentOrg.id }}
-                            target="_blank"
+                        {isProductAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="text-muted hover:text-foreground"
+                            asChild
                           >
-                            Manage Templates
-                            <ArrowUpRight />
-                          </Link>
-                        </Button>
+                            <Link
+                              to="/organizations/$orgId/pam/templates"
+                              params={{ orgId: currentOrg.id }}
+                              target="_blank"
+                            >
+                              Manage Templates
+                              <ArrowUpRight />
+                            </Link>
+                          </Button>
+                        )}
                       </div>
                       <FieldContent className="min-h-0 flex-1">
                         <InputGroup>

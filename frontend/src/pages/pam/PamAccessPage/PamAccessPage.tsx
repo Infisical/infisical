@@ -109,7 +109,8 @@ export const PamAccessPage = () => {
     emptyDescription = "Try adjusting your search or filters.";
   } else if (canManageAccounts) {
     emptyTitle = "No accounts yet";
-    emptyDescription = "Onboard your first privileged account from the Accounts page to get started.";
+    emptyDescription =
+      "Onboard your first privileged account from the Accounts page to get started.";
   } else {
     emptyTitle = "No accounts available";
     emptyDescription = "Ask your PAM admin to grant you access to a folder or account.";
@@ -125,14 +126,14 @@ export const PamAccessPage = () => {
           scope={ProjectType.PAM}
           icon={KeyRound}
           title="My Access"
-          description="Connect to or request access to privileged accounts."
+          description="Launch sessions for accounts you have access to."
         />
 
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>My Access</CardTitle>
             <CardDescription>
-              Every account you can connect to or request access to.
+              Accounts you can connect to. Launch a session or request approval for gated accounts.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-3">
