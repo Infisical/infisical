@@ -64,9 +64,10 @@ export const SnowflakeUserKeyPairRotationParametersFields = () => {
             getNewOptionData={(inputValue) => ({ name: inputValue })}
             isValidNewOption={(inputValue) => inputValue.trim().length > 0}
             options={users}
-            placeholder="Select or enter a user..."
+            placeholder="Add user..."
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.name}
+            isClearable
           />
         </FormControl>
       )}

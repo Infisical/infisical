@@ -94,6 +94,10 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     }
   };
 
+  // Snowflake's DESC USER can return the literal string "null" when a key slot is unset.
+  const isPresentFingerprint = (value: string | null | undefined): value is string =>
+    typeof value === "string" && value.trim() !== "" && value.trim().toLowerCase() !== "null";
+
   const readFingerprints = async (client: snowflake.Connection, resolvedUsername: string) => {
     // DESC USER returns one row per user property with `property`/`value` columns. Snowflake reports
     // these column names in lowercase, but we read them case-insensitively to be safe across drivers.
@@ -106,7 +110,7 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     for (const row of rows) {
       const property = String(row.property ?? row.PROPERTY ?? "").toUpperCase();
       const value = (row.value ?? row.VALUE) as string | null | undefined;
-      if (value) {
+      if (isPresentFingerprint(value)) {
         if (property === "RSA_PUBLIC_KEY_FP") fingerprints.RSA_PUBLIC_KEY = value;
         else if (property === "RSA_PUBLIC_KEY_2_FP") fingerprints.RSA_PUBLIC_KEY_2 = value;
       }

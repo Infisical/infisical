@@ -15,29 +15,7 @@ Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair
 
 1. Create a [Snowflake Connection](/integrations/app-connections/snowflake) with the required **Secret Rotation** permissions.
 
-    The connection's role must be able to alter the target user. Grant a role that can manage the user and assign it to your connection user:
-
-    ```SQL
-    -- create a role Infisical will use to manage the target user
-    CREATE ROLE IF NOT EXISTS INFISICAL_ROTATION_ROLE;
-
-    -- allow the role to alter the target user's RSA public key
-    GRANT OWNERSHIP ON USER MY_TARGET_USER TO ROLE INFISICAL_ROTATION_ROLE;
-
-    -- (optional) allow the role to create the target user if it does not exist yet
-    GRANT CREATE USER ON ACCOUNT TO ROLE INFISICAL_ROTATION_ROLE;
-
-    -- assign the role to the user backing your Snowflake Connection
-    GRANT ROLE INFISICAL_ROTATION_ROLE TO USER MY_CONNECTION_USER;
-    ```
-
-    <Tip>
-        To learn more about managing users and privileges in Snowflake, see their [access control documentation](https://docs.snowflake.com/en/user-guide/security-access-control-overview).
-    </Tip>
-
-2. Decide on the target user whose key pair you want to rotate.
-
-    If the user already exists, the connection's role only needs privileges to **alter** it (e.g. `OWNERSHIP` on the user). If the user does **not** exist, Infisical creates it as a key-pair-only `SERVICE` user, which additionally requires the `CREATE USER` privilege on the account.
+2. Decide on the target user whose key pair you want to rotate. New users are created as key-pair-only `SERVICE` users.
 
     <Note>
         Users created by Infisical are not deleted when their credentials are revoked.
