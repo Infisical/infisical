@@ -296,7 +296,7 @@ export const CrossProjectSharingSection = () => {
                 <AccordionContent>
                   <div className="rounded-md border border-mineshaft-600">
                     <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
-                      <span>Shared location in this project</span>
+                      <span>Shared locations in this project</span>
                       <span>Secrets shared</span>
                     </div>
                     {projectGroup.grants
