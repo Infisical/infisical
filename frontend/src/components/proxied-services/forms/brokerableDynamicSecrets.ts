@@ -1,8 +1,6 @@
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-export type TProviderLeaseInput =
-  | { name: "namespace"; kind: "string"; label: string; helperText: string }
-  | { name: "principals"; kind: "string[]"; label: string; helperText: string };
+export type TProviderLeaseInput = { name: "namespace"; label: string; helperText: string };
 
 type TBrokerableDynamicSecret = {
   fields: { name: string; label: string }[];
@@ -20,7 +18,6 @@ export const BROKERABLE_DYNAMIC_SECRETS: Partial<
     leaseInputs: [
       {
         name: "namespace",
-        kind: "string",
         label: "Namespace",
         helperText: "Kubernetes namespace to use. Optional."
       }
