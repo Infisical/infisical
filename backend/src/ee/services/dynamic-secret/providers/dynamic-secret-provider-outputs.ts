@@ -51,5 +51,11 @@ export const DYNAMIC_SECRET_PROVIDER_OUTPUTS: Record<DynamicSecretProviders, TDy
     outputFields: ["PRIVATE_KEY", "SIGNED_KEY"],
     leaseConfigSchema: DynamicSecretSshLeaseConfigSchema
   },
-  [DynamicSecretProviders.IbmApiConnect]: { outputFields: ["CLIENT_ID", "CLIENT_SECRET"] }
+  [DynamicSecretProviders.IbmApiConnect]: { outputFields: ["CLIENT_ID", "CLIENT_SECRET"] },
+  // Tailscale returns a different subset per auth type: auth key ({ AUTH_KEY, KEY_ID }),
+  // OAuth client ({ CLIENT_ID, CLIENT_SECRET }), or federated identity
+  // ({ FEDERATED_CREDENTIAL_ID, AUDIENCE }). List the union of all possible fields.
+  [DynamicSecretProviders.Tailscale]: {
+    outputFields: ["KEY_ID", "AUTH_KEY", "CLIENT_ID", "CLIENT_SECRET", "FEDERATED_CREDENTIAL_ID", "AUDIENCE"]
+  }
 };

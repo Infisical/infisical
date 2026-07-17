@@ -154,5 +154,18 @@ export const DYNAMIC_SECRET_PROVIDER_OUTPUTS: Record<DynamicSecretProviders, TPr
         { name: "CLIENT_SECRET", label: "Client Secret" }
       ],
       leaseInputs: []
+    },
+    // Tailscale returns a different subset per auth type (auth key / OAuth client / federated
+    // identity); presentFields filtering renders only the keys actually present in the lease.
+    [DynamicSecretProviders.Tailscale]: {
+      outputFields: [
+        { name: "KEY_ID", label: "Key ID" },
+        { name: "AUTH_KEY", label: "Auth Key" },
+        { name: "CLIENT_ID", label: "Client ID" },
+        { name: "CLIENT_SECRET", label: "Client Secret" },
+        { name: "FEDERATED_CREDENTIAL_ID", label: "Federated Credential ID" },
+        { name: "AUDIENCE", label: "Audience" }
+      ],
+      leaseInputs: []
     }
   };

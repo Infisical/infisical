@@ -61,7 +61,8 @@ const DYNAMIC_SECRET_PROVIDER_NAMES: Record<DynamicSecretProviders, string> = {
   [DynamicSecretProviders.Couchbase]: "Couchbase",
   [DynamicSecretProviders.Milvus]: "Milvus",
   [DynamicSecretProviders.Ssh]: "SSH",
-  [DynamicSecretProviders.IbmApiConnect]: "IBM API Connect"
+  [DynamicSecretProviders.IbmApiConnect]: "IBM API Connect",
+  [DynamicSecretProviders.Tailscale]: "Tailscale"
 };
 
 type DynamicSecretWithEnv = TDynamicSecret & { environment: string };
