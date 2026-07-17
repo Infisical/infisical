@@ -4,9 +4,7 @@ sidebarTitle: "Activity Logs"
 description: "See what the agent proxy brokered on every request through its log stream, then ship it wherever you want."
 ---
 
-The agent proxy logs one entry for every request it handles, through its normal log stream alongside its operational logs. You manage and ship that stream yourself, so Infisical never ingests or stores it.
-
-There's nothing separate to enable: run the proxy and the activity is in its logs. Point a collector (Fluent Bit, the OpenTelemetry Collector, your platform's log driver) at the stream to forward it to Splunk, Datadog, Elastic, or anywhere else.
+The agent proxy logs one entry for every request it handles, in its normal log stream alongside its operational logs — nothing separate to enable. You ship that stream yourself (Infisical never stores it): point a collector like Fluent Bit or the OpenTelemetry Collector at it to forward to Splunk, Datadog, Elastic, or anywhere.
 
 <Note>
   Only requests that reach the forwarding stage are logged. Requests rejected earlier (malformed proxy auth, an invalid `CONNECT` target, TLS failures) never reach it and aren't logged. A request whose identity can't be resolved at forwarding is still logged as an `error`, just with an empty agent.
@@ -31,18 +29,16 @@ Each request is logged with these fields (plus the standard `time`, `level`, and
   A record never contains a real secret. The proxy logs the request as the agent sent it, before the real value is swapped in, so `path` only ever shows the placeholder. The `credentials` list records secret **names** and where they were applied, never values, and header values and request bodies are never logged.
 </Warning>
 
-## Controlling what you see: log levels
+## Log levels
 
-Each decision is logged at a level, so the standard `--log-level` flag controls granularity:
+Each decision is logged at a level, so `--log-level` controls how much you see: the default `info` hides passthrough, `debug` shows everything, `warn` shows only blocked and errors.
 
-| decision | level | shown at default (`info`)? |
-| --- | --- | --- |
-| `passthrough` | debug | no |
-| `brokered` | info | yes |
-| `blocked` | warn | yes |
-| `error` | error | yes |
-
-So `--log-level debug` shows everything (including passthrough), the default `info` shows brokered + blocked + error, and `--log-level warn` shows only blocked + error.
+| decision | level |
+| --- | --- |
+| `passthrough` | debug |
+| `brokered` | info |
+| `blocked` | warn |
+| `error` | error |
 
 ## Output format and destination
 
@@ -51,7 +47,7 @@ So `--log-level debug` shows everything (including passthrough), the default `in
 | `--log-format` | `console` \| `json` | `console` on a terminal, `json` otherwise |
 | `--log-file` | file path | none |
 
-`--log-format` sets the stream's shape: readable `console` for a human, `json` for a machine. In a container (no terminal) it defaults to `json` on stdout, which your platform collects. `--log-file` additionally writes `json` to a file, so you can watch the console **and** persist machine-readable logs at the same time.
+`--log-format` picks the shape (readable `console` or machine `json`) and auto-detects, so a container gets `json` on stdout with no flag. `--log-file` also writes `json` to a file, letting you watch the console **and** persist machine-readable logs at once.
 
 <Tabs>
   <Tab title="console (human)">
@@ -76,23 +72,17 @@ So `--log-level debug` shows everything (including passthrough), the default `in
 ## Common setups
 
 ```bash
-# Watch live (readable), default level
+# Watch live, readable (default)
 infisical secrets agent-proxy start
 
-# See everything, including passthrough
-infisical secrets agent-proxy start --log-level debug
-
-# Only problems
-infisical secrets agent-proxy start --log-level warn
-
-# Watch the console and persist machine-readable json at the same time
+# Watch the console and also persist json (e.g. for a SIEM)
 infisical secrets agent-proxy start --log-file /var/log/infisical/agent-proxy.log
 
-# Container / shipping to a SIEM (json on the stream, platform collects it)
+# Container: json on stdout for your platform to collect
 infisical secrets agent-proxy start --log-format json
 ```
 
-Rotation is handled the standard way: in containers your platform rotates the stream; for `--log-file`, use `logrotate` with `copytruncate` (or restart the proxy).
+For rotation, containers let the platform rotate the stream; for `--log-file`, use `logrotate` with `copytruncate` (or restart the proxy).
 
 ## Next steps
 
