@@ -261,7 +261,7 @@ export const PamTemplatesPage = () => {
                   <EmptyDescription>
                     {hasActiveFilters
                       ? "Try adjusting your search or type filter."
-                      : "Create your first account template to get started."}
+                      : "Create a template to start onboarding accounts. Templates define the governance rules that accounts inherit."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

@@ -168,9 +168,7 @@ export const PamAccountsPage = () => {
             Accounts
             <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
           </CardTitle>
-          <CardDescription>
-            Onboard accounts and manage who can access them.
-          </CardDescription>
+          <CardDescription>Onboard accounts and manage who can access them.</CardDescription>
           <CardAction>
             <ButtonGroup>
               <Button
@@ -278,7 +276,7 @@ export const PamAccountsPage = () => {
                 <EmptyDescription>
                   {hasActiveFilters
                     ? "Try adjusting your search or filters."
-                    : "Create your first account to get started."}
+                    : "Create your first account to get started. You'll need at least one account template."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
