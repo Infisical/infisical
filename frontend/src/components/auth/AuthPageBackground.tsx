@@ -1,11 +1,12 @@
 /* eslint-disable react/no-array-index-key */
 export const AuthPageBackground = () => (
-  <div className="pointer-events-none absolute inset-0 flex flex-1 items-center justify-center overflow-hidden">
+  <div className="pointer-events-none absolute inset-0 overflow-hidden">
     <svg
       viewBox="0 0 800 800"
-      className="h-[900px] w-[900px] opacity-[0.06]"
+      className="absolute top-1/2 -left-[360px] h-[720px] w-[720px] -translate-y-1/2 opacity-[0.06] xl:-left-[400px] xl:h-[800px] xl:w-[800px]"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
     >
       <g className="[transform-origin:400px_400px] motion-safe:animate-[spin_140s_linear_infinite]">
         <circle cx="400" cy="400" r="380" stroke="white" strokeWidth="2" />
@@ -86,32 +87,6 @@ export const AuthPageBackground = () => (
           strokeLinecap="round"
         />
       </g>
-      <line x1="50" y1="50" x2="150" y2="50" stroke="white" strokeWidth="1" />
-      <line x1="50" y1="50" x2="50" y2="150" stroke="white" strokeWidth="1" />
-      <line x1="750" y1="50" x2="650" y2="50" stroke="white" strokeWidth="1" />
-      <line x1="750" y1="50" x2="750" y2="150" stroke="white" strokeWidth="1" />
-      <line x1="50" y1="750" x2="150" y2="750" stroke="white" strokeWidth="1" />
-      <line x1="50" y1="750" x2="50" y2="650" stroke="white" strokeWidth="1" />
-      <line x1="750" y1="750" x2="650" y2="750" stroke="white" strokeWidth="1" />
-      <line x1="750" y1="750" x2="750" y2="650" stroke="white" strokeWidth="1" />
-    </svg>
-    <svg
-      viewBox="0 0 800 800"
-      className="absolute top-1/2 left-1/2 h-[900px] w-[900px] -translate-x-1/2 -translate-y-1/2"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle className="vault-streak vault-streak-slow" cx="400" cy="400" r="375" />
-      <circle className="vault-streak vault-streak-medium" cx="400" cy="400" r="295" />
-      <circle className="vault-streak vault-streak-fast" cx="400" cy="400" r="197.5" />
-      <line
-        className="vault-streak-line vault-streak-line-delayed"
-        x1="320"
-        y1="400"
-        x2="480"
-        y2="400"
-      />
-      <line className="vault-streak-line" x1="400" y1="320" x2="400" y2="480" />
     </svg>
   </div>
 );

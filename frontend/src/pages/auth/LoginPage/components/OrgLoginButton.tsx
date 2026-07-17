@@ -1,8 +1,7 @@
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Badge, Button } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
+import { Button, ButtonBadge } from "@app/components/v3";
 
 type Props = {
   label: string;
@@ -12,15 +11,9 @@ type Props = {
 };
 
 export const OrgLoginButton = ({ label, onClick, className, showLastUsed }: Props) => (
-  <div className={cn("relative w-full", className)}>
-    <Button variant="outline" size="lg" isFullWidth onClick={onClick}>
-      <FontAwesomeIcon icon={faLock} className="mr-2" />
-      {label}
-    </Button>
-    {showLastUsed && (
-      <Badge variant="project" className="absolute -top-2 -right-2">
-        Last used
-      </Badge>
-    )}
-  </div>
+  <Button variant="outline" size="lg" isFullWidth onClick={onClick} className={className}>
+    <FontAwesomeIcon icon={faLock} />
+    {label}
+    {showLastUsed && <ButtonBadge variant="project">Last used</ButtonBadge>}
+  </Button>
 );

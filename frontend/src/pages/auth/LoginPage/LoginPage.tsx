@@ -1,36 +1,37 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
-import { Button } from "@app/components/v3";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { useServerConfig } from "@app/context";
+import { LoginMethod } from "@app/hooks/api/admin/types";
 
-import { InitialStep, SSOStep } from "./components";
-import { LoginSection } from "./Login.utils";
+import { InitialStep } from "./components";
 
 export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
   const { t } = useTranslation();
-  const [section, setSection] = useState<LoginSection>(LoginSection.Initial);
+  const { config } = useServerConfig();
 
-  const renderView = () => {
-    switch (section) {
-      case LoginSection.Initial:
-        return <InitialStep isAdmin={isAdmin} setSection={setSection} />;
-      case LoginSection.SAML:
-        return <SSOStep setSection={setSection} type="SAML" />;
-      case LoginSection.OIDC:
-        return <SSOStep setSection={setSection} type="OIDC" />;
-      default:
-        return <div />;
-    }
-  };
+  const shouldDisplayLoginMethod = (method: LoginMethod) =>
+    isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
-      <AuthPageBackground />
+    <AuthPageLayout
+      showFooter={false}
+      bottomContent={
+        shouldDisplayLoginMethod(LoginMethod.EMAIL) ? (
+          <div className="text-xs text-label">
+            Help me{" "}
+            <Link
+              to="/account-recovery"
+              className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+            >
+              recover my account
+            </Link>
+          </div>
+        ) : undefined
+      }
+    >
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -38,13 +39,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild variant="project">
-          <Link to="/signup">Sign Up</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">{renderView()}</div>
-      <AuthPageFooter />
-    </div>
+      <InitialStep isAdmin={isAdmin} />
+    </AuthPageLayout>
   );
 };

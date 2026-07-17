@@ -10,7 +10,6 @@ import { z } from "zod";
 import { Button } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
-import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { GtmHead } from "@app/hooks/useGtm";
 
@@ -82,12 +81,7 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/admin/signup" });
     }
 
-    const data = await context.queryClient
-      .ensureQueryData({
-        queryKey: authKeys.getAuthToken,
-        queryFn: fetchAuthToken
-      })
-      .catch(() => null);
+    const data = context.authToken;
     if (!data) return;
 
     setAuthToken(data.token);

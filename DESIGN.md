@@ -14,9 +14,10 @@ agents producing new UI or user-visible copy.
 ## 1. Visual Theme & Atmosphere
 
 Infisical is a security tool for operators. The interface reads like
-infrastructure: dense, calm, and legible — never ornamental. Dark is the native
-medium; the page canvas is `--color-background`, and light themes are not part
-of the system yet.
+infrastructure: dense, calm, and legible. Decorative treatments are reserved
+for brand-forward surfaces such as authentication and onboarding; the core
+product remains utilitarian. Dark is the native medium; the page canvas is
+`--color-background`, and light themes are not part of the system yet.
 
 Color carries **meaning before brand**. A danger badge is red because the
 action is destructive, not because red is the accent. A project-colored button
@@ -32,8 +33,9 @@ values are masked by default; revealing one is an intentional act.
 - Dark-native; `--color-background` page canvas
 - Semantic-first color (danger / success / warning / info / neutral)
 - Scope-aware (org / sub-org / project / admin)
-- Border-defined depth, no decorative shadows
-- Inter, one family, across everything
+- Border-defined depth; overlapping labels retain the shared Badge styling
+- Inter for product UI, Alliance for display typography, and distinct
+  functional and decorative monospace roles
 - Secrets masked by default; reveal is an act
 
 ## 2. Color Palette & Roles
@@ -47,38 +49,38 @@ in this file.
 
 Used to signal the scope a surface, badge, or action belongs to.
 
-| Scope            | Token              |
-| ---------------- | ------------------ |
-| Organization     | `--color-org`      |
-| Sub-Organization | `--color-sub-org`  |
-| Project          | `--color-project`  |
-| Admin            | `--color-admin`    |
+| Scope            | Token             |
+| ---------------- | ----------------- |
+| Organization     | `--color-org`     |
+| Sub-Organization | `--color-sub-org` |
+| Project          | `--color-project` |
+| Admin            | `--color-admin`   |
 
 ### Semantic colors
 
-| Intent   | Token              | Use                                              |
-| -------- | ------------------ | ------------------------------------------------ |
-| Success  | `--color-success`  | Healthy states, completed rotations              |
-| Info     | `--color-info`     | Informational states, external documentation     |
-| Warning  | `--color-warning`  | Attention-warranting states, stale items         |
-| Danger   | `--color-danger`   | Destructive actions, errors, expired access      |
-| Neutral  | `--color-neutral`  | Disabled, muted, "empty" states                  |
+| Intent  | Token             | Use                                          |
+| ------- | ----------------- | -------------------------------------------- |
+| Success | `--color-success` | Healthy states, completed rotations          |
+| Info    | `--color-info`    | Informational states, external documentation |
+| Warning | `--color-warning` | Attention-warranting states, stale items     |
+| Danger  | `--color-danger`  | Destructive actions, errors, expired access  |
+| Neutral | `--color-neutral` | Disabled, muted, "empty" states              |
 
 ### Surface & chrome
 
-| Role               | Token                    |
-| ------------------ | ------------------------ |
-| Page background    | `--color-background`     |
-| Foreground text    | `--color-foreground`     |
-| Card surface       | `--color-card`           |
-| Popover / Sheet    | `--color-popover`        |
-| Container          | `--color-container`      |
-| Container (hover)  | `--color-container-hover`|
-| Border             | `--color-border`         |
-| Focus ring         | `--color-ring`           |
-| Accent text        | `--color-accent`         |
-| Muted text         | `--color-muted`          |
-| Label text         | `--color-label`          |
+| Role              | Token                     |
+| ----------------- | ------------------------- |
+| Page background   | `--color-background`      |
+| Foreground text   | `--color-foreground`      |
+| Card surface      | `--color-card`            |
+| Popover / Sheet   | `--color-popover`         |
+| Container         | `--color-container`       |
+| Container (hover) | `--color-container-hover` |
+| Border            | `--color-border`          |
+| Focus ring        | `--color-ring`            |
+| Accent text       | `--color-accent`          |
+| Muted text        | `--color-muted`           |
+| Label text        | `--color-label`           |
 
 The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
 `index.css` for the full list. Prefer semantic tokens (`card`, `border`,
@@ -103,19 +105,38 @@ never as solid fills. The two canonical recipes:
 
 ## 3. Typography
 
-Inter is the only font family (`--font-inter`). All weights and sizes use
-Tailwind's default scale.
+Typography uses several intentional families. Do not collapse them into one
+font or substitute one role for another:
 
-| Role                     | Class                                   | Notes                                                                 |
-| ------------------------ | --------------------------------------- | --------------------------------------------------------------------- |
-| Page title (h1)          | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title    |
-| Page description         | `text-mineshaft-300`                    | Sits under the title, `mt-1.5`                                        |
-| Card title               | `text-lg font-semibold leading-none`    | `flex gap-1.5` so badges can sit inline                               |
-| Card description         | `text-sm text-accent`                   |                                                                       |
-| Body                     | `text-sm`                               | Default for table cells, form values, dialog content                  |
-| Label / meta             | `text-xs text-accent`                   | Field labels, table column captions, metadata                         |
-| Badge                    | `text-xs` (auto, via `Badge`)           | Never override                                                        |
-| Button                   | `text-sm` (md/sm/lg), `text-xs` (xs)    | Auto via `Button` sizing                                              |
+- **Inter** (`font-inter`, `--font-inter`) is the default product and control
+  face. Body copy, forms, tables, buttons, labels, navigation, and dense product
+  surfaces inherit Inter unless a documented role below applies.
+- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the display face.
+  Use it selectively for prominent authentication, onboarding, and
+  brand-forward headings or supporting display copy—not routine product chrome.
+- **The existing application mono** (`font-mono`) is functional. Preserve it
+  for code, secret values, identifiers, timestamps, logs, and other content
+  whose character shapes and alignment carry meaning.
+- **JetBrains Mono** (`font-jetbrains-mono`, `--font-jetbrains-mono`) is a
+  decorative mono. Use it for short eyebrow labels, technical decals, and
+  brand-forward microcopy. It does not replace `font-mono` and should not be
+  used for code editors, data tables, IDs, logs, or secret values.
+
+| Role             | Class                                                                     | Notes                                                              |
+| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Page title (h1)  | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
+| Page description | `text-mineshaft-300`                                                      | Sits under the title, `mt-1.5`                                     |
+| Card title       | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
+| Card description | `text-sm text-accent`                                                     |                                                                    |
+| Body             | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
+| Label / meta     | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
+| Badge            | `text-xs` (auto, via `Badge`)                                             | Never override                                                     |
+| Button           | `text-sm` (md/sm/lg), `text-xs` (xs)                                      | Auto via `Button` sizing                                           |
+
+On brand-forward surfaces, a short phrase may use the `text-highlight`
+utility to create the solid project-yellow text block. Keep the phrase short,
+use it as typographic emphasis rather than status or scope, and do not apply it
+inside routine product UI.
 
 Sentence case for descriptions, helper text, and empty states. Title Case for
 page titles, card titles, dialog titles, sheet titles, button labels, badge
@@ -152,70 +173,78 @@ variants, sizes, and class lists, open the source or its `*.stories.tsx`
 — the stories are canonical.
 
 #### Actions
-| Component | Reach for this when… |
-| --- | --- |
-| [`Button`](frontend/src/components/v3/generic/Button/Button.tsx) | A text-bearing button — primary or secondary action. |
-| [`IconButton`](frontend/src/components/v3/generic/IconButton/IconButton.tsx) | A square icon-only button — toolbars, row actions, compact triggers. Always `aria-label`. |
-| [`ButtonGroup`](frontend/src/components/v3/generic/ButtonGroup/ButtonGroup.tsx) | Visually join related controls — toolbars, segmented controls, split buttons, key-value chips. |
-| [`Dropdown`](frontend/src/components/v3/generic/Dropdown/Dropdown.tsx) | An action menu — overflow `⋯`, split-button alternates, contextual lists. |
+
+| Component                                                                       | Reach for this when…                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`Button`](frontend/src/components/v3/generic/Button/Button.tsx)                | A text-bearing button — primary or secondary action.                                                                                                                                                                                          |
+| [`ButtonBadge`](frontend/src/components/v3/generic/Button/ButtonBadge.tsx)      | A short decorative flag attached to a Button corner—such as "Last Used", "New", or "Recommended". It inherits Badge typography, sizing, radius, border, and casing; only its corner positioning and solidified semantic tint are specialized. |
+| [`IconButton`](frontend/src/components/v3/generic/IconButton/IconButton.tsx)    | A square icon-only button — toolbars, row actions, compact triggers. Always `aria-label`.                                                                                                                                                     |
+| [`ButtonGroup`](frontend/src/components/v3/generic/ButtonGroup/ButtonGroup.tsx) | Visually join related controls — toolbars, segmented controls, split buttons, key-value chips.                                                                                                                                                |
+| [`Dropdown`](frontend/src/components/v3/generic/Dropdown/Dropdown.tsx)          | An action menu — overflow `⋯`, split-button alternates, contextual lists.                                                                                                                                                                     |
 
 #### Forms
-| Component | Reach for this when… |
-| --- | --- |
-| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx) | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
-| [`Label`](frontend/src/components/v3/generic/Label/Label.tsx) | Standalone form label outside a `Field`. |
-| [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx) | Single-line / multi-line text entry. |
-| [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx) | Input with left/right addons — search bars, prefixed values. |
-| [`Select`](frontend/src/components/v3/generic/Select/Select.tsx) / [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts) | Native-style dropdown / async or searchable dropdown. |
-| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean. |
-| [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx) | Date / multi-date / range picker primitive. |
-| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx) | Date-range filter with presets — for filter bars. |
-| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx) | Secret-value editor with mask toggle and `${var}` highlighting. |
-| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx) | Generate a password against project secret-validation rules. |
+
+| Component                                                                                                                                   | Reach for this when…                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [`Field`](frontend/src/components/v3/generic/Field/Field.tsx)                                                                               | Wrap every form control — label + control + description + error. **Never render a bare control in a form.** |
+| [`Label`](frontend/src/components/v3/generic/Label/Label.tsx)                                                                               | Standalone form label outside a `Field`.                                                                    |
+| [`Input`](frontend/src/components/v3/generic/Input/Input.tsx) / [`TextArea`](frontend/src/components/v3/generic/TextArea/TextArea.tsx)      | Single-line / multi-line text entry.                                                                        |
+| [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                                | Input with left/right addons — search bars, prefixed values.                                                |
+| [`Select`](frontend/src/components/v3/generic/Select/Select.tsx) / [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts) | Native-style dropdown / async or searchable dropdown.                                                       |
+| [`Switch`](frontend/src/components/v3/generic/Switch/Switch.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx)   | Boolean toggle / multi-select boolean.                                                                      |
+| [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                      | Date / multi-date / range picker primitive.                                                                 |
+| [`DateRangeFilter`](frontend/src/components/v3/generic/DateRangeFilter/DateRangeFilter.tsx)                                                 | Date-range filter with presets — for filter bars.                                                           |
+| [`SecretInput`](frontend/src/components/v3/generic/SecretInput/SecretInput.tsx)                                                             | Secret-value editor with mask toggle and `${var}` highlighting.                                             |
+| [`PasswordGenerator`](frontend/src/components/v3/generic/PasswordGenerator/PasswordGenerator.tsx)                                           | Generate a password against project secret-validation rules.                                                |
 
 #### Containers & overlays
-| Component | Reach for this when… |
-| --- | --- |
-| [`Card`](frontend/src/components/v3/generic/Card/Card.tsx) | Default section container — tables, filters, forms, empty states all live in a Card. |
-| [`Sheet`](frontend/src/components/v3/generic/Sheet/Sheet.tsx) | Right-side panel — **use for large create/edit forms** (multiple fields, multi-step, scrollable detail). |
-| [`Dialog`](frontend/src/components/v3/generic/Dialog/Dialog.tsx) | Centered modal — **use for small create/edit forms** (1–2 fields, single confirmation prompt) and short interactive prompts. |
-| [`AlertDialog`](frontend/src/components/v3/generic/AlertDialog/AlertDialog.tsx) | Confirm an action (destructive included). Replaces `confirm()`. |
-| [`Popover`](frontend/src/components/v3/generic/Popover/Popover.tsx) | Anchored floating panel — filters, pickers, contextual UI. |
-| [`Tooltip`](frontend/src/components/v3/generic/Tooltip/Tooltip.tsx) | Small floating annotation on hover/focus. |
-| [`Accordion`](frontend/src/components/v3/generic/Accordion/Accordion.tsx) | Collapsible sections. |
+
+| Component                                                                       | Reach for this when…                                                                                                         |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [`Card`](frontend/src/components/v3/generic/Card/Card.tsx)                      | Default section container — tables, filters, forms, empty states all live in a Card.                                         |
+| [`Sheet`](frontend/src/components/v3/generic/Sheet/Sheet.tsx)                   | Right-side panel — **use for large create/edit forms** (multiple fields, multi-step, scrollable detail).                     |
+| [`Dialog`](frontend/src/components/v3/generic/Dialog/Dialog.tsx)                | Centered modal — **use for small create/edit forms** (1–2 fields, single confirmation prompt) and short interactive prompts. |
+| [`AlertDialog`](frontend/src/components/v3/generic/AlertDialog/AlertDialog.tsx) | Confirm an action (destructive included). Replaces `confirm()`.                                                              |
+| [`Popover`](frontend/src/components/v3/generic/Popover/Popover.tsx)             | Anchored floating panel — filters, pickers, contextual UI.                                                                   |
+| [`Tooltip`](frontend/src/components/v3/generic/Tooltip/Tooltip.tsx)             | Small floating annotation on hover/focus.                                                                                    |
+| [`Accordion`](frontend/src/components/v3/generic/Accordion/Accordion.tsx)       | Collapsible sections.                                                                                                        |
 
 #### Data display
-| Component | Reach for this when… |
-| --- | --- |
-| [`Table`](frontend/src/components/v3/generic/Table/Table.tsx) | Read-mostly list of records with sortable columns. Pair with `Empty` + `Pagination`. |
-| [`DataGrid`](frontend/src/components/v3/generic/DataGrid/data-grid.tsx) | Editable spreadsheet-style grid — copy/paste, multi-cell selection, keyboard nav. Use only when `Table` isn't enough. |
-| [`Pagination`](frontend/src/components/v3/generic/Pagination/Pagination.tsx) | Page controls under a Table or list. |
-| [`Item`](frontend/src/components/v3/generic/Item/Item.tsx) | Vertically-stacked list rows with shared spacing — when a `Table` is too heavy. |
-| [`Detail`](frontend/src/components/v3/generic/Detail/Detail.tsx) | Read-only label/value pairs in a detail view. |
-| [`Badge`](frontend/src/components/v3/generic/Badge/Badge.tsx) | Small label or chip — status, scope tag, key/value pair. |
+
+| Component                                                                    | Reach for this when…                                                                                                  |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [`Table`](frontend/src/components/v3/generic/Table/Table.tsx)                | Read-mostly list of records with sortable columns. Pair with `Empty` + `Pagination`.                                  |
+| [`DataGrid`](frontend/src/components/v3/generic/DataGrid/data-grid.tsx)      | Editable spreadsheet-style grid — copy/paste, multi-cell selection, keyboard nav. Use only when `Table` isn't enough. |
+| [`Pagination`](frontend/src/components/v3/generic/Pagination/Pagination.tsx) | Page controls under a Table or list.                                                                                  |
+| [`Item`](frontend/src/components/v3/generic/Item/Item.tsx)                   | Vertically-stacked list rows with shared spacing — when a `Table` is too heavy.                                       |
+| [`Detail`](frontend/src/components/v3/generic/Detail/Detail.tsx)             | Read-only label/value pairs in a detail view.                                                                         |
+| [`Badge`](frontend/src/components/v3/generic/Badge/Badge.tsx)                | Small label or chip — status, scope tag, key/value pair.                                                              |
 
 #### Navigation & search
-| Component | Reach for this when… |
-| --- | --- |
-| [`Sidebar`](frontend/src/components/v3/generic/Sidebar/Sidebar.tsx) | Scope-aware product navigation panel. |
+
+| Component                                                                    | Reach for this when…                              |
+| ---------------------------------------------------------------------------- | ------------------------------------------------- |
+| [`Sidebar`](frontend/src/components/v3/generic/Sidebar/Sidebar.tsx)          | Scope-aware product navigation panel.             |
 | [`Breadcrumb`](frontend/src/components/v3/generic/Breadcrumb/Breadcrumb.tsx) | Hierarchical location trail at the top of a page. |
-| [`Command`](frontend/src/components/v3/generic/Command/Command.tsx) | Search-driven command palette / typeahead list. |
+| [`Command`](frontend/src/components/v3/generic/Command/Command.tsx)          | Search-driven command palette / typeahead list.   |
 
 #### Feedback & loading
-| Component | Reach for this when… |
-| --- | --- |
-| [`Alert`](frontend/src/components/v3/generic/Alert/Alert.tsx) | Inline message banner inside a page or Card. |
-| [`Toast`](frontend/src/components/v3/generic/Toast/Toast.tsx) | Transient post-action feedback. Replaces `alert()`. |
-| [`Empty`](frontend/src/components/v3/generic/Empty/Empty.tsx) | Zero-state placeholder — pair with Table, list, or empty filter. |
-| [`Skeleton`](frontend/src/components/v3/generic/Skeleton/Skeleton.tsx) | Shimmer placeholder while data is loading. |
-| [`PageLoader`](frontend/src/components/v3/generic/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading. |
+
+| Component                                                                    | Reach for this when…                                             |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`Alert`](frontend/src/components/v3/generic/Alert/Alert.tsx)                | Inline message banner inside a page or Card.                     |
+| [`Toast`](frontend/src/components/v3/generic/Toast/Toast.tsx)                | Transient post-action feedback. Replaces `alert()`.              |
+| [`Empty`](frontend/src/components/v3/generic/Empty/Empty.tsx)                | Zero-state placeholder — pair with Table, list, or empty filter. |
+| [`Skeleton`](frontend/src/components/v3/generic/Skeleton/Skeleton.tsx)       | Shimmer placeholder while data is loading.                       |
+| [`PageLoader`](frontend/src/components/v3/generic/PageLoader/PageLoader.tsx) | Centered Lottie spinner for full-page loading.                   |
 
 #### Atoms & domain
-| Component | Reach for this when… |
-| --- | --- |
-| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx) | Horizontal/vertical divider. |
-| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx) | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
-| [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`. |
+
+| Component                                                                                                         | Reach for this when…                                                                  |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`Separator`](frontend/src/components/v3/generic/Separator/Separator.tsx)                                         | Horizontal/vertical divider.                                                          |
+| [`ScopeIcons`](frontend/src/components/v3/platform/ScopeIcons.tsx)                                                | `OrgIcon` / `SubOrgIcon` / `ProjectIcon` / `InstanceIcon` — use when intent is scope. |
+| [`DocumentationLinkBadge`](frontend/src/components/v3/platform/DocumentationLinkBadge/DocumentationLinkBadge.tsx) | Inline "Documentation" link badge in `CardTitle`.                                     |
 
 **Icons** — [`lucide-react`](https://lucide.dev). Sizing is bound by the
 host component; don't override unless necessary.
@@ -227,6 +256,7 @@ host component; don't override unless necessary.
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
 - **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
+- **Authentication form stacks** — use `CardContent className="flex flex-col gap-4"` for the major vertical rhythm between fields, validation groups, and primary actions. Use a nested `flex flex-col gap-2` only for compact sets of equivalent actions such as social or SSO provider buttons. Use `FieldSeparator` between alternate authentication paths. Do not recreate sibling spacing with `mt-*`, `mb-*`, or `py-*`; keep a wrapper only when it owns animation, responsive visibility, conditional grouping, or tightly coupled control/error content.
 - **Spacing rhythm** — `gap-1.5` (intra-element), `gap-2 / gap-3` (adjacent elements), `p-4 / p-5` (section padding). Card = `p-5 gap-5`; Sheet header/footer = `p-4`.
 
 ## 6. Depth & Elevation
@@ -234,17 +264,19 @@ host component; don't override unless necessary.
 Depth is conveyed by layered surface tones and borders. Shadows are reserved
 for elements that float (Popover, DropdownMenu, Sheet).
 
-| Layer               | Surface            | Border        |
-| ------------------- | ------------------ | ------------- |
-| Page                | `bg-bunker-800`    | —             |
-| Card                | `bg-card`          | `border-border` |
-| Popover / Sheet     | `bg-popover`       | `border-border` + `shadow-lg` |
-| Row hover           | `bg-container-hover` | — |
-| Focus               | — | 3px ring, `--color-ring` |
-| Disabled            | `opacity-50 / 75`, `pointer-events-none` | — |
+| Layer           | Surface                                  | Border                        |
+| --------------- | ---------------------------------------- | ----------------------------- |
+| Page            | `bg-bunker-800`                          | —                             |
+| Card            | `bg-card`                                | `border-border`               |
+| Popover / Sheet | `bg-popover`                             | `border-border` + `shadow-lg` |
+| Row hover       | `bg-container-hover`                     | —                             |
+| Focus           | —                                        | 3px ring, `--color-ring`      |
+| Disabled        | `opacity-50 / 75`, `pointer-events-none` | —                             |
 
-Never add a box-shadow to a Card, Table row, or Badge; it breaks the
-border-defined system.
+Never add a box-shadow to a Card, Table row, standalone Badge, or `ButtonBadge`;
+it breaks the border-defined system. An overlapping `ButtonBadge` uses its
+solidified semantic tint—not custom content styling or elevation—to remain
+legible across the control edge.
 
 ## 7. Do's and Don'ts
 
@@ -266,7 +298,12 @@ border-defined system.
   doesn't belong.
 - **DON'T** use `project` yellow, `org` blue, or `sub-org` green as generic
   accents. They are scope signals; repurposing them creates false hierarchy.
-- **DON'T** mix font families. Inter only.
+  The documented brand-forward `text-highlight` treatment and deliberately
+  branded `ButtonBadge` flags are narrow exceptions for authentication and
+  onboarding surfaces.
+- **DON'T** mix font families arbitrarily. Choose the documented role: Inter
+  for product UI, Alliance for display type, `font-mono` for functional
+  monospaced content, and JetBrains Mono for decorative technical microcopy.
 - **DON'T** animate for decoration. Motion should clarify state change only.
 
 ## 8. Voice & Content Tone
@@ -325,12 +362,14 @@ Pasteable prompt fragments for AI coding agents producing new UI.
    not by color preference.
 
 **Adding a section to an existing page:**
+
 > Wrap the section in a `Card` from `@app/components/v3`. Use `CardHeader`
 > with `CardTitle` + optional `CardDescription` + `CardAction` for the
 > top-right primary button (variant `project` on a project page). Put the
 > table or content in `CardContent`.
 
 **A new create/edit form:**
+
 > Pick the container by form size. **Small forms (1–2 fields, e.g. "Add
 > domain", "Rename"):** centered `Dialog` (`Dialog`, `DialogContent`,
 > `DialogHeader` with `DialogTitle` + `DialogDescription`, `DialogFooter`
@@ -343,6 +382,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > `org` / `sub-org`), cancel is `ghost`.
 
 **A status indicator:**
+
 > Use `Badge` from `@app/components/v3`. Pick the variant by intent:
 > `danger` for errors or expired access, `warning` for stale or
 > attention-warranting, `success` for healthy / completed, `info` for
@@ -351,11 +391,13 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 > first child.
 
 **A destructive confirmation:**
+
 > Use `AlertDialog`. Title: "Delete `<resource-name>`". Description: one
 > sentence naming the consequence, ending with "This cannot be undone."
 > Confirm button is variant `danger`. Cancel button is variant `outline`.
 
 **A documentation link in a section:**
+
 > Use `DocumentationLinkBadge` from `@app/components/v3/platform`. Place it
 > in the `CardTitle` next to the section name.
 

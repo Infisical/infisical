@@ -65,6 +65,7 @@
   /* Fonts */
   --font-alliance: "Alliance No. 2", sans-serif;
   --font-inter: "Inter", sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", monospace;
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */
@@ -236,6 +237,10 @@
 
 @utility h-inherit {
   height: inherit;
+}
+
+@utility text-highlight {
+  @apply bg-project px-1.5 pt-1.5 pb-0.5 text-background;
 }
 
 @utility secret-table {
@@ -493,88 +498,6 @@
   position: absolute;
   top: 0.5rem;
   @apply text-sm text-gray-500 opacity-50;
-}
-
-@keyframes vault-streak-orbit {
-  0%,
-  12% {
-    opacity: 0;
-  }
-  18% {
-    opacity: 0.9;
-  }
-  42% {
-    opacity: 0.65;
-  }
-  50%,
-  100% {
-    opacity: 0;
-    stroke-dashoffset: -1885;
-  }
-}
-
-@keyframes vault-streak-line {
-  0%,
-  18% {
-    opacity: 0;
-    stroke-dashoffset: 110;
-  }
-  24% {
-    opacity: 0.95;
-  }
-  46% {
-    opacity: 0.65;
-  }
-  54%,
-  100% {
-    opacity: 0;
-    stroke-dashoffset: -110;
-  }
-}
-
-.vault-streak {
-  fill: none;
-  opacity: 0;
-  stroke: var(--color-warning);
-  stroke-dasharray: 84 1801;
-  stroke-linecap: round;
-  stroke-width: 3;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-warning) 65%, transparent));
-  animation: vault-streak-orbit 9s linear infinite;
-}
-
-.vault-streak-slow {
-  animation-delay: -1s;
-}
-
-.vault-streak-medium {
-  animation-delay: -4s;
-}
-
-.vault-streak-fast {
-  animation-delay: -7s;
-}
-
-.vault-streak-line {
-  opacity: 0;
-  stroke: var(--color-warning);
-  stroke-dasharray: 26 134;
-  stroke-linecap: round;
-  stroke-width: 5;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-warning) 65%, transparent));
-  animation: vault-streak-line 7s ease-in-out infinite;
-}
-
-.vault-streak-line-delayed {
-  animation-delay: -3.5s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vault-streak,
-  .vault-streak-line {
-    display: none;
-    animation: none;
-  }
 }
 
 /* Hide the default number input spin buttons */

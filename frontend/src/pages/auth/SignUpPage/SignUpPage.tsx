@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -116,8 +113,34 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4 py-4">
-      <AuthPageBackground />
+    <AuthPageLayout
+      showFooter={false}
+      bottomContent={
+        section === SignupSection.Email ? (
+          <p className="text-xs text-pretty text-label">
+            By signing up, you agree to our{" "}
+            <a
+              href="https://infisical.com/terms/cloud"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://infisical.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
+        ) : undefined
+      }
+    >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -125,17 +148,9 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild variant="project">
-          <Link to="/login">Log In</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-          {renderView()}
-        </form>
-      </div>
-      <AuthPageFooter />
-    </div>
+      <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+        {renderView()}
+      </form>
+    </AuthPageLayout>
   );
 };

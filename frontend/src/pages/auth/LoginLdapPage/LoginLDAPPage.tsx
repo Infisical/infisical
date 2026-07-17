@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  IconButton,
+  Input
+} from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
@@ -18,10 +25,12 @@ export const LoginLdapPage = () => {
   const navigate = useNavigate();
   const { config } = useServerConfig();
   const { lastLogin, saveLastLogin } = useLastLogin();
-  const queryParams = new URLSearchParams(window.location.search);
-  const passedOrgSlug = queryParams.get("organizationSlug");
-  const passedUsername = queryParams.get("username");
-  const callbackPort = queryParams.get("callback_port");
+  const {
+    callback_port: callbackPort,
+    is_admin_login: isAdminLogin,
+    organizationSlug: passedOrgSlug,
+    username: passedUsername
+  } = useSearch({ from: "/_restrict-login-signup/login/ldap" });
 
   const lastLoginSlug =
     lastLogin?.method === LoginMethod.LDAP && lastLogin.orgSlug ? lastLogin.orgSlug : "";
@@ -31,6 +40,18 @@ export const LoginLdapPage = () => {
   );
   const [username, setUsername] = useState(passedUsername || "");
   const [password, setPassword] = useState("");
+  const isFormValid = Boolean(organizationSlug.trim() && username.trim() && password);
+
+  const handleBackToSso = () => {
+    navigate({
+      to: "/login/sso",
+      search: {
+        callback_port: callbackPort,
+        is_admin_login: isAdminLogin || undefined,
+        organizationSlug: passedOrgSlug || config.defaultAuthOrgSlug || undefined
+      }
+    });
+  };
 
   const handleSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +60,7 @@ export const LoginLdapPage = () => {
         organizationSlug,
         username,
         password,
-        callbackPort: callbackPort ? Number(callbackPort) : undefined
+        callbackPort
       });
 
       if (!nextUrl) {
@@ -69,8 +90,7 @@ export const LoginLdapPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
-      <AuthPageBackground />
+    <AuthPageLayout>
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -78,71 +98,59 @@ export const LoginLdapPage = () => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild>
-          <Link to="/signup">Sign Up</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
-          <Card className="w-full items-stretch gap-0 p-6">
-            <CardHeader className="mb-4 gap-4">
-              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
+      <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
+        <Card className="w-full items-stretch gap-0 p-6">
+          <CardHeader className="mb-4 gap-4">
+            <div className="flex items-center gap-1.5">
+              <IconButton
+                aria-label="Back to SSO login"
+                variant="ghost-muted"
+                size="xs"
+                className="-ml-2"
+                onClick={handleBackToSso}
+              >
+                <ChevronLeft />
+              </IconButton>
+              <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
                 LDAP Login
               </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!config.defaultAuthOrgSlug && !passedOrgSlug && (
-                <div className="w-full">
-                  <Input
-                    value={organizationSlug}
-                    onChange={(e) => setOrganizationSlug(e.target.value)}
-                    type="text"
-                    placeholder="Enter your organization slug..."
-                    required
-                    className="h-10"
-                  />
-                </div>
-              )}
-              <div className="mt-2 w-full">
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  type="text"
-                  placeholder="Enter your LDAP username..."
-                  required
-                  disabled={passedUsername !== null}
-                  className="h-10"
-                />
-              </div>
-              <div className="mt-2 w-full">
-                <Input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  placeholder="Enter your LDAP password..."
-                  required
-                  autoComplete="current-password"
-                  className="h-10"
-                />
-              </div>
-              <div className="mt-4 w-full">
-                <Button type="submit" variant="project" size="lg" isFullWidth>
-                  {t("login.login")}
-                </Button>
-              </div>
-              <div className="mt-6 flex flex-row justify-center text-xs text-label">
-                <button onClick={() => navigate({ to: "/login" })} type="button">
-                  <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                    {t("login.other-option")}
-                  </span>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </form>
-      </div>
-      <AuthPageFooter />
-    </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {!config.defaultAuthOrgSlug && !passedOrgSlug && (
+              <Input
+                value={organizationSlug}
+                onChange={(e) => setOrganizationSlug(e.target.value)}
+                type="text"
+                placeholder="Enter your organization slug..."
+                required
+                className="h-10"
+              />
+            )}
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              type="text"
+              placeholder="Enter your LDAP username..."
+              required
+              disabled={passedUsername !== undefined}
+              className="h-10"
+            />
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="Enter your LDAP password..."
+              required
+              autoComplete="current-password"
+              className="h-10"
+            />
+            <Button type="submit" variant="project" size="lg" isFullWidth isDisabled={!isFormValid}>
+              {t("login.login")}
+            </Button>
+          </CardContent>
+        </Card>
+      </form>
+    </AuthPageLayout>
   );
 };

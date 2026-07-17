@@ -120,8 +120,8 @@ export default function CodeInputStep({
             {t("signup.step2-message")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-md my-1 flex justify-center font-medium text-foreground">{email}</p>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-md flex justify-center font-medium text-foreground">{email}</p>
           <div className="mx-auto hidden w-max min-w-[20rem] md:block">
             <ReactCodeInput
               name=""
@@ -130,10 +130,10 @@ export default function CodeInputStep({
               fields={6}
               onChange={setCode}
               {...codeInputStyle}
-              className="code-input-v3 mt-6 mb-2"
+              className="code-input-v3"
             />
           </div>
-          <div className="mx-auto mt-4 block w-max md:hidden">
+          <div className="mx-auto block w-max md:hidden">
             <ReactCodeInput
               name=""
               inputMode="tel"
@@ -141,24 +141,22 @@ export default function CodeInputStep({
               fields={6}
               onChange={setCode}
               {...codeInputStylePhone}
-              className="code-input-v3 mt-2 mb-2"
+              className="code-input-v3"
             />
           </div>
           {isCodeError && <FieldError>{t("signup.step2-code-error")}</FieldError>}
-          <div className="mt-4 w-full">
-            <Button
-              type="submit"
-              onClick={handleVerify}
-              variant="project"
-              size="lg"
-              isFullWidth
-              isPending={isVerifying}
-              isDisabled={code.length !== 6 || isVerifying}
-            >
-              {String(t("signup.verify"))}
-            </Button>
-          </div>
-          <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
+          <Button
+            type="submit"
+            onClick={handleVerify}
+            variant="project"
+            size="lg"
+            isFullWidth
+            isPending={isVerifying}
+            isDisabled={code.length !== 6 || isVerifying}
+          >
+            {String(t("signup.verify"))}
+          </Button>
+          <div className="flex flex-col items-center gap-2 text-xs text-label">
             <div className="flex flex-row items-baseline gap-1">
               <button
                 disabled={isResending || isCooldownActive}

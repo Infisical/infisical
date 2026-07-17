@@ -67,8 +67,8 @@ export default function EnterEmailStep({
             {t("signup.step1-start")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="w-full">
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex w-full flex-col gap-2">
             <Input
               placeholder="Enter your email address..."
               onChange={(e) => setEmail(e.target.value)}
@@ -80,20 +80,18 @@ export default function EnterEmailStep({
             />
             {emailError && <FieldError>Please enter a valid email.</FieldError>}
           </div>
-          <div className="mt-4 w-full">
-            <Button
-              type="submit"
-              onClick={emailCheck}
-              variant="project"
-              size="lg"
-              isFullWidth
-              isDisabled={isPending}
-              isPending={isPending}
-            >
-              {String(t("signup.step1-submit"))}
-            </Button>
-          </div>
-          <div className="mt-6 flex w-full justify-center text-xs text-label">
+          <Button
+            type="submit"
+            onClick={emailCheck}
+            variant="project"
+            size="lg"
+            isFullWidth
+            isDisabled={isPending}
+            isPending={isPending}
+          >
+            {String(t("signup.step1-submit"))}
+          </Button>
+          <div className="flex w-full justify-center text-xs text-label">
             <Link to="/login">
               <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                 {t("signup.already-have-account")}
