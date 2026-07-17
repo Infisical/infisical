@@ -124,7 +124,7 @@ const buildService = (opts?: {
     }
   } as unknown as TAlarmServiceFactoryDep);
 
-  return { service, permissionCalls, alarms, channels, findFilters };
+  return { service, permissionCalls, alarms, channels, recipients, findFilters };
 };
 
 const actor = {
@@ -397,6 +397,35 @@ describe("alarm service", () => {
     });
 
     expect(updated.channels[0].config).toEqual({ url: "https://new.example.com/hook", hasSigningSecret: false });
+  });
+
+  test("allows a channel-only update of an email alarm using its existing recipients", async () => {
+    const { service, recipients } = seedAlarmWithChannel(AlarmChannelType.EMAIL, {});
+    recipients.set("alarm-1", [{ principalType: AlarmPrincipalType.USER, principalId: "user-1" }]);
+
+    // No recipients in the update, but the alarm already has one; the directed-channel requirement
+    // must be satisfied by the existing recipients rather than rejecting the edit.
+    const updated = await service.updateAlarm({
+      alarmId: "alarm-1",
+      name: "renamed",
+      channels: [{ id: "c0", channelType: AlarmChannelType.EMAIL, config: {} }],
+      ...actor
+    });
+
+    expect(updated.name).toBe("renamed");
+    expect(updated.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
+  });
+
+  test("still rejects an email channel when the alarm has no recipients", async () => {
+    const { service } = seedAlarmWithChannel(AlarmChannelType.EMAIL, {});
+
+    await expect(
+      service.updateAlarm({
+        alarmId: "alarm-1",
+        channels: [{ id: "c0", channelType: AlarmChannelType.EMAIL, config: {} }],
+        ...actor
+      })
+    ).rejects.toThrow("At least one recipient is required");
   });
 
   test("deletes an alarm after checking Delete permission", async () => {

@@ -41,6 +41,3 @@ export const ALARM_CHANNEL_REGISTRY: Record<AlarmChannelType, TAlarmChannelDefin
     send: sendPagerDutyNotification
   }
 };
-
-export const getAlarmChannelDefinition = (type: AlarmChannelType): TAlarmChannelDefinition =>
-  ALARM_CHANNEL_REGISTRY[type];

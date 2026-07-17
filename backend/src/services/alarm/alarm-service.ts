@@ -435,10 +435,17 @@ export const alarmServiceFactory = ({
       });
     }
 
+    // When channels are updated without recipients, the alarm keeps its existing recipients (the
+    // transaction below only touches recipients when dto.recipients is provided). Validate the
+    // directed-channel requirement against those existing recipients, not an empty list, so a
+    // channel-only edit of an email alarm isn't wrongly rejected.
+    const effectiveRecipients =
+      dto.recipients ?? (resolvedChannels ? await alarmRecipientDAL.findByAlarmId(alarm.id) : undefined);
+
     $validate(provider, {
       condition: dto.condition,
       channels: resolvedChannels,
-      recipients: dto.recipients ?? (resolvedChannels ? [] : undefined)
+      recipients: effectiveRecipients
     });
 
     if (dto.recipients) await $validateRecipients(alarm.orgId, alarm.projectId, dto.recipients);

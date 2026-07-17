@@ -16,7 +16,5 @@ export const alarmProviderRegistryFactory = () => {
 
   const resourceTypes = (): string[] => [...providers.keys()];
 
-  const list = (): IResourceAlarmProvider[] => [...providers.values()];
-
-  return { register, get, resourceTypes, list };
+  return { register, get, resourceTypes };
 };
