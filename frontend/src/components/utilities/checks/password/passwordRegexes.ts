@@ -18,7 +18,7 @@ export const lowEntropyRegexes = [
   /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
 
   // URL (incl. subdomains, paths, top-level domains & query params)
-  /^(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?$/,
+  /(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?/,
 
   // US social security number
   /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/

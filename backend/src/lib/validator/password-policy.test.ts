@@ -15,7 +15,8 @@ describe("PasswordPolicySchema", () => {
     "abcdefghijklmn",
     "Password!!!!7",
     "Password\\escape7",
-    "user@example.com-Password7"
+    "user@example.com-Password7",
+    "StrongPass123!https://example.com"
   ])("rejects a password outside the policy: %s", (password) => {
     expect(PasswordPolicySchema.safeParse(password).success).toBe(false);
   });
