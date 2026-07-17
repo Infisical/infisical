@@ -103,7 +103,7 @@ export const CreateSecretImportForm = ({
 
   const [selectedSourceProjectId, setSelectedSourceProjectId] = useState<string | null>(null);
   const [selectedEnvironmentSlug, setSelectedEnvironmentSlug] = useState<string | null>(null);
-  const [selectedFolderName, setSelectedFolderName] = useState<string | null>(null);
+  const [selectedSecretPath, setSelectedSecretPath] = useState<string | null>(null);
 
   const uniqueSourceProjects = useMemo(() => {
     const seen = new Set<string>();
@@ -134,8 +134,8 @@ export const CreateSecretImportForm = ({
   );
 
   const selectedGrant = useMemo(
-    () => grantsForSelectedEnv.find((g) => g.folderName === selectedFolderName) ?? null,
-    [grantsForSelectedEnv, selectedFolderName]
+    () => grantsForSelectedEnv.find((g) => g.secretPath === selectedSecretPath) ?? null,
+    [grantsForSelectedEnv, selectedSecretPath]
   );
 
   const handleClose = () => {
@@ -143,7 +143,7 @@ export const CreateSecretImportForm = ({
     setImportSource("this-project");
     setSelectedSourceProjectId(null);
     setSelectedEnvironmentSlug(null);
-    setSelectedFolderName(null);
+    setSelectedSecretPath(null);
     onClose();
   };
 
@@ -283,8 +283,8 @@ export const CreateSecretImportForm = ({
     }));
 
     const folderOptions = grantsForSelectedEnv.map((g) => ({
-      label: g.folderName === "root" ? "/" : `/${g.folderName}`,
-      value: g.folderName
+      label: g.secretPath,
+      value: g.secretPath
     }));
 
     return (
@@ -306,7 +306,7 @@ export const CreateSecretImportForm = ({
                 const single = Array.isArray(newValue) ? newValue[0] : newValue;
                 setSelectedSourceProjectId(single && "value" in single ? single.value : null);
                 setSelectedEnvironmentSlug(null);
-                setSelectedFolderName(null);
+                setSelectedSecretPath(null);
               }}
             />
           </FieldContent>
@@ -329,7 +329,7 @@ export const CreateSecretImportForm = ({
               onChange={(newValue) => {
                 const single = Array.isArray(newValue) ? newValue[0] : newValue;
                 setSelectedEnvironmentSlug(single && "value" in single ? single.value : null);
-                setSelectedFolderName(null);
+                setSelectedSecretPath(null);
               }}
             />
           </FieldContent>
@@ -345,13 +345,13 @@ export const CreateSecretImportForm = ({
               placeholder="Select folder..."
               isDisabled={!selectedEnvironmentSlug}
               value={
-                selectedFolderName
-                  ? (folderOptions.find((o) => o.value === selectedFolderName) ?? null)
+                selectedSecretPath
+                  ? (folderOptions.find((o) => o.value === selectedSecretPath) ?? null)
                   : null
               }
               onChange={(newValue) => {
                 const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedFolderName(single && "value" in single ? single.value : null);
+                setSelectedSecretPath(single && "value" in single ? single.value : null);
               }}
             />
           </FieldContent>
@@ -434,7 +434,7 @@ export const CreateSecretImportForm = ({
               setImportSource(val as ImportSource);
               setSelectedSourceProjectId(null);
               setSelectedEnvironmentSlug(null);
-              setSelectedFolderName(null);
+              setSelectedSecretPath(null);
             }}
           >
             <div className="mx-auto flex items-center gap-2">
