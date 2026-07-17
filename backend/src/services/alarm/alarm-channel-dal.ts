@@ -47,19 +47,10 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteByAlarmId = async (alarmId: string, tx?: Knex): Promise<number> => {
-    try {
-      return await (tx || db)(TableName.AlarmChannel).where(`${TableName.AlarmChannel}.alarmId`, alarmId).del();
-    } catch (error) {
-      throw new DatabaseError({ error, name: "DeleteByAlarmId" });
-    }
-  };
-
   return {
     ...alarmChannelOrm,
     insertMany,
     findByAlarmId,
-    findByAlarmIds,
-    deleteByAlarmId
+    findByAlarmIds
   };
 };

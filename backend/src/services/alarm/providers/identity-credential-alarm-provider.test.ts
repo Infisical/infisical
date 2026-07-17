@@ -40,7 +40,12 @@ const alarmContext = (overrides: Partial<TAlarmContext> = {}): TAlarmContext => 
 
 const buildProvider = (opts?: {
   secrets?: TExpiringUaClientSecret[];
-  onFind?: (args: { orgId: string; identityId?: string | null; alertBeforeInterval: string }) => void;
+  onFind?: (args: {
+    orgId: string;
+    projectId?: string | null;
+    identityId?: string | null;
+    alertBeforeInterval: string;
+  }) => void;
   abilityRules?: { action: string; subject: string }[];
   inOrg?: boolean;
   inProject?: boolean;
@@ -48,6 +53,7 @@ const buildProvider = (opts?: {
   const dal = {
     findExpiringUaClientSecrets: async (args: {
       orgId: string;
+      projectId?: string | null;
       identityId?: string | null;
       alertBeforeInterval: string;
     }) => {
@@ -80,7 +86,7 @@ describe("identity credential alarm provider", () => {
   });
 
   test("findDueTargets converts alertBefore to a postgres interval and tags credential type", async () => {
-    let seenArgs: { alertBeforeInterval: string; identityId?: string | null } | undefined;
+    let seenArgs: { alertBeforeInterval: string; projectId?: string | null; identityId?: string | null } | undefined;
     const provider = buildProvider({
       secrets: [sampleSecret()],
       onFind: (args) => {
@@ -100,6 +106,26 @@ describe("identity credential alarm provider", () => {
     expect(seenArgs?.identityId).toBe("ident-1");
     expect(targets).toHaveLength(1);
     expect(provider.targetId(targets[0])).toBe("ua-client-secret:sec-1");
+  });
+
+  test("findDueTargets scopes the query to the alarm's project so it cannot leak org-wide credentials", async () => {
+    let seenArgs: { projectId?: string | null } | undefined;
+    const provider = buildProvider({
+      onFind: (args) => {
+        seenArgs = args;
+      }
+    });
+
+    await provider.findDueTargets({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceId: null,
+      eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
+      condition: { alertBefore: "30d" },
+      filters: null
+    });
+
+    expect(seenArgs?.projectId).toBe("proj-1");
   });
 
   test("buildPayload produces neutral items and severity", () => {

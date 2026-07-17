@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TAlarmChannels, TAlarmRecipients, TAlarms } from "@app/db/schemas";
+import { TAlarmChannels, TAlarmChannelsInsert, TAlarmRecipients, TAlarms } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -33,7 +33,10 @@ import { ALARM_CHANNEL_REGISTRY } from "./channels/alarm-channel-registry";
 
 export type TAlarmServiceFactoryDep = {
   alarmDAL: TAlarmDALFactory;
-  alarmChannelDAL: Pick<TAlarmChannelDALFactory, "insertMany" | "findByAlarmId" | "findByAlarmIds" | "deleteByAlarmId">;
+  alarmChannelDAL: Pick<
+    TAlarmChannelDALFactory,
+    "insertMany" | "findByAlarmId" | "findByAlarmIds" | "updateById" | "delete"
+  >;
   alarmRecipientDAL: Pick<
     TAlarmRecipientDALFactory,
     "insertMany" | "findByAlarmId" | "findByAlarmIds" | "deleteByAlarmId"
@@ -138,9 +141,12 @@ export const alarmServiceFactory = ({
         throw new BadRequestError({ message: "At least one channel is required" });
       }
 
-      const hasDirected = input.channels.some((channel) => ALARM_CHANNEL_REGISTRY[channel.channelType]?.directed);
-      if (hasDirected && (input.recipients ?? []).length === 0) {
-        throw new BadRequestError({ message: "At least one recipient is required for email channels" });
+      const directedChannels = input.channels.filter(
+        (channel) => ALARM_CHANNEL_REGISTRY[channel.channelType]?.directed
+      );
+      if (directedChannels.length > 0 && (input.recipients ?? []).length === 0) {
+        const directedTypes = [...new Set(directedChannels.map((channel) => channel.channelType))].join(", ");
+        throw new BadRequestError({ message: `At least one recipient is required for ${directedTypes} channels` });
       }
 
       for (const channel of input.channels) {
@@ -505,16 +511,32 @@ export const alarmServiceFactory = ({
       );
 
       if (resolvedChannels) {
-        await alarmChannelDAL.deleteByAlarmId(alarm.id, tx);
-        await alarmChannelDAL.insertMany(
-          resolvedChannels.map((channel) => ({
-            alarmId: alarm.id,
-            channelType: channel.channelType,
-            encryptedConfig: encryptChannelConfig(channel.config, encryptor),
-            enabled: channel.enabled ?? true
-          })),
-          tx
-        );
+        const existingChannels = await alarmChannelDAL.findByAlarmId(alarm.id, tx);
+        const existingChannelById = new Map(existingChannels.map((channel) => [channel.id, channel]));
+
+        const keptIds = new Set<string>();
+        const toInsert: TAlarmChannelsInsert[] = [];
+
+        for (const channel of resolvedChannels) {
+          const existing = channel.id ? existingChannelById.get(channel.id) : undefined;
+          const encryptedConfig = encryptChannelConfig(channel.config, encryptor);
+          if (existing && existing.channelType === channel.channelType) {
+            keptIds.add(existing.id);
+            // eslint-disable-next-line no-await-in-loop
+            await alarmChannelDAL.updateById(existing.id, { encryptedConfig, enabled: channel.enabled ?? true }, tx);
+          } else {
+            toInsert.push({
+              alarmId: alarm.id,
+              channelType: channel.channelType,
+              encryptedConfig,
+              enabled: channel.enabled ?? true
+            });
+          }
+        }
+
+        const idsToDelete = existingChannels.filter((channel) => !keptIds.has(channel.id)).map((channel) => channel.id);
+        if (idsToDelete.length) await alarmChannelDAL.delete({ $in: { id: idsToDelete } }, tx);
+        if (toInsert.length) await alarmChannelDAL.insertMany(toInsert, tx);
       }
 
       if (dto.recipients) {

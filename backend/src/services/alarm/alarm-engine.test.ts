@@ -12,6 +12,12 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
+// Stub outbound HTTP so PagerDuty/Slack/webhook sends resolve without a real network call.
+vi.mock("@app/lib/validator", async (importActual) => ({
+  ...(await importActual<typeof import("@app/lib/validator")>()),
+  safeRequest: { post: async () => ({ data: {} }) }
+}));
+
 type TTarget = { id: string };
 
 const RESOURCE_TYPE = "test.resource";
@@ -77,6 +83,7 @@ const buildEngine = (opts: {
   recentlyAlarmed?: Array<{ channelId: string; targetId: string }>;
   recipients?: Array<{ userId: string; email: string; firstName?: string | null }>;
   failEmail?: boolean;
+  failEmailFor?: string;
 }) => {
   const registry = alarmProviderRegistryFactory();
   registry.register(makeProvider(opts.targets) as IResourceAlarmProvider);
@@ -120,6 +127,7 @@ const buildEngine = (opts: {
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
         if (opts.failEmail) throw new Error("smtp down");
+        if (opts.failEmailFor && opt.recipients.includes(opts.failEmailFor)) throw new Error("mailbox unavailable");
         sentMail.push({ recipients: opt.recipients });
       }
     }
@@ -196,6 +204,91 @@ describe("alarm engine", () => {
     expect(historyWrites[0].deliveries).toEqual([
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlarmRunStatus.FAILED }
     ]);
+  });
+
+  test("marks a directed channel SUCCESS when at least one recipient delivers, so healthy recipients are not re-spammed", async () => {
+    const { engine, sentMail, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      recipients: [
+        { userId: "u1", email: "good@example.com" },
+        { userId: "u2", email: "dead@example.com" }
+      ],
+      failEmailFor: "dead@example.com"
+    });
+
+    await engine.runAlarm(makeAlarm());
+
+    // The healthy recipient still got the mail.
+    expect(sentMail.flatMap((m) => m.recipients)).toEqual(["good@example.com"]);
+    // The target is recorded SUCCESS despite the one bounce, so it won't re-fire (and re-spam the
+    // healthy recipient) on the next run.
+    expect(historyWrites).toHaveLength(1);
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlarmRunStatus.SUCCESS }
+    ]);
+  });
+
+  test("fails a directed channel with no resolved recipients instead of dispatching to undefined", async () => {
+    const { engine, sentMail, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      recipients: [] // group emptied / user deleted at runtime
+    });
+
+    await engine.runAlarm(makeAlarm());
+
+    // No send is attempted with an undefined recipient.
+    expect(sentMail).toHaveLength(0);
+    expect(historyWrites).toHaveLength(1);
+    expect(historyWrites[0].status).toBe(AlarmRunStatus.FAILED);
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlarmRunStatus.FAILED }
+    ]);
+  });
+
+  test("caps a per-target channel (PagerDuty) at maxTargetsPerRun and defers the rest instead of marking them delivered", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: Array.from({ length: 15 }, (_, i) => ({ id: `t${i}` })),
+      channels: [
+        {
+          id: "c-pd",
+          channelType: "pagerduty",
+          encryptedConfig: encConfig({ integrationKey: "a".repeat(32) }),
+          enabled: true
+        }
+      ]
+    });
+
+    await engine.runAlarm(makeAlarm());
+
+    expect(historyWrites).toHaveLength(1);
+    // Only the first 10 targets are dispatched and recorded; the other 5 get no history row, so they
+    // are re-evaluated and paged on the next run rather than being silently marked delivered.
+    expect(historyWrites[0].deliveries).toHaveLength(10);
+    expect(historyWrites[0].deliveries.map((d) => d.targetId)).toEqual(Array.from({ length: 10 }, (_, i) => `t${i}`));
+    expect(historyWrites[0].deliveries.every((d) => d.status === AlarmRunStatus.SUCCESS)).toBe(true);
+  });
+
+  test("pages the deferred targets on a later run once the first batch is deduped", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: Array.from({ length: 15 }, (_, i) => ({ id: `t${i}` })),
+      channels: [
+        {
+          id: "c-pd",
+          channelType: "pagerduty",
+          encryptedConfig: encConfig({ integrationKey: "a".repeat(32) }),
+          enabled: true
+        }
+      ],
+      // First 10 already delivered on the previous run.
+      recentlyAlarmed: Array.from({ length: 10 }, (_, i) => ({ channelId: "c-pd", targetId: `t${i}` }))
+    });
+
+    await engine.runAlarm(makeAlarm());
+
+    expect(historyWrites).toHaveLength(1);
+    expect(historyWrites[0].deliveries.map((d) => d.targetId)).toEqual(["t10", "t11", "t12", "t13", "t14"]);
   });
 
   test("skips entirely when every channel already delivered every target", async () => {

@@ -85,9 +85,26 @@ const buildService = (opts?: {
       },
       findByAlarmId: async (alarmId: string) => channels.get(alarmId) ?? [],
       findByAlarmIds: async (alarmIds: string[]) => alarmIds.flatMap((alarmId) => channels.get(alarmId) ?? []),
-      deleteByAlarmId: async (alarmId: string) => {
-        channels.delete(alarmId);
-        return 0;
+      updateById: async (id: string, data: Record<string, unknown>) => {
+        for (const [alarmId, rows] of channels) {
+          const idx = rows.findIndex((c) => c.id === id);
+          if (idx >= 0) {
+            rows[idx] = { ...rows[idx], ...data, updatedAt: new Date() };
+            channels.set(alarmId, rows);
+            return rows[idx];
+          }
+        }
+        return undefined;
+      },
+      delete: async (filter: { $in?: { id?: string[] } }) => {
+        const ids = new Set(filter.$in?.id ?? []);
+        for (const [alarmId, rows] of channels) {
+          channels.set(
+            alarmId,
+            rows.filter((c) => !ids.has(c.id as string))
+          );
+        }
+        return [];
       }
     },
     alarmRecipientDAL: {
@@ -392,6 +409,26 @@ describe("alarm service", () => {
     });
 
     expect(updated.channels[0].config).toEqual({ hasWebhookUrl: true });
+  });
+
+  test("preserves the channel id when an existing channel is edited so dedup history stays intact", async () => {
+    const { service, channels } = seedAlarmWithChannel(AlarmChannelType.WEBHOOK, {
+      url: "https://example.com/hook"
+    });
+
+    const updated = await service.updateAlarm({
+      alarmId: "alarm-1",
+      channels: [
+        { id: "c0", channelType: AlarmChannelType.WEBHOOK, config: { url: "https://example.com/hook" }, enabled: false }
+      ],
+      ...actor
+    });
+
+    // The channel must keep its original id (not be deleted + recreated with a fresh UUID), otherwise
+    // alarm_history_target.channelId would no longer match and per-channel dedup would reset.
+    expect(updated.channels[0].id).toBe("c0");
+    expect(updated.channels[0].enabled).toBe(false);
+    expect((channels.get("alarm-1") ?? []).map((c) => c.id)).toEqual(["c0"]);
   });
 
   test("does not fabricate a secret for a newly added channel (no id)", async () => {

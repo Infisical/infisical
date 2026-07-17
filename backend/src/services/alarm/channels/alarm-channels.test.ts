@@ -1,8 +1,9 @@
-import { AlarmChannelType, TAlarmPayload } from "../alarm-channel-types";
+import { AlarmChannelType, SlackChannelConfigSchema, TAlarmPayload } from "../alarm-channel-types";
 import { sendEmailNotification } from "./alarm-channel-email-fns";
 import { buildPagerDutyEvent } from "./alarm-channel-pagerduty-fns";
 import { ALARM_CHANNEL_REGISTRY } from "./alarm-channel-registry";
-import { buildSlackPayload, validateSlackWebhookUrl } from "./alarm-channel-slack-fns";
+import { isAxiosErrorRetryable } from "./alarm-channel-retry-fns";
+import { buildSlackPayload } from "./alarm-channel-slack-fns";
 import { buildWebhookPayload } from "./alarm-channel-webhook-fns";
 
 const samplePayload = (): TAlarmPayload => ({
@@ -123,13 +124,21 @@ describe("buildPagerDutyEvent", () => {
   });
 });
 
-describe("validateSlackWebhookUrl", () => {
+describe("SlackChannelConfigSchema webhook allowlist", () => {
   test("rejects a lookalike host", () => {
-    expect(() => validateSlackWebhookUrl("https://hooks.slack.com.evil.com/x")).toThrow();
+    expect(SlackChannelConfigSchema.safeParse({ webhookUrl: "https://hooks.slack.com.evil.com/x" }).success).toBe(
+      false
+    );
   });
 
   test("rejects non-https", () => {
-    expect(() => validateSlackWebhookUrl("http://hooks.slack.com/x")).toThrow();
+    expect(SlackChannelConfigSchema.safeParse({ webhookUrl: "http://hooks.slack.com/x" }).success).toBe(false);
+  });
+
+  test("accepts a valid hooks.slack.com https URL", () => {
+    expect(SlackChannelConfigSchema.safeParse({ webhookUrl: "https://hooks.slack.com/services/T/B/x" }).success).toBe(
+      true
+    );
   });
 });
 
@@ -177,5 +186,22 @@ describe("sendEmailNotification (directed)", () => {
   test("fails when there is no recipient", async () => {
     const result = await sendEmailNotification({ ...baseCtx(), config: {} });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("isAxiosErrorRetryable", () => {
+  test("retries on 429 (rate limit) so a short backoff can recover", () => {
+    expect(isAxiosErrorRetryable({ response: { status: 429 } })).toBe(true);
+  });
+
+  test("retries on 5xx and network/timeout errors", () => {
+    expect(isAxiosErrorRetryable({ response: { status: 503 } })).toBe(true);
+    expect(isAxiosErrorRetryable({ code: "ECONNRESET" })).toBe(true);
+    expect(isAxiosErrorRetryable({ message: "socket hang up timeout" })).toBe(true);
+  });
+
+  test("does not retry on other 4xx client errors", () => {
+    expect(isAxiosErrorRetryable({ response: { status: 400 } })).toBe(false);
+    expect(isAxiosErrorRetryable({ response: { status: 404 } })).toBe(false);
   });
 });

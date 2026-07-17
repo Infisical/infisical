@@ -1,6 +1,5 @@
 import { AxiosError } from "axios";
 
-import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
 import { RETRYABLE_NETWORK_ERRORS } from "../alarm-channel-constants";
@@ -16,7 +15,7 @@ import { retryWithBackoff } from "./alarm-channel-retry-fns";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 const PAGERDUTY_TIMEOUT = 7 * 1000;
-const MAX_INCIDENTS_PER_RUN = 10;
+export const PAGERDUTY_MAX_INCIDENTS_PER_RUN = 10;
 const PAGERDUTY_SUMMARY_MAX_LENGTH = 1024;
 
 type TPagerDutyPayload = {
@@ -97,16 +96,8 @@ export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): 
     return { success: false, error: "Invalid PagerDuty integration key" };
   }
 
-  const items = ctx.payload.items.slice(0, MAX_INCIDENTS_PER_RUN);
-  if (ctx.payload.items.length > MAX_INCIDENTS_PER_RUN) {
-    logger.warn(
-      { channelId: ctx.channelId, total: ctx.payload.items.length, cap: MAX_INCIDENTS_PER_RUN },
-      `Alarm PagerDuty target count exceeds cap; only the first ${MAX_INCIDENTS_PER_RUN} incidents are triggered this run [channelId=${ctx.channelId}]`
-    );
-  }
-
   const results = await Promise.all(
-    items.map((item) =>
+    ctx.payload.items.map((item) =>
       retryWithBackoff(
         () => triggerPagerDutyEvent(buildPagerDutyEvent(ctx.payload, item, config.integrationKey)),
         isPagerDutyErrorRetryable,

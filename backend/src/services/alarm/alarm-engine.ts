@@ -96,10 +96,18 @@ export const alarmEngineFactory = ({
     const alarmedSet = new Set(recentlyAlarmed.map((row) => `${row.channelId}:${row.targetId}`));
 
     const channelWork = channels
-      .map((channel) => ({
-        channel,
-        dueTargets: targets.filter((target) => !alarmedSet.has(`${channel.id}:${provider.targetId(target)}`))
-      }))
+      .map((channel) => {
+        const definition = ALARM_CHANNEL_REGISTRY[channel.channelType as AlarmChannelType];
+        const dueTargets = targets.filter((target) => !alarmedSet.has(`${channel.id}:${provider.targetId(target)}`));
+        const cap = definition?.maxTargetsPerRun;
+        if (cap && dueTargets.length > cap) {
+          logger.info(
+            `Alarm ${channel.channelType} channel capped at ${cap} targets this run; ${dueTargets.length - cap} deferred to the next run [alarmId=${alarm.id}] [channelId=${channel.id}]`
+          );
+          return { channel, dueTargets: dueTargets.slice(0, cap) };
+        }
+        return { channel, dueTargets };
+      })
       .filter((work) => work.dueTargets.length > 0);
     if (channelWork.length === 0) return;
 
@@ -114,8 +122,9 @@ export const alarmEngineFactory = ({
       condition: alarm.condition,
       filters: alarm.filters
     };
-    // viewUrl is target-independent; build one reference payload to source it for the failure notice.
-    const { viewUrl } = provider.buildPayload(alarmContext, targets).alarm;
+    // viewUrl is target-independent; pass no targets so we don't build the full item list (which is
+    // discarded here) just to read the link used in the failure notice.
+    const { viewUrl } = provider.buildPayload(alarmContext, []).alarm;
 
     const { decryptor } = await getAlarmChannelCipher(kmsService, {
       orgId: alarm.orgId,
@@ -151,15 +160,24 @@ export const alarmEngineFactory = ({
 
         try {
           if (definition.directed) {
-            const deliveries = recipients.length > 0 ? recipients : [undefined];
+            if (recipients.length === 0) {
+              return { ...base, success: false, error: "No recipients could be resolved for this channel" };
+            }
             const results = await Promise.all(
-              deliveries.map((recipient) =>
+              recipients.map((recipient) =>
                 definition.send({ channelId: channel.id, config, payload, recipient, deps })
               )
             );
             const failures = results.filter((result) => !result.success);
-            if (failures.length > 0) {
+            if (failures.length === results.length) {
               return { ...base, success: false, error: failures.map((f) => f.error).join("; ") };
+            }
+            if (failures.length > 0) {
+              logger.warn(
+                `Alarm ${channel.channelType} channel had partial delivery failures [alarmId=${alarm.id}] [channelId=${channel.id}]: ${failures
+                  .map((f) => f.error)
+                  .join("; ")}`
+              );
             }
             return { ...base, success: true };
           }

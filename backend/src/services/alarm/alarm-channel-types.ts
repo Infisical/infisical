@@ -63,6 +63,7 @@ export type TAlarmChannelDefinition = {
   directed: boolean;
   secretFields: string[];
   configSchema: z.ZodTypeAny;
+  maxTargetsPerRun?: number;
   send: (ctx: TAlarmChannelSendContext) => Promise<TChannelResult>;
 };
 

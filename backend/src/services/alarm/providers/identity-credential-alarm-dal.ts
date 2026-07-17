@@ -19,9 +19,10 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
   const findExpiringUaClientSecrets = async (
     {
       orgId,
+      projectId,
       identityId,
       alertBeforeInterval
-    }: { orgId: string; identityId?: string | null; alertBeforeInterval: string },
+    }: { orgId: string; projectId?: string | null; identityId?: string | null; alertBeforeInterval: string },
     tx?: Knex
   ): Promise<TExpiringUaClientSecret[]> => {
     try {
@@ -44,6 +45,16 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
         .where(`${TableName.IdentityUaClientSecret}.clientSecretTTL`, ">", 0)
         .whereRaw(`${expiresAtSql} > NOW()`)
         .whereRaw(`${expiresAtSql} <= NOW() + ?::interval`, [alertBeforeInterval]);
+
+      if (projectId) {
+        void query
+          .join(
+            TableName.IdentityProjectMembership,
+            `${TableName.IdentityUniversalAuth}.identityId`,
+            `${TableName.IdentityProjectMembership}.identityId`
+          )
+          .where(`${TableName.IdentityProjectMembership}.projectId`, projectId);
+      }
 
       if (identityId) {
         void query.where(`${TableName.IdentityUniversalAuth}.identityId`, identityId);

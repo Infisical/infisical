@@ -1,4 +1,3 @@
-import { BadRequestError } from "@app/lib/errors";
 import { safeRequest } from "@app/lib/validator";
 
 import {
@@ -40,18 +39,6 @@ const SEVERITY_COLOR: Record<TAlarmSeverity, string> = {
   error: "#da3633",
   warning: "#f0b429",
   info: "#1f6feb"
-};
-
-export const validateSlackWebhookUrl = (url: string): void => {
-  const parsedUrl = new URL(url);
-
-  if (parsedUrl.protocol !== "https:") {
-    throw new BadRequestError({ message: "Slack webhook URL must use HTTPS" });
-  }
-
-  if (parsedUrl.hostname !== "hooks.slack.com") {
-    throw new BadRequestError({ message: "Invalid Slack webhook URL. Must be from hooks.slack.com" });
-  }
 };
 
 export const buildSlackPayload = (payload: TAlarmPayload): TSlackPayload => {
@@ -126,7 +113,6 @@ const triggerSlackWebhook = async (url: string, payload: TSlackPayload): Promise
 
 export const sendSlackNotification = async (ctx: TAlarmChannelSendContext): Promise<TChannelResult> => {
   const config = SlackChannelConfigSchema.parse(ctx.config);
-  validateSlackWebhookUrl(config.webhookUrl);
   const payload = buildSlackPayload(ctx.payload);
 
   return retryWithBackoff(() => triggerSlackWebhook(config.webhookUrl, payload), isAxiosErrorRetryable, {

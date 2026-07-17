@@ -7,7 +7,7 @@ import {
   WebhookChannelConfigSchema
 } from "../alarm-channel-types";
 import { sendEmailNotification } from "./alarm-channel-email-fns";
-import { sendPagerDutyNotification } from "./alarm-channel-pagerduty-fns";
+import { PAGERDUTY_MAX_INCIDENTS_PER_RUN, sendPagerDutyNotification } from "./alarm-channel-pagerduty-fns";
 import { sendSlackNotification } from "./alarm-channel-slack-fns";
 import { sendWebhookNotification } from "./alarm-channel-webhook-fns";
 
@@ -38,6 +38,7 @@ export const ALARM_CHANNEL_REGISTRY: Record<AlarmChannelType, TAlarmChannelDefin
     directed: false,
     secretFields: ["integrationKey"],
     configSchema: PagerDutyChannelConfigSchema,
+    maxTargetsPerRun: PAGERDUTY_MAX_INCIDENTS_PER_RUN,
     send: sendPagerDutyNotification
   }
 };

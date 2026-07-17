@@ -78,6 +78,7 @@ export const identityCredentialAlarmProviderFactory = ({
 
     const uaSecrets = await identityCredentialAlarmDAL.findExpiringUaClientSecrets({
       orgId: input.orgId,
+      projectId: input.projectId,
       identityId: input.resourceId,
       alertBeforeInterval: intervalSql
     });

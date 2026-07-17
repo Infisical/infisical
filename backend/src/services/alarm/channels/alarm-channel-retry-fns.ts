@@ -49,6 +49,7 @@ export const retryWithBackoff = async (
 export const isAxiosErrorRetryable = (err: unknown): boolean => {
   const axiosErr = err as AxiosError;
   const status = axiosErr.response?.status;
+  if (status === 429) return true;
   if (status && status >= 500) return true;
   if (axiosErr.code && RETRYABLE_NETWORK_ERRORS.includes(axiosErr.code)) return true;
   if (axiosErr.message?.toLowerCase().includes("timeout")) return true;
