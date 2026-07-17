@@ -9,12 +9,9 @@ import {
   Input
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import {
-  DYNAMIC_SECRET_PROVIDER_OUTPUTS,
-  TProviderLeaseInput
-} from "@app/hooks/api/dynamicSecret/providerOutputs";
 import { useGetDynamicSecrets } from "@app/hooks/api/dynamicSecret/queries";
 
+import { BROKERABLE_DYNAMIC_SECRETS, TProviderLeaseInput } from "./brokerableDynamicSecrets";
 import { TLeaseConfig } from "./schema";
 
 type Props = {
@@ -101,7 +98,7 @@ export const DynamicSecretLeaseSettings = ({
       const provider = providerByName.get(name);
       return {
         name,
-        leaseInputs: provider ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[provider].leaseInputs : []
+        leaseInputs: provider ? (BROKERABLE_DYNAMIC_SECRETS[provider]?.leaseInputs ?? []) : []
       };
     })
     .filter((entry) => entry.leaseInputs.length > 0);

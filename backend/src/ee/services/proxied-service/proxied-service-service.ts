@@ -18,11 +18,10 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
-import { DYNAMIC_SECRET_PROVIDER_OUTPUTS } from "../dynamic-secret/providers/dynamic-secret-provider-outputs";
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { BROKERABLE_DYNAMIC_SECRET_OUTPUTS } from "./proxied-service-brokerable-outputs";
+import { BROKERABLE_DYNAMIC_SECRETS } from "./proxied-service-brokerable-outputs";
 import { TProxiedServiceCredentialDALFactory } from "./proxied-service-credential-dal";
 import { TProxiedServiceDALFactory } from "./proxied-service-dal";
 import {
@@ -226,29 +225,25 @@ export const proxiedServiceServiceFactory = ({
         subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata: ds.metadata })
       );
 
-      const registry = DYNAMIC_SECRET_PROVIDER_OUTPUTS[ds.type as DynamicSecretProviders];
-      if (!registry) {
-        throw new BadRequestError({ message: `Dynamic secret "${ds.name}" has an unsupported provider type` });
-      }
-      const brokerableFields = BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.type as DynamicSecretProviders];
-      if (!brokerableFields) {
+      const brokerable = BROKERABLE_DYNAMIC_SECRETS[ds.type as DynamicSecretProviders];
+      if (!brokerable) {
         throw new BadRequestError({
           message: `Dynamic secret "${ds.name}" (${ds.type}) can't be brokered over HTTP`
         });
       }
-      if (!cred.dynamicSecretField || !brokerableFields.includes(cred.dynamicSecretField)) {
+      if (!cred.dynamicSecretField || !brokerable.fields.includes(cred.dynamicSecretField)) {
         throw new BadRequestError({
-          message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${brokerableFields.join(", ") || "none"}`
+          message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${brokerable.fields.join(", ") || "none"}`
         });
       }
 
       if (cred.dynamicSecretConfig && Object.keys(cred.dynamicSecretConfig as object).length) {
-        if (!registry.leaseConfigSchema) {
+        if (!brokerable.leaseConfigSchema) {
           throw new BadRequestError({
             message: `Dynamic secret "${ds.name}" (${ds.type}) does not accept a lease config`
           });
         }
-        const parsed = registry.leaseConfigSchema.safeParse(cred.dynamicSecretConfig);
+        const parsed = brokerable.leaseConfigSchema.safeParse(cred.dynamicSecretConfig);
         if (!parsed.success) {
           throw new BadRequestError({
             message: `Invalid lease config for dynamic secret "${ds.name}": ${parsed.error.issues.map((i) => i.message).join(", ")}`

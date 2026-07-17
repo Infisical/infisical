@@ -1,24 +1,32 @@
-import { DYNAMIC_SECRET_PROVIDER_OUTPUTS } from "../dynamic-secret/providers/dynamic-secret-provider-outputs";
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
-import { BROKERABLE_DYNAMIC_SECRET_OUTPUTS } from "./proxied-service-brokerable-outputs";
+import { BROKERABLE_DYNAMIC_SECRETS } from "./proxied-service-brokerable-outputs";
 
-describe("BROKERABLE_DYNAMIC_SECRET_OUTPUTS", () => {
+describe("BROKERABLE_DYNAMIC_SECRETS", () => {
   it("allows 12 providers for HTTP brokering", () => {
-    expect(Object.keys(BROKERABLE_DYNAMIC_SECRET_OUTPUTS)).toHaveLength(12);
+    expect(Object.keys(BROKERABLE_DYNAMIC_SECRETS)).toHaveLength(12);
   });
 
-  it("only lists fields that the provider actually outputs", () => {
-    Object.entries(BROKERABLE_DYNAMIC_SECRET_OUTPUTS).forEach(([provider, fields]) => {
-      const { outputFields } = DYNAMIC_SECRET_PROVIDER_OUTPUTS[provider as DynamicSecretProviders];
-      fields?.forEach((field) => expect(outputFields).toContain(field));
+  it("every allowed provider lists at least one field", () => {
+    Object.values(BROKERABLE_DYNAMIC_SECRETS).forEach((entry) => {
+      expect(entry?.fields.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("only Kubernetes carries a lease config schema", () => {
+    Object.entries(BROKERABLE_DYNAMIC_SECRETS).forEach(([provider, entry]) => {
+      if (provider === DynamicSecretProviders.Kubernetes) {
+        expect(entry?.leaseConfigSchema).toBeDefined();
+      } else {
+        expect(entry?.leaseConfigSchema).toBeUndefined();
+      }
     });
   });
 
   it("does not broker database/ssh providers or metadata fields", () => {
-    expect(BROKERABLE_DYNAMIC_SECRET_OUTPUTS[DynamicSecretProviders.SqlDatabase]).toBeUndefined();
-    expect(BROKERABLE_DYNAMIC_SECRET_OUTPUTS[DynamicSecretProviders.AwsIam]).toBeUndefined();
-    expect(BROKERABLE_DYNAMIC_SECRET_OUTPUTS[DynamicSecretProviders.Ssh]).toBeUndefined();
-    expect(BROKERABLE_DYNAMIC_SECRET_OUTPUTS[DynamicSecretProviders.Github]).toEqual(["TOKEN"]);
-    expect(BROKERABLE_DYNAMIC_SECRET_OUTPUTS[DynamicSecretProviders.Totp]).toEqual(["TOTP"]);
+    expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.SqlDatabase]).toBeUndefined();
+    expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.AwsIam]).toBeUndefined();
+    expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.Ssh]).toBeUndefined();
+    expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.Github]?.fields).toEqual(["TOKEN"]);
+    expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.Totp]?.fields).toEqual(["TOTP"]);
   });
 });
