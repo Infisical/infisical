@@ -1646,8 +1646,6 @@ export const PROXIED_SERVICES = {
       "The name of the referenced dynamic secret. The dynamic secret must live in the same folder as the service; the agent proxy mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
     dynamicSecretField:
       "For a dynamic secret credential: which lease output field to inject (e.g. 'DB_PASSWORD', 'TOKEN'). Must be a valid output field for the dynamic secret's provider type.",
-    dynamicSecretConfig:
-      "For a dynamic secret credential: optional per-lease config passed when minting (e.g. { namespace } for kubernetes, { principals } for ssh).",
     role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",
     headerName: "For header rewriting: the header to set, e.g. 'Authorization' or 'x-api-key'.",
     headerPrefix: "For header rewriting: an optional prefix joined to the secret value with a space, e.g. 'Bearer'.",

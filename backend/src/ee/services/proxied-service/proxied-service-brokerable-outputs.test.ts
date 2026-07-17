@@ -12,16 +12,6 @@ describe("BROKERABLE_DYNAMIC_SECRETS", () => {
     });
   });
 
-  it("only Kubernetes carries a lease config schema", () => {
-    Object.entries(BROKERABLE_DYNAMIC_SECRETS).forEach(([provider, entry]) => {
-      if (provider === DynamicSecretProviders.Kubernetes) {
-        expect(entry?.leaseConfigSchema).toBeDefined();
-      } else {
-        expect(entry?.leaseConfigSchema).toBeUndefined();
-      }
-    });
-  });
-
   it("does not broker database/ssh providers or metadata fields", () => {
     expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.SqlDatabase]).toBeUndefined();
     expect(BROKERABLE_DYNAMIC_SECRETS[DynamicSecretProviders.AwsIam]).toBeUndefined();

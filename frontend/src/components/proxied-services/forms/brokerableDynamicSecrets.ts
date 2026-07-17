@@ -1,27 +1,17 @@
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
-export type TProviderLeaseInput = { name: "namespace"; label: string; helperText: string };
-
 type TBrokerableDynamicSecret = {
   fields: { name: string; label: string }[];
-  leaseInputs?: TProviderLeaseInput[];
 };
 
-// Dynamic-secret providers a proxied service can broker over HTTP, with the eligible output fields and any
-// lease inputs. A provider not listed can't be brokered; a field not listed is hidden (e.g. metadata).
+// Dynamic-secret providers a proxied service can broker over HTTP, with the eligible output fields.
+// A provider not listed can't be brokered; a field not listed is hidden (e.g. metadata).
 // keep in sync with backend/src/ee/services/proxied-service/proxied-service-brokerable-outputs.ts
 export const BROKERABLE_DYNAMIC_SECRETS: Partial<
   Record<DynamicSecretProviders, TBrokerableDynamicSecret>
 > = {
   [DynamicSecretProviders.Kubernetes]: {
-    fields: [{ name: "TOKEN", label: "Service Account JWT" }],
-    leaseInputs: [
-      {
-        name: "namespace",
-        label: "Namespace",
-        helperText: "Kubernetes namespace to use. Optional."
-      }
-    ]
+    fields: [{ name: "TOKEN", label: "Service Account JWT" }]
   },
   [DynamicSecretProviders.Github]: { fields: [{ name: "TOKEN", label: "Token" }] },
   [DynamicSecretProviders.GcpIam]: { fields: [{ name: "TOKEN", label: "Token" }] },
