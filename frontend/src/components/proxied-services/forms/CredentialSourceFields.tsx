@@ -29,14 +29,13 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { DYNAMIC_SECRET_PROVIDER_OUTPUTS } from "@app/hooks/api/dynamicSecret/providerOutputs";
 import { useGetDynamicSecrets } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawResponse } from "@app/hooks/api/secrets/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
-import { BROKERABLE_DYNAMIC_SECRET_OUTPUTS } from "./brokerableDynamicSecrets";
+import { BROKERABLE_DYNAMIC_SECRETS } from "./brokerableDynamicSecrets";
 
 export type TCredentialSource = {
   secretKey?: string;
@@ -70,8 +69,8 @@ type DynamicOption = {
 const fieldLabelFor = (provider: DynamicSecretProviders | undefined, fieldName: string) => {
   if (!provider) return fieldName;
   return (
-    DYNAMIC_SECRET_PROVIDER_OUTPUTS[provider].outputFields.find((f) => f.name === fieldName)
-      ?.label ?? fieldName
+    BROKERABLE_DYNAMIC_SECRETS[provider]?.fields.find((f) => f.name === fieldName)?.label ??
+    fieldName
   );
 };
 
@@ -174,7 +173,7 @@ export const CredentialSourceFields = ({
 
   const dynamicOptions = useMemo<DynamicOption[]>(() => {
     return dynamicSecrets.map((ds) => {
-      const isBrokerable = Boolean(ds.type && BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.type]);
+      const isBrokerable = Boolean(ds.type && BROKERABLE_DYNAMIC_SECRETS[ds.type]);
       const canLease = permission.can(
         ProjectPermissionDynamicSecretActions.Lease,
         subject(ProjectPermissionSub.DynamicSecrets, {
@@ -344,13 +343,9 @@ export const CredentialSourceFields = ({
                 );
               }
 
-              const fieldNames = ds.provider
-                ? (BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.provider] ?? [])
+              const fields = ds.provider
+                ? (BROKERABLE_DYNAMIC_SECRETS[ds.provider]?.fields ?? [])
                 : [];
-              const fields = fieldNames.map((name) => ({
-                name,
-                label: fieldLabelFor(ds.provider, name)
-              }));
               if (!fields.length) return null;
 
               return (

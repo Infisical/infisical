@@ -19,7 +19,7 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { BROKERABLE_DYNAMIC_SECRET_OUTPUTS } from "./proxied-service-brokerable-outputs";
+import { BROKERABLE_DYNAMIC_SECRETS } from "./proxied-service-brokerable-outputs";
 import { TProxiedServiceCredentialDALFactory } from "./proxied-service-credential-dal";
 import { TProxiedServiceDALFactory } from "./proxied-service-dal";
 import {
@@ -198,15 +198,15 @@ export const proxiedServiceServiceFactory = ({
         subject(ProjectPermissionSub.DynamicSecrets, { environment, secretPath, metadata: ds.metadata })
       );
 
-      const brokerableFields = BROKERABLE_DYNAMIC_SECRET_OUTPUTS[ds.type as DynamicSecretProviders];
-      if (!brokerableFields) {
+      const brokerable = BROKERABLE_DYNAMIC_SECRETS[ds.type as DynamicSecretProviders];
+      if (!brokerable) {
         throw new BadRequestError({
           message: `Dynamic secret "${ds.name}" (${ds.type}) can't be brokered over HTTP`
         });
       }
-      if (!cred.dynamicSecretField || !brokerableFields.includes(cred.dynamicSecretField)) {
+      if (!cred.dynamicSecretField || !brokerable.fields.includes(cred.dynamicSecretField)) {
         throw new BadRequestError({
-          message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${brokerableFields.join(", ") || "none"}`
+          message: `"${cred.dynamicSecretField}" is not a valid output field for dynamic secret "${ds.name}" (${ds.type}). Allowed: ${brokerable.fields.join(", ") || "none"}`
         });
       }
     });
