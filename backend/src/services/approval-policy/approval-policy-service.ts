@@ -76,7 +76,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
-import { createApprovalRequestWithSteps, notifyApproversForStep } from "./approval-request-fns";
+import { createApprovalRequestWithSteps, notifyStepApprovers } from "./approval-request-fns";
 import { TPamAccessRequestData } from "./pam-access/pam-access-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
@@ -130,7 +130,12 @@ export const approvalPolicyServiceFactory = ({
   projectDAL
 }: TApprovalPolicyServiceFactoryDep) => {
   const $notifyApprovers = (step: ApprovalPolicyStep, request: TApprovalRequests) =>
-    notifyApproversForStep(step, request, { userGroupMembershipDAL, notificationService });
+    notifyStepApprovers(step, request, {
+      userGroupMembershipDAL,
+      notificationService,
+      userDAL,
+      smtpService
+    });
 
   const $buildDecorationContext = (actor: OrgServiceActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;
@@ -1220,9 +1225,7 @@ export const approvalPolicyServiceFactory = ({
             tx
           );
 
-          if (nextStep.notifyApprovers) {
-            nextStepToNotifyInner = nextStep;
-          }
+          nextStepToNotifyInner = nextStep;
         } else {
           // All steps completed
           const completedReq = await approvalRequestDAL.updateById(
