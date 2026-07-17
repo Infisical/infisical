@@ -69,7 +69,7 @@ export const CreateProxiedServiceModal = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw]">
+        <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
           <SheetHeader className="border-b">
             {isPicking ? (
               <>

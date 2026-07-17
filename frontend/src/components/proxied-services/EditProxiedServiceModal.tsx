@@ -25,7 +25,7 @@ export const EditProxiedServiceModal = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw]">
+      <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
         <SheetHeader className="border-b">
           <ProxiedServiceModalHeader
             title={proxiedService.name}
