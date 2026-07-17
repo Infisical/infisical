@@ -15,7 +15,7 @@ const lowEntropyRegexes = [
 
 export const PasswordPolicySchema = z
   .string()
-  .min(14, "Password must contain at least 14 characters")
+  .min(10, "Password must contain at least 10 characters")
   .max(100, "Password must contain at most 100 characters")
   .regex(letterCharacterRegex, "Password must contain at least 1 letter")
   .regex(numberOrSpecialCharacterRegex, "Password must contain at least 1 number or special character")
