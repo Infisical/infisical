@@ -1050,6 +1050,7 @@ export const pkiAcmeServiceFactory = ({
       country: updatedCertificateRequest.country || undefined,
       state: updatedCertificateRequest.state || undefined,
       locality: updatedCertificateRequest.locality || undefined,
+      domainComponents: updatedCertificateRequest.domainComponents,
       tx
     });
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
@@ -1261,6 +1262,9 @@ export const pkiAcmeServiceFactory = ({
               country: certificateRequest.country || null,
               state: certificateRequest.state || null,
               locality: certificateRequest.locality || null,
+              domainComponents: certificateRequest.domainComponents
+                ? certificateRequest.domainComponents.join(",")
+                : null,
               basicConstraints: certificateRequest.basicConstraints
                 ? JSON.stringify(certificateRequest.basicConstraints)
                 : null,
@@ -1280,6 +1284,7 @@ export const pkiAcmeServiceFactory = ({
               country: certificateRequest.country,
               state: certificateRequest.state,
               locality: certificateRequest.locality,
+              domainComponents: certificateRequest.domainComponents,
               keyUsages: certificateRequest.keyUsages,
               extendedKeyUsages: certificateRequest.extendedKeyUsages,
               altNames,
