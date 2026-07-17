@@ -17,6 +17,7 @@ export type {
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,
   BillingV2CompareRow,
+  BillingV2Deprecation,
   BillingV2Dim,
   BillingV2Entitlement,
   BillingV2EntitlementDim,

@@ -35,12 +35,22 @@ const BillingV2CompareRowSchema = z.object({
   cells: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 });
 
+// Deprecation detail shown to the user: formatted sunset date + whole days remaining (both nullable).
+const BillingV2DeprecationSchema = z.object({
+  reason: z.string().optional(),
+  nextSteps: z.string().optional(),
+  date: z.string().nullable(),
+  daysLeft: z.number().nullable()
+});
+
 const BillingV2PlanSchema = z.object({
   tier: z.string(),
   name: z.string(),
   selfServe: z.boolean(),
   salesLed: z.boolean(),
   trialable: z.boolean(),
+  deprecated: z.boolean().optional(),
+  deprecation: BillingV2DeprecationSchema.optional(),
   displayOrder: z.number().optional(),
   feature: z.string().optional(),
   base: z.object({ monthly: z.number(), annual: z.number() }).optional(),
@@ -54,6 +64,8 @@ const BillingV2CatalogProductSchema = z.object({
   color: z.string(),
   addon: z.boolean().optional(),
   tagline: z.string().optional(),
+  deprecated: z.boolean().optional(),
+  deprecation: BillingV2DeprecationSchema.optional(),
   displayOrder: z.number().optional(),
   plans: BillingV2PlanSchema.array(),
   includes: z.string().array().optional(),
@@ -102,6 +114,9 @@ const BillingV2EntitlementSchema = z.object({
   isTrialing: z.boolean().optional(),
   trialEndsAt: z.string().nullable().optional(),
   renewsOn: z.string().nullable().optional(),
+  deprecation: BillingV2DeprecationSchema.extend({
+    kind: z.enum(["product", "plan"])
+  }).optional(),
   limit: z.number().nullable().optional(),
   used: z.number().optional(),
   unit: z.string().nullable().optional()

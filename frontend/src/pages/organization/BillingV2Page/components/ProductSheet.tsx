@@ -379,8 +379,11 @@ export const ProductSheet = ({
   const displayCadence: BillingV2Cadence = entitlement?.cadence === "annual" ? "annual" : "monthly";
   const canChangeCommitment = (entitlement?.dimensions ?? []).some(dimAnnualCommitted);
 
-  // Render plan cards in the catalog's displayOrder (already sorted server-side).
-  const plans = [...(prod.plans ?? [])].sort(byDisplayOrder);
+  // Render plan cards in the catalog's displayOrder (already sorted server-side). A deprecated plan is
+  // closed to new customers, so hide it unless the org is already entitled (e.g. currently on it).
+  const plans = [...(prod.plans ?? [])]
+    .filter((plan) => !plan.deprecated || entitled)
+    .sort(byDisplayOrder);
   const currentTier =
     entitlement?.planTier ?? (entitled ? plans.find((plan) => plan.selfServe)?.tier : undefined);
   const gridCols = GRID_COLS[Math.min(plans.length, 3)] ?? GRID_COLS[3];

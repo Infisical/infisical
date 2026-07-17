@@ -22,6 +22,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import {
   BillingV2CatalogProduct,
   BillingV2CompareRow,
+  BillingV2Deprecation,
   BillingV2Dim,
   BillingV2Entitlement,
   BillingV2EntitlementDim,
@@ -128,6 +129,35 @@ const formatShortDate = (unixSeconds: number | null | undefined): string | null 
   return new Date(unixSeconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
+// deprecationDate arrives as unix seconds/ms or an ISO string depending on the server; normalize both.
+const parseDeprecationDate = (value: number | string | null | undefined): Date | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const date = typeof value === "number" ? new Date(value < 1e12 ? value * 1000 : value) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// Build the client-facing deprecation detail (formatted date + whole days remaining) when deprecated.
+const toDeprecation = (input: {
+  deprecated?: boolean;
+  reason?: string | null;
+  nextSteps?: string | null;
+  date?: number | string | null;
+}): BillingV2Deprecation | undefined => {
+  if (!input.deprecated) {
+    return undefined;
+  }
+  const date = parseDeprecationDate(input.date);
+  const daysLeft = date ? Math.max(0, Math.ceil((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : null;
+  return {
+    reason: input.reason ?? undefined,
+    nextSteps: input.nextSteps ?? undefined,
+    date: date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null,
+    daysLeft
+  };
+};
+
 const resolveSubState = (subscription: TSubscriptionResponse | null): BillingV2SubState => {
   if (!subscription || !subscription.status) {
     return "no-subscription";
@@ -229,12 +259,20 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     });
   });
 
+  const deprecation = toDeprecation({
+    deprecated: plan.deprecated,
+    reason: plan.deprecationReason,
+    nextSteps: plan.deprecationNextSteps,
+    date: plan.deprecationDate
+  });
   const result: BillingV2Plan = {
     tier: plan.tier,
     name: plan.name,
     selfServe: plan.selfServe,
     salesLed: plan.salesLed,
     trialable: plan.trialable ?? false,
+    deprecated: plan.deprecated ?? false,
+    ...(deprecation ? { deprecation } : {}),
     displayOrder: plan.displayOrder ?? undefined,
     feature: plan.feature,
     dims
@@ -267,6 +305,12 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     return { label: row.label, cells };
   });
 
+  const deprecation = toDeprecation({
+    deprecated: product.deprecated,
+    reason: product.deprecationReason,
+    nextSteps: product.deprecationNextSteps,
+    date: product.deprecationDate
+  });
   return {
     id: product.id,
     name: product.name,
@@ -274,6 +318,8 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     color: product.color || FALLBACK_COLOR,
     addon: product.addon,
     tagline: product.tagline,
+    deprecated: product.deprecated ?? false,
+    ...(deprecation ? { deprecation } : {}),
     displayOrder: product.displayOrder ?? undefined,
     plans,
     includes: product.includes,
@@ -412,15 +458,16 @@ export const licenseV2ServiceFactory = ({
 
     const labelByDimension = new Map<string, string>();
     const nounByDimension = new Map<string, string>();
-    // Fetch the catalog when any item carries dimensions or limits to name; the pinned subscription
-    // dimensions supply used/limit/rate, the catalog supplies each dimension's label and noun.
-    const needsCatalog = Boolean(
-      subscription?.items.some((item) => item.dimensions.length > 0 || Object.keys(item.limits).length > 0)
-    );
+    const catalogProductById = new Map<string, TCatalogProduct>();
+    // Fetch the catalog whenever there are items: the pinned subscription dimensions supply
+    // used/limit/rate while the catalog supplies each dimension's label/noun and the product/plan
+    // deprecation flags (an item can be deprecated without carrying dimensions).
+    const needsCatalog = Boolean(subscription?.items.length);
     if (needsCatalog) {
       try {
         const catalog = await licenseClient.getCatalog();
         catalog?.products.forEach((product) => {
+          catalogProductById.set(product.id, product);
           product.dimensions.forEach((dimension) => {
             labelByDimension.set(`${product.id}:${dimension.key}`, dimension.label);
             nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
@@ -540,6 +587,34 @@ export const licenseV2ServiceFactory = ({
           .map((line) => line.currentPeriodEnd as number);
         const renewsOn = productLineEnds.length > 0 ? formatDate(Math.min(...productLineEnds)) : null;
 
+        // Deprecation kind + sunset come from the catalog (product deprecation supersedes plan). The
+        // sunset date lives only on the catalog; the subscription item's deprecation may carry
+        // contract-specific reason/nextSteps text, which wins over the catalog copy when present.
+        const catalogProduct = catalogProductById.get(item.productId);
+        const catalogPlan = catalogProduct?.plans.find((candidate) => candidate.tier === item.plan);
+        let deprecation: BillingV2Entitlement["deprecation"];
+        if (catalogProduct?.deprecated) {
+          const base = toDeprecation({
+            deprecated: true,
+            reason: item.deprecation?.reason ?? catalogProduct.deprecationReason,
+            nextSteps: item.deprecation?.nextSteps ?? catalogProduct.deprecationNextSteps,
+            date: catalogProduct.deprecationDate
+          });
+          if (base) {
+            deprecation = { kind: "product", ...base };
+          }
+        } else if (catalogPlan?.deprecated) {
+          const base = toDeprecation({
+            deprecated: true,
+            reason: item.deprecation?.reason ?? catalogPlan.deprecationReason,
+            nextSteps: item.deprecation?.nextSteps ?? catalogPlan.deprecationNextSteps,
+            date: catalogPlan.deprecationDate
+          });
+          if (base) {
+            deprecation = { kind: "plan", ...base };
+          }
+        }
+
         entitlements[item.productId] = {
           entitled: true,
           planTier: item.plan,
@@ -551,6 +626,7 @@ export const licenseV2ServiceFactory = ({
           isTrialing: item.isTrialing ?? false,
           trialEndsAt: item.trialEndsAt ? formatDate(item.trialEndsAt) : null,
           renewsOn,
+          ...(deprecation ? { deprecation } : {}),
           used,
           limit,
           unit

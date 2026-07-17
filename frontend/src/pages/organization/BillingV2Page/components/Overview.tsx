@@ -1,8 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import {
   ArrowBigUpDashIcon,
   Building2,
   CircleAlert,
+  Clock,
   CreditCard,
   ExternalLink,
   Info,
@@ -25,6 +26,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -352,6 +357,21 @@ const BillingHeaderCard = ({ overview, catalog }: BillingHeaderCardProps) => {
 // Capitalize a plan tier ("pro" -> "Pro") for the badge beside an active product's name.
 const tierLabel = (tier: string): string => tier.charAt(0).toUpperCase() + tier.slice(1);
 
+type Deprecation = NonNullable<BillingV2Entitlement["deprecation"]>;
+
+// Concise, single-line deprecation summary for the product row. The full reason/nextSteps live in the
+// top banner + its "See what changes" dialog, so this stays short and truncates rather than wrapping.
+const deprecationSubline = (deprecation: Deprecation, planTier?: string): string => {
+  if (deprecation.kind === "product") {
+    return deprecation.date ? `Discontinued — access ends ${deprecation.date}` : "Discontinued";
+  }
+  const tier = planTier ? tierLabel(planTier) : "This plan";
+  const base = deprecation.date
+    ? `${tier} plan retires ${deprecation.date}`
+    : `${tier} plan is retiring`;
+  return deprecation.nextSteps ? `${base} · ${deprecation.nextSteps}` : base;
+};
+
 type ProductRowProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
@@ -364,13 +384,17 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
   const entitled = Boolean(entitlement?.entitled);
   const selfServe = prod.plans.some((plan) => plan.selfServe);
   const salesLed = prod.plans.some((plan) => plan.salesLed);
+  const deprecation = entitlement?.deprecation;
+  const isProductDeprecated = deprecation?.kind === "product";
+  const isPlanDeprecated = deprecation?.kind === "plan";
 
   let action = null;
   if (!readOnly) {
     if (entitled) {
+      // A retiring plan nudges the customer toward the replacement; everything else opens Manage.
       action = (
         <Button variant="outline" size="sm" onClick={() => onManage(prod.id)}>
-          Manage
+          {isPlanDeprecated ? "Review plan" : "Manage"}
         </Button>
       );
     } else if (selfServe) {
@@ -421,22 +445,42 @@ const ProductRow = ({ prod, entitlement, readOnly, onManage, onContact }: Produc
   return (
     <div className="flex flex-col gap-3 border-t border-border py-4 first:border-t-0">
       <div className="flex items-center gap-4">
-        <ProductIcon product={prod} />
+        {/* A discontinued product's icon is dimmed so a glance down the list reads it as winding down. */}
+        <div className={isProductDeprecated ? "opacity-40 grayscale" : undefined}>
+          <ProductIcon product={prod} />
+        </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-foreground">{prod.name}</span>
-            {entitlement?.planTier && (
-              <Badge variant="neutral">{tierLabel(entitlement.planTier)}</Badge>
-            )}
+            {/* Plan retiring: strikethrough tier chip in warning tone. Otherwise the plain tier chip. */}
+            {entitlement?.planTier &&
+              (isPlanDeprecated ? (
+                <Badge variant="warning" className="line-through">
+                  {tierLabel(entitlement.planTier)}
+                </Badge>
+              ) : (
+                <Badge variant="neutral">{tierLabel(entitlement.planTier)}</Badge>
+              ))}
+            {isProductDeprecated && <Badge variant="danger">Deprecated</Badge>}
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
             {isTrialing ? <Badge variant="info">Trial</Badge> : <ActiveBadge />}
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-            {!isTrialing && <CadenceBadge cadence={entitlement?.cadence} />}
-            {isTrialing && entitlement?.trialEndsAt ? (
-              <span>Trial ends {entitlement.trialEndsAt}</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">
+            {deprecation ? (
+              <span
+                className={cn("truncate", isProductDeprecated ? "text-danger" : "text-warning")}
+              >
+                {deprecationSubline(deprecation, entitlement?.planTier)}
+              </span>
             ) : (
-              entitlement?.renewsOn && <span>Renews {entitlement.renewsOn}</span>
+              <>
+                {!isTrialing && <CadenceBadge cadence={entitlement?.cadence} />}
+                {isTrialing && entitlement?.trialEndsAt ? (
+                  <span>Trial ends {entitlement.trialEndsAt}</span>
+                ) : (
+                  entitlement?.renewsOn && <span>Renews {entitlement.renewsOn}</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -486,6 +530,11 @@ type ProductsCardProps = {
 };
 
 const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: ProductsCardProps) => {
+  // A deprecated product stays visible to existing subscribers but is closed to new ones, so hide it
+  // from anyone who isn't already entitled to it (plan-level deprecation still shows the product).
+  const visible = [...catalog]
+    .filter((prod) => !prod.deprecated || overview.entitlements[prod.id]?.entitled)
+    .sort(byDisplayOrder);
   return (
     <Card>
       <CardHeader>
@@ -496,14 +545,14 @@ const ProductsCard = ({ overview, catalog, readOnly, onManage, onContact }: Prod
         <CardDescription>Everything you can run on your subscription.</CardDescription>
       </CardHeader>
       <CardContent>
-        {catalog.length === 0 ? (
+        {visible.length === 0 ? (
           <CardEmpty
             title="No products available"
             description="Products will appear here once they're available."
           />
         ) : (
           <div className="flex flex-col">
-            {[...catalog].sort(byDisplayOrder).map((prod) => (
+            {visible.map((prod) => (
               <ProductRow
                 key={prod.id}
                 prod={prod}
@@ -768,6 +817,210 @@ const InvoicesCard = ({ invoices }: InvoicesCardProps) => (
   </Card>
 );
 
+type DeprecatedEntry = {
+  productId: string;
+  name: string;
+  planTier?: string;
+  deprecation: Deprecation;
+};
+
+const DEPRECATION_TONE = {
+  warning: {
+    container: "border-warning/30 bg-warning/[0.04]",
+    iconBox: "border-warning/20 bg-warning/10 text-warning",
+    pill: "border-warning/20 bg-warning/[0.06]",
+    chip: "border border-warning/30 bg-warning/10 text-warning"
+  },
+  danger: {
+    container: "border-danger/30 bg-danger/[0.04]",
+    iconBox: "border-danger/20 bg-danger/10 text-danger",
+    pill: "border-danger/20 bg-danger/[0.06]",
+    chip: "border border-danger/30 bg-danger/10 text-danger"
+  }
+};
+
+const daysLeftLabel = (daysLeft: number | null): string | null => {
+  if (daysLeft === null) {
+    return null;
+  }
+  return `${daysLeft.toLocaleString()} ${daysLeft === 1 ? "day" : "days"} left`;
+};
+
+// Rich "See what changes" dialog body: an icon + title/subtitle header, the sunset date as a pill with
+// a day-countdown chip, then the full (untruncated) reason and next-steps sections.
+const DeprecationDetailBody = ({ entry }: { entry: DeprecatedEntry }) => {
+  const { deprecation, name, planTier } = entry;
+  const isProduct = deprecation.kind === "product";
+  const urgent = deprecation.daysLeft !== null && deprecation.daysLeft <= 14;
+  const tone = DEPRECATION_TONE[isProduct || urgent ? "danger" : "warning"];
+  const label = daysLeftLabel(deprecation.daysLeft);
+  const title = isProduct
+    ? `${name} is being discontinued`
+    : `The ${planTier ? tierLabel(planTier) : "current"} plan is being retired`;
+  const subtitle = isProduct
+    ? "This product is winding down"
+    : `${planTier ? tierLabel(planTier) : "Current"} plan · ${name}`;
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-lg border [&>svg]:size-4",
+              tone.iconBox
+            )}
+          >
+            {isProduct ? <CircleAlert /> : <TriangleAlert />}
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <DialogTitle className="text-base">{title}</DialogTitle>
+            <span className="truncate text-xs text-muted">{subtitle}</span>
+          </div>
+        </div>
+      </DialogHeader>
+      <div className="flex flex-col gap-4">
+        {deprecation.date && (
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2",
+              tone.pill
+            )}
+          >
+            <Clock className="size-4 text-muted" />
+            <span className="text-sm text-foreground">
+              {isProduct ? "Access ends" : "Retires"}{" "}
+              <span className="font-medium">{deprecation.date}</span>
+            </span>
+            {label && (
+              <span
+                className={cn("ml-auto rounded-md px-1.5 py-0.5 text-xs font-medium", tone.chip)}
+              >
+                {label}
+              </span>
+            )}
+          </div>
+        )}
+        {deprecation.reason && (
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium tracking-wide text-muted uppercase">Why</span>
+            <p className="text-sm text-foreground">{deprecation.reason}</p>
+          </div>
+        )}
+        {deprecation.nextSteps && (
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium tracking-wide text-muted uppercase">
+              What to do
+            </span>
+            <p className="text-sm text-foreground">{deprecation.nextSteps}</p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+// Attention banners above the summary, one per affected product. A retiring plan reads forward-looking
+// in warning tone; a discontinued product reads terminal in danger tone, escalating warning→danger
+// inside the final window. Concise here with a "See what changes" detail dialog for the full copy.
+// Products sort terminal-first, then most-urgent-first.
+const DeprecationBanners = ({
+  overview,
+  catalog,
+  onManage,
+  onContact
+}: {
+  overview: BillingV2Overview;
+  catalog: BillingV2CatalogProduct[];
+  onManage: (productId: string) => void;
+  onContact: (prod: BillingV2CatalogProduct) => void;
+}) => {
+  const [detail, setDetail] = useState<DeprecatedEntry | null>(null);
+
+  const entries: DeprecatedEntry[] = Object.entries(overview.entitlements)
+    .filter(([, entitlement]) => Boolean(entitlement.deprecation))
+    .map(([productId, entitlement]) => ({
+      productId,
+      name: catalog.find((prod) => prod.id === productId)?.name ?? productId,
+      planTier: entitlement.planTier,
+      deprecation: entitlement.deprecation as Deprecation
+    }))
+    .sort((a, b) => {
+      const rank = (entry: DeprecatedEntry) => (entry.deprecation.kind === "product" ? 0 : 1);
+      if (rank(a) !== rank(b)) {
+        return rank(a) - rank(b);
+      }
+      return (a.deprecation.daysLeft ?? Infinity) - (b.deprecation.daysLeft ?? Infinity);
+    });
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {entries.map((entry) => {
+        const { deprecation, name, planTier, productId } = entry;
+        const isProduct = deprecation.kind === "product";
+        // Plan retirement escalates from warning to danger once inside the final two-week window.
+        const urgent = deprecation.daysLeft !== null && deprecation.daysLeft <= 14;
+        const variant = isProduct || urgent ? "danger" : "warning";
+        const catalogProduct = catalog.find((prod) => prod.id === productId);
+        const label = daysLeftLabel(deprecation.daysLeft);
+        const title = isProduct
+          ? `${name} is being discontinued`
+          : `The ${planTier ? tierLabel(planTier) : "current"} plan for ${name} is being retired`;
+        const lead = isProduct
+          ? `This product will stop working${deprecation.date ? ` on ${deprecation.date}` : ""}.`
+          : deprecation.nextSteps || deprecation.reason || "";
+        const hasDetail = Boolean(deprecation.reason || deprecation.nextSteps || deprecation.date);
+
+        return (
+          <Alert key={productId} variant={variant}>
+            {isProduct ? <CircleAlert /> : <TriangleAlert />}
+            <AlertTitle>{title}</AlertTitle>
+            <AlertDescription>
+              <span className="line-clamp-2">
+                {lead}
+                {label && (
+                  <>
+                    {" — "}
+                    <span className="font-medium">{label}</span>
+                  </>
+                )}
+              </span>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {isProduct ? (
+                  catalogProduct && (
+                    <Button variant="danger" size="sm" onClick={() => onContact(catalogProduct)}>
+                      Contact support
+                    </Button>
+                  )
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => onManage(productId)}>
+                    Review plan
+                  </Button>
+                )}
+                {hasDetail && (
+                  <Button variant="ghost" size="sm" onClick={() => setDetail(entry)}>
+                    See what changes
+                  </Button>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        );
+      })}
+
+      <Dialog open={Boolean(detail)} onOpenChange={(open) => !open && setDetail(null)}>
+        <DialogContent className="max-w-lg">
+          {detail && <DeprecationDetailBody entry={detail} />}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 export type OverviewProps = {
   overview?: BillingV2Overview;
   catalog: BillingV2CatalogProduct[];
@@ -841,6 +1094,12 @@ export const Overview = ({
         canManage={canManageBilling}
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
+      />
+      <DeprecationBanners
+        overview={overview}
+        catalog={catalog}
+        onManage={onUpgrade}
+        onContact={onContact}
       />
       <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard

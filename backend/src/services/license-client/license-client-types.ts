@@ -57,6 +57,12 @@ const catalogPlanSchema = z
     salesLed: z.boolean(),
     // Offers a self-serve trial; a plan is trialable only when selfServe && trialable.
     trialable: z.boolean().default(false),
+    // true = kept for existing customers, closed to new ones. reason/nextSteps/date shown when true.
+    deprecated: z.boolean().default(false),
+    deprecationReason: z.string().nullish(),
+    deprecationNextSteps: z.string().nullish(),
+    // Sunset date. Number (unix) or ISO string depending on server; normalized in code.
+    deprecationDate: z.union([z.number(), z.string()]).nullish(),
     // Sort key within the product; the server already returns plans sorted by it.
     displayOrder: z.number().nullish(),
     feature: z.string().optional(),
@@ -88,6 +94,11 @@ const catalogProductSchema = z
     icon: z.string().optional(),
     color: z.string().optional(),
     addon: z.boolean(),
+    // true = kept for existing customers, closed to new ones. Supersedes plan deprecation.
+    deprecated: z.boolean().default(false),
+    deprecationReason: z.string().nullish(),
+    deprecationNextSteps: z.string().nullish(),
+    deprecationDate: z.union([z.number(), z.string()]).nullish(),
     // Sort key across products; the server already returns products sorted by it.
     displayOrder: z.number().nullish(),
     dimensions: z.array(catalogDimensionSchema),
@@ -147,6 +158,9 @@ const subscriptionItemSchema = z
     status: z.string().optional(),
     isTrialing: z.boolean().default(false),
     trialEndsAt: z.number().nullish(),
+    // Present only when this item's product OR plan is deprecated (product supersedes plan). The item
+    // keeps working; this carries the contract-specific message (the sunset date comes from the catalog).
+    deprecation: z.object({ reason: z.string().nullish(), nextSteps: z.string().nullish() }).nullish(),
     dimensions: z.array(subscriptionItemDimensionSchema).default([])
   })
   .passthrough();

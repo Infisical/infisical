@@ -25,6 +25,15 @@ export type BillingV2CompareRow = {
 
 // A single purchasable (or sales-led) plan within a product. A product exposes an ordered list of
 // these — the free tier is implicit and never listed.
+// Deprecation detail rendered to the user. date is a formatted display string; daysLeft is whole days
+// until the sunset (>= 0), both null when no date was supplied. Present only when something is deprecated.
+export type BillingV2Deprecation = {
+  reason?: string;
+  nextSteps?: string;
+  date: string | null;
+  daysLeft: number | null;
+};
+
 export type BillingV2Plan = {
   tier: string;
   name: string;
@@ -32,6 +41,9 @@ export type BillingV2Plan = {
   salesLed: boolean;
   // Offers a self-serve trial; the UI shows a trial CTA only when selfServe && trialable.
   trialable: boolean;
+  // Kept for existing customers, closed to new ones. deprecation carries the reason/nextSteps/date.
+  deprecated?: boolean;
+  deprecation?: BillingV2Deprecation;
   // Sort key within the product; the UI orders plan cards by it.
   displayOrder?: number;
   feature?: string;
@@ -46,6 +58,9 @@ export type BillingV2CatalogProduct = {
   color: string;
   addon?: boolean;
   tagline?: string;
+  // Kept for existing customers, closed to new ones (supersedes plan deprecation).
+  deprecated?: boolean;
+  deprecation?: BillingV2Deprecation;
   // Sort key across products; the UI orders the product list by it.
   displayOrder?: number;
   plans: BillingV2Plan[];
@@ -114,6 +129,9 @@ export type BillingV2Entitlement = {
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line (e.g. feature-only entitlements).
   renewsOn?: string | null;
+  // Present when this entitled product (or its plan) is deprecated. kind = "product" is terminal (the
+  // product is being discontinued); kind = "plan" is a plan retiring with a forward path. Product wins.
+  deprecation?: BillingV2Deprecation & { kind: "product" | "plan" };
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"), resolved from the catalog so the

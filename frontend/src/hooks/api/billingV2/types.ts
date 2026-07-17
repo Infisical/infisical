@@ -19,6 +19,15 @@ export type BillingV2CompareRow = {
   cells: Record<string, string | boolean | number>;
 };
 
+// Deprecation detail rendered to the user. date is a formatted display string, daysLeft is whole days
+// until the sunset (>= 0); both null when no date was supplied.
+export type BillingV2Deprecation = {
+  reason?: string;
+  nextSteps?: string;
+  date: string | null;
+  daysLeft: number | null;
+};
+
 // A single purchasable (or sales-led) plan of a product. The free tier is implicit and never listed.
 export type BillingV2Plan = {
   tier: string;
@@ -27,6 +36,9 @@ export type BillingV2Plan = {
   salesLed: boolean;
   // Offers a self-serve trial; the trial CTA shows only when selfServe && trialable.
   trialable: boolean;
+  // Kept for existing customers, closed to new ones; deprecation carries the reason/nextSteps/date.
+  deprecated?: boolean;
+  deprecation?: BillingV2Deprecation;
   // Sort key within the product; plan cards render in this order.
   displayOrder?: number;
   feature?: string;
@@ -41,6 +53,9 @@ export type BillingV2CatalogProduct = {
   color: string;
   addon?: boolean;
   tagline?: string;
+  // Kept for existing customers, closed to new ones (supersedes plan deprecation).
+  deprecated?: boolean;
+  deprecation?: BillingV2Deprecation;
   // Sort key across products; the product list renders in this order.
   displayOrder?: number;
   plans: BillingV2Plan[];
@@ -113,6 +128,9 @@ export type BillingV2Entitlement = {
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line.
   renewsOn?: string | null;
+  // Present when this entitled product (or its plan) is deprecated. kind "product" is terminal (being
+  // discontinued); kind "plan" is a plan retiring with a forward path. Product supersedes plan.
+  deprecation?: BillingV2Deprecation & { kind: "product" | "plan" };
   limit?: number | null;
   used?: number;
   // Singular noun for the limited dimension (e.g. "certificate"); rendered, pluralized, beside the count.
