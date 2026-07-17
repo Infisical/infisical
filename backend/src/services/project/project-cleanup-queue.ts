@@ -30,9 +30,9 @@ const SECRET_VERSION_DELETE_BATCH = 5000;
 const BATCH_STATEMENT_TIMEOUT_MS = 30 * 1000;
 const INTER_BATCH_SLEEP_MS = 10;
 
-// per-project chunked environment delete tuning. Smaller than the version batch because each row is a
-// whole cascade subtree (folders → secrets_v2 → ...), so a batch does far more work per deleted row.
-const ENVIRONMENT_DELETE_BATCH = 100;
+// Env count above which env deletion is delegated to the paced env hard-delete worker (one untimed
+// cascade per env, per-env retries). At or below it, deleteById cascades the envs inline as today.
+const ENV_DELEGATION_THRESHOLD = 100;
 
 // Generous so a large project's chunked delete won't see the lock expire mid-flight and let a
 // second worker start; crash recovery happens on the next cron tick after expiry.
@@ -47,7 +47,8 @@ type TProjectCleanupQueueFactoryDep = {
     | "findIncludingExpired"
     | "findProjectGhostUser"
     | "hardDeleteProjectSecretVersionsInBatches"
-    | "hardDeleteProjectEnvironmentsInBatches"
+    | "softDeleteProjectEnvironments"
+    | "countProjectEnvironments"
     | "deleteById"
     | "transaction"
   >;
@@ -122,14 +123,16 @@ export const projectCleanupQueueFactory = ({
         INTER_BATCH_SLEEP_MS
       );
 
-      // 2) Chunk-delete environments ahead of the final cascade. A project with thousands of
-      // environments would otherwise make the single-transaction cascade below enormous.
-      const deletedEnvironments = await projectDAL.hardDeleteProjectEnvironmentsInBatches(
-        projectId,
-        ENVIRONMENT_DELETE_BATCH,
-        BATCH_STATEMENT_TIMEOUT_MS,
-        INTER_BATCH_SLEEP_MS
-      );
+      // 2) For big projects: mark envs for the env worker; the cron re-fires this job until drained.
+      const envCount = await projectDAL.countProjectEnvironments(projectId);
+      if (envCount > ENV_DELEGATION_THRESHOLD) {
+        const marked = await projectDAL.softDeleteProjectEnvironments(projectId);
+        logger.info(
+          { projectId, envCount, marked },
+          `project-hard-delete: waiting on env drain [projectId=${projectId}] [envsRemaining=${envCount}] [newlyMarked=${marked}]`
+        );
+        return;
+      }
 
       // 3) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
@@ -185,8 +188,8 @@ export const projectCleanupQueueFactory = ({
       });
 
       logger.info(
-        { projectId, deletedVersions, deletedEnvironments },
-        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}] [environmentsPruned=${deletedEnvironments}]`
+        { projectId, deletedVersions },
+        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}]`
       );
     } catch (err) {
       logger.error({ err, projectId }, `project-hard-delete: failed [projectId=${projectId}]`);

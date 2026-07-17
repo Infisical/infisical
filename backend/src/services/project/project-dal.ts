@@ -177,31 +177,32 @@ export const projectDALFactory = (db: TDbClient) => {
     return totalDeleted;
   };
 
-  // Chunk-delete a project's environments ahead of the final cascade. Each env is a self-contained
-  // cascade subtree. Runs after hardDeleteProjectSecretVersionsInBatches (which needs the folder/env tree).
-  const hardDeleteProjectEnvironmentsInBatches = async (
-    projectId: string,
-    batchSize: number,
-    statementTimeoutMs: number,
-    interBatchSleepMs: number
-  ) => {
-    let totalDeleted = 0;
-    for (;;) {
-      // eslint-disable-next-line no-await-in-loop
-      const deletedCount = await db.transaction(async (tx): Promise<number> => {
-        await tx.raw(`SET LOCAL statement_timeout = ${statementTimeoutMs}`);
-        const idsToDelete = tx(TableName.Environment).where("projectId", projectId).select("id").limit(batchSize);
-        const deleted = await tx(TableName.Environment).whereIn("id", idsToDelete).delete();
-        return deleted;
-      });
-      totalDeleted += deletedCount;
-      if (deletedCount < batchSize) break;
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => {
-        setTimeout(resolve, interBatchSleepMs + Math.floor(Math.random() * interBatchSleepMs));
-      });
+  // Hands a project's envs to the paced env hard-delete worker: marks them deleteAfter = now,
+  // collapsing any restore grace. Returns rows marked.
+  const softDeleteProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const now = new Date();
+      const marked = await (tx || db)(TableName.Environment)
+        .where({ projectId })
+        .andWhere((qb) => void qb.whereNull("deleteAfter").orWhere("deleteAfter", ">", now))
+        .update({
+          deleteAfter: now,
+          softDeletedAt: db.raw(`COALESCE("softDeletedAt", ?)`, [now]) as unknown as Date
+        });
+      return marked;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete project environments" });
     }
-    return totalDeleted;
+  };
+
+  // Counts ALL env rows (any soft-delete state). Primary-backed so a stale replica cannot end the drain early.
+  const countProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db)(TableName.Environment).where({ projectId }).count().first();
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count project environments" });
+    }
   };
 
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
@@ -988,7 +989,8 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
-    hardDeleteProjectEnvironmentsInBatches,
+    softDeleteProjectEnvironments,
+    countProjectEnvironments,
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
