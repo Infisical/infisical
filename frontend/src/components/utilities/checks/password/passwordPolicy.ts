@@ -8,6 +8,7 @@ import {
   repeatedCharRegex
 } from "./passwordRegexes";
 
+// Keep this policy aligned with backend/src/lib/validator/password-policy.ts.
 export const PASSWORD_REQUIREMENTS = [
   {
     code: "minLength",

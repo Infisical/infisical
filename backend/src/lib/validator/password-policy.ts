@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { BadRequestError } from "../errors";
+
+// Keep this policy aligned with frontend/src/components/utilities/checks/password/passwordPolicy.ts.
 const letterCharacterRegex = /\p{L}/u;
 const numberOrSpecialCharacterRegex = /[\d!@#$%^&*(),.?":{}|<>]|[^\p{L}\p{N}\s]/u;
 const repeatedCharacterRegex = /(.)\1\1\1|\s{4,}/;
@@ -26,4 +29,15 @@ export const PasswordPolicySchema = z
     message: "Password cannot contain an email address, URL, or social security number"
   });
 
-export const validatePasswordPolicy = (password: string) => PasswordPolicySchema.parse(password);
+export const validatePasswordPolicy = (password: string) => {
+  const result = PasswordPolicySchema.safeParse(password);
+
+  if (!result.success) {
+    throw new BadRequestError({
+      name: "Password policy validation",
+      message: result.error.issues[0]?.message ?? "Password does not meet the password policy"
+    });
+  }
+
+  return result.data;
+};

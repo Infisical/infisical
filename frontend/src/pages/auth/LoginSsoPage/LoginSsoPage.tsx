@@ -39,7 +39,7 @@ export const LoginSsoPage = () => {
     lastLogin?.method === LoginMethod.SAML ||
     lastLogin?.method === LoginMethod.OIDC;
   const initialEmail =
-    isPreviousSsoLogin && lastLogin?.orgSlug?.includes("@") ? lastLogin.orgSlug : "";
+    isPreviousSsoLogin && lastLogin?.identifierType === "email" ? lastLogin.orgSlug || "" : "";
   const [workEmail, setWorkEmail] = useState(initialEmail);
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
@@ -61,6 +61,7 @@ export const LoginSsoPage = () => {
     if (!organizationSlug && !domain) return;
 
     saveLastLogin({
+      identifierType: organizationSlug ? "orgSlug" : "email",
       method: GENERIC_SSO_LOGIN_METHOD,
       orgSlug: organizationSlug || workEmail.trim()
     });

@@ -1,5 +1,3 @@
-import { BadRequestError } from "@app/lib/errors";
-
 import { resolveOrgSsoMethod } from "./org-fns";
 import { OrgAuthMethod } from "./org-types";
 
@@ -37,6 +35,8 @@ describe("resolveOrgSsoMethod", () => {
     const samlConfigDAL = createConfigDAL({ id: "saml-config" });
     const oidcConfigDAL = createConfigDAL({ id: "oidc-config" });
 
-    await expect(resolveOrgSsoMethod({ orgId, samlConfigDAL, oidcConfigDAL })).rejects.toThrow(BadRequestError);
+    await expect(resolveOrgSsoMethod({ orgId, samlConfigDAL, oidcConfigDAL })).rejects.toThrow(
+      "Unable to determine the SSO method for this organization"
+    );
   });
 });

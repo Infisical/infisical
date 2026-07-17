@@ -30,7 +30,7 @@ export const resolveOrgSsoMethod = async ({ orgId, samlConfigDAL, oidcConfigDAL 
 
   if (samlConfig && oidcConfig) {
     throw new BadRequestError({
-      message: "The organization has multiple active SSO configurations. Contact your administrator."
+      message: "Unable to determine the SSO method for this organization. Contact your administrator."
     });
   }
 

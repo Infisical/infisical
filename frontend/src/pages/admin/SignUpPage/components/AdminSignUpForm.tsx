@@ -37,7 +37,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   >("idle");
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
   const {
-    formState: { errors, isSubmitting, isValid, submitCount },
+    formState: { errors, isSubmitting, submitCount },
     handleSubmit,
     register,
     setError,
@@ -56,6 +56,8 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   });
 
   const onSubmit = async ({ confirmPassword: _, ...values }: AdminSignUpFormData) => {
+    if (passwordBreachStatus === "checking") return;
+
     setFormError(undefined);
     const latestBreachStatus = await checkPasswordBreachStatus(values.password);
 
@@ -85,7 +87,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   const showDangerState = submitCount > 0;
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
-  const canSubmit = isValid && isPasswordValidated && !isSubmitting;
+  const canSubmit = isPasswordValidated && !isSubmitting;
 
   return (
     <form className="flex flex-col gap-5" noValidate onSubmit={handleSubmit(onSubmit)}>

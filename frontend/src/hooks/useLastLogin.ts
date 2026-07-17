@@ -8,8 +8,10 @@ const LAST_LOGIN_KEY = "infisical.lastLogin";
 export const GENERIC_SSO_LOGIN_METHOD = "sso" as const;
 
 type LastLoginMethod = LoginMethod | typeof GENERIC_SSO_LOGIN_METHOD;
+type LastLoginIdentifierType = "email" | "orgSlug";
 
 export type LastLogin = {
+  identifierType?: LastLoginIdentifierType;
   method: LastLoginMethod;
   orgSlug?: string;
   timestamp: number;

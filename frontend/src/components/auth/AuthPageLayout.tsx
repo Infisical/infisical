@@ -21,7 +21,7 @@ export const AuthPageLayout = ({
   showFooter = true
 }: Props) => (
   <div className="min-h-screen bg-background lg:grid lg:grid-cols-[minmax(440px,44%)_minmax(0,1fr)] xl:grid-cols-[minmax(520px,40%)_minmax(0,1fr)]">
-    <section className="flex min-h-screen min-w-0 flex-col bg-card px-5 sm:px-8 lg:border-r lg:border-border lg:px-10 xl:px-14">
+    <section className="flex h-screen min-h-0 min-w-0 flex-col overflow-y-auto bg-card px-5 sm:px-8 lg:border-r lg:border-border lg:px-10 xl:px-14">
       <AuthPageHeader>{headerAction}</AuthPageHeader>
       <main className="flex flex-1 items-center justify-center py-10">
         <div className="w-full max-w-md [&_[data-slot=card]]:max-w-none [&_[data-slot=card]]:border-0 [&_[data-slot=card]]:bg-transparent [&_[data-slot=card]]:p-0 [&_[data-slot=card]]:shadow-none">
