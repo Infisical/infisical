@@ -1,20 +1,10 @@
 import { FingerprintIcon } from "lucide-react";
 
-import {
-  CreatableSelect,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-  Input
-} from "@app/components/v3";
+import { Field, FieldContent, FieldDescription, FieldLabel, Input } from "@app/components/v3";
 import { useProject } from "@app/context";
-import {
-  DYNAMIC_SECRET_PROVIDER_OUTPUTS,
-  TProviderLeaseInput
-} from "@app/hooks/api/dynamicSecret/providerOutputs";
 import { useGetDynamicSecrets } from "@app/hooks/api/dynamicSecret/queries";
 
+import { BROKERABLE_DYNAMIC_SECRETS, TProviderLeaseInput } from "./brokerableDynamicSecrets";
 import { TLeaseConfig } from "./schema";
 
 type Props = {
@@ -34,37 +24,6 @@ const LeaseInput = ({
   config: TLeaseConfig;
   onChange: (config: TLeaseConfig) => void;
 }) => {
-  if (input.kind === "string[]") {
-    const principals = config.principals ?? [];
-    return (
-      <Field>
-        <FieldLabel>{input.label}</FieldLabel>
-        <FieldContent>
-          <CreatableSelect
-            isMulti
-            options={[]}
-            placeholder="Type a name and press Enter…"
-            noOptionsMessage={() => "Type a name and press Enter to add"}
-            formatCreateLabel={(raw) => `Add "${raw}"`}
-            value={principals.map((p) => ({ label: p, value: p }))}
-            onChange={(next) => {
-              const values = (Array.isArray(next) ? next : []).map(
-                (o) => (o as { value: string }).value
-              );
-              onChange({ ...config, principals: values.length ? values : undefined });
-            }}
-            onCreateOption={(raw) => {
-              const trimmed = raw.trim();
-              if (!trimmed || principals.includes(trimmed)) return;
-              onChange({ ...config, principals: [...principals, trimmed] });
-            }}
-          />
-          <FieldDescription>{input.helperText}</FieldDescription>
-        </FieldContent>
-      </Field>
-    );
-  }
-
   return (
     <Field>
       <FieldLabel>{input.label}</FieldLabel>
@@ -101,7 +60,7 @@ export const DynamicSecretLeaseSettings = ({
       const provider = providerByName.get(name);
       return {
         name,
-        leaseInputs: provider ? DYNAMIC_SECRET_PROVIDER_OUTPUTS[provider].leaseInputs : []
+        leaseInputs: provider ? (BROKERABLE_DYNAMIC_SECRETS[provider]?.leaseInputs ?? []) : []
       };
     })
     .filter((entry) => entry.leaseInputs.length > 0);
