@@ -165,7 +165,10 @@ export const PamAccountsPage = () => {
             Accounts
             <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
           </CardTitle>
-          <CardDescription>Privileged accounts grouped into folders.</CardDescription>
+          <CardDescription>
+            Privileged accounts organized by access into folders, each inheriting governance rules
+            from an account template.
+          </CardDescription>
           <CardAction>
             <ButtonGroup>
               <Button

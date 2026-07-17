@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Plus, Search } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, ArrowUpRight, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/v2/HighlightText";
@@ -36,11 +37,13 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3/generic/Sheet";
 import { TextArea } from "@app/components/v3/generic/TextArea";
+import { useOrganization } from "@app/context";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
@@ -75,6 +78,8 @@ type Props = {
 
 export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCreated }: Props) => {
   const createAccount = useCreatePamAccount();
+
+  const { currentOrg } = useOrganization();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -255,13 +260,17 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
     <>
       <Sheet open={isOpen} onOpenChange={handleOpenChange}>
         <SheetContent>
-          <SheetHeader>
+          <SheetHeader className="border-b">
             <SheetTitle>Add Account</SheetTitle>
+            <SheetDescription>
+              Pick a folder and an account template. The account inherits its type and governance
+              rules from the selected template.
+            </SheetDescription>
           </SheetHeader>
 
           {step === 1 ? (
             <>
-              <div className="flex min-h-0 flex-1 flex-col gap-5 px-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 pt-3">
                 <Controller
                   control={control}
                   name="folderId"
@@ -309,9 +318,26 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                   name="templateId"
                   render={({ field }) => (
                     <Field className="min-h-0 flex-1">
-                      <FieldLabel>
-                        Account Template<span className="text-product-pam">*</span>
-                      </FieldLabel>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel>
+                          Account Template<span className="text-product-pam">*</span>
+                        </FieldLabel>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="text-muted hover:text-foreground"
+                          asChild
+                        >
+                          <Link
+                            to="/organizations/$orgId/pam/templates"
+                            params={{ orgId: currentOrg.id }}
+                            target="_blank"
+                          >
+                            Manage Templates
+                            <ArrowUpRight />
+                          </Link>
+                        </Button>
+                      </div>
                       <FieldContent className="min-h-0 flex-1">
                         <InputGroup>
                           <InputGroupAddon align="inline-start">
@@ -384,7 +410,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
             </>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-              <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4">
+              <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4 pt-3">
                 {selectedTemplate && (
                   <div className="flex items-center gap-3 rounded-md border border-border bg-container p-3">
                     <AccountPlatformIcon accountType={selectedTemplate.type} size={28} />

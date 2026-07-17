@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, KeyRound, Layers, Search } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, FolderOpen, KeyRound, Layers, Search } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import {
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -29,8 +32,10 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useOrganization } from "@app/context";
 import {
   TAccessiblePamAccount,
+  useGetPamAccessCapabilities,
   useListAccessiblePamFolders,
   useListPamAccountTypes
 } from "@app/hooks/api/pam";
@@ -54,6 +59,13 @@ export const PamAccessPage = () => {
 
   const { data: folders = [], isLoading: isLoadingFolders } = useListAccessiblePamFolders();
   const { data: accountTypes = [] } = useListPamAccountTypes();
+  const { data: capabilities } = useGetPamAccessCapabilities();
+  const { currentOrg } = useOrganization();
+
+  // Anyone who can reach the Accounts page from the sidebar (product admins and
+  // resource admins) sees a CTA that points them there — otherwise the empty
+  // state on a fresh org is a dead end.
+  const canManageAccounts = Boolean(capabilities?.isProductAdmin || capabilities?.isResourceAdmin);
 
   const query = searchInput.trim();
 
@@ -89,6 +101,19 @@ export const PamAccessPage = () => {
   const filterHasMatches = visibleFolders.some((f) => (resultCounts[f.id] ?? 0) > 0);
   const showNoMatches = filterActive && filterSettled && !filterHasMatches;
   const showEmpty = !isLoadingFolders && (visibleFolders.length === 0 || showNoMatches);
+
+  let emptyTitle: string;
+  let emptyDescription: string;
+  if (hasActiveFilters) {
+    emptyTitle = "No accounts match your filters";
+    emptyDescription = "Try adjusting your search or filters.";
+  } else if (canManageAccounts) {
+    emptyTitle = "No accounts yet";
+    emptyDescription = "Onboard your first privileged account from the Accounts page to get started.";
+  } else {
+    emptyTitle = "No accounts available";
+    emptyDescription = "Ask your PAM admin to grant you access to a folder or account.";
+  }
 
   return (
     <>
@@ -174,17 +199,24 @@ export const PamAccessPage = () => {
 
           {showEmpty && (
             <CardContent>
-              <Empty>
+              <Empty className="border">
                 <EmptyHeader>
-                  <EmptyTitle>
-                    {hasActiveFilters ? "No accounts match your filters" : "No accounts available"}
-                  </EmptyTitle>
-                  <EmptyDescription>
-                    {hasActiveFilters
-                      ? "Try adjusting your search or filters."
-                      : "You don't have access to any accounts yet."}
-                  </EmptyDescription>
+                  <EmptyTitle>{emptyTitle}</EmptyTitle>
+                  <EmptyDescription>{emptyDescription}</EmptyDescription>
                 </EmptyHeader>
+                {!hasActiveFilters && canManageAccounts && (
+                  <EmptyContent>
+                    <Button variant="pam" asChild>
+                      <Link
+                        to="/organizations/$orgId/pam/accounts"
+                        params={{ orgId: currentOrg.id }}
+                      >
+                        Go to Accounts
+                        <ArrowRight />
+                      </Link>
+                    </Button>
+                  </EmptyContent>
+                )}
               </Empty>
             </CardContent>
           )}

@@ -7,6 +7,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -90,6 +91,10 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Create Account Template</DialogTitle>
+          <DialogDescription>
+            Templates hold the governance rules inherited by every account created from them,
+            including session limits, MFA, and recording.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Field>
