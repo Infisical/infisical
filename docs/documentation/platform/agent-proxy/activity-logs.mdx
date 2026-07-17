@@ -47,7 +47,7 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 | `--log-format` | `console` \| `json` | `console` on a terminal, `json` otherwise |
 | `--log-file` | file path | none |
 
-`--log-format` picks the shape (readable `console` or machine `json`) and auto-detects, so a container gets `json` on stdout with no flag. `--log-file` also writes `json` to a file, letting you watch the console **and** persist machine-readable logs at once.
+`--log-format` picks the shape (readable `console` or machine `json`) and auto-detects, so a container gets `json` with no flag. Logs are written to **stderr** (redirect with `2>` or `2>&1` to capture them). `--log-file` also writes `json` to a file, letting you watch the console **and** persist machine-readable logs at once.
 
 <Tabs>
   <Tab title="console (human)">
@@ -78,7 +78,7 @@ infisical secrets agent-proxy start
 # Watch the console and also persist json (e.g. for a SIEM)
 infisical secrets agent-proxy start --log-file /var/log/infisical/agent-proxy.log
 
-# Container: json on stdout for your platform to collect
+# Container: json on stderr for your platform to collect
 infisical secrets agent-proxy start --log-format json
 ```
 
