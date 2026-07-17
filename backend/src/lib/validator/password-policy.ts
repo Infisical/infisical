@@ -9,7 +9,7 @@ const repeatedCharacterRegex = /(.)\1\1\1|\s{4,}/;
 const escapeCharacterRegex = /[\n\t\r\\]/;
 const lowEntropyRegexes = [
   /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
-  /^(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?$/,
+  /(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?/,
   /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/
 ];
 
