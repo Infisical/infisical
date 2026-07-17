@@ -301,8 +301,7 @@ export const CrossProjectSharingSection = () => {
                     </div>
                     {projectGroup.grants
                       .sort((a, b) => {
-                        const envOrder =
-                          a.environmentName.localeCompare(b.environmentName);
+                        const envOrder = a.environmentName.localeCompare(b.environmentName);
                         if (envOrder !== 0) return envOrder;
                         return a.secretPath.localeCompare(b.secretPath);
                       })
@@ -320,9 +319,7 @@ export const CrossProjectSharingSection = () => {
                             <FolderIcon className="size-3.5 text-muted" />
                             <span>{grant.secretPath}</span>
                           </div>
-                          <span className="text-sm tabular-nums">
-                            {grant.secretCount}
-                          </span>
+                          <span className="text-sm tabular-nums">{grant.secretCount}</span>
                         </div>
                       ))}
                   </div>
