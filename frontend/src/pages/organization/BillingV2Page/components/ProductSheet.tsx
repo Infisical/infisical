@@ -48,7 +48,7 @@ import {
   isMeteredCadence,
   pluralizeUnit,
   unitPrice
-} from "../billing-v2-data";
+} from "../billing-v2-format";
 import { ActivateView } from "./ActivateView";
 import { CommitmentView } from "./CommitmentView";
 import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";

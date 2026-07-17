@@ -11,7 +11,7 @@ import {
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { dimAnnualCommitted, fmtMoney } from "../billing-v2-data";
+import { dimAnnualCommitted, fmtMoney } from "../billing-v2-format";
 import { ProductIcon, Stepper } from "./shared";
 
 type Props = {

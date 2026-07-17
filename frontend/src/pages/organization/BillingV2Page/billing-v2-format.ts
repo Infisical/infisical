@@ -3,7 +3,8 @@ import {
   BillingV2CatalogProduct,
   BillingV2Dim,
   BillingV2Entitlement,
-  BillingV2EntitlementDim
+  BillingV2EntitlementDim,
+  BillingV2Overview
 } from "@app/hooks/api";
 
 type BillingV2ProBase = { monthly: number; annual: number };
@@ -134,3 +135,81 @@ export const productAnnualCommitted = (entitlement?: BillingV2Entitlement): numb
     return sum;
   }, 0);
 };
+
+// Capitalize a plan tier ("pro" -> "Pro") for the badge beside a product's name.
+export const tierLabel = (tier: string): string => tier.charAt(0).toUpperCase() + tier.slice(1);
+
+// Cadence as an adjective ("annual"/"monthly"), empty for an unknown cadence. Distinct from
+// cadenceWord, which returns the period noun ("year"/"month").
+export const cadenceLabel = (cadence: BillingV2Cadence | null): string => {
+  if (cadence === "annual") {
+    return "annual";
+  }
+  if (cadence === "monthly") {
+    return "monthly";
+  }
+  return "";
+};
+
+// Resolve the product(s) closing on the next-charge date into a display label. A single product reads
+// as its name; several collapse to "{first} + N more" so the line stays short.
+export const nextChargeProductLabel = (
+  catalog: BillingV2CatalogProduct[],
+  productKeys: string[]
+): string => {
+  const names = productKeys.map((key) => catalog.find((prod) => prod.id === key)?.name ?? key);
+  if (names.length === 0) {
+    return "";
+  }
+  if (names.length === 1) {
+    return names[0];
+  }
+  return `${names[0]} + ${names.length - 1} more`;
+};
+
+type BillingAddress = NonNullable<BillingV2Overview["billingDetails"]>["address"];
+
+// Resolve a 2-letter ISO country code to its English name, falling back to the raw value.
+export const countryName = (code: string): string => {
+  if (code.length !== 2) {
+    return code;
+  }
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+};
+
+// Collapse a Stripe address into display lines, dropping any empty field.
+export const formatAddressLines = (address: BillingAddress): string[] => {
+  if (!address) {
+    return [];
+  }
+  const regionLine = [address.city, [address.state, address.postalCode].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
+  return [
+    address.line1,
+    address.line2,
+    regionLine,
+    address.country ? countryName(address.country) : ""
+    // type-guard predicate (not bare Boolean) so the nullable sub-fields narrow to string[].
+  ].filter((line): line is string => Boolean(line));
+};
+
+// Friendly labels for common Stripe tax-id types; falls back to the upper-cased raw type.
+const TAX_TYPE_LABELS: Record<string, string> = {
+  eu_vat: "EU VAT",
+  gb_vat: "UK VAT",
+  ch_vat: "CH VAT",
+  no_vat: "NO VAT",
+  in_gst: "GSTIN",
+  au_abn: "ABN",
+  nz_gst: "NZ GST",
+  ca_gst_hst: "GST/HST",
+  us_ein: "US EIN"
+};
+
+export const taxTypeLabel = (type: string): string =>
+  TAX_TYPE_LABELS[type] ?? type.replace(/_/g, " ").toUpperCase();

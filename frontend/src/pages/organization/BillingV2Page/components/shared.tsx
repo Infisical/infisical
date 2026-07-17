@@ -2,7 +2,14 @@ import { ReactNode } from "react";
 import { Box, MinusIcon, PlusIcon } from "lucide-react";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
-import { Badge, Button } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle
+} from "@app/components/v3";
 import {
   BillingV2CatalogProduct,
   BillingV2Entitlement,
@@ -16,7 +23,7 @@ import {
   dimOnDemandQuantity,
   fmtMoney,
   pluralizeUnit
-} from "../billing-v2-data";
+} from "../billing-v2-format";
 
 type ProductIconProps = {
   product: BillingV2CatalogProduct;
@@ -54,6 +61,16 @@ export const ProductIcon = ({ product, size = 36 }: ProductIconProps) => {
 };
 
 export const ActiveBadge = () => <Badge variant="success">Active</Badge>;
+
+// A bordered empty state used inside billing cards when a section has nothing to show.
+export const CardEmpty = ({ title, description }: { title: string; description?: ReactNode }) => (
+  <Empty className="border">
+    <EmptyHeader>
+      <EmptyTitle>{title}</EmptyTitle>
+      {description ? <EmptyDescription>{description}</EmptyDescription> : null}
+    </EmptyHeader>
+  </Empty>
+);
 
 // A YEARLY / MONTHLY cadence pill matching a product's billing cadence.
 export const CadenceBadge = ({ cadence }: { cadence: BillingV2Entitlement["cadence"] }) => {

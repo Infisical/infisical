@@ -19,10 +19,11 @@ import {
   useGetBillingV2Overview
 } from "@app/hooks/api";
 
-import { BillingV2RenderState, Overview } from "./components/Overview";
+import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
-import { catalogById } from "./billing-v2-data";
+import { catalogById } from "./billing-v2-format";
+import { BillingV2RenderState } from "./billing-v2-view-types";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 

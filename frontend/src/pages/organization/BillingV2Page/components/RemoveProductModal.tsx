@@ -21,7 +21,7 @@ import {
   useRemoveBillingV2Product
 } from "@app/hooks/api";
 
-import { fmtMoney } from "../billing-v2-data";
+import { fmtMoney } from "../billing-v2-format";
 
 type Props = {
   orgId: string;
