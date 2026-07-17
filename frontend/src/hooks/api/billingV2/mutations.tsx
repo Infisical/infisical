@@ -124,10 +124,10 @@ export const useAddBillingV2Product = () => {
 export const useChangeBillingV2Commitment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, changes, prorationDate }: TChangeBillingV2CommitmentDTO) => {
+    mutationFn: async ({ orgId, changes }: TChangeBillingV2CommitmentDTO) => {
       const { data } = await apiRequest.post<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
-        { changes, prorationDate }
+        { changes }
       );
 
       return data;

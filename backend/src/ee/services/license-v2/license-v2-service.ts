@@ -937,7 +937,6 @@ export const licenseV2ServiceFactory = ({
         prorationAmount: centsToDollars(preview.prorationAmount),
         nextInvoiceTotal: centsToDollars(preview.nextInvoiceTotal),
         nextRecurringTotal: centsToDollars(preview.nextRecurringTotal),
-        prorationDate: preview.prorationDate,
         lines: preview.lines.map((line) => ({
           description: line.description,
           amount: centsToDollars(line.amount),
@@ -958,10 +957,10 @@ export const licenseV2ServiceFactory = ({
   };
 
   // Apply one or more previewed per_resource commitment changes. The License Server's apply endpoint
-  // is single-dimension, so loop per change reusing the previewed prorationDate (assumption C): the
-  // per-dimension prorations, pinned to the same instant, sum to the "charged today" the user saw. A
-  // mid-loop failure leaves earlier changes applied and surfaces the error to retry the rest.
-  const changeCommitment = async ({ orgId, actor, changes, prorationDate }: TChangeBillingV2CommitmentDTO) => {
+  // is single-dimension, so loop per change; the server prorates each at commit time, so the preview
+  // total may drift slightly if the user waits before confirming. A mid-loop failure leaves earlier
+  // changes applied and surfaces the error to retry the rest.
+  const changeCommitment = async ({ orgId, actor, changes }: TChangeBillingV2CommitmentDTO) => {
     await ensureManageBilling(orgId, actor);
     if (!changes.length) {
       throw new BadRequestError({ message: "Provide at least one commitment change" });
@@ -972,8 +971,7 @@ export const licenseV2ServiceFactory = ({
       // eslint-disable-next-line no-await-in-loop
       const result = await licenseClient.changeCommitment(orgId, {
         dimensionKey: change.dimensionKey,
-        quantity: change.quantity,
-        prorationDate
+        quantity: change.quantity
       });
       subscriptionId = result.subscriptionId ?? subscriptionId;
     }

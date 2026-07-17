@@ -162,11 +162,11 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.addSubscriptionItems(orgId, payload);
   };
 
-  const removeSubscriptionItem = async (orgId: string, productId: string, prorationDate?: number) => {
+  const removeSubscriptionItem = async (orgId: string, productId: string) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.removeSubscriptionItem(orgId, productId, prorationDate);
+    return backend.removeSubscriptionItem(orgId, productId);
   };
 
   const changeCommitment = async (orgId: string, payload: TChangeCommitmentPayload) => {

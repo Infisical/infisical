@@ -177,7 +177,6 @@ const BillingV2PreviewSchema = z.object({
   prorationAmount: z.number(),
   nextInvoiceTotal: z.number(),
   nextRecurringTotal: z.number(),
-  prorationDate: z.number(),
   lines: BillingV2PreviewLineSchema.array()
 });
 
@@ -437,10 +436,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        // One or more per_resource commitment changes; the service applies them per dimension.
-        changes: BillingV2CommitmentChangeSchema.array().min(1),
-        // Echo the prorationDate from a preview so the billed total matches the confirmation.
-        prorationDate: z.number().optional()
+        // One or more per_resource commitment changes; the service applies them per dimension. The
+        changes: BillingV2CommitmentChangeSchema.array().min(1)
       }),
       response: {
         200: BillingV2MutationResultSchema
@@ -451,8 +448,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       return server.services.licenseV2.changeCommitment({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
-        changes: req.body.changes,
-        prorationDate: req.body.prorationDate
+        changes: req.body.changes
       });
     }
   });

@@ -228,8 +228,9 @@ export const checkoutResultSchema = z
   .passthrough();
 
 // Proration preview for an add/remove against an existing subscription. prorationAmount is signed:
-// positive is charged now (an add), negative is a credit toward the next invoice (a removal).
-// prorationDate is the timestamp the preview was computed at.
+// positive is charged now (an add), negative is a credit toward the next invoice (a removal). The
+// server prorates at request time; no client-supplied timestamp is accepted (it would let a caller
+// pick a cheaper proration instant), so the preview carries an amount but not a timestamp to echo.
 const subscriptionPreviewLineSchema = z
   .object({
     description: z.string(),
@@ -244,7 +245,6 @@ export const subscriptionPreviewResponseSchema = z
     prorationAmount: z.number(),
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
-    prorationDate: z.number(),
     lines: z.array(subscriptionPreviewLineSchema).default([])
   })
   .passthrough();
@@ -372,12 +372,11 @@ export type TCreatePortalPayload = {
   returnPath?: string;
 };
 
-// Self-serve apply of a previewed commitment change. prorationDate echoes the preview's value so the
-// billed amount matches; omit to prorate at now.
+// Self-serve apply of a previewed commitment change. The server prorates at commit time; the caller
+// cannot supply a proration timestamp (that would let a billing user pick a cheaper instant).
 export type TChangeCommitmentPayload = {
   dimensionKey: string;
   quantity: number;
-  prorationDate?: number;
 };
 
 export type TStartTrialPayload = {
@@ -439,7 +438,7 @@ export type TLicenseClientBackend = {
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
   addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
-  removeSubscriptionItem: (orgId: string, productId: string, prorationDate?: number) => Promise<TCheckoutResult>;
+  removeSubscriptionItem: (orgId: string, productId: string) => Promise<TCheckoutResult>;
   // Apply a previewed per_resource commitment change (self-serve).
   changeCommitment: (orgId: string, payload: TChangeCommitmentPayload) => Promise<TCheckoutResult>;
   // Start a plan-scoped self-serve trial.

@@ -232,7 +232,6 @@ export type BillingV2Preview = {
   prorationAmount: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
-  prorationDate: number;
   lines: BillingV2PreviewLine[];
 };
 
@@ -274,12 +273,11 @@ export type TRemoveBillingV2ProductDTO = {
 };
 
 // Apply one or more previewed per_resource commitment changes. The service loops the single-dimension
-// apply per change, reusing prorationDate so the billed total matches the preview.
+// apply per change; each prorates at commit time on the server (no client-supplied timestamp).
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;
   changes: BillingV2CommitmentChange[];
-  prorationDate?: number;
 };
 
 export type TStartBillingV2TrialDTO = {

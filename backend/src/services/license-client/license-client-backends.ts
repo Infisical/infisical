@@ -246,15 +246,8 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  removeSubscriptionItem: async (
-    orgId: string,
-    productId: string,
-    prorationDate?: number
-  ): Promise<TCheckoutResult> => {
+  removeSubscriptionItem: async (orgId: string, productId: string): Promise<TCheckoutResult> => {
     const url = new URL(orgScoped(orgId, `/subscription/items/${encodeURIComponent(productId)}`), serverUrl);
-    if (prorationDate !== undefined) {
-      url.searchParams.set("prorationDate", String(prorationDate));
-    }
     const res = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
@@ -265,8 +258,8 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  // Apply a previewed per_resource commitment change; echoes the preview's prorationDate so the
-  // billed amount matches the confirmation the customer saw.
+  // Apply a previewed per_resource commitment change. The server prorates at commit time; the payload
+  // carries no proration timestamp, so the caller can't influence the charged amount.
   changeCommitment: async (orgId: string, payload: TChangeCommitmentPayload): Promise<TCheckoutResult> => {
     const url = new URL(orgScoped(orgId, "/subscription/commitments"), serverUrl);
     const res = await fetch(url, {

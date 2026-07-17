@@ -105,8 +105,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     try {
       await applyCommitment.mutateAsync({
         orgId,
-        changes,
-        prorationDate: preview.data?.prorationDate
+        changes
       });
       createNotification({
         type: "success",

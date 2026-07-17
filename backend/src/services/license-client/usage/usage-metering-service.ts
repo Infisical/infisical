@@ -44,8 +44,7 @@ export const usageMeteringServiceFactory = ({
     void enqueue(orgId, dimensionKey).catch((error) => {
       logger.error(
         error,
-        `usage-metering: failed to enqueue usage event [orgId=${orgId}] [dimensionKey
-  =${dimensionKey}]`
+        `usage-metering: failed to enqueue usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
       );
     });
   };
@@ -67,8 +66,7 @@ export const usageMeteringServiceFactory = ({
     })().catch((error) => {
       logger.error(
         error,
-        `usage-metering: failed to enqueue usage event [projectId=${projectId}] [dimensionKey
-  =${dimensionKey}]`
+        `usage-metering: failed to enqueue usage event [projectId=${projectId}] [dimensionKey=${dimensionKey}]`
       );
     });
   };

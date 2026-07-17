@@ -213,13 +213,12 @@ export type BillingV2PreviewLine = {
 };
 
 // prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
-// invoice (a removal). prorationDate is the timestamp the preview was computed at, for display only.
+// invoice (a removal). The server prorates at commit time, so no proration timestamp is echoed back.
 export type BillingV2Preview = {
   currency: string;
   prorationAmount: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
-  prorationDate: number;
   lines: BillingV2PreviewLine[];
 };
 
@@ -260,11 +259,10 @@ export type TRemoveBillingV2ProductDTO = {
 };
 
 // Apply one or more previewed per_resource commitment changes; the backend loops the per-dimension
-// apply, reusing prorationDate so the billed total matches the preview.
+// apply and the server prorates at commit time (no client-supplied proration timestamp).
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   changes: BillingV2CommitmentChange[];
-  prorationDate?: number;
 };
 
 export type TStartBillingV2TrialDTO = {
