@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { format } from "date-fns";
-import { Box, Check, FolderIcon, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { Box, ChevronRight, FolderIcon, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -30,13 +30,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
-  Input,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  Input
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
@@ -52,8 +46,6 @@ type ProjectGroup = {
   targetProjectId: string;
   targetProjectName: string;
   totalSecrets: number;
-  folders: string[];
-  grantMatrix: Map<string, TProjectFolderGrant>;
   oldestGrantDate: string;
   grants: TProjectFolderGrant[];
 };
@@ -67,14 +59,8 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
   }, new Map<string, TProjectFolderGrant[]>());
 
   return Array.from(byProject.entries()).map(([targetProjectId, projectGrants]) => {
-    const folderSet = new Set<string>();
-    const grantMatrix = new Map<string, TProjectFolderGrant>();
     let oldestDate = projectGrants[0].createdAt;
-
     projectGrants.forEach((g) => {
-      const folder = g.secretPath;
-      folderSet.add(folder);
-      grantMatrix.set(`${folder}:${g.environmentSlug}`, g);
       if (g.createdAt < oldestDate) oldestDate = g.createdAt;
     });
 
@@ -82,8 +68,6 @@ const groupGrantsByProject = (grants: TProjectFolderGrant[]): ProjectGroup[] => 
       targetProjectId,
       targetProjectName: projectGrants[0].targetProjectName,
       totalSecrets: projectGrants.reduce((sum, g) => sum + g.secretCount, 0),
-      folders: Array.from(folderSet).sort(),
-      grantMatrix,
       oldestGrantDate: oldestDate,
       grants: projectGrants
     };
@@ -310,51 +294,38 @@ export const CrossProjectSharingSection = () => {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  {(() => {
-                    const grantedSlugs = new Set(projectGroup.grants.map((g) => g.environmentSlug));
-                    const visibleEnvs = currentProject.environments.filter((env) =>
-                      grantedSlugs.has(env.slug)
-                    );
-
-                    return (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Folder</TableHead>
-                            {visibleEnvs.map((env) => (
-                              <TableHead key={env.slug} className="text-center">
-                                {env.name}
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {projectGroup.folders.map((folder) => (
-                            <TableRow key={folder}>
-                              <TableCell>
-                                <div className="flex items-center gap-1.5">
-                                  <FolderIcon className="size-3.5 text-muted" />
-                                  <span className="text-sm">{folder}</span>
-                                </div>
-                              </TableCell>
-                              {visibleEnvs.map((env) => {
-                                const grant = projectGroup.grantMatrix.get(`${folder}:${env.slug}`);
-                                return (
-                                  <TableCell key={env.slug} className="text-center">
-                                    {grant ? (
-                                      <Check className="mx-auto size-4 text-success" />
-                                    ) : (
-                                      <Minus className="mx-auto size-4 text-muted" />
-                                    )}
-                                  </TableCell>
-                                );
-                              })}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    );
-                  })()}
+                  <div className="rounded-md border border-mineshaft-600">
+                    <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
+                      <span>Shared location in this project</span>
+                      <span>Secrets shared</span>
+                    </div>
+                    {projectGroup.grants
+                      .sort((a, b) => {
+                        const envOrder =
+                          a.environmentName.localeCompare(b.environmentName);
+                        if (envOrder !== 0) return envOrder;
+                        return a.secretPath.localeCompare(b.secretPath);
+                      })
+                      .map((grant) => (
+                        <div
+                          key={grant.id}
+                          className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
+                        >
+                          <div className="flex items-center gap-2 text-sm">
+                            <Badge variant="neutral" className="gap-1.5">
+                              <Layers className="size-3" />
+                              {grant.environmentName}
+                            </Badge>
+                            <ChevronRight className="size-3.5 text-muted" />
+                            <FolderIcon className="size-3.5 text-muted" />
+                            <span>{grant.secretPath}</span>
+                          </div>
+                          <span className="text-sm tabular-nums">
+                            {grant.secretCount}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             ))}
