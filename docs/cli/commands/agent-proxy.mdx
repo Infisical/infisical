@@ -115,14 +115,14 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   </Accordion>
 
   <Accordion title="--log-format">
-    Output format for the proxy's logs, including [per-request activity](/documentation/platform/agent-proxy/activity-logs): `console` (readable) or `json` (machine).
+    Output format for the proxy's logs, including [per-request activity](/documentation/platform/agent-proxy/activity-logs): `console` (human-readable, colorized in a terminal and plain otherwise) or `json` (machine). Logs are written to stderr.
 
     ```bash
     # Example
     infisical secrets agent-proxy start --log-format=json
     ```
 
-    Default value: `console` on a terminal, `json` otherwise
+    Default value: `console`
   </Accordion>
 
   <Accordion title="--log-file">
