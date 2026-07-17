@@ -13,6 +13,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { DynamicSecretGcpIamSchema, TDynamicProviderFns } from "./models";
 
+export class GcpIamServiceAccountSuffixError extends BadRequestError {
+  constructor({ message }: { message: string }) {
+    super({ message, name: "GcpIamServiceAccountSuffixError" });
+  }
+}
+
 type TGcpIamProviderDTO = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
@@ -38,7 +44,7 @@ export const GcpIamProvider = ({ projectDAL }: TGcpIamProviderDTO): TDynamicProv
     const serviceAccountId = providerInputs.serviceAccountEmail.split("@")[0];
 
     if (!serviceAccountId.endsWith(expectedAccountIdSuffix)) {
-      throw new BadRequestError({
+      throw new GcpIamServiceAccountSuffixError({
         message: `GCP service account ID must have a suffix of "${expectedAccountIdSuffix}"`
       });
     }

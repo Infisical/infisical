@@ -26,6 +26,7 @@ import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permissio
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
+import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
 import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
 
@@ -358,7 +359,16 @@ export const dynamicSecretServiceFactory = ({
       else if ((inputs as Record<string, unknown>).gatewayPoolId)
         (newInput as Record<string, unknown>).gatewayId = undefined;
     }
-    const oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
+    let oldInput: unknown;
+    try {
+      oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
+    } catch (error) {
+      if (error instanceof GcpIamServiceAccountSuffixError) {
+        oldInput = decryptedStoredInput;
+      } else {
+        throw error;
+      }
+    }
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
 
     const updatedFields = getUpdatedFieldPaths(
