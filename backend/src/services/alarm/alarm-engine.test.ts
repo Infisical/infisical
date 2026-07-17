@@ -95,17 +95,17 @@ const buildEngine = (opts: {
 
   const engine = alarmEngineFactory({
     alarmChannelDAL: { findByAlarmId: async () => opts.channels },
-    alarmRecipientDAL: {
-      findByAlarmId: async () => [
-        {
-          id: "r1",
-          alarmId: "alarm-1",
+    alarmChannelRecipientDAL: {
+      // One recipient row per directed channel in the run, so each resolves its own list.
+      findByChannelIds: async (channelIds: string[]) =>
+        channelIds.map((channelId) => ({
+          id: `r-${channelId}`,
+          channelId,
           principalType: AlarmPrincipalType.USER,
           principalId: "u1",
           createdAt: new Date(),
           updatedAt: new Date()
-        }
-      ]
+        }))
     },
     alarmHistoryDAL: {
       findRecentlyAlarmedTargets: async () => opts.recentlyAlarmed ?? [],

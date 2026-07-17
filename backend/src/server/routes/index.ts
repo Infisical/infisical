@@ -237,12 +237,14 @@ import { accountRecoveryServiceFactory } from "@app/services/account-recovery/ac
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
 import { alarmChannelDALFactory } from "@app/services/alarm/alarm-channel-dal";
+import { alarmChannelMembershipDALFactory } from "@app/services/alarm/alarm-channel-membership-dal";
+import { alarmChannelRecipientDALFactory } from "@app/services/alarm/alarm-channel-recipient-dal";
+import { alarmChannelServiceFactory } from "@app/services/alarm/alarm-channel-service";
 import { alarmDALFactory } from "@app/services/alarm/alarm-dal";
 import { alarmEngineFactory } from "@app/services/alarm/alarm-engine";
 import { alarmHistoryDALFactory } from "@app/services/alarm/alarm-history-dal";
 import { alarmProviderRegistryFactory } from "@app/services/alarm/alarm-provider-registry";
 import { alarmQueueServiceFactory } from "@app/services/alarm/alarm-queue";
-import { alarmRecipientDALFactory } from "@app/services/alarm/alarm-recipient-dal";
 import { alarmRecipientResolverFactory } from "@app/services/alarm/alarm-recipient-resolver";
 import { alarmServiceFactory } from "@app/services/alarm/alarm-service";
 import { identityCredentialAlarmDALFactory } from "@app/services/alarm/providers/identity-credential-alarm-dal";
@@ -1012,7 +1014,8 @@ export const registerRoutes = async (
 
   const alarmDAL = alarmDALFactory(db);
   const alarmChannelDAL = alarmChannelDALFactory(db);
-  const alarmRecipientDAL = alarmRecipientDALFactory(db);
+  const alarmChannelRecipientDAL = alarmChannelRecipientDALFactory(db);
+  const alarmChannelMembershipDAL = alarmChannelMembershipDALFactory(db);
   const alarmHistoryDAL = alarmHistoryDALFactory(db);
   const alarmProviderRegistry = alarmProviderRegistryFactory();
   alarmProviderRegistry.register(
@@ -1024,7 +1027,7 @@ export const registerRoutes = async (
   const alarmRecipientResolver = alarmRecipientResolverFactory({ userDAL, userGroupMembershipDAL });
   const alarmEngine = alarmEngineFactory({
     alarmChannelDAL,
-    alarmRecipientDAL,
+    alarmChannelRecipientDAL,
     alarmHistoryDAL,
     alarmProviderRegistry,
     alarmRecipientResolver,
@@ -1043,9 +1046,15 @@ export const registerRoutes = async (
   const alarmService = alarmServiceFactory({
     alarmDAL,
     alarmChannelDAL,
-    alarmRecipientDAL,
-    alarmProviderRegistry,
+    alarmChannelMembershipDAL,
+    alarmProviderRegistry
+  });
+  const alarmChannelService = alarmChannelServiceFactory({
+    alarmChannelDAL,
+    alarmChannelRecipientDAL,
+    alarmChannelMembershipDAL,
     kmsService,
+    permissionService,
     orgDAL,
     projectDAL,
     groupDAL
@@ -4089,6 +4098,7 @@ export const registerRoutes = async (
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
     alarm: alarmService,
+    alarmChannel: alarmChannelService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

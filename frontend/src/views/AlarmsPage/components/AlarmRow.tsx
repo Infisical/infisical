@@ -7,10 +7,7 @@ import {
   LinkIcon,
   MailIcon,
   PencilIcon,
-  ShieldIcon,
-  Trash2Icon,
-  UserIcon,
-  UsersIcon
+  Trash2Icon
 } from "lucide-react";
 
 import {
@@ -20,25 +17,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   TableCell,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import {
-  ALARM_CHANNEL_TYPE_LABELS,
   ALARM_EVENT_TYPE_LABELS,
   ALARM_RESOURCE_TYPE_LABELS,
   AlarmChannelType,
   AlarmEventType,
-  AlarmPrincipalType,
   AlarmResourceType,
   TAlarm,
-  TAlarmRecipient
+  TAlarmChannelSummary
 } from "@app/hooks/api/alarms";
 
 type LucideIcon = typeof MailIcon;
@@ -54,21 +43,13 @@ const CHANNEL_ICONS: Record<AlarmChannelType, LucideIcon> = {
   [AlarmChannelType.PagerDuty]: AlertTriangleIcon
 };
 
-const RECIPIENT_ICONS: Record<AlarmPrincipalType, LucideIcon> = {
-  [AlarmPrincipalType.Email]: MailIcon,
-  [AlarmPrincipalType.User]: UserIcon,
-  [AlarmPrincipalType.Group]: UsersIcon,
-  [AlarmPrincipalType.Role]: ShieldIcon
-};
-
 type Props = {
   alarm: TAlarm;
-  resolveRecipientLabel: (recipient: TAlarmRecipient) => string;
   onEdit: (alarm: TAlarm) => void;
   onDelete: (alarm: TAlarm) => void;
 };
 
-export const AlarmRow = ({ alarm, resolveRecipientLabel, onEdit, onDelete }: Props) => {
+export const AlarmRow = ({ alarm, onEdit, onDelete }: Props) => {
   const ResourceIcon = RESOURCE_ICONS[alarm.resourceType] ?? KeyRoundIcon;
   const resourceLabel =
     ALARM_RESOURCE_TYPE_LABELS[alarm.resourceType as AlarmResourceType] ?? alarm.resourceType;
@@ -77,19 +58,17 @@ export const AlarmRow = ({ alarm, resolveRecipientLabel, onEdit, onDelete }: Pro
     ? `Alert before ${alarm.condition.alertBefore}`
     : "On event";
 
-  const [firstRecipient, ...restRecipients] = alarm.recipients;
-
-  const renderRecipient = (recipient: TAlarmRecipient) => {
-    const Icon = RECIPIENT_ICONS[recipient.principalType];
+  const renderChannel = (channel: TAlarmChannelSummary) => {
+    const Icon = CHANNEL_ICONS[channel.channelType] ?? BellIcon;
     return (
       <Badge
-        key={`${recipient.principalType}:${recipient.principalId}`}
+        key={channel.id}
         variant="neutral"
         isTruncatable
-        className="max-w-[10rem]"
+        className={`max-w-[10rem] ${channel.enabled ? "" : "opacity-40"}`}
       >
         <Icon className="size-3" />
-        <span>{resolveRecipientLabel(recipient)}</span>
+        <span>{channel.name}</span>
       </Badge>
     );
   };
@@ -102,9 +81,7 @@ export const AlarmRow = ({ alarm, resolveRecipientLabel, onEdit, onDelete }: Pro
       <TableCell>
         <div className="flex items-center gap-2">
           <ResourceIcon className="size-4 shrink-0 text-muted" />
-          <div className="flex flex-col">
-            <span className="text-foreground">{resourceLabel}</span>
-          </div>
+          <span className="text-foreground">{resourceLabel}</span>
         </div>
       </TableCell>
       <TableCell>
@@ -112,59 +89,13 @@ export const AlarmRow = ({ alarm, resolveRecipientLabel, onEdit, onDelete }: Pro
       </TableCell>
       <TableCell>{condition}</TableCell>
       <TableCell>
-        {firstRecipient ? (
-          <div className="flex items-center gap-1">
-            {renderRecipient(firstRecipient)}
-            {restRecipients.length > 0 && (
-              <Popover>
-                <Tooltip>
-                  <TooltipTrigger className="flex h-4 items-center">
-                    <PopoverTrigger asChild>
-                      <Badge variant="neutral" asChild>
-                        <button type="button" onClick={(e) => e.stopPropagation()}>
-                          +{restRecipients.length}
-                        </button>
-                      </Badge>
-                    </PopoverTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Click to view all recipients</TooltipContent>
-                </Tooltip>
-                <PopoverContent
-                  side="right"
-                  className="flex w-auto max-w-sm flex-wrap gap-1.5"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {restRecipients.map((recipient) => renderRecipient(recipient))}
-                </PopoverContent>
-              </Popover>
-            )}
+        {alarm.channels.length ? (
+          <div className="flex flex-wrap items-center gap-1">
+            {alarm.channels.map(renderChannel)}
           </div>
         ) : (
           <span className="text-muted">—</span>
         )}
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2 text-muted">
-          {alarm.channels.length ? (
-            alarm.channels.map((channel) => {
-              const Icon = CHANNEL_ICONS[channel.channelType as AlarmChannelType] ?? BellIcon;
-              return (
-                <span
-                  key={channel.id}
-                  title={
-                    ALARM_CHANNEL_TYPE_LABELS[channel.channelType as AlarmChannelType] ??
-                    channel.channelType
-                  }
-                  className={channel.enabled ? "" : "opacity-40"}
-                >
-                  <Icon className="size-4" />
-                </span>
-              );
-            })
-          ) : (
-            <span>—</span>
-          )}
-        </div>
       </TableCell>
       <TableCell>
         <Badge variant={alarm.enabled ? "success" : "neutral"}>

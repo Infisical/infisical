@@ -1,19 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AlarmChannelType } from "./alarm-channel-types";
-import { AlarmPrincipalType } from "./alarm-types";
-
-export type TAlarmRecipientInput = {
-  principalType: AlarmPrincipalType;
-  principalId: string;
-};
-
-export type TAlarmChannelInput = {
-  id?: string;
-  channelType: AlarmChannelType;
-  config: unknown;
-  enabled?: boolean;
-};
+import { TAlarmChannelSummary } from "./alarm-channel-service-types";
 
 export type TCreateAlarmDTO = TGenericPermission & {
   name: string;
@@ -25,8 +12,7 @@ export type TCreateAlarmDTO = TGenericPermission & {
   filters?: unknown;
   enabled?: boolean;
   projectId?: string | null;
-  recipients: TAlarmRecipientInput[];
-  channels: TAlarmChannelInput[];
+  channelIds: string[];
 };
 
 export type TUpdateAlarmDTO = TGenericPermission & {
@@ -36,8 +22,7 @@ export type TUpdateAlarmDTO = TGenericPermission & {
   condition?: unknown;
   filters?: unknown;
   enabled?: boolean;
-  recipients?: TAlarmRecipientInput[];
-  channels?: TAlarmChannelInput[];
+  channelIds?: string[];
 };
 
 export type TGetAlarmDTO = TGenericPermission & { alarmId: string };
@@ -49,20 +34,6 @@ export type TListAlarmsDTO = TGenericPermission & {
   resourceId?: string | null;
   projectId?: string | null;
   enabled?: boolean;
-};
-
-export type TAlarmChannelResponse = {
-  id: string;
-  channelType: string;
-  config: Record<string, unknown>;
-  enabled: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type TAlarmRecipientResponse = {
-  principalType: string;
-  principalId: string;
 };
 
 export type TAlarmResponse = {
@@ -77,8 +48,7 @@ export type TAlarmResponse = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
-  recipients: TAlarmRecipientResponse[];
-  channels: TAlarmChannelResponse[];
+  channels: TAlarmChannelSummary[];
   createdAt: Date;
   updatedAt: Date;
 };

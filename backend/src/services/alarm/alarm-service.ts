@@ -1,26 +1,15 @@
 import { z } from "zod";
 
-import { TAlarmChannels, TAlarmChannelsInsert, TAlarmRecipients, TAlarms } from "@app/db/schemas";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TAlarmChannels, TAlarms } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import {
-  decryptChannelConfig,
-  encryptChannelConfig,
-  getAlarmChannelCipher,
-  TAlarmDecryptor
-} from "./alarm-channel-crypto-fns";
 import { TAlarmChannelDALFactory } from "./alarm-channel-dal";
+import { TAlarmChannelMembershipDALFactory } from "./alarm-channel-membership-dal";
+import { TAlarmChannelSummary } from "./alarm-channel-service-types";
 import { AlarmChannelType } from "./alarm-channel-types";
 import { TAlarmDALFactory } from "./alarm-dal";
 import { TAlarmProviderRegistry } from "./alarm-provider-registry";
-import { TAlarmRecipientDALFactory } from "./alarm-recipient-dal";
 import {
-  TAlarmChannelInput,
-  TAlarmChannelResponse,
   TAlarmResponse,
   TCreateAlarmDTO,
   TDeleteAlarmDTO,
@@ -28,74 +17,34 @@ import {
   TListAlarmsDTO,
   TUpdateAlarmDTO
 } from "./alarm-service-types";
-import { AlarmPermissionAction, AlarmPrincipalType, IResourceAlarmProvider } from "./alarm-types";
+import { AlarmPermissionAction, IResourceAlarmProvider } from "./alarm-types";
 import { ALARM_CHANNEL_REGISTRY } from "./channels/alarm-channel-registry";
 
 export type TAlarmServiceFactoryDep = {
   alarmDAL: TAlarmDALFactory;
-  alarmChannelDAL: Pick<
-    TAlarmChannelDALFactory,
-    "insertMany" | "findByAlarmId" | "findByAlarmIds" | "updateById" | "delete"
-  >;
-  alarmRecipientDAL: Pick<
-    TAlarmRecipientDALFactory,
-    "insertMany" | "findByAlarmId" | "findByAlarmIds" | "deleteByAlarmId"
-  >;
+  alarmChannelDAL: Pick<TAlarmChannelDALFactory, "findByIdsInScope" | "findByAlarmId" | "findByAlarmIds">;
+  alarmChannelMembershipDAL: Pick<TAlarmChannelMembershipDALFactory, "insertMany" | "deleteByAlarmId">;
   alarmProviderRegistry: TAlarmProviderRegistry;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
-  projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
-  groupDAL: Pick<TGroupDALFactory, "find">;
 };
 
 export type TAlarmServiceFactory = ReturnType<typeof alarmServiceFactory>;
 
-const isValidPrincipalType = (value: string): value is AlarmPrincipalType =>
-  Object.values(AlarmPrincipalType).includes(value as AlarmPrincipalType);
-
-const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
-
-const $redactChannelConfig = (channelType: string, config: Record<string, unknown>): Record<string, unknown> => {
-  const definition = ALARM_CHANNEL_REGISTRY[channelType as AlarmChannelType];
-  if (!definition) return {};
-
-  const redacted: Record<string, unknown> = {};
-  Object.entries(config).forEach(([key, value]) => {
-    if (!definition.secretFields.includes(key)) redacted[key] = value;
-  });
-  definition.secretFields.forEach((field) => {
-    redacted[`has${capitalize(field)}`] = Boolean(config[field]);
-  });
-  return redacted;
-};
-
-const $preserveChannelSecrets = (
-  channelType: string,
-  incomingConfig: Record<string, unknown>,
-  existingConfig: Record<string, unknown>
-): Record<string, unknown> => {
-  const definition = ALARM_CHANNEL_REGISTRY[channelType as AlarmChannelType];
-  if (!definition) return incomingConfig;
-
-  const merged = { ...incomingConfig };
-  definition.secretFields.forEach((field) => {
-    const incoming = merged[field];
-    if ((incoming === undefined || incoming === null || incoming === "") && existingConfig[field] != null) {
-      merged[field] = existingConfig[field];
-    }
-  });
-  return merged;
+const toChannelSummary = (channel: TAlarmChannels): TAlarmChannelSummary => {
+  const definition = ALARM_CHANNEL_REGISTRY[channel.channelType as AlarmChannelType];
+  return {
+    id: channel.id,
+    name: channel.name,
+    channelType: channel.channelType,
+    directed: Boolean(definition?.directed),
+    enabled: channel.enabled
+  };
 };
 
 export const alarmServiceFactory = ({
   alarmDAL,
   alarmChannelDAL,
-  alarmRecipientDAL,
-  alarmProviderRegistry,
-  kmsService,
-  orgDAL,
-  projectDAL,
-  groupDAL
+  alarmChannelMembershipDAL,
+  alarmProviderRegistry
 }: TAlarmServiceFactoryDep) => {
   const $getProvider = (resourceType: string): IResourceAlarmProvider => {
     const provider = alarmProviderRegistry.get(resourceType);
@@ -107,12 +56,7 @@ export const alarmServiceFactory = ({
 
   const $validate = (
     provider: IResourceAlarmProvider,
-    input: {
-      eventType?: string;
-      condition?: unknown;
-      channels?: TAlarmChannelInput[];
-      recipients?: { principalType: string }[];
-    },
+    input: { eventType?: string; condition?: unknown },
     opts: { alwaysValidateCondition?: boolean } = {}
   ) => {
     if (input.eventType && !provider.eventTypes.includes(input.eventType)) {
@@ -129,168 +73,46 @@ export const alarmServiceFactory = ({
         throw new BadRequestError({ message: `Invalid alarm condition: ${message}` });
       }
     }
+  };
 
-    (input.recipients ?? []).forEach((recipient) => {
-      if (!isValidPrincipalType(recipient.principalType)) {
-        throw new BadRequestError({ message: `Invalid recipient principal type '${recipient.principalType}'` });
-      }
-    });
-
-    if (input.channels) {
-      if (input.channels.length === 0) {
-        throw new BadRequestError({ message: "At least one channel is required" });
-      }
-
-      const directedChannels = input.channels.filter(
-        (channel) => ALARM_CHANNEL_REGISTRY[channel.channelType]?.directed
-      );
-      if (directedChannels.length > 0 && (input.recipients ?? []).length === 0) {
-        const directedTypes = [...new Set(directedChannels.map((channel) => channel.channelType))].join(", ");
-        throw new BadRequestError({ message: `At least one recipient is required for ${directedTypes} channels` });
-      }
-
-      for (const channel of input.channels) {
-        const definition = ALARM_CHANNEL_REGISTRY[channel.channelType];
-        if (!definition) throw new BadRequestError({ message: `Unknown channel type '${channel.channelType}'` });
-
-        // configSchema already enforces the Slack hooks.slack.com/https allowlist (and sendSlackNotification
-        // re-checks at dispatch), so no separate validateSlackWebhookUrl call is needed here.
-        try {
-          definition.configSchema.parse(channel.config);
-        } catch (err) {
-          const message =
-            err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid channel config";
-          throw new BadRequestError({ message: `Invalid ${channel.channelType} channel config: ${message}` });
-        }
-      }
+  const $resolveChannelsInScope = async (
+    channelIds: string[],
+    scope: { orgId: string; projectId?: string | null }
+  ): Promise<void> => {
+    if (channelIds.length === 0) {
+      throw new BadRequestError({ message: "At least one channel is required" });
+    }
+    const uniqueIds = [...new Set(channelIds)];
+    const found = await alarmChannelDAL.findByIdsInScope(uniqueIds, scope);
+    if (found.length !== uniqueIds.length) {
+      const foundIds = new Set(found.map((c) => c.id));
+      const missing = uniqueIds.filter((id) => !foundIds.has(id));
+      throw new BadRequestError({ message: `Some channels were not found in this scope: ${missing.join(", ")}` });
     }
   };
 
-  const $validateRecipients = async (
-    orgId: string,
-    projectId: string | null | undefined,
-    recipients: { principalType: string; principalId: string }[]
-  ) => {
-    const userIds = [
-      ...new Set(
-        recipients
-          .filter((recipient) => recipient.principalType === AlarmPrincipalType.USER)
-          .map((recipient) => recipient.principalId)
-      )
-    ];
-    const groupIds = [
-      ...new Set(
-        recipients
-          .filter((recipient) => recipient.principalType === AlarmPrincipalType.GROUP)
-          .map((recipient) => recipient.principalId)
-      )
-    ];
-
-    if (userIds.length === 0 && groupIds.length === 0) return;
-
-    if (projectId) {
-      const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
-        orgId,
-        projectId,
-        userIds,
-        groupIds
-      });
-      const projectUserIds = new Set(effectiveUserIds);
-      const missingUsers = userIds.filter((id) => !projectUserIds.has(id));
-      if (missingUsers.length) {
-        throw new BadRequestError({
-          message: `Some users are not members of the project: ${missingUsers.join(", ")}`
-        });
-      }
-      const projectGroupIds = new Set(effectiveGroupIds);
-      const missingGroups = groupIds.filter((id) => !projectGroupIds.has(id));
-      if (missingGroups.length) {
-        throw new BadRequestError({
-          message: `Some groups are not members of the project: ${missingGroups.join(", ")}`
-        });
-      }
-      return;
-    }
-
-    if (userIds.length) {
-      const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: orgId });
-      const orgUserIds = new Set(memberships.map((membership) => membership.actorUserId));
-      const missingUsers = userIds.filter((id) => !orgUserIds.has(id));
-      if (missingUsers.length) {
-        throw new BadRequestError({
-          message: `Some users are not members of the organization: ${missingUsers.join(", ")}`
-        });
-      }
-    }
-
-    if (groupIds.length) {
-      const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId });
-      const orgGroupIds = new Set(orgGroups.map((group) => group.id));
-      const missingGroups = groupIds.filter((id) => !orgGroupIds.has(id));
-      if (missingGroups.length) {
-        throw new BadRequestError({
-          message: `Some groups are not part of the organization: ${missingGroups.join(", ")}`
-        });
-      }
-    }
-  };
-
-  const $buildResponse = (
-    alarm: TAlarms,
-    channels: TAlarmChannels[],
-    recipients: TAlarmRecipients[],
-    decryptor: TAlarmDecryptor
-  ): TAlarmResponse => {
-    const channelResponses: TAlarmChannelResponse[] = channels.map((channel) => {
-      const config = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
-
-      return {
-        id: channel.id,
-        channelType: channel.channelType,
-        config: $redactChannelConfig(channel.channelType, config),
-        enabled: channel.enabled,
-        createdAt: channel.createdAt,
-        updatedAt: channel.updatedAt
-      };
-    });
-
-    return {
-      id: alarm.id,
-      name: alarm.name,
-      description: alarm.description ?? null,
-      resourceType: alarm.resourceType,
-      resourceId: alarm.resourceId ?? null,
-      eventType: alarm.eventType,
-      condition: alarm.condition ?? null,
-      filters: alarm.filters ?? null,
-      enabled: alarm.enabled,
-      orgId: alarm.orgId,
-      projectId: alarm.projectId ?? null,
-      recipients: recipients.map((recipient) => ({
-        principalType: recipient.principalType,
-        principalId: recipient.principalId
-      })),
-      channels: channelResponses,
-      createdAt: alarm.createdAt,
-      updatedAt: alarm.updatedAt
-    };
-  };
+  const $buildResponse = (alarm: TAlarms, channels: TAlarmChannels[]): TAlarmResponse => ({
+    id: alarm.id,
+    name: alarm.name,
+    description: alarm.description ?? null,
+    resourceType: alarm.resourceType,
+    resourceId: alarm.resourceId ?? null,
+    eventType: alarm.eventType,
+    condition: alarm.condition ?? null,
+    filters: alarm.filters ?? null,
+    enabled: alarm.enabled,
+    orgId: alarm.orgId,
+    projectId: alarm.projectId ?? null,
+    channels: channels.map(toChannelSummary),
+    createdAt: alarm.createdAt,
+    updatedAt: alarm.updatedAt
+  });
 
   const $formatResponse = async (alarmId: string): Promise<TAlarmResponse> => {
     const alarm = await alarmDAL.findById(alarmId);
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${alarmId}' not found` });
-
-    const [channels, recipients] = await Promise.all([
-      alarmChannelDAL.findByAlarmId(alarmId),
-      alarmRecipientDAL.findByAlarmId(alarmId)
-    ]);
-
-    const { decryptor } = await getAlarmChannelCipher(kmsService, {
-      orgId: alarm.orgId,
-      projectId: alarm.projectId
-    });
-
-    return $buildResponse(alarm, channels, recipients, decryptor);
+    const channels = await alarmChannelDAL.findByAlarmId(alarmId);
+    return $buildResponse(alarm, channels);
   };
 
   const createAlarm = async (dto: TCreateAlarmDTO): Promise<TAlarmResponse> => {
@@ -316,12 +138,7 @@ export const alarmServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    await $validateRecipients(dto.actorOrgId, dto.projectId, dto.recipients);
-
-    const { encryptor } = await getAlarmChannelCipher(kmsService, {
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId
-    });
+    await $resolveChannelsInScope(dto.channelIds, { orgId: dto.actorOrgId, projectId: dto.projectId });
 
     const alarm = await alarmDAL.transaction(async (tx) => {
       const created = await alarmDAL.create(
@@ -341,22 +158,8 @@ export const alarmServiceFactory = ({
         tx
       );
 
-      await alarmChannelDAL.insertMany(
-        dto.channels.map((channel) => ({
-          alarmId: created.id,
-          channelType: channel.channelType,
-          encryptedConfig: encryptChannelConfig(channel.config, encryptor),
-          enabled: channel.enabled ?? true
-        })),
-        tx
-      );
-
-      await alarmRecipientDAL.insertMany(
-        dto.recipients.map((recipient) => ({
-          alarmId: created.id,
-          principalType: recipient.principalType,
-          principalId: recipient.principalId
-        })),
+      await alarmChannelMembershipDAL.insertMany(
+        [...new Set(dto.channelIds)].map((channelId) => ({ alarmId: created.id, channelId })),
         tx
       );
 
@@ -411,29 +214,15 @@ export const alarmServiceFactory = ({
     });
     if (alarms.length === 0) return [];
 
-    const alarmIds = alarms.map((alarm) => alarm.id);
-    const [channels, recipients, { decryptor }] = await Promise.all([
-      alarmChannelDAL.findByAlarmIds(alarmIds),
-      alarmRecipientDAL.findByAlarmIds(alarmIds),
-      getAlarmChannelCipher(kmsService, { orgId: dto.actorOrgId, projectId: dto.projectId ?? null })
-    ]);
-
+    const channels = await alarmChannelDAL.findByAlarmIds(alarms.map((alarm) => alarm.id));
     const channelsByAlarm = new Map<string, TAlarmChannels[]>();
     channels.forEach((channel) => {
       const list = channelsByAlarm.get(channel.alarmId) ?? [];
       list.push(channel);
       channelsByAlarm.set(channel.alarmId, list);
     });
-    const recipientsByAlarm = new Map<string, TAlarmRecipients[]>();
-    recipients.forEach((recipient) => {
-      const list = recipientsByAlarm.get(recipient.alarmId) ?? [];
-      list.push(recipient);
-      recipientsByAlarm.set(recipient.alarmId, list);
-    });
 
-    return alarms.map((alarm) =>
-      $buildResponse(alarm, channelsByAlarm.get(alarm.id) ?? [], recipientsByAlarm.get(alarm.id) ?? [], decryptor)
-    );
+    return alarms.map((alarm) => $buildResponse(alarm, channelsByAlarm.get(alarm.id) ?? []));
   };
 
   const updateAlarm = async (dto: TUpdateAlarmDTO): Promise<TAlarmResponse> => {
@@ -441,7 +230,6 @@ export const alarmServiceFactory = ({
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${dto.alarmId}' not found` });
 
     const provider = $getProvider(alarm.resourceType);
-
     await provider.assertPermission({
       action: AlarmPermissionAction.Edit,
       orgId: alarm.orgId,
@@ -455,38 +243,12 @@ export const alarmServiceFactory = ({
       }
     });
 
-    const { encryptor, decryptor } = await getAlarmChannelCipher(kmsService, {
-      orgId: alarm.orgId,
-      projectId: alarm.projectId
-    });
-
-    $validate(provider, { condition: dto.condition, recipients: dto.recipients });
-    if (dto.recipients) await $validateRecipients(alarm.orgId, alarm.projectId, dto.recipients);
+    if (dto.condition !== undefined) $validate(provider, { condition: dto.condition });
+    if (dto.channelIds !== undefined) {
+      await $resolveChannelsInScope(dto.channelIds, { orgId: alarm.orgId, projectId: alarm.projectId });
+    }
 
     await alarmDAL.transaction(async (tx) => {
-      const existingChannels = dto.channels ? await alarmChannelDAL.findByAlarmId(alarm.id, tx) : [];
-      const existingChannelById = new Map(existingChannels.map((channel) => [channel.id, channel]));
-
-      let resolvedChannels: TAlarmChannelInput[] | undefined;
-      if (dto.channels) {
-        resolvedChannels = dto.channels.map((channel) => {
-          const existing = channel.id ? existingChannelById.get(channel.id) : undefined;
-          if (!existing || existing.channelType !== channel.channelType) return channel;
-          const existingConfig = decryptChannelConfig<Record<string, unknown>>(existing.encryptedConfig, decryptor);
-          return {
-            ...channel,
-            config: $preserveChannelSecrets(
-              channel.channelType,
-              channel.config as Record<string, unknown>,
-              existingConfig
-            )
-          };
-        });
-
-        const effectiveRecipients = dto.recipients ?? (await alarmRecipientDAL.findByAlarmId(alarm.id, tx));
-        $validate(provider, { channels: resolvedChannels, recipients: effectiveRecipients });
-      }
-
       await alarmDAL.updateById(
         alarm.id,
         {
@@ -501,40 +263,10 @@ export const alarmServiceFactory = ({
         tx
       );
 
-      if (resolvedChannels) {
-        const keptIds = new Set<string>();
-        const toInsert: TAlarmChannelsInsert[] = [];
-
-        for (const channel of resolvedChannels) {
-          const existing = channel.id ? existingChannelById.get(channel.id) : undefined;
-          const encryptedConfig = encryptChannelConfig(channel.config, encryptor);
-          if (existing && existing.channelType === channel.channelType) {
-            keptIds.add(existing.id);
-            // eslint-disable-next-line no-await-in-loop
-            await alarmChannelDAL.updateById(existing.id, { encryptedConfig, enabled: channel.enabled ?? true }, tx);
-          } else {
-            toInsert.push({
-              alarmId: alarm.id,
-              channelType: channel.channelType,
-              encryptedConfig,
-              enabled: channel.enabled ?? true
-            });
-          }
-        }
-
-        const idsToDelete = existingChannels.filter((channel) => !keptIds.has(channel.id)).map((channel) => channel.id);
-        if (idsToDelete.length) await alarmChannelDAL.delete({ $in: { id: idsToDelete } }, tx);
-        if (toInsert.length) await alarmChannelDAL.insertMany(toInsert, tx);
-      }
-
-      if (dto.recipients) {
-        await alarmRecipientDAL.deleteByAlarmId(alarm.id, tx);
-        await alarmRecipientDAL.insertMany(
-          dto.recipients.map((recipient) => ({
-            alarmId: alarm.id,
-            principalType: recipient.principalType,
-            principalId: recipient.principalId
-          })),
+      if (dto.channelIds !== undefined) {
+        await alarmChannelMembershipDAL.deleteByAlarmId(alarm.id, tx);
+        await alarmChannelMembershipDAL.insertMany(
+          [...new Set(dto.channelIds)].map((channelId) => ({ alarmId: alarm.id, channelId })),
           tx
         );
       }
@@ -565,11 +297,5 @@ export const alarmServiceFactory = ({
     return { id: alarm.id };
   };
 
-  return {
-    createAlarm,
-    getAlarmById,
-    listAlarms,
-    updateAlarm,
-    deleteAlarm
-  };
+  return { createAlarm, getAlarmById, listAlarms, updateAlarm, deleteAlarm };
 };

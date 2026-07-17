@@ -8,10 +8,10 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { decryptChannelConfig, getAlarmChannelCipher } from "./alarm-channel-crypto-fns";
 import { TAlarmChannelDALFactory } from "./alarm-channel-dal";
+import { TAlarmChannelRecipientDALFactory } from "./alarm-channel-recipient-dal";
 import { AlarmChannelType, TAlarmChannelDeps, TAlarmRecipient } from "./alarm-channel-types";
 import { TAlarmHistoryDALFactory } from "./alarm-history-dal";
 import { TAlarmProviderRegistry } from "./alarm-provider-registry";
-import { TAlarmRecipientDALFactory } from "./alarm-recipient-dal";
 import { TAlarmRecipientResolver } from "./alarm-recipient-resolver";
 import { AlarmRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, TAlarmContext } from "./alarm-types";
 import { ALARM_CHANNEL_REGISTRY } from "./channels/alarm-channel-registry";
@@ -20,7 +20,7 @@ const FAILURE_NOTIFICATION_MAX_ERROR_LENGTH = 200;
 
 export type TAlarmEngineDep = {
   alarmChannelDAL: Pick<TAlarmChannelDALFactory, "findByAlarmId">;
-  alarmRecipientDAL: Pick<TAlarmRecipientDALFactory, "findByAlarmId">;
+  alarmChannelRecipientDAL: Pick<TAlarmChannelRecipientDALFactory, "findByChannelIds">;
   alarmHistoryDAL: Pick<TAlarmHistoryDALFactory, "createWithTargets" | "findRecentlyAlarmedTargets">;
   alarmProviderRegistry: TAlarmProviderRegistry;
   alarmRecipientResolver: TAlarmRecipientResolver;
@@ -34,7 +34,7 @@ export type TAlarmEngine = ReturnType<typeof alarmEngineFactory>;
 
 export const alarmEngineFactory = ({
   alarmChannelDAL,
-  alarmRecipientDAL,
+  alarmChannelRecipientDAL,
   alarmHistoryDAL,
   alarmProviderRegistry,
   alarmRecipientResolver,
@@ -129,12 +129,23 @@ export const alarmEngineFactory = ({
       projectId: alarm.projectId
     });
 
-    const hasDirectedChannel = channelWork.some(
-      (work) => ALARM_CHANNEL_REGISTRY[work.channel.channelType as AlarmChannelType]?.directed
-    );
-    let recipients: TAlarmRecipient[] = [];
-    if (hasDirectedChannel) {
-      recipients = await alarmRecipientResolver.resolve(await alarmRecipientDAL.findByAlarmId(alarm.id));
+    const directedChannelIds = channelWork
+      .filter((work) => ALARM_CHANNEL_REGISTRY[work.channel.channelType as AlarmChannelType]?.directed)
+      .map((work) => work.channel.id);
+    const recipientsByChannel = new Map<string, TAlarmRecipient[]>();
+    if (directedChannelIds.length) {
+      const recipientRows = await alarmChannelRecipientDAL.findByChannelIds(directedChannelIds);
+      const rowsByChannel = new Map<string, { principalType: string; principalId: string }[]>();
+      recipientRows.forEach((row) => {
+        const list = rowsByChannel.get(row.channelId) ?? [];
+        list.push(row);
+        rowsByChannel.set(row.channelId, list);
+      });
+      await Promise.all(
+        [...rowsByChannel.entries()].map(async ([channelId, rows]) => {
+          recipientsByChannel.set(channelId, await alarmRecipientResolver.resolve(rows));
+        })
+      );
     }
 
     const deps: TAlarmChannelDeps = { smtpService };
@@ -158,6 +169,7 @@ export const alarmEngineFactory = ({
 
         try {
           if (definition.directed) {
+            const recipients = recipientsByChannel.get(channel.id) ?? [];
             if (recipients.length === 0) {
               return { ...base, success: false, error: "No recipients could be resolved for this channel" };
             }

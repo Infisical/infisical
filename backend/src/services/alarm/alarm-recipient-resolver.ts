@@ -1,4 +1,3 @@
-import { TAlarmRecipients } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -11,10 +10,12 @@ type TAlarmRecipientResolverDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
 };
 
+type TResolvableRecipient = { principalType: string; principalId: string };
+
 export type TAlarmRecipientResolver = ReturnType<typeof alarmRecipientResolverFactory>;
 
 export const alarmRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL }: TAlarmRecipientResolverDep) => {
-  const resolve = async (recipients: TAlarmRecipients[]): Promise<TAlarmRecipient[]> => {
+  const resolve = async (recipients: TResolvableRecipient[]): Promise<TAlarmRecipient[]> => {
     const userIds = new Set<string>();
     const groupIds = new Set<string>();
     const rawEmails = new Set<string>();

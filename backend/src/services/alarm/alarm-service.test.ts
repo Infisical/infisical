@@ -3,23 +3,35 @@ import { z } from "zod";
 import { AlarmChannelType, TAlarmPayload } from "./alarm-channel-types";
 import { alarmProviderRegistryFactory } from "./alarm-provider-registry";
 import { alarmServiceFactory, TAlarmServiceFactoryDep } from "./alarm-service";
-import { AlarmPrincipalType, IResourceAlarmProvider, TAlarmPermissionInput } from "./alarm-types";
+import { IResourceAlarmProvider, TAlarmPermissionInput } from "./alarm-types";
 
 const RESOURCE_TYPE = "test.resource";
 
-// Identity cipher: encryptedConfig is just JSON bytes of the config.
-const kmsServiceMock = {
-  createCipherPairWithDataKey: async () => ({
-    encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
-    decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
-  })
+type TChannelRow = {
+  id: string;
+  name: string;
+  channelType: AlarmChannelType;
+  enabled: boolean;
+  orgId: string;
+  projectId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
-const encConfig = (config: unknown) => Buffer.from(JSON.stringify(config));
+
+const channelRow = (over: Partial<TChannelRow> & { id: string; channelType: AlarmChannelType }): TChannelRow => ({
+  name: over.id,
+  enabled: true,
+  orgId: "org-1",
+  projectId: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...over
+});
 
 const buildService = (opts?: {
   assertPermission?: (input: TAlarmPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
-  rejectRecipients?: boolean;
+  channels?: TChannelRow[];
 }) => {
   const permissionCalls: TAlarmPermissionInput[] = [];
   const provider: IResourceAlarmProvider = {
@@ -35,17 +47,21 @@ const buildService = (opts?: {
       if (opts?.assertPermission) await opts.assertPermission(input);
     },
     assertResourceInScope: async (input) => {
-      // Mirror the real contract: no-op when there is no resource to bind-check.
       if (input.resourceId && opts?.resourceScopeThrows) throw new Error("resource out of scope");
     }
   };
   const registry = alarmProviderRegistryFactory();
   registry.register(provider);
 
+  const channelStore = new Map<string, TChannelRow>();
+  (opts?.channels ?? []).forEach((c) => channelStore.set(c.id, c));
+
   const alarms = new Map<string, Record<string, unknown>>();
-  const channels = new Map<string, Array<Record<string, unknown>>>();
-  const recipients = new Map<string, Array<Record<string, unknown>>>();
+  const memberships = new Map<string, string[]>(); // alarmId -> channelIds
   const findFilters: Array<Record<string, unknown>> = [];
+
+  const inScope = (c: TChannelRow, scope: { orgId: string; projectId?: string | null }) =>
+    c.orgId === scope.orgId && (c.projectId ?? null) === (scope.projectId ?? null);
 
   const service = alarmServiceFactory({
     alarmDAL: {
@@ -66,10 +82,7 @@ const buildService = (opts?: {
       find: async (filter: Record<string, unknown>) => {
         findFilters.push(filter);
         return [...alarms.values()].filter((row) =>
-          Object.entries(filter).every(([key, value]) => {
-            if (value === undefined) return true;
-            return row[key] === value;
-          })
+          Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
         );
       },
       updateById: async (id: string, data: Record<string, unknown>) => {
@@ -79,72 +92,34 @@ const buildService = (opts?: {
       deleteById: async (id: string) => alarms.delete(id)
     },
     alarmChannelDAL: {
-      insertMany: async (data: Array<Record<string, unknown>>) => {
-        const withMeta = data.map((c, i) => ({ id: `c${i}`, createdAt: new Date(), updatedAt: new Date(), ...c }));
-        channels.set(data[0].alarmId as string, [...(channels.get(data[0].alarmId as string) ?? []), ...withMeta]);
-        return withMeta;
-      },
-      findByAlarmId: async (alarmId: string) => channels.get(alarmId) ?? [],
-      findByAlarmIds: async (alarmIds: string[]) => alarmIds.flatMap((alarmId) => channels.get(alarmId) ?? []),
-      updateById: async (id: string, data: Record<string, unknown>) => {
-        for (const [alarmId, rows] of channels) {
-          const idx = rows.findIndex((c) => c.id === id);
-          if (idx >= 0) {
-            rows[idx] = { ...rows[idx], ...data, updatedAt: new Date() };
-            channels.set(alarmId, rows);
-            return rows[idx];
-          }
-        }
-        return undefined;
-      },
-      delete: async (filter: { $in?: { id?: string[] } }) => {
-        const ids = new Set(filter.$in?.id ?? []);
-        for (const [alarmId, rows] of channels) {
-          channels.set(
-            alarmId,
-            rows.filter((c) => !ids.has(c.id as string))
-          );
-        }
-        return [];
-      }
+      findByIdsInScope: async (ids: string[], scope: { orgId: string; projectId?: string | null }) =>
+        ids.map((id) => channelStore.get(id)).filter((c): c is TChannelRow => Boolean(c) && inScope(c!, scope)),
+      findByAlarmId: async (alarmId: string) =>
+        (memberships.get(alarmId) ?? []).map((id) => channelStore.get(id)).filter(Boolean),
+      findByAlarmIds: async (alarmIds: string[]) =>
+        alarmIds.flatMap((alarmId) =>
+          (memberships.get(alarmId) ?? [])
+            .map((id) => channelStore.get(id))
+            .filter(Boolean)
+            .map((c) => ({ ...(c as TChannelRow), alarmId }))
+        )
     },
-    alarmRecipientDAL: {
-      insertMany: async (data: Array<Record<string, unknown>>) => {
-        recipients.set(data[0].alarmId as string, data);
+    alarmChannelMembershipDAL: {
+      insertMany: async (data: Array<{ alarmId: string; channelId: string }>) => {
+        data.forEach(({ alarmId, channelId }) =>
+          memberships.set(alarmId, [...(memberships.get(alarmId) ?? []), channelId])
+        );
         return data;
       },
-      findByAlarmId: async (alarmId: string) => recipients.get(alarmId) ?? [],
-      findByAlarmIds: async (alarmIds: string[]) => alarmIds.flatMap((alarmId) => recipients.get(alarmId) ?? []),
       deleteByAlarmId: async (alarmId: string) => {
-        recipients.delete(alarmId);
+        memberships.delete(alarmId);
         return 0;
       }
     },
-    alarmProviderRegistry: registry,
-    kmsService: kmsServiceMock,
-    orgDAL: {
-      findMembership: async (filter: { $in?: { actorUserId?: string[] } }) =>
-        opts?.rejectRecipients ? [] : (filter.$in?.actorUserId ?? []).map((actorUserId) => ({ actorUserId }))
-    },
-    projectDAL: {
-      findEffectiveProjectSubjectsMembership: async ({
-        userIds,
-        groupIds
-      }: {
-        userIds: string[];
-        groupIds: string[];
-      }) =>
-        opts?.rejectRecipients
-          ? { effectiveUserIds: [], effectiveGroupIds: [] }
-          : { effectiveUserIds: userIds, effectiveGroupIds: groupIds }
-    },
-    groupDAL: {
-      find: async (filter: { $in?: { id?: string[] } }) =>
-        opts?.rejectRecipients ? [] : (filter.$in?.id ?? []).map((id) => ({ id }))
-    }
+    alarmProviderRegistry: registry
   } as unknown as TAlarmServiceFactoryDep);
 
-  return { service, permissionCalls, alarms, channels, recipients, findFilters };
+  return { service, permissionCalls, alarms, memberships, channelStore, findFilters };
 };
 
 const actor = {
@@ -154,70 +129,71 @@ const actor = {
   actorOrgId: "org-1"
 };
 
+const orgChannels: TChannelRow[] = [
+  channelRow({ id: "ch-email", channelType: AlarmChannelType.EMAIL }),
+  channelRow({ id: "ch-webhook", channelType: AlarmChannelType.WEBHOOK })
+];
+
 const validCreate = {
   name: "test-alarm",
   resourceType: RESOURCE_TYPE,
   eventType: "test.resource.expiration",
   condition: { alertBefore: "30d" },
-  recipients: [{ principalType: AlarmPrincipalType.USER, principalId: "user-1" }],
-  channels: [
-    { channelType: AlarmChannelType.EMAIL, config: {} },
-    { channelType: AlarmChannelType.WEBHOOK, config: { url: "https://example.com/hook" } }
-  ],
+  channelIds: ["ch-email", "ch-webhook"],
   ...actor
 };
 
 describe("alarm service", () => {
-  test("creates an alarm, persists channels + recipients, and checks Create permission", async () => {
-    const { service, permissionCalls } = buildService();
+  test("creates an alarm, attaches channels, and checks Create permission", async () => {
+    const { service, permissionCalls, memberships } = buildService({ channels: orgChannels });
     const alarm = await service.createAlarm(validCreate);
 
     expect(alarm.id).toBe("alarm-1");
     expect(alarm.orgId).toBe("org-1");
-    expect(alarm.channels).toHaveLength(2);
-    expect(alarm.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
+    expect(alarm.channels.map((c) => c.id).sort()).toEqual(["ch-email", "ch-webhook"]);
+    expect(alarm.channels.find((c) => c.id === "ch-email")?.directed).toBe(true);
+    expect(alarm.channels.find((c) => c.id === "ch-webhook")?.directed).toBe(false);
+    expect(memberships.get("alarm-1")?.sort()).toEqual(["ch-email", "ch-webhook"]);
     expect(permissionCalls[0].action).toBe("create");
-    expect(permissionCalls[0].orgId).toBe("org-1");
   });
 
   test("rejects an unknown resource type", async () => {
-    const { service } = buildService();
+    const { service } = buildService({ channels: orgChannels });
     await expect(service.createAlarm({ ...validCreate, resourceType: "nope.unknown" })).rejects.toThrow();
   });
 
   test("runs the provider resource-scope check when resourceId is set", async () => {
-    const { service } = buildService({ resourceScopeThrows: true });
+    const { service } = buildService({ channels: orgChannels, resourceScopeThrows: true });
     await expect(service.createAlarm({ ...validCreate, resourceId: "foreign-resource" })).rejects.toThrow(
       "resource out of scope"
     );
   });
 
   test("skips the resource-scope check for a filter-based alarm (no resourceId)", async () => {
-    const { service } = buildService({ resourceScopeThrows: true });
-    // No resourceId, so the scope check must not run and creation succeeds.
+    const { service } = buildService({ channels: orgChannels, resourceScopeThrows: true });
     await expect(service.createAlarm(validCreate)).resolves.toBeDefined();
   });
 
   test("rejects a condition that fails the provider schema", async () => {
-    const { service } = buildService();
+    const { service } = buildService({ channels: orgChannels });
     await expect(service.createAlarm({ ...validCreate, condition: { wrong: 1 } })).rejects.toThrow();
   });
 
   test("rejects a create with no condition when the provider requires one", async () => {
-    const { service } = buildService();
-    // Omitted condition must be caught at create time (400), not stored as null and thrown at cron time.
+    const { service } = buildService({ channels: orgChannels });
     await expect(service.createAlarm({ ...validCreate, condition: undefined })).rejects.toThrow(
       /Invalid alarm condition/
     );
   });
 
   test("rejects an event type the provider does not support", async () => {
-    const { service } = buildService();
+    const { service } = buildService({ channels: orgChannels });
     await expect(service.createAlarm({ ...validCreate, eventType: "test.resource.renewal" })).rejects.toThrow();
   });
 
   test("propagates a permission denial from the provider", async () => {
     const { service } = buildService({
+      channels: orgChannels,
       assertPermission: async () => {
         throw new Error("forbidden");
       }
@@ -225,95 +201,20 @@ describe("alarm service", () => {
     await expect(service.createAlarm(validCreate)).rejects.toThrow("forbidden");
   });
 
-  test("rejects recipients that do not belong to the scope", async () => {
-    const { service } = buildService({ rejectRecipients: true });
-    await expect(service.createAlarm(validCreate)).rejects.toThrow(/not members of the organization/);
+  test("rejects channel ids that are not in the alarm's scope", async () => {
+    // The channel exists but belongs to a different project, so it must not be attachable here.
+    const foreign = channelRow({ id: "ch-foreign", channelType: AlarmChannelType.WEBHOOK, projectId: "other" });
+    const { service } = buildService({ channels: [...orgChannels, foreign] });
+    await expect(service.createAlarm({ ...validCreate, channelIds: ["ch-foreign"] })).rejects.toThrow(
+      /not found in this scope/
+    );
   });
 
-  test("accepts EMAIL recipients without a membership check", async () => {
-    // rejectRecipients makes every user/group lookup come back empty; an email-only alarm must
-    // still succeed because raw addresses are not validated against the org/project.
-    const { service } = buildService({ rejectRecipients: true });
-    const alarm = await service.createAlarm({
-      ...validCreate,
-      recipients: [{ principalType: AlarmPrincipalType.EMAIL, principalId: "ops@example.com" }]
-    });
-    expect(alarm.recipients).toEqual([{ principalType: "email", principalId: "ops@example.com" }]);
-  });
-
-  test("redacts the webhook signing secret on read", async () => {
-    const { service, alarms, channels } = buildService();
-    alarms.set("alarm-1", {
-      id: "alarm-1",
-      name: "wh",
-      resourceType: RESOURCE_TYPE,
-      resourceId: null,
-      eventType: "test.resource.expiration",
-      condition: null,
-      filters: null,
-      enabled: true,
-      orgId: "org-1",
-      projectId: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    channels.set("alarm-1", [
-      {
-        id: "c0",
-        channelType: AlarmChannelType.WEBHOOK,
-        encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" }),
-        enabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
-
-    const alarm = await service.getAlarmById({ alarmId: "alarm-1", ...actor });
-    expect(alarm.channels[0].config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
-    expect(alarm.channels[0].config).not.toHaveProperty("signingSecret");
-  });
-
-  test("redacts the Slack webhook URL and PagerDuty integration key on read", async () => {
-    const { service, alarms, channels } = buildService();
-    alarms.set("alarm-1", {
-      id: "alarm-1",
-      name: "creds",
-      resourceType: RESOURCE_TYPE,
-      resourceId: null,
-      eventType: "test.resource.expiration",
-      condition: null,
-      filters: null,
-      enabled: true,
-      orgId: "org-1",
-      projectId: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    channels.set("alarm-1", [
-      {
-        id: "c0",
-        channelType: AlarmChannelType.SLACK,
-        encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/T/B/xxx" }),
-        enabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: "c1",
-        channelType: AlarmChannelType.PAGERDUTY,
-        encryptedConfig: encConfig({ integrationKey: "a".repeat(32) }),
-        enabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
-
-    const alarm = await service.getAlarmById({ alarmId: "alarm-1", ...actor });
-
-    expect(alarm.channels[0].config).toEqual({ hasWebhookUrl: true });
-    expect(alarm.channels[0].config).not.toHaveProperty("webhookUrl");
-    expect(alarm.channels[1].config).toEqual({ hasIntegrationKey: true });
-    expect(alarm.channels[1].config).not.toHaveProperty("integrationKey");
+  test("rejects an empty channel list", async () => {
+    const { service } = buildService({ channels: orgChannels });
+    await expect(service.createAlarm({ ...validCreate, channelIds: [] })).rejects.toThrow(
+      "At least one channel is required"
+    );
   });
 
   const listBase = {
@@ -329,7 +230,7 @@ describe("alarm service", () => {
   };
 
   test("org-scoped list returns only org-level alarms, never other projects'", async () => {
-    const { service, alarms, findFilters } = buildService();
+    const { service, alarms, findFilters } = buildService({ channels: orgChannels });
     alarms.set("org-alarm", { id: "org-alarm", name: "org", projectId: null, ...listBase });
     alarms.set("proj-alarm", { id: "proj-alarm", name: "proj", projectId: "proj-x", ...listBase });
 
@@ -340,7 +241,7 @@ describe("alarm service", () => {
   });
 
   test("project-scoped list filters to the requested project", async () => {
-    const { service, alarms, findFilters } = buildService();
+    const { service, alarms, findFilters } = buildService({ channels: orgChannels });
     alarms.set("org-alarm", { id: "org-alarm", name: "org", projectId: null, ...listBase });
     alarms.set("proj-alarm", { id: "proj-alarm", name: "proj", projectId: "proj-x", ...listBase });
 
@@ -350,134 +251,28 @@ describe("alarm service", () => {
     expect(findFilters[0]).toMatchObject({ projectId: "proj-x" });
   });
 
-  const seedAlarmWithChannel = (
-    channelType: AlarmChannelType,
-    config: unknown,
-    channelId = "c0"
-  ): ReturnType<typeof buildService> => {
-    const built = buildService();
-    built.alarms.set("alarm-1", {
-      id: "alarm-1",
-      name: "a",
-      resourceType: RESOURCE_TYPE,
-      resourceId: null,
-      eventType: "test.resource.expiration",
-      condition: null,
-      filters: null,
-      enabled: true,
-      orgId: "org-1",
-      projectId: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-    built.channels.set("alarm-1", [
-      {
-        id: channelId,
-        channelType,
-        encryptedConfig: encConfig(config),
-        enabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
-    return built;
-  };
+  test("update replaces the alarm's attached channels", async () => {
+    const { service, memberships } = buildService({ channels: orgChannels });
+    await service.createAlarm(validCreate);
+    expect(memberships.get("alarm-1")?.sort()).toEqual(["ch-email", "ch-webhook"]);
 
-  test("preserves an unresent webhook signing secret when a channel is edited by id", async () => {
-    const { service } = seedAlarmWithChannel(AlarmChannelType.WEBHOOK, {
-      url: "https://example.com/hook",
-      signingSecret: "s3cr3t"
-    });
+    const updated = await service.updateAlarm({ alarmId: "alarm-1", channelIds: ["ch-webhook"], ...actor });
 
-    const updated = await service.updateAlarm({
-      alarmId: "alarm-1",
-      channels: [{ id: "c0", channelType: AlarmChannelType.WEBHOOK, config: { url: "https://example.com/hook" } }],
-      ...actor
-    });
-
-    expect(updated.channels[0].config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
+    expect(updated.channels.map((c) => c.id)).toEqual(["ch-webhook"]);
+    expect(memberships.get("alarm-1")).toEqual(["ch-webhook"]);
   });
 
-  test("preserves an unresent Slack webhook URL when a channel is edited by id", async () => {
-    const { service } = seedAlarmWithChannel(AlarmChannelType.SLACK, {
-      webhookUrl: "https://hooks.slack.com/services/T/B/xxx"
-    });
-
-    const updated = await service.updateAlarm({
-      alarmId: "alarm-1",
-      channels: [{ id: "c0", channelType: AlarmChannelType.SLACK, config: {} }],
-      ...actor
-    });
-
-    expect(updated.channels[0].config).toEqual({ hasWebhookUrl: true });
-  });
-
-  test("preserves the channel id when an existing channel is edited so dedup history stays intact", async () => {
-    const { service, channels } = seedAlarmWithChannel(AlarmChannelType.WEBHOOK, {
-      url: "https://example.com/hook"
-    });
-
-    const updated = await service.updateAlarm({
-      alarmId: "alarm-1",
-      channels: [
-        { id: "c0", channelType: AlarmChannelType.WEBHOOK, config: { url: "https://example.com/hook" }, enabled: false }
-      ],
-      ...actor
-    });
-
-    // The channel must keep its original id (not be deleted + recreated with a fresh UUID), otherwise
-    // alarm_history_target.channelId would no longer match and per-channel dedup would reset.
-    expect(updated.channels[0].id).toBe("c0");
-    expect(updated.channels[0].enabled).toBe(false);
-    expect((channels.get("alarm-1") ?? []).map((c) => c.id)).toEqual(["c0"]);
-  });
-
-  test("does not fabricate a secret for a newly added channel (no id)", async () => {
-    const { service } = seedAlarmWithChannel(AlarmChannelType.WEBHOOK, {
-      url: "https://old.example.com/hook",
-      signingSecret: "s3cr3t"
-    });
-
-    const updated = await service.updateAlarm({
-      alarmId: "alarm-1",
-      channels: [{ channelType: AlarmChannelType.WEBHOOK, config: { url: "https://new.example.com/hook" } }],
-      ...actor
-    });
-
-    expect(updated.channels[0].config).toEqual({ url: "https://new.example.com/hook", hasSigningSecret: false });
-  });
-
-  test("allows a channel-only update of an email alarm using its existing recipients", async () => {
-    const { service, recipients } = seedAlarmWithChannel(AlarmChannelType.EMAIL, {});
-    recipients.set("alarm-1", [{ principalType: AlarmPrincipalType.USER, principalId: "user-1" }]);
-
-    // No recipients in the update, but the alarm already has one; the directed-channel requirement
-    // must be satisfied by the existing recipients rather than rejecting the edit.
-    const updated = await service.updateAlarm({
-      alarmId: "alarm-1",
-      name: "renamed",
-      channels: [{ id: "c0", channelType: AlarmChannelType.EMAIL, config: {} }],
-      ...actor
-    });
-
-    expect(updated.name).toBe("renamed");
-    expect(updated.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
-  });
-
-  test("still rejects an email channel when the alarm has no recipients", async () => {
-    const { service } = seedAlarmWithChannel(AlarmChannelType.EMAIL, {});
-
-    await expect(
-      service.updateAlarm({
-        alarmId: "alarm-1",
-        channels: [{ id: "c0", channelType: AlarmChannelType.EMAIL, config: {} }],
-        ...actor
-      })
-    ).rejects.toThrow("At least one recipient is required");
+  test("update rejects a channel id outside the alarm's scope", async () => {
+    const foreign = channelRow({ id: "ch-foreign", channelType: AlarmChannelType.WEBHOOK, projectId: "other" });
+    const { service } = buildService({ channels: [...orgChannels, foreign] });
+    await service.createAlarm(validCreate);
+    await expect(service.updateAlarm({ alarmId: "alarm-1", channelIds: ["ch-foreign"], ...actor })).rejects.toThrow(
+      /not found in this scope/
+    );
   });
 
   test("deletes an alarm after checking Delete permission", async () => {
-    const { service, permissionCalls } = buildService();
+    const { service, permissionCalls } = buildService({ channels: orgChannels });
     await service.createAlarm(validCreate);
     const result = await service.deleteAlarm({ alarmId: "alarm-1", ...actor });
     expect(result.id).toBe("alarm-1");

@@ -30,23 +30,17 @@ import {
   ALARM_EVENT_TYPE_LABELS,
   ALARM_RESOURCE_TYPE_LABELS,
   ALARM_TIME_UNIT_LABELS,
-  AlarmChannelType,
   AlarmEventType,
   alarmFormSchema,
   AlarmResourceType,
   AlarmTimeUnit,
   TAlarm,
-  TAlarmChannelInput,
   TAlarmForm,
-  TAlarmRecipient,
   useCreateAlarm,
   useUpdateAlarm
 } from "@app/hooks/api/alarms";
 
-import { AlarmChannelsField } from "./AlarmChannelsField";
-
-const RESOURCE_TYPE_VALUE = AlarmResourceType.IdentityCredential;
-const EVENT_TYPE_VALUE = AlarmEventType.IdentityCredentialExpiry;
+import { AttachChannelsField } from "./AttachChannelsField";
 
 type Props = {
   projectId?: string;
@@ -83,118 +77,31 @@ const parseAlertBefore = (alertBefore?: string): { value: number; unit: AlarmTim
   return { value: 7, unit: AlarmTimeUnit.Days };
 };
 
-const buildChannelsPayload = (channels: TAlarmForm["channels"]): TAlarmChannelInput[] =>
-  channels.map((channel) => {
-    const id = channel.id ? { id: channel.id } : {};
-    switch (channel.channelType) {
-      case AlarmChannelType.Slack:
-        return {
-          ...id,
-          channelType: AlarmChannelType.Slack,
-          config: channel.config.webhookUrl ? { webhookUrl: channel.config.webhookUrl } : {},
-          enabled: channel.enabled
-        };
-      case AlarmChannelType.Webhook: {
-        const config: Record<string, unknown> = { url: channel.config.url };
-        if (channel.config.signingSecret) config.signingSecret = channel.config.signingSecret;
-        return { ...id, channelType: AlarmChannelType.Webhook, config, enabled: channel.enabled };
-      }
-      case AlarmChannelType.PagerDuty:
-        return {
-          ...id,
-          channelType: AlarmChannelType.PagerDuty,
-          config: channel.config.integrationKey
-            ? { integrationKey: channel.config.integrationKey }
-            : {},
-          enabled: channel.enabled
-        };
-      case AlarmChannelType.Email:
-      default:
-        return { ...id, channelType: AlarmChannelType.Email, config: {}, enabled: channel.enabled };
-    }
-  });
-
-const buildRecipientsPayload = (channels: TAlarmForm["channels"]): TAlarmRecipient[] => {
-  const seen = new Set<string>();
-  const recipients: TAlarmRecipient[] = [];
-  channels.forEach((channel) => {
-    if (channel.channelType === AlarmChannelType.Email) {
-      channel.config.recipients.forEach(({ principalType, principalId }) => {
-        const key = `${principalType}:${principalId}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          recipients.push({ principalType, principalId });
-        }
-      });
-    }
-  });
-  return recipients;
-};
-
 const buildFormDefaults = (alarm?: TAlarm): TAlarmForm => {
   if (!alarm) {
     return {
       name: "",
       description: "",
+      resourceType: AlarmResourceType.IdentityCredential,
+      eventType: AlarmEventType.IdentityCredentialExpiry,
       alertBeforeValue: 7,
       alertBeforeUnit: AlarmTimeUnit.Days,
       enabled: true,
-      channels: []
+      channelIds: []
     };
   }
-
-  const emailRecipients = alarm.recipients.map((recipient) => ({
-    principalType: recipient.principalType,
-    principalId: recipient.principalId,
-    label: recipient.principalId
-  }));
-
-  const channels = alarm.channels
-    .map((channel) => {
-      switch (channel.channelType) {
-        case AlarmChannelType.Email:
-          return {
-            id: channel.id,
-            channelType: AlarmChannelType.Email,
-            config: { recipients: emailRecipients },
-            enabled: channel.enabled
-          };
-        case AlarmChannelType.Slack:
-          return {
-            id: channel.id,
-            channelType: AlarmChannelType.Slack,
-            config: { webhookUrl: "" },
-            enabled: channel.enabled
-          };
-        case AlarmChannelType.Webhook:
-          return {
-            id: channel.id,
-            channelType: AlarmChannelType.Webhook,
-            config: { url: (channel.config.url as string) ?? "", signingSecret: "" },
-            enabled: channel.enabled
-          };
-        case AlarmChannelType.PagerDuty:
-          return {
-            id: channel.id,
-            channelType: AlarmChannelType.PagerDuty,
-            config: { integrationKey: "" },
-            enabled: channel.enabled
-          };
-        default:
-          return null;
-      }
-    })
-    .filter(Boolean) as TAlarmForm["channels"];
 
   const { value, unit } = parseAlertBefore(alarm.condition?.alertBefore);
 
   return {
     name: alarm.name,
     description: alarm.description ?? "",
+    resourceType: (alarm.resourceType as AlarmResourceType) ?? AlarmResourceType.IdentityCredential,
+    eventType: (alarm.eventType as AlarmEventType) ?? AlarmEventType.IdentityCredentialExpiry,
     alertBeforeValue: value,
     alertBeforeUnit: unit,
     enabled: alarm.enabled,
-    channels
+    channelIds: alarm.channels.map((channel) => channel.id)
   };
 };
 
@@ -237,7 +144,7 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
     const alertBefore = `${data.alertBeforeValue}${data.alertBeforeUnit}`;
     try {
       if (isEditing && alarm) {
-        const channelsDirty = Boolean(dirtyFields.channels);
+        const channelsDirty = Boolean(dirtyFields.channelIds);
         await updateAlarm.mutateAsync({
           alarmId: alarm.id,
           projectId: alarm.projectId,
@@ -245,27 +152,21 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
           description: data.description || null,
           enabled: data.enabled,
           condition: { alertBefore },
-          ...(channelsDirty
-            ? {
-                channels: buildChannelsPayload(data.channels),
-                recipients: buildRecipientsPayload(data.channels)
-              }
-            : {})
+          ...(channelsDirty ? { channelIds: data.channelIds } : {})
         });
         createNotification({ text: "Successfully updated alarm", type: "success" });
       } else {
         await createAlarm.mutateAsync({
           name: data.name,
           description: data.description || undefined,
-          resourceType: RESOURCE_TYPE_VALUE,
+          resourceType: data.resourceType,
           resourceId: null,
-          eventType: EVENT_TYPE_VALUE,
+          eventType: data.eventType,
           condition: { alertBefore },
           filters: null,
           enabled: data.enabled,
           projectId: projectId ?? null,
-          recipients: buildRecipientsPayload(data.channels),
-          channels: buildChannelsPayload(data.channels)
+          channelIds: data.channelIds
         });
         createNotification({ text: "Successfully created alarm", type: "success" });
       }
@@ -322,15 +223,35 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
           <section className="flex flex-col gap-4">
             <SectionHeader step={2} title="Trigger" />
 
-            <FixedField label="Resource type">
-              <KeyRoundIcon className="size-5 text-blue-400" />
-              <div className="flex flex-col">
-                <span className="text-sm text-foreground">
-                  {ALARM_RESOURCE_TYPE_LABELS[RESOURCE_TYPE_VALUE]}
-                </span>
-                <span className="font-mono text-xs text-muted">{RESOURCE_TYPE_VALUE}</span>
-              </div>
-            </FixedField>
+            <Controller
+              control={control}
+              name="resourceType"
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel>Resource type</FieldLabel>
+                  <FieldContent>
+                    <Select value={value} onValueChange={onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {Object.values(AlarmResourceType).map((resourceType) => (
+                          <SelectItem key={resourceType} value={resourceType}>
+                            <span className="flex items-center gap-2">
+                              <KeyRoundIcon className="size-4 text-blue-400" />
+                              <span className="font-medium">
+                                {ALARM_RESOURCE_TYPE_LABELS[resourceType]}
+                              </span>
+                              <span className="font-mono text-xs text-muted">{resourceType}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              )}
+            />
 
             <FixedField label="Scope">
               <ScopeIcon className={`size-5 ${scopeColor}`} />
@@ -340,10 +261,34 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
               </div>
             </FixedField>
 
-            <FixedField label="Event">
-              <Badge variant="warning">{ALARM_EVENT_TYPE_LABELS[EVENT_TYPE_VALUE]}</Badge>
-              <span className="text-xs text-muted">Fires as the credential nears expiration</span>
-            </FixedField>
+            <Controller
+              control={control}
+              name="eventType"
+              render={({ field: { value, onChange } }) => (
+                <Field>
+                  <FieldLabel>Event</FieldLabel>
+                  <FieldContent>
+                    <Select value={value} onValueChange={onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {Object.values(AlarmEventType).map((eventType) => (
+                          <SelectItem key={eventType} value={eventType}>
+                            <span className="flex items-center gap-2">
+                              <Badge variant="warning">{ALARM_EVENT_TYPE_LABELS[eventType]}</Badge>
+                              <span className="text-mineshaft-300">
+                                Fires as the credential nears expiration
+                              </span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              )}
+            />
 
             <div className="flex flex-col gap-1.5">
               <FieldLabel>Condition</FieldLabel>
@@ -384,7 +329,7 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
 
           <section className="flex flex-col gap-4">
             <SectionHeader step={3} title="Delivery" />
-            <AlarmChannelsField />
+            <AttachChannelsField projectId={projectId} />
           </section>
         </div>
 

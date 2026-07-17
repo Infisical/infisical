@@ -11,10 +11,13 @@ import { TImmutableDBKeys } from "./models";
 
 export const AlarmChannelsSchema = z.object({
   id: z.string().uuid(),
-  alarmId: z.string().uuid(),
+  name: z.string(),
   channelType: z.string(),
   encryptedConfig: zodBuffer,
   enabled: z.boolean().default(true),
+  orgId: z.string().uuid(),
+  projectId: z.string().nullable().optional(),
+  createdByUserId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

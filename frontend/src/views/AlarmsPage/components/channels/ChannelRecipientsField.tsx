@@ -11,12 +11,8 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetOrganizationGroups, useGetOrgUsers } from "@app/hooks/api";
-import {
-  ALARM_PRINCIPAL_TYPE_LABELS,
-  AlarmPrincipalType,
-  TAlarmForm,
-  TAlarmRecipientForm
-} from "@app/hooks/api/alarms";
+import { TAlarmChannelForm, TAlarmChannelRecipientForm } from "@app/hooks/api/alarmChannels";
+import { ALARM_PRINCIPAL_TYPE_LABELS, AlarmPrincipalType } from "@app/hooks/api/alarms";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,16 +22,11 @@ type RecipientOption = {
   label: string;
 };
 
-type Props = {
-  index: number;
-};
-
-export const AlarmRecipientsField = ({ index }: Props) => {
-  const { control } = useFormContext<TAlarmForm>();
+export const ChannelRecipientsField = () => {
+  const { control } = useFormContext<TAlarmChannelForm>();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg.id;
 
-  // Only reveal the (potentially large) option list once the user starts typing.
   const [inputValue, setInputValue] = useState("");
 
   const { data: orgUsers = [] } = useGetOrgUsers(orgId);
@@ -72,7 +63,7 @@ export const AlarmRecipientsField = ({ index }: Props) => {
     [userOptions, groupOptions]
   );
 
-  const toOption = (recipient: TAlarmRecipientForm): RecipientOption => {
+  const toOption = (recipient: TAlarmChannelRecipientForm): RecipientOption => {
     if (recipient.principalType === AlarmPrincipalType.Email) {
       return {
         principalType: AlarmPrincipalType.Email,
@@ -91,9 +82,11 @@ export const AlarmRecipientsField = ({ index }: Props) => {
   return (
     <Controller
       control={control}
-      name={`channels.${index}.config.recipients`}
+      name="recipients"
       render={({ field, fieldState: { error } }) => {
-        const value = ((field.value as TAlarmRecipientForm[] | undefined) ?? []).map(toOption);
+        const value = ((field.value as TAlarmChannelRecipientForm[] | undefined) ?? []).map(
+          toOption
+        );
 
         return (
           <Field>
@@ -103,7 +96,6 @@ export const AlarmRecipientsField = ({ index }: Props) => {
                 isMulti
                 closeMenuOnSelect={false}
                 placeholder="Add users, groups, or type an email..."
-                // Hide the full list until the user types; keep it lightweight.
                 options={inputValue.trim() ? groupedOptions : []}
                 value={value}
                 isError={Boolean(error)}
@@ -140,7 +132,7 @@ export const AlarmRecipientsField = ({ index }: Props) => {
                 }}
               />
               <FieldDescription>
-                Email channels deliver to these recipients. Add org users, groups, or raw email
+                This channel delivers to these recipients. Add org users, groups, or raw email
                 addresses.
               </FieldDescription>
               <FieldError errors={[error]} />

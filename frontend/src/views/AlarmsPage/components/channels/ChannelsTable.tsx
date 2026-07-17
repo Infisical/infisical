@@ -27,84 +27,73 @@ import {
   TableRow
 } from "@app/components/v3";
 import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
-import { OrgPermissionIdentityActions } from "@app/context/OrgPermissionContext/types";
-import { ProjectPermissionIdentityActions } from "@app/context/ProjectPermissionContext/types";
+import { OrgPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
-import { AlarmResourceType, TAlarm, useListAlarms } from "@app/hooks/api/alarms";
+import { TAlarmChannel, useListAlarmChannels } from "@app/hooks/api/alarmChannels";
 
-import { AddAlarmModal } from "./AddAlarmModal";
-import { AlarmRow } from "./AlarmRow";
-import { DeleteAlarmModal } from "./DeleteAlarmModal";
+import { AddChannelModal } from "./AddChannelModal";
+import { ChannelRow } from "./ChannelRow";
+import { DeleteChannelModal } from "./DeleteChannelModal";
 
 type Props = {
   projectId?: string;
-  scopeName?: string;
 };
 
-export const AlarmsTable = ({ projectId, scopeName }: Props) => {
+export const ChannelsTable = ({ projectId }: Props) => {
   const isProjectView = Boolean(projectId);
   const scopeVariant = useScopeVariant();
 
-  const { isPending, data: allAlarms = [] } = useListAlarms({
-    resourceType: AlarmResourceType.IdentityCredential,
-    ...(projectId ? { projectId } : {})
-  });
+  const { isPending, data: allChannels = [] } = useListAlarmChannels(
+    projectId ? { projectId } : {}
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "addAlarm",
-    "editAlarm",
-    "deleteAlarm"
+    "addChannel",
+    "editChannel",
+    "deleteChannel"
   ] as const);
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
     initPerPage: 20
   });
 
-  const filteredAlarms = useMemo(
+  const filteredChannels = useMemo(
     () =>
-      allAlarms
-        .filter((alarm) => (projectId ? alarm.projectId === projectId : alarm.projectId === null))
-        .filter((alarm) => {
-          const value = search.trim().toLowerCase();
-          if (!value) return true;
-          return (
-            alarm.name.toLowerCase().includes(value) ||
-            (alarm.description ?? "").toLowerCase().includes(value)
-          );
-        }),
-    [allAlarms, projectId, search]
+      allChannels.filter((channel) => {
+        const value = search.trim().toLowerCase();
+        if (!value) return true;
+        return channel.name.toLowerCase().includes(value);
+      }),
+    [allChannels, search]
   );
 
-  useResetPageHelper({ totalCount: filteredAlarms.length, offset, setPage });
+  useResetPageHelper({ totalCount: filteredChannels.length, offset, setPage });
 
-  const visibleAlarms = filteredAlarms.slice(offset, perPage * page);
+  const visibleChannels = filteredChannels.slice(offset, perPage * page);
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Alarms</CardTitle>
+          <CardTitle>Channels</CardTitle>
           <CardDescription>
-            Configure notifications for resource events such as expiring identity credentials.
+            Reusable delivery destinations. Create a channel once, then attach it to any alarm.
           </CardDescription>
           <CardAction>
             <VariablePermissionCan
               type={isProjectView ? "project" : "org"}
-              I={
-                isProjectView
-                  ? ProjectPermissionIdentityActions.Edit
-                  : OrgPermissionIdentityActions.Edit
-              }
-              a={isProjectView ? ProjectPermissionSub.Identity : OrgPermissionSubjects.Identity}
+              I={isProjectView ? ProjectPermissionActions.Create : OrgPermissionActions.Create}
+              a={isProjectView ? ProjectPermissionSub.Settings : OrgPermissionSubjects.Settings}
             >
               {(isAllowed) => (
                 <Button
                   variant={scopeVariant}
-                  onClick={() => handlePopUpOpen("addAlarm")}
+                  onClick={() => handlePopUpOpen("addChannel")}
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  Add Alarm
+                  Add Channel
                 </Button>
               )}
             </VariablePermissionCan>
@@ -117,23 +106,25 @@ export const AlarmsTable = ({ projectId, scopeName }: Props) => {
                 <SearchIcon />
               </InputGroupAddon>
               <InputGroupInput
-                placeholder="Search alarms..."
+                placeholder="Search channels..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </InputGroup>
           </div>
           <div className="mt-4">
-            {!isPending && !filteredAlarms.length ? (
+            {!isPending && !filteredChannels.length ? (
               <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>
-                    {allAlarms.length ? "No alarms match search" : "No alarms have been configured"}
+                    {allChannels.length
+                      ? "No channels match search"
+                      : "No channels have been created"}
                   </EmptyTitle>
                   <EmptyDescription>
-                    {allAlarms.length
-                      ? "Adjust your search to view alarms."
-                      : "Add an alarm to start receiving notifications."}
+                    {allChannels.length
+                      ? "Adjust your search to view channels."
+                      : "Add a channel to route alarm notifications."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -143,11 +134,8 @@ export const AlarmsTable = ({ projectId, scopeName }: Props) => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Resource</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Condition</TableHead>
-                      <TableHead>Channels</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Used by</TableHead>
                       <TableHead className="w-5" />
                     </TableRow>
                   </TableHeader>
@@ -155,7 +143,7 @@ export const AlarmsTable = ({ projectId, scopeName }: Props) => {
                     {isPending &&
                       Array.from({ length: 5 }).map((_, i) => (
                         <TableRow key={`skeleton-${i + 1}`}>
-                          {Array.from({ length: 7 }).map((__, j) => (
+                          {Array.from({ length: 4 }).map((__, j) => (
                             <TableCell key={`skeleton-cell-${i + 1}-${j + 1}`}>
                               <Skeleton className="h-4 w-full" />
                             </TableCell>
@@ -163,19 +151,19 @@ export const AlarmsTable = ({ projectId, scopeName }: Props) => {
                         </TableRow>
                       ))}
                     {!isPending &&
-                      visibleAlarms.map((alarm) => (
-                        <AlarmRow
-                          key={alarm.id}
-                          alarm={alarm}
-                          onEdit={(data) => handlePopUpOpen("editAlarm", data)}
-                          onDelete={(data) => handlePopUpOpen("deleteAlarm", data)}
+                      visibleChannels.map((channel) => (
+                        <ChannelRow
+                          key={channel.id}
+                          channel={channel}
+                          onEdit={(data) => handlePopUpOpen("editChannel", data)}
+                          onDelete={(data) => handlePopUpOpen("deleteChannel", data)}
                         />
                       ))}
                   </TableBody>
                 </Table>
                 {!isPending && (
                   <Pagination
-                    count={filteredAlarms.length}
+                    count={filteredChannels.length}
                     page={page}
                     perPage={perPage}
                     onChangePage={setPage}
@@ -187,23 +175,21 @@ export const AlarmsTable = ({ projectId, scopeName }: Props) => {
           </div>
         </CardContent>
       </Card>
-      <AddAlarmModal
-        isOpen={popUp.addAlarm.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addAlarm", isOpen)}
+      <AddChannelModal
+        isOpen={popUp.addChannel.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("addChannel", isOpen)}
         projectId={projectId}
-        scopeName={scopeName}
       />
-      <AddAlarmModal
-        isOpen={popUp.editAlarm.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("editAlarm", isOpen)}
+      <AddChannelModal
+        isOpen={popUp.editChannel.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editChannel", isOpen)}
         projectId={projectId}
-        scopeName={scopeName}
-        alarm={popUp.editAlarm.data as TAlarm | undefined}
+        channel={popUp.editChannel.data as TAlarmChannel | undefined}
       />
-      <DeleteAlarmModal
-        isOpen={popUp.deleteAlarm.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteAlarm", isOpen)}
-        alarm={popUp.deleteAlarm.data as TAlarm | undefined}
+      <DeleteChannelModal
+        isOpen={popUp.deleteChannel.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteChannel", isOpen)}
+        channel={popUp.deleteChannel.data as TAlarmChannel | undefined}
       />
     </>
   );

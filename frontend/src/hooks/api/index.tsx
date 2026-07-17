@@ -4,6 +4,7 @@ export * from "./admin";
 export * from "./aiMcpActivityLogs";
 export * from "./aiMcpEndpoints";
 export * from "./aiMcpServers";
+export * from "./alarmChannels";
 export * from "./alarms";
 export * from "./approvalGrants";
 export * from "./approvalPolicies";

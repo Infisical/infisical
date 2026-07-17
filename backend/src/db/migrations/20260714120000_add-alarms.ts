@@ -29,31 +29,60 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.AlarmRecipient))) {
-    await knex.schema.createTable(TableName.AlarmRecipient, (t) => {
+  // Channels are standalone, reusable delivery destinations scoped to an org (projectId null) or a
+  // project. Alarms reference them through alarm_channel_memberships, so editing a channel's config
+  // (including clearing an optional secret) is a first-class operation independent of any alarm.
+  if (!(await knex.schema.hasTable(TableName.AlarmChannel))) {
+    await knex.schema.createTable(TableName.AlarmChannel, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.uuid("alarmId").notNullable();
+      t.string("name").notNullable();
+      t.string("channelType").notNullable();
+      t.binary("encryptedConfig").notNullable();
+      t.boolean("enabled").notNullable().defaultTo(true);
+      t.uuid("orgId").notNullable();
+      t.string("projectId").nullable();
+      t.uuid("createdByUserId").nullable();
+      t.timestamps(true, true, true);
+
+      t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+      t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.foreign("createdByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
+      t.index("orgId");
+      t.index("projectId");
+      t.index("createdByUserId");
+    });
+  }
+
+  // Recipients belong to the channel (directed channels such as Email), so a shared channel is
+  // self-contained and every alarm that references it notifies the same list.
+  if (!(await knex.schema.hasTable(TableName.AlarmChannelRecipient))) {
+    await knex.schema.createTable(TableName.AlarmChannelRecipient, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("channelId").notNullable();
       t.string("principalType").notNullable();
       t.string("principalId").notNullable();
       t.timestamps(true, true, true);
 
-      t.foreign("alarmId").references("id").inTable(TableName.Alarm).onDelete("CASCADE");
-      t.index("alarmId");
-      t.unique(["alarmId", "principalType", "principalId"]);
+      t.foreign("channelId").references("id").inTable(TableName.AlarmChannel).onDelete("CASCADE");
+      t.index("channelId");
+      t.unique(["channelId", "principalType", "principalId"]);
     });
   }
 
-  if (!(await knex.schema.hasTable(TableName.AlarmChannel))) {
-    await knex.schema.createTable(TableName.AlarmChannel, (t) => {
+  // Many-to-many between alarms and channels. The count of rows for a channel powers the "used by N
+  // alarms" column in the UI.
+  if (!(await knex.schema.hasTable(TableName.AlarmChannelMembership))) {
+    await knex.schema.createTable(TableName.AlarmChannelMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("alarmId").notNullable();
-      t.string("channelType").notNullable();
-      t.binary("encryptedConfig").notNullable();
-      t.boolean("enabled").notNullable().defaultTo(true);
+      t.uuid("channelId").notNullable();
       t.timestamps(true, true, true);
 
       t.foreign("alarmId").references("id").inTable(TableName.Alarm).onDelete("CASCADE");
+      t.foreign("channelId").references("id").inTable(TableName.AlarmChannel).onDelete("CASCADE");
       t.index("alarmId");
+      t.index("channelId");
+      t.unique(["alarmId", "channelId"]);
     });
   }
 
@@ -105,11 +134,14 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.AlarmHistory)) {
     await knex.schema.dropTable(TableName.AlarmHistory);
   }
+  if (await knex.schema.hasTable(TableName.AlarmChannelMembership)) {
+    await knex.schema.dropTable(TableName.AlarmChannelMembership);
+  }
+  if (await knex.schema.hasTable(TableName.AlarmChannelRecipient)) {
+    await knex.schema.dropTable(TableName.AlarmChannelRecipient);
+  }
   if (await knex.schema.hasTable(TableName.AlarmChannel)) {
     await knex.schema.dropTable(TableName.AlarmChannel);
-  }
-  if (await knex.schema.hasTable(TableName.AlarmRecipient)) {
-    await knex.schema.dropTable(TableName.AlarmRecipient);
   }
   if (await knex.schema.hasTable(TableName.Alarm)) {
     await knex.schema.dropTable(TableName.Alarm);

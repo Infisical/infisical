@@ -2,21 +2,7 @@ import { z } from "zod";
 
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AlarmChannelType } from "@app/services/alarm/alarm-channel-types";
-import { AlarmPrincipalType } from "@app/services/alarm/alarm-types";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-const RecipientInputSchema = z.object({
-  principalType: z.nativeEnum(AlarmPrincipalType),
-  principalId: z.string().min(1)
-});
-
-const ChannelInputSchema = z.object({
-  id: z.string().uuid().optional(),
-  channelType: z.nativeEnum(AlarmChannelType),
-  config: z.record(z.unknown()).default({}),
-  enabled: z.boolean().optional()
-});
 
 const AlarmResponseSchema = z.object({
   id: z.string().uuid(),
@@ -30,15 +16,13 @@ const AlarmResponseSchema = z.object({
   enabled: z.boolean(),
   orgId: z.string(),
   projectId: z.string().nullable(),
-  recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() })),
   channels: z.array(
     z.object({
       id: z.string().uuid(),
+      name: z.string(),
       channelType: z.string(),
-      config: z.record(z.unknown()),
-      enabled: z.boolean(),
-      createdAt: z.date(),
-      updatedAt: z.date()
+      directed: z.boolean(),
+      enabled: z.boolean()
     })
   ),
   createdAt: z.date(),
@@ -62,8 +46,7 @@ export const registerAlarmRouter = async (server: FastifyZodProvider) => {
         filters: z.unknown().optional(),
         enabled: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
-        recipients: z.array(RecipientInputSchema).default([]),
-        channels: z.array(ChannelInputSchema).min(1)
+        channelIds: z.array(z.string().uuid()).min(1)
       }),
       response: { 200: z.object({ alarm: AlarmResponseSchema }) }
     },
@@ -145,8 +128,7 @@ export const registerAlarmRouter = async (server: FastifyZodProvider) => {
         condition: z.unknown().optional(),
         filters: z.unknown().optional(),
         enabled: z.boolean().optional(),
-        recipients: z.array(RecipientInputSchema).optional(),
-        channels: z.array(ChannelInputSchema).min(1).optional()
+        channelIds: z.array(z.string().uuid()).min(1).optional()
       }),
       response: { 200: z.object({ alarm: AlarmResponseSchema }) }
     },
