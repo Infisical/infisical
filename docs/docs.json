@@ -667,6 +667,15 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
+                      {
+                        "group": "Docker",
+                        "pages": [
+                          "integrations/platforms/docker-intro",
+                          "integrations/platforms/docker",
+                          "integrations/platforms/docker-pass-envs",
+                          "integrations/platforms/docker-compose"
+                        ]
+                      },
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -679,15 +688,6 @@
                         "pages": [
                           "integrations/platforms/infisical-agent",
                           "integrations/platforms/ecs-with-agent"
-                        ]
-                      },
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
                         ]
                       },
                       "integrations/frameworks/packer",
