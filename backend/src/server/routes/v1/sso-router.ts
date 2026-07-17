@@ -29,6 +29,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { isValidEmailDomain } from "@app/lib/validator";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
@@ -622,7 +623,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "redirectDomainSSO",
       params: z.object({
-        domain: z.string().trim()
+        domain: z.string().trim().max(253).refine(isValidEmailDomain, "Invalid email domain")
       }),
       querystring: z.object({
         callback_port: z.string().optional()

@@ -12,7 +12,7 @@ const TextArea = React.forwardRef<
       ref={ref}
       data-slot="textarea"
       className={cn(
-        "placeholder:text-muted-foreground flex min-h-16 thin-scrollbar w-full rounded-md border border-border bg-transparent px-3 py-2 text-base text-foreground shadow-xs transition-colors outline-1 outline-offset-4 outline-transparent outline-solid hover:border-foreground/20 focus-visible:border-accent focus-visible:outline-accent/60 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger/60 md:text-sm",
+        "placeholder:text-muted-foreground flex min-h-16 thin-scrollbar w-full rounded-md border border-border bg-transparent px-3 py-2 text-base text-foreground shadow-xs outline-1 outline-offset-4 outline-transparent transition-colors outline-solid hover:border-foreground/20 focus-visible:border-accent focus-visible:outline-accent/60 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger/60 md:text-sm",
         className
       )}
       aria-invalid={isError}
