@@ -3222,6 +3222,7 @@ const OverviewPageContent = () => {
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
                                 importedSecrets={importedSecretsFlat}
+                                isVisible={isSingleEnvSecretsVisible}
                               />
                             ))}
                           {!isSingleEnvView &&
@@ -3243,6 +3244,7 @@ const OverviewPageContent = () => {
                                     handlePopUpOpen("deleteSecretImport", secretImport)
                                   }
                                   importedSecrets={importedSecretsFlat}
+                                  isVisible={isSingleEnvSecretsVisible}
                                 />
                               )
                             )}
