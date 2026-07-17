@@ -27,6 +27,7 @@ const buildService = (opts?: {
     eventTypes: ["test.resource.expiration"],
     conditionSchema: z.object({ alertBefore: z.string() }),
     findDueTargets: async () => [],
+    buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: () => ({}) as TAlarmPayload,
     targetId: () => "t",
     assertPermission: async (input) => {

@@ -47,13 +47,14 @@ const makeProvider = (targets: TTarget[]): IResourceAlarmProvider<TTarget> => ({
   assertPermission: async () => undefined,
   assertResourceInScope: async () => undefined,
   targetId: (target) => target.id,
-  buildPayload: (_alarm: TAlarmContext, matched: TTarget[]): TAlarmPayload => ({
+  buildViewUrl: async () => "https://app.infisical.com/x",
+  buildPayload: (_alarm: TAlarmContext, matched: TTarget[], viewUrl: string): TAlarmPayload => ({
     alarm: {
       id: "alarm-1",
       name: "test-alarm",
       orgId: "org-1",
       resourceType: RESOURCE_TYPE,
-      viewUrl: "https://app.infisical.com/x"
+      viewUrl
     },
     eventKey: "test.resource.expiration",
     eventLabel: "Expiration",

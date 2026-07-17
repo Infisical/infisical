@@ -5,6 +5,7 @@ import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { SLACK_WEBHOOK_TIMEOUT, TSlackBlock, TSlackPayload } from "@app/lib/slack/slack-webhook";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 
 import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
@@ -15,13 +16,9 @@ import {
   TBuildSlackPayloadParams,
   TCertificatePreview,
   TChannelResult,
-  TSlackBlock,
-  TSlackChannelConfig,
-  TSlackPayload
+  TSlackChannelConfig
 } from "./pki-alert-v2-types";
 import { buildAlertViewUrl } from "./pki-alert-v2-url-fns";
-
-const SLACK_WEBHOOK_TIMEOUT = 7 * 1000;
 
 /**
  * Validates a Slack webhook URL for security.

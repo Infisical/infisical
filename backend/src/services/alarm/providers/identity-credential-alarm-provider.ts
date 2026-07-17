@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -66,9 +66,31 @@ export const identityCredentialAlarmProviderFactory = ({
   identityCredentialAlarmDAL,
   permissionService
 }: TIdentityCredentialAlarmProviderDep): IResourceAlarmProvider<TIdentityCredentialTarget> => {
-  const buildViewUrl = (alarm: TAlarmContext): string => {
+  const projectBaseUrl = (siteUrl: string, orgId: string, projectType: string, projectId: string): string => {
+    switch (projectType) {
+      case ProjectType.SecretManager:
+        return `${siteUrl}/organizations/${orgId}/projects/secret-management/${projectId}`;
+      case ProjectType.PAM:
+        // PAM projects live at /organizations/$orgId/pam with no $projectId path segment.
+        return `${siteUrl}/organizations/${orgId}/pam`;
+      default:
+        return `${siteUrl}/organizations/${orgId}/projects/${projectType}/${projectId}`;
+    }
+  };
+
+  const buildViewUrl = async (alarm: TAlarmContext): Promise<string> => {
     const appCfg = getConfig();
-    const base = `${appCfg.SITE_URL ?? "https://app.infisical.com"}/organizations/${alarm.orgId}/identities`;
+    const siteUrl = appCfg.SITE_URL ?? "https://app.infisical.com";
+
+    if (alarm.projectId) {
+      const projectType = await identityCredentialAlarmDAL.getProjectType(alarm.projectId);
+      if (projectType) {
+        const base = projectBaseUrl(siteUrl, alarm.orgId, projectType, alarm.projectId);
+        return alarm.resourceId ? `${base}/identities/${alarm.resourceId}` : `${base}/access-management`;
+      }
+    }
+
+    const base = `${siteUrl}/organizations/${alarm.orgId}/identities`;
     return alarm.resourceId ? `${base}/${alarm.resourceId}` : base;
   };
 
@@ -86,9 +108,8 @@ export const identityCredentialAlarmProviderFactory = ({
     return uaSecrets.map((secret) => ({ credentialType: "ua-client-secret" as const, ...secret }));
   };
 
-  const buildPayload = (alarm: TAlarmContext, targets: TIdentityCredentialTarget[]): TAlarmPayload => {
+  const buildPayload = (alarm: TAlarmContext, targets: TIdentityCredentialTarget[], viewUrl: string): TAlarmPayload => {
     const alertBefore = (alarm.condition as { alertBefore?: string } | null)?.alertBefore;
-    const viewUrl = buildViewUrl(alarm);
 
     return {
       alarm: {
@@ -181,6 +202,7 @@ export const identityCredentialAlarmProviderFactory = ({
     eventTypes: [IDENTITY_CREDENTIAL_EXPIRY_EVENT],
     conditionSchema: IdentityCredentialConditionSchema,
     findDueTargets,
+    buildViewUrl,
     buildPayload,
     targetId,
     dedupWindowHours: (condition) => {

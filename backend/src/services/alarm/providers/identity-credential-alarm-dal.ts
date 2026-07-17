@@ -97,5 +97,17 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findExpiringUaClientSecrets, isIdentityInOrg, isIdentityInProject };
+  const getProjectType = async (projectId: string, tx?: Knex): Promise<string | null> => {
+    try {
+      const row = (await (tx || db.replicaNode())(TableName.Project)
+        .where({ id: projectId })
+        .select("type")
+        .first()) as { type: string } | undefined;
+      return row?.type ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetProjectType" });
+    }
+  };
+
+  return { findExpiringUaClientSecrets, isIdentityInOrg, isIdentityInProject, getProjectType };
 };

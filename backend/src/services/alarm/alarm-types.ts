@@ -68,8 +68,13 @@ export interface IResourceAlarmProvider<TTarget = unknown> {
   // afterwards, so this returns all current matches in the window (not minus already-alarmed).
   findDueTargets(input: TFindDueTargetsInput): Promise<TTarget[]>;
 
+  // Deep link to the alarm's resource, honouring its scope (org- vs project-scoped). Resolved once
+  // per run by the engine and passed into buildPayload, so it may perform async lookups.
+  buildViewUrl(alarm: TAlarmContext): Promise<string>;
+
   // One neutral payload describing all due targets for a firing (channels render it per medium).
-  buildPayload(alarm: TAlarmContext, targets: TTarget[]): TAlarmPayload;
+  // Receives the pre-resolved viewUrl so it can stay synchronous.
+  buildPayload(alarm: TAlarmContext, targets: TTarget[], viewUrl: string): TAlarmPayload;
 
   // Stable id per target, used for dedup and history. Must be stable across cron runs.
   targetId(target: TTarget): string;

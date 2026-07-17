@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRoundIcon, LockIcon } from "lucide-react";
@@ -61,6 +62,21 @@ const SectionHeader = ({ step, title }: { step: number; title: string }) => (
   </p>
 );
 
+// Resource type, event, and scope are fixed for this alarm type, so they render as read-only cards
+// rather than single-option dropdowns.
+const FixedField = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex flex-col gap-1.5">
+    <FieldLabel>{label}</FieldLabel>
+    <Card className="flex-row items-center justify-between p-4">
+      <div className="flex items-center gap-3">{children}</div>
+      <span className="flex items-center gap-1 text-xs text-muted">
+        <LockIcon className="size-3" />
+        Fixed
+      </span>
+    </Card>
+  </div>
+);
+
 const parseAlertBefore = (alertBefore?: string): { value: number; unit: AlarmTimeUnit } => {
   const match = alertBefore?.match(/^(\d+)([dwmy])$/);
   if (match) return { value: parseInt(match[1], 10), unit: match[2] as AlarmTimeUnit };
@@ -120,8 +136,6 @@ const buildFormDefaults = (alarm?: TAlarm): TAlarmForm => {
     return {
       name: "",
       description: "",
-      resourceType: AlarmResourceType.IdentityCredential,
-      eventType: AlarmEventType.IdentityCredentialExpiry,
       alertBeforeValue: 7,
       alertBeforeUnit: AlarmTimeUnit.Days,
       enabled: true,
@@ -177,8 +191,6 @@ const buildFormDefaults = (alarm?: TAlarm): TAlarmForm => {
   return {
     name: alarm.name,
     description: alarm.description ?? "",
-    resourceType: AlarmResourceType.IdentityCredential,
-    eventType: AlarmEventType.IdentityCredentialExpiry,
     alertBeforeValue: value,
     alertBeforeUnit: unit,
     enabled: alarm.enabled,
@@ -310,83 +322,28 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
           <section className="flex flex-col gap-4">
             <SectionHeader step={2} title="Trigger" />
 
-            <Controller
-              control={control}
-              name="resourceType"
-              render={({ field: { value, onChange } }) => (
-                <Field>
-                  <FieldLabel>Resource type</FieldLabel>
-                  <FieldContent>
-                    <Select value={value} onValueChange={onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {Object.values(AlarmResourceType).map((resourceType) => (
-                          <SelectItem key={resourceType} value={resourceType}>
-                            <span className="flex items-center gap-2">
-                              <KeyRoundIcon className="size-4 text-blue-400" />
-                              <span className="font-medium">
-                                {ALARM_RESOURCE_TYPE_LABELS[resourceType]}
-                              </span>
-                              <span className="font-mono text-xs text-mineshaft-400">
-                                {resourceType}
-                              </span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-              )}
-            />
-
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel>Scope</FieldLabel>
-              <Card className="flex-row items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <ScopeIcon className={`size-5 ${scopeColor}`} />
-                  <div className="flex flex-col">
-                    <span className="text-sm text-foreground">{scopeTitle}</span>
-                    <span className="text-xs text-muted">{scopeDescription}</span>
-                  </div>
-                </div>
-                <span className="flex items-center gap-1 text-xs text-muted">
-                  <LockIcon className="size-3" />
-                  Fixed
+            <FixedField label="Resource type">
+              <KeyRoundIcon className="size-5 text-blue-400" />
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground">
+                  {ALARM_RESOURCE_TYPE_LABELS[RESOURCE_TYPE_VALUE]}
                 </span>
-              </Card>
-            </div>
+                <span className="font-mono text-xs text-muted">{RESOURCE_TYPE_VALUE}</span>
+              </div>
+            </FixedField>
 
-            <Controller
-              control={control}
-              name="eventType"
-              render={({ field: { value, onChange } }) => (
-                <Field>
-                  <FieldLabel>Event</FieldLabel>
-                  <FieldContent>
-                    <Select value={value} onValueChange={onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {Object.values(AlarmEventType).map((eventType) => (
-                          <SelectItem key={eventType} value={eventType}>
-                            <span className="flex items-center gap-2">
-                              <Badge variant="warning">{ALARM_EVENT_TYPE_LABELS[eventType]}</Badge>
-                              <span className="text-mineshaft-300">
-                                Fires as the credential nears expiration
-                              </span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-              )}
-            />
+            <FixedField label="Scope">
+              <ScopeIcon className={`size-5 ${scopeColor}`} />
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground">{scopeTitle}</span>
+                <span className="text-xs text-muted">{scopeDescription}</span>
+              </div>
+            </FixedField>
+
+            <FixedField label="Event">
+              <Badge variant="warning">{ALARM_EVENT_TYPE_LABELS[EVENT_TYPE_VALUE]}</Badge>
+              <span className="text-xs text-muted">Fires as the credential nears expiration</span>
+            </FixedField>
 
             <div className="flex flex-col gap-1.5">
               <FieldLabel>Condition</FieldLabel>

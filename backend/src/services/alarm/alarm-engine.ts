@@ -122,9 +122,7 @@ export const alarmEngineFactory = ({
       condition: alarm.condition,
       filters: alarm.filters
     };
-    // viewUrl is target-independent; pass no targets so we don't build the full item list (which is
-    // discarded here) just to read the link used in the failure notice.
-    const { viewUrl } = provider.buildPayload(alarmContext, []).alarm;
+    const viewUrl = await provider.buildViewUrl(alarmContext);
 
     const { decryptor } = await getAlarmChannelCipher(kmsService, {
       orgId: alarm.orgId,
@@ -156,7 +154,7 @@ export const alarmEngineFactory = ({
           return { ...base, success: false, error: "Failed to decrypt channel config" };
         }
 
-        const payload = provider.buildPayload(alarmContext, dueTargets);
+        const payload = provider.buildPayload(alarmContext, dueTargets, viewUrl);
 
         try {
           if (definition.directed) {

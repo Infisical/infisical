@@ -49,6 +49,7 @@ const buildProvider = (opts?: {
   abilityRules?: { action: string; subject: string }[];
   inOrg?: boolean;
   inProject?: boolean;
+  projectType?: string | null;
 }) => {
   const dal = {
     findExpiringUaClientSecrets: async (args: {
@@ -61,7 +62,8 @@ const buildProvider = (opts?: {
       return opts?.secrets ?? [];
     },
     isIdentityInOrg: async () => opts?.inOrg ?? true,
-    isIdentityInProject: async () => opts?.inProject ?? true
+    isIdentityInProject: async () => opts?.inProject ?? true,
+    getProjectType: async () => opts?.projectType ?? null
   };
   const ability = () => createMongoAbility(opts?.abilityRules ?? [{ action: "read", subject: "identity" }]);
   const permissionService = {
@@ -128,22 +130,46 @@ describe("identity credential alarm provider", () => {
     expect(seenArgs?.projectId).toBe("proj-1");
   });
 
-  test("buildPayload produces neutral items and severity", () => {
+  test("buildPayload produces neutral items and severity", async () => {
     const provider = buildProvider();
     const target = { credentialType: "ua-client-secret" as const, ...sampleSecret({ expiresAt: futureDate(3) }) };
-    const payload = provider.buildPayload(alarmContext(), [target]);
+    const viewUrl = await provider.buildViewUrl(alarmContext());
+    const payload = provider.buildPayload(alarmContext(), [target], viewUrl);
 
     expect(payload.eventKey).toBe(IDENTITY_CREDENTIAL_EXPIRY_EVENT);
     expect(payload.severity).toBe("critical"); // 3 days out
     expect(payload.items[0].fields?.some((f) => f.label === "Days Until Expiry")).toBe(true);
-    expect(payload.alarm.viewUrl).toContain("/organizations/org-1/identities");
+    expect(payload.alarm.viewUrl).toBe(viewUrl);
   });
 
-  test("buildPayload deep-links to the bound identity when resourceId is set", () => {
+  test("buildViewUrl points to the org identities list for an org-scoped alarm", async () => {
     const provider = buildProvider();
-    const target = { credentialType: "ua-client-secret" as const, ...sampleSecret() };
-    const payload = provider.buildPayload(alarmContext({ resourceId: "ident-1" }), [target]);
-    expect(payload.alarm.viewUrl).toContain("/identities/ident-1");
+    expect(await provider.buildViewUrl(alarmContext())).toContain("/organizations/org-1/identities");
+  });
+
+  test("buildViewUrl deep-links to the bound identity when resourceId is set (org scope)", async () => {
+    const provider = buildProvider();
+    expect(await provider.buildViewUrl(alarmContext({ resourceId: "ident-1" }))).toContain("/identities/ident-1");
+  });
+
+  test("buildViewUrl deep-links into the project for a project-scoped alarm", async () => {
+    const provider = buildProvider({ projectType: "secret-manager" });
+    const url = await provider.buildViewUrl(alarmContext({ projectId: "proj-1", resourceId: "ident-1" }));
+    expect(url).toBe(
+      "https://app.infisical.com/organizations/org-1/projects/secret-management/proj-1/identities/ident-1"
+    );
+  });
+
+  test("buildViewUrl links to project access-management when no resource is bound", async () => {
+    const provider = buildProvider({ projectType: "kms" });
+    const url = await provider.buildViewUrl(alarmContext({ projectId: "proj-1" }));
+    expect(url).toBe("https://app.infisical.com/organizations/org-1/projects/kms/proj-1/access-management");
+  });
+
+  test("buildViewUrl falls back to the org view when the project can't be resolved", async () => {
+    const provider = buildProvider({ projectType: null });
+    const url = await provider.buildViewUrl(alarmContext({ projectId: "proj-gone", resourceId: "ident-1" }));
+    expect(url).toBe("https://app.infisical.com/organizations/org-1/identities/ident-1");
   });
 
   test("dedup window spans the lead time (30d -> 720h) with a 24h floor", () => {

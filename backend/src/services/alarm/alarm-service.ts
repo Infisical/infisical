@@ -460,42 +460,33 @@ export const alarmServiceFactory = ({
       projectId: alarm.projectId
     });
 
-    let resolvedChannels: TAlarmChannelInput[] | undefined;
-    if (dto.channels) {
-      const existingById = new Map(
-        (await alarmChannelDAL.findByAlarmId(alarm.id)).map((channel) => [channel.id, channel])
-      );
-      resolvedChannels = dto.channels.map((channel) => {
-        const existing = channel.id ? existingById.get(channel.id) : undefined;
-        if (!existing || existing.channelType !== channel.channelType) return channel;
-        const existingConfig = decryptChannelConfig<Record<string, unknown>>(existing.encryptedConfig, decryptor);
-        return {
-          ...channel,
-          config: $preserveChannelSecrets(
-            channel.channelType,
-            channel.config as Record<string, unknown>,
-            existingConfig
-          )
-        };
-      });
-    }
-
-    // When channels are updated without recipients, the alarm keeps its existing recipients (the
-    // transaction below only touches recipients when dto.recipients is provided). Validate the
-    // directed-channel requirement against those existing recipients, not an empty list, so a
-    // channel-only edit of an email alarm isn't wrongly rejected.
-    const effectiveRecipients =
-      dto.recipients ?? (resolvedChannels ? await alarmRecipientDAL.findByAlarmId(alarm.id) : undefined);
-
-    $validate(provider, {
-      condition: dto.condition,
-      channels: resolvedChannels,
-      recipients: effectiveRecipients
-    });
-
+    $validate(provider, { condition: dto.condition, recipients: dto.recipients });
     if (dto.recipients) await $validateRecipients(alarm.orgId, alarm.projectId, dto.recipients);
 
     await alarmDAL.transaction(async (tx) => {
+      const existingChannels = dto.channels ? await alarmChannelDAL.findByAlarmId(alarm.id, tx) : [];
+      const existingChannelById = new Map(existingChannels.map((channel) => [channel.id, channel]));
+
+      let resolvedChannels: TAlarmChannelInput[] | undefined;
+      if (dto.channels) {
+        resolvedChannels = dto.channels.map((channel) => {
+          const existing = channel.id ? existingChannelById.get(channel.id) : undefined;
+          if (!existing || existing.channelType !== channel.channelType) return channel;
+          const existingConfig = decryptChannelConfig<Record<string, unknown>>(existing.encryptedConfig, decryptor);
+          return {
+            ...channel,
+            config: $preserveChannelSecrets(
+              channel.channelType,
+              channel.config as Record<string, unknown>,
+              existingConfig
+            )
+          };
+        });
+
+        const effectiveRecipients = dto.recipients ?? (await alarmRecipientDAL.findByAlarmId(alarm.id, tx));
+        $validate(provider, { channels: resolvedChannels, recipients: effectiveRecipients });
+      }
+
       await alarmDAL.updateById(
         alarm.id,
         {
@@ -511,9 +502,6 @@ export const alarmServiceFactory = ({
       );
 
       if (resolvedChannels) {
-        const existingChannels = await alarmChannelDAL.findByAlarmId(alarm.id, tx);
-        const existingChannelById = new Map(existingChannels.map((channel) => [channel.id, channel]));
-
         const keptIds = new Set<string>();
         const toInsert: TAlarmChannelsInsert[] = [];
 
