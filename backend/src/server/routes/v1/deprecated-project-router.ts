@@ -707,9 +707,12 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         name: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
+          .refine(
+            (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Spaces, CharacterType.Hyphen])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+            }
+          )
           .optional()
       }),
       response: {
