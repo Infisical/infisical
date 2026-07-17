@@ -1,10 +1,9 @@
 import { AxiosError } from "axios";
 
-import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
-import { ALARM_CHANNEL_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "../alarm-channel-constants";
+import { RETRYABLE_NETWORK_ERRORS } from "../alarm-channel-constants";
 import {
   PagerDutyChannelConfigSchema,
   pagerDutyIntegrationKeyRegex,
@@ -13,6 +12,7 @@ import {
   TAlarmPayload,
   TChannelResult
 } from "../alarm-channel-types";
+import { retryWithBackoff } from "./alarm-channel-retry-fns";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 const PAGERDUTY_TIMEOUT = 7 * 1000;
@@ -71,13 +71,14 @@ export const buildPagerDutyEvent = (
   links: [{ href: payload.alarm.viewUrl, text: "View in Infisical" }]
 });
 
-const isPagerDutyErrorRetryable = (err: AxiosError): boolean => {
-  const status = err.response?.status;
+const isPagerDutyErrorRetryable = (err: unknown): boolean => {
+  const axiosErr = err as AxiosError;
+  const status = axiosErr.response?.status;
   if (status === 400) return false;
   if (status === 429) return true;
   if (status && status >= 500) return true;
-  if (err.code && RETRYABLE_NETWORK_ERRORS.includes(err.code)) return true;
-  if (err.message?.toLowerCase().includes("timeout")) return true;
+  if (axiosErr.code && RETRYABLE_NETWORK_ERRORS.includes(axiosErr.code)) return true;
+  if (axiosErr.message?.toLowerCase().includes("timeout")) return true;
   return false;
 };
 
@@ -87,44 +88,6 @@ const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> 
     timeout: PAGERDUTY_TIMEOUT,
     signal: AbortSignal.timeout(PAGERDUTY_TIMEOUT)
   });
-};
-
-const triggerPagerDutyEventWithRetry = async (
-  payload: TPagerDutyPayload,
-  channelId: string
-): Promise<TChannelResult> => {
-  const { maxRetries, delayMs } = ALARM_CHANNEL_RETRY_CONFIG;
-  let lastError: AxiosError | undefined;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      await triggerPagerDutyEvent(payload);
-      return { success: true };
-    } catch (err) {
-      lastError = err as AxiosError;
-
-      if (!isPagerDutyErrorRetryable(lastError)) {
-        logger.info(
-          { channelId, statusCode: lastError.response?.status, error: lastError.message },
-          `Alarm PagerDuty error is not retryable (4xx or non-transient) [channelId=${channelId}]`
-        );
-        return { success: false, error: lastError.message };
-      }
-
-      logger.info(
-        { channelId, attempt, maxRetries, statusCode: lastError.response?.status, error: lastError.message },
-        `Alarm PagerDuty failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"} [channelId=${channelId}]`
-      );
-
-      if (attempt < maxRetries) {
-        // eslint-disable-next-line no-await-in-loop
-        await delay(delayMs);
-      }
-    }
-  }
-
-  return { success: false, error: lastError?.message };
 };
 
 export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): Promise<TChannelResult> => {
@@ -144,7 +107,11 @@ export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): 
 
   const results = await Promise.all(
     items.map((item) =>
-      triggerPagerDutyEventWithRetry(buildPagerDutyEvent(ctx.payload, item, config.integrationKey), ctx.channelId)
+      retryWithBackoff(
+        () => triggerPagerDutyEvent(buildPagerDutyEvent(ctx.payload, item, config.integrationKey)),
+        isPagerDutyErrorRetryable,
+        { channelId: ctx.channelId, channelLabel: "PagerDuty" }
+      )
     )
   );
 

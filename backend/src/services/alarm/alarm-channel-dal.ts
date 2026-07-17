@@ -33,6 +33,20 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByAlarmIds = async (alarmIds: string[], tx?: Knex): Promise<TAlarmChannels[]> => {
+    try {
+      if (!alarmIds.length) return [];
+      const channels = await (tx || db.replicaNode())(TableName.AlarmChannel)
+        .whereIn(`${TableName.AlarmChannel}.alarmId`, alarmIds)
+        .select(selectAllTableCols(TableName.AlarmChannel))
+        .orderBy(`${TableName.AlarmChannel}.createdAt`, "asc");
+
+      return channels as TAlarmChannels[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByAlarmIds" });
+    }
+  };
+
   const deleteByAlarmId = async (alarmId: string, tx?: Knex): Promise<number> => {
     try {
       return await (tx || db)(TableName.AlarmChannel).where(`${TableName.AlarmChannel}.alarmId`, alarmId).del();
@@ -45,6 +59,7 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
     ...alarmChannelOrm,
     insertMany,
     findByAlarmId,
+    findByAlarmIds,
     deleteByAlarmId
   };
 };

@@ -32,6 +32,19 @@ export const alarmRecipientDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByAlarmIds = async (alarmIds: string[], tx?: Knex): Promise<TAlarmRecipients[]> => {
+    try {
+      if (!alarmIds.length) return [];
+      const recipients = await (tx || db.replicaNode())(TableName.AlarmRecipient)
+        .whereIn(`${TableName.AlarmRecipient}.alarmId`, alarmIds)
+        .select(selectAllTableCols(TableName.AlarmRecipient));
+
+      return recipients as TAlarmRecipients[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByAlarmIds" });
+    }
+  };
+
   const deleteByAlarmId = async (alarmId: string, tx?: Knex): Promise<number> => {
     try {
       return await (tx || db)(TableName.AlarmRecipient).where(`${TableName.AlarmRecipient}.alarmId`, alarmId).del();
@@ -44,6 +57,7 @@ export const alarmRecipientDALFactory = (db: TDbClient) => {
     ...alarmRecipientOrm,
     insertMany,
     findByAlarmId,
+    findByAlarmIds,
     deleteByAlarmId
   };
 };

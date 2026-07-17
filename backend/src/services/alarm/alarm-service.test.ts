@@ -84,6 +84,7 @@ const buildService = (opts?: {
         return withMeta;
       },
       findByAlarmId: async (alarmId: string) => channels.get(alarmId) ?? [],
+      findByAlarmIds: async (alarmIds: string[]) => alarmIds.flatMap((alarmId) => channels.get(alarmId) ?? []),
       deleteByAlarmId: async (alarmId: string) => {
         channels.delete(alarmId);
         return 0;
@@ -95,6 +96,7 @@ const buildService = (opts?: {
         return data;
       },
       findByAlarmId: async (alarmId: string) => recipients.get(alarmId) ?? [],
+      findByAlarmIds: async (alarmIds: string[]) => alarmIds.flatMap((alarmId) => recipients.get(alarmId) ?? []),
       deleteByAlarmId: async (alarmId: string) => {
         recipients.delete(alarmId);
         return 0;
@@ -181,6 +183,14 @@ describe("alarm service", () => {
   test("rejects a condition that fails the provider schema", async () => {
     const { service } = buildService();
     await expect(service.createAlarm({ ...validCreate, condition: { wrong: 1 } })).rejects.toThrow();
+  });
+
+  test("rejects a create with no condition when the provider requires one", async () => {
+    const { service } = buildService();
+    // Omitted condition must be caught at create time (400), not stored as null and thrown at cron time.
+    await expect(service.createAlarm({ ...validCreate, condition: undefined })).rejects.toThrow(
+      /Invalid alarm condition/
+    );
   });
 
   test("rejects an event type the provider does not support", async () => {

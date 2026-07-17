@@ -1,18 +1,14 @@
 import crypto from "node:crypto";
 
-import { AxiosError } from "axios";
-
-import { delay } from "@app/lib/delay";
-import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
-import { ALARM_CHANNEL_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "../alarm-channel-constants";
 import {
   TAlarmChannelSendContext,
   TAlarmPayload,
   TChannelResult,
   WebhookChannelConfigSchema
 } from "../alarm-channel-types";
+import { isAxiosErrorRetryable, retryWithBackoff } from "./alarm-channel-retry-fns";
 
 const ALARM_WEBHOOK_TIMEOUT = 7 * 1000;
 
@@ -29,14 +25,6 @@ type TAlarmWebhookPayload = {
     items: TAlarmPayload["items"];
     metadata: { totalItems: number; viewUrl: string };
   };
-};
-
-const isWebhookErrorRetryable = (err: AxiosError): boolean => {
-  const status = err.response?.status;
-  if (status && status >= 500) return true;
-  if (err.code && RETRYABLE_NETWORK_ERRORS.includes(err.code)) return true;
-  if (err.message?.toLowerCase().includes("timeout")) return true;
-  return false;
 };
 
 export const buildWebhookPayload = (payload: TAlarmPayload): TAlarmWebhookPayload => ({
@@ -91,44 +79,11 @@ const triggerWebhook = async (params: {
 
 export const sendWebhookNotification = async (ctx: TAlarmChannelSendContext): Promise<TChannelResult> => {
   const config = WebhookChannelConfigSchema.parse(ctx.config);
-
   const payload = buildWebhookPayload(ctx.payload);
-  const { maxRetries, delayMs } = ALARM_CHANNEL_RETRY_CONFIG;
-  let lastError: AxiosError | undefined;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      await triggerWebhook({ url: config.url, payload, signingSecret: config.signingSecret });
-      return { success: true };
-    } catch (err) {
-      lastError = err as AxiosError;
-
-      if (!isWebhookErrorRetryable(lastError)) {
-        logger.info(
-          { channelId: ctx.channelId, statusCode: lastError.response?.status, error: lastError.message },
-          `Alarm webhook error is not retryable (4xx or non-transient) [channelId=${ctx.channelId}]`
-        );
-        return { success: false, error: lastError.message };
-      }
-
-      logger.info(
-        {
-          channelId: ctx.channelId,
-          attempt,
-          maxRetries,
-          statusCode: lastError.response?.status,
-          error: lastError.message
-        },
-        `Alarm webhook failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"} [channelId=${ctx.channelId}]`
-      );
-
-      if (attempt < maxRetries) {
-        // eslint-disable-next-line no-await-in-loop
-        await delay(delayMs);
-      }
-    }
-  }
-
-  return { success: false, error: lastError?.message };
+  return retryWithBackoff(
+    () => triggerWebhook({ url: config.url, payload, signingSecret: config.signingSecret }),
+    isAxiosErrorRetryable,
+    { channelId: ctx.channelId, channelLabel: "webhook" }
+  );
 };

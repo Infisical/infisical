@@ -13,8 +13,10 @@ export const alarmDALFactory = (db: TDbClient) => {
   const findEnabledByResourceType = async (resourceType: string, tx?: Knex): Promise<TAlarms[]> => {
     try {
       const alarms = await (tx || db.replicaNode())(TableName.Alarm)
+        .leftJoin(TableName.Project, `${TableName.Alarm}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alarm}.resourceType`, resourceType)
         .where(`${TableName.Alarm}.enabled`, true)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.Alarm))
         .orderBy(`${TableName.Alarm}.createdAt`, "asc");
 

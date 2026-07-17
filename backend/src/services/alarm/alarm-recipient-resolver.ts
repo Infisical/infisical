@@ -16,6 +16,7 @@ export type TAlarmRecipientResolver = ReturnType<typeof alarmRecipientResolverFa
 export const alarmRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL }: TAlarmRecipientResolverDep) => {
   const resolve = async (recipients: TAlarmRecipients[]): Promise<TAlarmRecipient[]> => {
     const userIds = new Set<string>();
+    const groupIds = new Set<string>();
     const rawEmails = new Set<string>();
 
     for (const recipient of recipients) {
@@ -23,18 +24,20 @@ export const alarmRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL 
         case AlarmPrincipalType.USER:
           userIds.add(recipient.principalId);
           break;
-        case AlarmPrincipalType.GROUP: {
-          // eslint-disable-next-line no-await-in-loop
-          const memberships = await userGroupMembershipDAL.find({ groupId: recipient.principalId });
-          memberships.forEach((membership) => userIds.add(membership.userId));
+        case AlarmPrincipalType.GROUP:
+          groupIds.add(recipient.principalId);
           break;
-        }
         case AlarmPrincipalType.EMAIL:
           rawEmails.add(recipient.principalId.toLowerCase());
           break;
         default:
           logger.warn(`Unknown alarm recipient principal type '${recipient.principalType}'`);
       }
+    }
+
+    if (groupIds.size > 0) {
+      const memberships = await userGroupMembershipDAL.find({ $in: { groupId: [...groupIds] } });
+      memberships.forEach((membership) => userIds.add(membership.userId));
     }
 
     const resolved: TAlarmRecipient[] = [];
@@ -51,7 +54,6 @@ export const alarmRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL 
         });
     }
 
-    // Add raw-address recipients, skipping any that already resolved via a user (dedup by email).
     rawEmails.forEach((email) => {
       if (!seenEmails.has(email)) {
         seenEmails.add(email);

@@ -1,11 +1,6 @@
-import { AxiosError } from "axios";
-
-import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
-import { ALARM_CHANNEL_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "../alarm-channel-constants";
 import {
   SlackChannelConfigSchema,
   TAlarmChannelSendContext,
@@ -13,6 +8,7 @@ import {
   TAlarmSeverity,
   TChannelResult
 } from "../alarm-channel-types";
+import { isAxiosErrorRetryable, retryWithBackoff } from "./alarm-channel-retry-fns";
 
 const SLACK_WEBHOOK_TIMEOUT = 7 * 1000;
 const MAX_ITEMS_DISPLAYED = 2;
@@ -120,14 +116,6 @@ export const buildSlackPayload = (payload: TAlarmPayload): TSlackPayload => {
   };
 };
 
-const isSlackErrorRetryable = (err: AxiosError): boolean => {
-  const status = err.response?.status;
-  if (status && status >= 500) return true;
-  if (err.code && RETRYABLE_NETWORK_ERRORS.includes(err.code)) return true;
-  if (err.message?.toLowerCase().includes("timeout")) return true;
-  return false;
-};
-
 const triggerSlackWebhook = async (url: string, payload: TSlackPayload): Promise<void> => {
   await safeRequest.post(url, payload, {
     headers: { "Content-Type": "application/json" },
@@ -138,46 +126,11 @@ const triggerSlackWebhook = async (url: string, payload: TSlackPayload): Promise
 
 export const sendSlackNotification = async (ctx: TAlarmChannelSendContext): Promise<TChannelResult> => {
   const config = SlackChannelConfigSchema.parse(ctx.config);
-
   validateSlackWebhookUrl(config.webhookUrl);
-
   const payload = buildSlackPayload(ctx.payload);
-  const { maxRetries, delayMs } = ALARM_CHANNEL_RETRY_CONFIG;
-  let lastError: AxiosError | undefined;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      await triggerSlackWebhook(config.webhookUrl, payload);
-      return { success: true };
-    } catch (err) {
-      lastError = err as AxiosError;
-
-      if (!isSlackErrorRetryable(lastError)) {
-        logger.info(
-          { channelId: ctx.channelId, statusCode: lastError.response?.status, error: lastError.message },
-          `Alarm Slack error is not retryable (4xx or non-transient) [channelId=${ctx.channelId}]`
-        );
-        return { success: false, error: lastError.message };
-      }
-
-      logger.info(
-        {
-          channelId: ctx.channelId,
-          attempt,
-          maxRetries,
-          statusCode: lastError.response?.status,
-          error: lastError.message
-        },
-        `Alarm Slack failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"} [channelId=${ctx.channelId}]`
-      );
-
-      if (attempt < maxRetries) {
-        // eslint-disable-next-line no-await-in-loop
-        await delay(delayMs);
-      }
-    }
-  }
-
-  return { success: false, error: lastError?.message };
+  return retryWithBackoff(() => triggerSlackWebhook(config.webhookUrl, payload), isAxiosErrorRetryable, {
+    channelId: ctx.channelId,
+    channelLabel: "Slack"
+  });
 };
