@@ -114,48 +114,35 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
     ```
   </Accordion>
 
-  <Accordion title="--activity-log">
-    Write one [activity record](/documentation/platform/agent-proxy/activity-logs) per brokered request. Set to `false` to disable logging entirely (no records, no overhead).
+  <Accordion title="--log-format">
+    Output format for the proxy's logs, including [per-request activity](/documentation/platform/agent-proxy/activity-logs): `console` (readable) or `json` (machine).
 
     ```bash
     # Example
-    infisical secrets agent-proxy start --activity-log=false
+    infisical secrets agent-proxy start --log-format=json
     ```
 
-    Default value: `true`
+    Default value: `console` on a terminal, `json` otherwise
   </Accordion>
 
-  <Accordion title="--activity-log-file">
-    Append [activity records](/documentation/platform/agent-proxy/activity-logs) to this file instead of stdout. The file is opened append-only; on `SIGHUP` it is reopened, so `logrotate` can rotate it with a `postrotate` hook.
+  <Accordion title="--log-file">
+    Also write logs as `json` to this file, in addition to the console/json stream. Lets you watch the console and persist machine-readable logs at the same time. Rotate it with `logrotate` (`copytruncate`) or restart the proxy.
 
     ```bash
     # Example
-    infisical secrets agent-proxy start --activity-log-file=/var/log/infisical/activity.log
+    infisical secrets agent-proxy start --log-file=/var/log/infisical/agent-proxy.log
     ```
-
-    Default value: stdout
   </Accordion>
 
-  <Accordion title="--activity-log-format">
-    Output format for [activity records](/documentation/platform/agent-proxy/activity-logs): `json` (ECS with OpenTelemetry field names, for shipping to a SIEM) or `pretty` (a compact, colorized line for reading in a terminal).
+  <Accordion title="--log-level">
+    Controls how much is logged. Each [activity decision](/documentation/platform/agent-proxy/activity-logs) maps to a level (`passthrough`=debug, `brokered`=info, `blocked`=warn, `error`=error), so this doubles as the activity filter: `debug` shows everything, the default `info` hides passthrough, `warn` shows only blocked and errors.
 
     ```bash
     # Example
-    infisical secrets agent-proxy start --activity-log-format=json
+    infisical secrets agent-proxy start --log-level=warn
     ```
 
-    Default value: `pretty` when writing to a terminal, `json` otherwise
-  </Accordion>
-
-  <Accordion title="--activity-log-filter">
-    Which decisions to record: `all` logs every request; `brokered` logs `brokered`, `blocked`, and `error` (dropping `passthrough` noise); `errors` logs only `blocked` and `error`.
-
-    ```bash
-    # Example
-    infisical secrets agent-proxy start --activity-log-filter=brokered
-    ```
-
-    Default value: `all`
+    Default value: `info`
   </Accordion>
 </Accordion>
 
