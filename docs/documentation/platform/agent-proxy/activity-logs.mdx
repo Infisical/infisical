@@ -44,10 +44,10 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 
 | Flag | Values | Default |
 | --- | --- | --- |
-| `--log-format` | `console` \| `json` | `console` on a terminal, `json` otherwise |
+| `--log-format` | `console` \| `json` | `console` |
 | `--log-file` | file path | none |
 
-`--log-format` picks the shape (readable `console` or machine `json`) and auto-detects, so a container gets `json` with no flag. Logs are written to **stderr** (redirect with `2>` or `2>&1` to capture them). `--log-file` also writes `json` to a file, letting you watch the console **and** persist machine-readable logs at once.
+`--log-format` sets the shape: `console` (the default — human-readable, colorized in a terminal and plain when redirected or in a container) or `json` for machines and SIEMs. Logs go to **stderr** (capture with `2>` or `2>&1`). `--log-file` also writes `json` to a file, so you can watch the console **and** persist machine-readable logs at once.
 
 <Tabs>
   <Tab title="console (human)">
