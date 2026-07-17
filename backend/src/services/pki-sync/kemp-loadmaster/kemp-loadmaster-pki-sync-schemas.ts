@@ -58,11 +58,14 @@ export const KempLoadMasterPkiSyncOptionsSchema = z.object({
           testName.includes(char)
         );
 
-        return KEMP_LOADMASTER_NAMING.NAME_PATTERN.test(testName) && !hasForbiddenChars;
+        const hasCertificateIdentifier =
+          schema.includes("{{certificateId}}") || schema.includes("{{shortCertificateId}}");
+
+        return hasCertificateIdentifier && KEMP_LOADMASTER_NAMING.NAME_PATTERN.test(testName) && !hasForbiddenChars;
       },
       {
         message:
-          "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-251 characters long for Kemp LoadMaster. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
+          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder so each certificate gets a unique identifier, contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.), and be 1-251 characters long for Kemp LoadMaster. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders."
       }
     )
 });

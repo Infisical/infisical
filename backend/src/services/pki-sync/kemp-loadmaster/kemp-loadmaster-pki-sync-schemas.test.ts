@@ -10,22 +10,27 @@ describe("Kemp LoadMaster certificateNameSchema validation", () => {
   const accepts = (certificateNameSchema: string) =>
     KempLoadMasterPkiSyncOptionsSchema.safeParse({ certificateNameSchema }).success;
 
-  test("accepts the supported placeholders", () => {
+  test("accepts schemas containing a per-certificate placeholder", () => {
     expect(accepts("Infisical-{{certificateId}}")).toBe(true);
     expect(accepts("{{commonName}}-{{certificateId}}")).toBe(true);
     expect(accepts("{{shortCertificateId}}")).toBe(true);
-    expect(accepts("static-name")).toBe(true);
+  });
+
+  test("requires {{certificateId}} or {{shortCertificateId}} so each certificate is unique", () => {
+    expect(accepts("static-name")).toBe(false);
+    expect(accepts("Infisical-{{commonName}}")).toBe(false);
+    expect(accepts("{{profileId}}-{{applicationId}}")).toBe(false);
   });
 
   test("rejects characters the LoadMaster forbids", () => {
     expect(accepts("*-{{certificateId}}")).toBe(false);
-    expect(accepts("cert with space")).toBe(false);
-    expect(accepts("cert/slash")).toBe(false);
+    expect(accepts("{{certificateId}} with space")).toBe(false);
+    expect(accepts("{{certificateId}}/slash")).toBe(false);
   });
 
   test("rejects identifiers longer than 251 characters", () => {
-    expect(accepts("a".repeat(251))).toBe(true);
-    expect(accepts("a".repeat(252))).toBe(false);
+    expect(accepts(`${"a".repeat(219)}{{certificateId}}`)).toBe(true); // 219 + 32 = 251
+    expect(accepts(`${"a".repeat(220)}{{certificateId}}`)).toBe(false); // 220 + 32 = 252
   });
 });
 
