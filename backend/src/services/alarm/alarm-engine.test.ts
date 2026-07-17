@@ -5,6 +5,13 @@ import { alarmEngineFactory, TAlarmEngineDep } from "./alarm-engine";
 import { alarmProviderRegistryFactory } from "./alarm-provider-registry";
 import { AlarmPrincipalType, AlarmRunStatus, IResourceAlarmProvider, TAlarmContext } from "./alarm-types";
 
+// logger is `export let logger` assigned by initLogger(), which unit tests don't run, so any
+// channel-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+  initLogger: () => {}
+}));
+
 type TTarget = { id: string };
 
 const RESOURCE_TYPE = "test.resource";
@@ -62,18 +69,21 @@ const kmsServiceMock = {
 
 const encConfig = (config: unknown) => Buffer.from(JSON.stringify(config));
 
+type TDelivery = { targetId: string; channelId: string; channelType: string; status: string };
+
 const buildEngine = (opts: {
   targets: TTarget[];
   channels: Array<{ id: string; channelType: string; encryptedConfig: Buffer; enabled: boolean }>;
-  recentlyAlarmed?: string[];
+  recentlyAlarmed?: Array<{ channelId: string; targetId: string }>;
   recipients?: Array<{ userId: string; email: string; firstName?: string | null }>;
+  failEmail?: boolean;
 }) => {
   const registry = alarmProviderRegistryFactory();
   registry.register(makeProvider(opts.targets) as IResourceAlarmProvider);
 
   const sentMail: Array<{ recipients: string[] }> = [];
   const createdNotifications: unknown[][] = [];
-  const historyWrites: Array<{ targetIds: string[]; status: string }> = [];
+  const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
 
   const engine = alarmEngineFactory({
     alarmChannelDAL: { findByAlarmId: async () => opts.channels },
@@ -91,8 +101,8 @@ const buildEngine = (opts: {
     },
     alarmHistoryDAL: {
       findRecentlyAlarmedTargets: async () => opts.recentlyAlarmed ?? [],
-      createWithTargets: async (_alarmId: string, targetIds: string[], options: { status: string }) => {
-        historyWrites.push({ targetIds, status: options.status });
+      createWithTargets: async (_alarmId: string, options: { status: string }, deliveries: TDelivery[]) => {
+        historyWrites.push({ deliveries, status: options.status });
         return {} as never;
       }
     },
@@ -109,6 +119,7 @@ const buildEngine = (opts: {
     },
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
+        if (opts.failEmail) throw new Error("smtp down");
         sentMail.push({ recipients: opt.recipients });
       }
     }
@@ -118,7 +129,7 @@ const buildEngine = (opts: {
 };
 
 describe("alarm engine", () => {
-  test("dispatches email to resolved recipients and records history", async () => {
+  test("dispatches email to resolved recipients and records a delivery per (target, channel)", async () => {
     const { engine, sentMail, createdNotifications, historyWrites } = buildEngine({
       targets: [{ id: "t1" }, { id: "t2" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
@@ -130,28 +141,68 @@ describe("alarm engine", () => {
     expect(sentMail[0].recipients).toEqual(["user@example.com"]);
     expect(createdNotifications).toHaveLength(0); // no failure fallback on success
     expect(historyWrites).toHaveLength(1);
-    expect(historyWrites[0].targetIds).toEqual(["t1", "t2"]);
     expect(historyWrites[0].status).toBe(AlarmRunStatus.SUCCESS);
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlarmRunStatus.SUCCESS },
+      { targetId: "t2", channelId: "c-email", channelType: "email", status: AlarmRunStatus.SUCCESS }
+    ]);
   });
 
-  test("dedups targets already alarmed within the window", async () => {
+  test("dedups a target already delivered on the same channel within the window", async () => {
     const { engine, historyWrites } = buildEngine({
       targets: [{ id: "t1" }, { id: "t2" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
-      recentlyAlarmed: ["t1"]
+      recentlyAlarmed: [{ channelId: "c-email", targetId: "t1" }]
     });
 
     await engine.runAlarm(makeAlarm());
 
     expect(historyWrites).toHaveLength(1);
-    expect(historyWrites[0].targetIds).toEqual(["t2"]);
+    expect(historyWrites[0].deliveries.map((d) => d.targetId)).toEqual(["t2"]);
   });
 
-  test("skips entirely when all targets were recently alarmed", async () => {
+  test("re-fires a target on a channel that has not delivered it, even if another channel has", async () => {
+    const { engine, sentMail, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        { id: "c-email-1", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
+        { id: "c-email-2", channelType: "email", encryptedConfig: encConfig({}), enabled: true }
+      ],
+      // t1 was delivered on channel 1 but never on channel 2 → only channel 2 should fire.
+      recentlyAlarmed: [{ channelId: "c-email-1", targetId: "t1" }]
+    });
+
+    await engine.runAlarm(makeAlarm());
+
+    expect(sentMail).toHaveLength(1);
+    expect(historyWrites).toHaveLength(1);
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email-2", channelType: "email", status: AlarmRunStatus.SUCCESS }
+    ]);
+  });
+
+  test("records FAILED deliveries when a channel fails so they are re-tried next run", async () => {
+    const { engine, sentMail, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
+      failEmail: true
+    });
+
+    await engine.runAlarm(makeAlarm());
+
+    expect(sentMail).toHaveLength(0);
+    expect(historyWrites).toHaveLength(1);
+    expect(historyWrites[0].status).toBe(AlarmRunStatus.FAILED);
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlarmRunStatus.FAILED }
+    ]);
+  });
+
+  test("skips entirely when every channel already delivered every target", async () => {
     const { engine, historyWrites, sentMail } = buildEngine({
       targets: [{ id: "t1" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
-      recentlyAlarmed: ["t1"]
+      recentlyAlarmed: [{ channelId: "c-email", targetId: "t1" }]
     });
 
     await engine.runAlarm(makeAlarm());

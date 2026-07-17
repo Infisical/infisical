@@ -13,6 +13,7 @@ export enum AlarmPrincipalType {
 
 export enum AlarmRunStatus {
   SUCCESS = "success",
+  PARTIAL = "partial",
   FAILED = "failed"
 }
 

@@ -69,10 +69,10 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
 
       t.foreign("alarmId").references("id").inTable(TableName.Alarm).onDelete("CASCADE");
-      // Covers the FK plus the dedup lookup: recently *successfully* alarmed targets for an alarm.
-      // Column order is equality (alarmId), equality (status), then range (triggeredAt) so the whole
-      // WHERE clause is served by the index.
-      t.index(["alarmId", "status", "triggeredAt"]);
+      // Covers the FK plus the dedup lookup: recent runs for an alarm within the window. The run-level
+      // status column (success | partial | failed) is audit-only; per-(channel, target) success
+      // filtering happens on alarm_history_target, so status is not part of this index.
+      t.index(["alarmId", "triggeredAt"]);
     });
   }
 
@@ -81,10 +81,19 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("alarmHistoryId").notNullable();
       t.string("targetId").notNullable();
+      // Dedup is scoped per (channel, target): a broken channel re-fires only its own targets while
+      // channels that already delivered are never re-notified. channelId is nullable (SET NULL) so a
+      // delivery record survives channel deletion; channelType is retained for display when it does.
+      t.uuid("channelId").nullable();
+      t.string("channelType").notNullable();
+      t.string("status").notNullable();
       t.timestamps(true, true, true);
 
       t.foreign("alarmHistoryId").references("id").inTable(TableName.AlarmHistory).onDelete("CASCADE");
+      t.foreign("channelId").references("id").inTable(TableName.AlarmChannel).onDelete("SET NULL");
+      // Serves the dedup lookup: join on alarmHistoryId, filter status=success + targetId IN (...).
       t.index(["alarmHistoryId", "targetId"]);
+      t.index("channelId");
     });
   }
 }

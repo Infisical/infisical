@@ -1,8 +1,9 @@
 import { alarmHistoryDALFactory } from "./alarm-history-dal";
 import { AlarmRunStatus } from "./alarm-types";
 
-// Records the .where() predicates the dedup query applies, so we can assert it filters on
-// status=success (regression for: a transiently FAILED run must not suppress re-delivery).
+// Records the .where() predicates the dedup query applies, so we can assert it filters on the
+// per-(channel, target) delivery status (regression for: a transiently FAILED delivery must not
+// suppress re-delivery, and a success on one channel must not suppress delivery on another).
 const buildDAL = () => {
   const whereCalls: unknown[][] = [];
   const chain = {
@@ -12,8 +13,9 @@ const buildDAL = () => {
       return chain;
     },
     whereIn: () => chain,
+    whereNotNull: () => chain,
     distinct: () => chain,
-    select: async () => [] as Array<{ targetId: string }>
+    select: async () => [] as Array<{ channelId: string; targetId: string }>
   };
   const queryBuilder = () => chain;
   const db = { replicaNode: () => queryBuilder } as never;
@@ -22,12 +24,12 @@ const buildDAL = () => {
 };
 
 describe("alarm history dal", () => {
-  test("findRecentlyAlarmedTargets only counts successful runs", async () => {
+  test("findRecentlyAlarmedTargets only counts successful deliveries", async () => {
     const { dal, whereCalls } = buildDAL();
 
     await dal.findRecentlyAlarmedTargets("alarm-1", ["t1", "t2"], 24);
 
-    expect(whereCalls).toContainEqual(["hist.status", AlarmRunStatus.SUCCESS]);
+    expect(whereCalls).toContainEqual(["tgt.status", AlarmRunStatus.SUCCESS]);
     expect(whereCalls).toContainEqual(["hist.alarmId", "alarm-1"]);
   });
 

@@ -1,6 +1,6 @@
 import { AlarmChannelType, TAlarmPayload } from "../alarm-channel-types";
 import { sendEmailNotification } from "./alarm-channel-email-fns";
-import { buildPagerDutyPayload } from "./alarm-channel-pagerduty-fns";
+import { buildPagerDutyEvent } from "./alarm-channel-pagerduty-fns";
 import { ALARM_CHANNEL_REGISTRY } from "./alarm-channel-registry";
 import { buildSlackPayload, validateSlackWebhookUrl } from "./alarm-channel-slack-fns";
 import { buildWebhookPayload } from "./alarm-channel-webhook-fns";
@@ -100,14 +100,26 @@ describe("buildSlackPayload", () => {
   });
 });
 
-describe("buildPagerDutyPayload", () => {
-  test("uses the alarm id as dedup key and carries provider severity", () => {
-    const pd = buildPagerDutyPayload(samplePayload(), "a".repeat(32));
-    expect(pd.dedup_key).toBe("alarm-1");
+describe("buildPagerDutyEvent", () => {
+  test("uses a per-target dedup key so each target is its own incident", () => {
+    const payload = samplePayload();
+    const first = buildPagerDutyEvent(payload, payload.items[0], "a".repeat(32));
+    const second = buildPagerDutyEvent(payload, payload.items[1], "a".repeat(32));
+
+    expect(first.dedup_key).toBe("alarm-1:cert-a");
+    expect(second.dedup_key).toBe("alarm-1:cert-b");
+    expect(first.dedup_key).not.toBe(second.dedup_key);
+  });
+
+  test("carries provider severity and the target's own fields", () => {
+    const payload = samplePayload();
+    const pd = buildPagerDutyEvent(payload, payload.items[0], "a".repeat(32));
+
     expect(pd.routing_key).toBe("a".repeat(32));
     expect(pd.payload.severity).toBe("warning");
-    expect(pd.payload.custom_details.total_items).toBe(2);
-    expect(pd.payload.custom_details.items[0].fields.Expires).toBe("2025-11-12");
+    expect(pd.payload.custom_details.title).toBe("api.prod.example.com");
+    expect(pd.payload.custom_details.identifier).toBe("4B:3E:2F:A1");
+    expect(pd.payload.custom_details.fields.Expires).toBe("2025-11-12");
   });
 });
 

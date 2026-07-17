@@ -87,14 +87,21 @@ export const alarmEngineFactory = ({
     });
     if (targets.length === 0) return;
 
-    const window = provider.dedupWindowHours?.(alarm.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
-    const candidateIds = targets.map((target) => provider.targetId(target));
-    const recentlyAlarmed = new Set(await alarmHistoryDAL.findRecentlyAlarmedTargets(alarm.id, candidateIds, window));
-    const dueTargets = targets.filter((target) => !recentlyAlarmed.has(provider.targetId(target)));
-    if (dueTargets.length === 0) return;
-
     const channels = (await alarmChannelDAL.findByAlarmId(alarm.id)).filter((channel) => channel.enabled);
     if (channels.length === 0) return;
+
+    const window = provider.dedupWindowHours?.(alarm.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
+    const candidateIds = targets.map((target) => provider.targetId(target));
+    const recentlyAlarmed = await alarmHistoryDAL.findRecentlyAlarmedTargets(alarm.id, candidateIds, window);
+    const alarmedSet = new Set(recentlyAlarmed.map((row) => `${row.channelId}:${row.targetId}`));
+
+    const channelWork = channels
+      .map((channel) => ({
+        channel,
+        dueTargets: targets.filter((target) => !alarmedSet.has(`${channel.id}:${provider.targetId(target)}`))
+      }))
+      .filter((work) => work.dueTargets.length > 0);
+    if (channelWork.length === 0) return;
 
     const alarmContext: TAlarmContext = {
       id: alarm.id,
@@ -107,15 +114,16 @@ export const alarmEngineFactory = ({
       condition: alarm.condition,
       filters: alarm.filters
     };
-    const payload = provider.buildPayload(alarmContext, dueTargets);
+    // viewUrl is target-independent; build one reference payload to source it for the failure notice.
+    const { viewUrl } = provider.buildPayload(alarmContext, targets).alarm;
 
     const { decryptor } = await getAlarmChannelCipher(kmsService, {
       orgId: alarm.orgId,
       projectId: alarm.projectId
     });
 
-    const hasDirectedChannel = channels.some(
-      (channel) => ALARM_CHANNEL_REGISTRY[channel.channelType as AlarmChannelType]?.directed
+    const hasDirectedChannel = channelWork.some(
+      (work) => ALARM_CHANNEL_REGISTRY[work.channel.channelType as AlarmChannelType]?.directed
     );
     let recipients: TAlarmRecipient[] = [];
     if (hasDirectedChannel) {
@@ -125,17 +133,21 @@ export const alarmEngineFactory = ({
     const deps: TAlarmChannelDeps = { smtpService };
 
     const channelResults = await Promise.all(
-      channels.map(async (channel) => {
+      channelWork.map(async ({ channel, dueTargets }) => {
+        const targetIds = dueTargets.map((target) => provider.targetId(target));
+        const base = { channelId: channel.id, channelType: channel.channelType, targetIds };
         const definition = ALARM_CHANNEL_REGISTRY[channel.channelType as AlarmChannelType];
-        if (!definition) return { channelType: channel.channelType, success: false, error: "Unknown channel type" };
+        if (!definition) return { ...base, success: false, error: "Unknown channel type" };
 
         let config: unknown;
         try {
           config = decryptChannelConfig(channel.encryptedConfig, decryptor);
         } catch (err) {
           logger.error(err, `Failed to decrypt alarm channel config [channelId=${channel.id}]`);
-          return { channelType: channel.channelType, success: false, error: "Failed to decrypt channel config" };
+          return { ...base, success: false, error: "Failed to decrypt channel config" };
         }
+
+        const payload = provider.buildPayload(alarmContext, dueTargets);
 
         try {
           if (definition.directed) {
@@ -147,40 +159,43 @@ export const alarmEngineFactory = ({
             );
             const failures = results.filter((result) => !result.success);
             if (failures.length > 0) {
-              return {
-                channelType: channel.channelType,
-                success: false,
-                error: failures.map((f) => f.error).join("; ")
-              };
+              return { ...base, success: false, error: failures.map((f) => f.error).join("; ") };
             }
-            return { channelType: channel.channelType, success: true };
+            return { ...base, success: true };
           }
 
           const result = await definition.send({ channelId: channel.id, config, payload, deps });
-          return { channelType: channel.channelType, ...result };
+          return { ...base, ...result };
         } catch (err) {
           const error = err instanceof Error ? err.message : "Unknown error";
           logger.error(err, `Failed to dispatch alarm ${channel.channelType} channel [alarmId=${alarm.id}]`);
-          return { channelType: channel.channelType, success: false, error };
+          return { ...base, success: false, error };
         }
       })
+    );
+
+    const deliveries = channelResults.flatMap((result) =>
+      result.targetIds.map((targetId) => ({
+        targetId,
+        channelId: result.channelId,
+        channelType: result.channelType,
+        status: result.success ? AlarmRunStatus.SUCCESS : AlarmRunStatus.FAILED
+      }))
     );
 
     const errors = channelResults
       .filter((result) => !result.success && result.error)
       .map((result) => `${result.channelType}: ${result.error}`);
-    const status = errors.length > 0 ? AlarmRunStatus.FAILED : AlarmRunStatus.SUCCESS;
+    const anyDelivered = channelResults.some((result) => result.success);
+    let status = AlarmRunStatus.SUCCESS;
+    if (errors.length > 0) status = anyDelivered ? AlarmRunStatus.PARTIAL : AlarmRunStatus.FAILED;
     const errorText = errors.length > 0 ? errors.join("\n") : undefined;
 
     if (errorText) {
-      await notifyAdminsOfFailure(alarm, payload.alarm.viewUrl, errorText);
+      await notifyAdminsOfFailure(alarm, viewUrl, errorText);
     }
 
-    await alarmHistoryDAL.createWithTargets(
-      alarm.id,
-      dueTargets.map((target) => provider.targetId(target)),
-      { status, error: errorText }
-    );
+    await alarmHistoryDAL.createWithTargets(alarm.id, { status, error: errorText }, deliveries);
   };
 
   return { runAlarm };

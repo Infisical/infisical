@@ -11,6 +11,9 @@ export const AlarmHistoryTargetSchema = z.object({
   id: z.string().uuid(),
   alarmHistoryId: z.string().uuid(),
   targetId: z.string(),
+  channelId: z.string().uuid().nullable().optional(),
+  channelType: z.string(),
+  status: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

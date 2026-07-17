@@ -9,13 +9,15 @@ import {
   PagerDutyChannelConfigSchema,
   pagerDutyIntegrationKeyRegex,
   TAlarmChannelSendContext,
+  TAlarmItem,
   TAlarmPayload,
   TChannelResult
 } from "../alarm-channel-types";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 const PAGERDUTY_TIMEOUT = 7 * 1000;
-const MAX_ITEMS_IN_PAYLOAD = 10;
+const MAX_INCIDENTS_PER_RUN = 10;
+const PAGERDUTY_SUMMARY_MAX_LENGTH = 1024;
 
 type TPagerDutyPayload = {
   routing_key: string;
@@ -32,44 +34,42 @@ type TPagerDutyPayload = {
     custom_details: {
       alarm_name: string;
       condition?: string;
-      total_items: number;
-      items: Array<{ title: string; identifier?: string; fields: Record<string, string> }>;
+      title: string;
+      identifier?: string;
+      fields: Record<string, string>;
       view_url: string;
     };
   };
   links: Array<{ href: string; text: string }>;
 };
 
-export const buildPagerDutyPayload = (payload: TAlarmPayload, integrationKey: string): TPagerDutyPayload => {
-  const displayItems = payload.items.slice(0, MAX_ITEMS_IN_PAYLOAD);
-
-  return {
-    routing_key: integrationKey,
-    event_action: "trigger",
-    dedup_key: payload.alarm.id,
-    payload: {
-      summary: payload.summary,
-      severity: payload.severity,
-      source: `infisical-${payload.alarm.resourceType}`,
-      timestamp: new Date().toISOString(),
-      component: payload.resourceKind,
-      group: payload.alarm.projectId ?? payload.alarm.orgId,
-      class: payload.eventKey,
-      custom_details: {
-        alarm_name: payload.alarm.name,
-        ...(payload.alarm.condition ? { condition: payload.alarm.condition } : {}),
-        total_items: payload.items.length,
-        items: displayItems.map((item) => ({
-          title: item.title || "N/A",
-          ...(item.identifier ? { identifier: item.identifier } : {}),
-          fields: Object.fromEntries((item.fields ?? []).map((field) => [field.label, field.value]))
-        })),
-        view_url: payload.alarm.viewUrl
-      }
-    },
-    links: [{ href: payload.alarm.viewUrl, text: "View in Infisical" }]
-  };
-};
+export const buildPagerDutyEvent = (
+  payload: TAlarmPayload,
+  item: TAlarmItem,
+  integrationKey: string
+): TPagerDutyPayload => ({
+  routing_key: integrationKey,
+  event_action: "trigger",
+  dedup_key: `${payload.alarm.id}:${item.id}`,
+  payload: {
+    summary: `${payload.summary} — ${item.title}`.slice(0, PAGERDUTY_SUMMARY_MAX_LENGTH),
+    severity: payload.severity,
+    source: `infisical-${payload.alarm.resourceType}`,
+    timestamp: new Date().toISOString(),
+    component: payload.resourceKind,
+    group: payload.alarm.projectId ?? payload.alarm.orgId,
+    class: payload.eventKey,
+    custom_details: {
+      alarm_name: payload.alarm.name,
+      ...(payload.alarm.condition ? { condition: payload.alarm.condition } : {}),
+      title: item.title || "N/A",
+      ...(item.identifier ? { identifier: item.identifier } : {}),
+      fields: Object.fromEntries((item.fields ?? []).map((field) => [field.label, field.value])),
+      view_url: payload.alarm.viewUrl
+    }
+  },
+  links: [{ href: payload.alarm.viewUrl, text: "View in Infisical" }]
+});
 
 const isPagerDutyErrorRetryable = (err: AxiosError): boolean => {
   const status = err.response?.status;
@@ -89,14 +89,10 @@ const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> 
   });
 };
 
-export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): Promise<TChannelResult> => {
-  const config = PagerDutyChannelConfigSchema.parse(ctx.config);
-
-  if (!pagerDutyIntegrationKeyRegex.test(config.integrationKey)) {
-    return { success: false, error: "Invalid PagerDuty integration key" };
-  }
-
-  const payload = buildPagerDutyPayload(ctx.payload, config.integrationKey);
+const triggerPagerDutyEventWithRetry = async (
+  payload: TPagerDutyPayload,
+  channelId: string
+): Promise<TChannelResult> => {
   const { maxRetries, delayMs } = ALARM_CHANNEL_RETRY_CONFIG;
   let lastError: AxiosError | undefined;
 
@@ -110,21 +106,15 @@ export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): 
 
       if (!isPagerDutyErrorRetryable(lastError)) {
         logger.info(
-          { channelId: ctx.channelId, statusCode: lastError.response?.status, error: lastError.message },
-          `Alarm PagerDuty error is not retryable (4xx or non-transient) [channelId=${ctx.channelId}]`
+          { channelId, statusCode: lastError.response?.status, error: lastError.message },
+          `Alarm PagerDuty error is not retryable (4xx or non-transient) [channelId=${channelId}]`
         );
         return { success: false, error: lastError.message };
       }
 
       logger.info(
-        {
-          channelId: ctx.channelId,
-          attempt,
-          maxRetries,
-          statusCode: lastError.response?.status,
-          error: lastError.message
-        },
-        `Alarm PagerDuty failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"} [channelId=${ctx.channelId}]`
+        { channelId, attempt, maxRetries, statusCode: lastError.response?.status, error: lastError.message },
+        `Alarm PagerDuty failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"} [channelId=${channelId}]`
       );
 
       if (attempt < maxRetries) {
@@ -135,4 +125,32 @@ export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): 
   }
 
   return { success: false, error: lastError?.message };
+};
+
+export const sendPagerDutyNotification = async (ctx: TAlarmChannelSendContext): Promise<TChannelResult> => {
+  const config = PagerDutyChannelConfigSchema.parse(ctx.config);
+
+  if (!pagerDutyIntegrationKeyRegex.test(config.integrationKey)) {
+    return { success: false, error: "Invalid PagerDuty integration key" };
+  }
+
+  const items = ctx.payload.items.slice(0, MAX_INCIDENTS_PER_RUN);
+  if (ctx.payload.items.length > MAX_INCIDENTS_PER_RUN) {
+    logger.warn(
+      { channelId: ctx.channelId, total: ctx.payload.items.length, cap: MAX_INCIDENTS_PER_RUN },
+      `Alarm PagerDuty target count exceeds cap; only the first ${MAX_INCIDENTS_PER_RUN} incidents are triggered this run [channelId=${ctx.channelId}]`
+    );
+  }
+
+  const results = await Promise.all(
+    items.map((item) =>
+      triggerPagerDutyEventWithRetry(buildPagerDutyEvent(ctx.payload, item, config.integrationKey), ctx.channelId)
+    )
+  );
+
+  const errors = results.filter((result) => !result.success && result.error).map((result) => result.error);
+  if (errors.length > 0) {
+    return { success: false, error: errors.join("; ") };
+  }
+  return { success: true };
 };

@@ -43,8 +43,7 @@ export const alarmQueueServiceFactory = ({
               jobId: `alarm-dispatch-${alarm.id}`,
               removeOnComplete: true,
               removeOnFail: { count: 5 },
-              attempts: 3,
-              backoff: { type: "exponential", delay: 5000 }
+              attempts: 1
             }
           )
         )
