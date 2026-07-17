@@ -74,6 +74,7 @@ export const usageEventQueueFactory = ({
         error,
         `usage-event-queue: failed to handle usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
       );
+      throw error;
     }
   };
 

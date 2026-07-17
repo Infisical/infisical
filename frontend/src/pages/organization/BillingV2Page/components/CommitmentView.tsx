@@ -57,7 +57,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     }
     const timeout = setTimeout(() => {
       preview.mutate({ orgId, commitmentChanges: changes });
-    }, 400);
+    }, 500);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, changesKey]);
@@ -164,7 +164,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
               </div>
               <Stepper
                 value={quantities[dim.key]}
-                min={0}
+                min={1}
                 onChange={(value) => setQuantities((prev) => ({ ...prev, [dim.key]: value }))}
               />
             </div>
