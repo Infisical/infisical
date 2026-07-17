@@ -12,9 +12,9 @@ import {
 export const PASSWORD_REQUIREMENTS = [
   {
     code: "minLength",
-    message: "At least 14 characters",
+    message: "At least 10 characters",
     isPrimary: true,
-    test: (value: string) => value.length >= 14
+    test: (value: string) => value.length >= 10
   },
   {
     code: "maxLength",
@@ -63,7 +63,7 @@ export const getPasswordRequirements = (password: string) =>
 export const passwordSchema = z
   .string()
   .min(1, "Password is required")
-  .min(14, PASSWORD_REQUIREMENTS[0].message)
+  .min(10, PASSWORD_REQUIREMENTS[0].message)
   .max(100, PASSWORD_REQUIREMENTS[1].message)
   .regex(letterCharRegex, PASSWORD_REQUIREMENTS[2].message)
   .regex(numAndSpecialCharRegex, PASSWORD_REQUIREMENTS[3].message)
