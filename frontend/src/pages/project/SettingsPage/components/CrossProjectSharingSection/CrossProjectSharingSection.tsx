@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNowStrict } from "date-fns";
 import {
   Box,
   ChevronRight,
@@ -304,10 +304,9 @@ export const CrossProjectSharingSection = () => {
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="rounded-md border border-mineshaft-600">
-                    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
+                    <div className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2 text-xs text-muted">
                       <span>Shared location in this project</span>
                       <span className="w-24 text-right">Secrets shared</span>
-                      <span className="w-32 text-right">Shared</span>
                     </div>
                     {projectGroup.grants
                       .sort((a, b) => {
@@ -318,32 +317,31 @@ export const CrossProjectSharingSection = () => {
                       .map((grant) => (
                         <div
                           key={grant.id}
-                          className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
+                          className="grid grid-cols-[1fr_auto] items-center gap-4 border-b border-mineshaft-600 px-4 py-2.5 last:border-b-0"
                         >
-                          <div className="flex items-center gap-2 text-sm">
-                            <Badge variant="neutral" className="gap-1.5">
-                              <Layers className="size-3" />
-                              {grant.environmentName}
-                            </Badge>
-                            <ChevronRight className="size-3.5 text-muted" />
-                            <FolderIcon className="size-3.5 text-muted" />
-                            <span>{grant.secretPath}</span>
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex w-fit items-center gap-2 text-sm">
+                                <Badge variant="neutral" className="gap-1.5">
+                                  <Layers className="size-3" />
+                                  {grant.environmentName}
+                                </Badge>
+                                <ChevronRight className="size-3.5 text-muted" />
+                                <FolderIcon className="size-3.5 text-muted" />
+                                <span>{grant.secretPath}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Shared{" "}
+                              {formatDistanceToNowStrict(new Date(grant.createdAt), {
+                                addSuffix: true
+                              })}{" "}
+                              ({format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")})
+                            </TooltipContent>
+                          </Tooltip>
                           <span className="w-24 text-right text-sm tabular-nums">
                             {grant.secretCount}
                           </span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="w-32 text-right text-sm whitespace-nowrap text-muted">
-                                {formatDistanceToNow(new Date(grant.createdAt), {
-                                  addSuffix: true
-                                }).replace(/^about /, "")}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {format(new Date(grant.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                            </TooltipContent>
-                          </Tooltip>
                         </div>
                       ))}
                   </div>
