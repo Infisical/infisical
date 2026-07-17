@@ -16,7 +16,8 @@ import {
   CertKeyAlgorithm,
   CertKeyUsageType,
   CertSignatureAlgorithm,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  domainComponentSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -50,7 +51,8 @@ const CertificateProfileDefaultsResponseSchema = z
     country: z.string().optional(),
     state: z.string().optional(),
     locality: z.string().optional(),
-    subjectAltNames: SubjectAltNameDefaultsSchema
+    subjectAltNames: SubjectAltNameDefaultsSchema,
+    domainComponents: z.array(z.string()).optional()
   })
   .nullish();
 
@@ -134,7 +136,8 @@ export const registerCertificateProfilesRouter = async (
               country: z.string().optional(),
               state: z.string().optional(),
               locality: z.string().optional(),
-              subjectAltNames: SubjectAltNameDefaultsSchema
+              subjectAltNames: SubjectAltNameDefaultsSchema,
+              domainComponents: z.array(domainComponentSchema).optional()
             })
             .nullish()
         })
@@ -618,7 +621,8 @@ export const registerCertificateProfilesRouter = async (
               country: z.string().optional(),
               state: z.string().optional(),
               locality: z.string().optional(),
-              subjectAltNames: SubjectAltNameDefaultsSchema
+              subjectAltNames: SubjectAltNameDefaultsSchema,
+              domainComponents: z.array(domainComponentSchema).optional()
             })
             .nullish()
         })

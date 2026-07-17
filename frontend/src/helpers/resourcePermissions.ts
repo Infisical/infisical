@@ -4,7 +4,7 @@ import { PackRule, unpackRules } from "@casl/ability/extra";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 
-import { conditionsMatcher } from "@app/hooks/api/roles/queries";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 const RESOURCE_PERMISSION_STALE_TIME_MS = 60_000;
 const RESOURCE_PERMISSION_REFETCH_INTERVAL_MS = 60_000;

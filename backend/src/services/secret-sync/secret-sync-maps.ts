@@ -1,6 +1,7 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -158,7 +159,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.AWSParameterStore]: [],
   [SecretSync.AWSSecretsManager]: ["mappingBehavior"],
   [SecretSync.GitHub]: [],
-  [SecretSync.GCPSecretManager]: [],
+  [SecretSync.GCPSecretManager]: ["scope", "locationId"],
   [SecretSync.AzureKeyVault]: [],
   [SecretSync.AzureAppConfiguration]: ["label"],
   [SecretSync.AzureDevOps]: ["devopsProjectName"],
@@ -217,15 +218,8 @@ const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
 const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
   if (!newSync.connectionId) return true;
 
-  const existingKeySchema = (existingSync.syncOptions?.keySchema as string) ?? "";
-  const newKeySchema = (newSync.syncOptions?.keySchema as string) ?? "";
-
-  // Mismatched keySchemas can still conflict (e.g. sync A with keySchema "INFISICAL_{{secretKey}}" and secret HOST
-  // vs sync B without keySchema and secret INFISICAL_HOST will write to the same destination key).
-  const hasKeySchemaConflict = !existingKeySchema || !newKeySchema || existingKeySchema === newKeySchema;
-
   if (existingSync.connectionId === newSync.connectionId) {
-    return hasKeySchemaConflict;
+    return true;
   }
 
   if (!existingSync.connectionId) return false;
@@ -245,14 +239,27 @@ const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, ne
 
   if (!existingAccountId || !newAccountId) return false;
 
-  return existingAccountId === newAccountId && hasKeySchemaConflict;
+  return existingAccountId === newAccountId;
+};
+
+const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
+  const existingConfig = existingSync.destinationConfig;
+  const newConfig = newSync.destinationConfig;
+
+  if (existingConfig.projectId !== newConfig.projectId) return false;
+
+  if (newConfig.scope === GcpSyncScope.Region) {
+    return existingConfig.scope === GcpSyncScope.Region && existingConfig.locationId === newConfig.locationId;
+  }
+
+  return existingConfig.scope === GcpSyncScope.Global;
 };
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
   [SecretSync.AWSParameterStore]: awsDuplicateCheck,
   [SecretSync.AWSSecretsManager]: awsDuplicateCheck,
   [SecretSync.GitHub]: defaultDuplicateCheck,
-  [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
+  [SecretSync.GCPSecretManager]: gcpDuplicateCheck,
   [SecretSync.AzureKeyVault]: defaultDuplicateCheck,
   [SecretSync.AzureAppConfiguration]: defaultDuplicateCheck,
   [SecretSync.AzureDevOps]: defaultDuplicateCheck,

@@ -83,4 +83,5 @@ export type SubscriptionPlan = {
   emailDomainVerification: boolean;
   honeyTokens: boolean;
   honeyTokenLimit: number;
+  secretsBrokering: boolean;
 };

@@ -327,14 +327,17 @@ export const certificatePolicyServiceFactory = ({
     if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
     if (subjectPolicies && subjectPolicies.length > 0) {
-      for (const attrPolicy of subjectPolicies) {
+      // Domain components are multi-valued and are validated separately below (like SANs).
+      const singleValuedPolicies = subjectPolicies.filter(
+        (attrPolicy) => attrPolicy.type !== CertSubjectAttributeType.DOMAIN_COMPONENT
+      );
+      for (const attrPolicy of singleValuedPolicies) {
         const requestValue = requestAttributes.get(attrPolicy.type);
 
         if (!options?.skipRequired && attrPolicy.required && attrPolicy.required.length > 0) {
           if (!requestValue) {
             errors.push(`Missing required ${attrPolicy.type} attribute`);
           } else {
-            // Validate that the request value matches the required pattern
             const hasMatchingRequired = attrPolicy.required.some((requiredValue) => {
               const validation = validateValueAgainstConstraints(requestValue, [requiredValue], attrPolicy.type);
               return validation.isValid;
@@ -389,6 +392,54 @@ export const certificatePolicyServiceFactory = ({
       }
     }
     // No subject policy defined means no subject constraint (allow all)
+
+    const domainComponentPolicy = subjectPolicies?.find(
+      (attrPolicy) => attrPolicy.type === CertSubjectAttributeType.DOMAIN_COMPONENT
+    );
+    const requestDomainComponents = request.domainComponents ?? [];
+    const dcFieldName = CertSubjectAttributeType.DOMAIN_COMPONENT;
+    if (domainComponentPolicy) {
+      if (!options?.skipRequired && domainComponentPolicy.required && domainComponentPolicy.required.length > 0) {
+        for (const requiredValue of domainComponentPolicy.required) {
+          const hasMatch = requestDomainComponents.some(
+            (dc) => validateValueAgainstConstraints(dc, [requiredValue], dcFieldName).isValid
+          );
+          if (!hasMatch) {
+            errors.push(`Required ${dcFieldName} matching pattern '${requiredValue}' not found in request`);
+          }
+        }
+      }
+
+      if (domainComponentPolicy.denied && domainComponentPolicy.denied.length > 0) {
+        for (const dc of requestDomainComponents) {
+          if (validateValueAgainstConstraints(dc, domainComponentPolicy.denied, dcFieldName).isValid) {
+            errors.push(`${dcFieldName} value '${dc}' is denied by template policy`);
+          }
+        }
+      }
+
+      if (domainComponentPolicy.allowed && domainComponentPolicy.allowed.length > 0 && requestDomainComponents.length) {
+        for (const dc of requestDomainComponents) {
+          const satisfiesRequired =
+            domainComponentPolicy.required && domainComponentPolicy.required.length > 0
+              ? domainComponentPolicy.required.some(
+                  (requiredValue) => validateValueAgainstConstraints(dc, [requiredValue], dcFieldName).isValid
+                )
+              : false;
+
+          if (!satisfiesRequired) {
+            const validation = validateValueAgainstConstraints(dc, domainComponentPolicy.allowed, dcFieldName);
+            if (!validation.isValid && validation.error) {
+              errors.push(validation.error);
+            }
+          }
+        }
+      }
+    } else if (subjectPolicies && subjectPolicies.length > 0 && requestDomainComponents.length > 0) {
+      // A subject policy is defined but has no domain_component rule, so DCs aren't permitted.
+      // When no subject policy is defined at all, every subject attribute is allowed (see above).
+      errors.push(`${dcFieldName} is not allowed by template policy (not defined in template)`);
+    }
 
     // Validate Subject Alternative Names
     const sansPolicies = template.sans;

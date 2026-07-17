@@ -259,7 +259,8 @@ export const useCertificatePolicy = (
           CertSubjectAttributeType.ORGANIZATIONAL_UNIT,
           CertSubjectAttributeType.COUNTRY,
           CertSubjectAttributeType.STATE,
-          CertSubjectAttributeType.LOCALITY
+          CertSubjectAttributeType.LOCALITY,
+          CertSubjectAttributeType.DOMAIN_COMPONENT
         ];
       }
 
@@ -299,6 +300,15 @@ export const useCertificatePolicy = (
         defaultSubjectAttrs.push({
           type: CertSubjectAttributeType.LOCALITY,
           value: defaults.locality
+        });
+      }
+      // Domain components are multi-valued: prefill one row per default value.
+      if (defaults?.domainComponents) {
+        defaults.domainComponents.forEach((dc: string) => {
+          defaultSubjectAttrs.push({
+            type: CertSubjectAttributeType.DOMAIN_COMPONENT,
+            value: dc
+          });
         });
       }
 

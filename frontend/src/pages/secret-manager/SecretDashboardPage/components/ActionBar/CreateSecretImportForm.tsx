@@ -369,7 +369,7 @@ export const CreateSecretImportForm = ({
               </ItemTitle>
               <ItemDescription>
                 {selectedGrant.sourceProjectName} &middot; {selectedGrant.environmentName} &middot;{" "}
-                {selectedGrant.folderName === "root" ? "/" : `/${selectedGrant.folderName}`}
+                {selectedGrant.secretPath}
               </ItemDescription>
             </ItemContent>
           </Item>
@@ -394,7 +394,7 @@ export const CreateSecretImportForm = ({
                   import: {
                     sourceProjectId: selectedGrant.sourceProjectId,
                     environment: selectedGrant.environmentSlug,
-                    path: selectedGrant.folderName === "root" ? "/" : `/${selectedGrant.folderName}`
+                    path: selectedGrant.secretPath
                   }
                 });
                 handleClose();

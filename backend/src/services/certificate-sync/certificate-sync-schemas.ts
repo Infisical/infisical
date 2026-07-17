@@ -14,7 +14,18 @@ export type TAwsElbSyncMetadata = z.infer<typeof AwsElbSyncMetadataSchema>;
 
 export const BaseSyncMetadataSchema = z.object({}).catchall(z.unknown());
 
-export const SyncMetadataSchema = AwsElbSyncMetadataSchema.extend({}).catchall(z.unknown()).nullable().optional();
+/**
+ * Server destinations (Linux/Windows) record the absolute paths of the files they delivered, so
+ * removal targets exactly what was written
+ */
+export const ServerSyncMetadataSchema = z.object({
+  files: z.array(z.string()).optional()
+});
+
+export const SyncMetadataSchema = AwsElbSyncMetadataSchema.extend(ServerSyncMetadataSchema.shape)
+  .catchall(z.unknown())
+  .nullable()
+  .optional();
 
 export type TSyncMetadata = z.infer<typeof SyncMetadataSchema>;
 

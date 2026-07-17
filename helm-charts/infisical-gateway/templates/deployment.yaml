@@ -70,10 +70,15 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if .Values.gateway.enrollment.method }}
-          {{- if .Values.gateway.enrollment.credentialsSecretRef }}
+          {{- if or .Values.gateway.enrollment.credentialsSecretRef .Values.extraEnvFrom }}
           envFrom:
+            {{- if .Values.gateway.enrollment.credentialsSecretRef }}
             - secretRef:
                 name: {{ .Values.gateway.enrollment.credentialsSecretRef }}
+            {{- end }}
+            {{- with .Values.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           env:
             - name: HOME
@@ -84,6 +89,9 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.gateway.enrollment.token.existingSecretRef | default (printf "%s-enrollment-token" (include "infisical-gateway.fullname" .)) }}
                   key: {{ .Values.gateway.enrollment.token.secretKey | default "enrollment-token" }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           args:
             - gateway
@@ -128,6 +136,13 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.secret.name }}
+            {{- with .Values.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}

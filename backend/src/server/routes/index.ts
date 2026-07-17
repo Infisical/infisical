@@ -26,6 +26,8 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
+import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
 import { aiMcpActivityLogDALFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-dal";
 import { aiMcpActivityLogServiceFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-service";
 import { aiMcpEndpointDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-dal";
@@ -156,6 +158,9 @@ import { projectTemplateGroupMembershipDALFactory } from "@app/ee/services/proje
 import { projectTemplateIdentityMembershipDALFactory } from "@app/ee/services/project-template/project-template-identity-membership-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/project-template/project-template-user-membership-dal";
+import { proxiedServiceCredentialDALFactory } from "@app/ee/services/proxied-service/proxied-service-credential-dal";
+import { proxiedServiceDALFactory } from "@app/ee/services/proxied-service/proxied-service-dal";
+import { proxiedServiceServiceFactory } from "@app/ee/services/proxied-service/proxied-service-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
 import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
@@ -257,6 +262,7 @@ import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
+import { mfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
 import { tokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { certManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
@@ -395,6 +401,8 @@ import { membershipIdentityDALFactory } from "@app/services/membership-identity/
 import { membershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { mfaRecoveryCodeDALFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-dal";
+import { mfaRecoveryCodeServiceFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-service";
 import { mfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
@@ -728,6 +736,7 @@ export const registerRoutes = async (
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
   const totpConfigDAL = totpConfigDALFactory(db);
   const webAuthnCredentialDAL = webAuthnCredentialDALFactory(db);
+  const mfaRecoveryCodeDAL = mfaRecoveryCodeDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
@@ -749,6 +758,10 @@ export const registerRoutes = async (
   const honeyTokenConfigDAL = honeyTokenConfigDALFactory(db);
   const honeyTokenDAL = honeyTokenDALFactory(db);
   const honeyTokenEventDAL = honeyTokenEventDALFactory(db);
+
+  const proxiedServiceDAL = proxiedServiceDALFactory(db);
+  const proxiedServiceCredentialDAL = proxiedServiceCredentialDALFactory(db);
+  const orgAgentProxyConfigDAL = orgAgentProxyConfigDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
   const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
@@ -1159,6 +1172,12 @@ export const registerRoutes = async (
     queueService
   });
 
+  const mfaRecoveryCodeService = mfaRecoveryCodeServiceFactory({
+    mfaRecoveryCodeDAL,
+    userDAL,
+    kmsService
+  });
+
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
@@ -1167,7 +1186,10 @@ export const registerRoutes = async (
     groupProjectDAL,
     smtpService,
     userAliasDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    totpConfigDAL,
+    webAuthnCredentialDAL,
+    mfaRecoveryCodeService
   });
 
   const totpService = totpServiceFactory({
@@ -1184,11 +1206,19 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const mfaLockoutService = mfaLockoutServiceFactory({
+    userDAL,
+    tokenService,
+    smtpService,
+    keyStore
+  });
+
   const mfaSessionService = mfaSessionServiceFactory({
     keyStore,
     tokenService,
     smtpService,
-    totpService
+    totpService,
+    mfaLockoutService
   });
 
   const loginService = authLoginServiceFactory({
@@ -1198,12 +1228,13 @@ export const registerRoutes = async (
     tokenService,
     orgDAL,
     totpService,
+    mfaRecoveryCodeService,
     auditLogService,
     notificationService,
     membershipRoleDAL,
     membershipUserDAL,
-    keyStore,
-    permissionService
+    permissionService,
+    mfaLockoutService
   });
 
   const samlService = samlConfigServiceFactory({
@@ -1675,6 +1706,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     approvalPolicyDAL,
+    projectAccessRequestDAL,
     pamFolderDAL,
     pamAccountDAL,
     userDAL,
@@ -2093,6 +2125,7 @@ export const registerRoutes = async (
 
   const projectEnvQueue = projectEnvQueueFactory({
     cronJob,
+    queueService,
     projectEnvDAL,
     keyStore,
     auditLogService
@@ -2922,6 +2955,24 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  const proxiedServiceService = proxiedServiceServiceFactory({
+    proxiedServiceDAL,
+    proxiedServiceCredentialDAL,
+    folderDAL,
+    secretV2BridgeService,
+    permissionService,
+    licenseService,
+    dynamicSecretDAL,
+    projectDAL
+  });
+
+  const agentProxyCaService = agentProxyCaServiceFactory({
+    orgAgentProxyConfigDAL,
+    kmsService,
+    licenseService,
+    permissionService
+  });
+
   const webhookService = webhookServiceFactory({
     permissionService,
     webhookDAL,
@@ -3498,7 +3549,8 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     licenseService,
-    pkiSyncQueue
+    pkiSyncQueue,
+    kmsService
   });
 
   const pkiDiscoveryQueue = pkiDiscoveryQueueFactory({
@@ -3593,7 +3645,9 @@ export const registerRoutes = async (
     identityGroupMembershipDAL,
     userDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    notificationService,
+    smtpService
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({
@@ -3916,6 +3970,7 @@ export const registerRoutes = async (
     projectTemplate: projectTemplateService,
     totp: totpService,
     webAuthn: webAuthnService,
+    mfaRecoveryCode: mfaRecoveryCodeService,
     appConnection: appConnectionService,
     hsmConnector: hsmConnectorService,
     secretSync: secretSyncService,
@@ -3936,6 +3991,8 @@ export const registerRoutes = async (
     gitHubApp: gitHubAppService,
     honeyTokenConfig: honeyTokenConfigService,
     honeyToken: honeyTokenService,
+    proxiedService: proxiedServiceService,
+    agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
     reminder: reminderService,

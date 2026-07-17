@@ -314,6 +314,12 @@ const convertDefaultsToForm = (
     subjectAttributes.push({ type: CertSubjectAttributeType.STATE, value: defaults.state });
   if (defaults.locality)
     subjectAttributes.push({ type: CertSubjectAttributeType.LOCALITY, value: defaults.locality });
+  // Domain components are multi-valued: expand each into its own row.
+  if (defaults.domainComponents) {
+    defaults.domainComponents.forEach((dc) => {
+      subjectAttributes.push({ type: CertSubjectAttributeType.DOMAIN_COMPONENT, value: dc });
+    });
+  }
 
   return {
     ttlDays: defaults.ttlDays ?? null,
@@ -365,6 +371,7 @@ const convertFormToDefaults = (
 
   // Subject attributes → flat fields
   if (formDefaults.subjectAttributes && formDefaults.subjectAttributes.length > 0) {
+    const domainComponents: string[] = [];
     formDefaults.subjectAttributes.forEach((attr) => {
       if (!attr.value) return;
       switch (attr.type) {
@@ -386,10 +393,16 @@ const convertFormToDefaults = (
         case CertSubjectAttributeType.LOCALITY:
           result.locality = attr.value;
           break;
+        case CertSubjectAttributeType.DOMAIN_COMPONENT:
+          domainComponents.push(attr.value);
+          break;
         default:
           break;
       }
     });
+    if (domainComponents.length > 0) {
+      result.domainComponents = domainComponents;
+    }
   }
 
   if (formDefaults.subjectAltNames && formDefaults.subjectAltNames.length > 0) {

@@ -6,6 +6,7 @@ import { useParams } from "@tanstack/react-router";
 import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
+import { isMfaLockoutError, stashMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import {
   MfaSessionStatus,
@@ -58,6 +59,7 @@ export const MfaSessionPage = () => {
   const [mfaCode, setMfaCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [codeInputKey, setCodeInputKey] = useState(0);
 
   const { data: sessionStatus, isError: isStatusError } = useMfaSessionStatus(mfaSessionId);
   const verifyMfaSession = useVerifyMfaSession();
@@ -119,8 +121,15 @@ export const MfaSessionPage = () => {
         window.close();
       }, 1000);
     } catch (err: any) {
+      if (isMfaLockoutError(err)) {
+        stashMfaLockoutError(mfaSessionId, err.response.data.message);
+        window.close();
+        return;
+      }
+
       setError(err?.response?.data?.message || "Invalid MFA code. Please try again.");
       setMfaCode("");
+      setCodeInputKey((key) => key + 1);
     } finally {
       setIsLoading(false);
     }
@@ -161,6 +170,12 @@ export const MfaSessionPage = () => {
         }, 1000);
       }
     } catch (err: any) {
+      if (isMfaLockoutError(err)) {
+        stashMfaLockoutError(mfaSessionId, err.response.data.message);
+        window.close();
+        return;
+      }
+
       console.error("WebAuthn verification failed:", err);
 
       let errorMessage = "Failed to verify passkey";
@@ -263,6 +278,7 @@ export const MfaSessionPage = () => {
             <div className="mx-auto hidden md:block" style={{ minWidth: "600px" }}>
               <div className="mt-8 mb-6 flex justify-center">
                 <ReactCodeInput
+                  key={`code-input-desktop-${codeInputKey}`}
                   name=""
                   inputMode="tel"
                   type="text"
@@ -277,6 +293,7 @@ export const MfaSessionPage = () => {
             <div className="mx-auto mt-4 block md:hidden" style={{ minWidth: "400px" }}>
               <div className="mt-4 mb-6 flex justify-center">
                 <ReactCodeInput
+                  key={`code-input-phone-${codeInputKey}`}
                   name=""
                   inputMode="tel"
                   type="text"

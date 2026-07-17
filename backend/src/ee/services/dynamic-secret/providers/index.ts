@@ -27,6 +27,7 @@ import { SapAseProvider } from "./sap-ase";
 import { SapHanaProvider } from "./sap-hana";
 import { SqlDatabaseProvider } from "./sql-database";
 import { SshProvider } from "./ssh";
+import { TailscaleProvider } from "./tailscale";
 import { TotpProvider } from "./totp";
 import { VerticaProvider } from "./vertica";
 
@@ -70,5 +71,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
   [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Ssh]: SshProvider(),
-  [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider()
+  [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
+  [DynamicSecretProviders.Tailscale]: TailscaleProvider()
 });

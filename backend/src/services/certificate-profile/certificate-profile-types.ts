@@ -38,6 +38,7 @@ export type TCertificateProfileDefaults = {
   state?: string;
   locality?: string;
   subjectAltNames?: { type: CertSubjectAlternativeNameType; value: string }[];
+  domainComponents?: string[];
 };
 
 export type TCertificateProfile = Omit<

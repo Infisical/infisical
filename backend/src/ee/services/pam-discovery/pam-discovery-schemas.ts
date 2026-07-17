@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PamAccountType } from "../pam/pam-enums";
 import { ActiveDirectoryDiscoveryConfigSchema } from "./active-directory/active-directory-discovery-schemas";
 import { PamDiscoveryType } from "./pam-discovery-enums";
+import { UnixDiscoveryConfigSchema } from "./unix/unix-discovery-schemas";
 
 export const DISCOVERY_TYPE_CONFIGS = {
   [PamDiscoveryType.ActiveDirectory]: {
@@ -10,6 +11,12 @@ export const DISCOVERY_TYPE_CONFIGS = {
     icon: "ActiveDirectory.png",
     credentialAccountType: PamAccountType.WindowsAd,
     configuration: ActiveDirectoryDiscoveryConfigSchema
+  },
+  [PamDiscoveryType.Unix]: {
+    name: "Linux/Unix",
+    icon: "SSH.png",
+    credentialAccountType: PamAccountType.SSH,
+    configuration: UnixDiscoveryConfigSchema
   }
 } as const satisfies Partial<
   Record<

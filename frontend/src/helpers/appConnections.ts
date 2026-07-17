@@ -93,6 +93,7 @@ import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/tr
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
+import { WinRMConnectionMethod } from "@app/hooks/api/appConnections/types/winrm-connection";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const APP_CONNECTION_MAP: Record<
@@ -412,11 +413,17 @@ export const APP_CONNECTION_MAP: Record<
     description: "Account and job access for dbt."
   },
   [AppConnection.SMB]: {
-    name: "SMB",
+    name: "Windows (SMB)",
     image: "SMB.png",
     size: 50,
     category: "STORAGE",
     description: "Connect to an SMB/CIFS file share."
+  },
+  [AppConnection.WinRM]: {
+    name: "Windows (WinRM)",
+    image: "Windows.png",
+    category: "INFRASTRUCTURE",
+    description: "Connect to a Windows host over WinRM via the Gateway."
   },
   [AppConnection.OpenRouter]: {
     name: "OpenRouter",
@@ -720,6 +727,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
+    case WinRMConnectionMethod.UsernamePassword:
+      return { name: "Username & Password", icon: faLock };
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:

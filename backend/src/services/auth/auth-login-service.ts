@@ -12,7 +12,6 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -41,6 +40,7 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -69,6 +69,7 @@ import {
   ProviderAuthResult,
   TProviderAuthCallback
 } from "./auth-type";
+import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
   userDAL: TUserDALFactory;
@@ -76,13 +77,17 @@ type TAuthLoginServiceFactoryDep = {
   orgDAL: TOrgDALFactory;
   tokenService: TAuthTokenServiceFactory;
   smtpService: TSmtpService;
-  totpService: Pick<TTotpServiceFactory, "verifyUserTotp" | "verifyWithUserRecoveryCode">;
+  totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "verifyAndConsumeRecoveryCode">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  mfaLockoutService: Pick<
+    TMfaLockoutServiceFactory,
+    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth"
+  >;
 };
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
@@ -93,12 +98,13 @@ export const authLoginServiceFactory = ({
   smtpService,
   orgDAL,
   totpService,
+  mfaRecoveryCodeService,
   auditLogService,
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  keyStore,
-  permissionService
+  permissionService,
+  mfaLockoutService
 }: TAuthLoginServiceFactoryDep) => {
   /*
    * Private
@@ -291,7 +297,7 @@ export const authLoginServiceFactory = ({
       { expiresIn: refreshTokenExpiresIn }
     );
 
-    return { access: accessToken, refresh: refreshToken };
+    return { access: accessToken, refresh: refreshToken, tokenVersionId: tokenSession.id };
   };
 
   const processProviderCallback = async ({
@@ -631,54 +637,6 @@ export const authLoginServiceFactory = ({
     });
   };
 
-  const processFailedMfaAttempt = async (userId: string) => {
-    try {
-      const updatedUser = await userDAL.transaction(async (tx) => {
-        const PROGRESSIVE_DELAY_INTERVAL = 3;
-        const user = await userDAL.updateById(userId, { $incr: { consecutiveFailedMfaAttempts: 1 } }, tx);
-
-        if (!user) {
-          throw new Error("User not found");
-        }
-
-        const progressiveDelaysInMins = [5, 30, 60];
-
-        // lock user when failed attempt exceeds threshold
-        if (
-          user.consecutiveFailedMfaAttempts &&
-          user.consecutiveFailedMfaAttempts >= PROGRESSIVE_DELAY_INTERVAL * (progressiveDelaysInMins.length + 1)
-        ) {
-          return userDAL.updateById(
-            userId,
-            {
-              isLocked: true,
-              temporaryLockDateEnd: null
-            },
-            tx
-          );
-        }
-
-        // delay user only when failed MFA attempts is a multiple of configured delay interval
-        if (user.consecutiveFailedMfaAttempts && user.consecutiveFailedMfaAttempts % PROGRESSIVE_DELAY_INTERVAL === 0) {
-          const delayIndex = user.consecutiveFailedMfaAttempts / PROGRESSIVE_DELAY_INTERVAL - 1;
-          return userDAL.updateById(
-            userId,
-            {
-              temporaryLockDateEnd: new Date(new Date().getTime() + progressiveDelaysInMins[delayIndex] * 60 * 1000)
-            },
-            tx
-          );
-        }
-
-        return user;
-      });
-
-      return updatedUser;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Process failed MFA Attempt" });
-    }
-  };
-
   /*
    * Multi factor authentication verification of code
    * Third step of login in which user completes with mfa
@@ -694,40 +652,38 @@ export const authLoginServiceFactory = ({
     orgId,
     isRecoveryCode = false
   }: TVerifyMfaTokenDTO) => {
-    const appCfg = getConfig();
     const user = await userDAL.findById(userId);
 
     try {
-      if (mfaMethod !== requiredMfaMethod) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      // Recovery codes are account-level and bypass the configured second
+      // factor regardless of the required MFA method (email, TOTP or WebAuthn).
+      if (isRecoveryCode) {
+        await mfaRecoveryCodeService.verifyAndConsumeRecoveryCode({
+          userId,
+          recoveryCode: mfaToken
+        });
+      } else if (mfaMethod !== requiredMfaMethod) {
         throw new BadRequestError({
           message: `Invalid MFA method. ${requiredMfaMethod} verification is required.`
         });
-      }
-
-      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
-      if (mfaMethod === MfaMethod.EMAIL) {
+      } else if (mfaMethod === MfaMethod.EMAIL) {
         await tokenService.validateTokenForUser({
           type: TokenType.TOKEN_EMAIL_MFA,
           userId,
           code: mfaToken
         });
       } else if (mfaMethod === MfaMethod.TOTP) {
-        if (isRecoveryCode) {
-          await totpService.verifyWithUserRecoveryCode({
-            userId,
-            recoveryCode: mfaToken
-          });
-        } else {
-          if (mfaToken.length !== 6) {
-            throw new BadRequestError({
-              message: "Please use a valid TOTP code."
-            });
-          }
-          await totpService.verifyUserTotp({
-            userId,
-            totp: mfaToken
+        if (mfaToken.length !== 6) {
+          throw new BadRequestError({
+            message: "Please use a valid TOTP code."
           });
         }
+        await totpService.verifyUserTotp({
+          userId,
+          totp: mfaToken
+        });
       } else if (mfaMethod === MfaMethod.WEBAUTHN) {
         if (!mfaToken) {
           throw new BadRequestError({
@@ -742,52 +698,13 @@ export const authLoginServiceFactory = ({
         });
       }
     } catch (err) {
-      const updatedUser = await processFailedMfaAttempt(userId);
-      if (updatedUser.isLocked) {
-        if (updatedUser.email) {
-          // Use a keystore lock to prevent sending duplicate unlock emails during concurrent requests
-          let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-          try {
-            lock = await keyStore.acquireLock([KeyStorePrefixes.UserMfaLockoutLock(userId)], 3000, {
-              retryCount: 0
-            });
-
-            // Check if an unlock email was already sent recently (within 5 minutes)
-            const emailAlreadySent = await keyStore.getItem(KeyStorePrefixes.UserMfaUnlockEmailSent(userId));
-            if (!emailAlreadySent) {
-              const unlockToken = await tokenService.createTokenForUser({
-                type: TokenType.TOKEN_USER_UNLOCK,
-                userId: updatedUser.id
-              });
-
-              await smtpService.sendMail({
-                template: SmtpTemplates.UnlockAccount,
-                subjectLine: "Unlock your Infisical account",
-                recipients: [updatedUser.email],
-                substitutions: {
-                  token: unlockToken,
-                  callback_url: `${appCfg.SITE_URL}/api/v1/user/${updatedUser.id}/unlock`
-                }
-              });
-
-              // Mark that an unlock email was sent, expires after 5 minutes
-              await keyStore.setItemWithExpiry(
-                KeyStorePrefixes.UserMfaUnlockEmailSent(userId),
-                KeyStoreTtls.UserMfaUnlockEmailSentInSeconds,
-                "1"
-              );
-            }
-          } catch (lockErr) {
-            if (lock) {
-              logger.error(lockErr, "Failed to send unlock email");
-            }
-          } finally {
-            if (lock) {
-              await lock.release();
-            }
-          }
-        }
+      if (isRecoveryCode && err instanceof NotFoundError) {
+        throw new BadRequestError({
+          message: "No recovery codes are configured for this account. Please use another MFA method."
+        });
       }
+
+      await mfaLockoutService.handleFailedMfaAttempt(userId);
 
       throw err;
     }
@@ -797,11 +714,7 @@ export const authLoginServiceFactory = ({
     const userEnc = await userDAL.findById(userId);
     if (!userEnc) throw new Error("Failed to authenticate user");
 
-    // reset lock states
-    await userDAL.updateById(userId, {
-      consecutiveFailedMfaAttempts: 0,
-      temporaryLockDateEnd: null
-    });
+    await mfaLockoutService.resetMfaLockStatus(userId);
 
     const token = await generateUserTokens({
       userId: user.id,
@@ -812,6 +725,28 @@ export const authLoginServiceFactory = ({
       isMfaVerified: true,
       mfaMethod
     });
+
+    // Open the grace window for THIS session only (the one that just proved MFA), so
+    // MFA-management step-up isn't re-prompted right after login - including recovery-code
+    // logins, which is what lets a user with a lost factor still manage their MFA. Keyed
+    // by the new session's tokenVersionId so no other session inherits it.
+    await mfaLockoutService.recordRecentMfaAuth(user.id, token.tokenVersionId);
+
+    if (isRecoveryCode && userEnc.email) {
+      await smtpService
+        .sendMail({
+          template: SmtpTemplates.MfaRecoveryCodeUsed,
+          subjectLine: "A recovery code was used to sign in to your Infisical account",
+          recipients: [userEnc.email],
+          substitutions: {
+            email: userEnc.email,
+            timestamp: new Date().toString(),
+            ip,
+            userAgent
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send MFA recovery code used email"));
+    }
 
     return { token, user: { ...userEnc, hashedPassword: null } };
   };

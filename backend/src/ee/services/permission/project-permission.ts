@@ -48,7 +48,8 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete"
+  Delete = "delete",
+  PersonalOverride = "personal-override"
 }
 
 export enum ProjectPermissionCmekActions {
@@ -60,6 +61,8 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  GenerateMac = "generate-mac",
+  VerifyMac = "verify-mac",
   Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
@@ -288,6 +291,14 @@ export enum ProjectPermissionHoneyTokenActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionProxiedServiceActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Proxy = "proxy"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -370,6 +381,7 @@ export enum ProjectPermissionSub {
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
   HoneyTokens = "honey-tokens",
+  ProxiedServices = "proxied-services",
   Insights = "insights"
 }
 
@@ -543,6 +555,11 @@ export type HoneyTokenSubjectFields = {
   secretPath: string;
 };
 
+export type ProxiedServiceSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
 export type ProjectFolderGrantSubjectFields = {
   environment: string;
   secretPath: string;
@@ -686,6 +703,13 @@ export type ProjectPermissionSet =
   | [
       ProjectPermissionHoneyTokenActions,
       ProjectPermissionSub.HoneyTokens | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+    ]
+  | [
+      ProjectPermissionProxiedServiceActions,
+      (
+        | ProjectPermissionSub.ProxiedServices
+        | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
+      )
     ]
   | [ProjectPermissionActions, ProjectPermissionSub.McpServers]
   | [ProjectPermissionActions, ProjectPermissionSub.McpActivityLogs]
@@ -899,6 +923,23 @@ const SecretImportConditionSchema = z
   .partial();
 
 const HoneyTokenConditionSchema = z
+  .object({
+    environment: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
+    ]),
+    secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
+  })
+  .partial();
+
+const ProxiedServiceConditionSchema = z
   .object({
     environment: z.union([
       z.string(),
@@ -1665,6 +1706,16 @@ const GeneralPermissionSchema = [
       "Describe what action an entity can take."
     ),
     conditions: HoneyTokenConditionSchema.describe(
+      "When specified, only matching conditions will be allowed to access given resource."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ProxiedServices).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionProxiedServiceActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: ProxiedServiceConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

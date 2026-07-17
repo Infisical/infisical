@@ -88,7 +88,8 @@ const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[numb
   organizational_unit: "Organizational Unit (OU)",
   country: "Country (C)",
   state: "State/Province (ST)",
-  locality: "Locality (L)"
+  locality: "Locality (L)",
+  domain_component: "Domain Component (DC)"
 };
 
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
