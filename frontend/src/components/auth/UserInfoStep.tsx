@@ -136,8 +136,8 @@ export default function UserInfoStep({
             {isInvite ? "Set up your account" : t("signup.step3-message")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Field className="py-2" data-invalid={showDangerState && Boolean(errors.name)}>
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={showDangerState && Boolean(errors.name)}>
             <FieldLabel htmlFor="signup-name">Your Name</FieldLabel>
             <Input
               {...register("name")}
@@ -149,10 +149,7 @@ export default function UserInfoStep({
           </Field>
           {!isInvite && (
             <>
-              <Field
-                className="py-2"
-                data-invalid={showDangerState && Boolean(errors.organizationName)}
-              >
+              <Field data-invalid={showDangerState && Boolean(errors.organizationName)}>
                 <FieldLabel htmlFor="signup-organization-name">Organization Name</FieldLabel>
                 <Input
                   {...register("organizationName")}
@@ -163,7 +160,7 @@ export default function UserInfoStep({
                   isError={showDangerState && Boolean(errors.organizationName)}
                 />
               </Field>
-              <Field className="py-2">
+              <Field>
                 <FieldLabel htmlFor="signup-attribution-source">
                   Where did you hear about us? <span className="font-light">(optional)</span>
                 </FieldLabel>
@@ -176,30 +173,26 @@ export default function UserInfoStep({
               </Field>
             </>
           )}
-          <div className="py-2">
-            <PasswordField
-              id="new-password"
-              value={passwordValue}
-              placeholder="••••••••"
-              registration={register("password")}
-              error={showDangerState ? errors.password : undefined}
-              submitCount={submitCount}
-              onBreachStatusChange={setPasswordBreachStatus}
-            />
-          </div>
-          <div className="mt-4 w-full">
-            <Button
-              type="submit"
-              onClick={handleSubmit(onSubmit)}
-              variant="project"
-              size="lg"
-              isFullWidth
-              isPending={isLoading}
-              isDisabled={!canSubmit}
-            >
-              {String(t("signup.signup"))}
-            </Button>
-          </div>
+          <PasswordField
+            id="new-password"
+            value={passwordValue}
+            placeholder="••••••••"
+            registration={register("password")}
+            error={showDangerState ? errors.password : undefined}
+            submitCount={submitCount}
+            onBreachStatusChange={setPasswordBreachStatus}
+          />
+          <Button
+            type="submit"
+            onClick={handleSubmit(onSubmit)}
+            variant="project"
+            size="lg"
+            isFullWidth
+            isPending={isLoading}
+            isDisabled={!canSubmit}
+          >
+            {String(t("signup.signup"))}
+          </Button>
         </CardContent>
       </Card>
     </div>

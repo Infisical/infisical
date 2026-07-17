@@ -20,6 +20,17 @@ if (tokenBroadcastChannel) {
 // Shared promise to deduplicate concurrent refresh calls
 let activeRefreshPromise: Promise<GetAuthTokenAPI> | null = null;
 
+export const shouldRetryAuthTokenFetch = (failureCount: number, error: unknown) => {
+  if (
+    axios.isAxiosError(error) &&
+    (error.response?.status === 401 || error.response?.status === 404)
+  ) {
+    return false;
+  }
+
+  return failureCount < 1;
+};
+
 /**
  * Refresh the auth token using the httpOnly refresh token cookie.
  * If an in-memory token already exists (e.g. after selectOrganization),

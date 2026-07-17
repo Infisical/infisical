@@ -1351,6 +1351,7 @@ export const registerRoutes = async (
     groupDAL,
     oidcConfigDAL,
     ldapConfigDAL,
+    emailDomainDAL,
     loginService,
     projectBotService,
     reminderService,

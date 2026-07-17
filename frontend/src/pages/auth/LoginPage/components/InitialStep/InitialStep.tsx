@@ -13,13 +13,16 @@ import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
 import attemptLogin from "@app/components/utilities/attemptLogin";
 import {
-  Badge,
+  AnimatedCollapse,
   Button,
+  ButtonBadge,
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
+  FieldSeparator,
   IconButton,
   Input,
   InputGroup,
@@ -31,10 +34,9 @@ import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
-import { AuthMethod } from "@app/hooks/api/users/types";
-import { useLastLogin } from "@app/hooks/useLastLogin";
+import { GENERIC_SSO_LOGIN_METHOD, useLastLogin } from "@app/hooks/useLastLogin";
 
-import { LoginSection, useNavigateToSelectOrganization } from "../../Login.utils";
+import { useNavigateToSelectOrganization } from "../../Login.utils";
 import { OrgLoginButton } from "../OrgLoginButton";
 import { SocialLoginButton } from "../SocialLoginButton";
 
@@ -46,14 +48,12 @@ const loginFormSchema = z.object({
 type LoginFormData = z.infer<typeof loginFormSchema>;
 
 type Props = {
-  setSection: (section: LoginSection) => void;
   isAdmin?: boolean;
 };
 
-export const InitialStep = ({ setSection, isAdmin }: Props) => {
-  const navigate = useNavigate();
-
+export const InitialStep = ({ isAdmin }: Props) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
@@ -61,6 +61,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [areMoreLoginOptionsVisible, setAreMoreLoginOptionsVisible] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -90,13 +91,6 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
     window.location.assign(redirectUrl);
   };
 
-  const redirectToOidc = (orgSlug: string) => {
-    const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
-      callbackPort ? `&callbackPort=${encodeURIComponent(callbackPort)}` : ""
-    }`;
-    window.location.assign(redirectUrl);
-  };
-
   useEffect(() => {
     if (serverDetails?.samlDefaultOrgSlug && !isAdmin) {
       saveLastLogin({ method: LoginMethod.SAML, orgSlug: serverDetails.samlDefaultOrgSlug });
@@ -104,22 +98,15 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
-  const handleSaml = () => {
-    if (config.defaultAuthOrgSlug) {
-      saveLastLogin({ method: LoginMethod.SAML, orgSlug: config.defaultAuthOrgSlug });
-      redirectToSaml(config.defaultAuthOrgSlug);
-    } else {
-      setSection(LoginSection.SAML);
-    }
-  };
-
-  const handleOidc = () => {
-    if (config.defaultAuthOrgSlug) {
-      saveLastLogin({ method: LoginMethod.OIDC, orgSlug: config.defaultAuthOrgSlug });
-      redirectToOidc(config.defaultAuthOrgSlug);
-    } else {
-      setSection(LoginSection.OIDC);
-    }
+  const handleSso = () => {
+    navigate({
+      to: "/login/sso",
+      search: {
+        callback_port: callbackPort ? Number(callbackPort) : undefined,
+        is_admin_login: isAdmin || undefined,
+        organizationSlug: config.defaultAuthOrgSlug || undefined
+      }
+    });
   };
 
   const handleSocialLogin = (method: LoginMethod) => {
@@ -140,6 +127,49 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
+
+  const shouldDisplaySso = [LoginMethod.SAML, LoginMethod.OIDC, LoginMethod.LDAP].some(
+    shouldDisplayLoginMethod
+  );
+  const isLastUsedSso =
+    (lastLogin?.method === GENERIC_SSO_LOGIN_METHOD &&
+      [LoginMethod.SAML, LoginMethod.OIDC].some(shouldDisplayLoginMethod)) ||
+    (lastLogin?.method === LoginMethod.SAML && shouldDisplayLoginMethod(LoginMethod.SAML)) ||
+    (lastLogin?.method === LoginMethod.OIDC && shouldDisplayLoginMethod(LoginMethod.OIDC)) ||
+    (lastLogin?.method === LoginMethod.LDAP && shouldDisplayLoginMethod(LoginMethod.LDAP));
+
+  const socialLoginMethods = [
+    {
+      method: LoginMethod.GOOGLE,
+      icon: faGoogle,
+      label: t("login.continue-with-google")
+    },
+    {
+      method: LoginMethod.GITHUB,
+      icon: faGithub,
+      label: "Continue with GitHub"
+    },
+    {
+      method: LoginMethod.GITLAB,
+      icon: faGitlab,
+      label: "Continue with GitLab"
+    }
+  ].filter(({ method }) => shouldDisplayLoginMethod(method));
+
+  const lastUsedSocialLoginMethod = socialLoginMethods.find(({ method }) =>
+    isLastUsedMethod(method)
+  );
+  const otherSocialLoginMethods = socialLoginMethods.filter(
+    ({ method }) => method !== lastUsedSocialLoginMethod?.method
+  );
+  const hasLastUsedButtonLoginMethod = Boolean(lastUsedSocialLoginMethod || isLastUsedSso);
+  const shouldDisplaySsoInAdditionalOptions = shouldDisplaySso && !isLastUsedSso;
+  const hasButtonLoginMethod = socialLoginMethods.length > 0 || shouldDisplaySso;
+  const moreLoginOptionsCount =
+    otherSocialLoginMethods.length + Number(shouldDisplaySsoInAdditionalOptions);
+  const hasMoreLoginOptions = hasLastUsedButtonLoginMethod && moreLoginOptionsCount > 0;
+  const shouldShowAdditionalLoginOptions =
+    !hasLastUsedButtonLoginMethod || areMoreLoginOptionsVisible;
 
   const handleLoginFailure = () => {
     setLoginError(true);
@@ -220,12 +250,7 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
             </CardAction>
           </CardHeader>
           <CardContent>
-            {config.defaultAuthOrgAuthMethod === AuthMethod.SAML && (
-              <OrgLoginButton label="Continue with SAML" onClick={handleSaml} />
-            )}
-            {config.defaultAuthOrgAuthMethod === AuthMethod.OIDC && (
-              <OrgLoginButton label="Continue with OIDC" onClick={handleOidc} className="mt-2" />
-            )}
+            <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} />
           </CardContent>
         </Card>
       </form>
@@ -238,52 +263,126 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
       <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
-        <CardHeader className="mb-4 gap-4">
+        <CardHeader className="mb-6 gap-2">
           <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
-            Log in to Infisical
+            Welcome back
           </CardTitle>
+          <CardDescription className="ml-0.5 text-base">
+            {isAdmin ? "Sign in to the Super Admin console" : "Sign in to your Infisical account"}
+          </CardDescription>
           <CardAction className="-mr-2">
             <RegionSelect compact />
           </CardAction>
         </CardHeader>
-        <CardContent>
-          {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
-            <>
-              <div className="w-full">
-                <Input
-                  {...register("email", { onChange: () => setLoginError(false) })}
-                  type="email"
-                  id="email"
-                  placeholder="you@company.com"
-                  autoComplete="username"
-                  className="h-10"
-                  isError={(showDangerState && Boolean(errors.email)) || loginError}
+        <CardContent className="flex flex-col gap-4">
+          {hasButtonLoginMethod && (
+            <div className="flex w-full flex-col">
+              {lastUsedSocialLoginMethod && (
+                <SocialLoginButton
+                  icon={lastUsedSocialLoginMethod.icon}
+                  label={lastUsedSocialLoginMethod.label}
+                  onClick={() => handleSocialLogin(lastUsedSocialLoginMethod.method)}
+                  showLabel
+                  showLastUsed
                 />
-              </div>
-              <div className="mt-2 w-full">
-                <InputGroup className="h-10">
-                  <InputGroupInput
-                    {...register("password", { onChange: () => setLoginError(false) })}
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    id="current-password"
-                    aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <IconButton
+              )}
+              {!lastUsedSocialLoginMethod && isLastUsedSso && (
+                <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} showLastUsed />
+              )}
+              {hasMoreLoginOptions && (
+                <AnimatedCollapse isOpen={!areMoreLoginOptionsVisible}>
+                  <div className="pt-2">
+                    <Button
                       variant="ghost"
-                      size="xs"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      size="sm"
+                      isFullWidth
+                      className="text-accent hover:text-foreground"
+                      aria-controls="additional-login-options"
+                      aria-expanded={areMoreLoginOptionsVisible}
+                      onClick={() => setAreMoreLoginOptionsVisible(true)}
                     >
-                      {showPassword ? <EyeOff /> : <Eye />}
-                    </IconButton>
-                  </InputGroupAddon>
-                </InputGroup>
-              </div>
+                      + {moreLoginOptionsCount} more options
+                    </Button>
+                  </div>
+                </AnimatedCollapse>
+              )}
+              <AnimatedCollapse
+                id={hasLastUsedButtonLoginMethod ? "additional-login-options" : undefined}
+                isOpen={shouldShowAdditionalLoginOptions}
+              >
+                <div
+                  className={
+                    hasLastUsedButtonLoginMethod
+                      ? "flex w-full flex-col gap-2 pt-2"
+                      : "flex w-full flex-col gap-2"
+                  }
+                >
+                  {otherSocialLoginMethods.length > 0 &&
+                    (hasLastUsedButtonLoginMethod ? (
+                      otherSocialLoginMethods.map(({ method, icon, label }) => (
+                        <SocialLoginButton
+                          key={method}
+                          icon={icon}
+                          label={label}
+                          onClick={() => handleSocialLogin(method)}
+                          showLabel
+                        />
+                      ))
+                    ) : (
+                      <div className="flex w-full gap-2">
+                        {otherSocialLoginMethods.map(({ method, icon, label }) => (
+                          <SocialLoginButton
+                            key={method}
+                            icon={icon}
+                            label={label}
+                            onClick={() => handleSocialLogin(method)}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  {shouldDisplaySsoInAdditionalOptions && (
+                    <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} />
+                  )}
+                </div>
+              </AnimatedCollapse>
+            </div>
+          )}
+          {hasButtonLoginMethod && shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
+            <FieldSeparator>or</FieldSeparator>
+          )}
+          {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
+            <div className="flex w-full flex-col gap-4">
+              <Input
+                {...register("email", { onChange: () => setLoginError(false) })}
+                type="email"
+                id="email"
+                placeholder="you@company.com"
+                autoComplete="username"
+                className="h-10"
+                isError={(showDangerState && Boolean(errors.email)) || loginError}
+              />
+              <InputGroup className="h-10">
+                <InputGroupInput
+                  {...register("password", { onChange: () => setLoginError(false) })}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  id="current-password"
+                  aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
+                />
+                <InputGroupAddon align="inline-end">
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff /> : <Eye />}
+                  </IconButton>
+                </InputGroupAddon>
+              </InputGroup>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (
-                <div className="mt-4 flex justify-center [&>div]:!w-full">
+                <div className="flex justify-center [&>div]:!w-full">
                   <HCaptcha
                     theme="dark"
                     sitekey={envConfig.CAPTCHA_SITE_KEY}
@@ -292,120 +391,40 @@ export const InitialStep = ({ setSection, isAdmin }: Props) => {
                   />
                 </div>
               )}
-              <div className="relative mt-4 w-full">
-                <Button
-                  type="submit"
-                  variant="project"
-                  size="lg"
-                  isFullWidth
-                  isDisabled={!isValid || (shouldShowCaptcha && captchaToken === "") || isLoading}
-                  isPending={isLoading}
-                >
-                  Continue with Email
-                </Button>
+              <Button
+                type="submit"
+                variant="project"
+                size="lg"
+                isFullWidth
+                isDisabled={!isValid || (shouldShowCaptcha && captchaToken === "") || isLoading}
+                isPending={isLoading}
+              >
+                Continue with Email
                 {isLastUsedMethod(LoginMethod.EMAIL) && (
-                  <Badge variant="default" className="absolute -top-2 -right-2">
-                    Last used
-                  </Badge>
+                  <ButtonBadge variant="project">Last used</ButtonBadge>
                 )}
-              </div>
-            </>
-          )}
-          {(!config.enabledLoginMethods ||
-            (shouldDisplayLoginMethod(LoginMethod.EMAIL) &&
-              config.enabledLoginMethods.length > 1)) && (
-            <div className="my-4 flex w-full flex-row items-center py-2">
-              <div className="w-full border-t border-mineshaft-400/60" />
-              <span className="mx-2 text-xs text-mineshaft-400">or</span>
-              <div className="w-full border-t border-mineshaft-400/60" />
+              </Button>
             </div>
-          )}
-          <div className="flex w-full gap-2">
-            {shouldDisplayLoginMethod(LoginMethod.GOOGLE) && (
-              <SocialLoginButton
-                icon={faGoogle}
-                label={t("login.continue-with-google")}
-                onClick={() => handleSocialLogin(LoginMethod.GOOGLE)}
-                showLastUsed={isLastUsedMethod(LoginMethod.GOOGLE)}
-              />
-            )}
-            {shouldDisplayLoginMethod(LoginMethod.GITHUB) && (
-              <SocialLoginButton
-                icon={faGithub}
-                label="Continue with GitHub"
-                onClick={() => handleSocialLogin(LoginMethod.GITHUB)}
-                showLastUsed={isLastUsedMethod(LoginMethod.GITHUB)}
-              />
-            )}
-            {shouldDisplayLoginMethod(LoginMethod.GITLAB) && (
-              <SocialLoginButton
-                icon={faGitlab}
-                label="Continue with GitLab"
-                onClick={() => handleSocialLogin(LoginMethod.GITLAB)}
-                showLastUsed={isLastUsedMethod(LoginMethod.GITLAB)}
-              />
-            )}
-          </div>
-          {shouldDisplayLoginMethod(LoginMethod.SAML) && (
-            <OrgLoginButton
-              label="Continue with SAML"
-              onClick={handleSaml}
-              className="mt-2"
-              showLastUsed={isLastUsedMethod(LoginMethod.SAML)}
-            />
-          )}
-          {shouldDisplayLoginMethod(LoginMethod.OIDC) && (
-            <OrgLoginButton
-              label="Continue with OIDC"
-              onClick={handleOidc}
-              className="mt-2"
-              showLastUsed={isLastUsedMethod(LoginMethod.OIDC)}
-            />
-          )}
-          {shouldDisplayLoginMethod(LoginMethod.LDAP) && (
-            <OrgLoginButton
-              label="Continue with LDAP"
-              onClick={() =>
-                navigate({
-                  to: "/login/ldap",
-                  search: {
-                    callback_port: callbackPort
-                  }
-                })
-              }
-              className="mt-2"
-              showLastUsed={isLastUsedMethod(LoginMethod.LDAP)}
-            />
           )}
 
           {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         </CardContent>
       </Card>
-      <div className="mt-6 flex flex-col items-center gap-3">
-        {config.allowSignUp &&
-          (shouldDisplayLoginMethod(LoginMethod.EMAIL) ||
-            shouldDisplayLoginMethod(LoginMethod.GOOGLE) ||
-            shouldDisplayLoginMethod(LoginMethod.GITHUB) ||
-            shouldDisplayLoginMethod(LoginMethod.GITLAB)) && (
-            <div className="flex flex-row items-center justify-center gap-1.5 text-sm">
-              <span className="text-label">Don&apos;t have an account?</span>
-              <Link to="/signup">
-                <span className="cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project">
-                  Sign up
-                </span>
-              </Link>
-            </div>
-          )}
-        {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
-          <div className="flex flex-row justify-center text-xs text-label">
-            <Link to="/account-recovery">
-              <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                Recover your account
-              </span>
+      {config.allowSignUp &&
+        (shouldDisplayLoginMethod(LoginMethod.EMAIL) ||
+          shouldDisplayLoginMethod(LoginMethod.GOOGLE) ||
+          shouldDisplayLoginMethod(LoginMethod.GITHUB) ||
+          shouldDisplayLoginMethod(LoginMethod.GITLAB)) && (
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
+            <span className="text-label">Don&apos;t have an account?</span>
+            <Link
+              to="/signup"
+              className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+            >
+              Sign up
             </Link>
           </div>
         )}
-      </div>
     </form>
   );
 };

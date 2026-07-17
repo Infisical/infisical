@@ -5,9 +5,12 @@ import { LoginMethod } from "@app/hooks/api/admin/types";
 import { useLocalStorageState } from "./useLocalStorageState";
 
 const LAST_LOGIN_KEY = "infisical.lastLogin";
+export const GENERIC_SSO_LOGIN_METHOD = "sso" as const;
+
+type LastLoginMethod = LoginMethod | typeof GENERIC_SSO_LOGIN_METHOD;
 
 export type LastLogin = {
-  method: LoginMethod;
+  method: LastLoginMethod;
   orgSlug?: string;
   timestamp: number;
 };

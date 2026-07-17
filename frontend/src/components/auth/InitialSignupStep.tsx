@@ -3,17 +3,19 @@ import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
-import { CircleChevronRightIcon } from "lucide-react";
 import { z } from "zod";
 
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import {
   Button,
+  ButtonBadge,
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
+  FieldSeparator,
   Input
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
@@ -72,26 +74,30 @@ export default function InitialSignupStep({
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
-        <CardHeader className="mb-4 gap-4">
+        <CardHeader className="mb-6 gap-2">
           <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
-            {t("signup.initial-title")}
+            Sign up
           </CardTitle>
+          <CardDescription className="ml-0.5 text-base">
+            Create your Infisical account
+          </CardDescription>
           <CardAction className="-mr-2">
             <RegionSelect compact />
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <div className="flex w-full flex-col gap-2">
             {shouldDisplaySignupMethod(LoginMethod.GITHUB) && (
               <Button
                 aria-label="Continue with GitHub"
-                variant="project"
+                variant="outline"
                 size="lg"
                 isFullWidth
                 onClick={() => handleSocialSignup(LoginMethod.GITHUB)}
               >
                 <FontAwesomeIcon icon={faGithub} className="!size-4" />
                 Continue with GitHub
+                <ButtonBadge variant="project">Recommended</ButtonBadge>
               </Button>
             )}
             {shouldDisplaySignupMethod(LoginMethod.GOOGLE) && (
@@ -120,89 +126,45 @@ export default function InitialSignupStep({
             )}
           </div>
           {hasSsoSignupMethod && shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
-            <div className="my-4 flex w-full flex-row items-center py-2">
-              <div className="w-full border-t border-mineshaft-400/60" />
-              <span className="mx-2 text-xs text-mineshaft-400">or</span>
-              <div className="w-full border-t border-mineshaft-400/60" />
-            </div>
+            <FieldSeparator>or</FieldSeparator>
           )}
           {shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
-            <>
-              <div className="w-full">
-                <Input
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setEmailError(false);
-                  }}
-                  type="email"
-                  placeholder="you@company.com"
-                  required
-                  autoComplete="username"
-                  className="h-10"
-                  isError={emailError}
-                />
-              </div>
-              <div className="mt-4 w-full">
-                <Button
-                  type="submit"
-                  onClick={handleEmailSignup}
-                  variant="outline"
-                  size="lg"
-                  isFullWidth
-                  isDisabled={!isEmailValid || isPending}
-                  isPending={isPending}
-                >
-                  Continue with Email
-                </Button>
-              </div>
-            </>
+            <div className="flex w-full flex-col gap-4">
+              <Input
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailError(false);
+                }}
+                type="email"
+                placeholder="you@company.com"
+                required
+                autoComplete="username"
+                className="h-10"
+                isError={emailError}
+              />
+              <Button
+                type="submit"
+                onClick={handleEmailSignup}
+                variant="project"
+                size="lg"
+                isFullWidth
+                isDisabled={!isEmailValid || isPending}
+                isPending={isPending}
+              >
+                Continue with Email
+              </Button>
+            </div>
           )}
-          <p className="mt-4 text-center text-xs text-pretty text-label">
-            By signing up, you agree to our{" "}
-            <a
-              href="https://infisical.com/terms/cloud"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
-            >
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a
-              href="https://infisical.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer underline underline-offset-2 duration-200 hover:text-foreground hover:decoration-project/45"
-            >
-              Privacy Policy
-            </a>
-            .
-          </p>
         </CardContent>
       </Card>
-      <div className="mt-6 w-full max-w-sm rounded-lg bg-background">
-        <a
-          href="https://infisical.com/talk-to-us?utm_source=signup&utm_medium=referral"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-project/35 bg-project/10 px-4 py-3 text-foreground transition-colors hover:border-project/40 hover:bg-project/15"
-        >
-          <span className="min-w-0 flex-1 text-xs text-foreground/75">
-            Have a complex company use case?{" "}
-            <span className="font-medium">
-              Get <span className="text-white/90">Enterprise grade</span> assistance
-            </span>
-          </span>
-          <CircleChevronRightIcon className="size-4.5 opacity-75" />
-        </a>
-      </div>
-      <div className="mt-4 flex flex-row items-center justify-center gap-1.5 text-sm">
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
         <span className="text-label">Already have an account?</span>
-        <Link to="/login">
-          <span className="cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project">
-            Log in
-          </span>
+        <Link
+          to="/login"
+          className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+        >
+          Log in
         </Link>
       </div>
     </div>

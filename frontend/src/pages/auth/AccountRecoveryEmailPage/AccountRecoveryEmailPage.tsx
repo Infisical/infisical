@@ -70,28 +70,24 @@ export const AccountRecoveryEmailPage = () => {
                   Recover your account
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="mb-4 text-sm text-label">
+              <CardContent className="flex flex-col gap-4">
+                <p className="text-sm text-label">
                   Enter your email to start the recovery process. You will receive an email with
                   instructions.
                 </p>
-                <div className="w-full">
-                  <Input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email"
-                    placeholder="Enter your email..."
-                    required
-                    autoComplete="username"
-                    className="h-10"
-                  />
-                </div>
-                <div className="mt-4 w-full">
-                  <Button type="submit" variant="project" size="lg" isFullWidth isPending={loading}>
-                    Continue
-                  </Button>
-                </div>
-                <div className="mt-6 flex flex-row justify-center text-xs text-label">
+                <Input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  placeholder="Enter your email..."
+                  required
+                  autoComplete="username"
+                  className="h-10"
+                />
+                <Button type="submit" variant="project" size="lg" isFullWidth isPending={loading}>
+                  Continue
+                </Button>
+                <div className="flex flex-row justify-center text-xs text-label">
                   <Link to="/login">
                     <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                       Back to Login
@@ -109,12 +105,12 @@ export const AccountRecoveryEmailPage = () => {
                 Check your inbox
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
               <p className="text-center text-sm text-foreground">
                 If the email is in our system, you will receive an email at{" "}
                 <span className="italic">{email}</span> to initiate the account recovery process.
               </p>
-              <div className="mt-6 flex flex-row justify-center text-xs text-label">
+              <div className="flex flex-row justify-center text-xs text-label">
                 <Link to="/login">
                   <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                     Back to Login

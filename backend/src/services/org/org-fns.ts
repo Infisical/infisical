@@ -1,6 +1,8 @@
 import { AccessScope } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -12,6 +14,31 @@ import { APPLICATION_APPROVAL_SCOPES } from "../membership/application-membershi
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
+import { OrgAuthMethod } from "./org-types";
+
+type TResolveOrgSsoMethod = {
+  orgId: string;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+};
+
+export const resolveOrgSsoMethod = async ({ orgId, samlConfigDAL, oidcConfigDAL }: TResolveOrgSsoMethod) => {
+  const [samlConfig, oidcConfig] = await Promise.all([
+    samlConfigDAL.findOne({ orgId, isActive: true }),
+    oidcConfigDAL.findOne({ orgId, isActive: true })
+  ]);
+
+  if (samlConfig && oidcConfig) {
+    throw new BadRequestError({
+      message: "The organization has multiple active SSO configurations. Contact your administrator."
+    });
+  }
+
+  if (samlConfig) return OrgAuthMethod.SAML;
+  if (oidcConfig) return OrgAuthMethod.OIDC;
+
+  return null;
+};
 
 type TDeleteOrgMemberships = {
   orgMembershipIds: string[];

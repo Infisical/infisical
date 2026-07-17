@@ -5,9 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, Card, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
@@ -125,8 +123,13 @@ export const SignupSsoPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
-      <AuthPageBackground />
+    <AuthPageLayout
+      headerAction={
+        <Button asChild variant="outline" size="sm">
+          <Link to="/login">Log In</Link>
+        </Button>
+      }
+    >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -134,82 +137,72 @@ export const SignupSsoPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild>
-          <Link to="/login">Log In</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-          <div className="mx-auto flex w-full flex-col items-center justify-center">
-            <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
-              <CardHeader className="mb-2 gap-2">
-                <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
-                  We&apos;ve sent a verification code to
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-md my-1 flex justify-center font-medium text-foreground">
-                  {decoded.email}
-                </p>
-                <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-                  <ReactCodeInput
-                    name=""
-                    inputMode="tel"
-                    type="text"
-                    fields={6}
-                    onChange={setCode}
-                    {...codeInputStyle}
-                    className="code-input-v3 mt-6 mb-2"
-                  />
-                </div>
-                <div className="mx-auto mt-4 block w-max md:hidden">
-                  <ReactCodeInput
-                    name=""
-                    inputMode="tel"
-                    type="text"
-                    fields={6}
-                    onChange={setCode}
-                    {...codeInputStylePhone}
-                    className="code-input-v3 mt-2 mb-2"
-                  />
-                </div>
-                {completeAccountSignup.isError && (
-                  <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
-                )}
-                <div className="mt-4 w-full">
-                  <Button
-                    type="submit"
-                    onClick={handleSubmit}
-                    variant="project"
-                    size="lg"
-                    isFullWidth
-                    isPending={completeAccountSignup.isPending}
-                    isDisabled={code.length !== 6 || completeAccountSignup.isPending}
+      <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+        <div className="mx-auto flex w-full flex-col items-center justify-center">
+          <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+            <CardHeader className="mb-2 gap-2">
+              <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
+                We&apos;ve sent a verification code to
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <p className="text-md flex justify-center font-medium text-foreground">
+                {decoded.email}
+              </p>
+              <div className="mx-auto hidden w-max min-w-[20rem] md:block">
+                <ReactCodeInput
+                  name=""
+                  inputMode="tel"
+                  type="text"
+                  fields={6}
+                  onChange={setCode}
+                  {...codeInputStyle}
+                  className="code-input-v3"
+                />
+              </div>
+              <div className="mx-auto block w-max md:hidden">
+                <ReactCodeInput
+                  name=""
+                  inputMode="tel"
+                  type="text"
+                  fields={6}
+                  onChange={setCode}
+                  {...codeInputStylePhone}
+                  className="code-input-v3"
+                />
+              </div>
+              {completeAccountSignup.isError && (
+                <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
+              )}
+              <Button
+                type="submit"
+                onClick={handleSubmit}
+                variant="project"
+                size="lg"
+                isFullWidth
+                isPending={completeAccountSignup.isPending}
+                isDisabled={code.length !== 6 || completeAccountSignup.isPending}
+              >
+                Verify
+              </Button>
+              <div className="flex flex-col items-center gap-2 text-xs text-label">
+                <div className="flex flex-row items-baseline gap-1">
+                  <button
+                    disabled={completeAccountSignup.isPending}
+                    onClick={handleResendCode}
+                    type="button"
                   >
-                    Verify
-                  </Button>
+                    <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
+                      Don&apos;t see the code? Resend
+                    </span>
+                  </button>
                 </div>
-                <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
-                  <div className="flex flex-row items-baseline gap-1">
-                    <button
-                      disabled={completeAccountSignup.isPending}
-                      onClick={handleResendCode}
-                      type="button"
-                    >
-                      <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                        Don&apos;t see the code? Resend
-                      </span>
-                    </button>
-                  </div>
-                  <p className="text-label">Make sure to check your spam inbox.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </form>
-      </div>
-      <AuthPageFooter />
-    </div>
+                <p className="text-label">Make sure to check your spam inbox.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </form>
+    </AuthPageLayout>
   );
 };
