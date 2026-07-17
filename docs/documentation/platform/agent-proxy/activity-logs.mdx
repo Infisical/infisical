@@ -34,7 +34,7 @@ Each record captures the request line, the scoped folder, the matched service, t
 | `infisical.decision` | `brokered`, `passthrough`, `blocked`, or `error` (see below) |
 | `infisical.project.id` / `infisical.environment` / `infisical.secret_path` | The folder the request was scoped to |
 | `infisical.service.id` / `infisical.service.name` | The matched proxied service, or omitted when none matched |
-| `infisical.credentials` | What was injected: each entry's secret key, and the header or surfaces it landed in |
+| `infisical.credentials` | What was injected: each entry's secret key (or, for a dynamic secret, its name and output field), and the header or surfaces it landed in |
 
 Records also carry standard ECS `event.*` fields (`event.action`, `event.outcome`) and `infisical.schema_version`.
 
@@ -73,7 +73,7 @@ Set the format with [`--activity-log-format`](/cli/commands/agent-proxy). It def
   </Tab>
 </Tabs>
 
-The `credentials` column uses a shorthand: `header:KEY` for a header rewrite and `surfaces:KEY` for a substitution (for example `path,query:ACME_ACCOUNT`).
+The `credentials` column uses a shorthand: `header:KEY` for a header rewrite and `surfaces:KEY` for a substitution (for example `path,query:ACME_ACCOUNT`). A dynamic secret shows as `name/field` in place of the key (for example `header:my-postgres-creds/DB_PASSWORD`).
 
 ## Choosing what to log
 
