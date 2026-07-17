@@ -24,6 +24,8 @@ import { CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION } from "./cloudflare
 import { cloudflareCustomCertificatePkiSyncFactory } from "./cloudflare-custom-certificate/cloudflare-custom-certificate-pki-sync-fns";
 import { F5_BIG_IP_PKI_SYNC_LIST_OPTION } from "./f5-big-ip/f5-big-ip-pki-sync-constants";
 import { f5BigIpPkiSyncFactory } from "./f5-big-ip/f5-big-ip-pki-sync-fns";
+import { KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-constants";
+import { kempLoadMasterPkiSyncFactory } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-fns";
 import { LINUX_SERVER_PKI_SYNC_LIST_OPTION } from "./linux-server/linux-server-pki-sync-constants";
 import { linuxServerPkiSyncFactory } from "./linux-server/linux-server-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
@@ -49,6 +51,7 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION,
   [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
   [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
+  [PkiSync.KempLoadMaster]: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION,
   [PkiSync.LinuxServer]: LINUX_SERVER_PKI_SYNC_LIST_OPTION,
   [PkiSync.WindowsServer]: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION
 };
@@ -166,6 +169,11 @@ export const PkiSyncFns = {
       case PkiSync.F5BigIp: {
         throw new Error("F5 BIG-IP does not support importing certificates into Infisical");
       }
+      case PkiSync.KempLoadMaster: {
+        throw new Error(
+          "Kemp LoadMaster does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
       case PkiSync.LinuxServer: {
         throw new Error("Linux Server does not support importing certificates into Infisical");
       }
@@ -263,6 +271,16 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return f5BigIpPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.KempLoadMaster: {
+        checkPkiSyncDestination(pkiSync, PkiSync.KempLoadMaster as PkiSync);
+        const kempLoadMasterPkiSync = kempLoadMasterPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return kempLoadMasterPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       case PkiSync.LinuxServer: {
         checkPkiSyncDestination(pkiSync, PkiSync.LinuxServer as PkiSync);
@@ -402,6 +420,20 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         await f5BigIpPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.KempLoadMaster: {
+        checkPkiSyncDestination(pkiSync, PkiSync.KempLoadMaster as PkiSync);
+        const kempLoadMasterPkiSync = kempLoadMasterPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        await kempLoadMasterPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });

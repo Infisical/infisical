@@ -10,6 +10,7 @@ import { AzureKeyVaultPkiSyncFields } from "./AzureKeyVaultPkiSyncFields";
 import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCertificatePkiSyncFields";
 import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
+import { KempLoadMasterPkiSyncFields } from "./KempLoadMasterPkiSyncFields";
 import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
@@ -36,6 +37,8 @@ export const PkiSyncDestinationFields = () => {
       return <NetScalerPkiSyncFields />;
     case PkiSync.F5BigIp:
       return <F5BigIpPkiSyncFields />;
+    case PkiSync.KempLoadMaster:
+      return <KempLoadMasterPkiSyncFields />;
     case PkiSync.LinuxServer:
       return <LinuxServerPkiSyncFields />;
     case PkiSync.WindowsServer:

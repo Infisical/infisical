@@ -31,6 +31,10 @@ import {
   UpdateF5BigIpPkiSyncDestinationSchema
 } from "./f5-big-ip-pki-sync-destination-schema";
 import {
+  KempLoadMasterPkiSyncDestinationSchema,
+  UpdateKempLoadMasterPkiSyncDestinationSchema
+} from "./kemp-loadmaster-pki-sync-destination-schema";
+import {
   LinuxServerPkiSyncDestinationSchema,
   UpdateLinuxServerPkiSyncDestinationSchema
 } from "./linux-server-pki-sync-destination-schema";
@@ -52,6 +56,7 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   CloudflareCustomCertificatePkiSyncDestinationSchema,
   NetScalerPkiSyncDestinationSchema,
   F5BigIpPkiSyncDestinationSchema,
+  KempLoadMasterPkiSyncDestinationSchema,
   LinuxServerPkiSyncDestinationSchema,
   WindowsServerPkiSyncDestinationSchema
 ]);
@@ -65,6 +70,7 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateCloudflareCustomCertificatePkiSyncDestinationSchema,
   UpdateNetScalerPkiSyncDestinationSchema,
   UpdateF5BigIpPkiSyncDestinationSchema,
+  UpdateKempLoadMasterPkiSyncDestinationSchema,
   UpdateLinuxServerPkiSyncDestinationSchema,
   UpdateWindowsServerPkiSyncDestinationSchema
 ]);

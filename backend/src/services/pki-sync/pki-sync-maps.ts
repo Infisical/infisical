@@ -11,6 +11,7 @@ export const PKI_SYNC_NAME_MAP: Record<PkiSync, string> = {
   [PkiSync.CloudflareCustomCertificate]: "Cloudflare Custom SSL Certificate",
   [PkiSync.NetScaler]: "NetScaler",
   [PkiSync.F5BigIp]: "F5 BIG-IP",
+  [PkiSync.KempLoadMaster]: "Kemp LoadMaster",
   [PkiSync.LinuxServer]: "Linux Server",
   [PkiSync.WindowsServer]: "Windows Server"
 };
@@ -24,6 +25,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
+  [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM
 };

@@ -1,0 +1,98 @@
+---
+title: "Kemp LoadMaster Connection"
+description: "Learn how to configure a Kemp LoadMaster Connection for Infisical."
+---
+
+Infisical supports connecting to Progress Kemp LoadMaster load balancers using basic authentication credentials for managing SSL certificates via the RESTful API.
+
+## Setup
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Enable the LoadMaster API Interface">
+        On the LoadMaster, go to **Certificates & Security > Remote Access** and enable the **API Interface** checkbox. The RESTful API is disabled by default, and certificate management requires it to be enabled.
+      </Step>
+      <Step title="Gather Kemp LoadMaster Credentials">
+        You will need the following from your LoadMaster:
+
+        - **Hostname**: The management IP address or FQDN of your LoadMaster (for example `192.168.1.100` or `lm.example.com`).
+        - **Port**: The HTTPS management port (default `8443`).
+        - **Username**: A user with permission to manage SSL certificates.
+        - **Password**: The password for the user account.
+
+        <Note>
+          The user account must have permission to manage SSL certificates and, if you bind certificates to a Virtual Service, to modify Virtual Services.
+        </Note>
+      </Step>
+      <Step title="Navigate to App Connections">
+        In the Infisical dashboard, navigate to **Organization Settings > App Connections** and click **Add Connection**.
+      </Step>
+      <Step title="Select Kemp LoadMaster">
+        Select the **Kemp LoadMaster** option from the list of available connections.
+      </Step>
+      <Step title="Fill in Connection Details">
+        Fill in the **Configuration** tab:
+
+        - **Hostname**: The management IP or FQDN of the LoadMaster.
+        - **Username**: The LoadMaster management username.
+        - **Password**: The password for the management user.
+        - **Port** (Optional): HTTPS port for the management interface (default `8443`).
+
+        Configure the **SSL** tab:
+
+        - **SSL Certificate** (Optional): A CA certificate in PEM format to verify the LoadMaster management interface's TLS certificate.
+        - **Reject Unauthorized**: When enabled, Infisical will only connect if the LoadMaster has a valid, trusted TLS certificate. Disable this for self-signed certificates or provide a CA certificate.
+
+        Optionally select a **Gateway** to route the connection through an Infisical Gateway for private network access.
+
+        Click **Connect to Kemp LoadMaster** to validate and save your connection.
+      </Step>
+      <Step title="Connection Created">
+        Your Kemp LoadMaster Connection is now available for use with certificate syncs.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a Kemp LoadMaster Connection, make an API request to the [Create App Connection](/api-reference/endpoints/app-connections/kemp-loadmaster/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/kemp-loadmaster \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-kemp-connection",
+        "method": "basic-auth",
+        "credentials": {
+          "hostname": "lm.example.com",
+          "port": 8443,
+          "username": "bal",
+          "password": "your-password",
+          "sslRejectUnauthorized": false
+        }
+      }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+      "appConnection": {
+        "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "name": "my-kemp-connection",
+        "app": "kemp-loadmaster",
+        "method": "basic-auth",
+        "credentials": {
+          "hostname": "lm.example.com",
+          "port": 8443,
+          "username": "bal",
+          "sslRejectUnauthorized": false
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

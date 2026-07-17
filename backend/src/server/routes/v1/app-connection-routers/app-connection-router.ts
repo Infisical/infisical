@@ -142,6 +142,10 @@ import {
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
 import {
+  KempLoadMasterConnectionListItemSchema,
+  SanitizedKempLoadMasterConnectionSchema
+} from "@app/services/app-connection/kemp-loadmaster";
+import {
   LaravelForgeConnectionListItemSchema,
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
@@ -311,6 +315,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedKempLoadMasterConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
@@ -392,6 +397,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
+  KempLoadMasterConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,

@@ -71,6 +71,7 @@ import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/f
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -485,6 +486,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage a Citrix NetScaler appliance."
   },
+  [AppConnection.KempLoadMaster]: {
+    name: "Kemp LoadMaster",
+    image: "Kemp LoadMaster.png",
+    category: "NETWORKING",
+    description: "Manage a Progress Kemp LoadMaster load balancer."
+  },
   [AppConnection.Anthropic]: {
     name: "Anthropic",
     image: "Anthropic.png",
@@ -732,6 +739,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
+      return { name: "Basic Auth", icon: faLock };
+    case KempLoadMasterConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };

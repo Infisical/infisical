@@ -145,6 +145,7 @@
                       "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/kemp-loadmaster",
                       "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
@@ -949,6 +950,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
                           "documentation/platform/pki/applications/certificate-syncs/windows-server"
                         ]

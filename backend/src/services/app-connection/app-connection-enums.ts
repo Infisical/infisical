@@ -77,7 +77,8 @@ export enum AppConnection {
   Qovery = "qovery",
   Cloud66 = "cloud-66",
   LiteLLM = "litellm",
-  Fireworks = "fireworks"
+  Fireworks = "fireworks",
+  KempLoadMaster = "kemp-loadmaster"
 }
 
 export enum AWSRegion {

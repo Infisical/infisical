@@ -40,6 +40,10 @@ export const PKI_SYNC_MAP: Record<
     name: "F5 BIG-IP",
     image: "F5 BIG-IP.png"
   },
+  [PkiSync.KempLoadMaster]: {
+    name: "Kemp LoadMaster",
+    image: "Kemp LoadMaster.png"
+  },
   [PkiSync.LinuxServer]: {
     name: "Linux Server",
     image: "SSH.png"
@@ -59,6 +63,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
+  [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM
 };

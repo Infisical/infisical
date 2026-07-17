@@ -7,6 +7,7 @@ export enum PkiSync {
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
   F5BigIp = "f5-big-ip",
+  KempLoadMaster = "kemp-loadmaster",
   LinuxServer = "linux-server",
   WindowsServer = "windows-server"
 }
