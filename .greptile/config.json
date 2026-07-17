@@ -25,6 +25,12 @@
       "rule": "New UI must not override or deviate from the default styling of v3 design-system components (frontend/src/components/v3). Follow DESIGN.md. Flag: legacy v2 color tokens (e.g. mineshaft-*, bunker-*) instead of semantic tokens like bg-org or text-danger; casing changes such as uppercase text; className overrides of component defaults like height or border; and hex colors not defined in frontend/src/index.css. Inline styling must be a deliberate exception, not a default. If the same inline style is repeated across call sites, suggest a new component variant or a component update instead. Do not use v2 components for new code when a v3 equivalent exists (PageHeader is the known exception).",
       "severity": "medium",
       "scope": ["frontend/src/**"]
+    },
+    {
+      "id": "no-license-or-feature-flags-in-migrations",
+      "rule": "Database migrations must never depend on the license or feature flags, directly or transitively. Migrations run before the license service initializes, so any plan/entitlement/feature-flag lookup returns its default value instead of the deployment's real one, and a migration that branches on that value silently takes the wrong path and can corrupt data. (Real incident: a migration used getMigrationEncryptionServices, whose HSM check is license-gated; with the license uninitialized the flag read as off, so data was nearly re-encrypted with the wrong key.) Flag any migration that: reads the license service (licenseServiceFactory, licenseService, getPlan, entitlement/feature-set lookups); reads a feature flag (getFeatureFlag or any flag-provider call); or calls a shared helper that does either check internally without the option that skips it (e.g. getMigrationEncryptionServices without skipHsmLicenseCheck: true, or isHsmActiveAndEnabled given a licenseService). Migrations may only branch on DB state and env config (e.g. the kms_root_config encryption strategy).",
+      "severity": "high",
+      "scope": ["backend/src/db/migrations/**"]
     }
   ]
 }
