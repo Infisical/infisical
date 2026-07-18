@@ -437,7 +437,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         // One or more per_resource commitment changes; the service applies them per dimension
-        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20),
+        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20)
       }),
       response: {
         200: BillingV2MutationResultSchema
