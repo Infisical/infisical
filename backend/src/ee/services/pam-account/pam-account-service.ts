@@ -337,6 +337,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayPoolId,
     recordingConnectionId,
     settingsOverrides,
+    skipConnectionTest,
     ...ctx
   }: TCreatePamAccountDTO & TActorContext) => {
     const { permission } = await checkFolder(folderId, projectId, ctx);
@@ -380,12 +381,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const validatedCredentials = validateCredentials(accountType, credentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
-    await assertConnectionOk(accountType, validatedConnectionDetails, validatedCredentials, {
-      gatewayId,
-      gatewayPoolId,
-      templateGatewayId: template.gatewayId,
-      templateGatewayPoolId: template.gatewayPoolId
-    });
+    // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
+    if (!skipConnectionTest) {
+      await assertConnectionOk(accountType, validatedConnectionDetails, validatedCredentials, {
+        gatewayId,
+        gatewayPoolId,
+        templateGatewayId: template.gatewayId,
+        templateGatewayPoolId: template.gatewayPoolId
+      });
+    }
 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
     const encryptedCredentials = await encrypt(projectId, validatedCredentials);
@@ -592,12 +596,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const effectiveConnectionDetails = connectionDetails
         ? validateConnectionDetails(accountType, connectionDetails)
         : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
-      const existingCredentials = await decrypt(projectId, existing.encryptedCredentials);
-      const effectiveCredentials = validateCredentials(
-        accountType,
-        credentials ? { ...existingCredentials, ...credentials } : existingCredentials
-      );
-      await assertConnectionOk(accountType, effectiveConnectionDetails, effectiveCredentials, {
+
+      // only test with credentials supplied in this request to prevent exfiltration
+      const testCredentials = credentials ? validateCredentials(accountType, credentials) : {};
+      await assertConnectionOk(accountType, effectiveConnectionDetails, testCredentials, {
         gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
         gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,
         templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
