@@ -17,6 +17,9 @@ import { TKempLoadMasterConnectionConfig } from "./kemp-loadmaster-connection-ty
 
 export const KEMP_LOADMASTER_DEFAULT_PORT = 8443;
 
+const KEMP_LOADMASTER_REQUEST_TIMEOUT_MS = 30_000;
+const KEMP_LOADMASTER_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+
 type TKempCredentials = TKempLoadMasterConnectionConfig["credentials"];
 
 export type TKempRequestFn = <R>(requestCfg: AxiosRequestConfig) => Promise<R>;
@@ -101,7 +104,10 @@ export const executeKempLoadMasterOperationWithGateway = async <T>(
               ...requestCfg.headers,
               Host: hostname
             },
-            httpsAgent
+            httpsAgent,
+            timeout: KEMP_LOADMASTER_REQUEST_TIMEOUT_MS,
+            maxContentLength: KEMP_LOADMASTER_MAX_RESPONSE_BYTES,
+            maxBodyLength: KEMP_LOADMASTER_MAX_RESPONSE_BYTES
           });
           return resp.data;
         };
@@ -124,7 +130,10 @@ export const executeKempLoadMasterOperationWithGateway = async <T>(
       ca: credentials.sslCertificate,
       rejectUnauthorized: credentials.sslRejectUnauthorized,
       servername: hostname,
-      allowPrivateIps: getConfig().ALLOW_INTERNAL_IP_CONNECTIONS
+      allowPrivateIps: getConfig().ALLOW_INTERNAL_IP_CONNECTIONS,
+      timeout: KEMP_LOADMASTER_REQUEST_TIMEOUT_MS,
+      maxContentLength: KEMP_LOADMASTER_MAX_RESPONSE_BYTES,
+      maxBodyLength: KEMP_LOADMASTER_MAX_RESPONSE_BYTES
     });
     return resp.data;
   };
