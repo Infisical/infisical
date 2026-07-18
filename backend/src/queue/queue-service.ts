@@ -215,6 +215,7 @@ export type TQueueOptions = {
   deduplication?: {
     id: string;
     keepLastIfActive?: boolean;
+    replace?: boolean;
   };
   // @deprecated Use upsertJobScheduler instead.
   repeat?: {
