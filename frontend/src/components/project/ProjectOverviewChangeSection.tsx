@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, Input, TextArea } from "@app/components/v2";
+import { FormControl, Input, TextArea } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useUpdateProject } from "@app/hooks/api";
 
@@ -80,7 +81,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
         <h2 className="flex-1 text-xl font-medium text-mineshaft-100">Project Overview</h2>
         <div className="space-x-2">
           <Button
-            variant="outline_bg"
+            variant="outline"
             size="sm"
             onClick={() => {
               navigator.clipboard.writeText(currentSlug || "");
@@ -94,7 +95,7 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
             Copy Project Slug
           </Button>
           <Button
-            variant="outline_bg"
+            variant="outline"
             size="sm"
             onClick={() => {
               navigator.clipboard.writeText(currentProject?.id || "");
@@ -211,9 +212,9 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
             >
               {(isAllowed) => (
                 <Button
-                  colorSchema="secondary"
+                  variant="project"
                   type="submit"
-                  isLoading={isPending}
+                  isPending={isPending}
                   isDisabled={isPending || !isAllowed}
                 >
                   Save

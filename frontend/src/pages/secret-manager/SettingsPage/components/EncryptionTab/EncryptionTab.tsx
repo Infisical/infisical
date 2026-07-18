@@ -17,6 +17,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Button as V3Button } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -309,14 +310,14 @@ export const EncryptionTab = () => {
           </ProjectPermissionCan>
           <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
             {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
+              <V3Button
+                variant="project"
                 type="submit"
                 isDisabled={!isAllowed || isSubmitting || !isDirty}
-                isLoading={isSubmitting}
+                isPending={isSubmitting}
               >
                 Save
-              </Button>
+              </V3Button>
             )}
           </ProjectPermissionCan>
         </form>

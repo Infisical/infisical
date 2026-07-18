@@ -8,7 +8,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -19,6 +18,7 @@ import {
   SelectItem,
   Switch
 } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionActions,
@@ -363,11 +363,11 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
             />
           )}
           <Button
-            colorSchema="secondary"
+            variant="project"
             className="mt-4"
             type="submit"
             isDisabled={!isDirty}
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
           >
             Save
           </Button>

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, DeleteActionModal, Spinner } from "@app/components/v2";
+import { Checkbox, DeleteActionModal, Spinner } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
@@ -154,12 +154,8 @@ export const NativeIntegrationsTab = () => {
         <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
-            <Button
-              colorSchema="secondary"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => setView(IntegrationView.New)}
-            >
+            <Button variant="project" type="submit" onClick={() => setView(IntegrationView.New)}>
+              <PlusIcon />
               Add Integration
             </Button>
           </div>
