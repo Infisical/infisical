@@ -10,7 +10,7 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
-import { DynamicSecretRedisDBSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretRedisDBSchema, TDynamicProviderFns, TRedisLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = () => {
@@ -48,7 +48,7 @@ const executeTransactions = async (connection: Redis, commands: string[]): Promi
   return results.map(([_, result]) => result as string | null);
 };
 
-export const RedisDatabaseProvider = (): TDynamicProviderFns => {
+export const RedisDatabaseProvider = (): TDynamicProviderFns<TRedisLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretRedisDBSchema.parseAsync(inputs);
     const [hostIp] = await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });

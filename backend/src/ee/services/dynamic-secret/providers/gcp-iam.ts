@@ -8,9 +8,9 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 
-import { DynamicSecretGcpIamSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretGcpIamSchema, TDynamicProviderFns, TGcpIamLeaseData } from "./models";
 
-export const GcpIamProvider = (): TDynamicProviderFns => {
+export const GcpIamProvider = (): TDynamicProviderFns<TGcpIamLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretGcpIamSchema.parseAsync(inputs);
     return providerInputs;

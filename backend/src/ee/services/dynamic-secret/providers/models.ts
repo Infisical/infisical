@@ -10,7 +10,7 @@ import { TConstraint } from "@app/services/secret-validation-rule/secret-validat
 import {
   ActorIdentityAttributes,
   TDynamicSecretLeaseConfig
-} from "../../dynamic-secret-lease/dynamic-secret-lease-types";
+} from "../../dynamic-secret-lease/dynamic-secret-lease-config-types";
 
 export type PasswordRequirements = {
   length: number;
@@ -979,6 +979,154 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema })
 ]);
 
+// Per-provider lease data schemas. These describe the credentials returned to
+// the caller after a successful lease creation. Adding a new provider requires
+// declaring its schema here and adding it to TDynamicSecretLeaseDataMap +
+// DynamicSecretLeaseResultSchema below.
+const DbUsernamePasswordLeaseDataSchema = z.object({
+  DB_USERNAME: z.string(),
+  DB_PASSWORD: z.string()
+});
+
+export const SqlDatabaseLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const ClickhouseLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const CassandraLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const SapAseLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const SapHanaLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const SnowflakeLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const RedisLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const AwsElastiCacheLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const AwsMemoryDbLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const MongoAtlasLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const MongoDBLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const ElasticSearchLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const RabbitMqLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const AzureSqlDatabaseLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const VerticaLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+export const MilvusLeaseDataSchema = DbUsernamePasswordLeaseDataSchema;
+
+export const AwsIamLeaseDataSchema = z.union([
+  z.object({
+    ACCESS_KEY: z.string(),
+    SECRET_ACCESS_KEY: z.string(),
+    SESSION_TOKEN: z.string()
+  }),
+  z.object({
+    ACCESS_KEY: z.string(),
+    SECRET_ACCESS_KEY: z.string(),
+    USERNAME: z.string()
+  })
+]);
+
+export const AzureEntraIDLeaseDataSchema = z.object({
+  email: z.string(),
+  password: z.string()
+});
+
+export const LdapLeaseDataSchema = z.object({
+  DN_ARRAY: z.array(z.string()),
+  USERNAME: z.string(),
+  PASSWORD: z.string()
+});
+
+export const TotpLeaseDataSchema = z.object({
+  TOTP: z.string(),
+  TIME_REMAINING: z.number()
+});
+
+export const KubernetesLeaseDataSchema = z.object({
+  TOKEN: z.string()
+});
+
+export const GcpIamLeaseDataSchema = z.object({
+  SERVICE_ACCOUNT_EMAIL: z.string(),
+  TOKEN: z.string()
+});
+
+export const GithubLeaseDataSchema = z.object({
+  TOKEN: z.string(),
+  EXPIRES_AT: z.string(),
+  PERMISSIONS: z.record(z.string()).optional(),
+  REPOSITORY_SELECTION: z.string().optional()
+});
+
+export const CouchbaseLeaseDataSchema = z.object({
+  username: z.string(),
+  password: z.string()
+});
+
+export const SshLeaseDataSchema = z.object({
+  PRIVATE_KEY: z.string(),
+  SIGNED_KEY: z.string()
+});
+
+export const IbmApiConnectLeaseDataSchema = z.object({
+  CLIENT_ID: z.string(),
+  CLIENT_SECRET: z.string()
+});
+
+export type TSqlDatabaseLeaseData = z.infer<typeof SqlDatabaseLeaseDataSchema>;
+export type TClickhouseLeaseData = z.infer<typeof ClickhouseLeaseDataSchema>;
+export type TCassandraLeaseData = z.infer<typeof CassandraLeaseDataSchema>;
+export type TSapAseLeaseData = z.infer<typeof SapAseLeaseDataSchema>;
+export type TSapHanaLeaseData = z.infer<typeof SapHanaLeaseDataSchema>;
+export type TSnowflakeLeaseData = z.infer<typeof SnowflakeLeaseDataSchema>;
+export type TRedisLeaseData = z.infer<typeof RedisLeaseDataSchema>;
+export type TAwsElastiCacheLeaseData = z.infer<typeof AwsElastiCacheLeaseDataSchema>;
+export type TAwsMemoryDbLeaseData = z.infer<typeof AwsMemoryDbLeaseDataSchema>;
+export type TMongoAtlasLeaseData = z.infer<typeof MongoAtlasLeaseDataSchema>;
+export type TMongoDBLeaseData = z.infer<typeof MongoDBLeaseDataSchema>;
+export type TElasticSearchLeaseData = z.infer<typeof ElasticSearchLeaseDataSchema>;
+export type TRabbitMqLeaseData = z.infer<typeof RabbitMqLeaseDataSchema>;
+export type TAzureSqlDatabaseLeaseData = z.infer<typeof AzureSqlDatabaseLeaseDataSchema>;
+export type TVerticaLeaseData = z.infer<typeof VerticaLeaseDataSchema>;
+export type TMilvusLeaseData = z.infer<typeof MilvusLeaseDataSchema>;
+export type TAwsIamLeaseData = z.infer<typeof AwsIamLeaseDataSchema>;
+export type TAzureEntraIDLeaseData = z.infer<typeof AzureEntraIDLeaseDataSchema>;
+export type TLdapLeaseData = z.infer<typeof LdapLeaseDataSchema>;
+export type TTotpLeaseData = z.infer<typeof TotpLeaseDataSchema>;
+export type TKubernetesLeaseData = z.infer<typeof KubernetesLeaseDataSchema>;
+export type TGcpIamLeaseData = z.infer<typeof GcpIamLeaseDataSchema>;
+export type TGithubLeaseData = z.infer<typeof GithubLeaseDataSchema>;
+export type TCouchbaseLeaseData = z.infer<typeof CouchbaseLeaseDataSchema>;
+export type TSshLeaseData = z.infer<typeof SshLeaseDataSchema>;
+export type TIbmApiConnectLeaseData = z.infer<typeof IbmApiConnectLeaseDataSchema>;
+
+// Discriminated union of every possible lease result, used to type both the
+// API response (so the OpenAPI spec documents the per-provider data shape) and
+// the service-layer return value.
+export const DynamicSecretLeaseResultSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(DynamicSecretProviders.SqlDatabase), data: SqlDatabaseLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Clickhouse), data: ClickhouseLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Cassandra), data: CassandraLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.SapAse), data: SapAseLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AwsIam), data: AwsIamLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Redis), data: RedisLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.SapHana), data: SapHanaLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AwsElastiCache), data: AwsElastiCacheLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AwsMemoryDb), data: AwsMemoryDbLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.MongoAtlas), data: MongoAtlasLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.ElasticSearch), data: ElasticSearchLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.MongoDB), data: MongoDBLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.RabbitMq), data: RabbitMqLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AzureEntraID), data: AzureEntraIDLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.AzureSqlDatabase), data: AzureSqlDatabaseLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Ldap), data: LdapLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Snowflake), data: SnowflakeLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Totp), data: TotpLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Kubernetes), data: KubernetesLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Vertica), data: VerticaLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.GcpIam), data: GcpIamLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Github), data: GithubLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Couchbase), data: CouchbaseLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Milvus), data: MilvusLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.Ssh), data: SshLeaseDataSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.IbmApiConnect), data: IbmApiConnectLeaseDataSchema })
+]);
+
+export type TDynamicSecretLeaseResult = z.infer<typeof DynamicSecretLeaseResultSchema>;
+export type TDynamicSecretLeaseData = TDynamicSecretLeaseResult["data"];
+
 // Extended metadata passed to a provider's create() call. When the project
 // has a matching secret validation rule, `passwordValidation` carries the
 // constraints that any generated password must satisfy; providers that
@@ -992,7 +1140,7 @@ export type TDynamicProviderCreateMetadata = {
   };
 };
 
-export type TDynamicProviderFns = {
+export type TDynamicProviderFns<TLeaseData = TDynamicSecretLeaseData> = {
   create: (arg: {
     inputs: unknown;
     expireAt: number;
@@ -1001,7 +1149,7 @@ export type TDynamicProviderFns = {
     dynamicSecret: TDynamicSecrets;
     metadata: TDynamicProviderCreateMetadata;
     config?: TDynamicSecretLeaseConfig;
-  }) => Promise<{ entityId: string; data: unknown }>;
+  }) => Promise<{ entityId: string; data: TLeaseData }>;
   validateConnection: (inputs: unknown, metadata: { projectId: string }) => Promise<boolean>;
   validateProviderInputs: (inputs: object, metadata: { projectId: string }) => Promise<unknown>;
   revoke: (

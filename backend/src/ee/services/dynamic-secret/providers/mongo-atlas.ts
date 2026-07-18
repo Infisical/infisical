@@ -8,7 +8,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretMongoAtlasSchema, TDynamicProviderFns, TMongoAtlasLeaseData } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const generatePassword = (size = 48) => {
@@ -16,7 +16,7 @@ const generatePassword = (size = 48) => {
   return customAlphabet(charset, 48)(size);
 };
 
-export const MongoAtlasProvider = (): TDynamicProviderFns => {
+export const MongoAtlasProvider = (): TDynamicProviderFns<TMongoAtlasLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretMongoAtlasSchema.parseAsync(inputs);
     return providerInputs;

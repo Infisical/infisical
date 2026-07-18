@@ -17,7 +17,12 @@ import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { AwsMemoryDbAuthType, DynamicSecretAwsMemoryDbSchema, TDynamicProviderFns } from "./models";
+import {
+  AwsMemoryDbAuthType,
+  DynamicSecretAwsMemoryDbSchema,
+  TAwsMemoryDbLeaseData,
+  TDynamicProviderFns
+} from "./models";
 import { generateUsername } from "./templateUtils";
 
 const CreateMemoryDbUserSchema = z.object({
@@ -124,7 +129,7 @@ const $getAwsCredentials = (providerInputs: z.infer<typeof DynamicSecretAwsMemor
   throw new BadRequestError({ message: "Unsupported MemoryDB auth type" });
 };
 
-export const AwsMemoryDbDatabaseProvider = (): TDynamicProviderFns => {
+export const AwsMemoryDbDatabaseProvider = (): TDynamicProviderFns<TAwsMemoryDbLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = DynamicSecretAwsMemoryDbSchema.parse(inputs);
 

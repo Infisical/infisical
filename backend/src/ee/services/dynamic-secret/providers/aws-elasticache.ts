@@ -20,7 +20,7 @@ import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { DynamicSecretAwsElastiCacheSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretAwsElastiCacheSchema, TAwsElastiCacheLeaseData, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
 const CreateElastiCacheUserSchema = z.object({
@@ -141,7 +141,7 @@ const generatePassword = () => {
   return customAlphabet(charset, 64)();
 };
 
-export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns => {
+export const AwsElastiCacheDatabaseProvider = (): TDynamicProviderFns<TAwsElastiCacheLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = DynamicSecretAwsElastiCacheSchema.parse(inputs);
 

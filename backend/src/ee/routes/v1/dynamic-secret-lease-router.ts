@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { DynamicSecretLeaseResultSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -42,24 +43,25 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         config: z.any().optional()
       }),
       response: {
-        200: z.object({
-          lease: DynamicSecretLeasesSchema,
-          dynamicSecret: SanitizedDynamicSecretSchema,
-          data: z.unknown()
-        })
+        200: DynamicSecretLeaseResultSchema.and(
+          z.object({
+            lease: DynamicSecretLeasesSchema,
+            dynamicSecret: SanitizedDynamicSecretSchema
+          })
+        )
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { data, lease, dynamicSecret, projectId, environment, secretPath } =
-        await server.services.dynamicSecretLease.create({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          name: req.body.dynamicSecretName,
-          ...req.body
-        });
+      const leaseResult = await server.services.dynamicSecretLease.create({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        name: req.body.dynamicSecretName,
+        ...req.body
+      });
+      const { lease, dynamicSecret, projectId, environment, secretPath } = leaseResult;
 
       await server.services.telemetry
         .sendPostHogEvents({
@@ -96,7 +98,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         }
       });
 
-      return { lease, data, dynamicSecret };
+      return leaseResult;
     }
   });
 

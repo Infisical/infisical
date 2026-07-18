@@ -7,9 +7,9 @@ import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-se
 import { createSshCert, createSshKeyPair, getSshPublicKey } from "../../ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "../../ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "../../ssh-certificate/ssh-certificate-types";
-import { DynamicSecretSshSchema, SshStoredSchema, TDynamicProviderFns } from "./models";
+import { DynamicSecretSshSchema, SshStoredSchema, TDynamicProviderFns, TSshLeaseData } from "./models";
 
-export const SshProvider = (): TDynamicProviderFns => {
+export const SshProvider = (): TDynamicProviderFns<TSshLeaseData> => {
   const validateProviderInputs = async (inputs: object) => {
     const parsed = DynamicSecretSshSchema.parse(inputs);
 

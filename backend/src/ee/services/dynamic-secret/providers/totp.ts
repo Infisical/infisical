@@ -5,9 +5,9 @@ import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { DynamicSecretTotpSchema, TDynamicProviderFns, TotpConfigType } from "./models";
+import { DynamicSecretTotpSchema, TDynamicProviderFns, TotpConfigType, TTotpLeaseData } from "./models";
 
-export const TotpProvider = (): TDynamicProviderFns => {
+export const TotpProvider = (): TDynamicProviderFns<TTotpLeaseData> => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretTotpSchema.parseAsync(inputs);
 
