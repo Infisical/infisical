@@ -69,7 +69,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     expect(job).toBe(QueueJobs.UsageEvent);
     expect(data).toEqual({ orgId: ORG_ID, dimensionKey: MaxIdentities.key });
     expect(opts.jobId).toBe(`usage-event-${ORG_ID}-${MaxIdentities.key}`);
-    expect(opts.delay).toBe(60_000);
+    expect(opts.delay).toBe(5000);
   });
 
   test("never throws into the caller when enqueue fails", async () => {
