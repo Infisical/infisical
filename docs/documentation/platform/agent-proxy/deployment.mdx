@@ -14,17 +14,19 @@ The Agent Proxy is a single long-running process started with `infisical secrets
 The Agent Proxy is built for private-network deployment. A well-placed one looks like this:
 
 ```text
-            Your private network                      Public internet
-
-+--------------+                                    +------------------+
-|  Agent host  |----+                           +-->|   Service APIs   |
-+--------------+    |                           |   +------------------+
-                    |   +----------------+      |
-                    +-->|  Agent Proxy   |------+
-                    |   |  its own host  |------+
-+--------------+    |   +----------------+      |   +------------------+
-|  Agent host  |----+     port 17322,           +-->|     Infisical    |
-+--------------+          agents only               +------------------+
++---- Your private network -------------------+
+|                                             |
+|  +--------------+                           |
+|  |  Agent host  |----+                      |         +------------------+
+|  +--------------+    |                      |     +-->|  External APIs   |
+|                      |   +----------------+ |     |   +------------------+
+|                      +-->|  Agent Proxy   |-------+
+|                      |   |  its own host  |-------+
+|  +--------------+    |   +----------------+ |     |   +------------------+
+|  |  Agent host  |----+                      |     +-->|    Infisical     |
+|  +--------------+          port 17322,      |         +------------------+
+|                            agents only      |
++---------------------------------------------+
 ```
 
 - **Inside your private network, off the public internet.** The Agent Proxy's listening port should only ever be reachable from within your network.
