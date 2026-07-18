@@ -1,18 +1,23 @@
-import { CircleAlert, Clock, TriangleAlert } from "lucide-react";
+import { Clock, TriangleAlert } from "lucide-react";
 
-import { DialogHeader, DialogTitle } from "@app/components/v3";
+import {
+  Alert,
+  AlertTitle,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
 import { tierLabel } from "../../billing-v2-format";
-import { daysLeftLabel, DeprecatedEntry, DEPRECATION_TONE } from "./deprecation-data";
+import { daysLeftLabel, DeprecatedEntry } from "./deprecation-data";
 
-// Rich "See what changes" dialog body: an icon + title/subtitle header, the sunset date as a pill with
-// a day-countdown chip, then the full (untruncated) reason and next-steps sections.
+// "See what changes" dialog body: sunset-date alert with countdown, full reason and next steps.
 export const DeprecationDetailBody = ({ entry }: { entry: DeprecatedEntry }) => {
   const { deprecation, name, planTier } = entry;
   const isProduct = deprecation.kind === "product";
   const urgent = deprecation.daysLeft !== null && deprecation.daysLeft <= 14;
-  const tone = DEPRECATION_TONE[isProduct || urgent ? "danger" : "warning"];
+  const variant = isProduct || urgent ? "danger" : "warning";
   const label = daysLeftLabel(deprecation.daysLeft);
   const title = isProduct
     ? `${name} is being discontinued`
@@ -25,53 +30,46 @@ export const DeprecationDetailBody = ({ entry }: { entry: DeprecatedEntry }) => 
     <>
       <DialogHeader>
         <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "flex size-9 shrink-0 items-center justify-center rounded-lg border [&>svg]:size-4",
-              tone.iconBox
-            )}
-          >
-            {isProduct ? <CircleAlert /> : <TriangleAlert />}
+          <div className="flex size-7 shrink-0 items-center justify-center">
+            <TriangleAlert className="size-6 text-muted" />
           </div>
           <div className="flex min-w-0 flex-col gap-0.5">
             <DialogTitle>{title}</DialogTitle>
-            <span className="truncate text-xs text-muted">{subtitle}</span>
+            <DialogDescription>{subtitle}</DialogDescription>
           </div>
         </div>
       </DialogHeader>
       <div className="flex flex-col gap-4">
         {deprecation.date && (
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2",
-              tone.pill
-            )}
-          >
-            <Clock className="size-4 text-muted" />
-            <span className="text-sm text-foreground">
-              {isProduct ? "Access ends" : "Retires"}{" "}
-              <span className="font-medium">{deprecation.date}</span>
-            </span>
-            {label && (
-              <span
-                className={cn("ml-auto rounded-md px-1.5 py-0.5 text-xs font-medium", tone.chip)}
-              >
-                {label}
+          <Alert variant={variant}>
+            <Clock />
+            <AlertTitle className="flex flex-wrap items-center gap-2">
+              <span>
+                {isProduct ? "Access ends" : "Retires"}{" "}
+                <span className="font-medium">{deprecation.date}</span>
               </span>
-            )}
-          </div>
+              {label && (
+                <span
+                  className={cn(
+                    "ml-auto text-xs",
+                    variant === "danger" ? "text-danger" : "text-warning"
+                  )}
+                >
+                  {label}
+                </span>
+              )}
+            </AlertTitle>
+          </Alert>
         )}
         {deprecation.reason && (
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium tracking-wide text-muted uppercase">Why</span>
+            <span className="text-xs font-medium text-label">Why</span>
             <p className="text-sm text-foreground">{deprecation.reason}</p>
           </div>
         )}
         {deprecation.nextSteps && (
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium tracking-wide text-muted uppercase">
-              What to do
-            </span>
+            <span className="text-xs font-medium text-label">What to do</span>
             <p className="text-sm text-foreground">{deprecation.nextSteps}</p>
           </div>
         )}

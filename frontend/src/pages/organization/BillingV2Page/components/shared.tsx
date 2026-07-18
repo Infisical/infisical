@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { Fragment, ReactNode, useState } from "react";
 import { Box, MinusIcon, PlusIcon } from "lucide-react";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
@@ -8,17 +8,21 @@ import {
   Empty,
   EmptyDescription,
   EmptyHeader,
-  EmptyTitle
+  EmptyTitle,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+  Skeleton
 } from "@app/components/v3";
-import {
-  BillingV2CatalogProduct,
-  BillingV2Entitlement,
-  BillingV2EntitlementDim
-} from "@app/hooks/api";
+import { cn } from "@app/components/v3/utils";
+import { BillingV2CatalogProduct, BillingV2EntitlementDim } from "@app/hooks/api";
 
 import {
   dimAnnualCommitted,
   dimBarSegments,
+  dimHasCeiling,
   dimMonthlyRate,
   dimOnDemandQuantity,
   fmtMoney,
@@ -72,26 +76,94 @@ export const CardEmpty = ({ title, description }: { title: string; description?:
   </Empty>
 );
 
-// A YEARLY / MONTHLY cadence pill matching a product's billing cadence.
-export const CadenceBadge = ({ cadence }: { cadence: BillingV2Entitlement["cadence"] }) => {
-  if (cadence === "annual") {
-    return <Badge variant="info">Yearly</Badge>;
-  }
-  return <Badge variant="neutral">Monthly</Badge>;
+// Checkout-style cost summary for the sheets: borderless Items joined into one bordered frame.
+export const CostSummary = ({ children }: { children: ReactNode }) => (
+  <ItemGroup className="gap-0 divide-y divide-border rounded-lg border border-border bg-card">
+    {children}
+  </ItemGroup>
+);
+
+type CostSummaryRowProps = {
+  label: string;
+  note?: ReactNode;
+  value: string;
+  // Swaps the price for a skeleton while re-pricing so a stale or zero amount never shows.
+  isCalculating?: boolean;
+  // Price overrides: text-base headlines "charged today"; text-warning/90 marks on-demand amounts.
+  valueClassName?: string;
 };
 
-// One usage line for a product dimension. An annual committed dimension shows the committed portion
-// (blue) plus any on-demand overflow (amber) with a rate legend; a capped monthly/metered dimension
-// shows a single "{used} / {limit} · $rate/unit/mo" fill. A dimension with no ceiling (uncapped
-// monthly/metered) has nothing to track, so we drop the bar and render the cost line on its own.
-export const DimensionMeter = ({ dim }: { dim: BillingV2EntitlementDim }) => {
+export const CostSummaryRow = ({
+  label,
+  note,
+  value,
+  isCalculating,
+  valueClassName
+}: CostSummaryRowProps) => (
+  <Item className="p-4">
+    <ItemContent>
+      <ItemTitle>{label}</ItemTitle>
+      {note ? <ItemDescription className="text-xs text-muted">{note}</ItemDescription> : null}
+    </ItemContent>
+    {isCalculating ? (
+      <Skeleton className="h-5 w-20 shrink-0" />
+    ) : (
+      <span
+        className={cn("shrink-0 text-sm font-medium text-foreground tabular-nums", valueClassName)}
+      >
+        {value}
+      </span>
+    )}
+  </Item>
+);
+
+// Rate legend for annually-committed dimensions. DimensionMeter renders it per dim by default; a
+// caller can hideLegend the meters and render one combined legend for the block.
+export const DimensionRateLegend = ({ dims }: { dims: BillingV2EntitlementDim[] }) => {
+  const entries = dims.filter(
+    (dim) =>
+      dimAnnualCommitted(dim) && (dim.committedRate !== undefined || dim.onDemandRate !== undefined)
+  );
+  if (entries.length === 0) {
+    return null;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+      {entries.map((dim) => (
+        <Fragment key={dim.key}>
+          {dim.committedRate !== undefined && (
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-primary/85" />
+              Committed {`${fmtMoney(dim.committedRate)} / ${dim.noun} /yr`}
+            </span>
+          )}
+          {dim.onDemandRate !== undefined && (
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-warning/85" />
+              On-demand {`${fmtMoney(dim.onDemandRate)} / ${dim.noun} /mo`}
+            </span>
+          )}
+        </Fragment>
+      ))}
+    </div>
+  );
+};
+
+type DimensionMeterProps = {
+  dim: BillingV2EntitlementDim;
+  // Suppress the per-dimension rate legend (the caller renders a combined DimensionRateLegend).
+  hideLegend?: boolean;
+};
+
+// One usage line for a product dimension: an annual committed dimension shows committed fill plus
+// on-demand overflow with a rate legend; a capped dimension a single used/limit fill; an uncapped
+// one just its cost line, no bar.
+export const DimensionMeter = ({ dim, hideLegend }: DimensionMeterProps) => {
   const committed = dimAnnualCommitted(dim);
   const { committedPct, onDemandPct } = dimBarSegments(dim);
   const onDemandQty = dimOnDemandQuantity(dim);
   const monthlyRate = dimMonthlyRate(dim);
-  // A bar only earns its place when there's a ceiling to fill against: an annual commitment or a
-  // finite limit. A bar that can never fill is noise, so an uncapped dimension is a cost line only.
-  const hasCeiling = committed || (dim.limit !== null && dim.limit > 0);
+  const hasCeiling = dimHasCeiling(dim);
 
   let right: ReactNode;
   if (committed) {
@@ -102,7 +174,7 @@ export const DimensionMeter = ({ dim }: { dim: BillingV2EntitlementDim }) => {
         {onDemandQty > 0 ? (
           <>
             {" · "}
-            <span className="font-medium text-warning">
+            <span className="font-medium text-warning/90">
               {onDemandQty.toLocaleString()} on-demand
             </span>
           </>
@@ -128,35 +200,24 @@ export const DimensionMeter = ({ dim }: { dim: BillingV2EntitlementDim }) => {
         <span className="text-muted tabular-nums">{right}</span>
       </div>
       {hasCeiling && (
-        <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full bg-border">
+        <div className="flex h-[5px] w-full gap-0.5 overflow-hidden rounded-xs bg-border">
+          {/* Segments keep the soft outer corner but sit square against each other at the joint. */}
           <div
-            className="h-full rounded-full bg-primary transition-all"
+            className={cn(
+              "h-full rounded-xs bg-primary/85 transition-all",
+              onDemandPct > 0 && "rounded-r-none"
+            )}
             style={{ width: `${committedPct}%` }}
           />
           {onDemandPct > 0 && (
             <div
-              className="h-full rounded-full bg-warning transition-all"
+              className="h-full rounded-xs rounded-l-none bg-warning/85 transition-all"
               style={{ width: `${onDemandPct}%` }}
             />
           )}
         </div>
       )}
-      {committed && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-          {dim.committedRate !== undefined && (
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-primary" />
-              Committed {`${fmtMoney(dim.committedRate)} / ${dim.noun} /yr`}
-            </span>
-          )}
-          {dim.onDemandRate !== undefined && (
-            <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-warning" />
-              On-demand {`${fmtMoney(dim.onDemandRate)} / ${dim.noun} /mo`}
-            </span>
-          )}
-        </div>
-      )}
+      {committed && !hideLegend && <DimensionRateLegend dims={[dim]} />}
     </div>
   );
 };
@@ -164,35 +225,74 @@ export const DimensionMeter = ({ dim }: { dim: BillingV2EntitlementDim }) => {
 type StepperProps = {
   value: number;
   min?: number;
+  max?: number;
   onChange: (value: number) => void;
   isDisabled?: boolean;
 };
 
-// A small [-] [value] [+] quantity control for setting a commitment count.
-export const Stepper = ({ value, min = 0, onChange, isDisabled }: StepperProps) => (
-  <div className="flex items-center overflow-hidden rounded-md border border-border">
-    <Button
-      variant="ghost"
-      size="sm"
-      className="rounded-none px-3"
-      isDisabled={isDisabled || value <= min}
-      onClick={() => onChange(Math.max(min, value - 1))}
-      aria-label="Decrease"
-    >
-      <MinusIcon className="size-4" />
-    </Button>
-    <span className="min-w-12 border-x border-border py-1.5 text-center text-sm font-medium text-foreground tabular-nums">
-      {value.toLocaleString()}
-    </span>
-    <Button
-      variant="ghost"
-      size="sm"
-      className="rounded-none px-3"
-      isDisabled={isDisabled}
-      onClick={() => onChange(value + 1)}
-      aria-label="Increase"
-    >
-      <PlusIcon className="size-4" />
-    </Button>
-  </div>
-);
+// A [-] [value] [+] quantity control. Values can be typed too: digits commit live while focused,
+// blur/Enter clamps to [min, max], an empty draft reverts, and typing past max snaps down.
+export const Stepper = ({ value, min = 0, max = 9999, onChange, isDisabled }: StepperProps) => {
+  // Raw digits while typing; null when idle (the field shows the committed value).
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const clamp = (n: number) => Math.min(max, Math.max(min, n));
+
+  const commitDraft = () => {
+    if (draft) {
+      onChange(clamp(parseInt(draft, 10)));
+    }
+    setDraft(null);
+  };
+
+  return (
+    <div className="flex items-center overflow-hidden rounded-md border border-border">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="rounded-none px-3"
+        isDisabled={isDisabled || value <= min}
+        onClick={() => onChange(clamp(value - 1))}
+        aria-label="Decrease"
+      >
+        <MinusIcon className="size-4" />
+      </Button>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={draft ?? value.toLocaleString()}
+        onFocus={(e) => {
+          setDraft(String(value));
+          e.currentTarget.select();
+        }}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, "");
+          const capped = digits && parseInt(digits, 10) > max ? String(max) : digits;
+          setDraft(capped);
+          if (capped) {
+            onChange(clamp(parseInt(capped, 10)));
+          }
+        }}
+        onBlur={commitDraft}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          }
+        }}
+        disabled={isDisabled}
+        aria-label="Quantity"
+        className="w-14 border-x border-border bg-transparent py-1.5 text-center text-sm font-medium text-foreground tabular-nums outline-none focus:bg-container disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        className="rounded-none px-3"
+        isDisabled={isDisabled || value >= max}
+        onClick={() => onChange(clamp(value + 1))}
+        aria-label="Increase"
+      >
+        <PlusIcon className="size-4" />
+      </Button>
+    </div>
+  );
+};

@@ -54,7 +54,8 @@ export const DetailsCard = ({ overview, canManage, onEdit }: DetailsCardProps) =
   ) : null;
 
   return (
-    <Card>
+    // h-full so it matches the payment card's height when they share a row.
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>
           <Building2 className="size-4 text-accent" />

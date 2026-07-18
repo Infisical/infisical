@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpIcon, ChevronLeftIcon, Info } from "lucide-react";
+import { ChevronLeftIcon, InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, SheetFooter, SheetHeader, SheetTitle } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
 import {
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,
@@ -12,7 +19,7 @@ import {
 } from "@app/hooks/api";
 
 import { dimAnnualCommitted, fmtMoney } from "../billing-v2-format";
-import { ProductIcon, Stepper } from "./shared";
+import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
 
 type Props = {
   orgId: string;
@@ -48,11 +55,19 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     [committable, quantities]
   );
   const changesKey = JSON.stringify(changes);
+  const hasChanges = changes.length > 0;
 
-  // Re-price whenever the set of changes changes; debounced so a burst of stepper clicks makes one
-  // request, not one per click. With nothing changed there is no charge to preview.
+  // A preview is fresh only once priced for the current changes; stale ones render as skeletons.
+  const previewFresh =
+    !preview.isPending &&
+    Boolean(preview.data) &&
+    JSON.stringify(preview.variables?.commitmentChanges) === changesKey;
+  const isCalculating = hasChanges && !previewFresh;
+
+  // Debounced re-price on changes so a burst of stepper clicks makes one request. Skipped with
+  // nothing changed or when the current set is already priced.
   useEffect(() => {
-    if (changes.length === 0) {
+    if (changes.length === 0 || previewFresh) {
       return undefined;
     }
     const timeout = setTimeout(() => {
@@ -61,8 +76,6 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, changesKey]);
-
-  const hasChanges = changes.length > 0;
 
   // Current annual commitment total (committed × annual rate) and the current monthly on-demand spend,
   // both computed client-side so the summary can show the before/after delta.
@@ -85,21 +98,10 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
 
   let chargedNote = "No change yet";
   if (hasChanges) {
-    chargedNote = preview.isPending ? "Calculating…" : "Prorated for the rest of your annual term";
+    chargedNote = isCalculating ? "Calculating…" : "Prorated for the rest of your annual term";
   }
 
-  const raiseToCoverUsage = () => {
-    setQuantities((prev) => {
-      const next = { ...prev };
-      committable.forEach((dim) => {
-        next[dim.key] = Math.max(dim.committed ?? 0, dim.used);
-      });
-      return next;
-    });
-  };
-  const coversUsage = committable.every((dim) => quantities[dim.key] >= dim.used);
-
-  const canConfirm = hasChanges && Boolean(preview.data) && !preview.isPending;
+  const canConfirm = hasChanges && previewFresh;
 
   const handleConfirm = async () => {
     try {
@@ -131,7 +133,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
         <ProductIcon product={prod} size={40} />
         <div className="min-w-0 flex-1">
           <SheetTitle className="text-base">Change {prod.name} commitment</SheetTitle>
-          <p className="mt-1 text-sm text-muted">
+          <p className="text-xs text-muted">
             Adjust the units you pre-buy for the year. Usage above your commitment is billed monthly
             on-demand.
           </p>
@@ -154,10 +156,20 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
                   {fmtMoney(dim.committedRate ?? 0)} / {dim.noun} / yr committed · using{" "}
                   {dim.used.toLocaleString()} now
                   {onDemandQty > 0 && (
-                    <span className="text-warning">
-                      {" "}
-                      · {onDemandQty.toLocaleString()} on-demand
-                    </span>
+                    <>
+                      <span className="text-warning/90">
+                        {" "}
+                        · {onDemandQty.toLocaleString()} on-demand
+                      </span>{" "}
+                      ·{" "}
+                      <button
+                        type="button"
+                        className="cursor-pointer font-medium text-foreground hover:underline"
+                        onClick={() => setQuantities((prev) => ({ ...prev, [dim.key]: dim.used }))}
+                      >
+                        Raise to cover
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -170,56 +182,37 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
           );
         })}
 
-        {!coversUsage && (
-          <Button variant="info" size="sm" className="self-start" onClick={raiseToCoverUsage}>
-            <ArrowUpIcon />
-            Raise commitment to cover current usage
-          </Button>
-        )}
-
-        <div className="flex gap-3 rounded-lg border border-info/20 bg-info/5 p-4 text-xs text-accent">
-          <Info className="mt-0.5 size-4 shrink-0 text-info" />
-          <span>
+        <Alert variant="info">
+          <InfoIcon />
+          <AlertDescription className="text-foreground">
             Committed units are pre-bought for the year at the annual rate. Usage above your
             commitment is billed monthly at the on-demand rate until your renewal. Raising your
             commitment is prorated for the rest of the term; lowering it takes effect at renewal.
-          </span>
-        </div>
+          </AlertDescription>
+        </Alert>
 
-        <div className="flex flex-col rounded-lg border border-border">
-          <div className="flex items-center justify-between border-b border-border bg-mineshaft-700/40 p-4">
-            <div>
-              <div className="text-sm text-foreground">Charged today</div>
-              <div className="text-xs text-muted">{chargedNote}</div>
-            </div>
-            <span className="text-lg font-semibold text-info tabular-nums">
-              {fmtMoney(chargedToday, chargedToday ? 2 : 0)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between border-b border-border p-4">
-            <div>
-              <div className="text-sm text-foreground">New annual commitment</div>
-              <div className="text-xs text-muted">
-                For {prod.name}
-                {renewsOn ? `, billed on ${renewsOn}` : ""}
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-foreground tabular-nums">
-              {fmtMoney(newAnnual)} / year
-            </span>
-          </div>
-          <div className="flex items-center justify-between p-4">
-            <div>
-              <div className="text-sm text-foreground">On-demand after change</div>
-              <div className="text-xs text-muted">
-                {onDemandDelta ?? "Billed monthly for usage above your commitment"}
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-warning tabular-nums">
-              {fmtMoney(newOnDemand)} / mo
-            </span>
-          </div>
-        </div>
+        <CostSummary>
+          <CostSummaryRow
+            label="Charged today"
+            note={chargedNote}
+            value={fmtMoney(chargedToday, chargedToday ? 2 : 0)}
+            isCalculating={isCalculating}
+            valueClassName="text-base"
+          />
+          <CostSummaryRow
+            label="New annual commitment"
+            note={`For ${prod.name}${renewsOn ? `, billed on ${renewsOn}` : ""}`}
+            value={`${fmtMoney(newAnnual)} / year`}
+            isCalculating={isCalculating}
+          />
+          <CostSummaryRow
+            label="On-demand after change"
+            note={onDemandDelta ?? "Billed monthly for usage above your commitment"}
+            value={`${fmtMoney(newOnDemand)} / mo`}
+            isCalculating={isCalculating}
+            valueClassName={newOnDemand > 0 ? "text-warning/90" : "text-muted"}
+          />
+        </CostSummary>
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

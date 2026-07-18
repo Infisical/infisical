@@ -1,3 +1,4 @@
+import { cn } from "@app/components/v3/utils";
 import { BillingV2CatalogProduct, BillingV2Overview } from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
@@ -102,11 +103,20 @@ export const Overview = ({
         onManage={onUpgrade}
         onContact={onContact}
       />
-      {showPayment && (
-        <PaymentCard overview={overview} canManage={canManageBilling} onUpdate={onUpdatePayment} />
-      )}
       {!isManaged && (
-        <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
+        // Payment (cloud-only) + details share a row, keyed off container width (sidebar resizes it).
+        <div className="@container">
+          <div className={cn("grid gap-4", showPayment && "@3xl:grid-cols-[2fr_3fr]")}>
+            {showPayment && (
+              <PaymentCard
+                overview={overview}
+                canManage={canManageBilling}
+                onUpdate={onUpdatePayment}
+              />
+            )}
+            <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
+          </div>
+        </div>
       )}
       {showPayment && <InvoicesCard invoices={overview.invoices} />}
     </div>

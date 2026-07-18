@@ -85,6 +85,10 @@ export const cadencePeriod = (cadence: BillingV2Cadence | null | undefined): str
 export const dimAnnualCommitted = (dim: BillingV2EntitlementDim): boolean =>
   dim.cadence === "annual" && dim.committed !== null;
 
+// A ceiling to fill a usage bar against: an annual commitment or a finite limit.
+export const dimHasCeiling = (dim: BillingV2EntitlementDim): boolean =>
+  dimAnnualCommitted(dim) || (dim.limit !== null && dim.limit > 0);
+
 // Per-unit monthly rate for a dimension (dollars): metered uses its per-unit rate; a monthly
 // per_resource (and an annual dimension's overage) uses the on-demand rate.
 export const dimMonthlyRate = (dim: BillingV2EntitlementDim): number => {
@@ -106,8 +110,8 @@ export const usagePct = (used: number, limit: number | null): number | null => {
   return Math.min(100, (used / limit) * 100);
 };
 
-// Segments for a dimension's usage bar. Annual committed: the bar spans the greater of committed and
-// used; the committed portion is blue and any overflow orange. Monthly: a single blue used/limit fill.
+// Segments for a dimension's usage bar. Annual committed: the bar spans the greater of committed
+// and used, split into committed fill and on-demand overflow. Monthly: a single used/limit fill.
 export const dimBarSegments = (
   dim: BillingV2EntitlementDim
 ): { committedPct: number; onDemandPct: number } => {

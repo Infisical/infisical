@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CircleAlert, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import {
   Alert,
@@ -72,7 +72,7 @@ export const DeprecationBanners = ({
 
         return (
           <Alert key={productId} variant={variant}>
-            {isProduct ? <CircleAlert /> : <TriangleAlert />}
+            <TriangleAlert />
             <AlertTitle>{title}</AlertTitle>
             <AlertDescription>
               <span className="line-clamp-2">
@@ -87,17 +87,17 @@ export const DeprecationBanners = ({
               <div className="mt-3 flex flex-wrap gap-2">
                 {isProduct ? (
                   catalogProduct && (
-                    <Button variant="danger" size="sm" onClick={() => onContact(catalogProduct)}>
+                    <Button variant="danger" size="xs" onClick={() => onContact(catalogProduct)}>
                       Contact support
                     </Button>
                   )
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => onManage(productId)}>
+                  <Button variant="outline" size="xs" onClick={() => onManage(productId)}>
                     Review plan
                   </Button>
                 )}
                 {hasDetail && (
-                  <Button variant="ghost" size="sm" onClick={() => setDetail(entry)}>
+                  <Button variant="ghost" size="xs" onClick={() => setDetail(entry)}>
                     See what changes
                   </Button>
                 )}
@@ -108,7 +108,7 @@ export const DeprecationBanners = ({
       })}
 
       <Dialog open={Boolean(detail)} onOpenChange={(open) => !open && setDetail(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-xl">
           {detail && <DeprecationDetailBody entry={detail} />}
         </DialogContent>
       </Dialog>

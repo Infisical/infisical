@@ -15,7 +15,7 @@ import {
 } from "@app/hooks/api";
 
 import { fmtMoney } from "../billing-v2-format";
-import { ProductIcon, Stepper } from "./shared";
+import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
 
 type Props = {
   orgId: string;
@@ -105,10 +105,19 @@ export const ActivateView = ({
         committable.reduce((sum, dim) => sum + (commitments[dim.key] ?? 0) * dim.annual, 0)
       : monthlyHeadline(plan);
 
-  // Re-price when the cadence or a committed quantity changes; debounced so a burst of stepper clicks
-  // makes one request, not one per click. Skipped entirely without a live subscription.
+  // A preview is fresh only once priced for the current cadence + commitments; until then the cost
+  // rows show skeletons. A new customer prices locally, so never calculates.
+  const previewFresh =
+    !preview.isPending &&
+    Boolean(preview.data) &&
+    preview.variables?.cadence === cadence &&
+    JSON.stringify(preview.variables?.commitments ?? {}) === commitmentsKey;
+  const isCalculating = hasActiveSubscription && !previewFresh;
+
+  // Debounced re-price on cadence/commitment changes so a burst of stepper clicks makes one request.
+  // Skipped without a live subscription or when the current combo is already priced.
   useEffect(() => {
-    if (!hasActiveSubscription) {
+    if (!hasActiveSubscription || previewFresh) {
       return undefined;
     }
     const timeout = setTimeout(() => {
@@ -138,10 +147,10 @@ export const ActivateView = ({
 
   let chargedNote = "Billed at checkout";
   if (hasActiveSubscription) {
-    chargedNote = preview.isPending ? "Calculating…" : "Prorated onto your shared billing date";
+    chargedNote = isCalculating ? "Calculating…" : "Prorated onto your shared billing date";
   }
   // Without a live subscription there is no preview to wait on, so the CTA is enabled immediately.
-  const activateDisabled = pending || (hasActiveSubscription && !preview.data);
+  const activateDisabled = pending || isCalculating;
 
   // Savings badge on the yearly option: how much cheaper the annual rate is vs paying monthly.
   const savingsPct = useMemo(() => {
@@ -276,28 +285,21 @@ export const ActivateView = ({
           </div>
         )}
 
-        <div className="flex flex-col rounded-lg border border-border">
-          <div className="flex items-center justify-between border-b border-border bg-mineshaft-700/40 p-4">
-            <div>
-              <div className="text-sm text-foreground">Charged today</div>
-              <div className="text-xs text-muted">{chargedNote}</div>
-            </div>
-            <span className="text-lg font-semibold text-info tabular-nums">
-              {fmtMoney(dueToday, dueToday ? 2 : 0)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between p-4">
-            <div>
-              <div className="text-sm text-foreground">
-                {cadence === "annual" ? "Annual commitment" : "Monthly total"}
-              </div>
-              {renewsOn && <div className="text-xs text-muted">Billed on {renewsOn}</div>}
-            </div>
-            <span className="text-sm font-semibold text-foreground tabular-nums">
-              {fmtMoney(recurring)} / {period}
-            </span>
-          </div>
-        </div>
+        <CostSummary>
+          <CostSummaryRow
+            label="Charged today"
+            note={chargedNote}
+            value={fmtMoney(dueToday, dueToday ? 2 : 0)}
+            isCalculating={isCalculating}
+            valueClassName="text-base"
+          />
+          <CostSummaryRow
+            label={cadence === "annual" ? "Annual commitment" : "Monthly total"}
+            note={renewsOn ? `Billed on ${renewsOn}` : undefined}
+            value={`${fmtMoney(recurring)} / ${period}`}
+            isCalculating={isCalculating}
+          />
+        </CostSummary>
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">
@@ -311,7 +313,9 @@ export const ActivateView = ({
           isDisabled={activateDisabled}
           isPending={pending}
         >
-          Activate · pay {fmtMoney(dueToday, dueToday ? 2 : 0)} today
+          {isCalculating
+            ? "Activate"
+            : `Activate · pay ${fmtMoney(dueToday, dueToday ? 2 : 0)} today`}
         </Button>
       </SheetFooter>
     </>

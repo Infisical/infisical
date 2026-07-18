@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, CalendarX2Icon, Check, PlusIcon, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarX2Icon, Check, EditIcon, PlusIcon, Sparkles } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -185,12 +185,13 @@ const PlanCard = ({
   } else if (isCurrent && canChangeCommitment) {
     cta = (
       <Button
-        variant="outline"
+        variant="success"
         size="sm"
         className="mt-auto self-start"
         onClick={onChangeCommitment}
       >
         Change commitment
+        <EditIcon />
       </Button>
     );
   } else if (plan.selfServe && !entitled) {
@@ -276,7 +277,7 @@ const CompareTable = ({
   compare: BillingV2CompareRow[];
 }) => (
   <div>
-    <div className="mb-3 text-xs font-medium tracking-wide text-muted uppercase">Compare plans</div>
+    <div className="mb-3 text-xs font-medium text-label">Compare Plans</div>
     <Table>
       <TableHeader>
         <TableRow>
@@ -525,19 +526,11 @@ export const ProductSheet = ({
                 {entitled ? (
                   <>
                     {isTrialing ? (
-                      <Button
-                        variant="ghost"
-                        className="text-danger"
-                        onClick={() => setShowCancelTrial(true)}
-                      >
+                      <Button variant="danger" onClick={() => setShowCancelTrial(true)}>
                         Cancel trial
                       </Button>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        className="text-danger"
-                        onClick={() => onRemove(prod.id)}
-                      >
+                      <Button variant="danger" onClick={() => onRemove(prod.id)}>
                         Remove product
                       </Button>
                     )}

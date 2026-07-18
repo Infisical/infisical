@@ -12,7 +12,8 @@ type PaymentCardProps = {
 };
 
 export const PaymentCard = ({ overview, canManage, onUpdate }: PaymentCardProps) => (
-  <Card>
+  // h-full so it matches the details card's height when they share a row.
+  <Card className="h-full">
     <CardHeader>
       <CardTitle>
         <CreditCard className="size-4 text-accent" />
