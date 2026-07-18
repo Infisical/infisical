@@ -202,7 +202,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
           <InfoIcon />
           <AlertDescription className="text-foreground">
             Committed units are pre-bought for the year at the annual rate. Usage above your
-            commitment is billed monthly at the on-demand rate until your renewal.Increasing your
+            commitment is billed monthly at the on-demand rate until your renewal. Adjusting your
             commitment takes effect immediately for the rest of the term and is invoiced right away.
           </AlertDescription>
         </Alert>
