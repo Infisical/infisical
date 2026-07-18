@@ -13,7 +13,7 @@ type TUsageMeteringServiceFactoryDep = {
 
 // Debounce window: bursts for the same {org, feature} collapse to one count because the delayed job
 // shares a deterministic jobId.
-const DEBOUNCE_MS = 60_000;
+const DEBOUNCE_MS = 5000;
 
 export const usageMeteringServiceFactory = ({
   queueService,
@@ -27,13 +27,15 @@ export const usageMeteringServiceFactory = ({
       { orgId, dimensionKey },
       {
         jobId: `usage-event-${orgId}-${dimensionKey}`,
-        delay: process.env.NODE_ENV === "development" ? 5000 : DEBOUNCE_MS,
+        delay: DEBOUNCE_MS,
         removeOnComplete: true,
         removeOnFail: true,
         deduplication: {
           id: `usage-event-${orgId}-${dimensionKey}`,
           keepLastIfActive: true,
-          replace: true
+          replace: true,
+          ttl: DEBOUNCE_MS,
+          extend: true
         }
       }
     );

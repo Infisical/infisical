@@ -216,6 +216,8 @@ export type TQueueOptions = {
     id: string;
     keepLastIfActive?: boolean;
     replace?: boolean;
+    extend?: boolean;
+    ttl?: number;
   };
   // @deprecated Use upsertJobScheduler instead.
   repeat?: {
