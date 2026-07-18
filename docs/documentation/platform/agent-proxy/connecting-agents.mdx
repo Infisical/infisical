@@ -1,0 +1,48 @@
+---
+title: "Connecting Agents"
+description: "Launch any agent behind the Agent Proxy and control what its environment contains."
+---
+
+<Info>
+  The Agent Proxy is a paid feature on Infisical Cloud (contact [sales@infisical.com](mailto:sales@infisical.com) to enable it) and is enabled by default on self-hosted Infisical.
+</Info>
+
+You launch your agent through `infisical secrets agent-proxy connect -- <agent command>`, which sets up the agent's environment and then starts it. No code changes are needed: `connect` points the agent's HTTP clients at the Agent Proxy, so its normal outbound requests route through it. Each request carries the agent's Infisical token and folder scope, which is how the Agent Proxy knows which identity is asking and which of that folder's proxied services apply.
+
+## What `connect` sets in the agent's environment
+
+- **Proxy routing.** `HTTPS_PROXY` and `HTTP_PROXY` point at the Agent Proxy. `NO_PROXY` always includes `localhost,127.0.0.1`; add more hosts with `--no-proxy` or an existing `NO_PROXY`.
+- **Certificate trust.** The standard trust variables point at the downloaded root CA so the agent's HTTP clients accept the Agent Proxy's certificates. See [Certificates & TLS interception](/documentation/platform/agent-proxy/security#certificates--tls-interception).
+- **Placeholders.** A dummy value for each [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) service, so the agent has something to send.
+- **Real values (opt-in).** To give the agent a real secret directly, grant its identity **Read Value** on that secret; `connect` then injects the value into the agent's environment, like any secret the identity can read. This is for values the agent uses in its own code; for credentials it sends to an external API, broker them instead. An agent with only the `Proxy` permission gets no real values, just the routing and placeholders above. Brokered credentials are never injected here; the Agent Proxy adds them to each outbound request itself, so they reach the destination but never the agent.
+
+## Connection behaviors
+
+- Both HTTPS and plain-HTTP services are brokered. HTTPS traffic arrives as `CONNECT` tunnels; plain `http://` traffic arrives as regular forward-proxy requests (useful for internal services without TLS). An `https://` URL sent as a plain forward-proxy request is rejected, so the Agent Proxy can never be used to downgrade TLS.
+- If the agent identity can already read a secret that one of its proxied services brokers, `connect` refuses to start: the agent would receive that value directly and bypass the Agent Proxy. Pass `--allow-readable-brokered-secrets` to override the guardrail.
+
+## Configuration
+
+Every option resolves from the same sources, in order: **the flag → an environment variable → `.infisical.json` → the built-in default.** An explicitly-passed flag always wins. In a container or CI where the environment variables are already set, the flags fall away and only your agent command remains: `infisical secrets agent-proxy connect -- claude`.
+
+| Option | Flag | Environment variable | `.infisical.json` |
+| --- | --- | --- | --- |
+| Auth | `--client-id` / `--client-secret` | `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` / `_SECRET` | — |
+| Instance | `--domain` | `INFISICAL_DOMAIN` | `domain` |
+| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `workspaceId` |
+| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `defaultEnvironment` |
+| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `defaultSecretPath` |
+| Proxy address | `--proxy` | `INFISICAL_AGENT_PROXY_ADDRESS` | `agentProxyAddress` |
+
+See the [CLI reference](/cli/commands/agent-proxy) for the full list, including `--port`, `--unmatched-host`, and `--poll-interval` on `start`.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/commands/agent-proxy">
+    Every flag for `start` and `connect`, with examples.
+  </Card>
+  <Card title="Activity Logs" icon="scroll" href="/documentation/platform/agent-proxy/activity-logs">
+    See what the Agent Proxy brokered on every request.
+  </Card>
+</CardGroup>

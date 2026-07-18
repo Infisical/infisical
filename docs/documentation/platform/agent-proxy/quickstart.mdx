@@ -167,7 +167,7 @@ Then start the proxy. It listens on port `17322`:
   </Tab>
 </Tabs>
 
-Remember this host's address; the next step points `INFISICAL_AGENT_PROXY_ADDRESS` at it. For production deployment, see [Deployment](/documentation/platform/agent-proxy/security#deployment).
+Remember this host's address; the next step points `INFISICAL_AGENT_PROXY_ADDRESS` at it. For production deployment, see [Deployment](/documentation/platform/agent-proxy/deployment).
 
 ## 6. Connect your agent
 
@@ -246,7 +246,7 @@ Then launch the agent through `connect`. Everything after `--` is the agent's ow
 The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `STRIPE_KEY`, set by `connect` to the fake placeholder, and uses it like a normal key. Its traffic now routes through the proxy: on calls to `api.stripe.com` the placeholder is swapped for the real key, and everything else passes through untouched. The next step makes that visible.
 
 <Note>
-  Every setting here can also be passed as a flag or set in `.infisical.json`. See the [CLI reference](/cli/commands/agent-proxy).
+  Every setting here can also be passed as a flag or set in `.infisical.json`. See [Connecting Agents](/documentation/platform/agent-proxy/connecting-agents) for how `connect` works and what it puts in the agent's environment.
 </Note>
 
 ## 7. Verify it works
@@ -270,7 +270,7 @@ Stripe returns your account balance, even though `curl` only ever sent the fake 
   <Card title="Proxied Services" icon="right-left" href="/documentation/platform/agent-proxy/proxied-services">
     Host patterns, header rewrites, and secret substitution in depth.
   </Card>
-  <Card title="Security & Architecture" icon="shield-halved" href="/documentation/platform/agent-proxy/security">
-    The isolation and trust model, deployment methods, and HA.
+  <Card title="Deployment" icon="server" href="/documentation/platform/agent-proxy/deployment">
+    Take the Agent Proxy to production: placement, deployment methods, and HA.
   </Card>
 </CardGroup>

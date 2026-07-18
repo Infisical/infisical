@@ -28,7 +28,7 @@ Every service has these core fields, plus one or more credential rules described
 </ParamField>
 
 <ParamField path="Enabled" type="boolean" optional default="true">
-  Toggle a service off without deleting it. A disabled service is skipped entirely: its placeholder environment variables are not set, no credentials are applied, and traffic to its hosts falls back to the [unmatched host policy](/documentation/platform/agent-proxy/security#unmatched-hosts).
+  Toggle a service off without deleting it. A disabled service is skipped entirely: its placeholder environment variables are not set, no credentials are applied, and traffic to its hosts falls back to the [unmatched host policy](/documentation/platform/agent-proxy/deployment#unmatched-hosts).
 </ParamField>
 
 ![The Details step of the proxied service editor with the name and host pattern](/images/platform/agent-proxy/service-details.png)
@@ -87,7 +87,7 @@ With secret substitution, the agent is handed a dummy placeholder value. The age
 - The API carries the credential somewhere other than a header. Telegram, for example, puts the bot token in the URL path: `api.telegram.org/bot<token>/sendMessage`.
 - The agent has to see a value before it will make the call at all, headers included. Some HTTP clients validate that a credential is set, and agents often refuse to attempt a request without a real-looking key. The placeholder satisfies them, and the proxy swaps in the real value on the way out.
 
-The placeholder is also delivered for you: `infisical secrets agent-proxy connect` sets it as an environment variable in the agent's environment, so there is nothing to hand out.
+The placeholder is also delivered for you: [`infisical secrets agent-proxy connect`](/documentation/platform/agent-proxy/connecting-agents) sets it as an environment variable in the agent's environment, so there is nothing to hand out.
 
 ![A secret substitution rule swapping a placeholder for the real secret](/images/platform/agent-proxy/secret-substitution.png)
 

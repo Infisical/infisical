@@ -1,0 +1,105 @@
+---
+title: "Deployment"
+description: "Run the Agent Proxy in production: network placement, deployment methods, and high availability."
+---
+
+<Info>
+  The Agent Proxy is a paid feature on Infisical Cloud (contact [sales@infisical.com](mailto:sales@infisical.com) to enable it) and is enabled by default on self-hosted Infisical.
+</Info>
+
+The Agent Proxy is a single long-running process started with `infisical secrets agent-proxy start`. This page covers where to place it in your network, how to run it, and how it behaves at scale. For a first run, the [Quickstart](/documentation/platform/agent-proxy/quickstart) is enough; read this before going to production.
+
+## Network placement
+
+The Agent Proxy is built for private-network deployment. A well-placed one looks like this:
+
+- **Inside your private network, off the public internet.** The Agent Proxy's listening port should only ever be reachable from within your network.
+- **Reachable only by your agent machines.** Restrict inbound access to the Agent Proxy's port to the hosts that run agents, using your usual controls (security groups, firewall rules, network policies).
+- **On its own host.** Same network as the agents for low per-request latency, but a separate machine, which keeps the real credentials fully isolated from the agents.
+- **Alongside any plain-HTTP upstreams.** Internal services the Agent Proxy reaches over plain HTTP belong inside the same trusted network.
+- **Credentials where they are used.** Provision the Agent Proxy identity's client credentials only on its host, and each agent identity's only on its agent machine.
+
+Outbound, the Agent Proxy only needs to reach your Infisical instance and the APIs your proxied services define.
+
+## Deployment methods
+
+However you run the Agent Proxy, provide its identity's credentials, publish port `17322` to your agent machines only, and set `INFISICAL_DOMAIN` for EU Cloud or self-hosted.
+
+<Tabs>
+  <Tab title="CLI (systemd, VM)">
+    Install the [CLI](/cli/overview) on the host and run `start` under a process supervisor so it restarts on failure:
+
+    ```bash
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+    # export INFISICAL_DOMAIN=https://eu.infisical.com   # EU Cloud or self-hosted
+
+    infisical secrets agent-proxy start
+    ```
+  </Tab>
+  <Tab title="Docker">
+    The CLI ships as the `infisical/cli` image. Pass credentials as environment variables and publish the port:
+
+    ```bash
+    docker run -p 17322:17322 \
+      -e INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id> \
+      -e INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret> \
+      infisical/cli:latest secrets agent-proxy start
+    ```
+
+    Add `-e INFISICAL_DOMAIN=https://eu.infisical.com` for EU Cloud or a self-hosted instance.
+  </Tab>
+  <Tab title="PaaS (Render, Railway, Fly)">
+    Deploy the `infisical/cli` image as a service:
+
+    - **Image:** `infisical/cli:latest`
+    - **Start command:** `secrets agent-proxy start`
+    - **Environment:** `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`, `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`, and `INFISICAL_DOMAIN` if not on US Cloud
+    - **Port:** `17322`, exposed on a private network your agents can reach, not the public internet
+
+    On Render, this is a private service pointed at the image with the start command above.
+  </Tab>
+</Tabs>
+
+<Note>
+  Keep the Agent Proxy on a private network reachable only by your agent machines (see [Network placement](#network-placement)). To run more than one instance, see [High availability](#high-availability).
+</Note>
+
+## Caching and polling
+
+The Agent Proxy keeps everything it needs in memory, so steady-state requests involve no Infisical calls:
+
+- **First request from an agent**: the Agent Proxy discovers all proxied services in the agent's scope and fetches the referenced secret values, then serves every subsequent request from that agent, to any host, from cache.
+- **Refresh**: every 60 seconds (configurable via `--poll-interval`), the Agent Proxy re-fetches services, permissions, and secret values for active agents. Changes such as a rotated secret or an edited service take effect within one poll interval, with no agent restart. Authorization fails closed on the same cycle. If an agent's identity, role, or Proxy grant is revoked, or its token expires, the Agent Proxy drops that agent's cached credentials on the next poll and stops applying them.
+- **Eviction**: an agent idle for about 10 minutes has its cache dropped and polling stopped. Its next request triggers a fresh discovery.
+- **API load**: polling grows with the number of active agents. With a large fleet or a short `--poll-interval`, factor in your instance's API rate limits; a longer interval reduces load at the cost of slower propagation.
+
+## Unmatched hosts
+
+When an agent requests a host no proxied service matches, the `--unmatched-host` flag decides what happens:
+
+- `allow` (default): the request is forwarded untouched, with no credentials applied. This is the normal mode, because much of an agent's traffic does not need a brokered credential at all: reading documentation, cloning public repos, installing packages, or calling services the agent legitimately authenticates to itself. All of that flows through untouched, while matched hosts still get credentials applied.
+- `block`: the request is rejected with `403`. Use this to restrict agents to an allowlist of exactly the services you have defined.
+
+<Note>
+  `block` applies to every host without a matching proxied service, including your Infisical instance itself. Since agent traffic routes through the Agent Proxy, Infisical CLI commands run from inside the agent (using the `INFISICAL_TOKEN` from its environment) will also be rejected in this mode.
+</Note>
+
+## High availability
+
+Run multiple Agent Proxy instances with the same machine identity behind a TCP load balancer. Instances coordinate through Infisical rather than with each other:
+
+- All instances chain to the same per-organization root CA, so agents trust any instance. Each instance signs its own intermediate.
+- Each instance keeps its own agent cache. If the load balancer moves an agent to a new instance, that instance does one fresh discovery and then serves from cache.
+- Each instance polls Infisical independently. After a secret rotation, instances may briefly apply different values until their next poll (up to one poll interval).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Activity Logs" icon="scroll" href="/documentation/platform/agent-proxy/activity-logs">
+    See what the Agent Proxy brokered on every request.
+  </Card>
+  <Card title="Security" icon="shield-halved" href="/documentation/platform/agent-proxy/security">
+    The isolation, authentication, and trust model.
+  </Card>
+</CardGroup>
