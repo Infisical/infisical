@@ -34,6 +34,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -106,6 +107,7 @@ type TLdapConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -130,7 +132,8 @@ export const ldapConfigServiceFactory = ({
   kmsService,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -688,6 +691,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
+              usageMeteringService,
               tx
             });
           }
@@ -710,6 +714,7 @@ export const ldapConfigServiceFactory = ({
               userGroupMembershipDAL,
               membershipGroupDAL,
               projectKeyDAL,
+              usageMeteringService,
               tx
             });
           }

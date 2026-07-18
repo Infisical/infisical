@@ -4,7 +4,7 @@ import { logger } from "@app/lib/logger";
 import { mintServiceToken } from "../license-client-backends";
 
 export type TUsageSnapshot = {
-  feature_key: string;
+  dimension_key: string;
   value: number;
   observed_at: string;
   idempotency_key: string;

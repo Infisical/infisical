@@ -21,7 +21,7 @@ import {
   useRemoveBillingV2Product
 } from "@app/hooks/api";
 
-import { fmtMoney } from "../billing-v2-data";
+import { fmtMoney } from "../billing-v2-format";
 
 type Props = {
   orgId: string;
@@ -46,7 +46,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
     (entitlement) => entitlement.entitled
   ).length;
   const isOnlyProduct = overviewReady && entitledProductCount === 1;
-  const periodEndDate = overview?.nextBillingDate ?? null;
+  const periodEndDate = overview?.entitlements[product.id]?.renewsOn ?? null;
 
   const preview = usePreviewBillingV2Change();
   const removeProduct = useRemoveBillingV2Product();
@@ -184,7 +184,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
               <div className="flex items-center justify-between">
                 <span className="text-mineshaft-300">New recurring total</span>
                 <span className="font-semibold text-foreground tabular-nums">
-                  {fmtMoney(preview.data.estimatedTotal, 2)}
+                  {fmtMoney(preview.data.nextRecurringTotal, 2)}
                 </span>
               </div>
             </div>

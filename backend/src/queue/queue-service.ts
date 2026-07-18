@@ -204,8 +204,7 @@ export enum JobState {
   Failed = "failed"
 }
 
-export type TQueueOptions = {
-  jobId: string;
+type BaseQueueOptions = {
   removeOnComplete?: boolean | { count: number } | { age: number };
   removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
@@ -224,6 +223,26 @@ export type TQueueOptions = {
     utc?: boolean;
   };
 };
+
+type DeduplicationOptions = {
+  id: string;
+  keepLastIfActive?: boolean;
+  replace?: boolean;
+  extend?: boolean;
+  ttl?: number;
+};
+
+export type TQueueOptions = BaseQueueOptions &
+  (
+    | {
+        jobId: string;
+        deduplication?: undefined;
+      }
+    | {
+        jobId?: undefined;
+        deduplication: DeduplicationOptions;
+      }
+  );
 
 export type TQueueJobTypes = {
   [QueueName.SecretReminder]: {
@@ -540,7 +559,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
-    payload: { orgId: string; featureKey: string };
+    payload: { orgId: string; dimensionKey: string };
   };
 };
 
