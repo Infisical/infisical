@@ -237,7 +237,7 @@ export type TQueueOptions = BaseQueueOptions &
         deduplication?: undefined;
       }
     | {
-        jobId?: string;
+        jobId?: undefined;
         deduplication: DeduplicationOptions;
       }
   );
