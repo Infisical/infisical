@@ -26,10 +26,14 @@ export const usageMeteringServiceFactory = ({
       QueueJobs.UsageEvent,
       { orgId, dimensionKey },
       {
-        jobId: `usage-event:${orgId}:${dimensionKey}`,
+        jobId: `usage-event-${orgId}-${dimensionKey}`,
         delay: process.env.NODE_ENV === "development" ? 5000 : DEBOUNCE_MS,
         removeOnComplete: true,
-        removeOnFail: true
+        removeOnFail: true,
+        deduplication: {
+          id: `usage-event-${orgId}-${dimensionKey}`,
+          keepLastIfActive: true
+        }
       }
     );
   };

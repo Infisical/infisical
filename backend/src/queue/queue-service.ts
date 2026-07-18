@@ -212,6 +212,10 @@ export type TQueueOptions = {
     type: "exponential" | "fixed";
     delay: number;
   };
+  deduplication?: {
+    id: string;
+    keepLastIfActive?: boolean;
+  };
   // @deprecated Use upsertJobScheduler instead.
   repeat?: {
     pattern?: string;

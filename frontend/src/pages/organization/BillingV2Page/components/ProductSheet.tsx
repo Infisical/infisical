@@ -543,17 +543,9 @@ export const ProductSheet = ({
                     <span className="text-xs text-muted">
                       Choose monthly or yearly at checkout · cancel any time
                     </span>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={onClose}>
-                        Close
-                      </Button>
-                      {selfServePlan && (
-                        <Button variant="org" onClick={() => openActivate(selfServePlan.tier)}>
-                          <PlusIcon />
-                          Activate
-                        </Button>
-                      )}
-                    </div>
+                    <Button variant="outline" onClick={onClose}>
+                      Close
+                    </Button>
                   </>
                 )}
               </SheetFooter>

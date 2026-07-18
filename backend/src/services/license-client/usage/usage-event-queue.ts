@@ -34,7 +34,7 @@ export const usageEventQueueFactory = ({
 
   // Counts the meter and reports it to the License Server only when the value changed since the last
   // report. No-ops when the reporter is null (v2 disabled), so queued events drain harmlessly.
-  const handleUsageEvent = async (orgId: string, dimensionKey: string) => {
+  const handleUsageEvent = async (orgId: string, dimensionKey: string, observedAt: Date) => {
     if (!usageReporter) {
       return;
     }
@@ -53,14 +53,12 @@ export const usageEventQueueFactory = ({
         return;
       }
 
-      const observedAt = new Date();
-      const minuteBucketSeconds = Math.floor(observedAt.getTime() / 60_000) * 60;
       await usageReporter.reportSnapshots(orgId, [
         {
           dimension_key: dimensionKey,
           value,
           observed_at: observedAt.toISOString(),
-          idempotency_key: `${source}:${orgId}:${dimensionKey}:${minuteBucketSeconds}`,
+          idempotency_key: `${source}:${orgId}:${dimensionKey}:${observedAt.getTime()}`,
           source
         }
       ]);
@@ -105,10 +103,14 @@ export const usageEventQueueFactory = ({
 
   const startWorker = () => {
     // Counts are DB-heavy, so concurrency + limiter rate-shape a backlog instead of bursting the read replica.
-    queueService.start(QueueName.UsageEvent, (job) => handleUsageEvent(job.data.orgId, job.data.dimensionKey), {
-      concurrency: 5,
-      limiter: { max: 50, duration: 1000 }
-    });
+    queueService.start(
+      QueueName.UsageEvent,
+      (job) => handleUsageEvent(job.data.orgId, job.data.dimensionKey, new Date(job.timestamp)),
+      {
+        concurrency: 5,
+        limiter: { max: 50, duration: 1000 }
+      }
+    );
   };
 
   const init = () => {

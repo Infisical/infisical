@@ -83,7 +83,14 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     (sum, dim) => sum + (dim.committed ?? 0) * (dim.committedRate ?? 0),
     0
   );
-  const newAnnual = hasChanges && preview.data ? preview.data.nextRecurringTotal : currentAnnual;
+  // The product's new annual commitment is deterministic from the version-pinned committed rates:
+  // quantities × committedRate over this product's annual dims (mirrors currentAnnual with the stepped
+  // values). Derive it client-side so the figure stays product-scoped and exact — the preview's
+  // nextRecurringTotal is the whole subscription's recurring total and must not be shown here.
+  const newAnnual = committable.reduce(
+    (sum, dim) => sum + (quantities[dim.key] ?? 0) * (dim.committedRate ?? 0),
+    0
+  );
   const currentOnDemand =
     entitlement.onDemandAmount ??
     committable.reduce(
@@ -126,6 +133,15 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
       : newOnDemand < currentOnDemand
         ? `Down from ${fmtMoney(currentOnDemand)} / mo`
         : `Up from ${fmtMoney(currentOnDemand)} / mo`;
+
+  const annualNote = `For ${prod.name}${renewsOn ? `, billed on ${renewsOn}` : ""}`;
+  const annualDelta =
+    // eslint-disable-next-line no-nested-ternary
+    newAnnual === currentAnnual
+      ? null
+      : newAnnual > currentAnnual
+        ? `Up from ${fmtMoney(currentAnnual)} / year`
+        : `Down from ${fmtMoney(currentAnnual)} / year`;
 
   return (
     <>
@@ -186,8 +202,8 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
           <InfoIcon />
           <AlertDescription className="text-foreground">
             Committed units are pre-bought for the year at the annual rate. Usage above your
-            commitment is billed monthly at the on-demand rate until your renewal. Raising your
-            commitment is prorated for the rest of the term; lowering it takes effect at renewal.
+            commitment is billed monthly at the on-demand rate until your renewal.Increasing your
+            commitment takes effect immediately for the rest of the term and is invoiced right away.
           </AlertDescription>
         </Alert>
 
@@ -201,15 +217,13 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
           />
           <CostSummaryRow
             label="New annual commitment"
-            note={`For ${prod.name}${renewsOn ? `, billed on ${renewsOn}` : ""}`}
+            note={annualDelta ?? annualNote}
             value={`${fmtMoney(newAnnual)} / year`}
-            isCalculating={isCalculating}
           />
           <CostSummaryRow
             label="On-demand after change"
             note={onDemandDelta ?? "Billed monthly for usage above your commitment"}
             value={`${fmtMoney(newOnDemand)} / mo`}
-            isCalculating={isCalculating}
             valueClassName={newOnDemand > 0 ? "text-warning/90" : "text-muted"}
           />
         </CostSummary>

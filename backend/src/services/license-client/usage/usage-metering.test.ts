@@ -230,13 +230,13 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
 
   test("no-ops when the reporter is null (v2 disabled)", async () => {
     const { queue } = buildQueue({ usageReporter: null });
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key);
+    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
     expect(meteredFeatures[0].count).not.toHaveBeenCalled();
   });
 
   test("reports a snapshot and records the value on first observation", async () => {
     const { queue, reportSnapshots, keyStore } = buildQueue();
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key);
+    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
 
     expect(reportSnapshots).toHaveBeenCalledTimes(1);
     const [orgId, snapshots] = reportSnapshots.mock.calls[0] as unknown as [string, TUsageSnapshot[]];
@@ -254,13 +254,13 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     keyStore.store.set(`license-usage-last-reported-${ORG_ID}-${MaxIdentities.key}`, "42");
     const { queue, reportSnapshots } = buildQueue({ keyStore });
 
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key);
+    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
     expect(reportSnapshots).not.toHaveBeenCalled();
   });
 
   test("drops events for unknown features", async () => {
     const { queue, reportSnapshots } = buildQueue();
-    await queue.handleUsageEvent(ORG_ID, "not_a_meter");
+    await queue.handleUsageEvent(ORG_ID, "not_a_meter", new Date());
     expect(reportSnapshots).not.toHaveBeenCalled();
   });
 
