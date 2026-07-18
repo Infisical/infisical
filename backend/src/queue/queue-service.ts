@@ -202,8 +202,7 @@ export enum JobState {
   Failed = "failed"
 }
 
-export type TQueueOptions = {
-  jobId: string;
+type BaseQueueOptions = {
   removeOnComplete?: boolean | { count: number } | { age: number };
   removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
@@ -211,13 +210,6 @@ export type TQueueOptions = {
   backoff?: {
     type: "exponential" | "fixed";
     delay: number;
-  };
-  deduplication?: {
-    id: string;
-    keepLastIfActive?: boolean;
-    replace?: boolean;
-    extend?: boolean;
-    ttl?: number;
   };
   // @deprecated Use upsertJobScheduler instead.
   repeat?: {
@@ -229,6 +221,26 @@ export type TQueueOptions = {
     utc?: boolean;
   };
 };
+
+type DeduplicationOptions = {
+  id: string;
+  keepLastIfActive?: boolean;
+  replace?: boolean;
+  extend?: boolean;
+  ttl?: number;
+};
+
+export type TQueueOptions = BaseQueueOptions &
+  (
+    | {
+        jobId: string;
+        deduplication?: undefined;
+      }
+    | {
+        jobId?: string;
+        deduplication: DeduplicationOptions;
+      }
+  );
 
 export type TQueueJobTypes = {
   [QueueName.SecretReminder]: {

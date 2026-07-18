@@ -11,8 +11,6 @@ type TUsageMeteringServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE">;
 };
 
-// Debounce window: bursts for the same {org, feature} collapse to one count because the delayed job
-// shares a deterministic jobId.
 const DEBOUNCE_MS = 5000;
 
 export const usageMeteringServiceFactory = ({
@@ -26,7 +24,6 @@ export const usageMeteringServiceFactory = ({
       QueueJobs.UsageEvent,
       { orgId, dimensionKey },
       {
-        jobId: `usage-event-${orgId}-${dimensionKey}`,
         delay: DEBOUNCE_MS,
         removeOnComplete: true,
         removeOnFail: true,
@@ -34,8 +31,6 @@ export const usageMeteringServiceFactory = ({
           id: `usage-event-${orgId}-${dimensionKey}`,
           keepLastIfActive: true,
           replace: true,
-          ttl: DEBOUNCE_MS,
-          extend: true
         }
       }
     );
