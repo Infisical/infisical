@@ -394,7 +394,13 @@ export type TStartTrialPayload = {
 const trialResultSchema = z
   .object({
     outcome: z.literal("trial_started"),
-    card_setup_url: z.string().optional()
+    card_setup_url: z
+      .string()
+      .url()
+      .refine((val) => val.startsWith("http://") || val.startsWith("https://"), {
+        message: "URL must start with http:// or https://"
+      })
+      .optional()
   })
   .passthrough();
 export type TTrialResult = { outcome: "trial_started"; cardSetupUrl?: string };
