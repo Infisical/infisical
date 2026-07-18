@@ -30,7 +30,7 @@ export const usageMeteringServiceFactory = ({
         deduplication: {
           id: `usage-event-${orgId}-${dimensionKey}`,
           keepLastIfActive: true,
-          replace: true,
+          replace: true
         }
       }
     );
