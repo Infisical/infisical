@@ -1,117 +1,276 @@
 ---
-title: "Agent Proxy Quickstart"
+title: "Agent Proxy quickstart"
 sidebarTitle: "Quickstart"
 description: "Broker your first credential to an agent through the Infisical Agent Proxy."
 ---
 
-This guide walks through brokering a credential end to end: you will create a proxied service, start an agent proxy, and launch an agent whose API calls get real credentials applied on the wire, without the agent ever holding them.
+<Info>
+  The Agent Proxy is a paid feature on Infisical Cloud (contact [sales@infisical.com](mailto:sales@infisical.com) to enable it) and is enabled by default on self-hosted Infisical.
+</Info>
+
+This tutorial takes you from an Infisical project to an agent making authenticated API calls through the Agent Proxy, with real credentials it never sees.
 
 ## Prerequisites
 
-- An Infisical project (Secrets Management) with the secrets you want to broker.
-- The [Infisical CLI](/cli/overview) installed on the machines that will run the agent proxy and the agent.
+- An Infisical Secrets Management project.
+- An API key to broker. Stripe is only this guide's running example; bring any API you like and follow the same steps.
+- Two hosts in the same private network: one for the agent proxy and one for the agent. The agent host must be able to reach the proxy on its port (`17322` by default).
+- The [Infisical CLI](/cli/overview) installed on both the proxy host and the agent host.
+
+## 1. Add a secret
+
+In your project, create a folder for the agent (for example `/billing-agent` in the `dev` environment) and add a secret named `STRIPE_KEY` with your Stripe secret key as its value. It is a regular Infisical secret; nothing about it changes when it is brokered.
+
+![The /billing-agent folder with STRIPE_KEY added](/images/platform/agent-proxy/quickstart-add-secret.png)
+
+## 2. Create a proxied service
+
+A proxied service maps a host to the secret the proxy applies. In the same folder, open the **Add Secret** dropdown and select **Add Proxied Service**, then work through the steps:
+
+![The Add Secret dropdown open with Add Proxied Service highlighted](/images/platform/agent-proxy/quickstart-add-proxied-service.png)
 
 <Steps>
-  <Step title="Add the secrets to broker">
-    In your project, pick or create a folder for your agent workloads (for example `/ai-agents` in the `prod` environment) and add the secrets the agents will need, such as `STRIPE_API_KEY`. These are regular Infisical secrets; nothing about them changes when they are brokered.
+  <Step title="Pick the Stripe template">
+    The template fills everything in for you: the host `api.stripe.com` and a **Secret Substitution** rule that hands the agent a realistic `sk_live_…` placeholder and swaps in the real key on the way out.
+
+    ![The proxied service template picker with Stripe available](/images/platform/agent-proxy/quickstart-template-picker.png)
   </Step>
-  <Step title="Create a proxied service">
-    In the same folder, click the dropdown arrow next to **Add Secret** and select **Add Proxied Service**.
+  <Step title="Details">
+    Keep the service name `stripe-api` and the host pattern `api.stripe.com`.
 
-    <ParamField path="Service Name" type="string" required>
-      A slug that identifies the service, such as `stripe-api`.
-    </ParamField>
-    <ParamField path="Host Pattern" type="string" required>
-      The host(s) this service applies to, such as `api.stripe.com`. See [host patterns](/documentation/platform/agent-proxy/proxied-services#host-patterns) for wildcards, ports, and paths.
-    </ParamField>
-
-    Under **Header Rewriting**, keep the pre-filled `Authorization` header with the `Bearer` prefix and select `STRIPE_API_KEY` as the value. This tells the agent proxy to set `Authorization: Bearer <real-stripe-key>` on every request to `api.stripe.com`.
-
-    See [Proxied Services](/documentation/platform/agent-proxy/proxied-services) for basic auth, custom headers, and credential substitution.
+    ![The Details step with the service name and host pattern](/images/platform/agent-proxy/service-details.png)
   </Step>
-  <Step title="Create two machine identities">
-    Create two [machine identities](/documentation/platform/identities/machine-identities) with [Universal Auth](/documentation/platform/identities/universal-auth) and add both to your project:
-
-    1. **Agent proxy identity**: it fetches the real credential values, so grant it `Read Value` and `Describe Secret` on the **Secrets** its services reference.
-    2. **Agent identity**: it routes traffic through proxied services but should not read any secret values, so grant it only `Proxy` on **Proxied Services**.
-
-    <Note>
-      Grant these permissions with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or an [additional privilege](/documentation/platform/access-controls/additional-privileges) on each identity, scoped to the specific environments and paths you need. Running more than one agent? See [how many machine identities you need](/documentation/platform/agent-proxy/security#how-many-machine-identities-do-you-need).
-    </Note>
+  <Step title="Header Rewrites">
+    This step is skipped automatically for Stripe. The key does travel in the `Authorization` header, but this template handles that with **Secret Substitution** (next step): the agent itself puts a placeholder in the header, and the proxy swaps it for the real key.
   </Step>
-  <Step title="Start the agent proxy">
-    On the machine that will run the agent proxy (ideally in the same private network as your agents, but not on the same machine), authenticate with the agent proxy identity and start it:
+  <Step title="Secret Substitution">
+    Select `STRIPE_KEY` as the secret holding the real value.
 
-    ```bash
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+    Here is how the pieces fit together. When your agent connects, it gets an environment variable `STRIPE_KEY` set to the fake `sk_live_…` placeholder. The agent uses it like any Stripe key and sends `Authorization: Bearer <placeholder>`. As the request passes through the proxy, the placeholder is replaced with the real key. The template scopes this swap to headers, since that is where Stripe expects the key; a substitution can also target the URL path, query, or body.
 
-    infisical secrets agent-proxy start
-    ```
-
-    The proxy authenticates to Infisical, sets up its certificate chain, and listens on port `17322` by default. See the [CLI reference](/cli/commands/agent-proxy) for flags such as `--port` and `--unmatched-host`.
-
-    <Note>
-      If you are self-hosting Infisical or using EU Cloud, point the CLI at your instance with `--domain` or the `INFISICAL_DOMAIN` environment variable (for example `https://eu.infisical.com`).
-    </Note>
+    ![The Secret Substitution step swapping a placeholder for the real secret](/images/platform/agent-proxy/secret-substitution.png)
   </Step>
-  <Step title="Connect an agent">
-    On the agent machine, authenticate with the agent identity and launch the agent through the `connect` wrapper. Everything after `--` is the agent's own start command:
+  <Step title="Review and create">
+    Double-check the host pattern and the substitution rule, then click **Create Proxied Service**.
 
-    ```bash
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
-    ```
-
-    <Tabs>
-      <Tab title="Claude Code">
-        ```bash
-        infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 \
-          --projectId=<project-id> --env=prod --path=/ai-agents -- claude
-        ```
-      </Tab>
-      <Tab title="Codex">
-        ```bash
-        infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 \
-          --projectId=<project-id> --env=prod --path=/ai-agents -- codex
-        ```
-      </Tab>
-      <Tab title="Any command">
-        ```bash
-        infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 \
-          --projectId=<project-id> --env=prod --path=/ai-agents -- <your-agent-command>
-        ```
-      </Tab>
-    </Tabs>
-
-    Before starting the agent, the wrapper:
-
-    - Routes the agent's traffic through the agent proxy (`HTTPS_PROXY`, `HTTP_PROXY`).
-    - Downloads your organization's root CA certificate and points the common trust variables (`SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, and others) at it, so the agent's HTTP clients accept the proxy's certificates.
-    - Sets dummy placeholder environment variables for any credential-substitution services.
-    - Sets environment variables with real values for regular secrets the agent identity has **Read Value** on in the folder (including secrets imported into it), similar to `infisical run`.
-
-    <Note>
-      Real values in the agent's environment are deliberate and opt-in. When the agent identity has only the proxy permission and no secret read access, nothing real lands in the environment unless an admin explicitly grants **Read Value** on specific secrets. Brokered credentials never appear in the agent's environment; the proxy only attaches them on the wire.
-    </Note>
-
-    The project can also be set via `INFISICAL_PROJECT_ID` or an `.infisical.json` file (created by `infisical init`) instead of `--projectId`.
-  </Step>
-  <Step title="Verify it works">
-    You can watch the proxy attach a credential by calling an echo service that reflects request headers back. Add a secret `TEST_API_KEY` to the folder, create a proxied service for it (host pattern `postman-echo.com`, header `Authorization` with prefix `Bearer`, secret `TEST_API_KEY`), then run a plain `curl` through the wrapper:
-
-    ```bash
-    infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 \
-      --projectId=<project-id> --env=prod --path=/ai-agents -- \
-      curl https://postman-echo.com/headers
-    ```
-
-    The echoed headers include `"authorization": "Bearer <your TEST_API_KEY value>"`. `curl` sent no credential; the proxy attached it on the way out. The same happens to `api.stripe.com` with the service from step 2. Requests to hosts with no proxied service are forwarded untouched by default (see [unmatched hosts](/documentation/platform/agent-proxy/security#unmatched-hosts)).
+    ![The Review step showing the Secret Substitution rule for STRIPE_KEY](/images/platform/agent-proxy/quickstart-review.png)
   </Step>
 </Steps>
 
-## Next Steps
+<Note>
+  Not on the template list? Pick **Custom** and configure a [header rewrite or secret substitution](/documentation/platform/agent-proxy/proxied-services) by hand.
+</Note>
 
-- Configure [host patterns, header rewriting, and credential substitution](/documentation/platform/agent-proxy/proxied-services) in depth.
-- Understand the [isolation and trust model](/documentation/platform/agent-proxy/security) behind the proxy.
-- Browse every flag in the [CLI reference](/cli/commands/agent-proxy).
+## 3. Create the proxy identity
+
+The proxy and the agent authenticate as **two separate machine identities with opposite access**. That split is the whole security model: the proxy can read your secrets, the agent never can.
+
+**The proxy identity reads the secrets.**
+
+<Steps>
+  <Step title="Create the identity">
+    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent-proxy`) and create it.
+
+    ![The create machine identity prompt with the name agent-proxy](/images/platform/agent-proxy/quickstart-create-identity.png)
+  </Step>
+  <Step title="Generate a Client Secret">
+    Open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
+
+    ![The machine identity's Universal Auth authentication method highlighted](/images/platform/agent-proxy/quickstart-universal-auth.png)
+
+    Click **Add Client Secret**.
+
+    ![The Add Client Secret button highlighted on the Universal Auth panel](/images/platform/agent-proxy/quickstart-add-client-secret.png)
+
+    Save the **Client ID** and the **Client Secret**; you will pass both to the proxy in step 5.
+  </Step>
+  <Step title="Grant it read access to the secrets">
+    Grant it `Read Value` and `Describe Secret` on **Secrets** for the secrets your services reference. The quickest way is an [additional privilege](/documentation/platform/access-controls/additional-privileges) directly on the identity: open it and click **Add Additional Privileges**.
+
+    ![The Add Additional Privileges button on the machine identity page](/images/platform/agent-proxy/quickstart-add-additional-privileges.png)
+
+    Add a **Secrets** policy allowing both `Read Value` and `Describe Secret`. A [custom role](/documentation/platform/access-controls/role-based-access-controls) with the same policy, assigned to the identity, works too.
+
+    If you plan to broker [dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets) later, also allow `Manage Leases` on **Dynamic Secrets** while you are here. Only the proxy identity gets it; the agent identity never should.
+
+    ![The proxy identity's additional privileges: Read Value and Describe Secret on Secrets, and Manage Leases on Dynamic Secrets](/images/platform/agent-proxy/quickstart-proxy-identity-role.png)
+  </Step>
+</Steps>
+
+## 4. Create the agent identity
+
+**The agent identity routes traffic but reads no secrets.** It needs the `Proxy` permission and nothing else.
+
+<Steps>
+  <Step title="Create the identity">
+    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent`) and create it.
+
+    ![The create machine identity prompt with the name agent](/images/platform/agent-proxy/quickstart-create-agent-identity.png)
+  </Step>
+  <Step title="Generate a Client Secret">
+    Open the identity and add a **Client Secret** under Universal Auth, exactly as in the previous step. Save the **Client ID** and the **Client Secret**; you will pass both to the agent in step 6.
+  </Step>
+  <Step title="Grant it the Proxy permission">
+    Grant it only `Proxy` on **Proxied Services**, scoped to the environment and path where your services live, the same way you granted the proxy identity's permissions.
+
+    ![The agent identity's additional privilege with only the Proxy action on Proxied Services](/images/platform/agent-proxy/quickstart-agent-identity-role.png)
+  </Step>
+</Steps>
+
+## 5. Start the agent proxy
+
+On a host in your agents' private network (a separate machine), authenticate as the **proxy identity**: set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` to the Client ID and Client Secret you saved in step 3.
+
+<Tabs>
+  <Tab title="US Cloud">
+    ```bash
+    # Authenticate as the proxy identity (from step 3)
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+    ```
+  </Tab>
+  <Tab title="EU Cloud">
+    ```bash
+    # Authenticate as the proxy identity (from step 3), pointed at EU Cloud
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+    export INFISICAL_DOMAIN=https://eu.infisical.com
+    ```
+  </Tab>
+  <Tab title="Self-hosted">
+    ```bash
+    # Authenticate as the proxy identity (from step 3), pointed at your instance
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+    export INFISICAL_DOMAIN=https://infisical.your-domain.com
+    ```
+  </Tab>
+</Tabs>
+
+Then start the proxy. It listens on port `17322`:
+
+<Tabs>
+  <Tab title="CLI">
+    ```bash
+    infisical secrets agent-proxy start
+    ```
+  </Tab>
+  <Tab title="Docker">
+    ```bash
+    # -e without a value passes through the variables you exported above
+    docker run -p 17322:17322 \
+      -e INFISICAL_UNIVERSAL_AUTH_CLIENT_ID \
+      -e INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET \
+      -e INFISICAL_DOMAIN \
+      infisical/cli:latest secrets agent-proxy start
+    ```
+  </Tab>
+</Tabs>
+
+Remember this host's address; the next step points `INFISICAL_AGENT_PROXY_ADDRESS` at it. For production deployment, see [Deployment](/documentation/platform/agent-proxy/security#deployment).
+
+## 6. Connect your agent
+
+On the agent host, set the agent's authentication and connection details as environment variables:
+
+<Tabs>
+  <Tab title="US Cloud">
+    ```bash
+    # Authenticate as the agent identity (from step 4)
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
+
+    # Scope: which project, environment, and folder to use (from step 1)
+    export INFISICAL_PROJECT_ID=<project-id>
+    export INFISICAL_ENVIRONMENT=dev
+    export INFISICAL_SECRET_PATH=/billing-agent
+
+    # The agent proxy to route through (from step 5)
+    export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
+    ```
+  </Tab>
+  <Tab title="EU Cloud">
+    ```bash
+    # Authenticate as the agent identity (from step 4), pointed at EU Cloud
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
+    export INFISICAL_DOMAIN=https://eu.infisical.com
+
+    # Scope: which project, environment, and folder to use (from step 1)
+    export INFISICAL_PROJECT_ID=<project-id>
+    export INFISICAL_ENVIRONMENT=dev
+    export INFISICAL_SECRET_PATH=/billing-agent
+
+    # The agent proxy to route through (from step 5)
+    export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
+    ```
+  </Tab>
+  <Tab title="Self-hosted">
+    ```bash
+    # Authenticate as the agent identity (from step 4), pointed at your instance
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
+    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
+    export INFISICAL_DOMAIN=https://infisical.your-domain.com
+
+    # Scope: which project, environment, and folder to use (from step 1)
+    export INFISICAL_PROJECT_ID=<project-id>
+    export INFISICAL_ENVIRONMENT=dev
+    export INFISICAL_SECRET_PATH=/billing-agent
+
+    # The agent proxy to route through (from step 5)
+    export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
+    ```
+  </Tab>
+</Tabs>
+
+Then launch the agent through `connect`. Everything after `--` is the agent's own command:
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```bash
+    infisical secrets agent-proxy connect -- claude
+    ```
+  </Tab>
+  <Tab title="Codex">
+    ```bash
+    infisical secrets agent-proxy connect -- codex
+    ```
+  </Tab>
+  <Tab title="Any command">
+    ```bash
+    infisical secrets agent-proxy connect -- <your-agent-command>
+    ```
+  </Tab>
+</Tabs>
+
+The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `STRIPE_KEY`, set by `connect` to the fake placeholder, and uses it like a normal key. Its traffic now routes through the proxy: on calls to `api.stripe.com` the placeholder is swapped for the real key, and everything else passes through untouched. The next step makes that visible.
+
+<Note>
+  Every setting here can also be passed as a flag or set in `.infisical.json`. See the [CLI reference](/cli/commands/agent-proxy).
+</Note>
+
+## 7. Verify it works
+
+Call Stripe through `connect`, using the `stripe-api` service from step 2 and the environment variables you set in step 6. `connect` sets `STRIPE_KEY` to the fake placeholder, so `curl` sends the placeholder and the proxy swaps in the real key on the way out:
+
+```bash
+infisical secrets agent-proxy connect -- \
+  sh -c 'curl https://api.stripe.com/v1/balance -H "Authorization: Bearer $STRIPE_KEY"'
+```
+
+Stripe returns your account balance, even though `curl` only ever sent the fake placeholder.
+
+<Note>
+  If you still get a `401`, the proxy could not apply the credential and forwarded the placeholder unchanged (it does not block the call). Check the proxy's logs, and confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `STRIPE_KEY`.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Proxied Services" icon="right-left" href="/documentation/platform/agent-proxy/proxied-services">
+    Host patterns, header rewrites, and secret substitution in depth.
+  </Card>
+  <Card title="Security & Architecture" icon="shield-halved" href="/documentation/platform/agent-proxy/security">
+    The isolation and trust model, deployment methods, and HA.
+  </Card>
+</CardGroup>

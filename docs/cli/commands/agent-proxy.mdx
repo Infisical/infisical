@@ -18,8 +18,11 @@ description: "Run the Infisical Agent Proxy and connect agents to it"
     ```bash
     infisical secrets agent-proxy connect [options] -- [agent start command]
 
-    # Example
+    # Example (flags)
     infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+
+    # Example (configuration from environment variables)
+    infisical secrets agent-proxy connect -- claude
     ```
 
   </Tab>
@@ -157,11 +160,18 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
 
   The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
 
+  <Note>
+    Every input below resolves from the same sources, in order: **the flag → an environment variable → `.infisical.json` → the built-in default.** An explicitly-passed flag always wins. This is why, in a container or CI where the environment variables are already set, the command collapses to `infisical secrets agent-proxy connect -- claude`.
+  </Note>
+
 ```bash
 $ infisical secrets agent-proxy connect --proxy=<host>:<port> --projectId=<project-id> --env=<env-slug> -- [agent start command]
 
-# Example
+# With flags
 $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
+
+# With configuration from environment variables (see below) or .infisical.json
+$ infisical secrets agent-proxy connect -- claude
 ```
 
 ### Environment variables
@@ -177,11 +187,38 @@ $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<
   </Accordion>
 
   <Accordion title="INFISICAL_PROJECT_ID">
-    The project to fetch proxied services and secrets from. Alternative to the `--projectId` flag or running inside a directory with an `.infisical.json` file (created by `infisical init`).
+    The project to fetch proxied services and secrets from. Alternative to the `--projectId` flag or the `workspaceId` field in `.infisical.json` (created by `infisical init`).
 
     ```bash
       # Example
       export INFISICAL_PROJECT_ID=<project-id>
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_ENVIRONMENT">
+    The environment slug to fetch proxied services and secrets from. Alternative to the `--env` flag or the `defaultEnvironment` field in `.infisical.json`.
+
+    ```bash
+      # Example
+      export INFISICAL_ENVIRONMENT=prod
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_SECRET_PATH">
+    The secret path (folder) to scope to. Alternative to the `--path` flag or the `defaultSecretPath` field in `.infisical.json`.
+
+    ```bash
+      # Example
+      export INFISICAL_SECRET_PATH=/ai-agents
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_AGENT_PROXY_ADDRESS">
+    Address of the agent proxy as `host:port`. Alternative to the `--proxy` flag or the `agentProxyAddress` field in `.infisical.json`.
+
+    ```bash
+      # Example
+      export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
     ```
   </Accordion>
 
@@ -197,7 +234,7 @@ $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<
 ### Flags
 
   <Accordion title="--proxy">
-    Address of the agent proxy as `host:port`. Required.
+    Address of the agent proxy as `host:port`. Required, unless provided via `INFISICAL_AGENT_PROXY_ADDRESS` or the `agentProxyAddress` field in `.infisical.json`.
 
     ```bash
     # Example
@@ -206,7 +243,7 @@ $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<
   </Accordion>
 
   <Accordion title="--env">
-    The environment slug to fetch proxied services and secrets from (for example `dev`, `staging`, `prod`). Falls back to the environment in `.infisical.json` if present; required otherwise.
+    The environment slug to fetch proxied services and secrets from (for example `dev`, `staging`, `prod`). Falls back to `INFISICAL_ENVIRONMENT`, then to the `defaultEnvironment` (and git-branch mapping) in `.infisical.json`; required otherwise.
 
     ```bash
     # Example
@@ -215,7 +252,7 @@ $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<
   </Accordion>
 
   <Accordion title="--path">
-    The secret path (folder) to scope to. Proxied services and secrets are fetched from this folder.
+    The secret path (folder) to scope to. Proxied services and secrets are fetched from this folder. Falls back to `INFISICAL_SECRET_PATH`, then to the `defaultSecretPath` field in `.infisical.json`.
 
     ```bash
     # Example
@@ -262,7 +299,7 @@ $ infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<
   </Accordion>
 
   <Accordion title="--allow-readable-brokered-secrets">
-    Start even if the agent can **Read Value** on a secret that a proxied service brokers to it. By default `connect` refuses to start in that case, since the agent would receive the real value directly and bypass the proxy, defeating the point of brokering it. This is a misconfiguration guardrail, not a security boundary: the real fix is to not grant the agent read access to brokered secrets. Use this flag only for the rare intentional case.
+    Start even if the agent can **Read Value** on a secret that a proxied service brokers to it. By default `connect` refuses to start in that case, since the agent would receive the real value directly and bypass the proxy, defeating the point of brokering it. This is a misconfiguration guardrail, not a security boundary: the real fix is to not grant the agent read access to brokered secrets. Use this flag only for the rare intentional case. Can also be set via `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`.
 
     ```bash
     # Example

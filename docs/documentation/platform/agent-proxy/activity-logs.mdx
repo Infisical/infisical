@@ -1,10 +1,12 @@
 ---
 title: "Activity Logs"
 sidebarTitle: "Activity Logs"
-description: "See what the agent proxy brokered on every request through its log stream, then ship it wherever you want."
+description: "See what the agent proxy brokered on every request."
 ---
 
-The agent proxy logs one entry for every request it handles, in its normal log stream alongside its operational logs — nothing separate to enable. You ship that stream yourself (Infisical never stores it): point a collector like Fluent Bit or the OpenTelemetry Collector at it to forward to Splunk, Datadog, Elastic, or anywhere.
+Activity logs record what the agent proxy did with each request: which agent called which host, and which credential was applied. Together they form an audit trail of every credential your agents used, and a way to spot blocked or failed requests.
+
+The proxy emits these records in its log output. To keep them, forward that output with a collector such as Fluent Bit or the OpenTelemetry Collector to your logging platform: Splunk, Datadog, Elastic, or anything else.
 
 <Note>
   Only requests that reach the forwarding stage are logged. Requests rejected earlier (malformed proxy auth, an invalid `CONNECT` target, TLS failures) never reach it and aren't logged. A request whose identity can't be resolved at forwarding is still logged as an `error`, just with an empty agent.
@@ -26,7 +28,7 @@ Each request is logged with these fields (plus the standard `time`, `level`, and
 | `credentials` | What was injected: each entry's secret key (or, for a dynamic secret, its name and output field), and the header or surfaces it landed in |
 
 <Warning>
-  A record never contains a real secret. The proxy logs the request as the agent sent it, before the real value is swapped in, so `path` only ever shows the placeholder. The `credentials` list records secret **names** and where they were applied, never values, and header values and request bodies are never logged.
+  A record never contains a real secret. Requests are logged as the agent sent them, before the swap, so `path` shows only the placeholder; `credentials` lists secret **names**, not values; header values and request bodies are never logged.
 </Warning>
 
 ## Log levels
@@ -40,34 +42,27 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 | `blocked` | warn |
 | `error` | error |
 
-## Output format and destination
+## Log format
 
-| Flag | Values | Default |
-| --- | --- | --- |
-| `--log-format` | `console` \| `json` | `console` |
-| `--log-file` | file path | none |
-
-`--log-format` sets the shape: `console` (the default — human-readable, colorized in a terminal and plain when redirected or in a container) or `json` for machines and SIEMs. Logs go to **stderr** (capture with `2>` or `2>&1`). `--log-file` also writes `json` to a file, so you can watch the console **and** persist machine-readable logs at once.
+`--log-format` sets the shape of each record: `console` (the default, human-readable) or `json` for machines and SIEMs. Logs go to **stderr** (capture with `2>` or `2>&1`).
 
 <Tabs>
-  <Tab title="console (human)">
+  <Tab title="console">
     ```text
     2026-07-17T14:32:09 INF agent request  event=agent-proxy.request decision=brokered agentName=claude-agent serviceName=stripe-api method=POST host=api.stripe.com path=/v1/charges status=200 credentials=[{"key":"STRIPE_API_KEY","role":"header-rewrite","header":"Authorization"}]
     2026-07-17T14:32:12 WRN agent request  event=agent-proxy.request decision=blocked agentName=claude-agent host=evil.example.com method=GET status=403
     ```
   </Tab>
-  <Tab title="json (machine)">
+  <Tab title="json">
     ```json
     {"level":"info","time":"2026-07-17T14:32:09+05:30","message":"agent request","event":"agent-proxy.request","decision":"brokered","agentId":"9c1e40cf-...","agentName":"claude-agent","projectId":"53c8b330-...","environment":"prod","secretPath":"/ai-agents","serviceName":"stripe-api","method":"POST","host":"api.stripe.com","port":443,"path":"/v1/charges","status":200,"credentials":[{"key":"STRIPE_API_KEY","role":"header-rewrite","header":"Authorization"}]}
     ```
   </Tab>
-  <Tab title="dynamic secret">
-    A brokered credential backed by a [dynamic secret](/documentation/platform/dynamic-secrets/overview) records its name and output field instead of a static key:
-    ```json
-    "credentials":[{"dynamicSecretName":"my-postgres-creds","dynamicSecretField":"DB_PASSWORD","role":"header-rewrite","header":"Authorization"}]
-    ```
-  </Tab>
 </Tabs>
+
+## Log file
+
+`--log-file` writes `json` records to a file, in addition to the console output. This lets you watch a readable stream in the terminal while persisting machine-readable logs for your collector.
 
 ## Common setups
 

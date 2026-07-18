@@ -75,7 +75,7 @@ export const CreateProxiedServiceModal = ({
               <>
                 <SheetTitle>Choose a template</SheetTitle>
                 <SheetDescription>
-                  Pick a service to get a head start, or start from scratch.
+                  Pick a service to get a head start, or set one up yourself.
                 </SheetDescription>
               </>
             ) : (
