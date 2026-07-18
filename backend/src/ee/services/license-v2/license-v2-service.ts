@@ -4,7 +4,6 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
@@ -13,7 +12,6 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
-import { TMeteredFeature } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isV2SelfHostedLicenseKey } from "../license/license-fns";
@@ -46,12 +44,8 @@ import {
 
 type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  // Feature-keyed live-count fns (the same source the usage meter uses), so per-unit dimensions can
-  // show real utilization instead of the zero the license server reports for non-metered dimensions.
-  meteredFeatures: TMeteredFeature[];
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
@@ -80,10 +74,6 @@ export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory
 // glyph on the client.
 const FALLBACK_ICON = "box";
 const FALLBACK_COLOR = "#6b7280";
-
-// Feature key for the identity seat dimension (mirrors MaxIdentities.key in dual-read feature-mapping);
-// used to seed that dimension's usage when building entitlements.
-const IDENTITY_LIMIT_FEATURE_KEY = "max_identities";
 
 // Price kinds we understand; an unknown kind is treated as non-purchasable, never sold as per_unit.
 const PER_UNIT_KIND = "per_unit";
@@ -365,10 +355,8 @@ const buildCheckoutItems = (
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
-  identityOrgMembershipDAL,
   permissionService,
-  licenseClient,
-  meteredFeatures
+  licenseClient
 }: TLicenseV2ServiceFactoryDep) => {
   // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
   // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
@@ -401,59 +389,9 @@ export const licenseV2ServiceFactory = ({
     );
   };
 
-  const counterByFeatureKey = new Map(meteredFeatures.map((metered) => [metered.feature.key, metered.count]));
-
-  // Live per-org usage for the subscription's non-metered dimensions, keyed by feature key. Seeded
-  // values (e.g. the shared member+identity pool, computed once for the Usage card) win, so a
-  // dimension that also has its own count elsewhere on the page reads the same number. The rest are
-  // counted once each, in parallel, via the same counters the usage meter uses. A count failure is
-  // logged and dropped so the overview still renders.
-  const resolveLiveUsage = async (
-    orgId: string,
-    subscription: TSubscriptionResponse | null,
-    seed: Map<string, number>
-  ): Promise<Map<string, number>> => {
-    const usage = new Map<string, number>(seed);
-    if (!subscription) {
-      return usage;
-    }
-
-    const featureKeys = new Set<string>();
-    subscription.items.forEach((item) => {
-      item.dimensions.forEach((dimension) => {
-        // The stable key the dimension caps against is limitKey (contract); older servers send it as
-        // featureKey. Overlay live counts for non-metered dims we have a counter for.
-        const overlayKey = dimension.limitKey ?? dimension.featureKey;
-        if (!dimension.metered && overlayKey && !usage.has(overlayKey) && counterByFeatureKey.has(overlayKey)) {
-          featureKeys.add(overlayKey);
-        }
-      });
-    });
-
-    await Promise.all(
-      [...featureKeys].map(async (featureKey) => {
-        const count = counterByFeatureKey.get(featureKey);
-        if (count === undefined) {
-          return;
-        }
-        try {
-          usage.set(featureKey, await count(orgId));
-        } catch (error) {
-          logger.error(error, `billing-v2: failed to count live usage [orgId=${orgId}, feature=${featureKey}]`);
-        }
-      })
-    );
-
-    return usage;
-  };
-
   // Fold the subscription items and the entitlement features sourced from a product into a single
   // per-product entitlement map, keyed by the server's product ids.
-  const buildEntitlements = async (
-    org: TEntitlementOrg,
-    subscription: TSubscriptionResponse | null,
-    liveUsageSeed: Map<string, number>
-  ) => {
+  const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
     const labelByDimension = new Map<string, string>();
@@ -478,11 +416,6 @@ export const licenseV2ServiceFactory = ({
       }
     }
 
-    // The license server only tracks usage for metered dimensions, so per-unit ones come back with
-    // used=0. Overlay live counts, matched on the stable feature key (dimension keys drift). Metered
-    // dimensions keep the server's period peak, which is the billed figure.
-    const liveUsageByFeatureKey = await resolveLiveUsage(org.id, subscription, liveUsageSeed);
-
     if (subscription) {
       subscription.items.forEach((item) => {
         // Resolve the pinned per-dimension contract into a display-ready list: label/noun from the
@@ -499,14 +432,10 @@ export const licenseV2ServiceFactory = ({
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
 
-          // Overlay live per-org usage for non-metered dims (the server reports 0 for them); metered
-          // dims keep the server's period reading. Matched on the stable limit/feature key.
-          let used = dimension.used ?? 0;
-          const overlayKey = dimension.limitKey ?? dimension.featureKey;
-          const liveUsed = overlayKey ? liveUsageByFeatureKey.get(overlayKey) : undefined;
-          if (!metered && liveUsed !== undefined) {
-            used = liveUsed;
-          }
+          // The license server reports usage for every dimension now: metered dims carry the period
+          // reading, per_resource dims the latest reported snapshot. Use it directly so the figure
+          // matches what the customer is billed on (no separate live count that could diverge).
+          const used = dimension.used ?? 0;
 
           const onDemandRate = hasOnDemandRate ? centsToDollars(dimension.onDemandRateCents) : undefined;
           // Monthly overage cost: usage above the prepaid commitment at the on-demand rate.
@@ -700,11 +629,6 @@ export const licenseV2ServiceFactory = ({
 
     const subState = resolveSubState(subscription);
 
-    const members = await orgDAL.countAllOrgMembers(orgId);
-    const identities = await identityOrgMembershipDAL.countAllOrgIdentities({
-      scopeOrgId: orgId
-    });
-
     // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
     let planName = "Free";
     if (subState !== "no-subscription") {
@@ -745,12 +669,9 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
-    // Seed the identity dimension's usage from the org's combined member + machine-identity count,
-    // which is what its per-dimension counter in the product card renders.
     const entitlements = await buildEntitlements(
       { id: orgId, name: organization.name, slug: organization.slug },
-      subscription,
-      new Map([[IDENTITY_LIMIT_FEATURE_KEY, members + identities]])
+      subscription
     );
     // Org-wide monthly on-demand overage (dollars), summed once for the summary's on-demand note.
     const onDemandAmount = Object.values(entitlements).reduce(

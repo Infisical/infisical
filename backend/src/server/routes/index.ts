@@ -850,10 +850,8 @@ export const registerRoutes = async (
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,
-    identityOrgMembershipDAL,
     permissionService,
-    licenseClient,
-    meteredFeatures
+    licenseClient
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)

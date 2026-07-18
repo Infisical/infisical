@@ -68,7 +68,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     expect(name).toBe(QueueName.UsageEvent);
     expect(job).toBe(QueueJobs.UsageEvent);
     expect(data).toEqual({ orgId: ORG_ID, dimensionKey: MaxIdentities.key });
-    expect(opts.jobId).toBe(`usage-event:${ORG_ID}:${MaxIdentities.key}`);
+    expect(opts.jobId).toBe(`usage-event-${ORG_ID}-${MaxIdentities.key}`);
     expect(opts.delay).toBe(60_000);
   });
 
@@ -104,7 +104,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     expect(queue).toHaveBeenCalledTimes(1);
     const [, , data, opts] = queue.mock.calls[0] as unknown as TQueueCall;
     expect(data).toEqual({ orgId: ORG_ID, dimensionKey: MaxPamResources.key });
-    expect(opts.jobId).toBe(`usage-event:${ORG_ID}:${MaxPamResources.key}`);
+    expect(opts.jobId).toBe(`usage-event-${ORG_ID}-${MaxPamResources.key}`);
   });
 
   test("does not enqueue when the project is missing (e.g. soft-deleted)", async () => {
