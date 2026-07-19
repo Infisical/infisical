@@ -32,7 +32,11 @@ Every option resolves from the same sources, in order: **the flag → an environ
 | Project | `--projectId` | `INFISICAL_PROJECT_ID` | `workspaceId` |
 | Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `defaultEnvironment` |
 | Secret path | `--path` | `INFISICAL_SECRET_PATH` | `defaultSecretPath` |
-| Proxy address | `--proxy` | `INFISICAL_AGENT_PROXY_ADDRESS` | `agentProxyAddress` |
+| Proxy address | `--proxy` | `INFISICAL_AGENT_PROXY_ADDRESS` | — |
+
+<Note>
+  The proxy address is the one setting that cannot come from `.infisical.json`. That file is usually committed to your repository, so a wrong or malicious value would silently route every agent's traffic through the wrong host. Pass it with `--proxy` or `INFISICAL_AGENT_PROXY_ADDRESS` instead.
+</Note>
 
 See the [CLI reference](/cli/commands/agent-proxy) for the full list, including `--port`, `--unmatched-host`, and `--poll-interval` on `start`.
 
