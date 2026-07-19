@@ -6,5 +6,6 @@ export const NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION = {
   connection: AppConnection.NutanixPrismCentral,
   destination: PkiSync.NutanixPrismCentral,
   canImportCertificates: false,
-  canRemoveCertificates: false
+  canRemoveCertificates: false,
+  maxCertificates: 1
 } as const;

@@ -82,6 +82,14 @@ export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
   };
 };
 
+export const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefined => {
+  const providerOption = PKI_SYNC_LIST_OPTIONS[destination];
+  if (providerOption && "maxCertificates" in providerOption) {
+    return providerOption.maxCertificates;
+  }
+  return undefined;
+};
+
 export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): data is z.infer<T> => {
   return schema.safeParse(data).success;
 };

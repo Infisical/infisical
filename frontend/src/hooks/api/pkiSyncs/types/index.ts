@@ -15,6 +15,7 @@ export type TPkiSyncOption = {
   destination: PkiSync;
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
+  maxCertificates?: number;
   enterprise?: boolean;
   defaultCertificateNameSchema?: string;
   forbiddenCharacters?: string;

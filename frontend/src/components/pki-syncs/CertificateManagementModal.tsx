@@ -27,13 +27,14 @@ import {
   useListPkiSyncCertificates,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api";
-import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   pkiSync?: TPkiSync;
+  destination?: PkiSync;
   applicationId?: string;
   onCertificatesUpdated?: () => void;
   selectedCertificateIds?: string[];
@@ -47,6 +48,7 @@ export const CertificateManagementModal = ({
   isOpen,
   onClose,
   pkiSync,
+  destination,
   applicationId: applicationIdProp,
   onCertificatesUpdated,
   selectedCertificateIds,
@@ -63,6 +65,9 @@ export const CertificateManagementModal = ({
 
   const isCreateMode = !pkiSync;
   const scopedApplicationId = pkiSync?.applicationId ?? applicationIdProp;
+
+  const { syncOption } = usePkiSyncOption((pkiSync?.destination ?? destination) as PkiSync);
+  const isSingleSelect = syncOption?.maxCertificates === 1;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -106,9 +111,13 @@ export const CertificateManagementModal = ({
   }, [JSON.stringify(syncedCertificateIds)]);
 
   const handleToggleSelection = (certId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(certId) ? prev.filter((id) => id !== certId) : [...prev, certId]
-    );
+    setSelectedIds((prev) => {
+      if (prev.includes(certId)) {
+        return prev.filter((id) => id !== certId);
+      }
+      // Single-slot destinations (e.g. Nutanix) allow only one certificate
+      return isSingleSelect ? [certId] : [...prev, certId];
+    });
   };
 
   const handleSelectAll = () => {
@@ -308,14 +317,16 @@ export const CertificateManagementModal = ({
               <THead>
                 <Tr>
                   <Th className="w-12">
-                    <Checkbox
-                      id="select-all-certificates"
-                      isChecked={
-                        allCertificates.length > 0 &&
-                        allCertificates.every((cert) => selectedIds.includes(cert.id))
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
+                    {!isSingleSelect && (
+                      <Checkbox
+                        id="select-all-certificates"
+                        isChecked={
+                          allCertificates.length > 0 &&
+                          allCertificates.every((cert) => selectedIds.includes(cert.id))
+                        }
+                        onCheckedChange={handleSelectAll}
+                      />
+                    )}
                   </Th>
                   <Th className="w-1/3">SAN / CN</Th>
                   <Th className="w-1/4">Serial Number</Th>
