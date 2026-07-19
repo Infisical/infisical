@@ -325,6 +325,9 @@ const envSchema = z
     LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
     LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
+    // When true, new checkouts (adding a payment method) and trials on License Server v1 cloud are
+    // disallowed, pushing orgs onto License Server v2.
+    DISABLE_LICENSE_V1_CLOUD: zodStrBool.default("false"),
     // CROSS-PROJECT SECRET SHARING
     CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: zpStr(z.string().optional()),
 

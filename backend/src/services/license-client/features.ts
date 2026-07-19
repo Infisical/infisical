@@ -6,10 +6,9 @@ export const SsoEnforcement = defineFeature("sso_enforcement", false);
 export const AuditRetentionDays = defineFeature("audit_retention_days", 30);
 
 // Metered limit features. Their key is both the resolved cap and the usage meter (see usage/).
-export const MaxIdentities = defineLimitFeature("max_identities", 0);
-export const MaxInternalCas = defineLimitFeature("max_internal_cas", 0);
+export const MaxIdentities = defineLimitFeature("identities", 0);
+export const MaxInternalCas = defineLimitFeature("internal_cas", 0);
 export const MaxActiveCerts = defineLimitFeature("max_active_certs", 0);
 export const MaxPamResources = defineLimitFeature("max_resources", 0);
-// Distinct users + machine identities that belong to a Secret Management project (via direct
-// membership or a group). Org-scoped on cloud; whole-instance on self-hosted.
 export const SecretIdentities = defineLimitFeature("secret_identities", 0);
+export const PamIdentities = defineLimitFeature("pam_identities", 0);

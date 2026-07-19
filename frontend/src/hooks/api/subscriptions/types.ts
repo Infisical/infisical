@@ -84,4 +84,8 @@ export type SubscriptionPlan = {
   honeyTokens: boolean;
   honeyTokenLimit: number;
   secretsBrokering: boolean;
+  // Product gate flags. When explicitly true, the product's primary creation flow is blocked and an
+  // upgrade modal is surfaced in the product layout.
+  pam?: boolean | null;
+  certManager?: boolean | null;
 };

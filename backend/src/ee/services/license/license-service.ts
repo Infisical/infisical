@@ -62,6 +62,7 @@ type TLicenseServiceFactoryDep = {
     | "SITE_URL"
     | "LICENSE_SERVER_V2_MODE"
     | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "DISABLE_LICENSE_V1_CLOUD"
   >;
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -308,6 +309,7 @@ export const licenseServiceFactory = ({
             throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
           }
           currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+          console.log("Current plan", currentPlan);
 
           // The entitlement projection only carries feature flags, so set the plan slug from the
           // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
@@ -517,6 +519,12 @@ export const licenseServiceFactory = ({
     actorAuthMethod,
     success_url
   }: TStartOrgTrialDTO) => {
+    if (envConfig.DISABLE_LICENSE_V1_CLOUD) {
+      throw new BadRequestError({
+        message: "We're currently updating our license system. Please check back again later."
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       actorId,
       actor,
@@ -850,6 +858,12 @@ export const licenseServiceFactory = ({
     success_url,
     cancel_url
   }: TAddOrgPmtMethodDTO) => {
+    if (envConfig.DISABLE_LICENSE_V1_CLOUD) {
+      throw new BadRequestError({
+        message: "We're currently updating our license system. Please check back again later."
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       actorId,
       actor,

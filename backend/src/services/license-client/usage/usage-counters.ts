@@ -1,7 +1,14 @@
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 
 import { TFeatureCounterFn, TLimitFeatureDescriptor } from "../feature";
-import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources, SecretIdentities } from "../features";
+import {
+  MaxActiveCerts,
+  MaxIdentities,
+  MaxInternalCas,
+  MaxPamResources,
+  PamIdentities,
+  SecretIdentities
+} from "../features";
 import { TUsageCounterDALFactory } from "./usage-counter-dal";
 
 export type TMeteredFeature = {
@@ -30,5 +37,9 @@ export const buildMeteredFeatures = ({
   {
     feature: SecretIdentities,
     count: (orgId) => usageCounterDAL.countSecretManagementIdentities(isCloud ? orgId : undefined)
+  },
+  {
+    feature: PamIdentities,
+    count: (orgId) => usageCounterDAL.countPamIdentities(isCloud ? orgId : undefined)
   }
 ];

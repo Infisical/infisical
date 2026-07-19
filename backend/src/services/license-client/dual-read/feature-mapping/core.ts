@@ -80,5 +80,15 @@ export const coreMappings: TFeatureMapping[] = [
     v2Key: "enterprise_app_connections",
     v1Field: "enterpriseAppConnections",
     extractV1: (p) => p.enterpriseAppConnections
+  },
+  {
+    v2Key: "pam",
+    v1Field: "pam",
+    extractV1: (p) => p.pam
+  },
+  {
+    v2Key: "cert_manager",
+    v1Field: "certManager",
+    extractV1: (p) => p.certManager
   }
 ];

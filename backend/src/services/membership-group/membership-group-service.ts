@@ -18,7 +18,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
@@ -199,9 +199,10 @@ export const membershipGroupServiceFactory = ({
       return doc;
     });
 
-    // Assigning a group to a project brings the group's users + identities into it, changing the meter.
+    // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
     }
     return { membership, group };
   };
@@ -408,9 +409,10 @@ export const membershipGroupServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipGroupDAL.transaction(performDelete);
 
-    // Removing a group from a project drops its users + identities from it, changing the meter.
+    // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { QueueJobs, QueueName } from "@app/queue";
 
 import { featureReaderFactory } from "../feature-reader";
-import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources, SecretIdentities } from "../features";
+import {
+  MaxActiveCerts,
+  MaxIdentities,
+  MaxInternalCas,
+  MaxPamResources,
+  PamIdentities,
+  SecretIdentities
+} from "../features";
 import { buildMeteredFeatures } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
 import { usageMeteringServiceFactory } from "./usage-metering-service";
@@ -170,13 +177,21 @@ describe("buildMeteredFeatures", () => {
       countInternalCas: vi.fn(async () => 1),
       countActiveCerts: vi.fn(async () => 2),
       countPamResources: vi.fn(async () => 3),
-      countSecretManagementIdentities: vi.fn(async () => 4)
+      countSecretManagementIdentities: vi.fn(async () => 4),
+      countPamIdentities: vi.fn(async () => 5)
     };
     const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: true });
 
     const byKey = Object.fromEntries(metered.map((m) => [m.feature.key, m.count]));
     expect(Object.keys(byKey).sort()).toEqual(
-      [MaxIdentities.key, MaxInternalCas.key, MaxActiveCerts.key, MaxPamResources.key, SecretIdentities.key].sort()
+      [
+        MaxIdentities.key,
+        MaxInternalCas.key,
+        MaxActiveCerts.key,
+        MaxPamResources.key,
+        SecretIdentities.key,
+        PamIdentities.key
+      ].sort()
     );
 
     expect(await byKey[MaxIdentities.key](ORG_ID)).toBe(7);
@@ -184,9 +199,11 @@ describe("buildMeteredFeatures", () => {
     expect(await byKey[MaxActiveCerts.key](ORG_ID)).toBe(2);
     expect(await byKey[MaxPamResources.key](ORG_ID)).toBe(3);
     expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
+    expect(await byKey[PamIdentities.key](ORG_ID)).toBe(5);
     expect(licenseDAL.countOrgUsersAndIdentities).toHaveBeenCalledWith(ORG_ID);
-    // Cloud scopes the secret-identity meter to the org.
+    // Cloud scopes the identity meters to the org.
     expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(ORG_ID);
+    expect(usageCounterDAL.countPamIdentities).toHaveBeenCalledWith(ORG_ID);
   });
 
   test("self-hosted meters secret identities across the whole instance (no org scope)", async () => {
@@ -195,13 +212,17 @@ describe("buildMeteredFeatures", () => {
       countInternalCas: vi.fn(async () => 0),
       countActiveCerts: vi.fn(async () => 0),
       countPamResources: vi.fn(async () => 0),
-      countSecretManagementIdentities: vi.fn(async () => 9)
+      countSecretManagementIdentities: vi.fn(async () => 9),
+      countPamIdentities: vi.fn(async () => 6)
     };
     const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: false });
     const secret = metered.find((m) => m.feature.key === SecretIdentities.key);
+    const pam = metered.find((m) => m.feature.key === PamIdentities.key);
 
     expect(await secret?.count(ORG_ID)).toBe(9);
+    expect(await pam?.count(ORG_ID)).toBe(6);
     expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(undefined);
+    expect(usageCounterDAL.countPamIdentities).toHaveBeenCalledWith(undefined);
   });
 });
 
@@ -306,7 +327,8 @@ describe("canUse enforcement (using the framework from a call site)", () => {
       countInternalCas: async () => counts.internalCas ?? 0,
       countActiveCerts: async () => 0,
       countPamResources: async () => 0,
-      countSecretManagementIdentities: async () => 0
+      countSecretManagementIdentities: async () => 0,
+      countPamIdentities: async () => 0
     };
     buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: true }).forEach(({ feature, count }) =>
       reader.registerCounter(feature, count)
@@ -315,7 +337,7 @@ describe("canUse enforcement (using the framework from a call site)", () => {
   };
 
   test("canUse() compares the live count against the cap resolved from entitlements", async () => {
-    const reader = buildReader({ max_identities: { value: 100 } }, { identities: 99 });
+    const reader = buildReader({ identities: { value: 100 } }, { identities: 99 });
 
     const identities = await reader.getFeature(ORG_ID, MaxIdentities);
     expect(identities.value).toBe(100); // cap comes from the License Server entitlement
@@ -324,15 +346,15 @@ describe("canUse enforcement (using the framework from a call site)", () => {
   });
 
   test("a metered create path blocks once the cap is reached", async () => {
-    const reader = buildReader({ max_internal_cas: { value: 1 } }, { internalCas: 1 });
+    const reader = buildReader({ internal_cas: { value: 1 } }, { internalCas: 1 });
 
     const assertCanCreateInternalCa = async () => {
       const cas = await reader.getFeature(ORG_ID, MaxInternalCas);
       if (!(await cas.canUse(1))) {
-        throw new Error(`max_internal_cas limit reached (cap ${cas.value})`);
+        throw new Error(`internal_cas limit reached (cap ${cas.value})`);
       }
     };
 
-    await expect(assertCanCreateInternalCa()).rejects.toThrow("max_internal_cas limit reached (cap 1)");
+    await expect(assertCanCreateInternalCa()).rejects.toThrow("internal_cas limit reached (cap 1)");
   });
 });

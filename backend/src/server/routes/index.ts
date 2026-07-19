@@ -1913,7 +1913,8 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolService,
     appConnectionDAL,
-    pamAccessRequestService
+    pamAccessRequestService,
+    licenseService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
@@ -3220,7 +3221,8 @@ export const registerRoutes = async (
     gatewayPoolService,
     usageMeteringService,
     hsmConnectorService,
-    certificateAuthoritySecretDAL
+    certificateAuthoritySecretDAL,
+    licenseService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3629,7 +3631,8 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     membershipDAL,
     membershipRoleDAL,
-    hsmConnectorService
+    hsmConnectorService,
+    licenseService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({

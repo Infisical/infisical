@@ -9,7 +9,7 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -190,9 +190,10 @@ export const membershipIdentityServiceFactory = ({
       return doc;
     });
 
-    // Adding an identity to a project changes the secret-manager identity meter (a direct member).
+    // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
     }
     return { membership };
   };
@@ -368,11 +369,13 @@ export const membershipIdentityServiceFactory = ({
       : await membershipIdentityDAL.transaction(performDelete);
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
-    // project + group memberships. Either way the secret-manager identity meter changes.
+    // project + group memberships. Either way the secret-manager and PAM identity meters change.
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
     }
     return { membership: membershipDoc };
   };

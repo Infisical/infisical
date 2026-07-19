@@ -65,12 +65,12 @@ describe("entitlementResolverFactory", () => {
   test("fetches once then serves subsequent reads from the cache", async () => {
     const keyStore = createFakeKeyStore();
     const { backend, getCalls } = createStubBackend(
-      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
+      makeEntitlements({ identities: { value: 100, source: "plan" } })
     );
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
     const first = await resolver.getEntitlements({ id: ORG_ID });
-    expect(first?.features.max_identities.value).toBe(100);
+    expect(first?.features.identities.value).toBe(100);
     expect(getCalls()).toBe(1);
 
     await resolver.getEntitlements({ id: ORG_ID });
@@ -88,7 +88,7 @@ describe("entitlementResolverFactory", () => {
   test("forwards org identity to the backend even after an identity-less call seeded the cache", async () => {
     const keyStore = createFakeKeyStore();
     const { backend, getCalls, getOrgs } = createStubBackend(
-      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
+      makeEntitlements({ identities: { value: 100, source: "plan" } })
     );
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
@@ -104,7 +104,7 @@ describe("entitlementResolverFactory", () => {
   test("syncs org identity once per ttl window then serves from the cache", async () => {
     const keyStore = createFakeKeyStore();
     const { backend, getCalls } = createStubBackend(
-      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
+      makeEntitlements({ identities: { value: 100, source: "plan" } })
     );
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
@@ -128,7 +128,7 @@ describe("featureReaderFactory", () => {
   test("returns server-resolved values when present", async () => {
     const entitlements = makeEntitlements({
       sso_enforcement: { value: true, source: "plan", from_product: "boost" },
-      max_identities: { value: 100, source: "plan", from_product: "secrets_management" }
+      identities: { value: 100, source: "plan", from_product: "secrets_management" }
     });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
 
@@ -137,7 +137,7 @@ describe("featureReaderFactory", () => {
   });
 
   test("canUse enforces the cap against a registered counter", async () => {
-    const entitlements = makeEntitlements({ max_identities: { value: 100, source: "plan" } });
+    const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
     reader.registerCounter(MaxIdentities, async () => 99);
 
@@ -147,7 +147,7 @@ describe("featureReaderFactory", () => {
   });
 
   test("canUse without a registered counter compares the request against the cap", async () => {
-    const entitlements = makeEntitlements({ max_identities: { value: 100, source: "plan" } });
+    const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
 
     const limit = await reader.getFeature(ORG_ID, MaxIdentities);
