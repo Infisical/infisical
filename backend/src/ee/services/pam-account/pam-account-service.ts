@@ -295,7 +295,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     const plan = await licenseService.getPlan(ctx.actorOrgId);
     // The `pam` gate flag is ignored when null; an explicit `true` blocks PAM account creation.
-    if (typeof plan.pam === "boolean" && plan.pam) {
+    if (typeof plan.pam === "boolean" && !plan.pam) {
       throw new BadRequestError({
         message: "PAM is not available on your current plan. Please upgrade to continue."
       });

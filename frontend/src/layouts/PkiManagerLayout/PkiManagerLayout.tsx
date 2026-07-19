@@ -13,7 +13,7 @@ export const PkiManagerLayout = () => {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isDashboard = /\/cert-manager\/[^/]+\/overview\/?$/.test(pathname);
 
-  const isCertManagerGated = subscription?.certManager === true;
+  const isCertManagerGated = subscription?.certManager === false;
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(isCertManagerGated);
 
   useEffect(() => {

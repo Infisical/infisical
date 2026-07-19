@@ -10,7 +10,7 @@ export const PamLayout = () => {
   const { assumedPrivilegeDetails } = useProjectPermission();
   const { subscription } = useSubscription();
 
-  const isPamGated = subscription?.pam === true;
+  const isPamGated = subscription?.pam === false;
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(isPamGated);
 
   useEffect(() => {
