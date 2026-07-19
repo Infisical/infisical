@@ -69,7 +69,7 @@ const CustomCard = ({ onClick }: { onClick: () => void }) => (
     onClick={onClick}
     className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-mineshaft-500 bg-card p-4 text-left transition-colors hover:border-mineshaft-400 hover:bg-mineshaft-700/50"
   >
-    <div className="flex items-start justify-between gap-2">
+    <div className="flex items-start gap-2">
       <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
         <PlusIcon className="h-5 w-5 text-bunker-300" />
       </div>

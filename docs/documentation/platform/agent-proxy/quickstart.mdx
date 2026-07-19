@@ -46,7 +46,7 @@ A proxied service maps a host to the secret the proxy applies. In the same folde
   <Step title="Secret Substitution">
     Select `STRIPE_KEY` as the secret holding the real value.
 
-    Here is how the pieces fit together. When your agent connects, it gets an environment variable `STRIPE_KEY` set to the fake `sk_live_…` placeholder. The agent uses it like any Stripe key and sends `Authorization: Bearer <placeholder>`. As the request passes through the proxy, the placeholder is replaced with the real key. The template scopes this swap to headers, since that is where Stripe expects the key; a substitution can also target the URL path, query, or body.
+    Here is how the pieces fit together. When your agent connects, it gets an environment variable `STRIPE_SECRET_KEY` (the placeholder name the Stripe template uses) set to the fake `sk_live_…` placeholder. The agent uses it like any Stripe key and sends `Authorization: Bearer <placeholder>`. As the request passes through the proxy, the placeholder is replaced with the real value of your `STRIPE_KEY` secret. The template scopes this swap to headers, since that is where Stripe expects the key; a substitution can also target the URL path, query, or body.
 
     ![The Secret Substitution step swapping a placeholder for the real secret](/images/platform/agent-proxy/secret-substitution.png)
   </Step>
@@ -243,7 +243,7 @@ Then launch the agent through `connect`. Everything after `--` is the agent's ow
   </Tab>
 </Tabs>
 
-The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `STRIPE_KEY`, set by `connect` to the fake placeholder, and uses it like a normal key. Its traffic now routes through the proxy: on calls to `api.stripe.com` the placeholder is swapped for the real key, and everything else passes through untouched. The next step makes that visible.
+The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `STRIPE_SECRET_KEY`, set by `connect` to the fake placeholder, and uses it like a normal key. Its traffic now routes through the proxy: on calls to `api.stripe.com` the placeholder is swapped for the real key, and everything else passes through untouched. The next step makes that visible.
 
 <Note>
   Every setting here can also be passed as a flag or set in `.infisical.json`. See [Connecting Agents](/documentation/platform/agent-proxy/connecting-agents) for how `connect` works and what it puts in the agent's environment.
@@ -251,11 +251,11 @@ The agent starts and behaves exactly as if you had launched it directly; nothing
 
 ## 7. Verify it works
 
-Call Stripe through `connect`, using the `stripe-api` service from step 2 and the environment variables you set in step 6. `connect` sets `STRIPE_KEY` to the fake placeholder, so `curl` sends the placeholder and the proxy swaps in the real key on the way out:
+Call Stripe through `connect`, using the `stripe-api` service from step 2 and the environment variables you set in step 6. `connect` sets `STRIPE_SECRET_KEY` to the fake placeholder, so `curl` sends the placeholder and the proxy swaps in the real key on the way out:
 
 ```bash
 infisical secrets agent-proxy connect -- \
-  sh -c 'curl https://api.stripe.com/v1/balance -H "Authorization: Bearer $STRIPE_KEY"'
+  sh -c 'curl https://api.stripe.com/v1/balance -H "Authorization: Bearer $STRIPE_SECRET_KEY"'
 ```
 
 Stripe returns your account balance, even though `curl` only ever sent the fake placeholder.
