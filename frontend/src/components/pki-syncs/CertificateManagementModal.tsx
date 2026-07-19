@@ -176,45 +176,53 @@ export const CertificateManagementModal = ({
         return;
       }
 
-      // Remove before add so single-slot destinations (e.g. Nutanix, which caps at one
-      // certificate) don't transiently exceed their limit and reject the replacement.
-      const results: Array<{
+      type TOperationResult = {
         type: "add" | "remove";
         count: number;
         success: boolean;
         error?: unknown;
-      }> = [];
+      };
 
-      if (certificatesToRemove.length > 0) {
+      const runRemove = async (): Promise<TOperationResult | null> => {
+        if (certificatesToRemove.length === 0) return null;
         try {
           await removeCertificatesFromSync.mutateAsync({
             pkiSyncId: pkiSync.id,
             certificateIds: certificatesToRemove
           });
-          results.push({ type: "remove", count: certificatesToRemove.length, success: true });
+          return { type: "remove", count: certificatesToRemove.length, success: true };
         } catch (error) {
-          results.push({
-            type: "remove",
-            count: certificatesToRemove.length,
-            success: false,
-            error
-          });
+          return { type: "remove", count: certificatesToRemove.length, success: false, error };
         }
-      }
+      };
 
-      if (certificatesToAdd.length > 0) {
+      const runAdd = async (): Promise<TOperationResult | null> => {
+        if (certificatesToAdd.length === 0) return null;
         try {
           await addCertificatesToSync.mutateAsync({
             pkiSyncId: pkiSync.id,
             certificateIds: certificatesToAdd
           });
-          results.push({ type: "add", count: certificatesToAdd.length, success: true });
+          return { type: "add", count: certificatesToAdd.length, success: true };
         } catch (error) {
-          results.push({ type: "add", count: certificatesToAdd.length, success: false, error });
+          return { type: "add", count: certificatesToAdd.length, success: false, error };
         }
+      };
+
+      let results: (TOperationResult | null)[];
+      if (isSingleSelect) {
+        // Single-slot destinations (e.g. Nutanix, maxCertificates: 1) must remove the
+        // existing certificate before adding the replacement, otherwise the add would
+        // transiently exceed the limit and be rejected. Other destinations keep the
+        // original parallel behavior so their flow is unchanged.
+        results = [await runRemove(), await runAdd()];
+      } else {
+        results = await Promise.all([runAdd(), runRemove()]);
       }
 
-      if (results.length === 0) {
+      const completed = results.filter((r): r is TOperationResult => r !== null);
+
+      if (completed.length === 0) {
         createNotification({
           text: "No changes to save",
           type: "info"
@@ -223,8 +231,8 @@ export const CertificateManagementModal = ({
         return;
       }
 
-      const failures = results.filter((r) => !r.success);
-      const successes = results.filter((r) => r.success);
+      const failures = completed.filter((r) => !r.success);
+      const successes = completed.filter((r) => r.success);
 
       if (failures.length === 0) {
         const addCount = successes.find((r) => r.type === "add")?.count || 0;
