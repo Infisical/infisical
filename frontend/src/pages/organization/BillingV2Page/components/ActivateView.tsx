@@ -29,8 +29,11 @@ type Props = {
   onDone: () => void;
 };
 
-// A per_resource dimension that can be committed annually (has an annual per-unit price).
-const isCommittable = (dim: BillingV2Dim): boolean => dim.annual > 0 && !dim.meteredAnnual;
+// A per_resource dimension that can be committed annually. Commitment mode is prepaid annual units
+// with monthly on-demand overage, so it requires BOTH cadences priced: the annual per-unit rate for
+// the commitment and a monthly rate for the overage. A single-cadence dimension is not committable.
+const isCommittable = (dim: BillingV2Dim): boolean =>
+  dim.annual > 0 && dim.monthly > 0 && !dim.meteredAnnual;
 
 // The plan's monthly headline price (base fee, else the first priced dimension's monthly rate).
 const monthlyHeadline = (plan: BillingV2Plan): number => {
@@ -82,7 +85,8 @@ export const ActivateView = ({
 }: Props) => {
   const committable = useMemo(() => plan.dims.filter(isCommittable), [plan.dims]);
   const supportsAnnual = committable.length > 0 || Boolean(plan.base && plan.base.annual > 0);
-  const supportsMonthly = plan.dims.some((d) => d.monthly > 0) || Boolean(plan.base);
+  const supportsMonthly =
+    plan.dims.some((d) => d.monthly > 0) || Boolean(plan.base && plan.base.monthly > 0);
 
   const [cadence, setCadence] = useState<BillingV2Cadence>(supportsMonthly ? "monthly" : "annual");
   const [commitments, setCommitments] = useState<Record<string, number>>(() =>

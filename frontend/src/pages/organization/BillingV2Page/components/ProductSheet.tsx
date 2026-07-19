@@ -83,12 +83,22 @@ const PriceLineView = ({ line, headline }: { line: PriceLine; headline?: boolean
 const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV2Cadence }) => {
   const dims = plan.dims ?? [];
 
+  // Render at a cadence the plan actually prices. A single-cadence plan (e.g. annual-only) shown at the
+  // sheet's default "monthly" would read "$0 / mo", so fall back to the cadence that has real pricing.
+  const pricesCadence = (cad: BillingV2Cadence): boolean =>
+    cad === "annual"
+      ? (plan.base?.annual ?? 0) > 0 || dims.some((dim) => dim.annual > 0)
+      : (plan.base?.monthly ?? 0) > 0 || dims.some((dim) => dim.monthly > 0);
+  const cad: BillingV2Cadence = pricesCadence(cadence)
+    ? cadence
+    : ((["monthly", "annual"] as const).find(pricesCadence) ?? cadence);
+
   let headline: PriceLine | null = plan.base
-    ? { amount: fmtMoney(unitPrice(plan.base, cadence)), unit: `/ ${cadenceWord(cadence)}` }
+    ? { amount: fmtMoney(unitPrice(plan.base, cad)), unit: `/ ${cadenceWord(cad)}` }
     : null;
   let usageDims = dims;
   if (!headline && dims.length > 0) {
-    headline = dimPriceLine(dims[0], cadence, `/ ${dims[0].noun} / ${cadenceWord(cadence)}`);
+    headline = dimPriceLine(dims[0], cad, `/ ${dims[0].noun} / ${cadenceWord(cad)}`);
     usageDims = dims.slice(1);
   }
 
@@ -98,7 +108,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
 
   const usageLines = usageDims.map((dim) => ({
     key: dim.key,
-    line: dimPriceLine(dim, cadence, `per ${dim.noun} / ${cadenceWordShort(cadence)}`)
+    line: dimPriceLine(dim, cad, `per ${dim.noun} / ${cadenceWordShort(cad)}`)
   }));
 
   return (

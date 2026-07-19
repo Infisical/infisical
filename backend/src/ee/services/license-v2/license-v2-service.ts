@@ -347,6 +347,19 @@ const buildCheckoutItems = (
 
   const item: TCheckoutLineItem = { productId: product.id, plan: plan.tier, cadence };
   if (commitments && Object.keys(commitments).length > 0) {
+    // Commitment mode (prepaid annual units with monthly on-demand overage) only makes sense when the
+    // committed dimension is priced on BOTH cadences: annual for the commitment, monthly for the
+    // overage. Reject it for a single-cadence plan (annual-only or monthly-only).
+    const dimensionHasBothCadences = (dimensionKey: string): boolean => {
+      const prices = plan.prices.filter((price) => price.dimensionKey === dimensionKey && isKnownPriceKind(price.kind));
+      return prices.some((price) => price.cadence === "annual") && prices.some((price) => price.cadence === "monthly");
+    };
+    const unsupported = Object.keys(commitments).filter((dimensionKey) => !dimensionHasBothCadences(dimensionKey));
+    if (cadence !== "annual" || unsupported.length > 0) {
+      throw new BadRequestError({
+        message: "Commitment mode is only available when the plan has both monthly and annual pricing."
+      });
+    }
     item.commitments = commitments;
   }
   return [item];
