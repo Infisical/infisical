@@ -110,9 +110,8 @@ Before setting up the sync, gather the following from your Nutanix environment:
 When a sync runs, Infisical calls the Nutanix Clustermgmt API v4 to replace the SSL certificate on the selected cluster:
 
 1. Connects to Prism Central using the configured credentials (Basic Auth or API Key).
-2. Selects the certificate with the latest expiry date from those associated with the sync.
-3. Detects the private key algorithm (RSA or ECDSA) automatically from the certificate.
-4. Configures the certificate and private key onto the Nutanix cluster.
+2. Takes the certificate associated with the sync.
+3. Configures the certificate and private key onto the Nutanix cluster.
 
 After a few seconds, the Nutanix cluster will use the new certificate, no restart is required.
 
@@ -126,7 +125,6 @@ The Nutanix Prism Central Certificate Sync provides:
 
 - **Automatic Deployment**: Replace the SSL certificate on the target Nutanix cluster whenever the synced certificate changes in Infisical.
 - **Certificate Updates**: Push renewed certificates to the cluster automatically when auto-sync is enabled.
-- **Algorithm Detection**: Detect the private key algorithm (RSA 2048/4096 or ECDSA P-256/P-384/P-521) from the certificate automatically.
 
 <Note>
   Certificate removal is not supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
@@ -144,9 +142,7 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
 
 ## Certificate Renewal Behavior
 
-When a certificate is renewed in Infisical, the updated certificate is automatically pushed to the Nutanix cluster on the next sync. If **Auto-Sync** is enabled, this happens without any manual action.
-
-Infisical always pushes the certificate with the **latest expiry date** associated with the sync. This means after a renewal, the new certificate is selected automatically.
+When a certificate is renewed in Infisical, the renewed certificate is automatically pushed to the Nutanix cluster on the next sync. If **Auto-Sync** is enabled, this happens without any manual action.
 
 ## FAQ
 
@@ -156,7 +152,7 @@ Infisical always pushes the certificate with the **latest expiry date** associat
   </Accordion>
 
   <Accordion title="What happens if my Prism Central uses a self-signed TLS certificate?">
-    When creating the App Connection, disable the **Reject Unauthorized SSL** option to allow connections to Prism Central instances with self-signed or untrusted TLS certificates. Use this only in trusted network environments.
+    When creating the App Connection, disable the **Reject Unauthorized** option to allow connections to Prism Central instances with self-signed or untrusted TLS certificates. Use this only in trusted network environments.
   </Accordion>
 
   <Accordion title="Which Nutanix API version is used?">
