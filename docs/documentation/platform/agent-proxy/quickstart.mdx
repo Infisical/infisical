@@ -122,14 +122,14 @@ The proxy and the agent authenticate as **two separate machine identities with o
 On a host in your agents' private network (a separate machine), authenticate as the **proxy identity**: set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` to the Client ID and Client Secret you saved in step 3.
 
 <Tabs>
-  <Tab title="US Cloud">
+  <Tab title="Infisical Cloud (US)">
     ```bash
     # Authenticate as the proxy identity (from step 3)
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
     ```
   </Tab>
-  <Tab title="EU Cloud">
+  <Tab title="Infisical Cloud (EU)">
     ```bash
     # Authenticate as the proxy identity (from step 3), pointed at EU Cloud
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
@@ -137,7 +137,7 @@ On a host in your agents' private network (a separate machine), authenticate as 
     export INFISICAL_DOMAIN=https://eu.infisical.com
     ```
   </Tab>
-  <Tab title="Self-hosted">
+  <Tab title="Self-Hosted">
     ```bash
     # Authenticate as the proxy identity (from step 3), pointed at your instance
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
@@ -174,7 +174,7 @@ Remember this host's address; the next step points `INFISICAL_AGENT_PROXY_ADDRES
 On the agent host, set the agent's authentication and connection details as environment variables:
 
 <Tabs>
-  <Tab title="US Cloud">
+  <Tab title="Infisical Cloud (US)">
     ```bash
     # Authenticate as the agent identity (from step 4)
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
@@ -189,7 +189,7 @@ On the agent host, set the agent's authentication and connection details as envi
     export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
     ```
   </Tab>
-  <Tab title="EU Cloud">
+  <Tab title="Infisical Cloud (EU)">
     ```bash
     # Authenticate as the agent identity (from step 4), pointed at EU Cloud
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
@@ -205,7 +205,7 @@ On the agent host, set the agent's authentication and connection details as envi
     export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
     ```
   </Tab>
-  <Tab title="Self-hosted">
+  <Tab title="Self-Hosted">
     ```bash
     # Authenticate as the agent identity (from step 4), pointed at your instance
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
