@@ -1,4 +1,3 @@
-import { Knex } from "knex";
 import { z } from "zod";
 
 import { TGenericPermission } from "@app/lib/types";
@@ -53,7 +52,6 @@ export type TFindDueTargetsInput = {
   eventType: string;
   condition: unknown;
   filters: unknown;
-  tx?: Knex;
 };
 
 export interface IResourceAlarmProvider<TTarget = unknown> {

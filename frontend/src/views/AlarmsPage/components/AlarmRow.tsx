@@ -1,14 +1,4 @@
-import {
-  AlertTriangleIcon,
-  BellIcon,
-  Ellipsis,
-  HashIcon,
-  KeyRoundIcon,
-  LinkIcon,
-  MailIcon,
-  PencilIcon,
-  Trash2Icon
-} from "lucide-react";
+import { Ellipsis, KeyRoundIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import {
   Badge,
@@ -23,24 +13,16 @@ import {
 import {
   ALARM_EVENT_TYPE_LABELS,
   ALARM_RESOURCE_TYPE_LABELS,
-  AlarmChannelType,
   AlarmEventType,
   AlarmResourceType,
   TAlarm,
   TAlarmChannelSummary
 } from "@app/hooks/api/alarms";
 
-type LucideIcon = typeof MailIcon;
+import { getChannelIcon, LucideIcon } from "./channelIcons";
 
 const RESOURCE_ICONS: Record<string, LucideIcon> = {
   [AlarmResourceType.IdentityCredential]: KeyRoundIcon
-};
-
-const CHANNEL_ICONS: Record<AlarmChannelType, LucideIcon> = {
-  [AlarmChannelType.Email]: MailIcon,
-  [AlarmChannelType.Slack]: HashIcon,
-  [AlarmChannelType.Webhook]: LinkIcon,
-  [AlarmChannelType.PagerDuty]: AlertTriangleIcon
 };
 
 type Props = {
@@ -59,7 +41,7 @@ export const AlarmRow = ({ alarm, onEdit, onDelete }: Props) => {
     : "On event";
 
   const renderChannel = (channel: TAlarmChannelSummary) => {
-    const Icon = CHANNEL_ICONS[channel.channelType] ?? BellIcon;
+    const Icon = getChannelIcon(channel.channelType);
     return (
       <Badge
         key={channel.id}

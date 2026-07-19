@@ -43,21 +43,6 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIdInScope = async (
-    id: string,
-    { orgId, projectId }: { orgId: string; projectId?: string | null },
-    tx?: Knex
-  ): Promise<TAlarmChannels | undefined> => {
-    try {
-      const query = (tx || db.replicaNode())(TableName.AlarmChannel).where(`${TableName.AlarmChannel}.id`, id);
-      scopeFilter(query, orgId, projectId);
-      const channel = await query.select(selectAllTableCols(TableName.AlarmChannel)).first();
-      return channel as TAlarmChannels | undefined;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByIdInScope" });
-    }
-  };
-
   const findByIdsInScope = async (
     ids: string[],
     { orgId, projectId }: { orgId: string; projectId?: string | null },
@@ -131,7 +116,6 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
   return {
     ...alarmChannelOrm,
     findWithUsageByScope,
-    findByIdInScope,
     findByIdsInScope,
     findByNameInScope,
     findByAlarmId,

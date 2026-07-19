@@ -1,13 +1,4 @@
-import {
-  AlertTriangleIcon,
-  BellIcon,
-  Ellipsis,
-  HashIcon,
-  LinkIcon,
-  MailIcon,
-  PencilIcon,
-  Trash2Icon
-} from "lucide-react";
+import { Ellipsis, PencilIcon, Trash2Icon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -19,16 +10,9 @@ import {
   TableRow
 } from "@app/components/v3";
 import { TAlarmChannel } from "@app/hooks/api/alarmChannels";
-import { ALARM_CHANNEL_TYPE_LABELS, AlarmChannelType } from "@app/hooks/api/alarms";
+import { ALARM_CHANNEL_TYPE_LABELS } from "@app/hooks/api/alarms";
 
-type LucideIcon = typeof MailIcon;
-
-const CHANNEL_ICONS: Record<AlarmChannelType, LucideIcon> = {
-  [AlarmChannelType.Email]: MailIcon,
-  [AlarmChannelType.Slack]: HashIcon,
-  [AlarmChannelType.Webhook]: LinkIcon,
-  [AlarmChannelType.PagerDuty]: AlertTriangleIcon
-};
+import { getChannelIcon } from "../channelIcons";
 
 type Props = {
   channel: TAlarmChannel;
@@ -37,7 +21,7 @@ type Props = {
 };
 
 export const ChannelRow = ({ channel, onEdit, onDelete }: Props) => {
-  const Icon = CHANNEL_ICONS[channel.channelType] ?? BellIcon;
+  const Icon = getChannelIcon(channel.channelType);
   const typeLabel = ALARM_CHANNEL_TYPE_LABELS[channel.channelType] ?? channel.channelType;
 
   return (

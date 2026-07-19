@@ -1,15 +1,5 @@
-import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import {
-  AlertTriangleIcon,
-  BellIcon,
-  ChevronDownIcon,
-  HashIcon,
-  LinkIcon,
-  MailIcon,
-  PlusIcon,
-  XIcon
-} from "lucide-react";
+import { ChevronDownIcon, PlusIcon, XIcon } from "lucide-react";
 
 import {
   Button,
@@ -22,18 +12,9 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { TAlarmChannel, useListAlarmChannels } from "@app/hooks/api/alarmChannels";
-import { AlarmChannelType, TAlarmForm } from "@app/hooks/api/alarms";
+import { TAlarmForm } from "@app/hooks/api/alarms";
 
-import { AddChannelModal } from "./channels/AddChannelModal";
-
-type LucideIcon = typeof MailIcon;
-
-const CHANNEL_ICONS: Record<AlarmChannelType, LucideIcon> = {
-  [AlarmChannelType.Email]: MailIcon,
-  [AlarmChannelType.Slack]: HashIcon,
-  [AlarmChannelType.Webhook]: LinkIcon,
-  [AlarmChannelType.PagerDuty]: AlertTriangleIcon
-};
+import { getChannelIcon } from "./channelIcons";
 
 type Props = {
   projectId?: string;
@@ -45,7 +26,6 @@ export const AttachChannelsField = ({ projectId }: Props) => {
     formState: { errors }
   } = useFormContext<TAlarmForm>();
   const { isPending, data: channels = [] } = useListAlarmChannels(projectId ? { projectId } : {});
-  const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
 
   const byId = new Map(channels.map((c) => [c.id, c]));
   const rootError = errors.channelIds?.message || errors.channelIds?.root?.message;
@@ -59,7 +39,7 @@ export const AttachChannelsField = ({ projectId }: Props) => {
         const available = channels.filter((c) => !selectedIds.includes(c.id));
 
         const renderCard = (channel: TAlarmChannel) => {
-          const Icon = CHANNEL_ICONS[channel.channelType] ?? BellIcon;
+          const Icon = getChannelIcon(channel.channelType);
           return (
             <div
               key={channel.id}
@@ -111,7 +91,7 @@ export const AttachChannelsField = ({ projectId }: Props) => {
                   className="max-h-64 min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
                 >
                   {available.map((channel) => {
-                    const Icon = CHANNEL_ICONS[channel.channelType] ?? BellIcon;
+                    const Icon = getChannelIcon(channel.channelType);
                     return (
                       <DropdownMenuItem
                         key={channel.id}
@@ -144,13 +124,6 @@ export const AttachChannelsField = ({ projectId }: Props) => {
                 )}
               </div>
             )}
-
-            <AddChannelModal
-              isOpen={isChannelModalOpen}
-              onOpenChange={setIsChannelModalOpen}
-              projectId={projectId}
-              onCreated={(channelId) => field.onChange([...selectedIds, channelId])}
-            />
           </div>
         );
       }}
