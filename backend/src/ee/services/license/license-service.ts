@@ -309,7 +309,6 @@ export const licenseServiceFactory = ({
             throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
           }
           currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
-          console.log("Current plan", currentPlan);
 
           // The entitlement projection only carries feature flags, so set the plan slug from the
           // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
