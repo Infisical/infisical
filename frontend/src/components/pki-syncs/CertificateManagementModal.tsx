@@ -176,51 +176,45 @@ export const CertificateManagementModal = ({
         return;
       }
 
-      const operations = [];
-
-      if (certificatesToAdd.length > 0) {
-        operations.push(
-          addCertificatesToSync
-            .mutateAsync({
-              pkiSyncId: pkiSync.id,
-              certificateIds: certificatesToAdd
-            })
-            .then(() => ({
-              type: "add",
-              count: certificatesToAdd.length,
-              success: true
-            }))
-            .catch((error) => ({
-              type: "add",
-              count: certificatesToAdd.length,
-              success: false,
-              error
-            }))
-        );
-      }
+      // Remove before add so single-slot destinations (e.g. Nutanix, which caps at one
+      // certificate) don't transiently exceed their limit and reject the replacement.
+      const results: Array<{
+        type: "add" | "remove";
+        count: number;
+        success: boolean;
+        error?: unknown;
+      }> = [];
 
       if (certificatesToRemove.length > 0) {
-        operations.push(
-          removeCertificatesFromSync
-            .mutateAsync({
-              pkiSyncId: pkiSync.id,
-              certificateIds: certificatesToRemove
-            })
-            .then(() => ({
-              type: "remove",
-              count: certificatesToRemove.length,
-              success: true
-            }))
-            .catch((error) => ({
-              type: "remove",
-              count: certificatesToRemove.length,
-              success: false,
-              error
-            }))
-        );
+        try {
+          await removeCertificatesFromSync.mutateAsync({
+            pkiSyncId: pkiSync.id,
+            certificateIds: certificatesToRemove
+          });
+          results.push({ type: "remove", count: certificatesToRemove.length, success: true });
+        } catch (error) {
+          results.push({
+            type: "remove",
+            count: certificatesToRemove.length,
+            success: false,
+            error
+          });
+        }
       }
 
-      if (operations.length === 0) {
+      if (certificatesToAdd.length > 0) {
+        try {
+          await addCertificatesToSync.mutateAsync({
+            pkiSyncId: pkiSync.id,
+            certificateIds: certificatesToAdd
+          });
+          results.push({ type: "add", count: certificatesToAdd.length, success: true });
+        } catch (error) {
+          results.push({ type: "add", count: certificatesToAdd.length, success: false, error });
+        }
+      }
+
+      if (results.length === 0) {
         createNotification({
           text: "No changes to save",
           type: "info"
@@ -229,7 +223,6 @@ export const CertificateManagementModal = ({
         return;
       }
 
-      const results = await Promise.all(operations);
       const failures = results.filter((r) => !r.success);
       const successes = results.filter((r) => r.success);
 
