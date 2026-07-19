@@ -239,18 +239,17 @@ export const NutanixPrismCentralConnectionForm = ({ appConnection, onSubmit }: P
               <Controller
                 name="credentials.port"
                 control={control}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                render={({ field, fieldState: { error } }) => (
                   <Field className="mb-4">
                     <FieldLabel htmlFor="port">
-                      Port <span className="text-muted">(optional, defaults to 9440)</span>
+                      Port <span className="text-muted">(optional)</span>
                     </FieldLabel>
                     <Input
                       id="port"
                       type="number"
-                      value={value ?? ""}
-                      onChange={(e) =>
-                        onChange(e.target.value ? Number(e.target.value) : undefined)
-                      }
+                      placeholder="9440"
+                      {...field}
+                      value={field.value ?? ""}
                       className="w-24"
                       isError={Boolean(error?.message)}
                     />
