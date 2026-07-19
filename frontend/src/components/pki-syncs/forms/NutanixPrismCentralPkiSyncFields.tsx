@@ -65,6 +65,8 @@ export const NutanixPrismCentralPkiSyncFields = () => {
                   placeholder={connectionId ? "Select a cluster" : "Select a connection first"}
                   isDisabled={!connectionId || isLoadingClusters}
                   className="w-full"
+                  position="popper"
+                  dropdownContainerClassName="max-w-none"
                 >
                   {(clusters ?? []).map((cluster) => (
                     <SelectItem key={cluster.id} value={cluster.id}>
