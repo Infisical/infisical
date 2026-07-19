@@ -76,6 +76,7 @@ import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/lit
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
+import { NutanixPrismCentralConnectionMethod } from "@app/hooks/api/appConnections/types/nutanix-prism-central-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
@@ -594,6 +595,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Rundeck.svg",
     category: "INFRASTRUCTURE",
     description: "Job and project access for Rundeck."
+  },
+  [AppConnection.NutanixPrismCentral]: {
+    name: "Nutanix Prism Central",
+    image: "Nutanix.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage a Nutanix Prism Central instance."
   }
 };
 
@@ -732,11 +739,13 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
-      return { name: "Basic Auth", icon: faLock };
-    case OVHConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case NutanixPrismCentralConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
+    case OVHConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

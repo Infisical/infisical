@@ -307,6 +307,12 @@ import {
   TValidateNorthflankConnectionCredentialsSchema
 } from "./northflank";
 import {
+  TNutanixPrismCentralConnection,
+  TNutanixPrismCentralConnectionConfig,
+  TNutanixPrismCentralConnectionInput,
+  TValidateNutanixPrismCentralConnectionCredentialsSchema
+} from "./nutanix-prism-central";
+import {
   TOctopusDeployConnection,
   TOctopusDeployConnectionConfig,
   TOctopusDeployConnectionInput,
@@ -550,6 +556,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TQoveryConnection
   | TLiteLLMConnection
   | TFireworksConnection
+  | TNutanixPrismCentralConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -640,6 +647,7 @@ export type TAppConnectionInput = { id: string } & (
   | TQoveryConnectionInput
   | TLiteLLMConnectionInput
   | TFireworksConnectionInput
+  | TNutanixPrismCentralConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -761,7 +769,8 @@ export type TAppConnectionConfig =
   | THasuraCloudConnectionConfig
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
-  | TFireworksConnectionConfig;
+  | TFireworksConnectionConfig
+  | TNutanixPrismCentralConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -842,7 +851,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateHasuraCloudConnectionCredentialsSchema
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
-  | TValidateFireworksConnectionCredentialsSchema;
+  | TValidateFireworksConnectionCredentialsSchema
+  | TValidateNutanixPrismCentralConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

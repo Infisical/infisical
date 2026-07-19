@@ -156,6 +156,7 @@
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
+                      "integrations/app-connections/nutanix-prism-central",
                       "integrations/app-connections/ona",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
@@ -952,7 +953,8 @@
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
-                          "documentation/platform/pki/applications/certificate-syncs/windows-server"
+                          "documentation/platform/pki/applications/certificate-syncs/windows-server",
+                          "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central"
                         ]
                       }
                     ]
@@ -2000,6 +2002,18 @@
                       "api-reference/endpoints/app-connections/northflank/create",
                       "api-reference/endpoints/app-connections/northflank/update",
                       "api-reference/endpoints/app-connections/northflank/delete"
+                    ]
+                  },
+                  {
+                    "group": "Nutanix Prism Central",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/list",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/available",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/get-by-id",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/get-by-name",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/create",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/update",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/delete"
                     ]
                   },
                   {
@@ -3683,6 +3697,17 @@
                           "api-reference/endpoints/pki/syncs/windows-server/delete",
                           "api-reference/endpoints/pki/syncs/windows-server/sync-certificates",
                           "api-reference/endpoints/pki/syncs/windows-server/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Nutanix Prism Central",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/list",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/get-by-id",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/create",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/update",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/delete",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/sync-certificates"
                         ]
                       }
                     ]

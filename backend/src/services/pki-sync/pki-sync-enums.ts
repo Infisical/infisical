@@ -8,7 +8,8 @@ export enum PkiSync {
   NetScaler = "netscaler",
   F5BigIp = "f5-big-ip",
   LinuxServer = "linux-server",
-  WindowsServer = "windows-server"
+  WindowsServer = "windows-server",
+  NutanixPrismCentral = "nutanix-prism-central"
 }
 
 export enum PkiSyncStatus {

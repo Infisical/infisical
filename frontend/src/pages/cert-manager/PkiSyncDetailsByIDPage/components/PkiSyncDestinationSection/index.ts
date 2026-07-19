@@ -6,4 +6,5 @@ export { ChefPkiSyncDestinationSection } from "./ChefPkiSyncDestinationSection";
 export { F5BigIpPkiSyncDestinationSection } from "./F5BigIpPkiSyncDestinationSection";
 export { LinuxServerPkiSyncDestinationSection } from "./LinuxServerPkiSyncDestinationSection";
 export { NetScalerPkiSyncDestinationSection } from "./NetScalerPkiSyncDestinationSection";
+export { NutanixPrismCentralPkiSyncDestinationSection } from "./NutanixPrismCentralPkiSyncDestinationSection";
 export { WindowsServerPkiSyncDestinationSection } from "./WindowsServerPkiSyncDestinationSection";
