@@ -11,6 +11,7 @@ import { SmtpBanner } from "@app/layouts/OrganizationLayout/components/SmtpBanne
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
 import { AdminSidebar } from "./AdminSidebar";
+import { SignupDisabledBanner } from "./SignupDisabledBanner";
 
 export const AdminLayout = () => {
   const { config } = useServerConfig();
@@ -33,6 +34,7 @@ export const AdminLayout = () => {
         <div className="flex min-h-0 flex-1">
           <AdminSidebar />
           <div className="min-h-0 flex-1 overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
+            <SignupDisabledBanner />
             <Outlet />
           </div>
         </div>

@@ -18,6 +18,7 @@ import {
   booleanSchema,
   SanitizedDynamicSecretSchema,
   SanitizedHoneyTokenSchema,
+  SanitizedProxiedServiceSchema,
   SanitizedTagSchema,
   SanitizedUserSchema,
   secretRawSchema
@@ -109,13 +110,15 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeSecretRotations),
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeDynamicSecrets),
-        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens)
+        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeHoneyTokens),
+        includeProxiedServices: booleanSchema.describe(DASHBOARD.SECRET_OVERVIEW_LIST.includeProxiedServices)
       }),
       response: {
         200: z.object({
           folders: SecretFoldersSchema.extend({ environment: z.string() }).array().optional(),
           dynamicSecrets: SanitizedDynamicSecretSchema.extend({ environment: z.string() }).array().optional(),
           honeyTokens: SanitizedHoneyTokenSchema.array().optional(),
+          proxiedServices: SanitizedProxiedServiceSchema.array().optional(),
           secretRotations: z
             .intersection(
               SecretRotationV2Schema,
@@ -217,6 +220,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           totalImportCount: z.number().optional(),
           totalSecretRotationCount: z.number().optional(),
           totalHoneyTokenCount: z.number().optional(),
+          totalProxiedServiceCount: z.number().optional(),
           totalCount: z.number()
         })
       }
@@ -236,7 +240,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeImports,
         includeDynamicSecrets,
         includeSecretRotations,
-        includeHoneyTokens
+        includeHoneyTokens,
+        includeProxiedServices
       } = req.query;
 
       const environments = req.query.environments.split(",");
@@ -268,6 +273,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         | Awaited<ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>>
         | undefined;
       let honeyTokens: Awaited<ReturnType<typeof server.services.honeyToken.getDashboardHoneyTokens>> | undefined;
+      let proxiedServices:
+        | Awaited<ReturnType<typeof server.services.proxiedService.getDashboardProxiedServices>>
+        | undefined;
 
       let totalFolderCount: number | undefined;
       let totalDynamicSecretCount: number | undefined;
@@ -275,6 +283,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let totalImportCount: number | undefined;
       let totalSecretRotationCount: number | undefined;
       let totalHoneyTokenCount: number | undefined;
+      let totalProxiedServiceCount: number | undefined;
 
       if (includeImports) {
         totalImportCount = await server.services.secretImport.getProjectImportMultiEnvCount({
@@ -366,7 +375,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       }
 
-      if (!includeDynamicSecrets && !includeSecrets && !includeSecretRotations && !includeHoneyTokens)
+      if (
+        !includeDynamicSecrets &&
+        !includeSecrets &&
+        !includeSecretRotations &&
+        !includeHoneyTokens &&
+        !includeProxiedServices
+      )
         return {
           imports,
           folders,
@@ -513,6 +528,42 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           adjustedOffset = 0;
         } else {
           adjustedOffset = Math.max(0, adjustedOffset - totalHoneyTokenCount);
+        }
+      }
+
+      if (includeProxiedServices) {
+        totalProxiedServiceCount = await server.services.proxiedService.getDashboardProxiedServiceCount(
+          {
+            projectId,
+            search,
+            environments,
+            secretPath
+          },
+          req.permission
+        );
+
+        if (remainingLimit > 0 && totalProxiedServiceCount > adjustedOffset) {
+          proxiedServices = await server.services.proxiedService.getDashboardProxiedServices(
+            {
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environments,
+              secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            },
+            req.permission
+          );
+
+          // multi-env: the same service name across envs is one overview row, so decrement by unique names
+          const uniqueProxiedServiceCount = new Set(proxiedServices.map((svc) => svc.name)).size;
+
+          remainingLimit -= uniqueProxiedServiceCount;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalProxiedServiceCount);
         }
       }
 
@@ -670,12 +721,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         imports,
         secretRotations,
         honeyTokens,
+        proxiedServices,
         totalFolderCount,
         totalDynamicSecretCount,
         totalImportCount,
         totalSecretCount,
         totalSecretRotationCount,
         totalHoneyTokenCount,
+        totalProxiedServiceCount,
         importedByEnvs,
         usedBySecretSyncs,
         totalCount:
@@ -684,7 +737,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           (totalDynamicSecretCount ?? 0) +
           (totalSecretCount ?? 0) +
           (totalSecretRotationCount ?? 0) +
-          (totalHoneyTokenCount ?? 0)
+          (totalHoneyTokenCount ?? 0) +
+          (totalProxiedServiceCount ?? 0)
       };
     }
   });
@@ -731,7 +785,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeDynamicSecrets: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeDynamicSecrets),
         includeImports: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeImports),
         includeSecretRotations: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeSecretRotations),
-        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens)
+        includeHoneyTokens: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeHoneyTokens),
+        includeProxiedServices: booleanSchema.describe(DASHBOARD.SECRET_DETAILS_LIST.includeProxiedServices)
       }),
       response: {
         200: z.object({
@@ -751,6 +806,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           folders: SecretFoldersSchema.array().optional(),
           dynamicSecrets: SanitizedDynamicSecretSchema.array().optional(),
           honeyTokens: SanitizedHoneyTokenSchema.array().optional(),
+          proxiedServices: SanitizedProxiedServiceSchema.array().optional(),
           secretRotations: z
             .intersection(
               SecretRotationV2Schema,
@@ -840,6 +896,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .optional(),
           totalSecretRotationCount: z.number().optional(),
           totalHoneyTokenCount: z.number().optional(),
+          totalProxiedServiceCount: z.number().optional(),
           totalCount: z.number()
         })
       }
@@ -860,7 +917,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         includeDynamicSecrets,
         includeImports,
         includeSecretRotations,
-        includeHoneyTokens
+        includeHoneyTokens,
+        includeProxiedServices
       } = req.query;
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
@@ -902,6 +960,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           })[]
         | undefined;
       let honeyTokens: Awaited<ReturnType<typeof server.services.honeyToken.getDashboardHoneyTokens>> | undefined;
+      let proxiedServices:
+        | Awaited<ReturnType<typeof server.services.proxiedService.getDashboardProxiedServices>>
+        | undefined;
 
       let totalImportCount: number | undefined;
       let totalFolderCount: number | undefined;
@@ -909,6 +970,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       let totalSecretCount: number | undefined;
       let totalSecretRotationCount: number | undefined;
       let totalHoneyTokenCount: number | undefined;
+      let totalProxiedServiceCount: number | undefined;
 
       if (includeImports) {
         totalImportCount = await server.services.secretImport.getProjectImportCount({
@@ -1091,6 +1153,39 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           adjustedOffset = 0;
         } else {
           adjustedOffset = Math.max(0, adjustedOffset - totalHoneyTokenCount);
+        }
+      }
+
+      if (includeProxiedServices) {
+        totalProxiedServiceCount = await server.services.proxiedService.getDashboardProxiedServiceCount(
+          {
+            projectId,
+            search,
+            environments: [environment],
+            secretPath
+          },
+          req.permission
+        );
+
+        if (remainingLimit > 0 && totalProxiedServiceCount > adjustedOffset) {
+          proxiedServices = await server.services.proxiedService.getDashboardProxiedServices(
+            {
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environments: [environment],
+              secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            },
+            req.permission
+          );
+
+          remainingLimit -= proxiedServices.length;
+          adjustedOffset = 0;
+        } else {
+          adjustedOffset = Math.max(0, adjustedOffset - totalProxiedServiceCount);
         }
       }
 
@@ -1283,12 +1378,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         secrets,
         secretRotations,
         honeyTokens,
+        proxiedServices,
         totalImportCount,
         totalFolderCount,
         totalDynamicSecretCount,
         totalSecretCount,
         totalSecretRotationCount,
         totalHoneyTokenCount,
+        totalProxiedServiceCount,
         importedBy,
         usedBySecretSyncs,
         totalCount:
@@ -1297,7 +1394,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           (totalDynamicSecretCount ?? 0) +
           (totalSecretCount ?? 0) +
           (totalSecretRotationCount ?? 0) +
-          (totalHoneyTokenCount ?? 0)
+          (totalHoneyTokenCount ?? 0) +
+          (totalProxiedServiceCount ?? 0)
       };
     }
   });

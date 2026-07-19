@@ -50,6 +50,41 @@ export function throwIfMissingSecretReadValueOrDescribePermission(
   }
 }
 
+// Personal secret overrides can be managed either by the dedicated PersonalOverride action or by
+// whoever already has the matching shared-secret action (Create/Edit/Delete). This lets a role grant
+// personal-override-only access while existing shared-secret writers keep managing overrides.
+export function throwIfMissingSecretPersonalOverridePermission(
+  permission: MongoAbility<ProjectPermissionSet> | PureAbility,
+  fallbackAction: Extract<
+    ProjectPermissionSecretActions,
+    ProjectPermissionSecretActions.Create | ProjectPermissionSecretActions.Edit | ProjectPermissionSecretActions.Delete
+  >,
+  subjectFields?: SecretSubjectFields
+) {
+  try {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.PersonalOverride,
+        subject(ProjectPermissionSub.Secrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.PersonalOverride,
+        ProjectPermissionSub.Secrets
+      );
+    }
+  } catch {
+    if (subjectFields) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        fallbackAction,
+        subject(ProjectPermissionSub.Secrets, subjectFields)
+      );
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(fallbackAction, ProjectPermissionSub.Secrets);
+    }
+  }
+}
+
 export function hasSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet>,
   action: Extract<

@@ -66,6 +66,7 @@ import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/key
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { recordSecretRotationOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -1461,9 +1462,13 @@ export const secretRotationV2ServiceFactory = ({
         excludeReplication: true
       });
 
+      recordSecretRotationOutcomeMetric({ type, outcome: "success" });
+
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
+
+      recordSecretRotationOutcomeMetric({ type, outcome: "failure" });
 
       if (isManualRotation) {
         await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);

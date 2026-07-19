@@ -1,5 +1,4 @@
 import { ForbiddenError, subject } from "@casl/ability";
-import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
 
@@ -47,11 +46,7 @@ import {
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import {
-  assertCaInProfileProject,
-  createDistinguishedName,
-  extractDnParts
-} from "@app/services/certificate-authority/certificate-authority-fns";
+import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -76,6 +71,7 @@ import {
   mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
 import {
+  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
@@ -583,6 +579,12 @@ const processSelfSignedCertificate = async ({
 }: {
   certificateRequest: {
     commonName?: string;
+    organization?: string;
+    organizationalUnit?: string;
+    country?: string;
+    state?: string;
+    locality?: string;
+    domainComponents?: string[];
     keyUsages?: CertKeyUsageType[];
     extendedKeyUsages?: CertExtendedKeyUsageType[];
     validity: { ttl: string };
@@ -887,13 +889,14 @@ export const certificateV3ServiceFactory = ({
       }
     )) as TCertRequestPolicy | null;
 
+    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+
     if (matchedApprovalPolicy && !shouldBypassApproval(actor, matchedApprovalPolicy)) {
       const approvalPolicy = matchedApprovalPolicy;
 
-      const withDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
       const mappedCertificateRequestForValidation = mapEnumsForValidation({
-        ...withDefaults,
-        subjectAlternativeNames: withDefaults.altNames
+        ...certificateRequestWithDefaults,
+        subjectAlternativeNames: certificateRequestWithDefaults.altNames
       });
 
       const policy = await certificatePolicyService.getPolicyById({
@@ -938,24 +941,30 @@ export const certificateV3ServiceFactory = ({
             projectId: profile.projectId,
             profileId: profile.id,
             applicationId: applicationId ?? null,
-            commonName: certificateRequest.commonName || null,
-            altNames: certificateRequest.altNames ? JSON.stringify(certificateRequest.altNames) : null,
-            keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || null,
-            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || null,
-            notBefore: certificateRequest.notBefore || null,
-            notAfter: certificateRequest.notAfter || null,
-            keyAlgorithm: certificateRequest.keyAlgorithm || null,
-            signatureAlgorithm: certificateRequest.signatureAlgorithm || null,
+            commonName: certificateRequestWithDefaults.commonName || null,
+            altNames: certificateRequestWithDefaults.altNames
+              ? JSON.stringify(certificateRequestWithDefaults.altNames)
+              : null,
+            keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || null,
+            extendedKeyUsages:
+              convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || null,
+            notBefore: certificateRequestWithDefaults.notBefore || null,
+            notAfter: certificateRequestWithDefaults.notAfter || null,
+            keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm || null,
+            signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm || null,
             ttl: resolvedTtl,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
-            organization: certificateRequest.organization || null,
-            organizationalUnit: certificateRequest.organizationalUnit || null,
-            country: certificateRequest.country || null,
-            state: certificateRequest.state || null,
-            locality: certificateRequest.locality || null,
-            basicConstraints: certificateRequest.basicConstraints
-              ? JSON.stringify(certificateRequest.basicConstraints)
+            organization: certificateRequestWithDefaults.organization || null,
+            organizationalUnit: certificateRequestWithDefaults.organizationalUnit || null,
+            country: certificateRequestWithDefaults.country || null,
+            state: certificateRequestWithDefaults.state || null,
+            locality: certificateRequestWithDefaults.locality || null,
+            domainComponents: certificateRequestWithDefaults.domainComponents
+              ? certificateRequestWithDefaults.domainComponents.join(",")
+              : null,
+            basicConstraints: certificateRequestWithDefaults.basicConstraints
+              ? JSON.stringify(certificateRequestWithDefaults.basicConstraints)
               : null,
             createdAt: certRequestCreatedAt
           } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
@@ -976,21 +985,22 @@ export const certificateV3ServiceFactory = ({
           profileId,
           profileName: profile.slug,
           certificateRequest: {
-            commonName: certificateRequest.commonName,
-            organization: certificateRequest.organization,
-            organizationalUnit: certificateRequest.organizationalUnit,
-            country: certificateRequest.country,
-            state: certificateRequest.state,
-            locality: certificateRequest.locality,
-            keyUsages: certificateRequest.keyUsages,
-            extendedKeyUsages: certificateRequest.extendedKeyUsages,
-            altNames: certificateRequest.altNames,
-            validity: certificateRequest.validity,
-            notBefore: certificateRequest.notBefore?.toISOString(),
-            notAfter: certificateRequest.notAfter?.toISOString(),
-            signatureAlgorithm: certificateRequest.signatureAlgorithm,
-            keyAlgorithm: certificateRequest.keyAlgorithm,
-            basicConstraints: certificateRequest.basicConstraints
+            commonName: certificateRequestWithDefaults.commonName,
+            organization: certificateRequestWithDefaults.organization,
+            organizationalUnit: certificateRequestWithDefaults.organizationalUnit,
+            country: certificateRequestWithDefaults.country,
+            state: certificateRequestWithDefaults.state,
+            locality: certificateRequestWithDefaults.locality,
+            domainComponents: certificateRequestWithDefaults.domainComponents,
+            keyUsages: certificateRequestWithDefaults.keyUsages,
+            extendedKeyUsages: certificateRequestWithDefaults.extendedKeyUsages,
+            altNames: certificateRequestWithDefaults.altNames,
+            validity: certificateRequestWithDefaults.validity,
+            notBefore: certificateRequestWithDefaults.notBefore?.toISOString(),
+            notAfter: certificateRequestWithDefaults.notAfter?.toISOString(),
+            signatureAlgorithm: certificateRequestWithDefaults.signatureAlgorithm,
+            keyAlgorithm: certificateRequestWithDefaults.keyAlgorithm,
+            basicConstraints: certificateRequestWithDefaults.basicConstraints
           },
           certificateRequestId: certRequest.id
         };
@@ -1048,7 +1058,6 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation({
       ...certificateRequestWithDefaults,
       subjectAlternativeNames: certificateRequestWithDefaults.altNames
@@ -1115,7 +1124,7 @@ export const certificateV3ServiceFactory = ({
 
         const processResult = await processSelfSignedCertificate({
           certificateRequest: {
-            ...certificateRequest,
+            ...certificateRequestWithDefaults,
             validity: { ttl: resolvedTtl }
           },
           policy,
@@ -1155,7 +1164,8 @@ export const certificateV3ServiceFactory = ({
           organizationalUnit: certificateRequest.organizationalUnit,
           country: certificateRequest.country,
           state: certificateRequest.state,
-          locality: certificateRequest.locality
+          locality: certificateRequest.locality,
+          domainComponents: certificateRequest.domainComponents
         });
 
         if (metadata && metadata.length > 0) {
@@ -1333,6 +1343,7 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequestWithDefaults.country,
         state: certificateRequestWithDefaults.state,
         locality: certificateRequestWithDefaults.locality,
+        domainComponents: certificateRequestWithDefaults.domainComponents,
         tx
       };
 
@@ -1404,7 +1415,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        domainComponents: certificateRequest.domainComponents
       });
 
       if (metadata && metadata.length > 0) {
@@ -1644,6 +1656,9 @@ export const certificateV3ServiceFactory = ({
             altNames: mappedCertificateRequest.subjectAlternativeNames
               ? JSON.stringify(mappedCertificateRequest.subjectAlternativeNames)
               : null,
+            domainComponents: mappedCertificateRequest.domainComponents
+              ? mappedCertificateRequest.domainComponents.join(",")
+              : null,
             keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages) || null,
             extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages) || null,
             notBefore: notBefore || null,
@@ -1679,6 +1694,7 @@ export const certificateV3ServiceFactory = ({
             country: mappedCertificateRequest.country,
             state: mappedCertificateRequest.state,
             locality: mappedCertificateRequest.locality,
+            domainComponents: mappedCertificateRequest.domainComponents,
             keyUsages: mappedCertificateRequest.keyUsages,
             extendedKeyUsages: mappedCertificateRequest.extendedKeyUsages,
             altNames: mappedCertificateRequest.subjectAlternativeNames,
@@ -1754,17 +1770,15 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const csrSubjectParsed = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
-    const mergedSubject = {
-      ...csrSubjectParsed,
-      commonName: csrSubjectParsed.commonName ?? certificateRequest.commonName,
-      organization: csrSubjectParsed.organization ?? certificateRequest.organization,
-      ou: csrSubjectParsed.ou ?? certificateRequest.organizationalUnit,
-      country: csrSubjectParsed.country ?? certificateRequest.country,
-      province: csrSubjectParsed.province ?? certificateRequest.state,
-      locality: csrSubjectParsed.locality ?? certificateRequest.locality
-    };
-    const subjectOverride = createDistinguishedName(mergedSubject);
+    const subjectOverride = buildSubjectOverrideForCsr(csr, {
+      commonName: certificateRequest.commonName,
+      organization: certificateRequest.organization,
+      organizationalUnit: certificateRequest.organizationalUnit,
+      country: certificateRequest.country,
+      state: certificateRequest.state,
+      locality: certificateRequest.locality,
+      domainComponents: certificateRequest.domainComponents
+    });
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
       await certificateDAL.transaction(async (tx) => {
@@ -1834,6 +1848,7 @@ export const certificateV3ServiceFactory = ({
           csr,
           commonName: mappedCertificateRequest.commonName,
           altNames: mappedCertificateRequest.subjectAlternativeNames,
+          domainComponents: mappedCertificateRequest.domainComponents,
           keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages),
           extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages),
           notBefore,
@@ -2056,6 +2071,9 @@ export const certificateV3ServiceFactory = ({
             country: certificateRequest.country || null,
             state: certificateRequest.state || null,
             locality: certificateRequest.locality || null,
+            domainComponents: certificateRequest.domainComponents
+              ? certificateRequest.domainComponents.join(",")
+              : null,
             enrollmentType: EnrollmentType.API,
             status: CertificateRequestStatus.PENDING_APPROVAL,
             createdAt: certRequestCreatedAt
@@ -2083,6 +2101,7 @@ export const certificateV3ServiceFactory = ({
             country: certificateRequest.country,
             state: certificateRequest.state,
             locality: certificateRequest.locality,
+            domainComponents: certificateRequest.domainComponents,
             keyUsages: certificateOrder.keyUsages as string[] | undefined,
             extendedKeyUsages: certificateOrder.extendedKeyUsages as string[] | undefined,
             altNames: certificateOrder.altNames,
@@ -2232,7 +2251,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        domainComponents: certificateRequest.domainComponents
       });
 
       if (metadata && metadata.length > 0) {
@@ -2464,6 +2484,9 @@ export const certificateV3ServiceFactory = ({
         country: originalCert.subjectCountry || undefined,
         state: originalCert.subjectState || undefined,
         locality: originalCert.subjectLocality || undefined,
+        domainComponents: originalCert.subjectDomainComponents
+          ? originalCert.subjectDomainComponents.split(",")
+          : undefined,
         keyUsages: parseKeyUsages(originalCert.keyUsages),
         extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         subjectAlternativeNames: originalCert.altNames
@@ -2557,6 +2580,9 @@ export const certificateV3ServiceFactory = ({
             country: originalCert.subjectCountry || undefined,
             state: originalCert.subjectState || undefined,
             locality: originalCert.subjectLocality || undefined,
+            domainComponents: originalCert.subjectDomainComponents
+              ? originalCert.subjectDomainComponents.split(",")
+              : undefined,
             actor,
             actorId,
             actorAuthMethod,
@@ -2713,7 +2739,8 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: certificateRequest.organizationalUnit,
         country: certificateRequest.country,
         state: certificateRequest.state,
-        locality: certificateRequest.locality
+        locality: certificateRequest.locality,
+        domainComponents: certificateRequest.domainComponents
       });
 
       // Copy metadata from original cert to new cert and cert request
@@ -2774,7 +2801,10 @@ export const certificateV3ServiceFactory = ({
         organizationalUnit: originalCert.subjectOrganizationalUnit || undefined,
         country: originalCert.subjectCountry || undefined,
         state: originalCert.subjectState || undefined,
-        locality: originalCert.subjectLocality || undefined
+        locality: originalCert.subjectLocality || undefined,
+        domainComponents: originalCert.subjectDomainComponents
+          ? originalCert.subjectDomainComponents.split(",")
+          : undefined
       });
 
       certificateRequestId = certificateRequest.id;

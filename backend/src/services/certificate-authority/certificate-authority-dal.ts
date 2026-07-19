@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
@@ -166,6 +166,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
       )
       .first();
+
+    // a missing row would otherwise surface as a cryptic schema parse error, so fail with a clean 404
+    if (!result) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const data = {
       ...CertificateAuthoritiesSchema.parse(result),

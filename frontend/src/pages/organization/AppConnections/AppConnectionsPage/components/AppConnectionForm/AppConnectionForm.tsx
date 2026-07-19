@@ -93,6 +93,7 @@ import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
+import { WinRMConnectionForm } from "./WinRMConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
 
 type AppConnectionFormData = DiscriminativePick<
@@ -209,6 +210,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureADCSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ADCS:
         return <AdcsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.WinRM:
+        return <WinRMConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Humanitec:
@@ -454,6 +457,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <AzureADCSConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
       case AppConnection.ADCS:
         return <AdcsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      case AppConnection.WinRM:
+        return <WinRMConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Humanitec:

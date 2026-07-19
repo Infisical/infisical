@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { GcpServiceAccountAuthMethod, PamAccountType } from "../pam/pam-enums";
+import { GcpServiceAccountAuthMethod, PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 import {
   PamAccountSettingsOverridesSchema,
@@ -319,12 +319,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
-        authMethod: z.literal("password"),
+        authMethod: z.literal(PamSshAuthMethod.Password),
         username: z.string().trim().min(1),
         password: optionalTrimmedString
       }),
       z.object({
-        authMethod: z.literal("public-key"),
+        authMethod: z.literal(PamSshAuthMethod.PublicKey),
         username: z.string().trim().min(1),
         privateKey: z
           .string()
@@ -333,7 +333,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           .transform((v) => v || undefined)
           .optional()
       }),
-      z.object({ authMethod: z.literal("certificate"), username: z.string().trim().min(1) })
+      z.object({ authMethod: z.literal(PamSshAuthMethod.Certificate), username: z.string().trim().min(1) })
     ]),
     sanitizedCredentials: z.object({
       authMethod: z.string(),
@@ -540,6 +540,54 @@ export const ACCOUNT_TYPE_CONFIGS = {
           "The ARN of the IAM role Infisical assumes when accessing this account. Its trust policy must allow Infisical using your Infisical Organization ID as the External ID.\n\nOrganization ID: {{organizationId}}"
       }
     }
+  },
+
+  [PamAccountType.AzureCli]: {
+    name: "Azure CLI",
+    icon: "Microsoft Azure.png",
+    connectionDetails: z.object({
+      tenantId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(new RE2(/^[A-Za-z0-9.-]+$/), "Must be a valid Azure tenant ID or domain"),
+      subscriptionId: z
+        .string()
+        .trim()
+        .refine((v) => v === "" || z.string().uuid().safeParse(v).success, {
+          message: "Must be a valid Azure subscription ID"
+        })
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      clientId: z.string().trim().uuid("Must be a valid Azure application (client) ID"),
+      clientSecret: z.string().trim().min(1).max(512)
+    }),
+    sanitizedCredentials: z.object({
+      clientId: z.string().optional()
+    }),
+    ui: {
+      tenantId: {
+        label: "Tenant ID",
+        tooltip: "The Microsoft Entra ID (Azure AD) directory (tenant) ID the service principal belongs to."
+      },
+      subscriptionId: {
+        label: "Subscription ID",
+        tooltip: "Optional. The Azure subscription the CLI session defaults to (az account set)."
+      },
+      clientId: {
+        label: "Client ID",
+        tooltip: "The application (client) ID of the service principal Infisical brokers access to."
+      },
+      clientSecret: {
+        label: "Client Secret",
+        widget: PamFieldWidget.Password,
+        secret: true,
+        tooltip: "A client secret for the service principal. Stored encrypted and never returned in read responses."
+      }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -653,6 +701,8 @@ export const extractGatewayTarget = async (
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
       throw new Error("AWS IAM accounts do not use gateway routing");
+    case PamAccountType.AzureCli:
+      return { host: "management.azure.com", port: 443 };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }

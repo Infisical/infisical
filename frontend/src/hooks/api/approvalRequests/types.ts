@@ -65,6 +65,7 @@ export type CertRequestRequestData = {
     country?: string;
     state?: string;
     locality?: string;
+    domainComponents?: string[];
     keyUsages?: string[];
     extendedKeyUsages?: string[];
     altNames?: Array<{ type: string; value: string }>;

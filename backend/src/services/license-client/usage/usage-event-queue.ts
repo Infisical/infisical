@@ -34,38 +34,46 @@ export const usageEventQueueFactory = ({
 
   // Counts the meter and reports it to the License Server only when the value changed since the last
   // report. No-ops when the reporter is null (v2 disabled), so queued events drain harmlessly.
-  const handleUsageEvent = async (orgId: string, featureKey: string) => {
+  const handleUsageEvent = async (orgId: string, dimensionKey: string, observedAt: Date) => {
     if (!usageReporter) {
       return;
     }
-
-    const metered = featureByKey.get(featureKey);
-    if (!metered) {
-      logger.warn(`usage-metering: unknown metered feature, dropping event [featureKey=${featureKey}]`);
-      return;
-    }
-
-    const value = await metered.count(orgId);
-
-    const lastReportedKey = KeyStorePrefixes.LicenseUsageLastReported(orgId, featureKey);
-    const lastReported = await keyStore.getItem(lastReportedKey);
-    if (lastReported !== null && Number(lastReported) === value) {
-      return;
-    }
-
-    const observedAt = new Date();
-    const minuteBucketSeconds = Math.floor(observedAt.getTime() / 60_000) * 60;
-    await usageReporter.reportSnapshots(orgId, [
-      {
-        feature_key: featureKey,
-        value,
-        observed_at: observedAt.toISOString(),
-        idempotency_key: `${source}:${orgId}:${featureKey}:${minuteBucketSeconds}`,
-        source
+    try {
+      const metered = featureByKey.get(dimensionKey);
+      if (!metered) {
+        logger.warn(`usage-metering: unknown metered feature, dropping event [dimensionKey=${dimensionKey}]`);
+        return;
       }
-    ]);
 
-    await keyStore.setItemWithExpiry(lastReportedKey, KeyStoreTtls.LicenseUsageLastReportedInSeconds, String(value));
+      const value = await metered.count(orgId);
+
+      const lastReportedKey = KeyStorePrefixes.LicenseUsageLastReported(orgId, dimensionKey);
+      const lastReported = await keyStore.getItem(lastReportedKey);
+      if (lastReported !== null && Number(lastReported) === value) {
+        return;
+      }
+
+      await usageReporter.reportSnapshots(orgId, [
+        {
+          dimension_key: dimensionKey,
+          value,
+          observed_at: observedAt.toISOString(),
+          idempotency_key: `${source}:${orgId}:${dimensionKey}:${observedAt.getTime()}`,
+          source
+        }
+      ]);
+
+      logger.info(
+        `usage-event-queue: reported usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}] [value=${value}]`
+      );
+      await keyStore.setItemWithExpiry(lastReportedKey, KeyStoreTtls.LicenseUsageLastReportedInSeconds, String(value));
+    } catch (error) {
+      logger.error(
+        error,
+        `usage-event-queue: failed to handle usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+      );
+      throw error;
+    }
   };
 
   // Self-hosted true-up: online instances also report event-driven, so this is a periodic backstop
@@ -95,10 +103,14 @@ export const usageEventQueueFactory = ({
 
   const startWorker = () => {
     // Counts are DB-heavy, so concurrency + limiter rate-shape a backlog instead of bursting the read replica.
-    queueService.start(QueueName.UsageEvent, (job) => handleUsageEvent(job.data.orgId, job.data.featureKey), {
-      concurrency: 5,
-      limiter: { max: 50, duration: 1000 }
-    });
+    queueService.start(
+      QueueName.UsageEvent,
+      (job) => handleUsageEvent(job.data.orgId, job.data.dimensionKey, new Date(job.timestamp)),
+      {
+        concurrency: 5,
+        limiter: { max: 50, duration: 1000 }
+      }
+    );
   };
 
   const init = () => {

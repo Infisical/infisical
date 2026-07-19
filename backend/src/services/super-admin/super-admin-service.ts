@@ -541,7 +541,11 @@ export const superAdminServiceFactory = ({
       orgName: initialOrganizationName
     });
 
-    await updateServerCfg({ initialized: true }, userInfo.user.id);
+    const shouldDisableSignUp = !appCfg.isCloud;
+    await updateServerCfg(
+      { initialized: true, ...(shouldDisableSignUp ? { allowSignUp: false } : {}) },
+      userInfo.user.id
+    );
     const token = await authService.generateUserTokens({
       userId: userInfo.user.id,
       authMethod: AuthMethod.EMAIL,
@@ -669,7 +673,15 @@ export const superAdminServiceFactory = ({
       return { identity: newIdentity, auth: tokenAuth, credentials: { token: generatedAccessToken } };
     });
 
-    await updateServerCfg({ initialized: true, adminIdentityIds: [identity.id] }, userInfo.user.id);
+    const shouldDisableSignUp = !appCfg.isCloud;
+    await updateServerCfg(
+      {
+        initialized: true,
+        adminIdentityIds: [identity.id],
+        ...(shouldDisableSignUp ? { allowSignUp: false } : {})
+      },
+      userInfo.user.id
+    );
 
     return {
       user: userInfo,

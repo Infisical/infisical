@@ -12,7 +12,7 @@ import {
   DialogTitle
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
-import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
+import { useUpdatePamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -27,7 +27,7 @@ type Props = {
 export const MemberRoleModal = ({ member, isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { user } = useUser();
-  const updateRole = useUpdateUserWorkspaceRole();
+  const updateRole = useUpdatePamProductUserMember();
 
   const currentRole = member?.roles?.[0]?.role ?? ProjectMembershipRole.Member;
   const [selectedRole, setSelectedRole] = useState<string>(currentRole);
@@ -53,8 +53,8 @@ export const MemberRoleModal = ({ member, isOpen, onOpenChange }: Props) => {
     updateRole.mutate(
       {
         projectId: currentProject.id,
-        membershipId: member.id,
-        roles: [{ role: selectedRole, isTemporary: false }]
+        userId: member.user.id,
+        role: selectedRole
       },
       {
         onSuccess: () => {

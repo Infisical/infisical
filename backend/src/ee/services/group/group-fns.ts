@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
+import { SecretIdentities } from "@app/services/license-client";
 
 import {
   TAddIdentitiesToGroup,
@@ -177,7 +178,8 @@ export const addUsersToGroupByUserIds = async ({
   projectBotDAL,
   tx: outerTx,
   membershipGroupDAL,
-  shouldFailOnMissingMembers = true
+  shouldFailOnMissingMembers = true,
+  usageMeteringService
 }: TAddUsersToGroupByUserIds) => {
   const processAddition = async (tx: Knex) => {
     if (userIds.length === 0) {
@@ -298,6 +300,8 @@ export const addUsersToGroupByUserIds = async ({
       );
     }
 
+    // These users may now be in a secret-manager project through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -320,7 +324,8 @@ export const addIdentitiesToGroup = async ({
   identityIds,
   identityDAL,
   identityGroupMembershipDAL,
-  membershipDAL
+  membershipDAL,
+  usageMeteringService
 }: TAddIdentitiesToGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -369,6 +374,8 @@ export const addIdentitiesToGroup = async ({
       tx
     );
 
+    // These identities may now be in a secret-manager project through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -388,7 +395,8 @@ export const removeUsersFromGroupByUserIds = async ({
   projectKeyDAL,
   tx: outerTx,
   membershipGroupDAL,
-  shouldFailOnMissingMembers = true
+  shouldFailOnMissingMembers = true,
+  usageMeteringService
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
@@ -519,6 +527,8 @@ export const removeUsersFromGroupByUserIds = async ({
       );
     }
 
+    // These users may have left a secret-manager project they only reached through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
   };
 
@@ -541,7 +551,8 @@ export const removeIdentitiesFromGroup = async ({
   identityIds,
   identityDAL,
   membershipDAL,
-  identityGroupMembershipDAL
+  identityGroupMembershipDAL,
+  usageMeteringService
 }: TRemoveIdentitiesFromGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -595,6 +606,8 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
+    // These identities may have left a secret-manager project they only reached through this group.
+    usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };

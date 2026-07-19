@@ -1,4 +1,4 @@
-import { PkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 
 import { TAwsCertificateManagerPkiSync } from "./aws-certificate-manager-sync";
 import { TAwsElasticLoadBalancerPkiSync } from "./aws-elastic-load-balancer-sync";
@@ -7,8 +7,10 @@ import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
+import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
 import { TNutanixPrismCentralPkiSync } from "./nutanix-prism-central-sync";
+import { TWindowsServerPkiSync } from "./windows-server-sync";
 
 export type TPkiSyncOption = {
   name: string;
@@ -33,6 +35,8 @@ export type TPkiSync =
   | TCloudflareCustomCertificatePkiSync
   | TNetScalerPkiSync
   | TF5BigIpPkiSync
+  | TLinuxServerPkiSync
+  | TWindowsServerPkiSync
   | TNutanixPrismCentralPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
@@ -53,12 +57,18 @@ type TCreatePkiSyncDTOBase = {
     preserveItemOnRenewal?: boolean;
     updateExistingCertificates?: boolean;
     preserveSecretOnRenewal?: boolean;
+    includeRootCa?: boolean;
+    exportFormat?: PkiSyncExportFormat;
+    includePrivateKey?: boolean;
     fieldMappings?: {
       certificate: string;
       privateKey: string;
       certificateChain: string;
       caCertificate: string;
     };
+  };
+  credentials?: {
+    exportPassword?: string;
   };
   isAutoSyncEnabled: boolean;
   subscriberId?: string | null;
@@ -88,6 +98,7 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     parentProfile?: string;
     clusterId?: string;
     clusterName?: string;
+    destinationPath?: string;
   };
 };
 
@@ -128,5 +139,7 @@ export * from "./chef-sync";
 export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
+export * from "./linux-server-sync";
 export * from "./netscaler-sync";
 export * from "./nutanix-prism-central-sync";
+export * from "./windows-server-sync";

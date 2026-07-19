@@ -224,7 +224,8 @@ export const certificateServiceFactory = ({
         organizationalUnit: cert.subjectOrganizationalUnit || undefined,
         country: cert.subjectCountry || undefined,
         state: cert.subjectState || undefined,
-        locality: cert.subjectLocality || undefined
+        locality: cert.subjectLocality || undefined,
+        domainComponents: cert.subjectDomainComponents ? cert.subjectDomainComponents.split(",") : undefined
       };
 
       // Build fingerprints from columns

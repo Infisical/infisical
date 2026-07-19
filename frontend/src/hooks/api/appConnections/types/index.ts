@@ -78,6 +78,7 @@ import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
+import { TWinRMConnection } from "./winrm-connection";
 import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
@@ -155,6 +156,7 @@ export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./winrm-connection";
 export * from "./zabbix-connection";
 
 export type TAppConnection =
@@ -208,6 +210,7 @@ export type TAppConnection =
   | TSshConnection
   | TDbtConnection
   | TSmbConnection
+  | TWinRMConnection
   | TOpenRouterConnection
   | TOpenAIConnection
   | TAnthropicConnection

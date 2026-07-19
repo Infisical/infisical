@@ -7,7 +7,25 @@ export enum PkiSync {
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
   F5BigIp = "f5-big-ip",
+  LinuxServer = "linux-server",
+  WindowsServer = "windows-server",
   NutanixPrismCentral = "nutanix-prism-central"
+}
+
+export enum PkiSyncExportFormat {
+  Pem = "pem",
+  Pkcs12 = "pkcs12"
+}
+
+export enum PemCertificateExtension {
+  Pem = "pem",
+  Crt = "crt"
+}
+
+export enum WindowsFileAccess {
+  Read = "read",
+  Modify = "modify",
+  FullControl = "full-control"
 }
 
 export enum PkiSyncStatus {

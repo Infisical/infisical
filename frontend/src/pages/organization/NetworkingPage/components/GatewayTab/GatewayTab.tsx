@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { PlusIcon, SearchIcon } from "lucide-react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -87,7 +88,7 @@ export const GatewayTab = withPermission(
       ...gatewaysQueryKeys.listWithTokens(),
       refetchInterval: 15_000
     });
-    const { data: pools } = useListGatewayPools();
+    const { data: pools } = useListGatewayPools({ enabled: Boolean(showPoolsTab) });
 
     // Build reverse map: gatewayId -> pool names
     const gatewayPoolMap = new Map<string, string[]>();
@@ -105,7 +106,8 @@ export const GatewayTab = withPermission(
       "deployGateway",
       "deleteGateway",
       "editDetails",
-      "createPool"
+      "createPool",
+      "upgradePlan"
     ] as const);
 
     const deleteGatewayById = useDeleteGatewayById();
@@ -175,23 +177,27 @@ export const GatewayTab = withPermission(
                 )}
               </OrgPermissionCan>
             ) : (
-              showPoolsTab && (
-                <OrgPermissionCan
-                  I={OrgGatewayPoolPermissionActions.CreateGatewayPools}
-                  a={OrgPermissionSubjects.GatewayPool}
-                >
-                  {(isAllowed: boolean) => (
-                    <Button
-                      variant="org"
-                      onClick={() => handlePopUpOpen("createPool")}
-                      isDisabled={!isAllowed}
-                    >
-                      <PlusIcon />
-                      Create Pool
-                    </Button>
-                  )}
-                </OrgPermissionCan>
-              )
+              <OrgPermissionCan
+                I={OrgGatewayPoolPermissionActions.CreateGatewayPools}
+                a={OrgPermissionSubjects.GatewayPool}
+              >
+                {(isAllowed: boolean) => (
+                  <Button
+                    variant="org"
+                    onClick={() => {
+                      if (!subscription?.gatewayPool) {
+                        handlePopUpOpen("upgradePlan");
+                        return;
+                      }
+                      handlePopUpOpen("createPool");
+                    }}
+                    isDisabled={!isAllowed}
+                  >
+                    <PlusIcon />
+                    Create Pool
+                  </Button>
+                )}
+              </OrgPermissionCan>
             )}
           </CardAction>
         </CardHeader>
@@ -218,18 +224,16 @@ export const GatewayTab = withPermission(
                 />
               </InputGroup>
             ) : (
-              showPoolsTab && (
-                <InputGroup className="w-1/2 min-w-64">
-                  <InputGroupAddon align="inline-start">
-                    <SearchIcon />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    value={poolSearch}
-                    onChange={(e) => setPoolSearch(e.target.value)}
-                    placeholder="Search pool..."
-                  />
-                </InputGroup>
-              )
+              <InputGroup className="w-1/2 min-w-64">
+                <InputGroupAddon align="inline-start">
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={poolSearch}
+                  onChange={(e) => setPoolSearch(e.target.value)}
+                  placeholder="Search pool..."
+                />
+              </InputGroup>
             )}
           </div>
           {activeSubTab === "gateway-pools" ? (
@@ -429,6 +433,12 @@ export const GatewayTab = withPermission(
         <CreateGatewayPoolModal
           isOpen={popUp.createPool.isOpen}
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}
+        />
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text="Your current plan does not include access to gateway pools. To unlock this feature, please upgrade to Infisical Enterprise plan."
+          isEnterpriseFeature
         />
       </Card>
     );

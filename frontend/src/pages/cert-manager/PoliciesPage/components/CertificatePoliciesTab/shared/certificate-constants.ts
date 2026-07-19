@@ -56,7 +56,8 @@ export enum CertSubjectAttributeType {
   ORGANIZATIONAL_UNIT = "organizational_unit",
   COUNTRY = "country",
   STATE = "state",
-  LOCALITY = "locality"
+  LOCALITY = "locality",
+  DOMAIN_COMPONENT = "domain_component"
 }
 
 export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
@@ -132,6 +133,8 @@ export const formatSubjectAttributeType = (type: CertSubjectAttributeType): stri
       return "State/Province (ST)";
     case CertSubjectAttributeType.LOCALITY:
       return "Locality (L)";
+    case CertSubjectAttributeType.DOMAIN_COMPONENT:
+      return "Domain Component (DC)";
     default:
       return type;
   }

@@ -183,6 +183,7 @@
                       "integrations/app-connections/vercel",
                       "integrations/app-connections/windmill",
                       "integrations/app-connections/smb",
+                      "integrations/app-connections/winrm",
                       "integrations/app-connections/zabbix"
                     ]
                   }
@@ -216,6 +217,7 @@
                 "group": "Gateway",
                 "pages": [
                   "documentation/platform/gateways/overview",
+                  "documentation/platform/gateways/network-architecture",
                   "documentation/platform/gateways/gateway-pools",
                   "documentation/platform/gateways/gateway-deployment",
                   {
@@ -350,7 +352,6 @@
                 "pages": [
                   "self-hosting/deployment-options/standalone-infisical",
                   "self-hosting/deployment-options/docker-compose",
-                  "self-hosting/deployment-options/kubernetes-helm",
                   "self-hosting/deployment-options/aws-native",
                   "self-hosting/deployment-options/gcp-native"
                 ]
@@ -363,7 +364,20 @@
                   "self-hosting/deployment-options/linux-upgrade"
                 ]
               },
+              {
+                "group": "Helm Charts",
+                "pages": [
+                  "self-hosting/helm-charts/overview",
+                  "self-hosting/deployment-options/kubernetes-helm",
+                  "self-hosting/helm-charts/secrets-operator",
+                  "self-hosting/helm-charts/gateway",
+                  "self-hosting/helm-charts/pki-issuer",
+                  "self-hosting/helm-charts/csi-provider",
+                  "self-hosting/helm-charts/agent-injector"
+                ]
+              },
               "self-hosting/guides/replication",
+              "self-hosting/guides/hsm-integration",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -451,7 +465,9 @@
                   "documentation/platform/secrets-mgmt/overview",
                   {
                     "group": "Quickstarts",
-                    "pages": ["documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"]
+                    "pages": [
+                      "documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret"
+                    ]
                   },
                   {
                     "group": "Concepts",
@@ -577,7 +593,8 @@
                           "documentation/platform/dynamic-secrets/gcp-iam",
                           "documentation/platform/dynamic-secrets/github",
                           "documentation/platform/dynamic-secrets/kubernetes",
-                          "documentation/platform/dynamic-secrets/ldap"
+                          "documentation/platform/dynamic-secrets/ldap",
+                          "documentation/platform/dynamic-secrets/tailscale"
                         ]
                       },
                       {
@@ -602,6 +619,16 @@
                           "documentation/platform/honey-tokens/aws/usage"
                         ]
                       }
+                    ]
+                  },
+                  {
+                    "group": "Agent Proxy",
+                    "pages": [
+                      "documentation/platform/agent-proxy/overview",
+                      "documentation/platform/agent-proxy/quickstart",
+                      "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/activity-logs",
+                      "documentation/platform/agent-proxy/security"
                     ]
                   }
                 ]
@@ -642,6 +669,15 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
+                      {
+                        "group": "Docker",
+                        "pages": [
+                          "integrations/platforms/docker-intro",
+                          "integrations/platforms/docker",
+                          "integrations/platforms/docker-pass-envs",
+                          "integrations/platforms/docker-compose"
+                        ]
+                      },
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -654,15 +690,6 @@
                         "pages": [
                           "integrations/platforms/infisical-agent",
                           "integrations/platforms/ecs-with-agent"
-                        ]
-                      },
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
                         ]
                       },
                       "integrations/frameworks/packer",
@@ -925,6 +952,8 @@
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/linux-server",
+                          "documentation/platform/pki/applications/certificate-syncs/windows-server",
                           "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central"
                         ]
                       }
@@ -1011,7 +1040,6 @@
                 "group": "Infisical KMS",
                 "pages": [
                   "documentation/platform/kms/overview",
-                  "documentation/platform/kms/hsm-integration",
                   "documentation/platform/kms/kubernetes-encryption",
                   {
                     "group": "KMIP Integration",
@@ -1072,6 +1100,7 @@
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
+                      "documentation/platform/pam/accounts/azure-cli",
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
@@ -1090,7 +1119,8 @@
                     "group": "Discovery",
                     "pages": [
                       "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory"
+                      "documentation/platform/pam/discovery/active-directory",
+                      "documentation/platform/pam/discovery/unix"
                     ]
                   },
                   {
@@ -1129,6 +1159,7 @@
                   "cli/commands/init",
                   "cli/commands/run",
                   "cli/commands/secrets",
+                  "cli/commands/agent-proxy",
                   "cli/commands/dynamic-secrets",
                   "cli/commands/pam",
                   "cli/commands/gateway",
@@ -2238,6 +2269,18 @@
                     ]
                   },
                   {
+                    "group": "Windows (WinRM)",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/winrm/list",
+                      "api-reference/endpoints/app-connections/winrm/available",
+                      "api-reference/endpoints/app-connections/winrm/get-by-id",
+                      "api-reference/endpoints/app-connections/winrm/get-by-name",
+                      "api-reference/endpoints/app-connections/winrm/create",
+                      "api-reference/endpoints/app-connections/winrm/update",
+                      "api-reference/endpoints/app-connections/winrm/delete"
+                    ]
+                  },
+                  {
                     "group": "Zabbix",
                     "pages": [
                       "api-reference/endpoints/app-connections/zabbix/list",
@@ -2524,6 +2567,17 @@
                   "api-reference/endpoints/dynamic-secrets/delete-lease",
                   "api-reference/endpoints/dynamic-secrets/renew-lease",
                   "api-reference/endpoints/dynamic-secrets/get-lease"
+                ]
+              },
+              {
+                "group": "Proxied Services",
+                "pages": [
+                  "api-reference/endpoints/proxied-services/create",
+                  "api-reference/endpoints/proxied-services/update",
+                  "api-reference/endpoints/proxied-services/delete",
+                  "api-reference/endpoints/proxied-services/get-by-id",
+                  "api-reference/endpoints/proxied-services/get-by-name",
+                  "api-reference/endpoints/proxied-services/list"
                 ]
               },
               {
@@ -3622,6 +3676,30 @@
                         ]
                       },
                       {
+                        "group": "Linux Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/linux-server/list",
+                          "api-reference/endpoints/pki/syncs/linux-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/linux-server/create",
+                          "api-reference/endpoints/pki/syncs/linux-server/update",
+                          "api-reference/endpoints/pki/syncs/linux-server/delete",
+                          "api-reference/endpoints/pki/syncs/linux-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/linux-server/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Windows Server",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/windows-server/list",
+                          "api-reference/endpoints/pki/syncs/windows-server/get-by-id",
+                          "api-reference/endpoints/pki/syncs/windows-server/create",
+                          "api-reference/endpoints/pki/syncs/windows-server/update",
+                          "api-reference/endpoints/pki/syncs/windows-server/delete",
+                          "api-reference/endpoints/pki/syncs/windows-server/sync-certificates",
+                          "api-reference/endpoints/pki/syncs/windows-server/remove-certificates"
+                        ]
+                      },
+                      {
                         "group": "Nutanix Prism Central",
                         "pages": [
                           "api-reference/endpoints/pki/syncs/nutanix-prism-central/list",
@@ -3933,6 +4011,13 @@
                   "api-reference/endpoints/kms/signing/verify",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
+              },
+              {
+                "group": "Message Authentication",
+                "pages": [
+                  "api-reference/endpoints/kms/mac/generate-mac",
+                  "api-reference/endpoints/kms/mac/verify-mac"
+                ]
               }
             ]
           },
@@ -3947,6 +4032,15 @@
               "api-reference/endpoints/kmip-servers/generate-enrollment-token",
               "api-reference/endpoints/kmip-servers/revoke",
               "api-reference/endpoints/kmip-servers/login"
+            ]
+          },
+          {
+            "group": "Gateways",
+            "pages": [
+              "api-reference/endpoints/gateways/get",
+              "api-reference/endpoints/gateways/create",
+              "api-reference/endpoints/gateways/update",
+              "api-reference/endpoints/gateways/generate-enrollment-token"
             ]
           },
           {
@@ -4219,6 +4313,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/kms/hsm-integration",
+      "destination": "/self-hosting/guides/hsm-integration"
+    },
     {
       "source": "/documentation/guides/introduction",
       "destination": "/documentation/platform/secrets-mgmt/overview"

@@ -84,6 +84,8 @@ export const CertificateDetailsSection = ({ request }: Props) => {
   const country = certRequestDetails?.country || certRequest?.country;
   const state = certRequestDetails?.state || certRequest?.state;
   const locality = certRequestDetails?.locality || certRequest?.locality;
+  const domainComponents = certRequestDetails?.domainComponents || certRequest?.domainComponents;
+  const hasDomainComponents = Boolean(domainComponents && domainComponents.length > 0);
   const basicConstraints = certRequestDetails?.basicConstraints || certRequest?.basicConstraints;
   const metadata = certRequestDetails?.metadata || [];
 
@@ -217,6 +219,22 @@ export const CertificateDetailsSection = ({ request }: Props) => {
           )}
         </div>
 
+        {hasDomainComponents && (
+          <div className="mt-4 border-t border-mineshaft-600 pt-4">
+            <p className="mb-3 text-xs text-mineshaft-400">Domain Components (DC)</p>
+            <div className="flex flex-wrap gap-2">
+              {domainComponents!.map((dc) => (
+                <span
+                  key={dc}
+                  className="rounded bg-mineshaft-700 px-2.5 py-1 text-sm text-mineshaft-200"
+                >
+                  {dc}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {hasAltNames && (
           <div className="mt-4 border-t border-mineshaft-600 pt-4">
             <p className="mb-3 text-xs text-mineshaft-400">Subject Alternative Names (SANs)</p>
@@ -239,6 +257,7 @@ export const CertificateDetailsSection = ({ request }: Props) => {
           !country &&
           !state &&
           !locality &&
+          !hasDomainComponents &&
           !hasAltNames && (
             <p className="text-sm text-mineshaft-400">No subject information specified</p>
           )}

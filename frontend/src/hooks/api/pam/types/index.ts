@@ -8,6 +8,7 @@ import {
   PamApproverType,
   PamDiscoverySchedule,
   PamDiscoveryType,
+  PamNotificationEvent,
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
@@ -553,6 +554,31 @@ export type TRemovePamProductIdentityMemberDTO = {
   projectId: string;
 };
 
+export type TAddPamProductUserMemberDTO = {
+  userIds?: string[];
+  emails?: string[];
+  role: string;
+  projectId: string;
+};
+
+export type TAddPamProductGroupMemberDTO = {
+  groupId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductUserMemberDTO = {
+  userId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductGroupMemberDTO = {
+  groupId: string;
+  role: string;
+  projectId: string;
+};
+
 // Credential rotation
 
 export type TPamPasswordRequirements = {
@@ -624,10 +650,21 @@ export type TPamAccessRequest = {
   grantStatus?: string | null;
 };
 
+export type TPamNotificationConfig = {
+  workflowIntegrationId: string;
+  channels: { id: string; name: string }[];
+  events: PamNotificationEvent[];
+};
+
 export type TPamApprovalConfig = {
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
+  notificationConfigs: (TPamNotificationConfig & {
+    id: string;
+    integration: string;
+    integrationSlug: string;
+  })[];
 };
 
 export type TPamAccessGrant = {
@@ -665,4 +702,5 @@ export type TSetPamApprovalConfigDTO = {
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
+  notificationConfigs?: TPamNotificationConfig[];
 };
