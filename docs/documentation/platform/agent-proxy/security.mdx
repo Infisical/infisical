@@ -56,3 +56,14 @@ Grant each identity the minimum permissions it needs with a [custom role](/docum
 The key thing to get right for the Agent Proxy: it needs **Read Value on every secret referenced by every service any of its agents use**, across the relevant environments and paths. If a referenced secret comes from a [secret import](/documentation/platform/agent-proxy/proxied-services#using-secrets-from-other-folders-and-environments), the read permission has to cover the secret's real location (the import source), not just the folder it is imported into. If a grant is missing, that credential is skipped.
 
 For a service that brokers a [dynamic secret](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets), the Agent Proxy identity needs `Manage Leases` on that dynamic secret. The agent identity must **not** have `Manage Leases` on it, or `agent-proxy connect` refuses to start.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment" icon="server" href="/documentation/platform/agent-proxy/deployment">
+    Take the Agent Proxy to production: placement, deployment methods, and HA.
+  </Card>
+  <Card title="Connecting Agents" icon="plug" href="/documentation/platform/agent-proxy/connecting-agents">
+    Launch an agent behind the proxy and control what its environment holds.
+  </Card>
+</CardGroup>
