@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
 export type TIdentityCredentialAlarmDALFactory = ReturnType<typeof identityCredentialAlarmDALFactory>;
@@ -35,12 +35,13 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
           `${TableName.IdentityUniversalAuth}.id`
         )
         .join(
-          TableName.IdentityOrgMembership,
+          TableName.Membership,
           `${TableName.IdentityUniversalAuth}.identityId`,
-          `${TableName.IdentityOrgMembership}.identityId`
+          `${TableName.Membership}.actorIdentityId`
         )
         .join(TableName.Identity, `${TableName.IdentityUniversalAuth}.identityId`, `${TableName.Identity}.id`)
-        .where(`${TableName.IdentityOrgMembership}.orgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.IdentityUaClientSecret}.isClientSecretRevoked`, false)
         .where(`${TableName.IdentityUaClientSecret}.clientSecretTTL`, ">", 0)
         .whereRaw(`${expiresAtSql} > NOW()`)
@@ -49,11 +50,12 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
       if (projectId) {
         void query
           .join(
-            TableName.IdentityProjectMembership,
+            { projectMembership: TableName.Membership },
             `${TableName.IdentityUniversalAuth}.identityId`,
-            `${TableName.IdentityProjectMembership}.identityId`
+            "projectMembership.actorIdentityId"
           )
-          .where(`${TableName.IdentityProjectMembership}.projectId`, projectId);
+          .where("projectMembership.scope", AccessScope.Project)
+          .where("projectMembership.scopeProjectId", projectId);
       }
 
       if (identityId) {
@@ -77,8 +79,8 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
 
   const isIdentityInOrg = async (identityId: string, orgId: string, tx?: Knex): Promise<boolean> => {
     try {
-      const row = (await (tx || db.replicaNode())(TableName.IdentityOrgMembership)
-        .where({ identityId, orgId })
+      const row = (await (tx || db.replicaNode())(TableName.Membership)
+        .where({ actorIdentityId: identityId, scopeOrgId: orgId, scope: AccessScope.Organization })
         .first()) as { id: string } | undefined;
       return Boolean(row);
     } catch (error) {
@@ -88,8 +90,8 @@ export const identityCredentialAlarmDALFactory = (db: TDbClient) => {
 
   const isIdentityInProject = async (identityId: string, projectId: string, tx?: Knex): Promise<boolean> => {
     try {
-      const row = (await (tx || db.replicaNode())(TableName.IdentityProjectMembership)
-        .where({ identityId, projectId })
+      const row = (await (tx || db.replicaNode())(TableName.Membership)
+        .where({ actorIdentityId: identityId, scopeProjectId: projectId, scope: AccessScope.Project })
         .first()) as { id: string } | undefined;
       return Boolean(row);
     } catch (error) {

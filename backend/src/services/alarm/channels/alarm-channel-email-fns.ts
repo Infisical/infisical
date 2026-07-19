@@ -22,6 +22,7 @@ const buildSubstitutions = (payload: TAlarmPayload) => ({
   eventLabel: payload.eventLabel,
   resourceKind: payload.resourceKind,
   summary: payload.summary,
+  severity: payload.severity,
   condition: payload.alarm.condition,
   viewUrl: payload.alarm.viewUrl,
   items: payload.items.map((item) => ({
@@ -38,7 +39,7 @@ const sendEmail = async (
 ): Promise<void> => {
   await smtpService.sendMail({
     recipients,
-    subjectLine: `Infisical ${payload.resourceKind} ${payload.eventLabel} Alert - ${payload.alarm.name}`,
+    subjectLine: `Infisical ${payload.resourceKind} ${payload.eventLabel} Alert`,
     substitutions: buildSubstitutions(payload),
     template: SmtpTemplates.AlarmNotification
   });

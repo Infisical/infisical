@@ -132,19 +132,31 @@ describe("identity credential alarm provider", () => {
 
   test("buildPayload produces neutral items and severity", async () => {
     const provider = buildProvider();
-    const target = { credentialType: "ua-client-secret" as const, ...sampleSecret({ expiresAt: futureDate(3) }) };
+    const expiresAt = futureDate(3);
+    const target = { credentialType: "ua-client-secret" as const, ...sampleSecret({ expiresAt }) };
     const viewUrl = await provider.buildViewUrl(alarmContext());
     const payload = provider.buildPayload(alarmContext(), [target], viewUrl);
 
     expect(payload.eventKey).toBe(IDENTITY_CREDENTIAL_EXPIRY_EVENT);
     expect(payload.severity).toBe("critical"); // 3 days out
-    expect(payload.items[0].fields?.some((f) => f.label === "Days Until Expiry")).toBe(true);
     expect(payload.alarm.viewUrl).toBe(viewUrl);
+
+    const item = payload.items[0];
+    expect(item.title).toBe("ci-runner");
+    expect(item.fields?.some((f) => f.label === "Days Until Expiry")).toBe(false);
+    expect(item.fields?.find((f) => f.label === "Secret Name")?.value).toBe("ci-secret");
+    expect(item.fields?.find((f) => f.label === "Secret Type")?.value).toBe("Universal Auth Client Secret");
+
+    const expires = item.fields?.find((f) => f.label === "Expires")?.value;
+    expect(expires).toContain(String(expiresAt.getUTCFullYear()));
+    expect(expires).toContain("UTC");
   });
 
-  test("buildViewUrl points to the org identities list for an org-scoped alarm", async () => {
+  test("buildViewUrl points to the org identities tab for an org-scoped alarm", async () => {
     const provider = buildProvider();
-    expect(await provider.buildViewUrl(alarmContext())).toContain("/organizations/org-1/identities");
+    expect(await provider.buildViewUrl(alarmContext())).toBe(
+      "https://app.infisical.com/organizations/org-1/access-management?selectedTab=identities"
+    );
   });
 
   test("buildViewUrl deep-links to the bound identity when resourceId is set (org scope)", async () => {
@@ -160,10 +172,12 @@ describe("identity credential alarm provider", () => {
     );
   });
 
-  test("buildViewUrl links to project access-management when no resource is bound", async () => {
+  test("buildViewUrl links to the project access-management identities tab when no resource is bound", async () => {
     const provider = buildProvider({ projectType: "kms" });
     const url = await provider.buildViewUrl(alarmContext({ projectId: "proj-1" }));
-    expect(url).toBe("https://app.infisical.com/organizations/org-1/projects/kms/proj-1/access-management");
+    expect(url).toBe(
+      "https://app.infisical.com/organizations/org-1/projects/kms/proj-1/access-management?selectedTab=identities"
+    );
   });
 
   test("buildViewUrl falls back to the org view when the project can't be resolved", async () => {

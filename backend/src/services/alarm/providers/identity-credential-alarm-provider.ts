@@ -32,6 +32,7 @@ const IdentityCredentialConditionSchema = z.object({
 type TIdentityCredentialTarget = { credentialType: "ua-client-secret" } & TExpiringUaClientSecret;
 
 const UNIT_TO_INTERVAL_WORD: Record<string, string> = { d: "days", w: "weeks", m: "months", y: "years" };
+const UNIT_TO_UNIT_WORD: Record<string, string> = { d: "day", w: "week", m: "month", y: "year" };
 const UNIT_TO_DAYS: Record<string, number> = { d: 1, w: 7, m: 30, y: 365 };
 
 const parseAlertBefore = (alertBefore: string) => {
@@ -43,7 +44,26 @@ const parseAlertBefore = (alertBefore: string) => {
   };
 };
 
+// "1d" -> "1 day", "30d" -> "30 days", "1w" -> "1 week"
+const humanizeAlertBefore = (alertBefore: string): string => {
+  const amount = parseInt(alertBefore.slice(0, -1), 10);
+  const unit = alertBefore.slice(-1);
+  const word = UNIT_TO_UNIT_WORD[unit] ?? unit;
+  return `${amount} ${word}${amount === 1 ? "" : "s"}`;
+};
+
 const daysUntil = (date: Date): number => Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+const formatExpiry = (date: Date): string =>
+  new Date(date).toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short"
+  });
 
 const severityFor = (targets: TIdentityCredentialTarget[]): TAlarmSeverity => {
   const minDays = Math.min(...targets.map((t) => daysUntil(t.expiresAt)));
@@ -71,7 +91,6 @@ export const identityCredentialAlarmProviderFactory = ({
       case ProjectType.SecretManager:
         return `${siteUrl}/organizations/${orgId}/projects/secret-management/${projectId}`;
       case ProjectType.PAM:
-        // PAM projects live at /organizations/$orgId/pam with no $projectId path segment.
         return `${siteUrl}/organizations/${orgId}/pam`;
       default:
         return `${siteUrl}/organizations/${orgId}/projects/${projectType}/${projectId}`;
@@ -86,12 +105,15 @@ export const identityCredentialAlarmProviderFactory = ({
       const projectType = await identityCredentialAlarmDAL.getProjectType(alarm.projectId);
       if (projectType) {
         const base = projectBaseUrl(siteUrl, alarm.orgId, projectType, alarm.projectId);
-        return alarm.resourceId ? `${base}/identities/${alarm.resourceId}` : `${base}/access-management`;
+        return alarm.resourceId
+          ? `${base}/identities/${alarm.resourceId}`
+          : `${base}/access-management?selectedTab=identities`;
       }
     }
 
-    const base = `${siteUrl}/organizations/${alarm.orgId}/identities`;
-    return alarm.resourceId ? `${base}/${alarm.resourceId}` : base;
+    return alarm.resourceId
+      ? `${siteUrl}/organizations/${alarm.orgId}/identities/${alarm.resourceId}`
+      : `${siteUrl}/organizations/${alarm.orgId}/access-management?selectedTab=identities`;
   };
 
   const findDueTargets = async (input: TFindDueTargetsInput): Promise<TIdentityCredentialTarget[]> => {
@@ -126,17 +148,15 @@ export const identityCredentialAlarmProviderFactory = ({
       resourceKind: "Identity Credential",
       severity: severityFor(targets),
       summary: alertBefore
-        ? `${targets.length} identity credential(s) expiring within ${alertBefore}`
+        ? `${targets.length} identity credential(s) expiring within ${humanizeAlertBefore(alertBefore)}`
         : `${targets.length} identity credential(s) expiring`,
       items: targets.map((target) => ({
         id: `${target.credentialType}:${target.id}`,
-        title: `${CREDENTIAL_TYPE_LABEL[target.credentialType]} — ${target.identityName}`,
-        identifier: target.description || target.clientSecretPrefix,
+        title: target.identityName,
         fields: [
-          { label: "Credential Type", value: CREDENTIAL_TYPE_LABEL[target.credentialType] },
-          { label: "Identity", value: target.identityName },
-          { label: "Expires", value: new Date(target.expiresAt).toISOString().split("T")[0] },
-          { label: "Days Until Expiry", value: String(daysUntil(target.expiresAt)) }
+          { label: "Secret Name", value: target.description || target.clientSecretPrefix },
+          { label: "Secret Type", value: CREDENTIAL_TYPE_LABEL[target.credentialType] },
+          { label: "Expires", value: formatExpiry(target.expiresAt) }
         ]
       }))
     };

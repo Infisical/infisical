@@ -65,7 +65,7 @@ export const alarmQueueServiceFactory = ({
 
     cronJob.register({
       name: CronJobName.DailyAlarmProcessing,
-      pattern: "0 0 * * *",
+      pattern: appCfg.isDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 60 * 60 * 24,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
