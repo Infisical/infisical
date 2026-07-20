@@ -33,6 +33,7 @@ export const RequestAccessModal = ({
   policies: TAccessApprovalPolicy[];
   selectedActions?: ProjectPermissionActions[];
   secretPath?: string;
+  environment?: string;
 }) => {
   const [isDirty, setIsDirty] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);

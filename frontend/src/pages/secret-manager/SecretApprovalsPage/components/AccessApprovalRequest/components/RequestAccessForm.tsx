@@ -447,11 +447,13 @@ export const RequestAccessForm = ({
   onSuccess,
   onDirtyChange,
   selectedActions = [],
-  secretPath: initialSecretPath
+  secretPath: initialSecretPath,
+  environment
 }: {
   policies: TAccessApprovalPolicy[];
   selectedActions?: ProjectPermissionActions[];
   secretPath?: string;
+  environment?: string;
   onClose?: () => void;
   onSuccess?: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -463,7 +465,7 @@ export const RequestAccessForm = ({
   const form = useForm<TRequestAccessForm>({
     resolver: zodResolver(requestAccessSchema),
     defaultValues: {
-      environmentSlug: currentProject.environments?.[0]?.slug,
+      environmentSlug: environment ?? currentProject.environments?.[0]?.slug,
       secretPath: initialSecretPath ?? "",
       resources: [{ subject: ProjectPermissionSub.Secrets, actions: selectedActions }],
       duration: { isTemporary: false, temporaryRange: "1h" },

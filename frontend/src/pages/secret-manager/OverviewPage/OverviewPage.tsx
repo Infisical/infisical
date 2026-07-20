@@ -3964,6 +3964,7 @@ const OverviewPageContent = () => {
           }}
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
           secretPath={pathPolicies[0].secretPath}
+          environment={singleEnvSlug}
         />
       )}
       {invitePopUp.inviteMembers.isOpen && (
