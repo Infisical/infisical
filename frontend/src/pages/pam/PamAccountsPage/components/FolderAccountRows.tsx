@@ -28,6 +28,7 @@ type Props = {
   filterActive: boolean;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onDeleteAccount: (target: DeleteTarget) => void;
+  onLaunchAccount: (accountId: string, accountType: PamAccountType) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
@@ -43,6 +44,7 @@ export const FolderAccountRows = ({
   filterActive,
   onOpenAccount,
   onDeleteAccount,
+  onLaunchAccount,
   onOpenFolder,
   onFolderAddAccount,
   onFolderDelete,
@@ -154,6 +156,7 @@ export const FolderAccountRows = ({
                         accountType
                       })
                     }
+                    onLaunch={() => onLaunchAccount(account.id, accountType)}
                   />
                 </div>
               </TableCell>

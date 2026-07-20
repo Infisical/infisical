@@ -54,7 +54,7 @@ export const getMigrationEncryptionServices = async ({
   envConfig,
   db,
   keyStore,
-  skipHsmLicenseCheck = false
+  skipHsmLicenseCheck = true
 }: TDependencies) => {
   // ----- DAL dependencies -----
   const orgDAL = orgDALFactory(db);

@@ -156,6 +156,7 @@
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/netscaler",
                       "integrations/app-connections/northflank",
+                      "integrations/app-connections/nutanix-prism-central",
                       "integrations/app-connections/ona",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/octopus-deploy",
@@ -536,6 +537,7 @@
                           "documentation/platform/secret-rotation/convex-access-key",
                           "documentation/platform/secret-rotation/databricks-service-principal-secret",
                           "documentation/platform/secret-rotation/datadog-application-key-secret",
+                          "documentation/platform/secret-rotation/datadog-api-key",
                           "documentation/platform/secret-rotation/dbt-service-token",
                           "documentation/platform/secret-rotation/fireworks-api-key",
                           "documentation/platform/secret-rotation/litellm-api-key",
@@ -626,6 +628,7 @@
                       "documentation/platform/agent-proxy/overview",
                       "documentation/platform/agent-proxy/quickstart",
                       "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/activity-logs",
                       "documentation/platform/agent-proxy/security"
                     ]
                   }
@@ -667,6 +670,15 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
+                      {
+                        "group": "Docker",
+                        "pages": [
+                          "integrations/platforms/docker-intro",
+                          "integrations/platforms/docker",
+                          "integrations/platforms/docker-pass-envs",
+                          "integrations/platforms/docker-compose"
+                        ]
+                      },
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
                       {
@@ -679,15 +691,6 @@
                         "pages": [
                           "integrations/platforms/infisical-agent",
                           "integrations/platforms/ecs-with-agent"
-                        ]
-                      },
-                      {
-                        "group": "Docker",
-                        "pages": [
-                          "integrations/platforms/docker-intro",
-                          "integrations/platforms/docker",
-                          "integrations/platforms/docker-pass-envs",
-                          "integrations/platforms/docker-compose"
                         ]
                       },
                       "integrations/frameworks/packer",
@@ -951,7 +954,8 @@
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
-                          "documentation/platform/pki/applications/certificate-syncs/windows-server"
+                          "documentation/platform/pki/applications/certificate-syncs/windows-server",
+                          "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central"
                         ]
                       }
                     ]
@@ -1999,6 +2003,18 @@
                       "api-reference/endpoints/app-connections/northflank/create",
                       "api-reference/endpoints/app-connections/northflank/update",
                       "api-reference/endpoints/app-connections/northflank/delete"
+                    ]
+                  },
+                  {
+                    "group": "Nutanix Prism Central",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/list",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/available",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/get-by-id",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/get-by-name",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/create",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/update",
+                      "api-reference/endpoints/app-connections/nutanix-prism-central/delete"
                     ]
                   },
                   {
@@ -3682,6 +3698,17 @@
                           "api-reference/endpoints/pki/syncs/windows-server/delete",
                           "api-reference/endpoints/pki/syncs/windows-server/sync-certificates",
                           "api-reference/endpoints/pki/syncs/windows-server/remove-certificates"
+                        ]
+                      },
+                      {
+                        "group": "Nutanix Prism Central",
+                        "pages": [
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/list",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/get-by-id",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/create",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/update",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/delete",
+                          "api-reference/endpoints/pki/syncs/nutanix-prism-central/sync-certificates"
                         ]
                       }
                     ]

@@ -1,1 +1,2 @@
-export * from "./ProxiedServiceForm";
+export * from "./CreateProxiedServiceForm";
+export * from "./EditProxiedServiceForm";

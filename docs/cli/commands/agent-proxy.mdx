@@ -113,6 +113,37 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
     infisical secrets agent-proxy start --client-id=<client-id> --client-secret=<client-secret>
     ```
   </Accordion>
+
+  <Accordion title="--log-format">
+    Output format for the proxy's logs, including [per-request activity](/documentation/platform/agent-proxy/activity-logs): `console` (human-readable, colorized in a terminal and plain otherwise) or `json` (machine). Logs are written to stderr.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --log-format=json
+    ```
+
+    Default value: `console`
+  </Accordion>
+
+  <Accordion title="--log-file">
+    Also write logs as `json` to this file, in addition to the console/json stream. Lets you watch the console and persist machine-readable logs at the same time. Rotate it with `logrotate` (`copytruncate`) or restart the proxy.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --log-file=/var/log/infisical/agent-proxy.log
+    ```
+  </Accordion>
+
+  <Accordion title="--log-level">
+    Controls how much is logged. Each [activity decision](/documentation/platform/agent-proxy/activity-logs) maps to a level (`passthrough`=debug, `brokered`=info, `blocked`=warn, `error`=error), so this doubles as the activity filter: `debug` shows everything, the default `info` hides passthrough, `warn` shows only blocked and errors.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --log-level=warn
+    ```
+
+    Default value: `info`
+  </Accordion>
 </Accordion>
 
 <Accordion title="infisical secrets agent-proxy connect">

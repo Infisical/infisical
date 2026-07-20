@@ -12,6 +12,7 @@ import { CloudflareCustomCertificatePkiSyncFields } from "./CloudflareCustomCert
 import { F5BigIpPkiSyncFields } from "./F5BigIpPkiSyncFields";
 import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
+import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
 
 export const PkiSyncDestinationFields = () => {
@@ -40,6 +41,8 @@ export const PkiSyncDestinationFields = () => {
       return <LinuxServerPkiSyncFields />;
     case PkiSync.WindowsServer:
       return <WindowsServerPkiSyncFields />;
+    case PkiSync.NutanixPrismCentral:
+      return <NutanixPrismCentralPkiSyncFields />;
     default:
       return (
         <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">

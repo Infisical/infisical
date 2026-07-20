@@ -9,6 +9,8 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
+import { SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -47,6 +49,7 @@ type TMembershipIdentityServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -62,7 +65,8 @@ export const membershipIdentityServiceFactory = ({
   licenseService,
   applicationMembershipCleanupService,
   projectDAL,
-  keyStore
+  keyStore,
+  usageMeteringService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -186,6 +190,10 @@ export const membershipIdentityServiceFactory = ({
       return doc;
     });
 
+    // Adding an identity to a project changes the secret-manager identity meter (a direct member).
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+    }
     return { membership };
   };
 
@@ -358,6 +366,14 @@ export const membershipIdentityServiceFactory = ({
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipIdentityDAL.transaction(performDelete);
+
+    // Removing an identity from a project drops a direct member; removing it from the org cascades its
+    // project + group memberships. Either way the secret-manager identity meter changes.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+    } else {
+      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+    }
     return { membership: membershipDoc };
   };
 

@@ -73,13 +73,6 @@ export const hostPatternSchema = z
     });
   });
 
-const DynamicSecretConfigSchema = z
-  .object({
-    namespace: z.string().trim().min(1).optional(),
-    principals: z.array(z.string().trim().min(1)).optional()
-  })
-  .strict();
-
 const CredentialInputSchema = z
   .object({
     secretKey: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
@@ -97,7 +90,6 @@ const CredentialInputSchema = z
       .max(255)
       .optional()
       .describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretField),
-    dynamicSecretConfig: DynamicSecretConfigSchema.optional().describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretConfig),
     role: z.nativeEnum(ProxiedServiceCredentialRole).describe(PROXIED_SERVICES.CREDENTIAL.role),
     headerName: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerName),
     headerPrefix: z.string().trim().max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerPrefix),
@@ -133,10 +125,10 @@ const CredentialInputSchema = z
           message: "dynamicSecretField is required when dynamicSecretName is set"
         });
       }
-    } else if (cred.dynamicSecretField || cred.dynamicSecretConfig) {
+    } else if (cred.dynamicSecretField) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "dynamicSecretField and dynamicSecretConfig are only valid with dynamicSecretName"
+        message: "dynamicSecretField is only valid with dynamicSecretName"
       });
     }
 
@@ -244,8 +236,7 @@ export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentials
   placeholderValue: true,
   substitutionSurfaces: true,
   dynamicSecretName: true,
-  dynamicSecretField: true,
-  dynamicSecretConfig: true
+  dynamicSecretField: true
 });
 
 export const SanitizedProxiedServiceCredentialWithLeaseAccessSchema = SanitizedProxiedServiceCredentialSchema.extend({

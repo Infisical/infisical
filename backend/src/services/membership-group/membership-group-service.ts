@@ -18,6 +18,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -53,6 +55,7 @@ type TMembershipGroupServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -70,7 +73,8 @@ export const membershipGroupServiceFactory = ({
   groupDAL,
   licenseService,
   applicationMembershipCleanupService,
-  projectDAL
+  projectDAL,
+  usageMeteringService
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -195,6 +199,10 @@ export const membershipGroupServiceFactory = ({
       return doc;
     });
 
+    // Assigning a group to a project brings the group's users + identities into it, changing the meter.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+    }
     return { membership, group };
   };
 
@@ -399,6 +407,11 @@ export const membershipGroupServiceFactory = ({
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipGroupDAL.transaction(performDelete);
+
+    // Removing a group from a project drops its users + identities from it, changing the meter.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+    }
     return { membership: membershipDoc, group };
   };
 

@@ -7,13 +7,18 @@ import {
   BillingV2CheckoutResult,
   BillingV2MutationResult,
   BillingV2Preview,
+  BillingV2TrialCancelResult,
+  BillingV2TrialResult,
   TAddBillingV2PaymentMethodDTO,
   TAddBillingV2ProductDTO,
   TBillingV2LifecycleDTO,
+  TCancelBillingV2TrialDTO,
+  TChangeBillingV2CommitmentDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
   TPreviewBillingV2ChangeDTO,
-  TRemoveBillingV2ProductDTO
+  TRemoveBillingV2ProductDTO,
+  TStartBillingV2TrialDTO
 } from "./types";
 
 export const useCreateBillingV2PortalSession = () => {
@@ -38,12 +43,13 @@ export const useCreateBillingV2CheckoutSession = () => {
       productId,
       plan,
       cadence,
+      commitments,
       email,
       returnPath
     }: TCreateBillingV2CheckoutSessionDTO) => {
       const { data } = await apiRequest.post<BillingV2CheckoutResult>(
         `/api/v1/organizations/${orgId}/billing/v2/checkout-session`,
-        { productId, plan, cadence, email, returnPath }
+        { productId, plan, cadence, commitments, email, returnPath }
       );
 
       return data;
@@ -75,13 +81,15 @@ export const usePreviewBillingV2Change = () => {
       addProductId,
       plan,
       cadence,
-      removeProductId
+      commitments,
+      removeProductId,
+      commitmentChanges
     }: TPreviewBillingV2ChangeDTO) => {
       const {
         data: { preview }
       } = await apiRequest.post<{ preview: BillingV2Preview }>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/preview`,
-        { addProductId, plan, cadence, removeProductId }
+        { addProductId, plan, cadence, commitments, removeProductId, commitmentChanges }
       );
 
       return preview;
@@ -92,10 +100,71 @@ export const usePreviewBillingV2Change = () => {
 export const useAddBillingV2Product = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, productId, plan, cadence }: TAddBillingV2ProductDTO) => {
+    mutationFn: async ({
+      orgId,
+      productId,
+      plan,
+      cadence,
+      commitments
+    }: TAddBillingV2ProductDTO) => {
       const { data } = await apiRequest.post<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/items`,
-        { productId, plan, cadence }
+        { productId, plan, cadence, commitments }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+// Apply one or more previewed per_resource commitment changes (the backend loops per dimension).
+export const useChangeBillingV2Commitment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, changes }: TChangeBillingV2CommitmentDTO) => {
+      const { data } = await apiRequest.post<BillingV2MutationResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
+        { changes }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+// Start a plan-scoped self-serve trial. The trial is granted immediately; cardSetupUrl (when present)
+// is a best-effort Stripe setup checkout the caller redirects to for adding a card.
+export const useStartBillingV2Trial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId, plan }: TStartBillingV2TrialDTO) => {
+      const { data } = await apiRequest.post<BillingV2TrialResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial`,
+        { productId, plan }
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+// Cancel an in-progress trial for a product (product drops to free; the trial never converts).
+export const useCancelBillingV2Trial = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId, productId }: TCancelBillingV2TrialDTO) => {
+      const { data } = await apiRequest.post<BillingV2TrialCancelResult>(
+        `/api/v1/organizations/${orgId}/billing/v2/trial/cancel`,
+        { productId }
       );
 
       return data;

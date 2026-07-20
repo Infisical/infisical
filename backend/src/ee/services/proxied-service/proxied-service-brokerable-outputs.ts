@@ -1,18 +1,23 @@
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
 
-// Providers/fields a proxied service can broker over HTTP; anything not listed is blocked.
+// Providers a proxied service can broker over HTTP, with the eligible output fields.
+// A provider not listed can't be brokered; a field not listed is blocked (e.g. metadata).
 // keep in sync with frontend/src/components/proxied-services/forms/brokerableDynamicSecrets.ts
-export const BROKERABLE_DYNAMIC_SECRET_OUTPUTS: Partial<Record<DynamicSecretProviders, string[]>> = {
-  [DynamicSecretProviders.Kubernetes]: ["TOKEN"],
-  [DynamicSecretProviders.Github]: ["TOKEN"],
-  [DynamicSecretProviders.GcpIam]: ["TOKEN"],
-  [DynamicSecretProviders.IbmApiConnect]: ["CLIENT_ID", "CLIENT_SECRET"],
-  [DynamicSecretProviders.ElasticSearch]: ["DB_USERNAME", "DB_PASSWORD"],
-  [DynamicSecretProviders.Clickhouse]: ["DB_USERNAME", "DB_PASSWORD"],
-  [DynamicSecretProviders.Couchbase]: ["username", "password"],
-  [DynamicSecretProviders.RabbitMq]: ["DB_USERNAME", "DB_PASSWORD"],
-  [DynamicSecretProviders.Snowflake]: ["DB_USERNAME", "DB_PASSWORD"],
-  [DynamicSecretProviders.Milvus]: ["DB_USERNAME", "DB_PASSWORD"],
-  [DynamicSecretProviders.AzureEntraID]: ["email", "password"],
-  [DynamicSecretProviders.Totp]: ["TOTP"]
+type TBrokerableDynamicSecret = {
+  fields: string[];
+};
+
+export const BROKERABLE_DYNAMIC_SECRETS: Partial<Record<DynamicSecretProviders, TBrokerableDynamicSecret>> = {
+  [DynamicSecretProviders.Kubernetes]: { fields: ["TOKEN"] },
+  [DynamicSecretProviders.Github]: { fields: ["TOKEN"] },
+  [DynamicSecretProviders.GcpIam]: { fields: ["TOKEN"] },
+  [DynamicSecretProviders.IbmApiConnect]: { fields: ["CLIENT_ID", "CLIENT_SECRET"] },
+  [DynamicSecretProviders.ElasticSearch]: { fields: ["DB_USERNAME", "DB_PASSWORD"] },
+  [DynamicSecretProviders.Clickhouse]: { fields: ["DB_USERNAME", "DB_PASSWORD"] },
+  [DynamicSecretProviders.Couchbase]: { fields: ["username", "password"] },
+  [DynamicSecretProviders.RabbitMq]: { fields: ["DB_USERNAME", "DB_PASSWORD"] },
+  [DynamicSecretProviders.Snowflake]: { fields: ["DB_USERNAME", "DB_PASSWORD"] },
+  [DynamicSecretProviders.Milvus]: { fields: ["DB_USERNAME", "DB_PASSWORD"] },
+  [DynamicSecretProviders.AzureEntraID]: { fields: ["email", "password"] },
+  [DynamicSecretProviders.Totp]: { fields: ["TOTP"] }
 };

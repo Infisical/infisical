@@ -166,9 +166,9 @@ describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
     );
   });
 
-  it("rejects a static credential that also sets a dynamic field/config", () => {
+  it("rejects a static credential that also sets a dynamic field", () => {
     expect(errorsOf([{ ...bearerHeader, secretKey: "K", dynamicSecretField: "DB_PASSWORD" }])).toContain(
-      "dynamicSecretField and dynamicSecretConfig are only valid with dynamicSecretName"
+      "dynamicSecretField is only valid with dynamicSecretName"
     );
   });
 

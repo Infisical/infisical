@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
 import { Button, FilterableSelect, FormControl, IconButton, Input } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -65,6 +66,9 @@ export const GcpIamInputForm = ({
   projectSlug,
   isSingleEnvironmentMode
 }: Props) => {
+  const { currentOrg } = useOrganization();
+  const expectedAccountIdSuffix = currentOrg.id.split("-").slice(0, 2).join("-");
+
   const {
     control,
     formState: { isSubmitting },
@@ -186,6 +190,7 @@ export const GcpIamInputForm = ({
                     className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
+                    tooltipText={`The service account ID (the part of the email before "@") must end with the first two sections of your organization ID: "${expectedAccountIdSuffix}". Example: my-service-account-${expectedAccountIdSuffix}@my-project.iam.gserviceaccount.com`}
                     helperText={
                       <span>
                         Don&apos;t know where to get this value?{" "}
