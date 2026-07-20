@@ -464,7 +464,7 @@ export const EditDynamicSecretAwsIamForm = ({
                       isError={Boolean(error?.message)}
                       isOptional
                       errorText={error?.message}
-                      helperText="Session policies: leased credentials are limited to the intersection of the role's permissions and these managed policies. They can only restrict, never add, permissions. Up to 10 ARNs, comma-separated."
+                      helperText="Leased credentials are limited to the intersection of the role's permissions and these managed policies. They can only restrict, never add, permissions. Up to 10 ARNs, comma-separated."
                     >
                       <Input {...field} />
                     </FormControl>
