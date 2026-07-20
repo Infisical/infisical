@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { subscriptionQueryKeys } from "../subscriptions/queries";
 import { billingV2Keys } from "./queries";
 import {
   BillingV2CheckoutResult,
@@ -20,7 +21,6 @@ import {
   TRemoveBillingV2ProductDTO,
   TStartBillingV2TrialDTO
 } from "./types";
-import { subscriptionQueryKeys } from "../subscriptions/queries";
 
 export const useCreateBillingV2PortalSession = () => {
   return useMutation({
