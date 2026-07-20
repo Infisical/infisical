@@ -15,55 +15,84 @@ type TResolvableRecipient = { principalType: string; principalId: string };
 export type TAlarmRecipientResolver = ReturnType<typeof alarmRecipientResolverFactory>;
 
 export const alarmRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL }: TAlarmRecipientResolverDep) => {
-  const resolve = async (recipients: TResolvableRecipient[]): Promise<TAlarmRecipient[]> => {
-    const userIds = new Set<string>();
-    const groupIds = new Set<string>();
-    const rawEmails = new Set<string>();
-
-    for (const recipient of recipients) {
-      switch (recipient.principalType) {
-        case AlarmPrincipalType.USER:
-          userIds.add(recipient.principalId);
-          break;
-        case AlarmPrincipalType.GROUP:
-          groupIds.add(recipient.principalId);
-          break;
-        case AlarmPrincipalType.EMAIL:
-          rawEmails.add(recipient.principalId.toLowerCase());
-          break;
-        default:
-          logger.warn(`Unknown alarm recipient principal type '${recipient.principalType}'`);
+  const resolveMany = async (
+    rowsByChannel: Map<string, TResolvableRecipient[]>
+  ): Promise<Map<string, TAlarmRecipient[]>> => {
+    const allGroupIds = new Set<string>();
+    const allUserIds = new Set<string>();
+    for (const rows of rowsByChannel.values()) {
+      for (const recipient of rows) {
+        if (recipient.principalType === AlarmPrincipalType.GROUP) allGroupIds.add(recipient.principalId);
+        else if (recipient.principalType === AlarmPrincipalType.USER) allUserIds.add(recipient.principalId);
       }
     }
 
-    if (groupIds.size > 0) {
-      const memberships = await userGroupMembershipDAL.find({ $in: { groupId: [...groupIds] } });
-      memberships.forEach((membership) => userIds.add(membership.userId));
+    const groupMembers = new Map<string, string[]>();
+    if (allGroupIds.size > 0) {
+      const memberships = await userGroupMembershipDAL.find({ $in: { groupId: [...allGroupIds] } });
+      memberships.forEach((membership) => {
+        const list = groupMembers.get(membership.groupId) ?? [];
+        list.push(membership.userId);
+        groupMembers.set(membership.groupId, list);
+        allUserIds.add(membership.userId);
+      });
     }
 
-    const resolved: TAlarmRecipient[] = [];
-    const seenEmails = new Set<string>();
-
-    if (userIds.size > 0) {
-      const users = await userDAL.find({ $in: { id: [...userIds] } });
-      users
-        .filter((user) => Boolean(user.email))
-        .forEach((user) => {
-          const email = user.email as string;
-          seenEmails.add(email.toLowerCase());
-          resolved.push({ userId: user.id, email, firstName: user.firstName });
-        });
+    const usersById = new Map<string, Awaited<ReturnType<typeof userDAL.find>>[number]>();
+    if (allUserIds.size > 0) {
+      const users = await userDAL.find({ $in: { id: [...allUserIds] } });
+      users.forEach((user) => usersById.set(user.id, user));
     }
 
-    rawEmails.forEach((email) => {
-      if (!seenEmails.has(email)) {
-        seenEmails.add(email);
-        resolved.push({ email });
+    const result = new Map<string, TAlarmRecipient[]>();
+    for (const [channelId, rows] of rowsByChannel.entries()) {
+      const userIds = new Set<string>();
+      const rawEmails = new Set<string>();
+
+      for (const recipient of rows) {
+        switch (recipient.principalType) {
+          case AlarmPrincipalType.USER:
+            userIds.add(recipient.principalId);
+            break;
+          case AlarmPrincipalType.GROUP:
+            (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
+            break;
+          case AlarmPrincipalType.EMAIL:
+            rawEmails.add(recipient.principalId.toLowerCase());
+            break;
+          default:
+            logger.warn(`Unknown alarm recipient principal type '${recipient.principalType}'`);
+        }
       }
-    });
 
-    return resolved;
+      const resolved: TAlarmRecipient[] = [];
+      const seenEmails = new Set<string>();
+
+      userIds.forEach((userId) => {
+        const user = usersById.get(userId);
+        if (user?.email) {
+          seenEmails.add(user.email.toLowerCase());
+          resolved.push({ userId: user.id, email: user.email, firstName: user.firstName });
+        }
+      });
+
+      rawEmails.forEach((email) => {
+        if (!seenEmails.has(email)) {
+          seenEmails.add(email);
+          resolved.push({ email });
+        }
+      });
+
+      result.set(channelId, resolved);
+    }
+
+    return result;
   };
 
-  return { resolve };
+  const resolve = async (recipients: TResolvableRecipient[]): Promise<TAlarmRecipient[]> => {
+    const resolved = await resolveMany(new Map([["", recipients]]));
+    return resolved.get("") ?? [];
+  };
+
+  return { resolve, resolveMany };
 };

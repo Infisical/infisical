@@ -23,7 +23,7 @@ export type TAlarmEngineDep = {
   alarmChannelRecipientDAL: Pick<TAlarmChannelRecipientDALFactory, "findByChannelIds">;
   alarmHistoryDAL: Pick<TAlarmHistoryDALFactory, "createWithTargets" | "findRecentlyAlarmedTargets">;
   alarmProviderRegistry: TAlarmProviderRegistry;
-  alarmRecipientResolver: TAlarmRecipientResolver;
+  alarmRecipientResolver: Pick<TAlarmRecipientResolver, "resolveMany">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -132,7 +132,7 @@ export const alarmEngineFactory = ({
     const directedChannelIds = channelWork
       .filter((work) => ALARM_CHANNEL_REGISTRY[work.channel.channelType as AlarmChannelType]?.directed)
       .map((work) => work.channel.id);
-    const recipientsByChannel = new Map<string, TAlarmRecipient[]>();
+    let recipientsByChannel = new Map<string, TAlarmRecipient[]>();
     if (directedChannelIds.length) {
       const recipientRows = await alarmChannelRecipientDAL.findByChannelIds(directedChannelIds);
       const rowsByChannel = new Map<string, { principalType: string; principalId: string }[]>();
@@ -141,11 +141,7 @@ export const alarmEngineFactory = ({
         list.push(row);
         rowsByChannel.set(row.channelId, list);
       });
-      await Promise.all(
-        [...rowsByChannel.entries()].map(async ([channelId, rows]) => {
-          recipientsByChannel.set(channelId, await alarmRecipientResolver.resolve(rows));
-        })
-      );
+      recipientsByChannel = await alarmRecipientResolver.resolveMany(rowsByChannel);
     }
 
     const deps: TAlarmChannelDeps = { smtpService };

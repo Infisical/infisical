@@ -32,9 +32,21 @@ export const alarmChannelMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countByChannelId = async (channelId: string, tx?: Knex): Promise<number> => {
+    try {
+      const [row] = await (tx || db.replicaNode())(TableName.AlarmChannelMembership)
+        .where(`${TableName.AlarmChannelMembership}.channelId`, channelId)
+        .count({ count: "*" });
+      return Number((row as { count?: string | number })?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountByChannelId" });
+    }
+  };
+
   return {
     ...alarmChannelMembershipOrm,
     findByAlarmId,
-    deleteByAlarmId
+    deleteByAlarmId,
+    countByChannelId
   };
 };

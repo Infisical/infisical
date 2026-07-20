@@ -93,8 +93,7 @@ const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
       }
     },
     alarmChannelMembershipDAL: {
-      find: async ({ channelId }: { channelId: string }) =>
-        Array.from({ length: memberships.get(channelId) ?? 0 }, (_, i) => ({ id: `m${i}` }))
+      countByChannelId: async (channelId: string) => memberships.get(channelId) ?? 0
     },
     kmsService: kmsServiceMock,
     permissionService: {

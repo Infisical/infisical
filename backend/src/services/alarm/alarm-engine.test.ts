@@ -116,7 +116,10 @@ const buildEngine = (opts: {
     },
     alarmProviderRegistry: registry,
     alarmRecipientResolver: {
-      resolve: async () => opts.recipients ?? [{ userId: "u1", email: "user@example.com", firstName: "U" }]
+      resolveMany: async (rowsByChannel: Map<string, unknown[]>) => {
+        const resolved = opts.recipients ?? [{ userId: "u1", email: "user@example.com", firstName: "U" }];
+        return new Map([...rowsByChannel.keys()].map((channelId) => [channelId, resolved]));
+      }
     },
     kmsService: kmsServiceMock,
     orgDAL: { findOrgMembersByRole: async () => [] },

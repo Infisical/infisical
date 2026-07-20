@@ -31,7 +31,7 @@ import { ALARM_CHANNEL_REGISTRY } from "./channels/alarm-channel-registry";
 export type TAlarmChannelServiceFactoryDep = {
   alarmChannelDAL: TAlarmChannelDALFactory;
   alarmChannelRecipientDAL: TAlarmChannelRecipientDALFactory;
-  alarmChannelMembershipDAL: Pick<TAlarmChannelMembershipDALFactory, "find">;
+  alarmChannelMembershipDAL: Pick<TAlarmChannelMembershipDALFactory, "countByChannelId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
@@ -190,10 +190,7 @@ export const alarmChannelServiceFactory = ({
     return merged;
   };
 
-  const $countUsage = async (channelId: string): Promise<number> => {
-    const memberships = await alarmChannelMembershipDAL.find({ channelId });
-    return memberships.length;
-  };
+  const $countUsage = (channelId: string): Promise<number> => alarmChannelMembershipDAL.countByChannelId(channelId);
 
   const $buildDetail = (
     channel: {
