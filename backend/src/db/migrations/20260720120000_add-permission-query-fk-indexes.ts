@@ -49,50 +49,53 @@ export async function up(knex: Knex): Promise<void> {
     return res.rows.length > 0;
   };
 
-  const stmtResult = await raw("SHOW statement_timeout");
-  const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
-  const lockResult = await raw("SHOW lock_timeout");
-  const originalLockTimeout = lockResult.rows[0].lock_timeout;
-
   try {
-    await raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
-    await raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
+    const stmtResult = await raw("SHOW statement_timeout");
+    const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
+    const lockResult = await raw("SHOW lock_timeout");
+    const originalLockTimeout = lockResult.rows[0].lock_timeout;
 
-    for (const { table, indexes } of INDEX_GROUPS) {
-      // eslint-disable-next-line no-await-in-loop
-      if (!(await hasTable(table))) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
+    try {
+      await raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
+      await raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
 
-      for (const { name, column, partial } of indexes) {
+      for (const { table, indexes } of INDEX_GROUPS) {
         // eslint-disable-next-line no-await-in-loop
-        if (!(await hasColumn(table, column))) {
+        if (!(await hasTable(table))) {
           // eslint-disable-next-line no-continue
           continue;
         }
 
-        // A cancelled or failed CREATE INDEX CONCURRENTLY leaves behind an INVALID index.
-        // eslint-disable-next-line no-await-in-loop
-        const invalid = await raw(
-          `SELECT 1 FROM pg_class c JOIN pg_index i ON i.indexrelid = c.oid WHERE c.relname = '${name}' AND NOT i.indisvalid`
-        );
-        if (invalid.rows.length > 0) {
+        for (const { name, column, partial } of indexes) {
           // eslint-disable-next-line no-await-in-loop
-          await raw(`DROP INDEX CONCURRENTLY IF EXISTS "${name}"`);
-        }
+          if (!(await hasColumn(table, column))) {
+            // eslint-disable-next-line no-continue
+            continue;
+          }
 
-        // eslint-disable-next-line no-await-in-loop
-        await raw(
-          `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}" ON ${table} ("${column}")${
-            partial ? ` WHERE "${column}" IS NOT NULL` : ""
-          }`
-        );
+          // A cancelled or failed CREATE INDEX CONCURRENTLY leaves behind an INVALID index.
+          // eslint-disable-next-line no-await-in-loop
+          const invalid = await raw(
+            `SELECT 1 FROM pg_class c JOIN pg_index i ON i.indexrelid = c.oid WHERE c.relname = '${name}' AND NOT i.indisvalid`
+          );
+          if (invalid.rows.length > 0) {
+            // eslint-disable-next-line no-await-in-loop
+            await raw(`DROP INDEX CONCURRENTLY IF EXISTS "${name}"`);
+          }
+
+          // eslint-disable-next-line no-await-in-loop
+          await raw(
+            `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}" ON ${table} ("${column}")${
+              partial ? ` WHERE "${column}" IS NOT NULL` : ""
+            }`
+          );
+        }
       }
+    } finally {
+      await raw(`SET statement_timeout = '${originalStatementTimeout}'`);
+      await raw(`SET lock_timeout = '${originalLockTimeout}'`);
     }
   } finally {
-    await raw(`SET statement_timeout = '${originalStatementTimeout}'`);
-    await raw(`SET lock_timeout = '${originalLockTimeout}'`);
     await knex.client.releaseConnection(connection);
   }
 }
