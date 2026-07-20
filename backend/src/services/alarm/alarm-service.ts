@@ -244,19 +244,17 @@ export const alarmServiceFactory = ({
     }
 
     const { updated, channels } = await alarmDAL.transaction(async (tx) => {
-      const updatedAlarm = await alarmDAL.updateById(
-        alarm.id,
-        {
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.description !== undefined ? { description: dto.description } : {}),
-          ...(dto.condition !== undefined
-            ? { condition: dto.condition != null ? JSON.stringify(dto.condition) : null }
-            : {}),
-          ...(dto.filters !== undefined ? { filters: dto.filters != null ? JSON.stringify(dto.filters) : null } : {}),
-          ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
-        },
-        tx
-      );
+      const patch = {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        ...(dto.condition !== undefined
+          ? { condition: dto.condition != null ? JSON.stringify(dto.condition) : null }
+          : {}),
+        ...(dto.filters !== undefined ? { filters: dto.filters != null ? JSON.stringify(dto.filters) : null } : {}),
+        ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
+      };
+
+      const updatedAlarm = Object.keys(patch).length > 0 ? await alarmDAL.updateById(alarm.id, patch, tx) : alarm;
 
       if (dto.channelIds !== undefined) {
         await alarmChannelMembershipDAL.deleteByAlarmId(alarm.id, tx);

@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TableName } from "../schemas";
+import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.Alarm))) {
@@ -27,6 +28,8 @@ export async function up(knex: Knex): Promise<void> {
       t.index("createdByUserId");
       t.index(["resourceType", "enabled"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.Alarm);
   }
 
   // Channels are standalone, reusable delivery destinations scoped to an org (projectId null) or a
@@ -51,6 +54,8 @@ export async function up(knex: Knex): Promise<void> {
       t.index("projectId");
       t.index("createdByUserId");
     });
+
+    await createOnUpdateTrigger(knex, TableName.AlarmChannel);
   }
 
   // Recipients belong to the channel (directed channels such as Email), so a shared channel is
@@ -67,6 +72,8 @@ export async function up(knex: Knex): Promise<void> {
       t.index("channelId");
       t.unique(["channelId", "principalType", "principalId"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.AlarmChannelRecipient);
   }
 
   // Many-to-many between alarms and channels. The count of rows for a channel powers the "used by N
@@ -84,6 +91,8 @@ export async function up(knex: Knex): Promise<void> {
       t.index("channelId");
       t.unique(["alarmId", "channelId"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.AlarmChannelMembership);
   }
 
   if (!(await knex.schema.hasTable(TableName.AlarmHistory))) {
@@ -103,6 +112,8 @@ export async function up(knex: Knex): Promise<void> {
       // filtering happens on alarm_history_target, so status is not part of this index.
       t.index(["alarmId", "triggeredAt"]);
     });
+
+    await createOnUpdateTrigger(knex, TableName.AlarmHistory);
   }
 
   if (!(await knex.schema.hasTable(TableName.AlarmHistoryTarget))) {
@@ -124,26 +135,34 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["alarmHistoryId", "targetId"]);
       t.index("channelId");
     });
+
+    await createOnUpdateTrigger(knex, TableName.AlarmHistoryTarget);
   }
 }
 
 export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.AlarmHistoryTarget)) {
+    await dropOnUpdateTrigger(knex, TableName.AlarmHistoryTarget);
     await knex.schema.dropTable(TableName.AlarmHistoryTarget);
   }
   if (await knex.schema.hasTable(TableName.AlarmHistory)) {
+    await dropOnUpdateTrigger(knex, TableName.AlarmHistory);
     await knex.schema.dropTable(TableName.AlarmHistory);
   }
   if (await knex.schema.hasTable(TableName.AlarmChannelMembership)) {
+    await dropOnUpdateTrigger(knex, TableName.AlarmChannelMembership);
     await knex.schema.dropTable(TableName.AlarmChannelMembership);
   }
   if (await knex.schema.hasTable(TableName.AlarmChannelRecipient)) {
+    await dropOnUpdateTrigger(knex, TableName.AlarmChannelRecipient);
     await knex.schema.dropTable(TableName.AlarmChannelRecipient);
   }
   if (await knex.schema.hasTable(TableName.AlarmChannel)) {
+    await dropOnUpdateTrigger(knex, TableName.AlarmChannel);
     await knex.schema.dropTable(TableName.AlarmChannel);
   }
   if (await knex.schema.hasTable(TableName.Alarm)) {
+    await dropOnUpdateTrigger(knex, TableName.Alarm);
     await knex.schema.dropTable(TableName.Alarm);
   }
 }

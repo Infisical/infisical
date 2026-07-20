@@ -86,6 +86,8 @@ const buildService = (opts?: {
         );
       },
       updateById: async (id: string, data: Record<string, unknown>) => {
+        // Mirror knex, which throws "Empty .update() call detected!" on an empty patch.
+        if (Object.keys(data).length === 0) throw new Error("Empty .update() call detected!");
         alarms.set(id, { ...alarms.get(id), ...data });
         return alarms.get(id);
       },
