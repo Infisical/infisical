@@ -58,8 +58,8 @@ import { QuickSearchSecretItem } from "./QuickSearchSecretItem";
 import {
   MetadataMatchType,
   MetadataSearchCondition,
-  SecretMetadataSearchInput
-} from "./SecretMetadataSearchInput";
+  SecretMetadataSearchBuilder
+} from "./SecretMetadataSearchBuilder";
 
 export type QuickSearchModalProps = {
   environments: ProjectEnv[];
@@ -116,6 +116,16 @@ const Content = ({
   const [metadataMatch, setMetadataMatch] = useState<MetadataMatchType>("all");
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const conditionIdRef = useRef(0);
+
+  const createCondition = (): MetadataSearchCondition => {
+    conditionIdRef.current += 1;
+    return {
+      id: `cond-${conditionIdRef.current}`,
+      key: "",
+      value: "",
+      operator: SecretMetadataSearchOperator.Is
+    };
+  };
 
   const activeConditions = useMemo(
     () => metadataConditions.filter((condition) => condition.key.trim() && condition.value.trim()),
@@ -268,38 +278,19 @@ const Content = ({
 
   const handleOpenMetadata = () => {
     setIsBuilderOpen(true);
+    setMetadataConditions((prev) => (prev.length ? prev : [createCondition()]));
   };
 
-  const handleAddCondition = (
-    key: string,
-    value: string,
-    operator: SecretMetadataSearchOperator
-  ) => {
-    setMetadataConditions((prev) => {
-      // ignore exact duplicates, but allow the same key/value with a different operator
-      if (
-        prev.some(
-          (condition) =>
-            condition.key === key && condition.value === value && condition.operator === operator
-        )
-      ) {
-        return prev;
-      }
-      conditionIdRef.current += 1;
-      return [...prev, { id: `cond-${conditionIdRef.current}`, key, value, operator }];
-    });
+  const handleAddCondition = () => {
+    setMetadataConditions((prev) => [...prev, createCondition()]);
   };
 
-  const handleEditCondition = (
+  const handleUpdateCondition = (
     id: string,
-    key: string,
-    value: string,
-    operator: SecretMetadataSearchOperator
+    patch: Partial<Pick<MetadataSearchCondition, "key" | "value">>
   ) => {
     setMetadataConditions((prev) =>
-      prev.map((condition) =>
-        condition.id === id ? { ...condition, key, value, operator } : condition
-      )
+      prev.map((condition) => (condition.id === id ? { ...condition, ...patch } : condition))
     );
   };
 
@@ -479,7 +470,7 @@ const Content = ({
 
       <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto pt-4">
         {isBuilderOpen && (
-          <SecretMetadataSearchInput
+          <SecretMetadataSearchBuilder
             conditions={metadataConditions}
             match={metadataMatch}
             matchingCount={metadataResultCount}
@@ -487,7 +478,7 @@ const Content = ({
             hasActiveConditions={isMetadataMode}
             onChangeMatch={setMetadataMatch}
             onAddCondition={handleAddCondition}
-            onEditCondition={handleEditCondition}
+            onUpdateCondition={handleUpdateCondition}
             onRemoveCondition={handleRemoveCondition}
             onClear={handleClearMetadata}
             onClose={handleCloseBuilder}
