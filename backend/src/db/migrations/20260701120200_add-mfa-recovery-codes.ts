@@ -24,12 +24,7 @@ const startRootEncryptor = async (knex: Knex) => {
   const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
   const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
   const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({
-    envConfig,
-    keyStore,
-    db: knex,
-    skipHsmLicenseCheck: true
-  });
+  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   return kmsService.encryptWithRootKey();
 };
 
