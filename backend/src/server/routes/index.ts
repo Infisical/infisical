@@ -1168,7 +1168,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     orgMembershipDAL,
     membershipRoleDAL,
-    membershipGroupDAL
+    membershipGroupDAL,
+    usageMeteringService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1197,7 +1198,8 @@ export const registerRoutes = async (
     membershipUserDAL,
     totpConfigDAL,
     webAuthnCredentialDAL,
-    mfaRecoveryCodeService
+    mfaRecoveryCodeService,
+    usageMeteringService
   });
 
   const totpService = totpServiceFactory({
@@ -1363,7 +1365,8 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     permissionService,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    usageMeteringService
   });
 
   const signupService = authSignupServiceFactory({
@@ -1407,7 +1410,8 @@ export const registerRoutes = async (
     tokenService,
     membershipIdentityDAL,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    usageMeteringService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -1707,7 +1711,8 @@ export const registerRoutes = async (
     projectDAL,
     membershipDAL,
     membershipRoleDAL,
-    keyStore
+    keyStore,
+    usageMeteringService
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);

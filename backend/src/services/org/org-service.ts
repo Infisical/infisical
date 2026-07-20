@@ -733,6 +733,9 @@ export const orgServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
+    // The PAM bootstrap above seeds the creator as a project member, which changes the pam_identities meter.
+    usageMeteringService.emit(organization.id, PamIdentities.key);
+
     return organization;
   };
 
