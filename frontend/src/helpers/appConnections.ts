@@ -709,6 +709,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
@@ -726,8 +727,9 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
-    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+    case DatadogConnectionMethod.Token:
+      return { name: "Service Access Token", icon: faKey };
     case SshConnectionMethod.Password:
       return { name: "Password", icon: faLock };
     case SshConnectionMethod.SshKey:

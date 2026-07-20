@@ -6,6 +6,7 @@ import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { ConvexAccessKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/convex-access-key";
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DatadogApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-api-key";
 import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
@@ -54,6 +55,7 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   SupabaseApiKeyRotationListItemSchema,
   SalesforceOauthCredentialsRotationListItemSchema,
   DatadogApplicationKeySecretRotationListItemSchema,
+  DatadogApiKeyRotationListItemSchema,
   ConvexAccessKeyRotationListItemSchema,
   FireworksApiKeyRotationListItemSchema
 ]);

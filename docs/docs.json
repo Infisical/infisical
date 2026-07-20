@@ -537,6 +537,7 @@
                           "documentation/platform/secret-rotation/convex-access-key",
                           "documentation/platform/secret-rotation/databricks-service-principal-secret",
                           "documentation/platform/secret-rotation/datadog-application-key-secret",
+                          "documentation/platform/secret-rotation/datadog-api-key",
                           "documentation/platform/secret-rotation/dbt-service-token",
                           "documentation/platform/secret-rotation/fireworks-api-key",
                           "documentation/platform/secret-rotation/litellm-api-key",
