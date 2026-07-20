@@ -21,6 +21,7 @@ describe("PasswordPolicySchema", () => {
     "12345678901234!",
     "abcdefghijklmn",
     "Password!!!!7",
+    "Strong😀😀😀😀7",
     "Password\\escape7",
     "user@example.com-Password7",
     ["StrongPass123!", "https://example.com"].join("")
@@ -33,6 +34,10 @@ describe("PasswordPolicySchema", () => {
     const result = PasswordPolicySchema.parse(password);
 
     expect(result).toBe(password);
+  });
+
+  test("allows up to three repeated Unicode characters", () => {
+    expect(PasswordPolicySchema.safeParse("Strong😀😀😀7").success).toBe(true);
   });
 
   test("preserves the public validation error copy", () => {

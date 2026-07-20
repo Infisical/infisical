@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 export const PasswordPolicyRequirementSchema = z.object({
@@ -7,6 +8,7 @@ export const PasswordPolicyRequirementSchema = z.object({
   isPrimary: z.boolean(),
   patterns: z.string().array().min(1),
   flags: z.string().optional(),
+  maxConsecutiveCharacters: z.number().int().positive().optional(),
   shouldMatch: z.boolean()
 });
 
@@ -55,7 +57,8 @@ export const PASSWORD_POLICY = {
     },
     {
       code: "repeatedCharacters",
-      patterns: [String.raw`(.)\1\1\1|\s{4,}`],
+      patterns: [String.raw`\s{4,}`],
+      maxConsecutiveCharacters: 3,
       shouldMatch: false,
       message: "No more than 3 repeated consecutive characters",
       validationMessage: "Password cannot contain more than 3 repeated consecutive characters",
@@ -84,8 +87,27 @@ export const PASSWORD_POLICY = {
   ]
 } as const satisfies TPasswordPolicyConfig;
 
+const hasMoreThanMaxConsecutiveCharacters = (password: string, maxConsecutiveCharacters: number) => {
+  let previousCharacter: string | undefined;
+  let consecutiveCharacterCount = 0;
+
+  return Array.from(password).some((character) => {
+    if (character === previousCharacter) {
+      consecutiveCharacterCount += 1;
+    } else {
+      previousCharacter = character;
+      consecutiveCharacterCount = 1;
+    }
+
+    return consecutiveCharacterCount > maxConsecutiveCharacters;
+  });
+};
+
 export const doesPasswordMeetRequirement = (password: string, requirement: TPasswordPolicyRequirement) => {
-  const matches = requirement.patterns.some((pattern) => new RegExp(pattern, requirement.flags).test(password));
+  const matches =
+    requirement.patterns.some((pattern) => new RE2(pattern, requirement.flags).test(password)) ||
+    (requirement.maxConsecutiveCharacters !== undefined &&
+      hasMoreThanMaxConsecutiveCharacters(password, requirement.maxConsecutiveCharacters));
 
   return matches === requirement.shouldMatch;
 };
