@@ -50,6 +50,7 @@ import { TMySqlConnection } from "./mysql-connection";
 import { TNetlifyConnection } from "./netlify-connection";
 import { TNetScalerConnection } from "./netscaler-connection";
 import { TNorthflankConnection } from "./northflank-connection";
+import { TNutanixPrismCentralConnection } from "./nutanix-prism-central-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOctopusDeployConnection } from "./octopus-deploy-connection";
 import { TOktaConnection } from "./okta-connection";
@@ -77,6 +78,7 @@ import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
+import { TWinRMConnection } from "./winrm-connection";
 import { TZabbixConnection } from "./zabbix-connection";
 
 export * from "./1password-connection";
@@ -126,6 +128,7 @@ export * from "./mysql-connection";
 export * from "./netlify-connection";
 export * from "./netscaler-connection";
 export * from "./northflank-connection";
+export * from "./nutanix-prism-central-connection";
 export * from "./oci-connection";
 export * from "./octopus-deploy-connection";
 export * from "./okta-connection";
@@ -153,6 +156,7 @@ export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
+export * from "./winrm-connection";
 export * from "./zabbix-connection";
 
 export type TAppConnection =
@@ -206,6 +210,7 @@ export type TAppConnection =
   | TSshConnection
   | TDbtConnection
   | TSmbConnection
+  | TWinRMConnection
   | TOpenRouterConnection
   | TOpenAIConnection
   | TAnthropicConnection
@@ -233,7 +238,8 @@ export type TAppConnection =
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection
-  | TFireworksConnection;
+  | TFireworksConnection
+  | TNutanixPrismCentralConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

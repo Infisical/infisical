@@ -29,12 +29,12 @@ description: "Run the Infisical Agent Proxy and connect agents to it"
 
 Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview): `start` launches the proxy that brokers real credentials onto agent traffic on the wire, and `connect` launches an agent behind it with the proxy routing, CA trust, and dummy placeholder credentials already set up.
 
-Both subcommands authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth). Use separate identities for the proxy and for each agent; see the [Quickstart](/documentation/platform/agent-proxy/quickstart) for the recommended roles.
+Both subcommands authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth). Use separate identities for the proxy and for each agent; see the [Quickstart](/documentation/platform/agent-proxy/quickstart) for the recommended permissions.
 
 ## Subcommands & flags
 
 <Accordion title="infisical secrets agent-proxy start" defaultOpen="true">
-  Start the agent proxy, an HTTP(S) forward proxy that brokers credentials for the agents that connect to it. Requires machine identity credentials with read access to the secrets your proxied services reference (the built-in **Agent Proxy** role).
+  Start the agent proxy, an HTTP(S) forward proxy that brokers credentials for the agents that connect to it. Requires machine identity credentials with read access to the secrets your proxied services reference.
 
   Agents reach HTTPS services through standard `CONNECT` tunnels and plain-HTTP services through regular forward-proxy requests; credentials are brokered on both. Requests for `https://` URLs sent as plain forward-proxy requests (rather than `CONNECT`) are rejected so the proxy can never be used to downgrade TLS.
 
@@ -113,6 +113,37 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
     infisical secrets agent-proxy start --client-id=<client-id> --client-secret=<client-secret>
     ```
   </Accordion>
+
+  <Accordion title="--log-format">
+    Output format for the proxy's logs, including [per-request activity](/documentation/platform/agent-proxy/activity-logs): `console` (human-readable, colorized in a terminal and plain otherwise) or `json` (machine). Logs are written to stderr.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --log-format=json
+    ```
+
+    Default value: `console`
+  </Accordion>
+
+  <Accordion title="--log-file">
+    Also write logs as `json` to this file, in addition to the console/json stream. Lets you watch the console and persist machine-readable logs at the same time. Rotate it with `logrotate` (`copytruncate`) or restart the proxy.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --log-file=/var/log/infisical/agent-proxy.log
+    ```
+  </Accordion>
+
+  <Accordion title="--log-level">
+    Controls how much is logged. Each [activity decision](/documentation/platform/agent-proxy/activity-logs) maps to a level (`passthrough`=debug, `brokered`=info, `blocked`=warn, `error`=error), so this doubles as the activity filter: `debug` shows everything, the default `info` hides passthrough, `warn` shows only blocked and errors.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy start --log-level=warn
+    ```
+
+    Default value: `info`
+  </Accordion>
 </Accordion>
 
 <Accordion title="infisical secrets agent-proxy connect">
@@ -121,7 +152,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   - `HTTPS_PROXY` / `HTTP_PROXY` pointing at the agent proxy, plus `NO_PROXY` (always includes `localhost,127.0.0.1`, merged with any `NO_PROXY` already in your environment and the `--no-proxy` flag).
   - The organization's root CA written to `~/.infisical/agent-proxy/mitm-ca.pem` and trusted via `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
   - Dummy placeholder environment variables for credential-substitution services the agent has **Proxy** access to.
-  - Real values for regular secrets the agent has **Read Value** on in the scoped folder, including secrets imported into it (similar to `infisical run`). This is opt-in; the built-in Agent role grants no read access, and brokered credentials never appear in the agent's environment. If the agent can read a secret that a proxied service brokers to it, `connect` refuses to start, since the agent would receive the real value directly and bypass the proxy; fix the permissions or pass `--allow-readable-brokered-secrets` to override.
+  - Real values for regular secrets the agent has **Read Value** on in the scoped folder, including secrets imported into it (similar to `infisical run`). This is opt-in; an agent identity scoped to just the proxy permission has no read access, and brokered credentials never appear in the agent's environment. If the agent can read a secret that a proxied service brokers to it, `connect` refuses to start, since the agent would receive the real value directly and bypass the proxy; fix the permissions or pass `--allow-readable-brokered-secrets` to override.
   - `INFISICAL_TOKEN` set to the agent's access token, so the agent can run Infisical CLI commands itself.
 
   The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.

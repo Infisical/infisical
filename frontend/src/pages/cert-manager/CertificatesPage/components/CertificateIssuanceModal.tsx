@@ -430,6 +430,15 @@ export const CertificateIssuanceModal = ({
             } else if (defaults?.locality) {
               request.attributes.locality = null;
             }
+
+            // Domain components are multi-valued: collect every DC row (order preserved).
+            const domainComponents = subjectAttributes
+              .filter((attr) => attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT)
+              .map((attr) => attr.value.trim())
+              .filter((val) => val.length > 0);
+            if (domainComponents.length > 0) {
+              request.attributes.domainComponents = domainComponents;
+            }
           } else if (defaults) {
             // No subject attributes provided; send null overrides for profile defaults
             if (defaults.commonName) request.attributes.commonName = null;

@@ -15,6 +15,12 @@ type CmekExportEntry =
       algorithm: string;
       privateKey: string;
       publicKey: string;
+    }
+  | {
+      name: string;
+      keyType: "generate-verify-mac";
+      algorithm: string;
+      keyMaterial: string;
     };
 
 export const cmekKeysToExportJSON = (keys: TCmekBulkExportedKey[]): CmekExportEntry[] => {
@@ -26,6 +32,15 @@ export const cmekKeysToExportJSON = (keys: TCmekBulkExportedKey[]): CmekExportEn
         algorithm: key.algorithm,
         privateKey: key.privateKey,
         publicKey: key.publicKey ?? ""
+      };
+    }
+
+    if (key.keyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      return {
+        name: key.name,
+        keyType: "generate-verify-mac" as const,
+        algorithm: key.algorithm,
+        keyMaterial: key.privateKey
       };
     }
 

@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const PkiSyncsSchema = z.object({
@@ -33,7 +35,8 @@ export const PkiSyncsSchema = z.object({
   lastRemoveJobId: z.string().nullable().optional(),
   lastRemoveMessage: z.string().nullable().optional(),
   lastRemovedAt: z.date().nullable().optional(),
-  applicationId: z.string().uuid().nullable().optional()
+  applicationId: z.string().uuid().nullable().optional(),
+  encryptedCredentials: zodBuffer.nullable().optional()
 });
 
 export type TPkiSyncs = z.infer<typeof PkiSyncsSchema>;

@@ -27,7 +27,6 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
-import { createDistinguishedName, extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -36,7 +35,8 @@ import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./cer
 
 vi.mock("../certificate-common/certificate-csr-utils", () => ({
   extractCertificateRequestFromCSR: vi.fn(),
-  extractAlgorithmsFromCSR: vi.fn()
+  extractAlgorithmsFromCSR: vi.fn(),
+  buildSubjectOverrideForCsr: vi.fn()
 }));
 
 vi.mock("@peculiar/x509", async (importOriginal) => {
@@ -50,10 +50,6 @@ vi.mock("@peculiar/x509", async (importOriginal) => {
 });
 
 vi.mock("../certificate-authority/certificate-authority-fns", () => ({
-  extractDnParts: vi.fn().mockReturnValue({
-    commonName: "test.example.com"
-  }),
-  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com"),
   assertCaInProfileProject: vi.fn()
 }));
 
@@ -192,11 +188,6 @@ describe("CertificateV3Service", () => {
       keyAlgorithm: "RSA_2048" as any,
       signatureAlgorithm: "RSA-SHA256" as any
     });
-
-    vi.mocked(extractDnParts).mockReturnValue({
-      commonName: "test.example.com"
-    });
-    vi.mocked(createDistinguishedName).mockReturnValue("CN=test.example.com");
 
     service = certificateV3ServiceFactory({
       certificateDAL: mockCertificateDAL,

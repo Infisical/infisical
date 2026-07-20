@@ -29,6 +29,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -541,6 +542,8 @@ export enum EventType {
   CMEK_DECRYPT = "cmek-decrypt",
   CMEK_SIGN = "cmek-sign",
   CMEK_VERIFY = "cmek-verify",
+  CMEK_GENERATE_MAC = "cmek-generate-mac",
+  CMEK_VERIFY_MAC = "cmek-verify-mac",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
@@ -4341,7 +4344,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
   };
 }
@@ -4414,6 +4417,25 @@ interface CmekVerifyEvent {
     signingAlgorithm: SigningAlgorithm;
     signature: string;
     signatureValid: boolean;
+  };
+}
+
+interface CmekGenerateMacEvent {
+  type: EventType.CMEK_GENERATE_MAC;
+  metadata: {
+    keyId: string;
+    macAlgorithm: HmacAlgorithm;
+    mac: string;
+  };
+}
+
+interface CmekVerifyMacEvent {
+  type: EventType.CMEK_VERIFY_MAC;
+  metadata: {
+    keyId: string;
+    macAlgorithm: HmacAlgorithm;
+    mac: string;
+    macValid: boolean;
   };
 }
 
@@ -4776,6 +4798,8 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    connectionId?: string;
+    hasCredentials?: boolean;
   };
 }
 
@@ -6942,8 +6966,9 @@ interface CreateProxiedServiceEvent {
     proxiedServiceId: string;
     name: string;
     hostPattern: string;
-    // secret key names only; never placeholder/secret values
+    // secret / dynamic secret names only; never placeholder/secret/lease values
     secretKeys: string[];
+    dynamicSecretNames: string[];
     environment: string;
     secretPath: string;
   };
@@ -6957,6 +6982,7 @@ interface UpdateProxiedServiceEvent {
     hostPattern: string;
     updatedFields: string[];
     secretKeys: string[];
+    dynamicSecretNames: string[];
     environment: string;
     secretPath: string;
   };
@@ -7730,6 +7756,8 @@ export type Event =
   | CmekDecryptEvent
   | CmekSignEvent
   | CmekVerifyEvent
+  | CmekGenerateMacEvent
+  | CmekVerifyMacEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent

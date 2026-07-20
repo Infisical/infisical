@@ -205,6 +205,42 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     logger.info(`daily-resource-cleanup: pruning secret version v2 completed`);
   };
 
+  // Reclaims secret_versions_v2 rows whose folderId no longer exists in secret_folders.
+  // These accumulate when an environment (or folder) is hard-deleted: the table has no FK on
+  // folderId, so the cascade orphans the history. Env hard-delete now prunes versions first;
+  // this drains the historical backlog slowly.
+  const pruneOrphanedVersions = async (): Promise<number> => {
+    const BATCH_SIZE = 5000;
+    const STATEMENT_TIMEOUT_MS = 30 * 1000;
+
+    logger.info(`daily-secret-version-cleanup: pruning orphaned secret versions v2 started`);
+    try {
+      const deleted = await db.transaction(async (tx): Promise<number> => {
+        await tx.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
+        const idsToDelete = tx(TableName.SecretVersionV2)
+          .whereNotExists(
+            (qb) =>
+              void qb
+                .select(tx.raw("1"))
+                .from(TableName.SecretFolder)
+                .whereRaw(`"${TableName.SecretFolder}"."id" = "${TableName.SecretVersionV2}"."folderId"`)
+          )
+          .select("id")
+          .limit(BATCH_SIZE);
+        return tx(TableName.SecretVersionV2).whereIn("id", idsToDelete).delete();
+      });
+      logger.info(
+        `daily-secret-version-cleanup: pruning orphaned secret versions v2 completed [deleted=${deleted}]${
+          deleted >= BATCH_SIZE ? " (more remain; will continue next run)" : ""
+        }`
+      );
+      return deleted;
+    } catch (err) {
+      logger.error(err, "Failed to prune orphaned secret versions v2");
+      throw new DatabaseError({ error: err, name: "Secret Version Orphan Prune" });
+    }
+  };
+
   const findVersionsBySecretIdWithActors = async ({
     secretId,
     secretVersions,
@@ -537,6 +573,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
   return {
     ...secretVersionV2Orm,
     pruneExcessVersions,
+    pruneOrphanedVersions,
     findLatestVersionMany,
     bulkUpdate,
     findLatestVersionByFolderId,

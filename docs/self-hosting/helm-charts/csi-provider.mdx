@@ -1,0 +1,156 @@
+---
+title: "CSI Provider"
+sidebarTitle: "CSI Provider"
+description: "Deploy the Infisical CSI Provider on Kubernetes using the official Helm chart."
+---
+
+The Infisical CSI Provider integrates with the [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/) to mount Infisical secrets directly into Kubernetes pods as files, without creating Kubernetes Secret resources.
+
+For usage details including `SecretProviderClass` configuration and pod mounting, see the [CSI Provider documentation](/integrations/platforms/kubernetes-csi).
+
+## Installation
+
+<Steps>
+  <Step title="Install the Secrets Store CSI Driver">
+    The CSI Driver must be installed first:
+
+    ```bash
+    helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
+    ```
+
+    <Tabs>
+      <Tab title="Standard">
+        ```bash
+        helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
+          --namespace kube-system \
+          --set "tokenRequests[0].audience=infisical" \
+          --set enableSecretRotation=true \
+          --set rotationPollInterval=2m \
+          --set "syncSecret.enabled=true"
+        ```
+      </Tab>
+
+      <Tab title="Without custom audience (e.g., EKS)">
+        ```bash
+        helm install csi secrets-store-csi-driver/secrets-store-csi-driver \
+          --namespace kube-system \
+          --set enableSecretRotation=true \
+          --set rotationPollInterval=2m \
+          --set "syncSecret.enabled=true"
+        ```
+
+        <Warning>
+          Set `useDefaultAudience: "true"` in your `SecretProviderClass` when using this installation.
+        </Warning>
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Install the Infisical CSI Provider">
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm repo update
+
+    helm install infisical-csi-provider infisical-helm-charts/infisical-csi-provider
+    ```
+  </Step>
+
+  <Step title="Verify the deployment">
+    ```bash
+    kubectl get pods -n kube-system -l app=infisical-csi-provider
+    ```
+  </Step>
+</Steps>
+
+## Uninstall
+
+```bash
+helm uninstall infisical-csi-provider
+```
+
+## Configuration Reference
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `name` | `infisical-csi-provider` | Name of the CSI provider deployment. |
+| `namespace` | `kube-system` | Namespace for the provider. |
+| `image.repository` | `infisical/infisical-csi-provider` | Container image. |
+| `image.tag` | `v0.0.7` | Image tag. |
+| `image.pullPolicy` | `IfNotPresent` | Image pull policy. |
+| `resources.requests.cpu` | `50m` | CPU request. |
+| `resources.requests.memory` | `100Mi` | Memory request. |
+| `resources.limits.cpu` | `50m` | CPU limit. |
+| `resources.limits.memory` | `100Mi` | Memory limit. |
+| `nodeSelector` | `{ kubernetes.io/os: linux }` | Node selector. Defaults to Linux nodes only. |
+| `tolerations` | `[]` | Pod tolerations. |
+| `labels` | `{}` | Additional labels for resources. |
+| `podLabels` | `{}` | Additional labels for pods. |
+
+## Default Helm Values
+
+```yaml
+# Name of the CSI provider deployment
+name: infisical-csi-provider
+# Namespace where CSI provider will be deployed
+namespace: kube-system
+
+# Container image configuration
+image:
+  repository: infisical/infisical-csi-provider
+  tag: v0.0.7
+  pullPolicy: IfNotPresent
+
+# Infisical provider arguments
+args:
+  - -endpoint=/provider/infisical.sock
+
+# Unix domain socket path for CSI driver communication
+endpoint: /provider/infisical.sock
+
+# Resource limits and requests
+resources:
+  requests:
+    cpu: 50m
+    memory: 100Mi
+  limits:
+    cpu: 50m
+    memory: 100Mi
+
+# Volume configuration for provider socket
+providerVolume:
+  mountPath: /provider
+  hostPath: /etc/kubernetes/secrets-store-csi-providers
+
+# Health check for container liveness
+livenessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+    scheme: HTTP
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+
+# Health check for container readiness
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: 8080
+    scheme: HTTP
+  failureThreshold: 2
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  successThreshold: 1
+  timeoutSeconds: 3
+
+# Node selection criteria
+nodeSelector:
+  kubernetes.io/os: linux
+
+# Optional configurations
+labels: {}
+podLabels: {}
+tolerations: []
+```

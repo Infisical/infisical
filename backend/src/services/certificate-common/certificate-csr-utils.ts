@@ -12,7 +12,11 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
+import {
+  createDistinguishedName,
+  extractDnParts,
+  keyAlgorithmToAlgCfg
+} from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
@@ -34,6 +38,8 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   // can distinguish "absent" (use default) from "explicitly set".
   const certificateRequest: TCertificateRequest = {};
   if (subject.commonName) certificateRequest.commonName = subject.commonName;
+  const domainComponents = csrObj.subjectName.getField("DC");
+  if (domainComponents.length > 0) certificateRequest.domainComponents = domainComponents;
   if (subject.organization) certificateRequest.organization = subject.organization;
   if (subject.ou) certificateRequest.organizationalUnit = subject.ou;
   if (subject.locality) certificateRequest.locality = subject.locality;
@@ -98,6 +104,26 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   }
 
   return certificateRequest;
+};
+
+export const buildSubjectOverrideForCsr = (
+  csr: string,
+  request: Pick<
+    TCertificateRequest,
+    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
+  >
+): string => {
+  const csrSubject = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
+
+  return createDistinguishedName({
+    commonName: csrSubject.commonName ?? request.commonName,
+    organization: csrSubject.organization ?? request.organization,
+    ou: csrSubject.ou ?? request.organizationalUnit,
+    country: csrSubject.country ?? request.country,
+    province: csrSubject.province ?? request.state,
+    locality: csrSubject.locality ?? request.locality,
+    domainComponents: csrSubject.domainComponents ?? request.domainComponents
+  });
 };
 
 /**

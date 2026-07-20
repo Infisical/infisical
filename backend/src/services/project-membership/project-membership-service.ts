@@ -11,6 +11,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
@@ -63,6 +65,7 @@ type TProjectMembershipServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -85,7 +88,8 @@ export const projectMembershipServiceFactory = ({
   membershipUserDAL,
   userDAL,
   membershipRoleDAL,
-  applicationMembershipCleanupService
+  applicationMembershipCleanupService,
+  usageMeteringService
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -297,6 +301,7 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
+    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     return orgMembers;
   };
 
@@ -404,6 +409,7 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
+    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     return memberships;
   };
 
@@ -484,6 +490,7 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
+    usageMeteringService.emitForProject(projectId, SecretIdentities.key);
     return deletedMembership;
   };
 

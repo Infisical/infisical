@@ -12,8 +12,8 @@ import {
   DialogTitle
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { useUpdateGroupWorkspaceRole } from "@app/hooks/api";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
+import { useUpdatePamProductGroupMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
@@ -26,7 +26,7 @@ type Props = {
 
 export const GroupRoleModal = ({ group, isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
-  const updateRole = useUpdateGroupWorkspaceRole();
+  const updateRole = useUpdatePamProductGroupMember();
 
   const currentRole = group?.roles?.[0]?.role ?? ProjectMembershipRole.Member;
   const [selectedRole, setSelectedRole] = useState<string>(currentRole);
@@ -45,9 +45,8 @@ export const GroupRoleModal = ({ group, isOpen, onOpenChange }: Props) => {
     updateRole.mutate(
       {
         projectId: currentProject.id,
-        projectType: currentProject.type,
         groupId: group.group.id,
-        roles: [{ role: selectedRole, isTemporary: false }]
+        role: selectedRole
       },
       {
         onSuccess: () => {

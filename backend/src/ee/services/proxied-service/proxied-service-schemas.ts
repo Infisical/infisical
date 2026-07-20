@@ -75,7 +75,21 @@ export const hostPatternSchema = z
 
 const CredentialInputSchema = z
   .object({
-    secretKey: z.string().trim().min(1).max(255).describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
+    secretKey: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.secretKey),
+    dynamicSecretName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretName),
+    dynamicSecretField: z
+      .string()
+      .trim()
+      .min(1)
+      .max(255)
+      .optional()
+      .describe(PROXIED_SERVICES.CREDENTIAL.dynamicSecretField),
     role: z.nativeEnum(ProxiedServiceCredentialRole).describe(PROXIED_SERVICES.CREDENTIAL.role),
     headerName: z.string().trim().min(1).max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerName),
     headerPrefix: z.string().trim().max(255).optional().describe(PROXIED_SERVICES.CREDENTIAL.headerPrefix),
@@ -98,6 +112,26 @@ const CredentialInputSchema = z
       .describe(PROXIED_SERVICES.CREDENTIAL.substitutionSurfaces)
   })
   .superRefine((cred, ctx) => {
+    if (Boolean(cred.secretKey) === Boolean(cred.dynamicSecretName)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide exactly one of secretKey or dynamicSecretName"
+      });
+    }
+    if (cred.dynamicSecretName) {
+      if (!cred.dynamicSecretField) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "dynamicSecretField is required when dynamicSecretName is set"
+        });
+      }
+    } else if (cred.dynamicSecretField) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "dynamicSecretField is only valid with dynamicSecretName"
+      });
+    }
+
     if (cred.role === ProxiedServiceCredentialRole.HeaderRewrite) {
       if (cred.headerPurpose) {
         if (cred.headerName || cred.headerPrefix) {
@@ -176,10 +210,10 @@ export const CredentialsArraySchema = CredentialInputSchema.array()
         message: "Basic auth allows at most one username and one password credential"
       });
     }
-    if (usernameCount !== passwordCount) {
+    if (passwordCount > 0 && usernameCount === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Basic auth requires both a username and a password credential"
+        message: "Basic auth password requires a username credential"
       });
     }
     if (usernameCount + passwordCount > 0 && headerNameCounts.size > 0) {
@@ -200,7 +234,13 @@ export const SanitizedProxiedServiceCredentialSchema = ProxiedServiceCredentials
   headerPurpose: true,
   placeholderKey: true,
   placeholderValue: true,
-  substitutionSurfaces: true
+  substitutionSurfaces: true,
+  dynamicSecretName: true,
+  dynamicSecretField: true
+});
+
+export const SanitizedProxiedServiceCredentialWithLeaseAccessSchema = SanitizedProxiedServiceCredentialSchema.extend({
+  callerCanLease: z.boolean().optional()
 });
 
 export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
@@ -217,6 +257,7 @@ export const ProxiedServiceWithCredentialsSchema = SanitizedProxiedServiceBaseSc
   credentials: SanitizedProxiedServiceCredentialSchema.array()
 });
 
-export const ProxiedServiceWithCanProxySchema = ProxiedServiceWithCredentialsSchema.extend({
+export const ProxiedServiceWithCanProxyAndLeaseAccessSchema = SanitizedProxiedServiceBaseSchema.extend({
+  credentials: SanitizedProxiedServiceCredentialWithLeaseAccessSchema.array(),
   canProxy: z.boolean()
 });

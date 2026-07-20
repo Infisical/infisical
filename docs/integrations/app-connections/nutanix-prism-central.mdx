@@ -1,0 +1,129 @@
+---
+title: "Nutanix Prism Central Connection"
+description: "Learn how to configure a Nutanix Prism Central Connection for Infisical."
+---
+
+Infisical supports connecting to Nutanix Prism Central using either Basic Auth credentials or an API Key to manage SSL certificates on your clusters.
+
+## Setup
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Gather Nutanix Credentials">
+        You will need the following from your Nutanix Prism Central instance:
+
+        - **Hostname**: The FQDN or IP address of your Prism Central instance (e.g., `pc.acme.com`).
+        - **Port**: The API port (default: `9440`).
+        - **Auth Method**: Choose one of the following:
+          - **Basic Auth**: A Prism Central user account with the **Cluster Admin** role on the target cluster.
+          - **API Key**: Create a Service Account with the **Cluster Admin** role on the target cluster and generate a key.
+
+        <Note>
+          The account or API key must have permission to read cluster information and manage SSL certificates on the target cluster.
+        </Note>
+
+        <Warning>
+          Nutanix Prism Central instances on private networks (e.g., `10.x.x.x`, `192.168.x.x`) are blocked by default. For self-hosted Infisical, set the `ALLOW_INTERNAL_IP_CONNECTIONS=true` environment variable, or use an [Infisical Gateway](/documentation/platform/gateways/overview) to reach your Prism Central instance.
+        </Warning>
+      </Step>
+      <Step title="Navigate to App Connections">
+        In the Infisical dashboard, navigate to **Organization Settings** > **App Connections** and click **Add Connection**.
+
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Nutanix Prism Central">
+        Select the **Nutanix Prism Central** option from the list of available connections.
+      </Step>
+      <Step title="Fill in Connection Details">
+        Fill in the connection form:
+
+        - **Name**: A label for this connection (e.g., `prod-prism-central`).
+        - **Hostname**: The FQDN or IP address of your Prism Central instance.
+        - **Port** (Optional): API port, default is `9440`.
+        - **Auth Method**: Select **API Key** or **Basic Auth**:
+          - *API Key*: Enter your API key.
+          - *Basic Auth*: Enter your **Username** and **Password**.
+
+        Configure the **SSL** tab:
+
+        - **SSL Certificate** (Optional): A CA certificate in PEM format to verify the Prism Central instance's TLS certificate.
+        - **Reject Unauthorized**: When enabled, Infisical will only connect if Prism Central has a valid, trusted TLS certificate. Disable for self-signed certificates or provide a CA certificate.
+
+        Optionally select a **Gateway** to route the connection through an [Infisical Gateway](/documentation/platform/gateways/overview) when Prism Central is hosted in an air-gapped or private network.
+
+        Click **Connect to Nutanix Prism Central** to validate and save the connection. Infisical will verify connectivity before saving.
+      </Step>
+      <Step title="Connection Created">
+        Your Nutanix Prism Central Connection is now available for use with certificate syncs.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a Nutanix Prism Central Connection, make an API request to the [Create App Connection](/api-reference/endpoints/app-connections/nutanix-prism-central/create) endpoint.
+
+    ### Sample request (Basic Auth)
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/nutanix-prism-central \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-nutanix-connection",
+        "method": "basic-auth",
+        "credentials": {
+          "hostname": "pc.acme.com",
+          "port": 9440,
+          "username": "admin",
+          "password": "<your-password>",
+          "sslRejectUnauthorized": false
+        }
+      }'
+    ```
+
+    ### Sample request (API Key)
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/nutanix-prism-central \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-nutanix-connection",
+        "method": "api-key",
+        "credentials": {
+          "hostname": "pc.acme.com",
+          "port": 9440,
+          "apiKey": "<your-api-key>"
+        }
+      }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+        "appConnection": {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "my-nutanix-connection",
+            "app": "nutanix-prism-central",
+            "method": "api-key",
+            "createdAt": "2026-05-26T00:00:00.000Z",
+            "updatedAt": "2026-05-26T00:00:00.000Z"
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Nutanix Prism Central Sync" icon="rotate" href="/documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central">
+    Update certificates on your Nutanix clusters automatically.
+  </Card>
+  <Card title="Other App Connections" icon="plug" href="/integrations/app-connections/overview">
+    View all supported app connections.
+  </Card>
+</CardGroup>

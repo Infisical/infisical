@@ -137,6 +137,7 @@ import { TLicenseClientFactory } from "@app/services/license-client";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { TMfaRecoveryCodeServiceFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-service";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -402,6 +403,7 @@ declare module "fastify" {
       projectTemplate: TProjectTemplateServiceFactory;
       totp: TTotpServiceFactory;
       webAuthn: TWebAuthnServiceFactory;
+      mfaRecoveryCode: TMfaRecoveryCodeServiceFactory;
       appConnection: TAppConnectionServiceFactory;
       hsmConnector: THsmConnectorServiceFactory;
       secretSync: TSecretSyncServiceFactory;

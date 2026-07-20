@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import {
   billingProfileResponseSchema,
@@ -13,7 +14,9 @@ import {
   subscriptionResponseSchema,
   TAddSubscriptionItemsPayload,
   TBillingProfileResponse,
+  TCancelTrialPayload,
   TCatalogResponse,
+  TChangeCommitmentPayload,
   TCheckoutResult,
   TCloudPlanResponse,
   TCreateCheckoutPayload,
@@ -21,10 +24,17 @@ import {
   TEntitlementOrg,
   TEntitlementsResponse,
   TLicenseClientBackend,
+  trialCancelResultSchema,
+  trialResultSchema,
+  trialsResponseSchema,
   TSessionResponse,
+  TStartTrialPayload,
   TSubscriptionPreview,
   TSubscriptionPreviewPayload,
-  TSubscriptionResponse
+  TSubscriptionResponse,
+  TTrialCancelResult,
+  TTrialResult,
+  TTrialsResponse
 } from "./license-client-types";
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
@@ -136,6 +146,9 @@ export const licenseServerBackend = (
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
     if (!parsed.success) {
+      // A schema mismatch must NOT be silently read as "no subscription" — that hides a real (often
+      // paid) subscription behind the free state. Log it so contract drift is visible, then degrade.
+      logger.error({ err: parsed.error }, `license-client: /subscription failed schema validation [orgId=${orgId}]`);
       return null;
     }
     if (!parsed.data.status) {
@@ -245,6 +258,72 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
+  // Apply a previewed per_resource commitment change. The server prorates at commit time; the payload
+  // carries no proration timestamp, so the caller can't influence the charged amount.
+  changeCommitment: async (orgId: string, payload: TChangeCommitmentPayload): Promise<TCheckoutResult> => {
+    const url = new URL(orgScoped(orgId, "/subscription/commitments"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return checkoutResultSchema.parse(body);
+  },
+
+  // Start a plan-scoped self-serve trial. The wire request/response use snake_case; map to camelCase.
+  // The trial is granted immediately; cardSetupUrl (when present) is a best-effort card-setup checkout.
+  startTrial: async (orgId: string, payload: TStartTrialPayload): Promise<TTrialResult> => {
+    const url = new URL(orgScoped(orgId, "/billing/trial"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        product_key: payload.productKey,
+        plan_key: payload.planKey,
+        email: payload.email,
+        name: payload.name
+      }),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    const parsed = trialResultSchema.parse(body);
+    return { outcome: parsed.outcome, cardSetupUrl: parsed.card_setup_url };
+  },
+
+  // Cancel an in-progress trial for a product. 404 (no active trial) surfaces as a thrown error.
+  cancelTrial: async (orgId: string, payload: TCancelTrialPayload): Promise<TTrialCancelResult> => {
+    const url = new URL(orgScoped(orgId, "/billing/trial/cancel"), serverUrl);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ product_key: payload.productKey }),
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return trialCancelResultSchema.parse(body);
+  },
+
+  // The org's trial history. 404 (org has no license yet) degrades to an empty history.
+  fetchTrials: async (orgId: string): Promise<TTrialsResponse> => {
+    const url = new URL(orgScoped(orgId, "/billing/trials"), serverUrl);
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    if (res.status === 404) {
+      return { trials: [] };
+    }
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return trialsResponseSchema.parse(body);
+  },
+
   cancelSubscription: async (orgId: string): Promise<TCheckoutResult> => {
     const url = new URL(orgScoped(orgId, "/subscription/cancel"), serverUrl);
     const res = await fetch(url, {
@@ -336,7 +415,11 @@ export const licenseServerSelfHostedBackend = (
     await throwIfResponseError(res);
     const body: unknown = await res.json();
     const parsed = subscriptionResponseSchema.safeParse(body);
-    if (!parsed.success || !parsed.data.status) {
+    if (!parsed.success) {
+      logger.error({ err: parsed.error }, "license-client: /subscription failed schema validation (self-hosted)");
+      return null;
+    }
+    if (!parsed.data.status) {
       return null;
     }
     return parsed.data;
@@ -349,6 +432,10 @@ export const licenseServerSelfHostedBackend = (
   previewSubscriptionChange: notSupportedOnSelfHosted("previewSubscriptionChange"),
   addSubscriptionItems: notSupportedOnSelfHosted("addSubscriptionItems"),
   removeSubscriptionItem: notSupportedOnSelfHosted("removeSubscriptionItem"),
+  changeCommitment: notSupportedOnSelfHosted("changeCommitment"),
+  startTrial: notSupportedOnSelfHosted("startTrial"),
+  cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
+  fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
   cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
   resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
 });

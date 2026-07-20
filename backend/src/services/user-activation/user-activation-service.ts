@@ -43,8 +43,6 @@ export const userActivationServiceFactory = ({
     const noActivation: TSecretsActivationStatus = { shouldShowActivation: false, stage: null, activation: null };
     const appCfg = getConfig();
 
-    if (!appCfg.SECRETS_ACTIVATION_ENABLED) return noActivation;
-
     // 1. The caller must be able to invite other members to the org.
     const { permission } = await permissionService.getOrgPermission({
       actor,

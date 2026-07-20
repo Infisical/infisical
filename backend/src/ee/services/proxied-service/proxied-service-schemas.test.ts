@@ -1,4 +1,9 @@
-import { hostPatternSchema } from "./proxied-service-schemas";
+import {
+  ProxiedServiceCredentialRole,
+  ProxiedServiceHeaderPurpose,
+  ProxiedServiceSubstitutionSurface
+} from "./proxied-service-enums";
+import { CredentialsArraySchema, hostPatternSchema } from "./proxied-service-schemas";
 
 // The host-pattern grammar mirrors the agent-proxy CLI matcher (packages/agentproxy/match.go);
 // keep these cases in sync with that matcher's expectations.
@@ -118,5 +123,123 @@ describe("hostPatternSchema", () => {
     it("invalid IPv6 address", () => {
       expect(firstError("[not-an-ip]")).toContain("is not a valid IPv6 address");
     });
+  });
+});
+
+describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
+  const bearerHeader = {
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer"
+  };
+  const parseArray = (creds: unknown[]) => CredentialsArraySchema.safeParse(creds);
+  const errorsOf = (creds: unknown[]) => {
+    const result = parseArray(creds);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+
+  it("accepts a static secretKey credential", () => {
+    expect(parseArray([{ ...bearerHeader, secretKey: "STRIPE_API_KEY" }]).success).toBe(true);
+  });
+
+  it("accepts a dynamic credential with a field", () => {
+    expect(
+      parseArray([{ ...bearerHeader, dynamicSecretName: "my-postgres", dynamicSecretField: "DB_PASSWORD" }]).success
+    ).toBe(true);
+  });
+
+  it("rejects a credential with neither secretKey nor dynamicSecretName", () => {
+    expect(errorsOf([bearerHeader])).toContain("Provide exactly one of secretKey or dynamicSecretName");
+  });
+
+  it("rejects a credential with both secretKey and dynamicSecretName", () => {
+    expect(
+      errorsOf([
+        { ...bearerHeader, secretKey: "K", dynamicSecretName: "my-postgres", dynamicSecretField: "DB_PASSWORD" }
+      ])
+    ).toContain("Provide exactly one of secretKey or dynamicSecretName");
+  });
+
+  it("rejects a dynamic credential missing dynamicSecretField", () => {
+    expect(errorsOf([{ ...bearerHeader, dynamicSecretName: "my-postgres" }])).toContain(
+      "dynamicSecretField is required when dynamicSecretName is set"
+    );
+  });
+
+  it("rejects a static credential that also sets a dynamic field", () => {
+    expect(errorsOf([{ ...bearerHeader, secretKey: "K", dynamicSecretField: "DB_PASSWORD" }])).toContain(
+      "dynamicSecretField is only valid with dynamicSecretName"
+    );
+  });
+
+  it("allows the same dynamic secret referenced twice with different fields (basic auth)", () => {
+    expect(
+      parseArray([
+        {
+          role: ProxiedServiceCredentialRole.HeaderRewrite,
+          headerPurpose: ProxiedServiceHeaderPurpose.Username,
+          dynamicSecretName: "my-postgres",
+          dynamicSecretField: "DB_USERNAME"
+        },
+        {
+          role: ProxiedServiceCredentialRole.HeaderRewrite,
+          headerPurpose: ProxiedServiceHeaderPurpose.Password,
+          dynamicSecretName: "my-postgres",
+          dynamicSecretField: "DB_PASSWORD"
+        }
+      ]).success
+    ).toBe(true);
+  });
+
+  it("accepts a dynamic substitution credential", () => {
+    expect(
+      parseArray([
+        {
+          role: ProxiedServiceCredentialRole.CredentialSubstitution,
+          placeholderKey: "TOKEN",
+          placeholderValue: "placeholder_token",
+          substitutionSurfaces: [ProxiedServiceSubstitutionSurface.Path],
+          dynamicSecretName: "gh-app",
+          dynamicSecretField: "TOKEN"
+        }
+      ]).success
+    ).toBe(true);
+  });
+});
+
+describe("CredentialsArraySchema basic auth", () => {
+  const username = {
+    secretKey: "API_KEY",
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerPurpose: ProxiedServiceHeaderPurpose.Username
+  };
+  const password = {
+    secretKey: "API_SECRET",
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerPurpose: ProxiedServiceHeaderPurpose.Password
+  };
+
+  it("accepts a username without a password (username-only basic auth)", () => {
+    expect(CredentialsArraySchema.safeParse([username]).success).toBe(true);
+  });
+
+  it("accepts a username with a password", () => {
+    expect(CredentialsArraySchema.safeParse([username, password]).success).toBe(true);
+  });
+
+  it("rejects a password without a username", () => {
+    const result = CredentialsArraySchema.safeParse([password]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes("requires a username"))).toBe(true);
+    }
+  });
+
+  it("rejects two username credentials", () => {
+    const result = CredentialsArraySchema.safeParse([username, { ...username, secretKey: "OTHER" }]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes("at most one"))).toBe(true);
+    }
   });
 });
