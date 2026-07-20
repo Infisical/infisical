@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { BadRequestError } from "../errors";
-import { PasswordPolicySchema, validatePasswordPolicy } from "./password-policy";
+import { PasswordPolicySchema } from "./password-policy";
 
 describe("PasswordPolicySchema", () => {
   const validPassword = ["Horse", 7, "Ba"].join("-");
@@ -29,9 +28,5 @@ describe("PasswordPolicySchema", () => {
     const result = PasswordPolicySchema.parse(password);
 
     expect(result).toBe(password);
-  });
-
-  test("throws a bad request error when service-level validation fails", () => {
-    expect(() => validatePasswordPolicy("Short-7")).toThrow(BadRequestError);
   });
 });

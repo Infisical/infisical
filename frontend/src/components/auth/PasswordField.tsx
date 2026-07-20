@@ -6,7 +6,10 @@ import {
   checkPasswordBreachStatus,
   PasswordBreachStatus
 } from "@app/components/utilities/checks/password/checkIsPasswordBreached";
-import { getPasswordRequirements } from "@app/components/utilities/checks/password/passwordPolicy";
+import {
+  getPasswordRequirements,
+  PASSWORD_POLICY_MIN_LENGTH
+} from "@app/components/utilities/checks/password/passwordPolicy";
 import {
   AnimatedCollapse,
   Field,
@@ -51,7 +54,7 @@ export const PasswordField = ({
     (isFocused || hasUnmetRequirements || breachStatus === "breached" || submitCount > 0);
 
   useEffect(() => {
-    if (value.length < 14 || hasUnmetRequirements) {
+    if (value.length < PASSWORD_POLICY_MIN_LENGTH || hasUnmetRequirements) {
       setBreachStatus("idle");
       return undefined;
     }

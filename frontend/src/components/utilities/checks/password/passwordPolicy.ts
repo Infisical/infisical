@@ -9,18 +9,21 @@ import {
 } from "./passwordRegexes";
 
 // Keep this policy aligned with backend/src/lib/validator/password-policy.ts.
+export const PASSWORD_POLICY_MIN_LENGTH = 10;
+export const PASSWORD_POLICY_MAX_LENGTH = 100;
+
 export const PASSWORD_REQUIREMENTS = [
   {
     code: "minLength",
-    message: "At least 10 characters",
+    message: `At least ${PASSWORD_POLICY_MIN_LENGTH} characters`,
     isPrimary: true,
-    test: (value: string) => value.length >= 10
+    test: (value: string) => value.length >= PASSWORD_POLICY_MIN_LENGTH
   },
   {
     code: "maxLength",
-    message: "At most 100 characters",
+    message: `At most ${PASSWORD_POLICY_MAX_LENGTH} characters`,
     isPrimary: false,
-    test: (value: string) => value.length <= 100
+    test: (value: string) => value.length <= PASSWORD_POLICY_MAX_LENGTH
   },
   {
     code: "letter",
@@ -63,8 +66,8 @@ export const getPasswordRequirements = (password: string) =>
 export const passwordSchema = z
   .string()
   .min(1, "Password is required")
-  .min(10, PASSWORD_REQUIREMENTS[0].message)
-  .max(100, PASSWORD_REQUIREMENTS[1].message)
+  .min(PASSWORD_POLICY_MIN_LENGTH, PASSWORD_REQUIREMENTS[0].message)
+  .max(PASSWORD_POLICY_MAX_LENGTH, PASSWORD_REQUIREMENTS[1].message)
   .regex(letterCharRegex, PASSWORD_REQUIREMENTS[2].message)
   .regex(numAndSpecialCharRegex, PASSWORD_REQUIREMENTS[3].message)
   .refine((password) => !repeatedCharRegex.test(password), PASSWORD_REQUIREMENTS[4].message)

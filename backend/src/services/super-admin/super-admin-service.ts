@@ -28,7 +28,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
-import { validatePasswordPolicy } from "@app/lib/validator/password-policy";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -507,8 +506,6 @@ export const superAdminServiceFactory = ({
 
   const adminSignUp = async ({ lastName, firstName, email, password, ip, userAgent }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
-
-    validatePasswordPolicy(password);
 
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });

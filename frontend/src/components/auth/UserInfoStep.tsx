@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
   Field,
+  FieldError,
   FieldLabel,
   Input,
   TextArea
@@ -64,7 +65,7 @@ export default function UserInfoStep({
     handleSubmit,
     setError,
     watch,
-    formState: { errors, isValid, submitCount }
+    formState: { errors, submitCount }
   } = useForm<UserInfoFormData>({
     resolver: zodResolver(createUserInfoFormSchema(isInvite)),
     mode: "onChange",
@@ -80,7 +81,7 @@ export default function UserInfoStep({
   const showDangerState = submitCount > 0;
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
-  const canSubmit = isValid && isPasswordValidated && !isLoading;
+  const canSubmit = isPasswordValidated && !isLoading;
 
   const onSubmit = async (formData: UserInfoFormData) => {
     const latestBreachStatus = await checkPasswordBreachStatus(formData.password);
@@ -145,6 +146,7 @@ export default function UserInfoStep({
               autoComplete="name"
               isError={showDangerState && Boolean(errors.name)}
             />
+            {showDangerState && errors.name ? <FieldError>{errors.name.message}</FieldError> : null}
           </Field>
           {!isInvite && (
             <>
@@ -158,6 +160,9 @@ export default function UserInfoStep({
                   autoComplete="organization"
                   isError={showDangerState && Boolean(errors.organizationName)}
                 />
+                {showDangerState && errors.organizationName ? (
+                  <FieldError>{errors.organizationName.message}</FieldError>
+                ) : null}
               </Field>
               <Field>
                 <FieldLabel htmlFor="signup-attribution-source">
