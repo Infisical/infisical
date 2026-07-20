@@ -22,6 +22,7 @@ import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -114,6 +115,15 @@ export const membershipGroupServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
 
@@ -243,6 +253,15 @@ export const membershipGroupServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipGroupDAL.findOne({

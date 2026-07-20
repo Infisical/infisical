@@ -120,6 +120,8 @@ export type TFeatureSet = {
   // creation operation (PAM accounts / certificate authorities) and surfaces an upgrade modal.
   pam: null;
   certManager: null;
+  secretsTemporaryAccess: null;
+  enterprisePamAccount: null;
 };
 
 export type TOrgPlansTableDTO = {

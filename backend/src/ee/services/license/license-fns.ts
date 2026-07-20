@@ -138,7 +138,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretsBrokering: true,
   // product gating
   pam: null,
-  certManager: null
+  certManager: null,
+  secretsTemporaryAccess: null,
+  enterprisePamAccount: null
 });
 
 export const setupLicenseRequestWithStore = (

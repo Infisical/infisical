@@ -10,6 +10,8 @@ export const getDefaultOnPremFeatures = () => {
     maxPamAccounts: null,
     pam: null,
     certManager: null,
+    secretsTemporaryAccess: null,
+    enterprisePamAccount: null,
     pkiCodeSigning: null,
     memberLimit: null,
     membersUsed: 0,

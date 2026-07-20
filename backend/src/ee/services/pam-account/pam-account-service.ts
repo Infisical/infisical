@@ -301,6 +301,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
+    // Windows PAM accounts are an enterprise capability. The `enterprisePamAccount` flag is ignored when
+    // null; an explicit boolean enforces it (false blocks Windows / Windows AD account creation).
+    if (
+      (accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd) &&
+      typeof plan.enterprisePamAccount === "boolean" &&
+      !plan.enterprisePamAccount
+    ) {
+      throw new BadRequestError({
+        message: "Windows PAM accounts are not available on your current plan. Please upgrade to continue."
+      });
+    }
+
     // maxPamAccounts is uncapped by default (null); only enforce a cap when the plan configures a numeric
     // limit. Counted org-wide right before creation.
     if (typeof plan.maxPamAccounts === "number") {
