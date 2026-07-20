@@ -35,19 +35,8 @@ const INDEX_GROUPS = [
 const ALL_INDEXES = [...IDENTITY_METADATA_INDEXES, ...ADDITIONAL_PRIVILEGE_INDEXES];
 
 export async function up(knex: Knex): Promise<void> {
-  // Pin everything to one acquired connection.
   const connection = await knex.client.acquireConnection();
   const raw = (sql: string) => knex.raw(sql).connection(connection);
-  const hasTable = async (table: string) => {
-    const res = await raw(`SELECT to_regclass('${table}') IS NOT NULL AS present`);
-    return Boolean(res.rows[0]?.present);
-  };
-  const hasColumn = async (table: string, column: string) => {
-    const res = await raw(
-      `SELECT 1 FROM information_schema.columns WHERE table_name = '${table}' AND column_name = '${column}'`
-    );
-    return res.rows.length > 0;
-  };
 
   try {
     const stmtResult = await raw("SHOW statement_timeout");
@@ -61,14 +50,14 @@ export async function up(knex: Knex): Promise<void> {
 
       for (const { table, indexes } of INDEX_GROUPS) {
         // eslint-disable-next-line no-await-in-loop
-        if (!(await hasTable(table))) {
+        if (!(await knex.schema.hasTable(table))) {
           // eslint-disable-next-line no-continue
           continue;
         }
 
         for (const { name, column, partial } of indexes) {
           // eslint-disable-next-line no-await-in-loop
-          if (!(await hasColumn(table, column))) {
+          if (!(await knex.schema.hasColumn(table, column))) {
             // eslint-disable-next-line no-continue
             continue;
           }
