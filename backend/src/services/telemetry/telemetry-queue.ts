@@ -14,6 +14,8 @@ import {
 } from "./telemetry-service";
 import { PostHogEventTypes } from "./telemetry-types";
 
+const AGGREGATED_EVENTS_HANDLER_TIMEOUT_MS = 8 * 60 * 1000;
+
 type TTelemetryQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "deleteItem">;
@@ -75,8 +77,10 @@ export const telemetryQueueServiceFactory = ({
 
     cronJob.register({
       name: CronJobName.TelemetryAggregatedEvents,
-      pattern: "*/5 * * * *",
+      pattern: "*/10 * * * *",
       runHashTtlS: 60 * 60,
+      handlerTimeoutMs: AGGREGATED_EVENTS_HANDLER_TIMEOUT_MS,
+      leaseDurationMs: AGGREGATED_EVENTS_HANDLER_TIMEOUT_MS,
       handler: async () => {
         await telemetryService.processAggregatedEvents();
       }

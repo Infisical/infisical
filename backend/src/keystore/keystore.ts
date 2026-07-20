@@ -199,7 +199,7 @@ export const KeyStoreTtls = {
   StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
-  TelemetryAggregatedEventInSeconds: 600, // 10 minutes
+  TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
