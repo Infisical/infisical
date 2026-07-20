@@ -508,7 +508,16 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 /* v3-style focus treatment for ReactCodeInput */
+.code-input-v3 {
+  display: grid !important;
+  width: 100%;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
 .code-input-v3 input {
+  min-width: 0;
+  width: 100% !important;
   outline: 1px solid transparent !important;
   outline-offset: 4px;
   transition:
@@ -521,7 +530,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 
 .code-input-v3 input:focus {
-  border-color: var(--color-accent) !important;
-  outline-color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
+  border-color: color-mix(in srgb, var(--color-project) 45%, var(--color-border)) !important;
+  outline-color: color-mix(in srgb, var(--color-project) 45%, transparent) !important;
   box-shadow: none;
+}
+
+.code-input-v3-error input {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border)) !important;
 }

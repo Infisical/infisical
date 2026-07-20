@@ -16,9 +16,9 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  IconButton,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
 
@@ -49,9 +49,7 @@ export const PasswordField = ({
   const requirements = useMemo(() => getPasswordRequirements(value), [value]);
   const visibleRequirements = requirements.filter(({ isMet, isPrimary }) => isPrimary || !isMet);
   const hasUnmetRequirements = requirements.some(({ isMet }) => !isMet);
-  const showRequirements =
-    value.length > 0 &&
-    (isFocused || hasUnmetRequirements || breachStatus === "breached" || submitCount > 0);
+  const showRequirements = value.length > 0;
 
   useEffect(() => {
     if (value.length < PASSWORD_POLICY_MIN_LENGTH || hasUnmetRequirements) {
@@ -98,24 +96,16 @@ export const PasswordField = ({
           }}
         />
         <InputGroupAddon align="inline-end">
-          <IconButton
-            type="button"
-            variant="ghost-muted"
-            size="xs"
+          <InputGroupButton
             onClick={() => setShowPassword((current) => !current)}
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOff /> : <Eye />}
-          </IconButton>
+          </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
       <AnimatedCollapse isOpen={showRequirements}>
-        <div
-          id={requirementsId}
-          className="flex flex-col gap-1 rounded-md border border-border bg-container px-3 py-2.5"
-          aria-live="polite"
-        >
-          <p className="mb-0.5 text-xs font-medium text-accent">Password requirements</p>
+        <div id={requirementsId} className="flex flex-col gap-1 pt-1" aria-live="polite">
           {visibleRequirements.map(({ code, isMet, message }) => (
             <div className="flex items-start gap-2 text-xs" key={code}>
               {isMet ? (

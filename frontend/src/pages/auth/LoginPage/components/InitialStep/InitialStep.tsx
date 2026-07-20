@@ -23,10 +23,10 @@ import {
   CardHeader,
   CardTitle,
   FieldSeparator,
-  IconButton,
   Input,
   InputGroup,
   InputGroupAddon,
+  InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
@@ -371,14 +371,12 @@ export const InitialStep = ({ isAdmin }: Props) => {
                   aria-invalid={(showDangerState && Boolean(errors.password)) || loginError}
                 />
                 <InputGroupAddon align="inline-end">
-                  <IconButton
-                    variant="ghost"
-                    size="xs"
+                  <InputGroupButton
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff /> : <Eye />}
-                  </IconButton>
+                  </InputGroupButton>
                 </InputGroupAddon>
               </InputGroup>
               {shouldShowCaptcha && envConfig.CAPTCHA_SITE_KEY && (

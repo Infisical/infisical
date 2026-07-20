@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
@@ -62,6 +62,11 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     setSection(SignupSection.UserInfo);
   };
 
+  const handleChangeEmail = () => {
+    setResendCooldownSeconds(0);
+    setSection(SignupSection.Email);
+  };
+
   const handleUserInfoComplete = async () => {
     if (isInvite) {
       const userOrgs = await fetchOrganizations();
@@ -98,6 +103,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           <CodeInputStep
             email={email}
             onComplete={handleCodeVerified}
+            onChangeEmail={handleChangeEmail}
             initialCooldown={resendCooldownSeconds}
           />
         );
@@ -112,35 +118,52 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     }
   };
 
+  const renderBottomContent = () => {
+    if (section === SignupSection.Email) {
+      return (
+        <p className="text-xs text-pretty text-label">
+          By signing up, you agree to our{" "}
+          <a
+            href="https://infisical.com/terms/cloud"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://infisical.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
+      );
+    }
+
+    if (section === SignupSection.VerifyCode) {
+      return (
+        <div className="flex items-center justify-center gap-1.5 text-sm">
+          <span className="text-label">Already have an account?</span>
+          <Link
+            to="/login"
+            className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+          >
+            Log in
+          </Link>
+        </div>
+      );
+    }
+
+    return undefined;
+  };
+
   return (
-    <AuthPageLayout
-      showFooter={false}
-      bottomContent={
-        section === SignupSection.Email ? (
-          <p className="text-xs text-pretty text-label">
-            By signing up, you agree to our{" "}
-            <a
-              href="https://infisical.com/terms/cloud"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
-            >
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a
-              href="https://infisical.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
-            >
-              Privacy Policy
-            </a>
-            .
-          </p>
-        ) : undefined
-      }
-    >
+    <AuthPageLayout showFooter={false} bottomContent={renderBottomContent()}>
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
