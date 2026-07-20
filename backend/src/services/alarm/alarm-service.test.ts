@@ -78,8 +78,8 @@ const buildService = (opts?: {
         alarms.set(row.id, row);
         return row;
       },
-      findById: async (id: string) => alarms.get(id),
-      find: async (filter: Record<string, unknown>) => {
+      findActiveById: async (id: string) => alarms.get(id),
+      findActiveByScope: async (filter: Record<string, unknown>) => {
         findFilters.push(filter);
         return [...alarms.values()].filter((row) =>
           Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)

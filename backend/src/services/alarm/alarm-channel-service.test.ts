@@ -62,6 +62,7 @@ const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
         store.set(row.id, row);
         return row;
       },
+      findActiveById: async (id: string) => store.get(id),
       findById: async (id: string) => store.get(id),
       updateById: async (id: string, data: Record<string, unknown>) => {
         store.set(id, { ...(store.get(id) as TRow), ...data, updatedAt: new Date() });

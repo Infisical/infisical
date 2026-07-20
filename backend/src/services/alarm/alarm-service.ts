@@ -108,13 +108,6 @@ export const alarmServiceFactory = ({
     updatedAt: alarm.updatedAt
   });
 
-  const $formatResponse = async (alarmId: string): Promise<TAlarmResponse> => {
-    const alarm = await alarmDAL.findById(alarmId);
-    if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${alarmId}' not found` });
-    const channels = await alarmChannelDAL.findByAlarmId(alarmId);
-    return $buildResponse(alarm, channels);
-  };
-
   const createAlarm = async (dto: TCreateAlarmDTO): Promise<TAlarmResponse> => {
     const provider = $getProvider(dto.resourceType);
     $validate(provider, dto, { alwaysValidateCondition: true });
@@ -140,8 +133,8 @@ export const alarmServiceFactory = ({
 
     await $resolveChannelsInScope(dto.channelIds, { orgId: dto.actorOrgId, projectId: dto.projectId });
 
-    const alarm = await alarmDAL.transaction(async (tx) => {
-      const created = await alarmDAL.create(
+    const { created, channels } = await alarmDAL.transaction(async (tx) => {
+      const createdAlarm = await alarmDAL.create(
         {
           name: dto.name,
           description: dto.description,
@@ -159,18 +152,19 @@ export const alarmServiceFactory = ({
       );
 
       await alarmChannelMembershipDAL.insertMany(
-        [...new Set(dto.channelIds)].map((channelId) => ({ alarmId: created.id, channelId })),
+        [...new Set(dto.channelIds)].map((channelId) => ({ alarmId: createdAlarm.id, channelId })),
         tx
       );
 
-      return created;
+      const attachedChannels = await alarmChannelDAL.findByAlarmId(createdAlarm.id, tx);
+      return { created: createdAlarm, channels: attachedChannels };
     });
 
-    return $formatResponse(alarm.id);
+    return $buildResponse(created, channels);
   };
 
   const getAlarmById = async (dto: TGetAlarmDTO): Promise<TAlarmResponse> => {
-    const alarm = await alarmDAL.findById(dto.alarmId);
+    const alarm = await alarmDAL.findActiveById(dto.alarmId);
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${dto.alarmId}' not found` });
 
     const provider = $getProvider(alarm.resourceType);
@@ -187,7 +181,8 @@ export const alarmServiceFactory = ({
       }
     });
 
-    return $formatResponse(alarm.id);
+    const channels = await alarmChannelDAL.findByAlarmId(alarm.id);
+    return $buildResponse(alarm, channels);
   };
 
   const listAlarms = async (dto: TListAlarmsDTO): Promise<TAlarmResponse[]> => {
@@ -205,7 +200,7 @@ export const alarmServiceFactory = ({
       }
     });
 
-    const alarms = await alarmDAL.find({
+    const alarms = await alarmDAL.findActiveByScope({
       orgId: dto.actorOrgId,
       resourceType: dto.resourceType,
       ...(dto.resourceId !== undefined ? { resourceId: dto.resourceId } : {}),
@@ -226,7 +221,7 @@ export const alarmServiceFactory = ({
   };
 
   const updateAlarm = async (dto: TUpdateAlarmDTO): Promise<TAlarmResponse> => {
-    const alarm = await alarmDAL.findById(dto.alarmId);
+    const alarm = await alarmDAL.findActiveById(dto.alarmId);
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${dto.alarmId}' not found` });
 
     const provider = $getProvider(alarm.resourceType);
@@ -248,8 +243,8 @@ export const alarmServiceFactory = ({
       await $resolveChannelsInScope(dto.channelIds, { orgId: alarm.orgId, projectId: alarm.projectId });
     }
 
-    await alarmDAL.transaction(async (tx) => {
-      await alarmDAL.updateById(
+    const { updated, channels } = await alarmDAL.transaction(async (tx) => {
+      const updatedAlarm = await alarmDAL.updateById(
         alarm.id,
         {
           ...(dto.name !== undefined ? { name: dto.name } : {}),
@@ -270,13 +265,16 @@ export const alarmServiceFactory = ({
           tx
         );
       }
+
+      const attachedChannels = await alarmChannelDAL.findByAlarmId(alarm.id, tx);
+      return { updated: updatedAlarm, channels: attachedChannels };
     });
 
-    return $formatResponse(alarm.id);
+    return $buildResponse(updated, channels);
   };
 
   const deleteAlarm = async (dto: TDeleteAlarmDTO): Promise<{ id: string }> => {
-    const alarm = await alarmDAL.findById(dto.alarmId);
+    const alarm = await alarmDAL.findActiveById(dto.alarmId);
     if (!alarm) throw new NotFoundError({ message: `Alarm with ID '${dto.alarmId}' not found` });
 
     const provider = $getProvider(alarm.resourceType);

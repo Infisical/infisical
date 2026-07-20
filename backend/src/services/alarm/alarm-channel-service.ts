@@ -305,7 +305,7 @@ export const alarmChannelServiceFactory = ({
       actorOrgId: dto.actorOrgId
     };
 
-    const channel = await alarmChannelDAL.findById(dto.channelId);
+    const channel = await alarmChannelDAL.findActiveById(dto.channelId);
     if (!channel) throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' not found` });
 
     await $assertPermission(OrgPermissionActions.Edit, channel.orgId, channel.projectId, actor);
@@ -387,7 +387,7 @@ export const alarmChannelServiceFactory = ({
       actorAuthMethod: dto.actorAuthMethod,
       actorOrgId: dto.actorOrgId
     };
-    const channel = await alarmChannelDAL.findById(dto.channelId);
+    const channel = await alarmChannelDAL.findActiveById(dto.channelId);
     if (!channel) throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' not found` });
 
     await $assertPermission(OrgPermissionActions.Delete, channel.orgId, channel.projectId, actor);
@@ -404,7 +404,7 @@ export const alarmChannelServiceFactory = ({
       actorAuthMethod: dto.actorAuthMethod,
       actorOrgId: dto.actorOrgId
     };
-    const channel = await alarmChannelDAL.findById(dto.channelId);
+    const channel = await alarmChannelDAL.findActiveById(dto.channelId);
     if (!channel) throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' not found` });
 
     await $assertPermission(OrgPermissionActions.Read, channel.orgId, channel.projectId, actor);

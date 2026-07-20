@@ -24,11 +24,14 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<TAlarmChannelWithUsage[]> => {
     try {
-      const query = (tx || db.replicaNode())(TableName.AlarmChannel).leftJoin(
-        TableName.AlarmChannelMembership,
-        `${TableName.AlarmChannel}.id`,
-        `${TableName.AlarmChannelMembership}.channelId`
-      );
+      const query = (tx || db.replicaNode())(TableName.AlarmChannel)
+        .leftJoin(
+          TableName.AlarmChannelMembership,
+          `${TableName.AlarmChannel}.id`,
+          `${TableName.AlarmChannelMembership}.channelId`
+        )
+        .leftJoin(TableName.Project, `${TableName.AlarmChannel}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`);
       scopeFilter(query, orgId, projectId);
 
       const rows = await query
@@ -40,6 +43,21 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
       return rows as unknown as TAlarmChannelWithUsage[];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindWithUsageByScope" });
+    }
+  };
+
+  const findActiveById = async (id: string, tx?: Knex): Promise<TAlarmChannels | undefined> => {
+    try {
+      const channel = await (tx || db.replicaNode())(TableName.AlarmChannel)
+        .leftJoin(TableName.Project, `${TableName.AlarmChannel}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.AlarmChannel}.id`, id)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(selectAllTableCols(TableName.AlarmChannel))
+        .first();
+
+      return channel as TAlarmChannels | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindActiveById" });
     }
   };
 
@@ -116,6 +134,7 @@ export const alarmChannelDALFactory = (db: TDbClient) => {
   return {
     ...alarmChannelOrm,
     findWithUsageByScope,
+    findActiveById,
     findByIdsInScope,
     findByNameInScope,
     findByAlarmId,
