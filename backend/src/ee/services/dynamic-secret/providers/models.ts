@@ -317,20 +317,6 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
       const countCsvArns = (value: string) => value.split(",").filter((arn) => arn.trim()).length;
 
       if (data.credentialType === AwsIamCredentialType.TemporaryCredentials) {
-        // policyArns/policyDocument grant permissions to created IAM users; temporary credentials are restricted via session policies instead
-        if (data.policyArns) {
-          reject(
-            "policyArns",
-            "Policy ARNs only apply to the IAM User credential type. To restrict temporary credentials, use Session Policy ARNs with the Assume Role method."
-          );
-        }
-        if (data.policyDocument) {
-          reject(
-            "policyDocument",
-            "A policy document only applies to the IAM User credential type. To restrict temporary credentials, use a Session Policy Document with the Assume Role method."
-          );
-        }
-
         // session policy fields exist only on the AssumeRole member (STS AssumeRole alone supports them; GetSessionToken,
         // used by access key / IRSA, has no Policy/PolicyArns params), so this guard also narrows the type for TS
         if (data.method === AwsIamAuthType.AssumeRole) {
