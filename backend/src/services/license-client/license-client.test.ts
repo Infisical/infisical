@@ -64,9 +64,7 @@ const createStubBackend = (response: TEntitlementsResponse, opts: { fail?: boole
 describe("entitlementResolverFactory", () => {
   test("fetches once then serves subsequent reads from the cache", async () => {
     const keyStore = createFakeKeyStore();
-    const { backend, getCalls } = createStubBackend(
-      makeEntitlements({ identities: { value: 100, source: "plan" } })
-    );
+    const { backend, getCalls } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
     const first = await resolver.getEntitlements({ id: ORG_ID });
@@ -103,9 +101,7 @@ describe("entitlementResolverFactory", () => {
 
   test("syncs org identity once per ttl window then serves from the cache", async () => {
     const keyStore = createFakeKeyStore();
-    const { backend, getCalls } = createStubBackend(
-      makeEntitlements({ identities: { value: 100, source: "plan" } })
-    );
+    const { backend, getCalls } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
     await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });

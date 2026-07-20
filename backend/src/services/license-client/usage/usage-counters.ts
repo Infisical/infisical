@@ -7,7 +7,8 @@ import {
   MaxInternalCas,
   MaxPamResources,
   PamIdentities,
-  SecretIdentities
+  SecretIdentities,
+  UserIdentities
 } from "../features";
 import { TUsageCounterDALFactory } from "./usage-counter-dal";
 
@@ -17,7 +18,7 @@ export type TMeteredFeature = {
 };
 
 type TBuildMeteredFeaturesDep = {
-  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
+  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;
   usageCounterDAL: TUsageCounterDALFactory;
   // Cloud meters per org; self-hosted meters the whole instance (a single license covers the DB).
   isCloud: boolean;
@@ -41,5 +42,10 @@ export const buildMeteredFeatures = ({
   {
     feature: PamIdentities,
     count: (orgId) => usageCounterDAL.countPamIdentities(isCloud ? orgId : undefined)
+  },
+  {
+    // Human users only (org members), never machine identities. Legacy per-user plans.
+    feature: UserIdentities,
+    count: (orgId) => licenseDAL.countOfOrgMembers(isCloud ? orgId : null)
   }
 ];

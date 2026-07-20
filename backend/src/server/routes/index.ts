@@ -812,6 +812,10 @@ export const registerRoutes = async (
   // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
   const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
 
+  // Created before licenseService so the latter can emit the v2 user-seat meter from its
+  // updateSubscriptionOrgMemberCount chokepoint.
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+
   const licenseService = licenseServiceFactory({
     permissionService,
     orgDAL,
@@ -820,16 +824,16 @@ export const registerRoutes = async (
     projectDAL,
     envConfig,
     licenseClient,
-    licenseDualRead
+    licenseDualRead,
+    usageMeteringService
   });
 
-  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert while
+  // Usage metering: counts the metered features and reports them to the License Server. Inert while
   // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
   const usageReporter = buildUsageReporter(envConfig);
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {
     usageSource = "cloud";
@@ -842,6 +846,7 @@ export const registerRoutes = async (
     usageMeteringService,
     meteredFeatures,
     usageReporter,
+    licenseClient,
     source: usageSource
   });
 

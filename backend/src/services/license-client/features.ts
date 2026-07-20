@@ -12,3 +12,5 @@ export const MaxActiveCerts = defineLimitFeature("max_active_certs", 0);
 export const MaxPamResources = defineLimitFeature("max_resources", 0);
 export const SecretIdentities = defineLimitFeature("secret_identities", 0);
 export const PamIdentities = defineLimitFeature("pam_identities", 0);
+// Human users (org members), excluding machine identities. For legacy per-user plans that count seats.
+export const UserIdentities = defineLimitFeature("user_identities", 0);

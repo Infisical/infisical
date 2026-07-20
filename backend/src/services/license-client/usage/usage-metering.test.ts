@@ -9,7 +9,8 @@ import {
   MaxInternalCas,
   MaxPamResources,
   PamIdentities,
-  SecretIdentities
+  SecretIdentities,
+  UserIdentities
 } from "../features";
 import { buildMeteredFeatures } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
@@ -172,7 +173,10 @@ describe("buildUsageReporter", () => {
 
 describe("buildMeteredFeatures", () => {
   test("wires all meters to their count fns", async () => {
-    const licenseDAL = { countOrgUsersAndIdentities: vi.fn(async () => 7) };
+    const licenseDAL = {
+      countOrgUsersAndIdentities: vi.fn(async () => 7),
+      countOfOrgMembers: vi.fn(async () => 8)
+    };
     const usageCounterDAL = {
       countInternalCas: vi.fn(async () => 1),
       countActiveCerts: vi.fn(async () => 2),
@@ -190,7 +194,8 @@ describe("buildMeteredFeatures", () => {
         MaxActiveCerts.key,
         MaxPamResources.key,
         SecretIdentities.key,
-        PamIdentities.key
+        PamIdentities.key,
+        UserIdentities.key
       ].sort()
     );
 
@@ -200,14 +205,19 @@ describe("buildMeteredFeatures", () => {
     expect(await byKey[MaxPamResources.key](ORG_ID)).toBe(3);
     expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
     expect(await byKey[PamIdentities.key](ORG_ID)).toBe(5);
+    expect(await byKey[UserIdentities.key](ORG_ID)).toBe(8);
     expect(licenseDAL.countOrgUsersAndIdentities).toHaveBeenCalledWith(ORG_ID);
     // Cloud scopes the identity meters to the org.
     expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(ORG_ID);
     expect(usageCounterDAL.countPamIdentities).toHaveBeenCalledWith(ORG_ID);
+    expect(licenseDAL.countOfOrgMembers).toHaveBeenCalledWith(ORG_ID);
   });
 
   test("self-hosted meters secret identities across the whole instance (no org scope)", async () => {
-    const licenseDAL = { countOrgUsersAndIdentities: vi.fn(async () => 0) };
+    const licenseDAL = {
+      countOrgUsersAndIdentities: vi.fn(async () => 0),
+      countOfOrgMembers: vi.fn(async () => 11)
+    };
     const usageCounterDAL = {
       countInternalCas: vi.fn(async () => 0),
       countActiveCerts: vi.fn(async () => 0),
@@ -218,11 +228,15 @@ describe("buildMeteredFeatures", () => {
     const metered = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: false });
     const secret = metered.find((m) => m.feature.key === SecretIdentities.key);
     const pam = metered.find((m) => m.feature.key === PamIdentities.key);
+    const user = metered.find((m) => m.feature.key === UserIdentities.key);
 
     expect(await secret?.count(ORG_ID)).toBe(9);
     expect(await pam?.count(ORG_ID)).toBe(6);
+    expect(await user?.count(ORG_ID)).toBe(11);
     expect(usageCounterDAL.countSecretManagementIdentities).toHaveBeenCalledWith(undefined);
     expect(usageCounterDAL.countPamIdentities).toHaveBeenCalledWith(undefined);
+    // Self-hosted meters users across the whole instance (null org scope).
+    expect(licenseDAL.countOfOrgMembers).toHaveBeenCalledWith(null);
   });
 });
 
@@ -230,13 +244,23 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
   const meteredFeatures = [{ feature: MaxIdentities, count: vi.fn(async () => 42) }];
 
   const buildQueue = (
-    overrides: { usageReporter?: unknown; keyStore?: ReturnType<typeof createFakeKeyStore>; orgFind?: unknown } = {}
+    overrides: {
+      usageReporter?: unknown;
+      keyStore?: ReturnType<typeof createFakeKeyStore>;
+      orgFind?: unknown;
+      // Feature keys the org's plan includes; defaults to the metered feature under test.
+      planFeatures?: string[];
+    } = {}
   ) => {
     const reportSnapshots = vi.fn(async () => {});
     const keyStore = overrides.keyStore ?? createFakeKeyStore();
     const usageReporter = overrides.usageReporter === undefined ? { reportSnapshots } : overrides.usageReporter;
     const emit = vi.fn();
     const find = overrides.orgFind ?? vi.fn(async () => []);
+    const planFeatures = overrides.planFeatures ?? [MaxIdentities.key];
+    const getEntitlements = vi.fn(async () => ({
+      features: Object.fromEntries(planFeatures.map((key) => [key, { value: 100, source: "plan" }]))
+    }));
     const queue = usageEventQueueFactory({
       queueService: { start: vi.fn() },
       cronJob: { register: vi.fn(), start: vi.fn(), stop: vi.fn() } as never,
@@ -245,9 +269,10 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       usageMeteringService: { emit },
       meteredFeatures,
       usageReporter: usageReporter as never,
+      licenseClient: { getEntitlements } as never,
       source: "test-region"
     });
-    return { queue, reportSnapshots, keyStore, emit, find };
+    return { queue, reportSnapshots, keyStore, emit, find, getEntitlements };
   };
 
   beforeEach(() => {
@@ -290,6 +315,14 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     expect(reportSnapshots).not.toHaveBeenCalled();
   });
 
+  test("skips the count and report when the dimension is not in the org's plan", async () => {
+    // The org's plan has no metered features, so the dimension is absent from entitlements.features.
+    const { queue, reportSnapshots } = buildQueue({ planFeatures: [] });
+    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
+    expect(meteredFeatures[0].count).not.toHaveBeenCalled();
+    expect(reportSnapshots).not.toHaveBeenCalled();
+  });
+
   test("flushAllOrgs pages through orgs and emits per meter", async () => {
     const fullPage = Array.from({ length: 500 }, (_, i) => ({ id: `org-${i}` }));
     const lastPage = [{ id: "org-500" }];
@@ -322,7 +355,10 @@ describe("canUse enforcement (using the framework from a call site)", () => {
     counts: { identities?: number; internalCas?: number }
   ) => {
     const reader = featureReaderFactory({ getEntitlements: async () => ({ features: caps, products: [] }) });
-    const licenseDAL = { countOrgUsersAndIdentities: async () => counts.identities ?? 0 };
+    const licenseDAL = {
+      countOrgUsersAndIdentities: async () => counts.identities ?? 0,
+      countOfOrgMembers: async () => 0
+    };
     const usageCounterDAL = {
       countInternalCas: async () => counts.internalCas ?? 0,
       countActiveCerts: async () => 0,

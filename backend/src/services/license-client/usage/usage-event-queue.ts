@@ -5,6 +5,7 @@ import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { TLicenseClientFactory } from "../license-client";
 import { TMeteredFeature } from "./usage-counters";
 import { TUsageMeteringServiceFactory } from "./usage-metering-service";
 import { TUsageReporter } from "./usage-reporter";
@@ -17,6 +18,8 @@ type TUsageEventQueueFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   meteredFeatures: TMeteredFeature[];
   usageReporter: TUsageReporter | null;
+  // Resolves the org's plan so we only report dimensions the plan actually includes. Cached.
+  licenseClient: Pick<TLicenseClientFactory, "getEntitlements">;
   source: string;
 };
 
@@ -28,6 +31,7 @@ export const usageEventQueueFactory = ({
   usageMeteringService,
   meteredFeatures,
   usageReporter,
+  licenseClient,
   source
 }: TUsageEventQueueFactoryDep) => {
   const featureByKey = new Map(meteredFeatures.map((m) => [m.feature.key, m]));
@@ -42,6 +46,19 @@ export const usageEventQueueFactory = ({
       const metered = featureByKey.get(dimensionKey);
       if (!metered) {
         logger.warn(`usage-metering: unknown metered feature, dropping event [dimensionKey=${dimensionKey}]`);
+        return;
+      }
+
+      // Only report a dimension the org's plan actually includes. Metered features are entitlement
+      // features (each meter resolves its cap from entitlements.features[key]), so a dimension the plan
+      // doesn't grant is absent here. Works for cloud (per-org entitlements) and self-hosted
+      // (instance-wide entitlements; the backend ignores the org id). Entitlements are cached, so this
+      // check is cheap and also spares the DB count below.
+      const entitlements = await licenseClient.getEntitlements({ id: orgId });
+      if (!entitlements || !(dimensionKey in entitlements.features)) {
+        logger.info(
+          `usage-event-queue: dimension not in org plan, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+        );
         return;
       }
 

@@ -12,7 +12,7 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     extractV1: (p) => p.pkiEst
   },
   {
-    v2Key: "acme_client",
+    v2Key: "pki_acme",
     v1Field: "pkiAcme",
     extractV1: (p) => p.pkiAcme
   },

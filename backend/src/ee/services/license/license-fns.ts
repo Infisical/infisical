@@ -71,8 +71,6 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretSyncLimit: null,
   maxInternalCas: null,
   maxPamAccounts: null,
-  pam: null,
-  certManager: null,
   memberLimit: null,
   membersUsed: 0,
   environmentLimit: null,
@@ -137,7 +135,10 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretShareExternalBranding: false,
   honeyTokens: false,
   honeyTokenLimit: 0,
-  secretsBrokering: true
+  secretsBrokering: true,
+  // product gating
+  pam: null,
+  certManager: null
 });
 
 export const setupLicenseRequestWithStore = (
