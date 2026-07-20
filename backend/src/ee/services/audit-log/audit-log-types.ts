@@ -701,6 +701,7 @@ export enum EventType {
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+  SEARCH_SECRETS_BY_METADATA = "search-secrets-by-metadata",
 
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
@@ -5735,6 +5736,16 @@ interface DashboardListSecretsEvent {
   };
 }
 
+interface SearchSecretsByMetadataEvent {
+  type: EventType.SEARCH_SECRETS_BY_METADATA;
+  metadata: {
+    operator: string;
+    filters: { key: string; value: string; operator: string }[];
+    numberOfSecrets: number;
+    secretIds: string[];
+  };
+}
+
 interface DashboardGetSecretValueEvent {
   type: EventType.DASHBOARD_GET_SECRET_VALUE;
   metadata: {
@@ -7913,6 +7924,7 @@ export type Event =
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
   | DashboardListSecretsEvent
+  | SearchSecretsByMetadataEvent
   | DashboardGetSecretValueEvent
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent

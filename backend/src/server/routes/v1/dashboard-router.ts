@@ -139,6 +139,20 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         projectId
       });
 
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.SEARCH_SECRETS_BY_METADATA,
+          metadata: {
+            operator,
+            filters: filters.map((filter) => ({ key: filter.key, value: filter.value, operator: filter.operator })),
+            numberOfSecrets: secrets.length,
+            secretIds: secrets.map((secret) => secret.secretId)
+          }
+        }
+      });
+
       return { secrets };
     }
   });
