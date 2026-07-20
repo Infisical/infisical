@@ -23,7 +23,7 @@ describe("getOvhRequestOptions", () => {
     expect(requestOptions.httpsAgent?.options.cert).toContain("certificate");
   });
 
-  test("token method sets the token on headers and sets not https.Agent", () => {
+  test("token method sets the token on headers and sets no https.Agent", () => {
     const requestOptions = getOvhRequestOptions({
       method: OVHConnectionMethod.Token,
       credentials: {
@@ -51,7 +51,7 @@ describe("ValidateOvhConnectionCredentialsSchema", () => {
 
   test("token method requires token", () => {
     const result = ValidateOvhConnectionCredentialsSchema.safeParse({
-      method: OVHConnectionMethod.Certificate,
+      method: OVHConnectionMethod.Token,
       credentials: { okmsDomain: OKMS_DOMAIN, okmsId: OKMS_ID }
     });
 
