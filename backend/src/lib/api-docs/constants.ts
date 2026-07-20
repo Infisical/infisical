@@ -2833,7 +2833,8 @@ export const AppConnections = {
       certificate:
         "The PEM-encoded public certificate issued by OVHcloud KMS for client certificate authentication (including the -----BEGIN/END CERTIFICATE----- markers).",
       okmsDomain: "The OVHcloud KMS base URL (e.g., 'https://ca-east-bhs.okms.ovh.net').",
-      okmsId: "The OVHcloud KMS instance identifier from the OVH Control Panel, used as a path segment in all API calls.",
+      okmsId:
+        "The OVHcloud KMS instance identifier from the OVH Control Panel, used as a path segment in all API calls.",
       token: "The access token used to authenticate to the OVHcloud KMS REST API"
     },
     SNOWFLAKE: {

@@ -17,7 +17,11 @@ const OkmsDomainSchema = z
   .min(1, "OVHcloud KMS domain required")
   .url("OVHcloud KMS domain must be a valid URL (e.g. https://eu-west-rbx.okms.ovh.net)")
   .describe(AppConnections.CREDENTIALS.OVH.okmsDomain);
-const OkmsIdSchema = z.string().trim().min(1, "OVHcloud KMS ID required").describe(AppConnections.CREDENTIALS.OVH.okmsId);
+const OkmsIdSchema = z
+  .string()
+  .trim()
+  .min(1, "OVHcloud KMS ID required")
+  .describe(AppConnections.CREDENTIALS.OVH.okmsId);
 
 export const OvhConnectionCertificateCredentialsSchema = z.object({
   privateKey: z.string().trim().min(1, "Private key required").describe(AppConnections.CREDENTIALS.OVH.privateKey),
