@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import { TPasswordPolicy, TPasswordPolicyRequirement } from "@app/hooks/api/admin/types";
 
-const hasMoreThanMaxConsecutiveCharacters = (password: string, maxConsecutiveCharacters: number) => {
+const hasMoreThanMaxConsecutiveCharacters = (
+  password: string,
+  maxConsecutiveCharacters: number
+) => {
   let previousCharacter: string | undefined;
   let consecutiveCharacterCount = 0;
 
