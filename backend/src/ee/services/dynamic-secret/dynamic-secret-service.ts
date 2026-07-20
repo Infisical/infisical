@@ -642,9 +642,18 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    const providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput, {
-      projectId
-    })) as object;
+    let providerInputs: object;
+    try {
+      providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput, {
+        projectId
+      })) as object;
+    } catch (error) {
+      if (error instanceof GcpIamServiceAccountSuffixError) {
+        providerInputs = decryptedStoredInput;
+      } else {
+        throw error;
+      }
+    }
 
     return {
       ...dynamicSecretCfg,
