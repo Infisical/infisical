@@ -6,8 +6,7 @@ import { TAlertPayload } from "./alert-channel-types";
 
 export enum AlertPrincipalType {
   USER = "user",
-  GROUP = "group",
-  EMAIL = "email"
+  GROUP = "group"
 }
 
 export enum AlertTriggerType {

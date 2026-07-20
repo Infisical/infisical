@@ -2,12 +2,12 @@ import { useMemo, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import {
-  CreatableSelect,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
-  FieldLabel
+  FieldLabel,
+  FilterableSelect
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -18,8 +18,6 @@ import {
 } from "@app/hooks/api";
 import { TAlertChannelForm, TAlertChannelRecipientForm } from "@app/hooks/api/alertChannels";
 import { ALERT_PRINCIPAL_TYPE_LABELS, AlertPrincipalType } from "@app/hooks/api/alerts";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type RecipientOption = {
   principalType: AlertPrincipalType;
@@ -73,13 +71,6 @@ const RecipientsSelect = ({ userOptions, groupOptions, labelLookup }: PrincipalS
   );
 
   const toOption = (recipient: TAlertChannelRecipientForm): RecipientOption => {
-    if (recipient.principalType === AlertPrincipalType.Email) {
-      return {
-        principalType: AlertPrincipalType.Email,
-        principalId: recipient.principalId,
-        label: recipient.principalId
-      };
-    }
     const resolved = labelLookup.get(`${recipient.principalType}:${recipient.principalId}`);
     return {
       principalType: recipient.principalType,
@@ -101,10 +92,10 @@ const RecipientsSelect = ({ userOptions, groupOptions, labelLookup }: PrincipalS
           <Field>
             <FieldLabel>Recipients</FieldLabel>
             <FieldContent>
-              <CreatableSelect
+              <FilterableSelect
                 isMulti
                 closeMenuOnSelect={false}
-                placeholder="Add users, groups, or type an email..."
+                placeholder="Add users or groups..."
                 options={inputValue.trim() ? groupedOptions : []}
                 value={value}
                 isError={Boolean(error)}
@@ -112,23 +103,14 @@ const RecipientsSelect = ({ userOptions, groupOptions, labelLookup }: PrincipalS
                 onInputChange={(next) => setInputValue(next)}
                 noOptionsMessage={() =>
                   inputValue.trim()
-                    ? "No matches. Type a full email to add it."
-                    : "Type to search users, groups, or an email"
+                    ? "No matching users or groups"
+                    : "Type to search users or groups"
                 }
                 getOptionValue={(option: RecipientOption) =>
                   `${option.principalType}:${option.principalId}`
                 }
                 getOptionLabel={(option: RecipientOption) =>
                   `${option.label} (${ALERT_PRINCIPAL_TYPE_LABELS[option.principalType]})`
-                }
-                isValidNewOption={(input) => EMAIL_REGEX.test(input.trim())}
-                formatCreateLabel={(input) => `Add email "${input.trim()}"`}
-                getNewOptionData={(input) =>
-                  ({
-                    principalType: AlertPrincipalType.Email,
-                    principalId: input.trim().toLowerCase(),
-                    label: input.trim().toLowerCase()
-                  }) as RecipientOption
                 }
                 onChange={(newValue) => {
                   field.onChange(
@@ -141,8 +123,7 @@ const RecipientsSelect = ({ userOptions, groupOptions, labelLookup }: PrincipalS
                 }}
               />
               <FieldDescription>
-                This channel delivers to these recipients. Add users, groups, or raw email
-                addresses.
+                This channel delivers to these recipients. Add users or groups.
               </FieldDescription>
               <FieldError errors={[error]} />
             </FieldContent>

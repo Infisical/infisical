@@ -81,7 +81,6 @@ export const alertRecipientResolverFactory = ({
     const result = new Map<string, TAlertRecipient[]>();
     for (const [channelId, rows] of rowsByChannel.entries()) {
       const userIds = new Set<string>();
-      const rawEmails = new Set<string>();
 
       for (const recipient of rows) {
         switch (recipient.principalType) {
@@ -91,29 +90,17 @@ export const alertRecipientResolverFactory = ({
           case AlertPrincipalType.GROUP:
             (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
             break;
-          case AlertPrincipalType.EMAIL:
-            rawEmails.add(recipient.principalId.toLowerCase());
-            break;
           default:
             logger.warn(`Unknown alert recipient principal type '${recipient.principalType}'`);
         }
       }
 
       const resolved: TAlertRecipient[] = [];
-      const seenEmails = new Set<string>();
-
       userIds.forEach((userId) => {
+        // usersById only holds in-scope users, so out-of-scope recipients are skipped here.
         const user = usersById.get(userId);
         if (user?.email) {
-          seenEmails.add(user.email.toLowerCase());
           resolved.push({ userId: user.id, email: user.email, firstName: user.firstName });
-        }
-      });
-
-      rawEmails.forEach((email) => {
-        if (!seenEmails.has(email)) {
-          seenEmails.add(email);
-          resolved.push({ email });
         }
       });
 

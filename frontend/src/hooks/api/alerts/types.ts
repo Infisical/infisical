@@ -19,9 +19,7 @@ export enum AlertChannelType {
 
 export enum AlertPrincipalType {
   User = "user",
-  Group = "group",
-  Role = "role",
-  Email = "email"
+  Group = "group"
 }
 
 export enum AlertTimeUnit {
@@ -39,10 +37,8 @@ export const ALERT_TIME_UNIT_LABELS: Record<AlertTimeUnit, string> = {
 };
 
 export const ALERT_PRINCIPAL_TYPE_LABELS: Record<AlertPrincipalType, string> = {
-  [AlertPrincipalType.Email]: "Email",
   [AlertPrincipalType.User]: "User",
-  [AlertPrincipalType.Group]: "Group",
-  [AlertPrincipalType.Role]: "Role"
+  [AlertPrincipalType.Group]: "Group"
 };
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {

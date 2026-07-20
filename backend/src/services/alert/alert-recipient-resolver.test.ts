@@ -37,7 +37,7 @@ const buildResolver = (opts: {
 const user = (id: string): TUser => ({ id, email: `${id}@example.com`, firstName: id.toUpperCase() });
 
 describe("alert recipient resolver — send-time scope re-check", () => {
-  test("org scope: drops a user no longer in the org, keeps members and raw emails", async () => {
+  test("org scope: drops a user no longer in the org, keeps current members", async () => {
     const resolver = buildResolver({ users: [user("u1"), user("u2")], orgUserIds: ["u1"] });
 
     const result = await resolver.resolveMany(
@@ -46,8 +46,7 @@ describe("alert recipient resolver — send-time scope re-check", () => {
           "c1",
           [
             { principalType: AlertPrincipalType.USER, principalId: "u1" },
-            { principalType: AlertPrincipalType.USER, principalId: "u2" }, // removed from org
-            { principalType: AlertPrincipalType.EMAIL, principalId: "ext@vendor.com" }
+            { principalType: AlertPrincipalType.USER, principalId: "u2" } // removed from org
           ]
         ]
       ]),
@@ -55,7 +54,7 @@ describe("alert recipient resolver — send-time scope re-check", () => {
     );
 
     const emails = (result.get("c1") ?? []).map((r) => r.email).sort();
-    expect(emails).toEqual(["ext@vendor.com", "u1@example.com"]);
+    expect(emails).toEqual(["u1@example.com"]);
   });
 
   test("project scope: drops group members no longer effective in the project", async () => {
