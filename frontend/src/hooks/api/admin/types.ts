@@ -20,6 +20,7 @@ export type TPasswordPolicyRequirement = {
   isPrimary: boolean;
   patterns: string[];
   flags?: string;
+  maxConsecutiveCharacters?: number;
   shouldMatch: boolean;
 };
 
