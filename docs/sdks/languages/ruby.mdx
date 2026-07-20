@@ -10,7 +10,7 @@ If you're working with Ruby, the official Infisical Ruby SDK package is the easi
 - [Github Repository](https://github.com/Infisical/ruby-sdk)
 
 <Note>
-  Version 3.0.0 is a native Ruby rewrite of the SDK and replaces the deprecated `infisical-sdk` gem. It is not a drop-in replacement for versions prior to `3.0.0` — the client API has changed.
+  Version 3.0.0 is a native Ruby rewrite of the SDK with a breaking API change. It is not a drop-in replacement for versions prior to `3.0.0` — the require path and client class have changed. Make sure you are on `infisical-sdk` 3.0.0 or newer to use the API documented here.
 </Note>
 
 # Basic Usage
@@ -84,7 +84,7 @@ client = Infisical::Client.new(
   </Expandable>
 </ParamField>
 
-## Authentication
+# Authentication
 
 The SDK authenticates as a [machine identity](/documentation/platform/identities/machine-identities). The most common authentication method is Universal Auth, which uses a client ID and client secret. If you already have a valid access token, you can also set it on the client directly.
 
@@ -127,7 +127,7 @@ client.auth.access_token("YOUR_ACCESS_TOKEN")
   The access token to authenticate with. This should not include the `Bearer` prefix.
 </ParamField>
 
-## Secrets
+# Secrets
 
 ### List Secrets
 
