@@ -69,7 +69,31 @@ export const selectOrganization = async (data: SelectOrganizationParams) => {
     isMfaEnabled: boolean;
     mfaMethod?: MfaMethod;
   }>("/api/v3/auth/select-organization", data);
-  return res;
+
+  // Check for a stored redirect URL from before login (e.g., deep links like /pam/access)
+  // Return the URL so the caller can redirect AFTER setting up auth state
+  let loginRedirectUrl: string | undefined;
+  if (res.token && !res.isMfaEnabled) {
+    const loginRedirectInfo = sessionStorage.getItem(
+      SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL
+    );
+    if (loginRedirectInfo) {
+      sessionStorage.removeItem(SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL);
+      try {
+        const { expiry, data: redirectUrl } = JSON.parse(loginRedirectInfo) as {
+          expiry: string;
+          data: string;
+        };
+        if (new Date() < new Date(expiry) && redirectUrl) {
+          loginRedirectUrl = redirectUrl;
+        }
+      } catch {
+        // Invalid JSON - ignore
+      }
+    }
+  }
+
+  return { ...res, loginRedirectUrl };
 };
 
 export const useSelectOrganization = () => {
@@ -88,19 +112,10 @@ export const useSelectOrganization = () => {
         await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
       }
 
-      if (data.token && !data.isMfaEnabled) {
-        // We check if there is a pending callback after organization login success and redirect to it if valid
-        const loginRedirectInfo = sessionStorage.getItem(
-          SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL
-        );
-        sessionStorage.removeItem(SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL);
-
-        if (loginRedirectInfo) {
-          const { expiry, data: redirectUrl } = JSON.parse(loginRedirectInfo);
-          if (new Date() < new Date(expiry)) {
-            window.location.assign(redirectUrl);
-          }
-        }
+      // If there's a stored redirect URL from before login, navigate there now
+      // (after auth state is set up)
+      if (data.loginRedirectUrl) {
+        window.location.assign(data.loginRedirectUrl);
       }
 
       return data;

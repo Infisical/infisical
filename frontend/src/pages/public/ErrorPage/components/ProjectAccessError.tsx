@@ -33,6 +33,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     strict: false
   });
 
+  const isPamRoute = Boolean(getPamOrgIdFromPath());
   const needsPamFallback = !projectIdProp && !routeProjectId;
   const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
   const { data: pamOrg } = useGetOrganizationById(pamOrgId ?? "", {
@@ -60,6 +61,13 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     });
   };
 
+  const accessTargetName = isPamRoute ? "Privileged Access Manager" : "this project";
+  const joinButtonText = isPamRoute ? "Join as Admin" : "Join Project as Admin";
+  const requestButtonText = isPamRoute ? "Request Access" : "Request Access to Project";
+  const modalSubTitle = isPamRoute
+    ? "Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
+    : undefined;
+
   return (
     <div
       className={`flex h-full w-full items-center justify-center ${
@@ -69,7 +77,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
       <AccessRestrictedBanner
         body={
           <>
-            You are not currently a member of this project. Request access to join project.
+            You are not currently a member of {accessTargetName}. Request access to join.
             <div className="mt-4 flex w-full justify-center gap-2">
               <Link to="/">
                 <Button variant="outline_bg">
@@ -92,14 +100,14 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
                       disabled={orgAdminAccessProject.isPending}
                       isLoading={isProjectLoading || orgAdminAccessProject.isPending}
                     >
-                      Join Project as Admin
+                      {joinButtonText}
                     </Button>
                   ) : (
                     <Button
                       onClick={() => handlePopUpOpen("requestAccessConfirmation")}
                       isLoading={isProjectLoading}
                     >
-                      Request Access to Project
+                      {requestButtonText}
                     </Button>
                   )
                 }
@@ -109,6 +117,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
               isOpen={popUp.requestAccessConfirmation.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
               project={project}
+              subTitle={modalSubTitle}
               onComplete={() => {
                 navigate({
                   to: "/"

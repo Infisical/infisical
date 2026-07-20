@@ -157,6 +157,13 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
 
         createNotification({ text: "Successfully logged in", type: "success" });
 
+        // If there's a stored redirect URL from before login (e.g., deep links like /pam/access),
+        // navigate there instead of the default projects page
+        if (result.loginRedirectUrl) {
+          window.location.assign(result.loginRedirectUrl);
+          return { autoSelectErrorMessage: undefined };
+        }
+
         throw redirect({
           to: "/organizations/$orgId/projects",
           params: { orgId: targetOrgId }
