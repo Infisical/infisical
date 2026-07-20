@@ -16,6 +16,7 @@ import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotati
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key-rotation-schema";
+import { DatadogApiKeyRotationSchema } from "./datadog-api-key-rotation-schema";
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token-rotation-schema";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key-rotation-schema";
@@ -57,6 +58,7 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         SupabaseApiKeyRotationSchema,
         SalesforceOauthCredentialsRotationSchema,
         DatadogApplicationKeySecretRotationSchema,
+        DatadogApiKeyRotationSchema,
         ConvexAccessKeyRotationSchema,
         FireworksApiKeyRotationSchema
       ]),
