@@ -217,11 +217,13 @@ export const sessionResponseSchema = z
   })
   .passthrough();
 
-// Checkout either needs the customer to complete a Stripe Checkout (checkout_created) or is applied
-// directly to an existing subscription (subscription_updated).
+// Result of a checkout / add / remove / commitment change. Checkout either needs the customer to
+// complete a Stripe Checkout (checkout_created) or is applied directly to an existing subscription
+// (subscription_updated). Removing the last product cancels the whole subscription
+// (subscription_canceled).
 export const checkoutResultSchema = z
   .object({
-    outcome: z.enum(["checkout_created", "subscription_updated"]),
+    outcome: z.enum(["checkout_created", "subscription_updated", "subscription_canceled"]),
     checkoutUrl: z.string().optional(),
     subscriptionId: z.string().optional()
   })
