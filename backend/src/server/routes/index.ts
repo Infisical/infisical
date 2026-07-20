@@ -2718,7 +2718,8 @@ export const registerRoutes = async (
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    projectDAL
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({

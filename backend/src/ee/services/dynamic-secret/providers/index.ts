@@ -1,4 +1,5 @@
 import { SnowflakeProvider } from "@app/ee/services/dynamic-secret/providers/snowflake";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
@@ -35,12 +36,14 @@ type TBuildDynamicSecretProviderDTO = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const buildDynamicSecretProviders = ({
   gatewayService,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  projectDAL
 }: TBuildDynamicSecretProviderDTO): Record<DynamicSecretProviders, TDynamicProviderFns> => ({
   [DynamicSecretProviders.SqlDatabase]: SqlDatabaseProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Clickhouse]: ClickhouseProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
@@ -66,7 +69,7 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.SapAse]: SapAseProvider(),
   [DynamicSecretProviders.Kubernetes]: KubernetesProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
   [DynamicSecretProviders.Vertica]: VerticaProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
-  [DynamicSecretProviders.GcpIam]: GcpIamProvider(),
+  [DynamicSecretProviders.GcpIam]: GcpIamProvider({ projectDAL }),
   [DynamicSecretProviders.Github]: GithubProvider(),
   [DynamicSecretProviders.Couchbase]: CouchbaseProvider(),
   [DynamicSecretProviders.Milvus]: MilvusProvider({ gatewayService, gatewayV2Service, gatewayPoolService }),
