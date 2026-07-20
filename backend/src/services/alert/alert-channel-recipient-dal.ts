@@ -5,6 +5,8 @@ import { TableName, TAlertChannelRecipients } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { AlertPrincipalType } from "./alert-types";
+
 export type TAlertChannelRecipientDALFactory = ReturnType<typeof alertChannelRecipientDALFactory>;
 
 export const alertChannelRecipientDALFactory = (db: TDbClient) => {
@@ -45,10 +47,32 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteUsersRecipientsByScope = async (
+    { userIds, orgId, projectId }: { userIds: string[]; orgId?: string; projectId?: string },
+    tx?: Knex
+  ): Promise<number> => {
+    try {
+      if (!userIds.length || (!orgId && !projectId)) return 0;
+
+      const channelIds = (tx || db)(TableName.AlertChannel).select("id");
+      if (projectId) void channelIds.where(`${TableName.AlertChannel}.projectId`, projectId);
+      else void channelIds.where(`${TableName.AlertChannel}.orgId`, orgId as string);
+
+      return await (tx || db)(TableName.AlertChannelRecipient)
+        .where(`${TableName.AlertChannelRecipient}.principalType`, AlertPrincipalType.USER)
+        .whereIn(`${TableName.AlertChannelRecipient}.principalId`, userIds)
+        .whereIn(`${TableName.AlertChannelRecipient}.channelId`, channelIds)
+        .del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteUsersRecipientsByScope" });
+    }
+  };
+
   return {
     ...alertChannelRecipientOrm,
     findByChannelId,
     findByChannelIds,
-    deleteByChannelId
+    deleteByChannelId,
+    deleteUsersRecipientsByScope
   };
 };

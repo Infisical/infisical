@@ -12,6 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("resourceType").notNullable();
       t.string("resourceId").nullable();
       t.string("eventType").notNullable();
+      t.string("triggerType").notNullable();
       t.jsonb("condition").nullable();
       t.jsonb("filters").nullable();
       t.boolean("enabled").notNullable().defaultTo(true);
@@ -26,7 +27,7 @@ export async function up(knex: Knex): Promise<void> {
       t.index("orgId");
       t.index("projectId");
       t.index("createdByUserId");
-      t.index(["resourceType", "enabled"]);
+      t.index(["resourceType", "triggerType", "enabled"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.Alert);

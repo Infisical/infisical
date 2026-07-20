@@ -14,6 +14,7 @@ export const AlertsSchema = z.object({
   resourceType: z.string(),
   resourceId: z.string().nullable().optional(),
   eventType: z.string(),
+  triggerType: z.string(),
   condition: z.unknown().nullable().optional(),
   filters: z.unknown().nullable().optional(),
   enabled: z.boolean().default(true),

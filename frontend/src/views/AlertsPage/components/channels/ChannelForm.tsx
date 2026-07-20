@@ -200,7 +200,9 @@ export const ChannelForm = ({ projectId, channel, onComplete, onCancel }: Props)
             )}
           />
 
-          {channelType === AlertChannelType.Email && <ChannelRecipientsField />}
+          {channelType === AlertChannelType.Email && (
+            <ChannelRecipientsField projectId={projectId} />
+          )}
 
           {channelType === AlertChannelType.Slack && (
             <Controller

@@ -898,9 +898,12 @@ export const registerRoutes = async (
     userDAL
   });
 
+  const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
+
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
     membershipRoleDAL,
+    alertChannelRecipientDAL,
     membershipUserDAL,
     orgDAL,
     permissionService,
@@ -1014,7 +1017,6 @@ export const registerRoutes = async (
 
   const alertDAL = alertDALFactory(db);
   const alertChannelDAL = alertChannelDALFactory(db);
-  const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
   const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
   const alertHistoryDAL = alertHistoryDALFactory(db);
   const alertProviderRegistry = alertProviderRegistryFactory();
@@ -1024,7 +1026,12 @@ export const registerRoutes = async (
       permissionService
     })
   );
-  const alertRecipientResolver = alertRecipientResolverFactory({ userDAL, userGroupMembershipDAL });
+  const alertRecipientResolver = alertRecipientResolverFactory({
+    userDAL,
+    userGroupMembershipDAL,
+    orgDAL,
+    projectDAL
+  });
   const alertEngine = alertEngineFactory({
     alertChannelDAL,
     alertChannelRecipientDAL,

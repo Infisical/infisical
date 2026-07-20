@@ -10,6 +10,11 @@ export enum AlertPrincipalType {
   EMAIL = "email"
 }
 
+export enum AlertTriggerType {
+  Scheduled = "scheduled",
+  Event = "event"
+}
+
 export enum AlertRunStatus {
   SUCCESS = "success",
   PARTIAL = "partial",

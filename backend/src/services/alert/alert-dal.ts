@@ -5,6 +5,8 @@ import { TableName, TAlerts } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { AlertTriggerType } from "./alert-types";
+
 export type TAlertDALFactory = ReturnType<typeof alertDALFactory>;
 
 export const alertDALFactory = (db: TDbClient) => {
@@ -15,6 +17,7 @@ export const alertDALFactory = (db: TDbClient) => {
       const alerts = await (tx || db.replicaNode())(TableName.Alert)
         .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alert}.resourceType`, resourceType)
+        .where(`${TableName.Alert}.triggerType`, AlertTriggerType.Scheduled)
         .where(`${TableName.Alert}.enabled`, true)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.Alert))

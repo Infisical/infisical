@@ -141,7 +141,10 @@ export const alertEngineFactory = ({
         list.push(row);
         rowsByChannel.set(row.channelId, list);
       });
-      recipientsByChannel = await alertRecipientResolver.resolveMany(rowsByChannel);
+      recipientsByChannel = await alertRecipientResolver.resolveMany(rowsByChannel, {
+        orgId: alert.orgId,
+        projectId: alert.projectId
+      });
     }
 
     const deps: TAlertChannelDeps = { smtpService };

@@ -17,7 +17,7 @@ import {
   TListAlertsDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
-import { AlertPermissionAction, IResourceAlertProvider } from "./alert-types";
+import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 export type TAlertServiceFactoryDep = {
@@ -141,6 +141,7 @@ export const alertServiceFactory = ({
           resourceType: dto.resourceType,
           resourceId: dto.resourceId,
           eventType: dto.eventType,
+          triggerType: AlertTriggerType.Scheduled,
           condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
           filters: dto.filters != null ? JSON.stringify(dto.filters) : null,
           enabled: dto.enabled ?? true,

@@ -10,7 +10,12 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useGetOrganizationGroups, useGetOrgUsers } from "@app/hooks/api";
+import {
+  useGetOrganizationGroups,
+  useGetOrgUsers,
+  useGetWorkspaceUsers,
+  useListWorkspaceGroups
+} from "@app/hooks/api";
 import { TAlertChannelForm, TAlertChannelRecipientForm } from "@app/hooks/api/alertChannels";
 import { ALERT_PRINCIPAL_TYPE_LABELS, AlertPrincipalType } from "@app/hooks/api/alerts";
 
@@ -22,38 +27,42 @@ type RecipientOption = {
   label: string;
 };
 
-export const ChannelRecipientsField = () => {
-  const { control } = useFormContext<TAlertChannelForm>();
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg.id;
+type PrincipalSource = {
+  userOptions: RecipientOption[];
+  groupOptions: RecipientOption[];
+  labelLookup: Map<string, string>;
+};
 
-  const [inputValue, setInputValue] = useState("");
+type MemberLike = {
+  user?: { id: string; username?: string; firstName?: string; lastName?: string; email?: string };
+};
 
-  const { data: orgUsers = [] } = useGetOrgUsers(orgId);
-  const { data: orgGroups = [] } = useGetOrganizationGroups(orgId);
-
-  const { userOptions, groupOptions, labelLookup } = useMemo(() => {
-    const lookup = new Map<string, string>();
-
-    const users: RecipientOption[] = orgUsers
-      .filter((member) => member.user?.id)
-      .map((member) => {
-        const label =
-          member.user.username ||
-          [member.user.firstName, member.user.lastName].filter(Boolean).join(" ") ||
-          member.user.email ||
-          member.user.id;
-        lookup.set(`${AlertPrincipalType.User}:${member.user.id}`, label);
-        return { principalType: AlertPrincipalType.User, principalId: member.user.id, label };
-      });
-
-    const groups: RecipientOption[] = orgGroups.map((group) => {
-      lookup.set(`${AlertPrincipalType.Group}:${group.id}`, group.name);
-      return { principalType: AlertPrincipalType.Group, principalId: group.id, label: group.name };
+const toUserOptions = (members: MemberLike[], lookup: Map<string, string>): RecipientOption[] =>
+  members
+    .filter((member) => member.user?.id)
+    .map((member) => {
+      const user = member.user!;
+      const label =
+        user.username ||
+        [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+        user.email ||
+        user.id;
+      lookup.set(`${AlertPrincipalType.User}:${user.id}`, label);
+      return { principalType: AlertPrincipalType.User, principalId: user.id, label };
     });
 
-    return { userOptions: users, groupOptions: groups, labelLookup: lookup };
-  }, [orgUsers, orgGroups]);
+const toGroupOptions = (
+  groups: { id: string; name: string }[],
+  lookup: Map<string, string>
+): RecipientOption[] =>
+  groups.map((group) => {
+    lookup.set(`${AlertPrincipalType.Group}:${group.id}`, group.name);
+    return { principalType: AlertPrincipalType.Group, principalId: group.id, label: group.name };
+  });
+
+const RecipientsSelect = ({ userOptions, groupOptions, labelLookup }: PrincipalSource) => {
+  const { control } = useFormContext<TAlertChannelForm>();
+  const [inputValue, setInputValue] = useState("");
 
   const groupedOptions = useMemo(
     () => [
@@ -132,7 +141,7 @@ export const ChannelRecipientsField = () => {
                 }}
               />
               <FieldDescription>
-                This channel delivers to these recipients. Add org users, groups, or raw email
+                This channel delivers to these recipients. Add users, groups, or raw email
                 addresses.
               </FieldDescription>
               <FieldError errors={[error]} />
@@ -142,4 +151,47 @@ export const ChannelRecipientsField = () => {
       }}
     />
   );
+};
+
+const OrgRecipients = () => {
+  const { currentOrg } = useOrganization();
+  const { data: orgUsers = [] } = useGetOrgUsers(currentOrg.id);
+  const { data: orgGroups = [] } = useGetOrganizationGroups(currentOrg.id);
+
+  const source = useMemo<PrincipalSource>(() => {
+    const labelLookup = new Map<string, string>();
+    return {
+      userOptions: toUserOptions(orgUsers, labelLookup),
+      groupOptions: toGroupOptions(orgGroups, labelLookup),
+      labelLookup
+    };
+  }, [orgUsers, orgGroups]);
+
+  return <RecipientsSelect {...source} />;
+};
+
+const ProjectRecipients = ({ projectId }: { projectId: string }) => {
+  const { data: projectUsers = [] } = useGetWorkspaceUsers(projectId, true);
+  const { data: projectGroups = [] } = useListWorkspaceGroups(projectId);
+
+  const source = useMemo<PrincipalSource>(() => {
+    const labelLookup = new Map<string, string>();
+    return {
+      userOptions: toUserOptions(projectUsers, labelLookup),
+      groupOptions: toGroupOptions(
+        projectGroups.map((membership) => ({
+          id: membership.group.id,
+          name: membership.group.name
+        })),
+        labelLookup
+      ),
+      labelLookup
+    };
+  }, [projectUsers, projectGroups]);
+
+  return <RecipientsSelect {...source} />;
+};
+
+export const ChannelRecipientsField = ({ projectId }: { projectId?: string }) => {
+  return projectId ? <ProjectRecipients projectId={projectId} /> : <OrgRecipients />;
 };

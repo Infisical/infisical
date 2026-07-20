@@ -1,5 +1,7 @@
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";
@@ -8,15 +10,46 @@ import { AlertPrincipalType } from "./alert-types";
 type TAlertRecipientResolverDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
 };
 
 type TResolvableRecipient = { principalType: string; principalId: string };
 
+type TResolveScope = { orgId: string; projectId?: string | null };
+
 export type TAlertRecipientResolver = ReturnType<typeof alertRecipientResolverFactory>;
 
-export const alertRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL }: TAlertRecipientResolverDep) => {
+export const alertRecipientResolverFactory = ({
+  userDAL,
+  userGroupMembershipDAL,
+  orgDAL,
+  projectDAL
+}: TAlertRecipientResolverDep) => {
+  const resolveInScopeUserIds = async (
+    scope: TResolveScope,
+    userIds: string[],
+    groupIds: string[]
+  ): Promise<Set<string>> => {
+    if (userIds.length === 0) return new Set();
+
+    if (scope.projectId) {
+      const { effectiveUserIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
+        orgId: scope.orgId,
+        projectId: scope.projectId,
+        userIds,
+        groupIds
+      });
+      return new Set(effectiveUserIds);
+    }
+
+    const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: scope.orgId });
+    return new Set(memberships.map((membership) => membership.actorUserId).filter((id): id is string => Boolean(id)));
+  };
+
   const resolveMany = async (
-    rowsByChannel: Map<string, TResolvableRecipient[]>
+    rowsByChannel: Map<string, TResolvableRecipient[]>,
+    scope: TResolveScope
   ): Promise<Map<string, TAlertRecipient[]>> => {
     const allGroupIds = new Set<string>();
     const allUserIds = new Set<string>();
@@ -38,9 +71,10 @@ export const alertRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL 
       });
     }
 
+    const inScopeUserIds = await resolveInScopeUserIds(scope, [...allUserIds], [...allGroupIds]);
     const usersById = new Map<string, Awaited<ReturnType<typeof userDAL.find>>[number]>();
-    if (allUserIds.size > 0) {
-      const users = await userDAL.find({ $in: { id: [...allUserIds] } });
+    if (inScopeUserIds.size > 0) {
+      const users = await userDAL.find({ $in: { id: [...inScopeUserIds] } });
       users.forEach((user) => usersById.set(user.id, user));
     }
 
@@ -89,10 +123,5 @@ export const alertRecipientResolverFactory = ({ userDAL, userGroupMembershipDAL 
     return result;
   };
 
-  const resolve = async (recipients: TResolvableRecipient[]): Promise<TAlertRecipient[]> => {
-    const resolved = await resolveMany(new Map([["", recipients]]));
-    return resolved.get("") ?? [];
-  };
-
-  return { resolve, resolveMany };
+  return { resolveMany };
 };

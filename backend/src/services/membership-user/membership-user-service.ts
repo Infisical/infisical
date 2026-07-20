@@ -22,6 +22,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -88,6 +89,7 @@ type TMembershipUserServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteUsersRecipientsByScope">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -113,7 +115,8 @@ export const membershipUserServiceFactory = ({
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -554,6 +557,12 @@ export const membershipUserServiceFactory = ({
           additionalPrivilegeDAL,
           approvalPolicyDAL
         });
+        // Prune the user's alert-channel recipient rows across the whole org (org- and
+        // project-scoped channels) since leaving the org drops all their access.
+        await alertChannelRecipientDAL.deleteUsersRecipientsByScope(
+          { userIds: [dto.selector.userId], orgId: dto.permission.orgId },
+          tx
+        );
         return doc;
       }
 
@@ -572,6 +581,12 @@ export const membershipUserServiceFactory = ({
             actorKind: ApplicationMemberKind.User,
             actorId: dto.selector.userId
           },
+          tx
+        );
+
+        // Prune the user's alert-channel recipient rows for this project's channels only.
+        await alertChannelRecipientDAL.deleteUsersRecipientsByScope(
+          { userIds: [dto.selector.userId], projectId: dto.scopeData.projectId },
           tx
         );
       }

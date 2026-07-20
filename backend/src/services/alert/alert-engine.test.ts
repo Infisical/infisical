@@ -29,6 +29,7 @@ const makeAlert = () => ({
   resourceType: RESOURCE_TYPE,
   resourceId: null,
   eventType: "test.resource.expiration",
+  triggerType: "scheduled",
   condition: { alertBefore: "30d" },
   filters: null,
   enabled: true,

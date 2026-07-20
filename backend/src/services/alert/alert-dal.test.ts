@@ -39,5 +39,7 @@ describe("alert dal", () => {
     expect(calls.whereNull).toContainEqual(`${TableName.Project}.deleteAfter`);
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "identity.credential"]);
+    // the cron sweep must only pick up scheduled alerts, never event-driven ones
+    expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "scheduled"]);
   });
 });
