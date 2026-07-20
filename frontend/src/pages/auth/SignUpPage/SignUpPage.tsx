@@ -21,6 +21,11 @@ enum SignupSection {
   InviteTeam = "invite-team"
 }
 
+type PendingEmailVerification = {
+  email: string;
+  resendCooldownEndTime: number;
+};
+
 export interface SignUpPageProps {
   invite?: {
     email: string;
@@ -30,7 +35,8 @@ export interface SignUpPageProps {
 export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const isInvite = Boolean(invite);
   const [email, setEmail] = useState(invite?.email ?? "");
-  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
+  const [pendingEmailVerification, setPendingEmailVerification] =
+    useState<PendingEmailVerification | null>(null);
   const [section, setSection] = useState<SignupSection>(
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
@@ -49,9 +55,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     }
   }, [config.allowSignUp]);
 
-  const handleEmailComplete = (cooldownSeconds: number) => {
-    setResendCooldownSeconds(cooldownSeconds);
+  const handleEmailComplete = (verificationEmail: string, cooldownSeconds: number) => {
+    setEmail(verificationEmail);
     if (serverDetails?.emailConfigured) {
+      setPendingEmailVerification({
+        email: verificationEmail,
+        resendCooldownEndTime: Date.now() + cooldownSeconds * 1000
+      });
       setSection(SignupSection.VerifyCode);
     } else {
       setSection(SignupSection.UserInfo);
@@ -59,12 +69,25 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   const handleCodeVerified = () => {
+    setPendingEmailVerification(null);
     setSection(SignupSection.UserInfo);
   };
 
   const handleChangeEmail = () => {
-    setResendCooldownSeconds(0);
     setSection(SignupSection.Email);
+  };
+
+  const handleResumeEmailVerification = () => {
+    if (!pendingEmailVerification) return;
+
+    setEmail(pendingEmailVerification.email);
+    setSection(SignupSection.VerifyCode);
+  };
+
+  const handleResendCooldownChange = (resendCooldownEndTime: number) => {
+    setPendingEmailVerification((pendingVerification) =>
+      pendingVerification ? { ...pendingVerification, resendCooldownEndTime } : null
+    );
   };
 
   const handleUserInfoComplete = async () => {
@@ -105,6 +128,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
             email={email}
             setEmail={setEmail}
             incrementStep={handleEmailComplete}
+            pendingVerificationEmail={pendingEmailVerification?.email}
+            onResumeVerification={handleResumeEmailVerification}
           />
         );
       case SignupSection.VerifyCode:
@@ -113,7 +138,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
             email={email}
             onComplete={handleCodeVerified}
             onChangeEmail={handleChangeEmail}
-            initialCooldown={resendCooldownSeconds}
+            resendCooldownEndTime={pendingEmailVerification?.resendCooldownEndTime ?? 0}
+            onResendCooldownChange={handleResendCooldownChange}
           />
         );
       case SignupSection.UserInfo:

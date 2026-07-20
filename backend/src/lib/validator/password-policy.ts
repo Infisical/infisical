@@ -1,31 +1,102 @@
 import { z } from "zod";
 
-// Keep this policy aligned with frontend/src/components/utilities/checks/password/passwordPolicy.ts.
-export const PASSWORD_POLICY_MIN_LENGTH = 10;
-export const PASSWORD_POLICY_MAX_LENGTH = 100;
+export const PasswordPolicyRequirementSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  validationMessage: z.string(),
+  isPrimary: z.boolean(),
+  patterns: z.string().array().min(1),
+  flags: z.string().optional(),
+  shouldMatch: z.boolean()
+});
 
-const letterCharacterRegex = /\p{L}/u;
-const numberOrSpecialCharacterRegex = /[\d!@#$%^&*(),.?":{}|<>]|[^\p{L}\p{N}\s]/u;
-const repeatedCharacterRegex = /(.)\1\1\1|\s{4,}/;
-const escapeCharacterRegex = /[\n\t\r\\]/;
-const lowEntropyRegexes = [
-  /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
-  /(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?/,
-  /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/
-];
+export const PasswordPolicyConfigSchema = z.object({
+  requirements: PasswordPolicyRequirementSchema.array().min(1)
+});
 
-export const PasswordPolicySchema = z
-  .string()
-  .min(PASSWORD_POLICY_MIN_LENGTH, `Password must contain at least ${PASSWORD_POLICY_MIN_LENGTH} characters`)
-  .max(PASSWORD_POLICY_MAX_LENGTH, `Password must contain at most ${PASSWORD_POLICY_MAX_LENGTH} characters`)
-  .regex(letterCharacterRegex, "Password must contain at least 1 letter")
-  .regex(numberOrSpecialCharacterRegex, "Password must contain at least 1 number or special character")
-  .refine((password) => !repeatedCharacterRegex.test(password), {
-    message: "Password cannot contain more than 3 repeated consecutive characters"
-  })
-  .refine((password) => !escapeCharacterRegex.test(password), {
-    message: "Password cannot contain escape characters"
-  })
-  .refine((password) => !lowEntropyRegexes.some((regex) => regex.test(password)), {
-    message: "Password cannot contain an email address, URL, or social security number"
+export type TPasswordPolicyRequirement = z.infer<typeof PasswordPolicyRequirementSchema>;
+export type TPasswordPolicyConfig = z.infer<typeof PasswordPolicyConfigSchema>;
+
+export const PASSWORD_POLICY = {
+  requirements: [
+    {
+      code: "minimumLength",
+      patterns: [String.raw`^[\s\S]{10,}$`],
+      shouldMatch: true,
+      message: "At least 10 characters",
+      validationMessage: "Password must contain at least 10 characters",
+      isPrimary: true
+    },
+    {
+      code: "maximumLength",
+      patterns: [String.raw`^[\s\S]{0,100}$`],
+      shouldMatch: true,
+      message: "At most 100 characters",
+      validationMessage: "Password must contain at most 100 characters",
+      isPrimary: false
+    },
+    {
+      code: "letter",
+      patterns: [String.raw`\p{L}`],
+      flags: "u",
+      shouldMatch: true,
+      message: "At least 1 letter",
+      validationMessage: "Password must contain at least 1 letter",
+      isPrimary: true
+    },
+    {
+      code: "numberOrSpecial",
+      patterns: [String.raw`[\d!@#$%^&*(),.?":{}|<>]|[^\p{L}\p{N}\s]`],
+      flags: "u",
+      shouldMatch: true,
+      message: "At least 1 number or special character",
+      validationMessage: "Password must contain at least 1 number or special character",
+      isPrimary: true
+    },
+    {
+      code: "repeatedCharacters",
+      patterns: [String.raw`(.)\1\1\1|\s{4,}`],
+      shouldMatch: false,
+      message: "No more than 3 repeated consecutive characters",
+      validationMessage: "Password cannot contain more than 3 repeated consecutive characters",
+      isPrimary: false
+    },
+    {
+      code: "escapeCharacters",
+      patterns: [String.raw`[\n\t\r\\]`],
+      shouldMatch: false,
+      message: "No escape characters",
+      validationMessage: "Password cannot contain escape characters",
+      isPrimary: false
+    },
+    {
+      code: "lowEntropy",
+      patterns: [
+        String.raw`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`,
+        String.raw`(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?`,
+        String.raw`\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b`
+      ],
+      shouldMatch: false,
+      message: "No email address, URL, or social security number",
+      validationMessage: "Password cannot contain an email address, URL, or social security number",
+      isPrimary: false
+    }
+  ]
+} as const satisfies TPasswordPolicyConfig;
+
+export const doesPasswordMeetRequirement = (password: string, requirement: TPasswordPolicyRequirement) => {
+  const matches = requirement.patterns.some((pattern) => new RegExp(pattern, requirement.flags).test(password));
+
+  return matches === requirement.shouldMatch;
+};
+
+export const PasswordPolicySchema = z.string().superRefine((password, context) => {
+  PASSWORD_POLICY.requirements.forEach((requirement) => {
+    if (!doesPasswordMeetRequirement(password, requirement)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: requirement.validationMessage
+      });
+    }
   });
+});

@@ -13,7 +13,7 @@ import { LicenseType } from "@app/ee/services/license/license-types";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
-import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
+import { PASSWORD_POLICY, PasswordPolicyConfigSchema, PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
@@ -62,7 +62,8 @@ const SanitizedSuperAdminSchema = z.object({
   // Always returned
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
-  defaultAuthOrgAuthMethod: z.string().nullish()
+  defaultAuthOrgAuthMethod: z.string().nullish(),
+  passwordPolicy: PasswordPolicyConfigSchema
 });
 
 export const registerAdminRouter = async (server: FastifyZodProvider) => {
@@ -103,6 +104,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             defaultAuthOrgAuthEnforced: config.defaultAuthOrgAuthEnforced,
             defaultAuthOrgAuthMethod: config.defaultAuthOrgAuthMethod,
             enabledLoginMethods: config.enabledLoginMethods,
+            passwordPolicy: PASSWORD_POLICY,
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
@@ -115,6 +117,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       return {
         config: {
           ...config,
+          passwordPolicy: PASSWORD_POLICY,
           fipsEnabled: crypto.isFipsModeEnabled(),
           isMigrationModeOn: serverEnvs.MAINTENANCE_MODE,
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
@@ -192,7 +195,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
-      return { config };
+      return { config: { ...config, passwordPolicy: PASSWORD_POLICY } };
     }
   });
 

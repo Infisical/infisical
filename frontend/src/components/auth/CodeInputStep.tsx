@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
@@ -7,7 +7,6 @@ import axios from "axios";
 import {
   AnimatedCollapse,
   Button,
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -16,6 +15,7 @@ import {
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 
 import SecurityClient from "../utilities/SecurityClient";
+import { AuthPagePanel } from "./AuthPagePanel";
 
 const codeInputStyle = {
   inputStyle: {
@@ -40,14 +40,16 @@ interface CodeInputStepProps {
   email: string;
   onComplete: () => void;
   onChangeEmail: () => void;
-  initialCooldown: number;
+  resendCooldownEndTime: number;
+  onResendCooldownChange: (endTime: number) => void;
 }
 
 export default function CodeInputStep({
   email,
   onComplete,
   onChangeEmail,
-  initialCooldown
+  resendCooldownEndTime,
+  onResendCooldownChange
 }: CodeInputStepProps): JSX.Element {
   const { mutateAsync: resendEmail, isPending: isResending } = useSendVerificationEmail();
   const {
@@ -60,7 +62,6 @@ export default function CodeInputStep({
 
   const [code, setCode] = useState("");
 
-  const endTimeRef = useRef<number>(initialCooldown > 0 ? Date.now() + initialCooldown * 1000 : 0);
   const [, forceRender] = useState(0);
 
   // Tick every second
@@ -72,9 +73,9 @@ export default function CodeInputStep({
     return () => clearInterval(timer);
   }, []);
 
-  const remainingCooldown = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+  const remainingCooldown = Math.max(0, Math.ceil((resendCooldownEndTime - Date.now()) / 1000));
 
-  const isCooldownActive = endTimeRef.current > Date.now();
+  const isCooldownActive = resendCooldownEndTime > Date.now();
   const emailSeparatorIndex = email.lastIndexOf("@");
   const emailLocalPart = emailSeparatorIndex >= 0 ? email.slice(0, emailSeparatorIndex) : email;
   const emailDomainPart = emailSeparatorIndex >= 0 ? email.slice(emailSeparatorIndex) : "";
@@ -88,12 +89,12 @@ export default function CodeInputStep({
   const handleResend = async () => {
     try {
       const { cooldownSeconds } = await resendEmail({ email });
-      endTimeRef.current = Date.now() + cooldownSeconds * 1000;
+      onResendCooldownChange(Date.now() + cooldownSeconds * 1000);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const remaining = err.response?.data?.details?.cooldownSeconds;
         if (typeof remaining === "number") {
-          endTimeRef.current = Date.now() + remaining * 1000;
+          onResendCooldownChange(Date.now() + remaining * 1000);
         }
       }
     }
@@ -108,7 +109,7 @@ export default function CodeInputStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
           <CardDescription className="ml-0.5 text-base">
             {t("signup.step2-message")}
@@ -177,7 +178,7 @@ export default function CodeInputStep({
             )}
           </div>
         </CardContent>
-      </Card>
+      </AuthPagePanel>
     </div>
   );
 }

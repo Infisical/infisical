@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { PasswordPolicySchema } from "./password-policy";
+import {
+  doesPasswordMeetRequirement,
+  PASSWORD_POLICY,
+  PasswordPolicyConfigSchema,
+  PasswordPolicySchema
+} from "./password-policy";
 
 describe("PasswordPolicySchema", () => {
   const validPassword = ["Horse", 7, "Ba"].join("-");
@@ -28,5 +33,30 @@ describe("PasswordPolicySchema", () => {
     const result = PasswordPolicySchema.parse(password);
 
     expect(result).toBe(password);
+  });
+
+  test("preserves the public validation error copy", () => {
+    const result = PasswordPolicySchema.safeParse("Short-7");
+
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error("Expected password validation to fail");
+    expect(result.error.issues[0]?.message).toBe("Password must contain at least 10 characters");
+  });
+
+  test.each([validPassword, "Short-7", "密码安全-7", "Password!!!!7"])(
+    "keeps the exported policy contract aligned with server validation: %s",
+    (password) => {
+      const meetsExportedPolicy = PASSWORD_POLICY.requirements.every((requirement) =>
+        doesPasswordMeetRequirement(password, requirement)
+      );
+
+      expect(PasswordPolicySchema.safeParse(password).success).toBe(meetsExportedPolicy);
+    }
+  );
+
+  test("exports a serializable policy contract", () => {
+    const serializedPolicy: unknown = JSON.parse(JSON.stringify(PASSWORD_POLICY));
+
+    expect(PasswordPolicyConfigSchema.parse(serializedPolicy)).toEqual(PASSWORD_POLICY);
   });
 });
