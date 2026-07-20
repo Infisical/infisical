@@ -4,24 +4,30 @@ sidebarTitle: "Quickstart"
 description: "Broker your first credential to an agent through the Infisical Agent Proxy."
 ---
 
-<Info>
-  The Agent Proxy is a paid feature on Infisical Cloud (contact [sales@infisical.com](mailto:sales@infisical.com) to enable it) and is enabled by default on self-hosted Infisical.
-</Info>
-
 This tutorial takes you from an Infisical project to an agent making authenticated API calls through the Agent Proxy, with real credentials it never sees.
 
-## Prerequisites
+## Before you begin
+
+To follow along, you'll need:
 
 - An Infisical Secrets Management project.
-- An API key to broker. Stripe is only this guide's running example; bring any API you like and follow the same steps.
+- A GitHub account (this guide's running example) or any other API you'd rather broker. The steps are the same either way.
 - Two hosts in the same private network: one for the agent proxy and one for the agent. The agent host must be able to reach the proxy on its port (`17322` by default).
 - The [Infisical CLI](/cli/overview) installed on both the proxy host and the agent host.
+- Optional: [GitHub's `gh` CLI](https://cli.github.com/) on the agent host, for the recommended verification in step 7. A `curl` fallback is provided, so this is not required.
 
 ## 1. Add a secret
 
-In your project, create a folder for the agent (for example `/billing-agent` in the `dev` environment) and add a secret named `STRIPE_KEY` with your Stripe secret key as its value. It is a regular Infisical secret; nothing about it changes when it is brokered.
+First, get a GitHub personal access token to broker:
 
-![The /billing-agent folder with STRIPE_KEY added](/images/platform/agent-proxy/quickstart-add-secret.png)
+1. Go to [GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/personal-access-tokens).
+2. Click **Generate new token**, give it a name, set an expiration, and choose the resource owner.
+3. Leave the permissions at their defaults. The verification in step 7 calls `GET /user`, which any valid token can reach, so no permissions are needed here; later, grant only what your agent actually does.
+4. Click **Generate token** and copy the `github_pat_…` value. GitHub only shows it once.
+
+Then, in your Infisical project, create a folder for the agent (for example `/coding-agent` in the `dev` environment) and add a secret named `GITHUB_PAT` with that token as its value. It is a regular Infisical secret.
+
+![The /coding-agent folder with GITHUB_PAT added](/images/platform/agent-proxy/quickstart-add-secret.png)
 
 ## 2. Create a proxied service
 
@@ -30,30 +36,30 @@ A proxied service maps a host to the secret the proxy applies. In the same folde
 ![The Add Secret dropdown open with Add Proxied Service highlighted](/images/platform/agent-proxy/quickstart-add-proxied-service.png)
 
 <Steps>
-  <Step title="Pick the Stripe template">
-    The template fills everything in for you: the host `api.stripe.com` and a **Secret Substitution** rule that hands the agent a realistic `sk_live_…` placeholder and swaps in the real key on the way out.
+  <Step title="Pick the GitHub template">
+    The template fills everything in for you: the host `api.github.com` and a **Secret Substitution** rule that hands the agent a realistic `ghp_…` placeholder and swaps in the real token on the way out.
 
-    ![The proxied service template picker with Stripe available](/images/platform/agent-proxy/quickstart-template-picker.png)
+    ![The proxied service template picker with GitHub available](/images/platform/agent-proxy/quickstart-template-picker.png)
   </Step>
   <Step title="Details">
-    Keep the service name `stripe-api` and the host pattern `api.stripe.com`.
+    Keep the service name `github` and the host pattern `api.github.com`.
 
     ![The Details step with the service name and host pattern](/images/platform/agent-proxy/service-details.png)
   </Step>
   <Step title="Header Rewrites">
-    This step is skipped automatically for Stripe. The key does travel in the `Authorization` header, but this template handles that with **Secret Substitution** (next step): the agent itself puts a placeholder in the header, and the proxy swaps it for the real key.
+    This step is skipped automatically for GitHub. The token does travel in the `Authorization` header, but this template handles that with **Secret Substitution** (next step): the agent itself puts a placeholder in the header, and the proxy swaps it for the real token.
   </Step>
   <Step title="Secret Substitution">
-    Select `STRIPE_KEY` as the secret holding the real value.
+    Select `GITHUB_PAT` as the secret holding the real value.
 
-    Here is how the pieces fit together. When your agent connects, it gets an environment variable `STRIPE_SECRET_KEY` (the placeholder name the Stripe template uses) set to the fake `sk_live_…` placeholder. The agent uses it like any Stripe key and sends `Authorization: Bearer <placeholder>`. As the request passes through the proxy, the placeholder is replaced with the real value of your `STRIPE_KEY` secret. The template scopes this swap to headers, since that is where Stripe expects the key; a substitution can also target the URL path, query, or body.
+    Here is how the pieces fit together. When your agent connects, it gets an environment variable `GITHUB_TOKEN` (the placeholder name the GitHub template uses) set to the fake `ghp_…` placeholder. The agent uses it like any GitHub token and sends `Authorization: Bearer <placeholder>`. As the request passes through the proxy, the placeholder is replaced with the real value of your `GITHUB_PAT` secret. The template scopes this swap to headers, since that is where GitHub expects the token; a substitution can also target the URL path, query, or body.
 
     ![The Secret Substitution step swapping a placeholder for the real secret](/images/platform/agent-proxy/secret-substitution.png)
   </Step>
   <Step title="Review and create">
     Double-check the host pattern and the substitution rule, then click **Create Proxied Service**.
 
-    ![The Review step showing the Secret Substitution rule for STRIPE_KEY](/images/platform/agent-proxy/quickstart-review.png)
+    ![The Review step showing the Secret Substitution rule for GITHUB_PAT](/images/platform/agent-proxy/quickstart-review.png)
   </Step>
 </Steps>
 
@@ -119,7 +125,12 @@ The proxy and the agent authenticate as **two separate machine identities with o
 
 ## 5. Start the agent proxy
 
-On a host in your agents' private network (a separate machine), authenticate as the **proxy identity**: set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` to the Client ID and Client Secret you saved in step 3.
+<Steps>
+  <Step title="Install the Infisical CLI">
+    On the proxy host, a separate machine in your agent's private network, install the [Infisical CLI](/cli/overview). Or use Docker for the container option below.
+  </Step>
+  <Step title="Authenticate as the proxy identity">
+    Set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` to the Client ID and Client Secret you saved in step 3.
 
 <Tabs>
   <Tab title="Infisical Cloud (US)">
@@ -147,7 +158,9 @@ On a host in your agents' private network (a separate machine), authenticate as 
   </Tab>
 </Tabs>
 
-Then start the proxy. It listens on port `17322`:
+  </Step>
+  <Step title="Start the proxy">
+    The proxy listens on port `17322` by default. Use the CLI or Docker:
 
 <Tabs>
   <Tab title="CLI">
@@ -169,9 +182,17 @@ Then start the proxy. It listens on port `17322`:
 
 Remember this host's address; the next step points `INFISICAL_AGENT_PROXY_ADDRESS` at it. For production deployment, see [Deployment](/documentation/platform/agent-proxy/deployment).
 
+  </Step>
+</Steps>
+
 ## 6. Connect your agent
 
-On the agent host, set the agent's authentication and connection details as environment variables:
+<Steps>
+  <Step title="Install the Infisical CLI">
+    On the agent host, install the [Infisical CLI](/cli/overview); `connect` is a CLI command.
+  </Step>
+  <Step title="Set the connection details">
+    Set the agent's authentication and connection details as environment variables:
 
 <Tabs>
   <Tab title="Infisical Cloud (US)">
@@ -180,10 +201,10 @@ On the agent host, set the agent's authentication and connection details as envi
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
 
-    # Scope: which project, environment, and folder to use (from step 1)
+    # Scope: your project, plus the environment and folder from step 1
     export INFISICAL_PROJECT_ID=<project-id>
     export INFISICAL_ENVIRONMENT=dev
-    export INFISICAL_SECRET_PATH=/billing-agent
+    export INFISICAL_SECRET_PATH=/coding-agent
 
     # The agent proxy to route through (from step 5)
     export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
@@ -196,10 +217,10 @@ On the agent host, set the agent's authentication and connection details as envi
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
     export INFISICAL_DOMAIN=https://eu.infisical.com
 
-    # Scope: which project, environment, and folder to use (from step 1)
+    # Scope: your project, plus the environment and folder from step 1
     export INFISICAL_PROJECT_ID=<project-id>
     export INFISICAL_ENVIRONMENT=dev
-    export INFISICAL_SECRET_PATH=/billing-agent
+    export INFISICAL_SECRET_PATH=/coding-agent
 
     # The agent proxy to route through (from step 5)
     export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
@@ -212,10 +233,10 @@ On the agent host, set the agent's authentication and connection details as envi
     export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
     export INFISICAL_DOMAIN=https://infisical.your-domain.com
 
-    # Scope: which project, environment, and folder to use (from step 1)
+    # Scope: your project, plus the environment and folder from step 1
     export INFISICAL_PROJECT_ID=<project-id>
     export INFISICAL_ENVIRONMENT=dev
-    export INFISICAL_SECRET_PATH=/billing-agent
+    export INFISICAL_SECRET_PATH=/coding-agent
 
     # The agent proxy to route through (from step 5)
     export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
@@ -223,7 +244,9 @@ On the agent host, set the agent's authentication and connection details as envi
   </Tab>
 </Tabs>
 
-Then launch the agent through `connect`. Everything after `--` is the agent's own command:
+  </Step>
+  <Step title="Launch the agent">
+    Launch the agent through `connect`. Everything after `--` is the agent's own command:
 
 <Tabs>
   <Tab title="Claude Code">
@@ -243,25 +266,48 @@ Then launch the agent through `connect`. Everything after `--` is the agent's ow
   </Tab>
 </Tabs>
 
-The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `STRIPE_SECRET_KEY`, set by `connect` to the fake placeholder, and uses it like a normal key. Its traffic now routes through the proxy: on calls to `api.stripe.com` the placeholder is swapped for the real key, and everything else passes through untouched. The next step makes that visible.
+The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `GITHUB_TOKEN`, set by `connect` to the fake placeholder, and uses it like a normal token. Its traffic now routes through the proxy: on calls to `api.github.com` the placeholder is swapped for the real token, and everything else passes through untouched. The next step makes that visible.
 
 <Note>
   Every setting here can also be passed as a flag or set in `.infisical.json`. See [Connecting Agents](/documentation/platform/agent-proxy/connecting-agents) for how `connect` works and what it puts in the agent's environment.
 </Note>
 
+  </Step>
+</Steps>
+
 ## 7. Verify it works
 
-Call Stripe through `connect`, using the `stripe-api` service from step 2 and the environment variables you set in step 6. `connect` sets `STRIPE_SECRET_KEY` to the fake placeholder, so `curl` sends the placeholder and the proxy swaps in the real key on the way out:
+Each method below makes the same `GET /user` call to `api.github.com`. The client sends only the `ghp_…` placeholder that `connect` put in the environment; as the request passes through the proxy, the placeholder is swapped for the real value of your `GITHUB_PAT` secret. GitHub returns your account profile even though the real token never reached the client. That is the whole point: real authenticated work without the caller ever holding the credential.
 
-```bash
-infisical secrets agent-proxy connect -- \
-  sh -c 'curl https://api.stripe.com/v1/balance -H "Authorization: Bearer $STRIPE_SECRET_KEY"'
-```
+<Tabs>
+  <Tab title="Through your agent">
+    The agent you launched in step 6 is already brokering. In its session, send:
 
-Stripe returns your account balance, even though `curl` only ever sent the fake placeholder.
+    > Run `gh api user` and show me the output.
+
+    [GitHub's `gh` CLI](https://cli.github.com/) reads `GITHUB_TOKEN` from the environment on its own, so the agent needs no token wiring; it just runs the command and GitHub returns your profile. Requires `gh` on the host where the agent runs.
+  </Tab>
+  <Tab title="gh CLI">
+    Not driving an interactive agent? Run the check through `connect` directly, in the shell where you set the step 6 variables:
+
+    ```bash
+    infisical secrets agent-proxy connect -- gh api user
+    ```
+
+    `gh` reads `GITHUB_TOKEN` automatically, so there is nothing else to pass. Requires `gh` on the host where you run this.
+  </Tab>
+  <Tab title="curl">
+    No `gh`? Any HTTP client works the same way. `curl` sends the placeholder in the header and the proxy swaps it:
+
+    ```bash
+    infisical secrets agent-proxy connect -- \
+      sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
+    ```
+  </Tab>
+</Tabs>
 
 <Note>
-  If you still get a `401`, the proxy could not apply the credential and forwarded the placeholder unchanged (it does not block the call). Check the proxy's logs, and confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `STRIPE_KEY`.
+  Getting a `401`? The proxy could not apply the credential and forwarded the placeholder unchanged (it does not block the call). Check the proxy's logs, and confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `GITHUB_PAT`.
 </Note>
 
 ## Next steps

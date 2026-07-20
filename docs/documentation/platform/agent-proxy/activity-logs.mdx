@@ -49,13 +49,13 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 <Tabs>
   <Tab title="console">
     ```text
-    2026-07-17T14:32:09 INF agent request  event=agent-proxy.request decision=brokered agentName=claude-agent serviceName=stripe-api method=POST host=api.stripe.com path=/v1/charges status=200 credentials=[{"key":"STRIPE_API_KEY","role":"header-rewrite","header":"Authorization"}]
+    2026-07-17T14:32:09 INF agent request  event=agent-proxy.request decision=brokered agentName=claude-agent serviceName=github method=POST host=api.github.com path=/repos/acme/app/issues status=201 credentials=[{"key":"GITHUB_PAT","role":"header-rewrite","header":"Authorization"}]
     2026-07-17T14:32:12 WRN agent request  event=agent-proxy.request decision=blocked agentName=claude-agent host=evil.example.com method=GET status=403
     ```
   </Tab>
   <Tab title="json">
     ```json
-    {"level":"info","time":"2026-07-17T14:32:09+05:30","message":"agent request","event":"agent-proxy.request","decision":"brokered","agentId":"9c1e40cf-...","agentName":"claude-agent","projectId":"53c8b330-...","environment":"prod","secretPath":"/ai-agents","serviceName":"stripe-api","method":"POST","host":"api.stripe.com","port":443,"path":"/v1/charges","status":200,"credentials":[{"key":"STRIPE_API_KEY","role":"header-rewrite","header":"Authorization"}]}
+    {"level":"info","time":"2026-07-17T14:32:09+05:30","message":"agent request","event":"agent-proxy.request","decision":"brokered","agentId":"9c1e40cf-...","agentName":"claude-agent","projectId":"53c8b330-...","environment":"prod","secretPath":"/coding-agent","serviceName":"github","method":"POST","host":"api.github.com","port":443,"path":"/repos/acme/app/issues","status":201,"credentials":[{"key":"GITHUB_PAT","role":"header-rewrite","header":"Authorization"}]}
     ```
   </Tab>
 </Tabs>

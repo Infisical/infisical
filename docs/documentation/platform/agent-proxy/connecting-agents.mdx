@@ -3,10 +3,6 @@ title: "Connecting Agents"
 description: "Launch any agent behind the Agent Proxy and control what its environment contains."
 ---
 
-<Info>
-  The Agent Proxy is a paid feature on Infisical Cloud (contact [sales@infisical.com](mailto:sales@infisical.com) to enable it) and is enabled by default on self-hosted Infisical.
-</Info>
-
 You launch your agent through `infisical secrets agent-proxy connect -- <agent command>`, which sets up the agent's environment and then starts it. No code changes are needed: `connect` points the agent's HTTP clients at the Agent Proxy, so its normal outbound requests route through it. Each request carries the agent's Infisical token and folder scope, which is how the Agent Proxy knows which identity is asking and which of that folder's proxied services apply.
 
 ## What `connect` sets in the agent's environment

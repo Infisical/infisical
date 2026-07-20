@@ -3,10 +3,6 @@ title: "Proxied Services"
 description: "Define how the agent proxy applies credentials to traffic bound for an external service."
 ---
 
-<Info>
-  The Agent Proxy is a paid feature on Infisical Cloud (contact [sales@infisical.com](mailto:sales@infisical.com) to enable it) and is enabled by default on self-hosted Infisical.
-</Info>
-
 A proxied service tells the agent proxy how to apply credentials to traffic bound for an external service. It lives in a folder alongside your secrets and defines which hosts it covers.
 
 To create one, open a folder in the secrets dashboard, click the dropdown arrow next to **Add Secret**, and select **Add Proxied Service**.
@@ -20,7 +16,7 @@ A service applies each secret through a [header rewrite](#header-rewrites), a [s
 Every service has these core fields, plus one or more credential rules described below.
 
 <ParamField path="Service Name" type="string" required>
-  A slug (lowercase letters, numbers, hyphens) that identifies the service, such as `stripe-api`. Names are unique within a folder.
+  A slug (lowercase letters, numbers, hyphens) that identifies the service, such as `github`. Names are unique within a folder.
 </ParamField>
 
 <ParamField path="Host Pattern" type="string" required>
@@ -38,12 +34,12 @@ Every service has these core fields, plus one or more credential rules described
 A host pattern routes requests to the right service. Each pattern is a `host[:port][/path]`, and multiple patterns can be combined with commas:
 
 ```bash
-api.stripe.com                            # exact host
+api.github.com                            # exact host
 *.github.com                              # wildcard: matches api.github.com, not a.b.github.com
-api.stripe.com:443                        # specific port
-api.stripe.com/v1/*                       # path prefix
+api.github.com:443                        # specific port
+api.github.com/repos/*                    # path prefix
 internal.corp.com:3000/api/*              # port and path
-api.stripe.com, dashboard.stripe.com      # multiple patterns, matches either
+api.github.com, uploads.github.com        # multiple patterns, matches either
 ```
 
 A few rules to keep in mind:
@@ -60,7 +56,7 @@ When a request could match more than one service, the agent proxy picks the best
 4. If still tied, the service whose name sorts first alphabetically wins.
 
 <Note>
-  Host patterns are for routing only. Proxied services are also scoped to their folder: an agent connected with `--env=dev --path=/billing-agent` only ever matches services defined in that folder, so the same hostname can be configured differently in different folders, environments, or projects.
+  Host patterns are for routing only. Proxied services are also scoped to their folder: an agent connected with `--env=dev --path=/coding-agent` only ever matches services defined in that folder, so the same hostname can be configured differently in different folders, environments, or projects.
 </Note>
 
 ## Header rewrites
@@ -144,7 +140,7 @@ curl -X POST https://app.infisical.com/api/v1/proxied-services \
   -d '{
     "projectId": "<project-id>",
     "environment": "dev",
-    "secretPath": "/billing-agent",
+    "secretPath": "/coding-agent",
     "name": "telegram-bot-api",
     "hostPattern": "api.telegram.org",
     "credentials": [
