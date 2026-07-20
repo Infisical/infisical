@@ -40,6 +40,7 @@ import { Route as organizationMcpEndpointFinalizePageRouteImport } from './pages
 import { Route as MfaSessionPageRouteImport } from './pages/MfaSessionPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
+import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
@@ -618,6 +619,14 @@ const authLoginPageRouteRoute = authLoginPageRouteImport.update({
   path: '/',
   getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
+
+const redirectsPamAccessRedirectRoute = redirectsPamAccessRedirectImport.update(
+  {
+    id: '/pam/access',
+    path: '/pam/access',
+    getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+  } as any,
+)
 
 const adminLayoutRoute = adminLayoutImport.update({
   id: '/_admin-layout',
@@ -2959,6 +2968,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin'
       preLoaderRoute: typeof adminLayoutImport
       parentRoute: typeof AuthenticateInjectOrgDetailsAdminImport
+    }
+    '/_authenticate/_inject-org-details/pam/access': {
+      id: '/_authenticate/_inject-org-details/pam/access'
+      path: '/pam/access'
+      fullPath: '/pam/access'
+      preLoaderRoute: typeof redirectsPamAccessRedirectImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/admin/_admin-layout/': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout/'
@@ -6060,6 +6076,7 @@ const AuthenticateInjectOrgDetailsAdminRouteWithChildren =
 interface middlewaresInjectOrgDetailsRouteChildren {
   organizationLayoutRoute: typeof organizationLayoutRouteWithChildren
   AuthenticateInjectOrgDetailsAdminRoute: typeof AuthenticateInjectOrgDetailsAdminRouteWithChildren
+  redirectsPamAccessRedirectRoute: typeof redirectsPamAccessRedirectRoute
   redirectsSettingsOauthCallbackRedirectRoute: typeof redirectsSettingsOauthCallbackRedirectRoute
   redirectsOauthCallbackRedirectRoute: typeof redirectsOauthCallbackRedirectRoute
   redirectsGithubManifestCallbackRedirectRoute: typeof redirectsGithubManifestCallbackRedirectRoute
@@ -6071,6 +6088,7 @@ const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRoute
     organizationLayoutRoute: organizationLayoutRouteWithChildren,
     AuthenticateInjectOrgDetailsAdminRoute:
       AuthenticateInjectOrgDetailsAdminRouteWithChildren,
+    redirectsPamAccessRedirectRoute: redirectsPamAccessRedirectRoute,
     redirectsSettingsOauthCallbackRedirectRoute:
       redirectsSettingsOauthCallbackRedirectRoute,
     redirectsOauthCallbackRedirectRoute: redirectsOauthCallbackRedirectRoute,
@@ -6239,6 +6257,7 @@ export interface FileRoutesByFullPath {
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
+  '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/admin/': typeof adminGeneralPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
@@ -6531,6 +6550,7 @@ export interface FileRoutesByTo {
   '/admin': typeof adminGeneralPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
+  '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
@@ -6810,6 +6830,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
+  '/_authenticate/_inject-org-details/pam/access': typeof redirectsPamAccessRedirectRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
@@ -7114,6 +7135,7 @@ export interface FileRouteTypes {
     | '/personal-settings/'
     | '/login/provider/error'
     | '/integrations'
+    | '/pam/access'
     | '/admin/'
     | '/admin/access-management'
     | '/admin/authentication'
@@ -7405,6 +7427,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login/provider/error'
     | '/integrations'
+    | '/pam/access'
     | '/admin/access-management'
     | '/admin/authentication'
     | '/admin/caching'
@@ -7682,6 +7705,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/login/provider/error'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
+    | '/_authenticate/_inject-org-details/pam/access'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
@@ -8060,6 +8084,7 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/_inject-org-details/_org-layout",
         "/_authenticate/_inject-org-details/admin",
+        "/_authenticate/_inject-org-details/pam/access",
         "/_authenticate/_inject-org-details/organization/settings/oauth/callback",
         "/_authenticate/_inject-org-details/organization/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/organization/app-connections/github/manifest/callback",
@@ -8200,6 +8225,10 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/admin/_admin-layout/integrations",
         "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
       ]
+    },
+    "/_authenticate/_inject-org-details/pam/access": {
+      "filePath": "redirects/pam-access-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/": {
       "filePath": "admin/GeneralPage/route.tsx",

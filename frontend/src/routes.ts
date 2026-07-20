@@ -517,6 +517,7 @@ export const routes = rootRoute("root.tsx", [
         "/organization/app-connections/github/manifest/callback",
         "redirects/github-manifest-callback-redirect.tsx"
       ),
+      route("/pam/access", "redirects/pam-access-redirect.tsx"),
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
         route("/organizations/$orgId/secret-manager/$projectId", [

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
-import { SessionStorageKeys } from "@app/const";
+import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 
 import { adminQueryKeys } from "../admin";
 import { organizationKeys } from "../organization/queries";
@@ -88,18 +88,11 @@ export const useSelectOrganization = () => {
         await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
       }
 
+      // Check for a stored redirect URL from before login (e.g., deep links)
       if (data.token && !data.isMfaEnabled) {
-        // We check if there is a pending callback after organization login success and redirect to it if valid
-        const loginRedirectInfo = sessionStorage.getItem(
-          SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL
-        );
-        sessionStorage.removeItem(SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL);
-
-        if (loginRedirectInfo) {
-          const { expiry, data: redirectUrl } = JSON.parse(loginRedirectInfo);
-          if (new Date() < new Date(expiry)) {
-            window.location.assign(redirectUrl);
-          }
+        const redirectUrl = consumeLoginRedirectUrl();
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
         }
       }
 
