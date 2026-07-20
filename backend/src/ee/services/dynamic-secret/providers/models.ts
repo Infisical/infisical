@@ -270,44 +270,97 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }
     return val;
   },
-  z.discriminatedUnion("method", [
-    z.object({
-      method: z.literal(AwsIamAuthType.AccessKey),
-      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
-      accessKey: z.string().trim().min(1),
-      secretAccessKey: z.string().trim().min(1),
-      region: z.string().trim().min(1),
-      awsPath: z.string().trim().optional(),
-      permissionBoundaryPolicyArn: z.string().trim().optional(),
-      policyDocument: z.string().trim().optional(),
-      userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataNonEncryptionSchema.optional()
-    }),
-    z.object({
-      method: z.literal(AwsIamAuthType.AssumeRole),
-      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
-      roleArn: z.string().trim().min(1, "Role ARN required"),
-      region: z.string().trim().min(1),
-      awsPath: z.string().trim().optional(),
-      permissionBoundaryPolicyArn: z.string().trim().optional(),
-      policyDocument: z.string().trim().optional(),
-      userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataNonEncryptionSchema.optional()
-    }),
-    z.object({
-      method: z.literal(AwsIamAuthType.IRSA),
-      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
-      region: z.string().trim().min(1),
-      awsPath: z.string().trim().optional(),
-      permissionBoundaryPolicyArn: z.string().trim().optional(),
-      policyDocument: z.string().trim().optional(),
-      userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataNonEncryptionSchema.optional()
+  z
+    .discriminatedUnion("method", [
+      z.object({
+        method: z.literal(AwsIamAuthType.AccessKey),
+        credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
+        accessKey: z.string().trim().min(1),
+        secretAccessKey: z.string().trim().min(1),
+        region: z.string().trim().min(1),
+        awsPath: z.string().trim().optional(),
+        permissionBoundaryPolicyArn: z.string().trim().optional(),
+        policyDocument: z.string().trim().optional(),
+        userGroups: z.string().trim().optional(),
+        policyArns: z.string().trim().optional(),
+        tags: ResourceMetadataNonEncryptionSchema.optional()
+      }),
+      z.object({
+        method: z.literal(AwsIamAuthType.AssumeRole),
+        credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
+        roleArn: z.string().trim().min(1, "Role ARN required"),
+        region: z.string().trim().min(1),
+        awsPath: z.string().trim().optional(),
+        permissionBoundaryPolicyArn: z.string().trim().optional(),
+        policyDocument: z.string().trim().optional(),
+        userGroups: z.string().trim().optional(),
+        policyArns: z.string().trim().optional(),
+        sessionPolicyArns: z.string().trim().optional(),
+        sessionPolicyDocument: z.string().trim().optional(),
+        tags: ResourceMetadataNonEncryptionSchema.optional()
+      }),
+      z.object({
+        method: z.literal(AwsIamAuthType.IRSA),
+        credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
+        region: z.string().trim().min(1),
+        awsPath: z.string().trim().optional(),
+        permissionBoundaryPolicyArn: z.string().trim().optional(),
+        policyDocument: z.string().trim().optional(),
+        userGroups: z.string().trim().optional(),
+        policyArns: z.string().trim().optional(),
+        tags: ResourceMetadataNonEncryptionSchema.optional()
+      })
+    ])
+    .superRefine((data, ctx) => {
+      const reject = (path: string, message: string) =>
+        ctx.addIssue({ path: [path], code: z.ZodIssueCode.custom, message });
+      const countCsvArns = (value: string) => value.split(",").filter((arn) => arn.trim()).length;
+
+      if (data.credentialType === AwsIamCredentialType.TemporaryCredentials) {
+        // policyArns/policyDocument grant permissions to created IAM users; temporary credentials are restricted via session policies instead
+        if (data.policyArns) {
+          reject(
+            "policyArns",
+            "Policy ARNs only apply to the IAM User credential type. To restrict temporary credentials, use Session Policy ARNs with the Assume Role method."
+          );
+        }
+        if (data.policyDocument) {
+          reject(
+            "policyDocument",
+            "A policy document only applies to the IAM User credential type. To restrict temporary credentials, use a Session Policy Document with the Assume Role method."
+          );
+        }
+
+        // session policy fields exist only on the AssumeRole member (STS AssumeRole alone supports them; GetSessionToken,
+        // used by access key / IRSA, has no Policy/PolicyArns params), so this guard also narrows the type for TS
+        if (data.method === AwsIamAuthType.AssumeRole) {
+          if (data.sessionPolicyArns && countCsvArns(data.sessionPolicyArns) > 10) {
+            reject("sessionPolicyArns", "AWS allows at most 10 managed policy ARNs as session policies");
+          }
+          // session policies count the full plaintext against the 2,048 character limit
+          if (data.sessionPolicyDocument && data.sessionPolicyDocument.length > 2048) {
+            reject("sessionPolicyDocument", "AWS limits inline session policies to 2,048 characters of plaintext");
+          }
+        }
+        return;
+      }
+
+      // IAM User credential type: session policies have no meaning because no STS session is created
+      if (data.method === AwsIamAuthType.AssumeRole) {
+        if (data.sessionPolicyArns) {
+          reject(
+            "sessionPolicyArns",
+            "Session policy ARNs only apply to the Temporary Credentials credential type. Use Policy ARNs to grant permissions to created IAM users."
+          );
+        }
+        if (data.sessionPolicyDocument) {
+          reject(
+            "sessionPolicyDocument",
+            "A session policy document only applies to the Temporary Credentials credential type. Use a policy document to grant permissions to created IAM users."
+          );
+        }
+      }
     })
-  ])
 );
 
 export const DynamicSecretMongoAtlasSchema = z.object({

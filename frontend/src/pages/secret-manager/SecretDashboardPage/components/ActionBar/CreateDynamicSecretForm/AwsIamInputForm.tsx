@@ -60,6 +60,8 @@ const formSchema = z.object({
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
+      sessionPolicyArns: z.string().trim().optional(),
+      sessionPolicyDocument: z.string().trim().optional(),
       tags: z
         .array(
           z.object({
@@ -153,6 +155,9 @@ export const AwsIamInputForm = ({
   const createDynamicSecret = useCreateDynamicSecret();
   const method = watch("provider.method");
   const credentialType = watch("provider.credentialType");
+  const isIamUser = credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials;
+  // session policies only apply to temporary credentials issued via STS AssumeRole
+  const isSessionPolicySupported = !isIamUser && method === DynamicSecretAwsIamAuth.AssumeRole;
 
   const handleCreateDynamicSecret = async ({
     name,
@@ -165,9 +170,16 @@ export const AwsIamInputForm = ({
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
 
+    // react-hook-form keeps values of unmounted fields; clear policies that do not apply to the submitted credential type / method combination
+    const sanitizedProvider = {
+      ...provider,
+      ...(!isIamUser && { policyArns: "", policyDocument: "" }),
+      ...(!isSessionPolicySupported && { sessionPolicyArns: "", sessionPolicyDocument: "" })
+    };
+
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     await createDynamicSecret.mutateAsync({
-      provider: { type: DynamicSecretProviders.AwsIam, inputs: provider },
+      provider: { type: DynamicSecretProviders.AwsIam, inputs: sanitizedProvider },
       maxTTL,
       name,
       path: secretPath,
@@ -391,7 +403,7 @@ export const AwsIamInputForm = ({
                   )}
                 />
               </div>
-              {credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials && (
+              {isIamUser && (
                 <>
                   <Controller
                     control={control}
@@ -435,7 +447,7 @@ export const AwsIamInputForm = ({
                         isError={Boolean(error?.message)}
                         isOptional
                         errorText={error?.message}
-                        helperText="Generated users will get attached to given policy arns."
+                        helperText="Generated users will get attached to given policy arns. AWS allows at most 10 attached managed policies."
                       >
                         <Input
                           {...field}
@@ -454,6 +466,49 @@ export const AwsIamInputForm = ({
                         isError={Boolean(error?.message)}
                         errorText={error?.message}
                         helperText="Generated users will have the inline policy."
+                      >
+                        <TextArea
+                          {...field}
+                          reSize="none"
+                          rows={3}
+                          className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                </>
+              )}
+              {isSessionPolicySupported && (
+                <>
+                  <Controller
+                    control={control}
+                    name="provider.sessionPolicyArns"
+                    defaultValue=""
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS Session Policy ARNs"
+                        isError={Boolean(error?.message)}
+                        isOptional
+                        errorText={error?.message}
+                        helperText="Session policies: leased credentials are limited to the intersection of the role's permissions and these managed policies. They can only restrict, never add, permissions. Up to 10 ARNs, comma-separated."
+                      >
+                        <Input
+                          {...field}
+                          placeholder="arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+                        />
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="provider.sessionPolicyDocument"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="AWS Session Policy Document"
+                        isOptional
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        helperText="Inline session policy (JSON) that further restricts the leased temporary credentials. It cannot grant permissions beyond the role's policies. Maximum 2,048 characters."
                       >
                         <TextArea
                           {...field}

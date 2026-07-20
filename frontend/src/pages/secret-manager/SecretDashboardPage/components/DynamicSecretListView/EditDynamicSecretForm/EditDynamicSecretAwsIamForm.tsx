@@ -47,6 +47,8 @@ const formSchema = z.object({
       policyDocument: z.string().trim().optional(),
       userGroups: z.string().trim().optional(),
       policyArns: z.string().trim().optional(),
+      sessionPolicyArns: z.string().trim().optional(),
+      sessionPolicyDocument: z.string().trim().optional(),
       tags: z
         .array(z.object({ key: z.string().trim().min(1), value: z.string().trim().min(1) }))
         .optional()
@@ -128,6 +130,9 @@ export const EditDynamicSecretAwsIamForm = ({
   });
   const method = watch("inputs.method");
   const credentialType = watch("inputs.credentialType");
+  const isIamUser = credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials;
+  // session policies only apply to temporary credentials issued via STS AssumeRole
+  const isSessionPolicySupported = !isIamUser && method === DynamicSecretAwsIamAuth.AssumeRole;
 
   const updateDynamicSecret = useUpdateDynamicSecret();
 
@@ -140,6 +145,15 @@ export const EditDynamicSecretAwsIamForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
+
+    // clear policies that do not apply to the submitted credential type / method combination; explicit "" is required
+    // because the update endpoint shallow-merges inputs, so omitted keys would keep their stored values
+    const sanitizedInputs = {
+      ...inputs,
+      ...(!isIamUser && { policyArns: "", policyDocument: "" }),
+      ...(!isSessionPolicySupported && { sessionPolicyArns: "", sessionPolicyDocument: "" })
+    };
+
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
     await updateDynamicSecret.mutateAsync({
       name: dynamicSecret.name,
@@ -149,7 +163,7 @@ export const EditDynamicSecretAwsIamForm = ({
       data: {
         maxTTL: maxTTL || undefined,
         defaultTTL,
-        inputs,
+        inputs: sanitizedInputs,
         newName: newName === dynamicSecret.name ? undefined : newName,
         usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
       }
@@ -366,7 +380,7 @@ export const EditDynamicSecretAwsIamForm = ({
                 )}
               />
             </div>
-            {credentialType !== DynamicSecretAwsIamCredentialType.TemporaryCredentials && (
+            {isIamUser && (
               <>
                 <Controller
                   control={control}
@@ -403,14 +417,14 @@ export const EditDynamicSecretAwsIamForm = ({
                 <Controller
                   control={control}
                   name="inputs.policyArns"
-                  defaultValue="datacenter1"
+                  defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="AWS Policy ARNs"
                       isError={Boolean(error?.message)}
                       isOptional
                       errorText={error?.message}
-                      helperText="Generated users will get attached to given policy arns."
+                      helperText="Generated users will get attached to given policy arns. AWS allows at most 10 attached managed policies."
                     >
                       <Input {...field} />
                     </FormControl>
@@ -426,6 +440,46 @@ export const EditDynamicSecretAwsIamForm = ({
                       isError={Boolean(error?.message)}
                       errorText={error?.message}
                       helperText="Generated users will have the inline policy."
+                    >
+                      <TextArea
+                        {...field}
+                        reSize="none"
+                        rows={3}
+                        className="border-mineshaft-600 bg-mineshaft-900 text-sm"
+                      />
+                    </FormControl>
+                  )}
+                />
+              </>
+            )}
+            {isSessionPolicySupported && (
+              <>
+                <Controller
+                  control={control}
+                  name="inputs.sessionPolicyArns"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Session Policy ARNs"
+                      isError={Boolean(error?.message)}
+                      isOptional
+                      errorText={error?.message}
+                      helperText="Session policies: leased credentials are limited to the intersection of the role's permissions and these managed policies. They can only restrict, never add, permissions. Up to 10 ARNs, comma-separated."
+                    >
+                      <Input {...field} />
+                    </FormControl>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="inputs.sessionPolicyDocument"
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                      label="AWS Session Policy Document"
+                      isOptional
+                      isError={Boolean(error?.message)}
+                      errorText={error?.message}
+                      helperText="Inline session policy (JSON) that further restricts the leased temporary credentials. It cannot grant permissions beyond the role's policies. Maximum 2,048 characters."
                     >
                       <TextArea
                         {...field}

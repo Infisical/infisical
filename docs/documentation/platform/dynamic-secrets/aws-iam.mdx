@@ -226,11 +226,11 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
             </ParamField>
 
             <ParamField path="AWS Policy ARNs" type="string">
-              The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas.
+              The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas. AWS allows at most 10 managed policies attached to a user.
             </ParamField>
 
             <ParamField path="AWS IAM Policy Document" type="string">
-              The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
+              The AWS IAM inline policy (JSON) that should be attached to the created users. Maximum 2,048 non-whitespace characters (AWS excludes whitespace from this quota).
             </ParamField>
 
             <DynamicSecretUsernameTemplateParamField />
@@ -244,10 +244,21 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
             When **Credential Type** is set to **Temporary Credentials**:
 
             <Info>
-              No additional configuration parameters are required. The generated credentials will:
-              - Inherit the permissions of the assumed role
+              The generated credentials will:
+              - Inherit the permissions of the assumed role, optionally restricted by the session policies below
               - Include an AWS Session Token
               - Be valid for the duration specified in Default TTL
+            </Info>
+
+            <ParamField path="AWS Session Policy ARNs" type="string" optional>
+              Comma-separated managed policy ARNs applied as session policies. The generated credentials are limited to the intersection of the assumed role's permissions and these policies. AWS allows up to 10 ARNs.
+            </ParamField>
+            <ParamField path="AWS Session Policy Document" type="string" optional>
+              An inline session policy (JSON) that further restricts the generated credentials. Maximum 2,048 characters of plaintext. AWS additionally enforces a packed-size limit covering the inline policy, managed policy ARNs, and session tags combined.
+            </ParamField>
+
+            <Info>
+              Session policies can only restrict the assumed role's permissions; they can never grant permissions beyond it.
             </Info>
 
             <Warning>
@@ -408,11 +419,11 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
                 </ParamField>
 
                 <ParamField path="AWS Policy ARNs" type="string">
-                    The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas.
+                    The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas. AWS allows at most 10 managed policies attached to a user.
                 </ParamField>
 
                 <ParamField path="AWS IAM Policy Document" type="string">
-                    The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
+                    The AWS IAM inline policy (JSON) that should be attached to the created users. Maximum 2,048 non-whitespace characters (AWS excludes whitespace from this quota).
                 </ParamField>
 
                 <DynamicSecretUsernameTemplateParamField />
@@ -434,6 +445,10 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
 
                 <Note>
                   **Duration Limit**: IRSA temporary credentials support up to 12 hours maximum via GetSessionToken. TTL values exceeding this limit will be automatically adjusted.
+                </Note>
+
+                <Note>
+                  Session policies (AWS Session Policy ARNs / AWS Session Policy Document) are not supported with the IRSA method: STS GetSessionToken does not accept them. These fields are only available with the Assume Role method.
                 </Note>
               </Tab>
             </Tabs>
@@ -527,11 +542,11 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
             </ParamField>
 
             <ParamField path="AWS Policy ARNs" type="string">
-              The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas.
+              The AWS IAM managed policies that should be attached to the created users. Multiple values can be provided by separating them with commas. AWS allows at most 10 managed policies attached to a user.
             </ParamField>
 
             <ParamField path="AWS IAM Policy Document" type="string">
-              The AWS IAM inline policy that should be attached to the created users. Multiple values can be provided by separating them with commas.
+              The AWS IAM inline policy (JSON) that should be attached to the created users. Maximum 2,048 non-whitespace characters (AWS excludes whitespace from this quota).
             </ParamField>
 
             <DynamicSecretUsernameTemplateParamField />
@@ -553,6 +568,10 @@ Infisical needs an AWS IAM principal (a user or a role) with the required permis
 
             <Note>
               **Duration Limit**: Access Key temporary credentials support up to 12 hours maximum via GetSessionToken. TTL values exceeding this limit will be automatically adjusted.
+            </Note>
+
+            <Note>
+              Session policies (AWS Session Policy ARNs / AWS Session Policy Document) are not supported with the Access Key method: STS GetSessionToken does not accept them. These fields are only available with the Assume Role method.
             </Note>
           </Tab>
         </Tabs>
