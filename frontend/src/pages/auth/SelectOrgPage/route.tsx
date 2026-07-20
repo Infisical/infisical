@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
@@ -157,10 +158,10 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
 
         createNotification({ text: "Successfully logged in", type: "success" });
 
-        // If there's a stored redirect URL from before login (e.g., deep links like /pam/access),
-        // navigate there instead of the default projects page
-        if (result.loginRedirectUrl) {
-          window.location.assign(result.loginRedirectUrl);
+        // Check for a stored redirect URL from before login (e.g., deep links like /pam/access)
+        const loginRedirectUrl = consumeLoginRedirectUrl();
+        if (loginRedirectUrl) {
+          window.location.assign(loginRedirectUrl);
           return { autoSelectErrorMessage: undefined };
         }
 

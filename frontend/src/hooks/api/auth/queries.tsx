@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { apiRequest } from "@app/config/request";
-import { SessionStorageKeys } from "@app/const";
+import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 
 import { adminQueryKeys } from "../admin";
 import { organizationKeys } from "../organization/queries";
@@ -69,31 +69,7 @@ export const selectOrganization = async (data: SelectOrganizationParams) => {
     isMfaEnabled: boolean;
     mfaMethod?: MfaMethod;
   }>("/api/v3/auth/select-organization", data);
-
-  // Check for a stored redirect URL from before login (e.g., deep links like /pam/access)
-  // Return the URL so the caller can redirect AFTER setting up auth state
-  let loginRedirectUrl: string | undefined;
-  if (res.token && !res.isMfaEnabled) {
-    const loginRedirectInfo = sessionStorage.getItem(
-      SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL
-    );
-    if (loginRedirectInfo) {
-      sessionStorage.removeItem(SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL);
-      try {
-        const { expiry, data: redirectUrl } = JSON.parse(loginRedirectInfo) as {
-          expiry: string;
-          data: string;
-        };
-        if (new Date() < new Date(expiry) && redirectUrl) {
-          loginRedirectUrl = redirectUrl;
-        }
-      } catch {
-        // Invalid JSON - ignore
-      }
-    }
-  }
-
-  return { ...res, loginRedirectUrl };
+  return res;
 };
 
 export const useSelectOrganization = () => {
@@ -112,10 +88,12 @@ export const useSelectOrganization = () => {
         await queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
       }
 
-      // If there's a stored redirect URL from before login, navigate there now
-      // (after auth state is set up)
-      if (data.loginRedirectUrl) {
-        window.location.assign(data.loginRedirectUrl);
+      // Check for a stored redirect URL from before login (e.g., deep links)
+      if (data.token && !data.isMfaEnabled) {
+        const redirectUrl = consumeLoginRedirectUrl();
+        if (redirectUrl) {
+          window.location.assign(redirectUrl);
+        }
       }
 
       return data;
