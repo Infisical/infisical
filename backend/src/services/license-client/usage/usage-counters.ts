@@ -2,10 +2,9 @@ import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 
 import { TFeatureCounterFn, TLimitFeatureDescriptor } from "../feature";
 import {
-  MaxActiveCerts,
-  MaxIdentities,
-  MaxInternalCas,
-  MaxPamResources,
+  ActiveCerts,
+  IdentitiesMeter,
+  InternalCas,
   PamIdentities,
   SecretIdentities,
   UserIdentities
@@ -31,10 +30,9 @@ export const buildMeteredFeatures = ({
   usageCounterDAL,
   isCloud
 }: TBuildMeteredFeaturesDep): TMeteredFeature[] => [
-  { feature: MaxIdentities, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(orgId) },
-  { feature: MaxInternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
-  { feature: MaxActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
-  { feature: MaxPamResources, count: (orgId) => usageCounterDAL.countPamResources(orgId) },
+  { feature: IdentitiesMeter, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(orgId) },
+  { feature: InternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
+  { feature: ActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
   {
     feature: SecretIdentities,
     count: (orgId) => usageCounterDAL.countSecretManagementIdentities(isCloud ? orgId : undefined)

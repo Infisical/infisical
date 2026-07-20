@@ -30,7 +30,7 @@ import {
 } from "../certificate-request/certificate-request-types";
 import type { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
-import { MaxInternalCas } from "../license-client";
+import { InternalCas } from "../license-client";
 import { TUsageMeteringServiceFactory } from "../license-client/usage";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -324,9 +324,6 @@ export const certificateAuthorityServiceFactory = ({
     if (type === CaType.INTERNAL) {
       const internalConfig = configuration as TCreateInternalCertificateAuthorityDTO["configuration"];
 
-      // maxInternalCas is uncapped by default (null); only enforce a cap when the plan configures a
-      // numeric limit. Counted org-wide right before creation and scoped to internal CAs (external CAs
-      // are not capped).
       if (typeof plan.maxInternalCas === "number") {
         const currentInternalCaCount = await certificateAuthorityDAL.countInternalCasByOrgId(actor.orgId);
         if (currentInternalCaCount >= plan.maxInternalCas) {
@@ -361,7 +358,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emitForProject(projectId, MaxInternalCas.key);
+      usageMeteringService.emitForProject(projectId, InternalCas.key);
 
       return {
         id: ca.id,
@@ -891,7 +888,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
+      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1123,7 +1120,7 @@ export const certificateAuthorityServiceFactory = ({
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emitForProject(certificateAuthority.projectId, MaxInternalCas.key);
+      usageMeteringService.emitForProject(certificateAuthority.projectId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,

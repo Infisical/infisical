@@ -1,17 +1,28 @@
 import { ReactNode } from "react";
-import { Package } from "lucide-react";
+import { Package, RefreshCw } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2Entitlement, BillingV2Overview } from "@app/hooks/api";
+import { useOrganization } from "@app/context";
+import {
+  BillingV2CatalogProduct,
+  BillingV2Entitlement,
+  BillingV2Overview,
+  useRefreshBillingV2Entitlements
+} from "@app/hooks/api";
 
 import {
   byDisplayOrder,
@@ -227,6 +238,20 @@ export const ProductsCard = ({
   const active = visible.filter((prod) => overview.entitlements[prod.id]?.entitled);
   const available = visible.filter((prod) => !overview.entitlements[prod.id]?.entitled);
 
+  const { currentOrg } = useOrganization();
+  const refreshEntitlements = useRefreshBillingV2Entitlements();
+
+  // Pull the latest entitlements from the license server (busting the server cache) and refetch the
+  // overview so the freshly-resolved products land in the UI.
+  const handleRefresh = async () => {
+    try {
+      await refreshEntitlements.mutateAsync({ orgId: currentOrg.id });
+      createNotification({ type: "success", text: "Entitlements refreshed." });
+    } catch {
+      createNotification({ type: "error", text: "Failed to refresh entitlements." });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -235,6 +260,24 @@ export const ProductsCard = ({
           Products
         </CardTitle>
         <CardDescription>Everything you can run on your subscription.</CardDescription>
+        {!readOnly && (
+          <CardAction>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isDisabled={refreshEntitlements.isPending}
+                  onClick={handleRefresh}
+                >
+                  <RefreshCw />
+                  Refresh
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Plan changes may take a few minutes to take effect.</TooltipContent>
+            </Tooltip>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         {visible.length === 0 ? (

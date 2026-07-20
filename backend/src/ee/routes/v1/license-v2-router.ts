@@ -230,6 +230,27 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/overview/refresh",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      response: {
+        200: z.object({ success: z.boolean() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.refreshEntitlements({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission)
+      });
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:organizationId/billing/v2/catalog",
     config: {

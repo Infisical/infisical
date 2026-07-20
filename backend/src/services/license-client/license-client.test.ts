@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { featureReaderFactory } from "./feature-reader";
-import { AuditRetentionDays, MaxIdentities, SsoEnforcement } from "./features";
+import { AuditRetentionDays, IdentitiesMeter, SsoEnforcement } from "./features";
 import { licenseClientFactory } from "./license-client";
 import { entitlementResolverFactory } from "./license-client-cache";
 import { TEntitlementsResponse } from "./license-client-types";
@@ -118,7 +118,7 @@ describe("featureReaderFactory", () => {
 
     expect((await reader.getFeature(ORG_ID, SsoEnforcement)).value).toBe(false);
     expect((await reader.getFeature(ORG_ID, AuditRetentionDays)).value).toBe(30);
-    expect((await reader.getFeature(ORG_ID, MaxIdentities)).value).toBe(0);
+    expect((await reader.getFeature(ORG_ID, IdentitiesMeter)).value).toBe(0);
   });
 
   test("returns server-resolved values when present", async () => {
@@ -129,15 +129,15 @@ describe("featureReaderFactory", () => {
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
 
     expect((await reader.getFeature(ORG_ID, SsoEnforcement)).value).toBe(true);
-    expect((await reader.getFeature(ORG_ID, MaxIdentities)).value).toBe(100);
+    expect((await reader.getFeature(ORG_ID, IdentitiesMeter)).value).toBe(100);
   });
 
   test("canUse enforces the cap against a registered counter", async () => {
     const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
-    reader.registerCounter(MaxIdentities, async () => 99);
+    reader.registerCounter(IdentitiesMeter, async () => 99);
 
-    const limit = await reader.getFeature(ORG_ID, MaxIdentities);
+    const limit = await reader.getFeature(ORG_ID, IdentitiesMeter);
     expect(await limit.canUse(1)).toBe(true);
     expect(await limit.canUse(2)).toBe(false);
   });
@@ -146,7 +146,7 @@ describe("featureReaderFactory", () => {
     const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
 
-    const limit = await reader.getFeature(ORG_ID, MaxIdentities);
+    const limit = await reader.getFeature(ORG_ID, IdentitiesMeter);
     expect(await limit.canUse(50)).toBe(true);
     expect(await limit.canUse(101)).toBe(false);
   });
@@ -165,7 +165,7 @@ describe("licenseClientFactory (usage example)", () => {
   });
 
   // A metered feature needs its live-count source registered once at init.
-  licenseClient.registerCounter(MaxIdentities, async () => 4);
+  licenseClient.registerCounter(IdentitiesMeter, async () => 4);
 
   test("boolean gate", async () => {
     const sso = await licenseClient.getFeature(ORG_ID, SsoEnforcement);
@@ -176,7 +176,7 @@ describe("licenseClientFactory (usage example)", () => {
   });
 
   test("limit gate via canUse", async () => {
-    const identities = await licenseClient.getFeature(ORG_ID, MaxIdentities);
+    const identities = await licenseClient.getFeature(ORG_ID, IdentitiesMeter);
     // throw a LimitExceededError here in real code
     expect(await identities.canUse(1)).toBe(false); // fallback cap is 0, current is 4
   });

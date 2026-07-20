@@ -4,10 +4,9 @@ import { QueueJobs, QueueName } from "@app/queue";
 
 import { featureReaderFactory } from "../feature-reader";
 import {
-  MaxActiveCerts,
-  MaxIdentities,
-  MaxInternalCas,
-  MaxPamResources,
+  ActiveCerts,
+  IdentitiesMeter,
+  InternalCas,
   PamIdentities,
   SecretIdentities,
   UserIdentities
@@ -59,7 +58,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
-    svc.emit(ORG_ID, MaxIdentities.key);
+    svc.emit(ORG_ID, IdentitiesMeter.key);
     await flushAsync();
 
     expect(queue).not.toHaveBeenCalled();
@@ -73,15 +72,15 @@ describe("usageMeteringService.emit (org-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
-    svc.emit(ORG_ID, MaxIdentities.key);
+    svc.emit(ORG_ID, IdentitiesMeter.key);
     await flushAsync();
 
     expect(queue).toHaveBeenCalledTimes(1);
     const [name, job, data, opts] = queue.mock.calls[0] as unknown as TQueueCall;
     expect(name).toBe(QueueName.UsageEvent);
     expect(job).toBe(QueueJobs.UsageEvent);
-    expect(data).toEqual({ orgId: ORG_ID, dimensionKey: MaxIdentities.key });
-    expect(opts.deduplication?.id).toBe(`usage-event-${ORG_ID}-${MaxIdentities.key}`);
+    expect(data).toEqual({ orgId: ORG_ID, dimensionKey: IdentitiesMeter.key });
+    expect(opts.deduplication?.id).toBe(`usage-event-${ORG_ID}-${IdentitiesMeter.key}`);
     expect(opts.delay).toBe(5000);
   });
 
@@ -95,7 +94,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
-    expect(() => svc.emit(ORG_ID, MaxIdentities.key)).not.toThrow();
+    expect(() => svc.emit(ORG_ID, IdentitiesMeter.key)).not.toThrow();
     await flushAsync();
   });
 });
@@ -110,14 +109,14 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
-    svc.emitForProject(PROJECT_ID, MaxPamResources.key);
+    svc.emitForProject(PROJECT_ID, PamIdentities.key);
     await flushAsync();
 
     expect(findById).toHaveBeenCalledWith(PROJECT_ID);
     expect(queue).toHaveBeenCalledTimes(1);
     const [, , data, opts] = queue.mock.calls[0] as unknown as TQueueCall;
-    expect(data).toEqual({ orgId: ORG_ID, dimensionKey: MaxPamResources.key });
-    expect(opts.deduplication?.id).toBe(`usage-event-${ORG_ID}-${MaxPamResources.key}`);
+    expect(data).toEqual({ orgId: ORG_ID, dimensionKey: PamIdentities.key });
+    expect(opts.deduplication?.id).toBe(`usage-event-${ORG_ID}-${PamIdentities.key}`);
   });
 
   test("does not enqueue when the project is missing (e.g. soft-deleted)", async () => {
@@ -128,7 +127,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
 
-    svc.emitForProject(PROJECT_ID, MaxPamResources.key);
+    svc.emitForProject(PROJECT_ID, PamIdentities.key);
     await flushAsync();
 
     expect(queue).not.toHaveBeenCalled();
@@ -143,7 +142,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
       envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
 
-    svc.emitForProject(PROJECT_ID, MaxPamResources.key);
+    svc.emitForProject(PROJECT_ID, PamIdentities.key);
     await flushAsync();
 
     expect(findById).not.toHaveBeenCalled();
@@ -189,20 +188,18 @@ describe("buildMeteredFeatures", () => {
     const byKey = Object.fromEntries(metered.map((m) => [m.feature.key, m.count]));
     expect(Object.keys(byKey).sort()).toEqual(
       [
-        MaxIdentities.key,
-        MaxInternalCas.key,
-        MaxActiveCerts.key,
-        MaxPamResources.key,
+        IdentitiesMeter.key,
+        InternalCas.key,
+        ActiveCerts.key,
         SecretIdentities.key,
         PamIdentities.key,
         UserIdentities.key
       ].sort()
     );
 
-    expect(await byKey[MaxIdentities.key](ORG_ID)).toBe(7);
-    expect(await byKey[MaxInternalCas.key](ORG_ID)).toBe(1);
-    expect(await byKey[MaxActiveCerts.key](ORG_ID)).toBe(2);
-    expect(await byKey[MaxPamResources.key](ORG_ID)).toBe(3);
+    expect(await byKey[IdentitiesMeter.key](ORG_ID)).toBe(7);
+    expect(await byKey[InternalCas.key](ORG_ID)).toBe(1);
+    expect(await byKey[ActiveCerts.key](ORG_ID)).toBe(2);
     expect(await byKey[SecretIdentities.key](ORG_ID)).toBe(4);
     expect(await byKey[PamIdentities.key](ORG_ID)).toBe(5);
     expect(await byKey[UserIdentities.key](ORG_ID)).toBe(8);
@@ -241,7 +238,7 @@ describe("buildMeteredFeatures", () => {
 });
 
 describe("usageEventQueue.handleUsageEvent (worker)", () => {
-  const meteredFeatures = [{ feature: MaxIdentities, count: vi.fn(async () => 42) }];
+  const meteredFeatures = [{ feature: IdentitiesMeter, count: vi.fn(async () => 42) }];
 
   const buildQueue = (
     overrides: {
@@ -257,7 +254,7 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const usageReporter = overrides.usageReporter === undefined ? { reportSnapshots } : overrides.usageReporter;
     const emit = vi.fn();
     const find = overrides.orgFind ?? vi.fn(async () => []);
-    const planFeatures = overrides.planFeatures ?? [MaxIdentities.key];
+    const planFeatures = overrides.planFeatures ?? [IdentitiesMeter.key];
     const getEntitlements = vi.fn(async () => ({
       features: Object.fromEntries(planFeatures.map((key) => [key, { value: 100, source: "plan" }]))
     }));
@@ -281,31 +278,31 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
 
   test("no-ops when the reporter is null (v2 disabled)", async () => {
     const { queue } = buildQueue({ usageReporter: null });
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
     expect(meteredFeatures[0].count).not.toHaveBeenCalled();
   });
 
   test("reports a snapshot and records the value on first observation", async () => {
     const { queue, reportSnapshots, keyStore } = buildQueue();
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
 
     expect(reportSnapshots).toHaveBeenCalledTimes(1);
     const [orgId, snapshots] = reportSnapshots.mock.calls[0] as unknown as [string, TUsageSnapshot[]];
     expect(orgId).toBe(ORG_ID);
     expect(snapshots[0]).toMatchObject({
-      dimension_key: MaxIdentities.key,
+      dimension_key: IdentitiesMeter.key,
       value: 42,
       source: "test-region"
     });
-    expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${MaxIdentities.key}`)).toBe("42");
+    expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`)).toBe("42");
   });
 
   test("skips the report when the count is unchanged", async () => {
     const keyStore = createFakeKeyStore();
-    keyStore.store.set(`license-usage-last-reported-${ORG_ID}-${MaxIdentities.key}`, "42");
+    keyStore.store.set(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`, "42");
     const { queue, reportSnapshots } = buildQueue({ keyStore });
 
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
     expect(reportSnapshots).not.toHaveBeenCalled();
   });
 
@@ -318,7 +315,7 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
   test("skips the count and report when the dimension is not in the org's plan", async () => {
     // The org's plan has no metered features, so the dimension is absent from entitlements.features.
     const { queue, reportSnapshots } = buildQueue({ planFeatures: [] });
-    await queue.handleUsageEvent(ORG_ID, MaxIdentities.key, new Date());
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
     expect(meteredFeatures[0].count).not.toHaveBeenCalled();
     expect(reportSnapshots).not.toHaveBeenCalled();
   });
@@ -375,7 +372,7 @@ describe("canUse enforcement (using the framework from a call site)", () => {
   test("canUse() compares the live count against the cap resolved from entitlements", async () => {
     const reader = buildReader({ identities: { value: 100 } }, { identities: 99 });
 
-    const identities = await reader.getFeature(ORG_ID, MaxIdentities);
+    const identities = await reader.getFeature(ORG_ID, IdentitiesMeter);
     expect(identities.value).toBe(100); // cap comes from the License Server entitlement
     expect(await identities.canUse(1)).toBe(true); // 99 + 1 <= 100
     expect(await identities.canUse(2)).toBe(false); // 99 + 2 > 100
@@ -385,7 +382,7 @@ describe("canUse enforcement (using the framework from a call site)", () => {
     const reader = buildReader({ internal_cas: { value: 1 } }, { internalCas: 1 });
 
     const assertCanCreateInternalCa = async () => {
-      const cas = await reader.getFeature(ORG_ID, MaxInternalCas);
+      const cas = await reader.getFeature(ORG_ID, InternalCas);
       if (!(await cas.canUse(1))) {
         throw new Error(`internal_cas limit reached (cap ${cas.value})`);
       }

@@ -367,10 +367,14 @@ export type TAddSubscriptionItemsPayload = {
 export type TCreateCheckoutPayload = {
   items: TCheckoutLineItem[];
   email?: string;
+  // Absolute return URL; its origin must be in the license server's CUSTOMER_PORTAL_ORIGINS allowlist
+  // (the multi-region fix). returnPath is the relative back-compat fallback.
+  returnUrl?: string;
   returnPath?: string;
 };
 
 export type TCreatePortalPayload = {
+  returnUrl?: string;
   returnPath?: string;
 };
 

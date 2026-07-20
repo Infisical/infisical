@@ -294,15 +294,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     const plan = await licenseService.getPlan(ctx.actorOrgId);
-    // The `pam` gate flag is ignored when null; an explicit `true` blocks PAM account creation.
     if (typeof plan.pam === "boolean" && !plan.pam) {
       throw new BadRequestError({
         message: "PAM is not available on your current plan. Please upgrade to continue."
       });
     }
 
-    // Windows PAM accounts are an enterprise capability. The `enterprisePamAccount` flag is ignored when
-    // null; an explicit boolean enforces it (false blocks Windows / Windows AD account creation).
     if (
       (accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd) &&
       typeof plan.enterprisePamAccount === "boolean" &&

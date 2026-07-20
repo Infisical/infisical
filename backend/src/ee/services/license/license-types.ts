@@ -107,17 +107,9 @@ export type TFeatureSet = {
   honeyTokens: false;
   honeyTokenLimit: 0;
   secretsBrokering: true;
-  // Max secret syncs allowed org-wide. null (default) means uncapped; a number enforces the cap at
-  // creation time.
   secretSyncLimit: null;
-  // Max internal CAs allowed org-wide (external CAs are not capped). null (default) means uncapped; a
-  // number enforces the cap at creation time.
   maxInternalCas: null;
-  // Max PAM accounts allowed org-wide. null (default) means uncapped; a number enforces the cap at
-  // creation time.
   maxPamAccounts: null;
-  // Product gate flags. null (default) is ignored; an explicit `true` blocks the product's primary
-  // creation operation (PAM accounts / certificate authorities) and surfaces an upgrade modal.
   pam: null;
   certManager: null;
   secretsTemporaryAccess: null;

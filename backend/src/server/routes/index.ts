@@ -1724,7 +1724,8 @@ export const registerRoutes = async (
     userDAL,
     groupDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    usageMeteringService
   });
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({

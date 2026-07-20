@@ -20,6 +20,7 @@ import {
   TRemoveBillingV2ProductDTO,
   TStartBillingV2TrialDTO
 } from "./types";
+import { subscriptionQueryKeys } from "../subscriptions/queries";
 
 export const useCreateBillingV2PortalSession = () => {
   return useMutation({
@@ -219,6 +220,25 @@ export const useResumeBillingV2Subscription = () => {
     },
     onSuccess: (_data, { orgId }) => {
       queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+    }
+  });
+};
+
+// Force the server to recompute entitlements from the license server and drop its cache, then refetch
+// the overview so the freshly-pulled entitlements land in the query cache.
+export const useRefreshBillingV2Entitlements = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ orgId }: TBillingV2LifecycleDTO) => {
+      const { data } = await apiRequest.post<{ success: boolean }>(
+        `/api/v1/organizations/${orgId}/billing/v2/overview/refresh`
+      );
+
+      return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
+      queryClient.invalidateQueries({ queryKey: subscriptionQueryKeys.getOrgSubsription(orgId) });
     }
   });
 };
