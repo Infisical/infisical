@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyRoundIcon, LockIcon } from "lucide-react";
+import { CircleHelpIcon, KeyRoundIcon, LockIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -23,7 +23,10 @@ import {
   SheetFooter,
   SubOrgIcon,
   Switch,
-  TextArea
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
 import {
@@ -86,6 +89,7 @@ const buildFormDefaults = (alarm?: TAlarm): TAlarmForm => {
       eventType: AlarmEventType.IdentityCredentialExpiry,
       alertBeforeValue: 7,
       alertBeforeUnit: AlarmTimeUnit.Days,
+      dailyReminder: false,
       enabled: true,
       channelIds: []
     };
@@ -100,6 +104,7 @@ const buildFormDefaults = (alarm?: TAlarm): TAlarmForm => {
     eventType: (alarm.eventType as AlarmEventType) ?? AlarmEventType.IdentityCredentialExpiry,
     alertBeforeValue: value,
     alertBeforeUnit: unit,
+    dailyReminder: alarm.condition?.dailyReminder ?? false,
     enabled: alarm.enabled,
     channelIds: alarm.channels.map((channel) => channel.id)
   };
@@ -142,6 +147,7 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
 
   const onSubmit = async (data: TAlarmForm) => {
     const alertBefore = `${data.alertBeforeValue}${data.alertBeforeUnit}`;
+    const condition = { alertBefore, dailyReminder: data.dailyReminder };
     try {
       if (isEditing && alarm) {
         const channelsDirty = Boolean(dirtyFields.channelIds);
@@ -151,7 +157,7 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
           name: data.name,
           description: data.description || null,
           enabled: data.enabled,
-          condition: { alertBefore },
+          condition,
           ...(channelsDirty ? { channelIds: data.channelIds } : {})
         });
         createNotification({ text: "Successfully updated alarm", type: "success" });
@@ -162,7 +168,7 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
           resourceType: data.resourceType,
           resourceId: null,
           eventType: data.eventType,
-          condition: { alertBefore },
+          condition,
           filters: null,
           enabled: data.enabled,
           projectId: projectId ?? null,
@@ -325,6 +331,32 @@ export const AlarmForm = ({ projectId, scopeName, alarm, onComplete, onCancel }:
                 <FieldError errors={[errors.alertBeforeValue, errors.alertBeforeUnit]} />
               </div>
             </div>
+
+            <Controller
+              control={control}
+              name="dailyReminder"
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <FieldLabel htmlFor="alarm-repeat-daily" className="cursor-pointer">
+                    Daily Reminder
+                  </FieldLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CircleHelpIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Send a reminder every day from the alert threshold until the event happens
+                    </TooltipContent>
+                  </Tooltip>
+                  <Switch
+                    id="alarm-repeat-daily"
+                    variant={scopeVariant}
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </div>
+              )}
+            />
           </section>
 
           <section className="flex flex-col gap-4">

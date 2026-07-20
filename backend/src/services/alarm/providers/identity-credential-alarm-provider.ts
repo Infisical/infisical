@@ -26,8 +26,11 @@ export const IDENTITY_CREDENTIAL_EXPIRY_EVENT = "identity.credential.expiry";
 const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
 
 const IdentityCredentialConditionSchema = z.object({
-  alertBefore: z.string().refine((v) => alertBeforeRegex.test(v), "Must be in format like '30d', '1w', '3m', '1y'")
+  alertBefore: z.string().refine((v) => alertBeforeRegex.test(v), "Must be in format like '30d', '1w', '3m', '1y'"),
+  dailyReminder: z.boolean().optional()
 });
+
+const DAILY_REPEAT_DEDUP_WINDOW_HOURS = 20;
 
 type TIdentityCredentialTarget = { credentialType: "ua-client-secret" } & TExpiringUaClientSecret;
 
@@ -228,6 +231,7 @@ export const identityCredentialAlarmProviderFactory = ({
     dedupWindowHours: (condition) => {
       const parsed = IdentityCredentialConditionSchema.safeParse(condition);
       if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
+      if (parsed.data.dailyReminder) return DAILY_REPEAT_DEDUP_WINDOW_HOURS;
       return Math.max(DEFAULT_DEDUP_WINDOW_HOURS, parseAlertBefore(parsed.data.alertBefore).days * 24);
     },
     assertPermission,

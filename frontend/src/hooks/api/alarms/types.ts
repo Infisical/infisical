@@ -76,7 +76,7 @@ export type TAlarm = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition: { alertBefore?: string } | null;
+  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
   filters: unknown | null;
   enabled: boolean;
   orgId: string;
@@ -134,6 +134,7 @@ export const alarmFormSchema = z.object({
     .min(1, "Must be at least 1")
     .max(3650, "Too large"),
   alertBeforeUnit: z.nativeEnum(AlarmTimeUnit),
+  dailyReminder: z.boolean().default(false),
   enabled: z.boolean().default(true),
   channelIds: z.array(z.string()).min(1, "At least one channel is required")
 });
