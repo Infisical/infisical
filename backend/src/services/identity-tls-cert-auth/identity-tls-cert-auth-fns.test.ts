@@ -368,6 +368,47 @@ describe("verifyClientCertificateChain", () => {
     expect(result).toEqual({ ok: true });
   });
 
+  test("does not re-explore shared dead-end issuer paths", () => {
+    let verificationCount = 0;
+    const validFrom = NOT_BEFORE.toString();
+    const validTo = FAR_FUTURE.toString();
+    const toMockNative = (id: string, subject: string, issuer: string, ca: boolean) =>
+      ({
+        raw: Buffer.from(id),
+        subject,
+        issuer,
+        ca,
+        validFrom,
+        validTo,
+        publicKey: id,
+        verify: () => {
+          verificationCount += 1;
+          return true;
+        }
+      }) as unknown as InstanceType<typeof crypto.X509Certificate>;
+
+    const width = 4;
+    const levels = 4;
+    const deadEndChain = Array.from({ length: levels }, (_, level) =>
+      Array.from({ length: width }, (_, index) =>
+        toMockNative(`dead-${level}-${index}`, `CN=level-${level}`, `CN=level-${level + 1}`, true)
+      )
+    );
+    const leaf = toMockNative("leaf", "CN=leaf", "CN=level-0", false);
+    const successfulIssuer = toMockNative("success", "CN=level-0", "CN=anchor", true);
+    const trustAnchor = toMockNative("anchor", "CN=anchor", "CN=anchor", true);
+
+    const result = verifyClientCertificateChain({
+      leaf,
+      presentedChain: [...deadEndChain.flat(), successfulIssuer],
+      trustAnchor,
+      now: NOW
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(verificationCount).toBeLessThan(150);
+  });
+
   test("rejects an expired leaf", async () => {
     const leaf = await makeLeaf("workload", intermediate, {
       notBefore: NOT_BEFORE,

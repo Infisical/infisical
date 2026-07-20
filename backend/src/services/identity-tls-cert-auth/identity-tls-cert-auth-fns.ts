@@ -72,59 +72,70 @@ export const verifyClientCertificateChain = ({
     }
   };
 
-  // Depth-first path build from the leaf up to the anchor. Bounded by the number of presented
-  // intermediates to prevent cycles; each intermediate may be used at most once on a path.
-  const maxDepth = presentedChain.length + 1;
+  // Cache results by DER bytes, so a shared issuer is explored once regardless of how many paths
+  // reach it. This bounds signature verification to O(n^2) and avoids factorial work for crafted
+  // chains with many overlapping paths.
+  const results = new Map<string, TVerifyClientCertificateChainResult>();
+  const inProgress = new Set<string>();
+  const certificateId = (cert: TNativeX509) => cert.raw.toString("base64");
 
-  const walk = (current: TNativeX509, used: Set<number>, depth: number): TVerifyClientCertificateChainResult => {
+  const walk = (current: TNativeX509): TVerifyClientCertificateChainResult => {
+    const currentId = certificateId(current);
+    const cachedResult = results.get(currentId);
+    if (cachedResult) return cachedResult;
+    if (inProgress.has(currentId)) return { ok: false, reasonCode: "ca_verification_failed" };
+
+    inProgress.add(currentId);
+    let result: TVerifyClientCertificateChainResult;
+
     if (!isWithinValidityWindow(current, now)) {
-      return {
+      result = {
         ok: false,
         reasonCode: now < new Date(current.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
       };
-    }
-
-    // Reached the trust anchor: the path is complete and valid.
-    if (isAnchor(current)) return { ok: true };
-
-    // The configured anchor directly issued the current certificate. The anchor must itself be a
-    // CA to sign certificates: presented intermediates are gated on `candidate.ca` below, and the
-    // trust anchor is held to the same bar so a non-CA cert can't anchor a path. Without this, a
-    // configured end-entity (CA:FALSE) certificate would still be accepted as the leaf's issuer.
-    if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
+    } else if (isAnchor(current)) {
+      // Reached the trust anchor: the path is complete and valid.
+      result = { ok: true };
+    } else if (trustAnchor.ca && issuedBy(current, trustAnchor)) {
+      // The configured anchor directly issued the current certificate. The anchor must itself be a
+      // CA to sign certificates: presented intermediates are gated on `candidate.ca` below, and the
+      // trust anchor is held to the same bar so a non-CA cert can't anchor a path. Without this, a
+      // configured end-entity (CA:FALSE) certificate would still be accepted as the leaf's issuer.
       if (!isWithinValidityWindow(trustAnchor, now)) {
-        return {
+        result = {
           ok: false,
           reasonCode: now < new Date(trustAnchor.validFrom) ? "certificate_not_yet_valid" : "certificate_expired"
         };
+      } else {
+        result = { ok: true };
       }
-      return { ok: true };
-    }
+    } else {
+      // No path to the anchor was found through this node. Default to the generic reason, but
+      // surface a more specific validity failure if the only viable issuer was rejected for being
+      // outside its validity window (so an expired/not-yet-valid intermediate is reported as such).
+      result = { ok: false, reasonCode: "ca_verification_failed" };
 
-    if (depth >= maxDepth) return { ok: false, reasonCode: "ca_verification_failed" };
-
-    // No path to the anchor was found through this node. Default to the generic reason, but
-    // surface a more specific validity failure if the only viable issuer was rejected for being
-    // outside its validity window (so an expired/not-yet-valid intermediate is reported as such).
-    let bestFailure: TVerifyClientCertificateChainResult = { ok: false, reasonCode: "ca_verification_failed" };
-
-    for (let i = 0; i < presentedChain.length; i += 1) {
-      const candidate = presentedChain[i];
-      // An issuer on the path must be unused on this path, be a CA, and have signed the current
-      // certificate.
-      if (!used.has(i) && candidate.ca && issuedBy(current, candidate)) {
-        const result = walk(candidate, new Set(used).add(i), depth + 1);
-        if (result.ok) return result;
-        if (result.reasonCode !== "ca_verification_failed") {
-          bestFailure = result;
+      for (const candidate of presentedChain) {
+        // An issuer on the path must be a CA and have signed the current certificate.
+        if (candidate.ca && issuedBy(current, candidate)) {
+          const candidateResult = walk(candidate);
+          if (candidateResult.ok) {
+            result = candidateResult;
+            break;
+          }
+          if (candidateResult.reasonCode !== "ca_verification_failed") {
+            result = candidateResult;
+          }
         }
       }
     }
 
-    return bestFailure;
+    inProgress.delete(currentId);
+    results.set(currentId, result);
+    return result;
   };
 
-  return walk(leaf, new Set<number>(), 0);
+  return walk(leaf);
 };
 
 export const parseSubjectDetails = (data?: string | null) => {
