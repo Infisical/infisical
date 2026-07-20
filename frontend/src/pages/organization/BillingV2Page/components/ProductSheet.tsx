@@ -257,7 +257,14 @@ const PlanCard = ({
 };
 
 // "Your current usage" panel for an active product: the recurring headline plus a bar per dimension.
-const CurrentUsageCard = ({ entitlement }: { entitlement: BillingV2Entitlement }) => {
+const CurrentUsageCard = ({
+  entitlement,
+  color
+}: {
+  entitlement: BillingV2Entitlement;
+  // The product's catalog color, threaded through to the dimension meters.
+  color: string;
+}) => {
   const dims = entitlement.dimensions ?? [];
   return (
     <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-[18px]">
@@ -271,7 +278,7 @@ const CurrentUsageCard = ({ entitlement }: { entitlement: BillingV2Entitlement }
       {dims.length > 0 && (
         <div className="flex flex-col gap-3">
           {dims.map((dim) => (
-            <DimensionMeter key={dim.key} dim={dim} />
+            <DimensionMeter key={dim.key} dim={dim} color={color} />
           ))}
         </div>
       )}
@@ -504,7 +511,9 @@ export const ProductSheet = ({
               </SheetHeader>
 
               <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-5">
-                {entitled && entitlement && <CurrentUsageCard entitlement={entitlement} />}
+                {entitled && entitlement && (
+                  <CurrentUsageCard entitlement={entitlement} color={prod.color} />
+                )}
 
                 <div className={`grid gap-3.5 ${gridCols}`}>
                   {plans.map((plan) => (

@@ -159,9 +159,9 @@ const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProd
       {sortedDims.length > 0 && (
         <div className="flex flex-col gap-2.5">
           {sortedDims.map((dim) => (
-            <DimensionMeter key={dim.key} dim={dim} hideLegend />
+            <DimensionMeter key={dim.key} dim={dim} color={prod.color} hideLegend />
           ))}
-          <DimensionRateLegend dims={sortedDims} />
+          <DimensionRateLegend dims={sortedDims} color={prod.color} />
         </div>
       )}
     </div>
