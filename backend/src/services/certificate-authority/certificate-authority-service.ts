@@ -313,8 +313,7 @@ export const certificateAuthorityServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(actor.orgId);
-    // The `certManager` gate flag is ignored when null; an explicit `true` blocks creating any CA
-    // (internal or external).
+
     if (typeof plan.certManager === "boolean" && !plan.certManager) {
       throw new BadRequestError({
         message: "Certificate Manager is not available on your current plan. Please upgrade to continue."
