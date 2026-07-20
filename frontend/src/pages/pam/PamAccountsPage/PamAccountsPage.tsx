@@ -18,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -39,6 +40,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { useOrganization } from "@app/context";
 import {
   PamAccountType,
   useDeletePamAccount,
@@ -64,6 +66,7 @@ const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
   const { t } = useTranslation();
+  const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -154,7 +157,7 @@ export const PamAccountsPage = () => {
       </Helmet>
       <PageHeader
         title="Accounts"
-        description="Manage privileged accounts grouped into folders."
+        description="Onboard and configure privileged accounts."
         scope={ProjectType.PAM}
         icon={FolderOpen}
       />
@@ -165,7 +168,7 @@ export const PamAccountsPage = () => {
             Accounts
             <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
           </CardTitle>
-          <CardDescription>Privileged accounts grouped into folders.</CardDescription>
+          <CardDescription>Onboard accounts and manage who can access them.</CardDescription>
           <CardAction>
             <ButtonGroup>
               <Button
@@ -191,6 +194,7 @@ export const PamAccountsPage = () => {
                   sideOffset={4}
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <DropdownMenuLabel>New</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
                     <FolderPlus />
                     Add Folder
@@ -264,7 +268,7 @@ export const PamAccountsPage = () => {
 
         {showEmpty && (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {hasActiveFilters ? "No results match your filters" : "No accounts yet"}
@@ -272,7 +276,7 @@ export const PamAccountsPage = () => {
                 <EmptyDescription>
                   {hasActiveFilters
                     ? "Try adjusting your search or filters."
-                    : "Create your first account to get started."}
+                    : "Create your first account to get started. You'll need at least one account template."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -299,6 +303,12 @@ export const PamAccountsPage = () => {
                   filterActive={filterActive}
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onDeleteAccount={(target) => handlePopUpOpen("deleteAccount", target)}
+                  onLaunchAccount={(accountId, accountType) => {
+                    window.open(
+                      `/organizations/${currentOrg.id}/pam/accounts/${accountType}/${accountId}/access`,
+                      "_blank"
+                    );
+                  }}
                   onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
                   onFolderAddAccount={() =>
                     handlePopUpOpen("createAccount", { folderId: folder.id })

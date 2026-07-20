@@ -9,7 +9,12 @@ import { HighlightText } from "@app/components/v2/HighlightText";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -44,6 +49,7 @@ import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PAM_DISCOVERY_TABS } from "../components/pamResourceTabs";
+import { PamDocsUrls } from "../pam-docs-urls";
 import { AddDiscoverySourceSheet } from "./components/AddDiscoverySourceSheet";
 import { DiscoverySourceDetailSheet } from "./components/DiscoverySourceDetailSheet";
 import { DiscoveryStatusBadge } from "./components/DiscoveryStatusBadge";
@@ -103,6 +109,21 @@ export const PamDiscoveryPage = () => {
         />
 
         <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>
+              Discovery Sources
+              <DocumentationLinkBadge href={PamDocsUrls.discovery.overview} />
+            </CardTitle>
+            <CardDescription>
+              Scan external systems for privileged accounts and import them into PAM.
+            </CardDescription>
+            <CardAction>
+              <Button variant="pam" onClick={() => handlePopUpOpen("addSource")}>
+                <Plus />
+                Add Source
+              </Button>
+            </CardAction>
+          </CardHeader>
           <CardContent className="flex items-center gap-3">
             <InputGroup className="flex-1">
               <InputGroupAddon align="inline-start">
@@ -114,10 +135,6 @@ export const PamDiscoveryPage = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </InputGroup>
-            <Button variant="pam" onClick={() => handlePopUpOpen("addSource")}>
-              <Plus />
-              Add Source
-            </Button>
           </CardContent>
 
           {isLoading && (
@@ -131,7 +148,7 @@ export const PamDiscoveryPage = () => {
 
           {!isLoading && filtered.length === 0 && (
             <CardContent>
-              <Empty>
+              <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>No discovery sources yet</EmptyTitle>
                   <EmptyDescription>Add a source to start discovering accounts.</EmptyDescription>

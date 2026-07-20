@@ -456,7 +456,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
           </InputGroup>
 
           {totalCount === 0 ? (
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {debouncedSearch
@@ -559,7 +559,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         </CardHeader>
         <CardContent>
           {runs.length === 0 ? (
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>This source has not been scanned yet.</EmptyTitle>
               </EmptyHeader>

@@ -184,7 +184,7 @@ export const PamTemplatesPage = () => {
           scope={ProjectType.PAM}
           icon={ClipboardList}
           title="Account Templates"
-          description="Define the policies, rotation behavior, and settings for a type of account."
+          description="Define the rules that apply when users connect to accounts."
         />
 
         <Card className="mt-4">
@@ -194,7 +194,8 @@ export const PamTemplatesPage = () => {
               <DocumentationLinkBadge href={PamDocsUrls.templates.overview} />
             </CardTitle>
             <CardDescription>
-              Templates define the policies, rotation behavior, and settings for a type of account.
+              Templates define the governance rules that every account inherits, including session
+              limits, MFA, and recording.
             </CardDescription>
             <CardAction>
               <Button variant="pam" onClick={() => handlePopUpOpen("createTemplate")}>
@@ -252,7 +253,7 @@ export const PamTemplatesPage = () => {
 
           {!isLoading && filteredTemplates.length === 0 && (
             <CardContent>
-              <Empty>
+              <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>
                     {hasActiveFilters ? "No templates match your filters" : "No templates yet"}
@@ -260,7 +261,7 @@ export const PamTemplatesPage = () => {
                   <EmptyDescription>
                     {hasActiveFilters
                       ? "Try adjusting your search or type filter."
-                      : "Create your first account template to get started."}
+                      : "Create a template to start onboarding accounts. Templates define the governance rules that accounts inherit."}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>

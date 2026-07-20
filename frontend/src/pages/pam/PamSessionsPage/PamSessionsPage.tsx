@@ -245,7 +245,7 @@ export const PamSessionsPage = () => {
 
         {!isPending && displayedSessions.length === 0 ? (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {search || statusFilter !== "all"

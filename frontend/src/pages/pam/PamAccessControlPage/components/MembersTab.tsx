@@ -123,7 +123,7 @@ export const MembersTab = () => {
 
         {!isPending && filteredMembers.length === 0 ? (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {search ? "No members match your search" : "No members found"}

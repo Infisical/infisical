@@ -57,6 +57,11 @@ export const PamDocsUrls = {
     externalStorage: `${PAM_DOCS_BASE_URL}/sessions/external-storage`
   },
 
+  // Discovery
+  discovery: {
+    overview: `${PAM_DOCS_BASE_URL}/discovery/overview`
+  },
+
   // Other
   auditing: `${PAM_DOCS_BASE_URL}/auditing`,
   architecture: `${PAM_DOCS_BASE_URL}/architecture`
