@@ -465,7 +465,7 @@ export const RequestAccessForm = ({
   const form = useForm<TRequestAccessForm>({
     resolver: zodResolver(requestAccessSchema),
     defaultValues: {
-      environmentSlug: environment ?? currentProject.environments?.[0]?.slug,
+      environmentSlug: environment || currentProject.environments?.[0]?.slug,
       secretPath: initialSecretPath ?? "",
       resources: [{ subject: ProjectPermissionSub.Secrets, actions: selectedActions }],
       duration: { isTemporary: false, temporaryRange: "1h" },
