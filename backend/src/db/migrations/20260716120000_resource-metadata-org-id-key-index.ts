@@ -4,8 +4,6 @@ import { TableName } from "../schemas";
 
 // serves the org-scoped secret-metadata search (dashboard /secrets-by-metadata)
 const ORG_KEY_INDEX_NAME = "resource_metadata_org_id_key_idx";
-// covers the (previously unindexed) secretId FK + the search's join/correlated lookups
-const SECRET_ID_INDEX_NAME = "resource_metadata_secret_id_idx";
 
 const MIGRATION_TIMEOUT = 60 * 60 * 1000;
 const MIGRATION_LOCK_TIMEOUT = 30 * 1000;
@@ -25,18 +23,12 @@ export async function up(knex: Knex): Promise<void> {
       (await knex.schema.hasColumn(TableName.ResourceMetadata, "orgId")) &&
       (await knex.schema.hasColumn(TableName.ResourceMetadata, "secretId"))
     ) {
-      // partial indexes (secret metadata only) keep the indexes small and targeted at the search.
+      // partial index (secret metadata only for where secretId is not null) keeps the index small and targeted at the search.
       // "value" is intentionally excluded (up to 1020 chars would risk the btree row-size limit);
       // (orgId, key) narrows enough that filtering value on the matched rows is cheap.
       await knex.raw(`
         CREATE INDEX CONCURRENTLY IF NOT EXISTS "${ORG_KEY_INDEX_NAME}"
         ON ${TableName.ResourceMetadata} ("orgId", "key")
-        WHERE "secretId" IS NOT NULL
-      `);
-
-      await knex.raw(`
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS "${SECRET_ID_INDEX_NAME}"
-        ON ${TableName.ResourceMetadata} ("secretId")
         WHERE "secretId" IS NOT NULL
       `);
     }
@@ -48,7 +40,6 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${ORG_KEY_INDEX_NAME}"`);
-  await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${SECRET_ID_INDEX_NAME}"`);
 }
 
 const config = { transaction: false };
