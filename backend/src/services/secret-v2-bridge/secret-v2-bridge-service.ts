@@ -30,6 +30,7 @@ import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -1264,11 +1265,19 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      permissionFingerprint = await permissionDAL.getPermissionFingerprint({
-        projectId,
-        orgId: actorOrgId,
-        actorId,
-        actorType: actor
+      // Cache the fingerprint for the marker window so repeated polls
+      // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
+      permissionFingerprint = await withCache({
+        keyStore,
+        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
+        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+        fetcher: () =>
+          permissionDAL.getPermissionFingerprint({
+            projectId,
+            orgId: actorOrgId,
+            actorId,
+            actorType: actor
+          })
       });
     }
 

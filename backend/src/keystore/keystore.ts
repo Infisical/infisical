@@ -124,6 +124,8 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
+  SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
+    `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
