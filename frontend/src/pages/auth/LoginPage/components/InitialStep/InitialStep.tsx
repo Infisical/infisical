@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons";
@@ -8,6 +8,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import Error from "@app/components/basic/Error";
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import { createNotification } from "@app/components/notifications";
@@ -16,7 +17,6 @@ import {
   AnimatedCollapse,
   Button,
   ButtonBadge,
-  Card,
   CardAction,
   CardContent,
   CardDescription,
@@ -34,7 +34,7 @@ import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
-import { GENERIC_SSO_LOGIN_METHOD, useLastLogin } from "@app/hooks/useLastLogin";
+import { LEGACY_GENERIC_SSO_LOGIN_METHOD, useLastLogin } from "@app/hooks/useLastLogin";
 
 import { useNavigateToSelectOrganization } from "../../Login.utils";
 import { OrgLoginButton } from "../OrgLoginButton";
@@ -49,6 +49,15 @@ type LoginFormData = z.infer<typeof loginFormSchema>;
 
 type Props = {
   isAdmin?: boolean;
+};
+
+type SocialLoginMethod = LoginMethod.GOOGLE | LoginMethod.GITHUB | LoginMethod.GITLAB;
+
+type LoginOptionDescriptor = {
+  id: string;
+  kind: "social" | "organization";
+  isLastUsed: boolean;
+  render: (showLastUsed: boolean, showLabel?: boolean) => ReactNode;
 };
 
 export const InitialStep = ({ isAdmin }: Props) => {
@@ -93,7 +102,10 @@ export const InitialStep = ({ isAdmin }: Props) => {
 
   useEffect(() => {
     if (serverDetails?.samlDefaultOrgSlug && !isAdmin) {
-      saveLastLogin({ method: LoginMethod.SAML, orgSlug: serverDetails.samlDefaultOrgSlug });
+      saveLastLogin({
+        method: LoginMethod.SAML,
+        identifier: { type: "orgSlug", value: serverDetails.samlDefaultOrgSlug }
+      });
       redirectToSaml(serverDetails.samlDefaultOrgSlug);
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
@@ -109,7 +121,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
     });
   };
 
-  const handleSocialLogin = (method: LoginMethod) => {
+  const handleSocialLogin = (method: SocialLoginMethod) => {
     preserveHubSpotUtk();
     const searchParams = new URLSearchParams();
     if (callbackPort) {
@@ -131,46 +143,76 @@ export const InitialStep = ({ isAdmin }: Props) => {
   const shouldDisplaySso = [LoginMethod.SAML, LoginMethod.OIDC, LoginMethod.LDAP].some(
     shouldDisplayLoginMethod
   );
-  const isLastUsedSso =
-    (lastLogin?.method === GENERIC_SSO_LOGIN_METHOD &&
-      [LoginMethod.SAML, LoginMethod.OIDC].some(shouldDisplayLoginMethod)) ||
-    (lastLogin?.method === LoginMethod.SAML && shouldDisplayLoginMethod(LoginMethod.SAML)) ||
-    (lastLogin?.method === LoginMethod.OIDC && shouldDisplayLoginMethod(LoginMethod.OIDC)) ||
-    (lastLogin?.method === LoginMethod.LDAP && shouldDisplayLoginMethod(LoginMethod.LDAP));
-
-  const socialLoginMethods = [
-    {
-      method: LoginMethod.GOOGLE,
-      icon: faGoogle,
-      label: t("login.continue-with-google")
-    },
-    {
-      method: LoginMethod.GITHUB,
-      icon: faGithub,
-      label: "Continue with GitHub"
-    },
-    {
-      method: LoginMethod.GITLAB,
-      icon: faGitlab,
-      label: "Continue with GitLab"
-    }
-  ].filter(({ method }) => shouldDisplayLoginMethod(method));
-
-  const lastUsedSocialLoginMethod = socialLoginMethods.find(({ method }) =>
-    isLastUsedMethod(method)
+  const isLastUsedSso = Boolean(
+    lastLogin &&
+      ((lastLogin.method === LEGACY_GENERIC_SSO_LOGIN_METHOD &&
+        [LoginMethod.SAML, LoginMethod.OIDC].some(shouldDisplayLoginMethod)) ||
+        (lastLogin.method === LoginMethod.SAML && shouldDisplayLoginMethod(LoginMethod.SAML)) ||
+        (lastLogin.method === LoginMethod.OIDC && shouldDisplayLoginMethod(LoginMethod.OIDC)) ||
+        (lastLogin.method === LoginMethod.LDAP && shouldDisplayLoginMethod(LoginMethod.LDAP)))
   );
-  const otherSocialLoginMethods = socialLoginMethods.filter(
-    ({ method }) => method !== lastUsedSocialLoginMethod?.method
-  );
-  const hasLastUsedButtonLoginMethod = Boolean(lastUsedSocialLoginMethod || isLastUsedSso);
-  const shouldDisplaySsoInAdditionalOptions = shouldDisplaySso && !isLastUsedSso;
-  const hasButtonLoginMethod = socialLoginMethods.length > 0 || shouldDisplaySso;
-  const moreLoginOptionsCount =
-    otherSocialLoginMethods.length + Number(shouldDisplaySsoInAdditionalOptions);
-  const hasMoreLoginOptions = hasLastUsedButtonLoginMethod && moreLoginOptionsCount > 0;
-  const shouldShowAdditionalLoginOptions =
-    !hasLastUsedButtonLoginMethod || areMoreLoginOptionsVisible;
 
+  const socialLoginMethods = (
+    [
+      {
+        method: LoginMethod.GOOGLE,
+        icon: faGoogle,
+        label: t("login.continue-with-google")
+      },
+      {
+        method: LoginMethod.GITHUB,
+        icon: faGithub,
+        label: "Continue with GitHub"
+      },
+      {
+        method: LoginMethod.GITLAB,
+        icon: faGitlab,
+        label: "Continue with GitLab"
+      }
+    ] satisfies { method: SocialLoginMethod; icon: typeof faGoogle; label: string }[]
+  ).filter(({ method }) => shouldDisplayLoginMethod(method));
+
+  const loginOptions: LoginOptionDescriptor[] = [
+    ...socialLoginMethods.map(({ method, icon, label }) => ({
+      id: method,
+      kind: "social" as const,
+      isLastUsed: isLastUsedMethod(method),
+      render: (showLastUsed: boolean, showLabel = false) => (
+        <SocialLoginButton
+          icon={icon}
+          label={label}
+          onClick={() => handleSocialLogin(method)}
+          showLabel={showLabel}
+          showLastUsed={showLastUsed}
+        />
+      )
+    })),
+    ...(shouldDisplaySso
+      ? [
+          {
+            id: "organization-sso",
+            kind: "organization" as const,
+            isLastUsed: isLastUsedSso,
+            render: (showLastUsed: boolean) => (
+              <OrgLoginButton
+                label="Sign in with SSO/LDAP"
+                onClick={handleSso}
+                showLastUsed={showLastUsed}
+              />
+            )
+          }
+        ]
+      : [])
+  ];
+  const lastUsedLoginOption = loginOptions.find(({ isLastUsed }) => isLastUsed);
+  const orderedLoginOptions = lastUsedLoginOption
+    ? [lastUsedLoginOption, ...loginOptions.filter(({ id }) => id !== lastUsedLoginOption.id)]
+    : loginOptions;
+  const additionalLoginOptions = lastUsedLoginOption ? orderedLoginOptions.slice(1) : [];
+  const socialLoginOptions = loginOptions.filter(({ kind }) => kind === "social");
+  const organizationLoginOptions = loginOptions.filter(({ kind }) => kind === "organization");
+  const moreLoginOptionsCount = lastUsedLoginOption ? loginOptions.length - 1 : 0;
+  const hasButtonLoginMethod = loginOptions.length > 0;
   const handleLoginFailure = () => {
     setLoginError(true);
     const errorMessage = callbackPort
@@ -240,7 +282,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
         onSubmit={handleSubmit(handleEmailLogin)}
         className="mx-auto flex w-full flex-col items-center justify-center"
       >
-        <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+        <AuthPagePanel>
           <CardHeader className="mb-8 gap-2">
             <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
               Log in to Infisical
@@ -252,7 +294,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
           <CardContent>
             <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} />
           </CardContent>
-        </Card>
+        </AuthPagePanel>
       </form>
     );
   }
@@ -262,7 +304,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
       onSubmit={handleSubmit(handleEmailLogin)}
       className="mx-auto flex w-full flex-col items-center justify-center"
     >
-      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
           <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Welcome back
@@ -277,74 +319,51 @@ export const InitialStep = ({ isAdmin }: Props) => {
         <CardContent className="flex flex-col gap-4">
           {hasButtonLoginMethod && (
             <div className="flex w-full flex-col">
-              {lastUsedSocialLoginMethod && (
-                <SocialLoginButton
-                  icon={lastUsedSocialLoginMethod.icon}
-                  label={lastUsedSocialLoginMethod.label}
-                  onClick={() => handleSocialLogin(lastUsedSocialLoginMethod.method)}
-                  showLabel
-                  showLastUsed
-                />
-              )}
-              {!lastUsedSocialLoginMethod && isLastUsedSso && (
-                <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} showLastUsed />
-              )}
-              {hasMoreLoginOptions && (
-                <AnimatedCollapse isOpen={!areMoreLoginOptionsVisible}>
-                  <div className="pt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      isFullWidth
-                      className="text-accent hover:text-foreground"
-                      aria-controls="additional-login-options"
-                      aria-expanded={areMoreLoginOptionsVisible}
-                      onClick={() => setAreMoreLoginOptionsVisible(true)}
-                    >
-                      + {moreLoginOptionsCount} more options
-                    </Button>
-                  </div>
-                </AnimatedCollapse>
-              )}
-              <AnimatedCollapse
-                id={hasLastUsedButtonLoginMethod ? "additional-login-options" : undefined}
-                isOpen={shouldShowAdditionalLoginOptions}
-              >
-                <div
-                  className={
-                    hasLastUsedButtonLoginMethod
-                      ? "flex w-full flex-col gap-2 pt-2"
-                      : "flex w-full flex-col gap-2"
-                  }
-                >
-                  {otherSocialLoginMethods.length > 0 &&
-                    (hasLastUsedButtonLoginMethod ? (
-                      otherSocialLoginMethods.map(({ method, icon, label }) => (
-                        <SocialLoginButton
-                          key={method}
-                          icon={icon}
-                          label={label}
-                          onClick={() => handleSocialLogin(method)}
-                          showLabel
-                        />
-                      ))
-                    ) : (
-                      <div className="flex w-full gap-2">
-                        {otherSocialLoginMethods.map(({ method, icon, label }) => (
-                          <SocialLoginButton
-                            key={method}
-                            icon={icon}
-                            label={label}
-                            onClick={() => handleSocialLogin(method)}
-                          />
-                        ))}
+              {lastUsedLoginOption ? (
+                <>
+                  {lastUsedLoginOption.render(true, true)}
+                  {moreLoginOptionsCount > 0 && (
+                    <AnimatedCollapse isOpen={!areMoreLoginOptionsVisible}>
+                      <div className="pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          isFullWidth
+                          className="text-accent hover:text-foreground"
+                          aria-controls="additional-login-options"
+                          aria-expanded={areMoreLoginOptionsVisible}
+                          onClick={() => setAreMoreLoginOptionsVisible(true)}
+                        >
+                          + {moreLoginOptionsCount} more options
+                        </Button>
                       </div>
-                    ))}
-                  {shouldDisplaySsoInAdditionalOptions && (
-                    <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} />
+                    </AnimatedCollapse>
                   )}
+                  <AnimatedCollapse
+                    id="additional-login-options"
+                    isOpen={areMoreLoginOptionsVisible}
+                  >
+                    <div className="flex w-full flex-col gap-2 pt-2">
+                      {additionalLoginOptions.map((option) => (
+                        <Fragment key={option.id}>{option.render(false, true)}</Fragment>
+                      ))}
+                    </div>
+                  </AnimatedCollapse>
+                </>
+              ) : (
+                <div className="flex w-full flex-col gap-2">
+                  {socialLoginOptions.length > 0 && (
+                    <div className="flex w-full gap-2">
+                      {socialLoginOptions.map((option) => (
+                        <Fragment key={option.id}>{option.render(false)}</Fragment>
+                      ))}
+                    </div>
+                  )}
+                  {organizationLoginOptions.map((option) => (
+                    <Fragment key={option.id}>{option.render(false, true)}</Fragment>
+                  ))}
                 </div>
-              </AnimatedCollapse>
+              )}
             </div>
           )}
           {hasButtonLoginMethod && shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
@@ -407,7 +426,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
 
           {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         </CardContent>
-      </Card>
+      </AuthPagePanel>
       {config.allowSignUp &&
         (shouldDisplayLoginMethod(LoginMethod.EMAIL) ||
           shouldDisplayLoginMethod(LoginMethod.GOOGLE) ||

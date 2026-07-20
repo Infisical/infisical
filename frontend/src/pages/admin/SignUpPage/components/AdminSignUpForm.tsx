@@ -4,10 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
-import {
-  checkPasswordBreachStatus,
-  PasswordBreachStatus
-} from "@app/components/utilities/checks/password/checkIsPasswordBreached";
+import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   Alert,
   AlertDescription,
@@ -18,9 +15,10 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { useServerConfig } from "@app/context";
 import { useCreateAdminUser } from "@app/hooks/api";
 
-import { AdminSignUpFormData, adminSignUpSchema } from "../adminSignUpSchema";
+import { AdminSignUpFormData, createAdminSignUpSchema } from "../adminSignUpSchema";
 
 type AdminSignUpResult = {
   token: string;
@@ -33,9 +31,7 @@ type AdminSignUpFormProps = {
 
 export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   const [formError, setFormError] = useState<string>();
-  const [passwordBreachStatus, setPasswordBreachStatus] = useState<
-    PasswordBreachStatus | "idle" | "checking"
-  >("idle");
+  const { config } = useServerConfig();
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
   const {
     formState: { errors, isSubmitting, submitCount },
@@ -44,7 +40,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
     setError,
     watch
   } = useForm<AdminSignUpFormData>({
-    resolver: zodResolver(adminSignUpSchema),
+    resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: {
@@ -56,11 +52,15 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
     }
   });
 
-  const onSubmit = async ({ confirmPassword: _, ...values }: AdminSignUpFormData) => {
-    if (passwordBreachStatus === "checking") return;
+  const password = watch("password");
+  const { breachStatus: passwordBreachStatus, validatePassword } = usePasswordBreachCheck({
+    password,
+    policy: config.passwordPolicy
+  });
 
+  const onSubmit = async ({ confirmPassword: _, ...values }: AdminSignUpFormData) => {
     setFormError(undefined);
-    const latestBreachStatus = await checkPasswordBreachStatus(values.password);
+    const latestBreachStatus = await validatePassword(values.password);
 
     if (latestBreachStatus === "breached") {
       setError("password", {
@@ -84,7 +84,6 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
     }
   };
 
-  const password = watch("password");
   const showDangerState = submitCount > 0;
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
@@ -141,11 +140,12 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
         <PasswordField
           id="admin-signup-password"
           value={password}
+          policy={config.passwordPolicy}
+          breachStatus={passwordBreachStatus}
           placeholder="••••••••"
           registration={register("password")}
           error={showDangerState ? errors.password : undefined}
           submitCount={submitCount}
-          onBreachStatusChange={setPasswordBreachStatus}
         />
         <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
           <FieldLabel htmlFor="admin-signup-confirm-password">Confirm Password</FieldLabel>

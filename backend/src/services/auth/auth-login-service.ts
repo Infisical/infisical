@@ -52,7 +52,14 @@ import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { ensureSsoAccountVerified, isStaleSsoAlias } from "../user-alias/user-alias-fns";
 import { UserAliasType } from "../user-alias/user-alias-types";
-import { enforceUserLockStatus, getRequiredMfaMethod, verifyCaptcha } from "./auth-fns";
+import {
+  assertOAuthLoginMethodEnabled,
+  enforceUserLockStatus,
+  getRequiredMfaMethod,
+  isOAuthLoginMethodDisabled,
+  OAuthAuthMethod,
+  verifyCaptcha
+} from "./auth-fns";
 import {
   TLoginClientProofDTO,
   TLoginGenServerPublicKeyDTO,
@@ -877,51 +884,20 @@ export const authLoginServiceFactory = ({
 
     const serverCfg = await getServerCfg();
 
-    if (serverCfg.enabledLoginMethods && user) {
-      switch (authMethod) {
-        case AuthMethod.GITHUB: {
-          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITHUB)) {
-            // bypass server configuration when user is an organization admin - this is to prevent lockout
-            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-              throw new BadRequestError({
-                message: "Login with Github is disabled by administrator.",
-                name: "Oauth 2 login"
-              });
-            }
-          }
-          break;
-        }
-        case AuthMethod.GOOGLE: {
-          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GOOGLE)) {
-            // bypass server configuration when user is an organization admin - this is to prevent lockout
-            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-              throw new BadRequestError({
-                message: "Login with Google is disabled by administrator.",
-                name: "Oauth 2 login"
-              });
-            }
-          }
-          break;
-        }
-        case AuthMethod.GITLAB: {
-          if (!serverCfg.enabledLoginMethods.includes(LoginMethod.GITLAB)) {
-            // bypass server configuration when user is an organization admin - this is to prevent lockout
-            const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-            if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
-              throw new BadRequestError({
-                message: "Login with Gitlab is disabled by administrator.",
-                name: "Oauth 2 login"
-              });
-            }
-          }
-          break;
-        }
-        default:
-          break;
-      }
+    const oauthAuthMethod = authMethod as OAuthAuthMethod;
+    let canBypassDisabledLoginMethod = false;
+
+    if (user && isOAuthLoginMethodDisabled(oauthAuthMethod, serverCfg.enabledLoginMethods)) {
+      // Existing organization admins retain access to prevent account lockout.
+      const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+      canBypassDisabledLoginMethod = userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin);
     }
+
+    assertOAuthLoginMethodEnabled({
+      authMethod: oauthAuthMethod,
+      enabledLoginMethods: serverCfg.enabledLoginMethods,
+      canBypass: canBypassDisabledLoginMethod
+    });
 
     const appCfg = getConfig();
 

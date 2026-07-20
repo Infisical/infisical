@@ -1,20 +1,16 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { SubmitErrorHandler, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
-import {
-  checkPasswordBreachStatus,
-  PasswordBreachStatus
-} from "@app/components/utilities/checks/password/checkIsPasswordBreached";
-import { passwordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
+import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
+import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   AnimatedCollapse,
   Button,
-  Card,
   CardContent,
   CardHeader,
   CardTitle,
@@ -28,22 +24,24 @@ import {
   InputGroupInput,
   TextArea
 } from "@app/components/v3";
+import { useServerConfig } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
+import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
+import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 import SecurityClient from "../utilities/SecurityClient";
+import { AuthPagePanel } from "./AuthPagePanel";
 
-const createUserInfoFormSchema = (isInvite: boolean) =>
+const createUserInfoFormSchema = (isInvite: boolean, passwordPolicy: TPasswordPolicy) =>
   z
     .object({
       name: z.string().min(1, "Please, specify your name"),
-      organizationName: isInvite
-        ? z.string().optional()
-        : z.string().min(1, "Please, specify your organization name").max(64),
-      password: passwordSchema,
+      organizationName: isInvite ? z.string().optional() : GenericResourceNameSchema,
+      password: createPasswordSchema(passwordPolicy),
       confirmPassword: z.string().min(1, "Please confirm your password"),
       attributionSource: z.string().optional()
     })
@@ -65,12 +63,10 @@ export default function UserInfoStep({
   email,
   isInvite = false
 }: UserInfoStepProps): JSX.Element {
-  const [passwordBreachStatus, setPasswordBreachStatus] = useState<
-    PasswordBreachStatus | "idle" | "checking"
-  >("idle");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isAttributionStep, setIsAttributionStep] = useState(false);
 
+  const { config } = useServerConfig();
   const { mutateAsync: completeSignup, isPending: isLoading } = useCompleteAccountSignup();
   const { t } = useTranslation();
 
@@ -79,9 +75,9 @@ export default function UserInfoStep({
     handleSubmit,
     setError,
     watch,
-    formState: { errors, submitCount }
+    formState: { dirtyFields, errors, submitCount }
   } = useForm<UserInfoFormData>({
-    resolver: zodResolver(createUserInfoFormSchema(isInvite)),
+    resolver: zodResolver(createUserInfoFormSchema(isInvite, config.passwordPolicy)),
     mode: "onChange",
     defaultValues: {
       name: "",
@@ -93,8 +89,14 @@ export default function UserInfoStep({
   });
 
   const passwordValue = watch("password");
+  const { breachStatus: passwordBreachStatus, validatePassword } = usePasswordBreachCheck({
+    password: passwordValue,
+    policy: config.passwordPolicy
+  });
   const confirmPasswordValue = watch("confirmPassword");
   const showDangerState = submitCount > 0;
+  const showOrganizationNameError =
+    (showDangerState || Boolean(dirtyFields.organizationName)) && Boolean(errors.organizationName);
   const doPasswordsMatch =
     confirmPasswordValue.length > 0 && passwordValue === confirmPasswordValue;
   const isPasswordValidated =
@@ -104,7 +106,7 @@ export default function UserInfoStep({
   const stepTitle = isAttributionStep ? "One last thing" : accountStepTitle;
 
   const onSubmit = async (formData: UserInfoFormData) => {
-    const latestBreachStatus = await checkPasswordBreachStatus(formData.password);
+    const latestBreachStatus = await validatePassword(formData.password);
     if (latestBreachStatus === "breached") {
       setError("password", {
         type: "validate",
@@ -148,9 +150,15 @@ export default function UserInfoStep({
     onComplete();
   };
 
+  const onInvalidSubmit: SubmitErrorHandler<UserInfoFormData> = (formErrors) => {
+    if (formErrors.organizationName) {
+      setIsAttributionStep(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
           <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             {stepTitle}
@@ -175,7 +183,7 @@ export default function UserInfoStep({
                 ) : null}
               </Field>
               {!isInvite && (
-                <Field data-invalid={showDangerState && Boolean(errors.organizationName)}>
+                <Field data-invalid={showOrganizationNameError}>
                   <FieldLabel className="sr-only" htmlFor="signup-organization-name">
                     Organization Name
                   </FieldLabel>
@@ -185,9 +193,9 @@ export default function UserInfoStep({
                     placeholder="Organization Name"
                     maxLength={64}
                     autoComplete="organization"
-                    isError={showDangerState && Boolean(errors.organizationName)}
+                    isError={showOrganizationNameError}
                   />
-                  {showDangerState && errors.organizationName ? (
+                  {showOrganizationNameError && errors.organizationName ? (
                     <FieldError>{errors.organizationName.message}</FieldError>
                   ) : null}
                 </Field>
@@ -195,11 +203,12 @@ export default function UserInfoStep({
               <PasswordField
                 id="new-password"
                 value={passwordValue}
+                policy={config.passwordPolicy}
+                breachStatus={passwordBreachStatus}
                 placeholder="••••••••"
                 registration={register("password")}
                 error={showDangerState ? errors.password : undefined}
                 submitCount={submitCount}
-                onBreachStatusChange={setPasswordBreachStatus}
               />
               <AnimatedCollapse
                 isOpen={isPasswordValidated}
@@ -288,7 +297,7 @@ export default function UserInfoStep({
               <div className="flex flex-col gap-2">
                 <Button
                   type="submit"
-                  onClick={handleSubmit(onSubmit)}
+                  onClick={handleSubmit(onSubmit, onInvalidSubmit)}
                   variant="project"
                   size="lg"
                   isFullWidth
@@ -309,7 +318,7 @@ export default function UserInfoStep({
             </>
           )}
         </CardContent>
-      </Card>
+      </AuthPagePanel>
     </div>
   );
 }

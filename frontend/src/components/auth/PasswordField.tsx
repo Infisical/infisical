@@ -1,15 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FieldError as ReactHookFormFieldError, UseFormRegisterReturn } from "react-hook-form";
 import { Check, Eye, EyeOff, LoaderCircle, X } from "lucide-react";
 
-import {
-  checkPasswordBreachStatus,
-  PasswordBreachStatus
-} from "@app/components/utilities/checks/password/checkIsPasswordBreached";
-import {
-  getPasswordRequirements,
-  PASSWORD_POLICY_MIN_LENGTH
-} from "@app/components/utilities/checks/password/passwordPolicy";
+import { getPasswordRequirements } from "@app/components/utilities/checks/password/passwordPolicy";
+import { PasswordBreachCheckStatus } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   AnimatedCollapse,
   Field,
@@ -21,59 +15,34 @@ import {
   InputGroupButton,
   InputGroupInput
 } from "@app/components/v3";
+import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
 type PasswordFieldProps = {
   id: string;
   value: string;
+  policy: TPasswordPolicy;
+  breachStatus: PasswordBreachCheckStatus;
   registration: UseFormRegisterReturn;
   placeholder?: string;
   error?: ReactHookFormFieldError;
   submitCount: number;
-  onBreachStatusChange?: (status: PasswordBreachStatus | "idle" | "checking") => void;
 };
 
 export const PasswordField = ({
   id,
   value,
+  policy,
+  breachStatus,
   registration,
   placeholder,
   error,
-  submitCount,
-  onBreachStatusChange
+  submitCount
 }: PasswordFieldProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [breachStatus, setBreachStatus] = useState<PasswordBreachStatus | "idle" | "checking">(
-    "idle"
-  );
-  const requirements = useMemo(() => getPasswordRequirements(value), [value]);
+  const requirements = useMemo(() => getPasswordRequirements(value, policy), [policy, value]);
   const visibleRequirements = requirements.filter(({ isMet, isPrimary }) => isPrimary || !isMet);
-  const hasUnmetRequirements = requirements.some(({ isMet }) => !isMet);
   const showRequirements = value.length > 0;
-
-  useEffect(() => {
-    if (value.length < PASSWORD_POLICY_MIN_LENGTH || hasUnmetRequirements) {
-      setBreachStatus("idle");
-      return undefined;
-    }
-
-    setBreachStatus("checking");
-    let isCancelled = false;
-    const timeout = window.setTimeout(async () => {
-      const status = await checkPasswordBreachStatus(value);
-      if (isCancelled) return;
-      setBreachStatus(status);
-    }, 800);
-
-    return () => {
-      isCancelled = true;
-      window.clearTimeout(timeout);
-    };
-  }, [hasUnmetRequirements, value]);
-
-  useEffect(() => {
-    onBreachStatusChange?.(breachStatus);
-  }, [breachStatus, onBreachStatusChange]);
 
   const requirementsId = `${id}-requirements`;
 

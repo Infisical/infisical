@@ -5,20 +5,13 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  IconButton,
-  Input
-} from "@app/components/v3";
+import { Button, CardContent, CardHeader, CardTitle, IconButton, Input } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { loginLDAPRedirect } from "@app/hooks/api/auth/queries";
-import { useLastLogin } from "@app/hooks/useLastLogin";
+import { getLastLoginOrganizationSlug, useLastLogin } from "@app/hooks/useLastLogin";
 
 export const LoginLdapPage = () => {
   const { t } = useTranslation();
@@ -32,8 +25,7 @@ export const LoginLdapPage = () => {
     username: passedUsername
   } = useSearch({ from: "/_restrict-login-signup/login/ldap" });
 
-  const lastLoginSlug =
-    lastLogin?.method === LoginMethod.LDAP && lastLogin.orgSlug ? lastLogin.orgSlug : "";
+  const lastLoginSlug = getLastLoginOrganizationSlug(lastLogin) || "";
 
   const [organizationSlug, setOrganizationSlug] = useState(
     config.defaultAuthOrgSlug || passedOrgSlug || lastLoginSlug
@@ -72,7 +64,7 @@ export const LoginLdapPage = () => {
         return;
       }
 
-      saveLastLogin({ method: LoginMethod.LDAP, orgSlug: organizationSlug });
+      saveLastLogin({ method: LoginMethod.LDAP, organizationSlug });
 
       createNotification({
         text: "Successfully logged in",
@@ -99,7 +91,7 @@ export const LoginLdapPage = () => {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
       <form onSubmit={handleSubmission} className="mx-auto w-full max-w-sm">
-        <Card className="w-full items-stretch gap-0 p-6">
+        <AuthPagePanel>
           <CardHeader className="mb-4 gap-4">
             <div className="flex items-center gap-1.5">
               <IconButton
@@ -149,7 +141,7 @@ export const LoginLdapPage = () => {
               {t("login.login")}
             </Button>
           </CardContent>
-        </Card>
+        </AuthPagePanel>
       </form>
     </AuthPageLayout>
   );

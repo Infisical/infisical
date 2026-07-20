@@ -117,12 +117,6 @@ export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
 } & TOrgPermission;
 
-export type TGetOrgSsoLoginUrlDTO = {
-  identifier: string;
-  identifierType: "domain" | "orgSlug";
-  callbackPort?: string;
-};
-
 export enum OrgAuthMethod {
   OIDC = "oidc",
   SAML = "saml"

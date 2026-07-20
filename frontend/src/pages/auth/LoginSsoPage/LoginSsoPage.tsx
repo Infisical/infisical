@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -6,9 +6,9 @@ import { ChevronLeft, Users } from "lucide-react";
 import { z } from "zod";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import {
   Button,
-  Card,
   CardContent,
   CardHeader,
   CardTitle,
@@ -19,7 +19,11 @@ import {
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
-import { GENERIC_SSO_LOGIN_METHOD, useLastLogin } from "@app/hooks/useLastLogin";
+import {
+  getLastLoginIdentifier,
+  LEGACY_GENERIC_SSO_LOGIN_METHOD,
+  useLastLogin
+} from "@app/hooks/useLastLogin";
 
 const workEmailSchema = z.string().trim().email();
 
@@ -35,11 +39,11 @@ export const LoginSsoPage = () => {
   } = useSearch({ from: "/_restrict-login-signup/login/sso" });
 
   const isPreviousSsoLogin =
-    lastLogin?.method === GENERIC_SSO_LOGIN_METHOD ||
+    lastLogin?.method === LEGACY_GENERIC_SSO_LOGIN_METHOD ||
     lastLogin?.method === LoginMethod.SAML ||
     lastLogin?.method === LoginMethod.OIDC;
-  const initialEmail =
-    isPreviousSsoLogin && lastLogin?.identifierType === "email" ? lastLogin.orgSlug || "" : "";
+  const previousSsoIdentifier = isPreviousSsoLogin ? getLastLoginIdentifier(lastLogin) : undefined;
+  const initialEmail = previousSsoIdentifier?.type === "email" ? previousSsoIdentifier.value : "";
   const [workEmail, setWorkEmail] = useState(initialEmail);
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
@@ -54,23 +58,34 @@ export const LoginSsoPage = () => {
 
   const getWorkEmailDomain = () => workEmail.trim().split("@")[1]?.toLowerCase();
 
-  const handleSsoLogin = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const handleSsoLogin = (method: LoginMethod.SAML | LoginMethod.OIDC) => {
     const domain = getWorkEmailDomain();
     if (!organizationSlug && !domain) return;
 
     saveLastLogin({
-      identifierType: organizationSlug ? "orgSlug" : "email",
-      method: GENERIC_SSO_LOGIN_METHOD,
-      orgSlug: organizationSlug || workEmail.trim()
+      method,
+      identifier: {
+        type: organizationSlug ? "orgSlug" : "email",
+        value: organizationSlug || workEmail.trim()
+      }
     });
 
-    const identifierPath = organizationSlug
-      ? encodeURIComponent(organizationSlug)
-      : `domain/${encodeURIComponent(domain as string)}`;
-    const query = callbackPort ? `?callback_port=${encodeURIComponent(String(callbackPort))}` : "";
-    window.location.assign(`/api/v1/sso/redirect/organizations/${identifierPath}${query}`);
+    if (method === LoginMethod.SAML) {
+      const identifierPath = organizationSlug
+        ? encodeURIComponent(organizationSlug)
+        : `domain/${encodeURIComponent(domain as string)}`;
+      const query = callbackPort
+        ? `?callback_port=${encodeURIComponent(String(callbackPort))}`
+        : "";
+      window.location.assign(`/api/v1/sso/redirect/saml2/organizations/${identifierPath}${query}`);
+      return;
+    }
+
+    const query = new URLSearchParams({
+      [organizationSlug ? "orgSlug" : "domain"]: organizationSlug || (domain as string)
+    });
+    if (callbackPort) query.set("callbackPort", String(callbackPort));
+    window.location.assign(`/api/v1/sso/oidc/login?${query.toString()}`);
   };
 
   const handleLdapLogin = () => {
@@ -97,11 +112,8 @@ export const LoginSsoPage = () => {
         <meta property="og:title" content={t("login.og-title") ?? ""} />
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
-      <form
-        className="mx-auto flex w-full flex-col items-center justify-center"
-        onSubmit={handleSsoLogin}
-      >
-        <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <div className="mx-auto flex w-full flex-col items-center justify-center">
+        <AuthPagePanel>
           <CardHeader className="mb-6 gap-2">
             <div className="flex items-center gap-1.5">
               <IconButton
@@ -136,15 +148,30 @@ export const LoginSsoPage = () => {
 
             <div className="flex flex-col gap-2">
               {shouldDisplayFederatedSso && (
-                <Button
-                  type="submit"
-                  variant="project"
-                  size="lg"
-                  isFullWidth
-                  isDisabled={!canSubmitSso}
-                >
-                  Sign in
-                </Button>
+                <div className="flex flex-col gap-2">
+                  {shouldDisplaySaml && (
+                    <Button
+                      variant="project"
+                      size="lg"
+                      isFullWidth
+                      isDisabled={!canSubmitSso}
+                      onClick={() => handleSsoLogin(LoginMethod.SAML)}
+                    >
+                      Continue with SAML
+                    </Button>
+                  )}
+                  {shouldDisplayOidc && (
+                    <Button
+                      variant="project"
+                      size="lg"
+                      isFullWidth
+                      isDisabled={!canSubmitSso}
+                      onClick={() => handleSsoLogin(LoginMethod.OIDC)}
+                    >
+                      Continue with OIDC
+                    </Button>
+                  )}
+                </div>
               )}
               {shouldDisplayLdap && (
                 <Button variant="outline" size="lg" isFullWidth onClick={handleLdapLogin}>
@@ -154,8 +181,8 @@ export const LoginSsoPage = () => {
               )}
             </div>
           </CardContent>
-        </Card>
-      </form>
+        </AuthPagePanel>
+      </div>
     </AuthPageLayout>
   );
 };

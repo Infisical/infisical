@@ -29,10 +29,10 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { isValidEmailDomain } from "@app/lib/validator";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { OrgAuthMethod } from "@app/services/org/org-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -615,32 +615,6 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
-    url: "/redirect/organizations/domain/:domain",
-    method: "GET",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      operationId: "redirectDomainSSO",
-      params: z.object({
-        domain: z.string().trim().max(253).refine(isValidEmailDomain, "Invalid email domain")
-      }),
-      querystring: z.object({
-        callback_port: z.string().optional()
-      })
-    },
-    handler: async (req, res) => {
-      const redirectUrl = await server.services.org.getOrgSsoLoginUrl({
-        identifier: req.params.domain,
-        identifierType: "domain",
-        callbackPort: req.query.callback_port
-      });
-
-      return res.redirect(redirectUrl);
-    }
-  });
-
-  server.route({
     url: "/redirect/organizations/:orgSlug",
     method: "GET",
     config: {
@@ -656,13 +630,26 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
       })
     },
     handler: async (req, res) => {
-      const redirectUrl = await server.services.org.getOrgSsoLoginUrl({
-        identifier: req.params.orgSlug,
-        identifierType: "orgSlug",
-        callbackPort: req.query.callback_port
-      });
+      const org = await server.services.org.findOrgBySlug(req.params.orgSlug);
+      if (org.orgAuthMethod === OrgAuthMethod.SAML) {
+        return res.redirect(
+          `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${org.slug}?${
+            req.query.callback_port ? `callback_port=${req.query.callback_port}` : ""
+          }`
+        );
+      }
 
-      return res.redirect(redirectUrl);
+      if (org.orgAuthMethod === OrgAuthMethod.OIDC) {
+        return res.redirect(
+          `${appCfg.SITE_URL}/api/v1/sso/oidc/login?orgSlug=${org.slug}${
+            req.query.callback_port ? `&callbackPort=${req.query.callback_port}` : ""
+          }`
+        );
+      }
+
+      throw new BadRequestError({
+        message: "The organization does not have any SSO configured."
+      });
     }
   });
 

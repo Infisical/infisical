@@ -12,8 +12,6 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
-import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
@@ -71,9 +69,8 @@ import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
-import { deleteOrgMembershipsFn, resolveOrgSsoMethod } from "./org-fns";
+import { deleteOrgMembershipsFn } from "./org-fns";
 import {
-  OrgAuthMethod,
   TDeleteOrgMembershipDTO,
   TDeleteOrgMembershipsDTO,
   TFindAllOrgMembersDTO,
@@ -81,7 +78,6 @@ import {
   TFindOrgMembersByEmailDTO,
   TGetOrgGroupsDTO,
   TGetOrgMembershipDTO,
-  TGetOrgSsoLoginUrlDTO,
   TListProjectMembershipsByOrgMembershipIdDTO,
   TOrgWithSubOrgs,
   TResendOrgMemberInvitationDTO,
@@ -118,7 +114,6 @@ type TOrgServiceFactoryDep = {
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "findOne">;
-  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
@@ -158,7 +153,6 @@ export const orgServiceFactory = ({
   samlConfigDAL,
   oidcConfigDAL,
   ldapConfigDAL,
-  emailDomainDAL,
   identityMetadataDAL,
   projectBotService,
   loginService,
@@ -307,52 +301,6 @@ export const orgServiceFactory = ({
     }
 
     return org;
-  };
-
-  const getOrgSsoLoginUrl = async ({ identifier, identifierType, callbackPort }: TGetOrgSsoLoginUrlDTO) => {
-    const appCfg = getConfig();
-    let orgId: string;
-    let normalizedIdentifier: string;
-
-    if (identifierType === "domain") {
-      const verifiedDomain = await findOrgIdByVerifiedDomain({ domain: identifier, emailDomainDAL });
-      if (!verifiedDomain) {
-        throw new BadRequestError({
-          message: "No SSO organization was found for the supplied identifier."
-        });
-      }
-
-      orgId = verifiedDomain.orgId;
-      normalizedIdentifier = verifiedDomain.domain;
-    } else {
-      const org = await findOrgBySlug(identifier);
-      orgId = org.id;
-      normalizedIdentifier = org.slug;
-    }
-
-    const authMethod = await resolveOrgSsoMethod({ orgId, samlConfigDAL, oidcConfigDAL });
-    if (!authMethod) {
-      throw new BadRequestError({
-        message: "The organization does not have any SSO configured."
-      });
-    }
-
-    if (authMethod === OrgAuthMethod.SAML) {
-      const query = callbackPort ? `?${new URLSearchParams({ callback_port: callbackPort }).toString()}` : "";
-      const identifierPath =
-        identifierType === "domain"
-          ? `domain/${encodeURIComponent(normalizedIdentifier)}`
-          : encodeURIComponent(normalizedIdentifier);
-
-      return `${appCfg.SITE_URL}/api/v1/sso/redirect/saml2/organizations/${identifierPath}${query}`;
-    }
-
-    const query = new URLSearchParams({
-      [identifierType === "domain" ? "domain" : "orgSlug"]: normalizedIdentifier
-    });
-    if (callbackPort) query.set("callbackPort", callbackPort);
-
-    return `${appCfg.SITE_URL}/api/v1/sso/oidc/login?${query.toString()}`;
   };
 
   const findAllWorkspaces = async ({ actor, actorId, orgId }: TFindAllWorkspacesDTO) => {
@@ -1512,7 +1460,6 @@ export const orgServiceFactory = ({
     getOrgGroups,
     listProjectMembershipsByOrgMembershipId,
     findOrgBySlug,
-    getOrgSsoLoginUrl,
     resendOrgMemberInvitation,
     upgradePrivilegeSystem,
     notifyInvitedUsers,

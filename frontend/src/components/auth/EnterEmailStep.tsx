@@ -3,16 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  FieldError,
-  Input
-} from "@app/components/v3";
+import { Button, CardContent, CardHeader, CardTitle, FieldError, Input } from "@app/components/v3";
 import { useSendVerificationEmail } from "@app/hooks/api";
+
+import { AuthPagePanel } from "./AuthPagePanel";
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -61,7 +55,7 @@ export default function EnterEmailStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-4 gap-4">
           <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
             {t("signup.step1-start")}
@@ -99,7 +93,7 @@ export default function EnterEmailStep({
             </Link>
           </div>
         </CardContent>
-      </Card>
+      </AuthPagePanel>
     </div>
   );
 }

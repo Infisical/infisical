@@ -3,8 +3,9 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 import { useSelectOrganization } from "@app/hooks/api";
 
 import { AdminSignUpForm } from "./components/AdminSignUpForm";
@@ -30,7 +31,7 @@ export const SignUpPage = () => {
         <meta property="og:title" content={t("signup.og-title") ?? ""} />
         <meta name="og:description" content={t("signup.og-description") ?? ""} />
       </Helmet>
-      <Card className="w-full max-w-md gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
           <CardTitle className="font-alliance text-2xl font-normal">Welcome to Infisical</CardTitle>
           <CardDescription className="font-alliance text-base">
@@ -40,7 +41,7 @@ export const SignUpPage = () => {
         <CardContent>
           <AdminSignUpForm onSuccess={handleSuccess} />
         </CardContent>
-      </Card>
+      </AuthPagePanel>
     </AuthPageLayout>
   );
 };

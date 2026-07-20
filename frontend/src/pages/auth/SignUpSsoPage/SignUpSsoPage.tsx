@@ -6,9 +6,10 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Card, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
+import { Button, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
@@ -139,7 +140,7 @@ export const SignupSsoPage = () => {
       </Helmet>
       <form className="w-full" onSubmit={(e) => e.preventDefault()}>
         <div className="mx-auto flex w-full flex-col items-center justify-center">
-          <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+          <AuthPagePanel>
             <CardHeader className="mb-2 gap-2">
               <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
                 We&apos;ve sent a verification code to
@@ -200,7 +201,7 @@ export const SignupSsoPage = () => {
                 <p className="text-label">Make sure to check your spam inbox.</p>
               </div>
             </CardContent>
-          </Card>
+          </AuthPagePanel>
         </div>
       </form>
     </AuthPageLayout>

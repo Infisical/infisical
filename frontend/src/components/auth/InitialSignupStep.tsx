@@ -9,7 +9,6 @@ import { RegionSelect } from "@app/components/navigation/RegionSelect";
 import {
   Button,
   ButtonBadge,
-  Card,
   CardAction,
   CardContent,
   CardDescription,
@@ -23,17 +22,22 @@ import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendVerificationEmail } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
+import { AuthPagePanel } from "./AuthPagePanel";
+
 interface InitialSignupStepProps {
   email: string;
   setEmail: (value: string) => void;
-
-  incrementStep: (cooldownSeconds: number) => void;
+  incrementStep: (email: string, cooldownSeconds: number) => void;
+  pendingVerificationEmail?: string;
+  onResumeVerification: () => void;
 }
 
 export default function InitialSignupStep({
   email,
   setEmail,
-  incrementStep
+  incrementStep,
+  pendingVerificationEmail,
+  onResumeVerification
 }: InitialSignupStepProps) {
   const { t } = useTranslation();
   const { config } = useServerConfig();
@@ -58,9 +62,16 @@ export default function InitialSignupStep({
     }
 
     setEmailError(false);
-    const { cooldownSeconds } = await mutateAsync({ email: email.toLowerCase() });
-    setEmail(email.toLowerCase());
-    incrementStep(cooldownSeconds);
+    const normalizedEmail = email.toLowerCase();
+
+    if (normalizedEmail === pendingVerificationEmail) {
+      setEmail(normalizedEmail);
+      onResumeVerification();
+      return;
+    }
+
+    const { cooldownSeconds } = await mutateAsync({ email: normalizedEmail });
+    incrementStep(normalizedEmail, cooldownSeconds);
   };
 
   const handleSocialSignup = (method: LoginMethod) => {
@@ -73,7 +84,7 @@ export default function InitialSignupStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
           <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             Sign up
@@ -157,7 +168,7 @@ export default function InitialSignupStep({
             </div>
           )}
         </CardContent>
-      </Card>
+      </AuthPagePanel>
       <div className="mt-3 flex items-center justify-center gap-1.5 text-sm">
         <span className="text-label">Already have an account?</span>
         <Link
