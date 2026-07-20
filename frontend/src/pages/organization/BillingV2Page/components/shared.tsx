@@ -144,10 +144,7 @@ export const DimensionRateLegend = ({
         <Fragment key={dim.key}>
           {dim.committedRate !== undefined && (
             <span className="flex items-center gap-1.5">
-              <span
-                className="size-2 rounded-full"
-                style={{ background: committedTint(color) }}
-              />
+              <span className="size-2 rounded-full" style={{ background: committedTint(color) }} />
               Committed {`${fmtMoney(dim.committedRate)} / ${dim.noun} /yr`}
             </span>
           )}
