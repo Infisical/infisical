@@ -131,6 +131,21 @@ export const alertServiceFactory = ({
       resourceId: dto.resourceId
     });
 
+    const duplicate = await alertDAL.findScopedDuplicate({
+      orgId: dto.actorOrgId,
+      projectId: dto.projectId,
+      resourceType: dto.resourceType,
+      resourceId: dto.resourceId,
+      eventType: dto.eventType
+    });
+    if (duplicate) {
+      throw new BadRequestError({
+        message: dto.resourceId
+          ? "An alert for this resource and event already exists"
+          : "An alert for this event already exists in this scope"
+      });
+    }
+
     await $resolveChannelsInScope(dto.channelIds, { orgId: dto.actorOrgId, projectId: dto.projectId });
 
     const { created, channels } = await alertDAL.transaction(async (tx) => {

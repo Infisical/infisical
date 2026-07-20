@@ -8,10 +8,20 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
   projectId?: string;
   scopeName?: string;
+  resourceId?: string;
+  resourceName?: string;
   alert?: TAlert;
 };
 
-export const AddAlertModal = ({ isOpen, onOpenChange, projectId, scopeName, alert }: Props) => {
+export const AddAlertModal = ({
+  isOpen,
+  onOpenChange,
+  projectId,
+  scopeName,
+  resourceId,
+  resourceName,
+  alert
+}: Props) => {
   const isEditing = Boolean(alert);
 
   return (
@@ -28,6 +38,8 @@ export const AddAlertModal = ({ isOpen, onOpenChange, projectId, scopeName, aler
             key={alert?.id ?? "new"}
             projectId={projectId}
             scopeName={scopeName}
+            resourceId={resourceId}
+            resourceName={resourceName}
             alert={alert}
             onComplete={() => onOpenChange(false)}
             onCancel={() => onOpenChange(false)}

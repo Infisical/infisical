@@ -30,6 +30,11 @@ export async function up(knex: Knex): Promise<void> {
       t.index(["resourceType", "triggerType", "enabled"]);
     });
 
+    await knex.schema.raw(
+      `CREATE UNIQUE INDEX "alert_unique_scope_resource_event" ON "${TableName.Alert}"
+       ("orgId", (COALESCE("projectId", '')), "resourceType", (COALESCE("resourceId", '')), "eventType")`
+    );
+
     await createOnUpdateTrigger(knex, TableName.Alert);
   }
 

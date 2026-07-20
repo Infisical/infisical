@@ -77,10 +77,39 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findScopedDuplicate = async (
+    filter: {
+      orgId: string;
+      projectId?: string | null;
+      resourceType: string;
+      resourceId?: string | null;
+      eventType: string;
+    },
+    tx?: Knex
+  ): Promise<TAlerts | undefined> => {
+    try {
+      const query = (tx || db.replicaNode())(TableName.Alert)
+        .where(`${TableName.Alert}.orgId`, filter.orgId)
+        .where(`${TableName.Alert}.resourceType`, filter.resourceType)
+        .where(`${TableName.Alert}.eventType`, filter.eventType);
+
+      if (filter.projectId) void query.where(`${TableName.Alert}.projectId`, filter.projectId);
+      else void query.whereNull(`${TableName.Alert}.projectId`);
+      if (filter.resourceId) void query.where(`${TableName.Alert}.resourceId`, filter.resourceId);
+      else void query.whereNull(`${TableName.Alert}.resourceId`);
+
+      const alert = await query.select(selectAllTableCols(TableName.Alert)).first();
+      return alert as TAlerts | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindScopedDuplicate" });
+    }
+  };
+
   return {
     ...alertOrm,
     findEnabledByResourceType,
     findActiveById,
-    findActiveByScope
+    findActiveByScope,
+    findScopedDuplicate
   };
 };

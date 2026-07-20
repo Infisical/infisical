@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleHelpIcon, KeyRoundIcon, LockIcon } from "lucide-react";
+import { CircleHelpIcon, FingerprintIcon, KeyRoundIcon, LockIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -48,6 +48,10 @@ import { AttachChannelsField } from "./AttachChannelsField";
 type Props = {
   projectId?: string;
   scopeName?: string;
+  // When set, the alert is bound to a single resource (e.g. one machine identity) rather than
+  // watching every credential in the scope. resourceName is used only for display.
+  resourceId?: string;
+  resourceName?: string;
   alert?: TAlert;
   onComplete: () => void;
   onCancel: () => void;
@@ -110,7 +114,15 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
   };
 };
 
-export const AlertForm = ({ projectId, scopeName, alert, onComplete, onCancel }: Props) => {
+export const AlertForm = ({
+  projectId,
+  scopeName,
+  resourceId,
+  resourceName,
+  alert,
+  onComplete,
+  onCancel
+}: Props) => {
   const isEditing = Boolean(alert);
   const scopeVariant = useScopeVariant();
   const createAlert = useCreateAlert();
@@ -129,21 +141,32 @@ export const AlertForm = ({ projectId, scopeName, alert, onComplete, onCancel }:
   } = formMethods;
 
   const isProjectScope = Boolean(projectId);
-  const ScopeIcon =
-    // eslint-disable-next-line no-nested-ternary
-    isProjectScope ? ProjectIcon : scopeVariant === "sub-org" ? SubOrgIcon : OrgIcon;
+  const isResourceScope = Boolean(resourceId ?? alert?.resourceId);
+  const resolveScopeIcon = () => {
+    if (isResourceScope) return FingerprintIcon;
+    if (isProjectScope) return ProjectIcon;
+    if (scopeVariant === "sub-org") return SubOrgIcon;
+    return OrgIcon;
+  };
+  const ScopeIcon = resolveScopeIcon();
   // eslint-disable-next-line no-nested-ternary
   const scopeColor = isProjectScope
     ? "text-project"
     : scopeVariant === "sub-org"
       ? "text-sub-org"
       : "text-org";
-  const scopeTitle = isProjectScope
-    ? `Project · ${scopeName ?? "this project"}`
-    : "Organization-wide";
-  const scopeDescription = isProjectScope
-    ? "Watches every identity credential in this project"
-    : "Watches every identity credential in this organization";
+  // eslint-disable-next-line no-nested-ternary
+  const scopeTitle = isResourceScope
+    ? `Machine Identity · ${resourceName ?? "this identity"}`
+    : isProjectScope
+      ? `Project · ${scopeName ?? "this project"}`
+      : "Organization-wide";
+  // eslint-disable-next-line no-nested-ternary
+  const scopeDescription = isResourceScope
+    ? "Watches this machine identity's credentials"
+    : isProjectScope
+      ? "Watches every identity credential in this project"
+      : "Watches every identity credential in this organization";
 
   const onSubmit = async (data: TAlertForm) => {
     const alertBefore = `${data.alertBeforeValue}${data.alertBeforeUnit}`;
@@ -166,7 +189,7 @@ export const AlertForm = ({ projectId, scopeName, alert, onComplete, onCancel }:
           name: data.name,
           description: data.description || undefined,
           resourceType: data.resourceType,
-          resourceId: null,
+          resourceId: resourceId ?? null,
           eventType: data.eventType,
           condition,
           filters: null,
