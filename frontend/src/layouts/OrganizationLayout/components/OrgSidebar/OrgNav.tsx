@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { BellRing, Blocks, CreditCard, FileText, Settings, Shield } from "lucide-react";
+import { Blocks, CreditCard, FileText, Settings, Shield } from "lucide-react";
 
 import { OrgIcon, SidebarCollapsibleGroup, SubOrgIcon } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -73,7 +73,6 @@ export const OrgNav = () => {
           pathSuffix: "billing",
           hidden: !isRootOrganization
         },
-        { label: "Alerts", icon: BellRing, pathSuffix: "alerts" },
         { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
         { label: "Settings", icon: Settings, pathSuffix: "settings", opensSubmenu: true }
       ]

@@ -1,4 +1,4 @@
-import { BellRing, FileText, Server, Settings, Shield, ShieldCheck } from "lucide-react";
+import { FileText, Server, Settings, Shield, ShieldCheck } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SidebarMenu } from "@app/components/v3";
@@ -25,7 +25,6 @@ export const SshNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
-    { label: "Alerts", icon: BellRing, pathSuffix: "alerts" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];

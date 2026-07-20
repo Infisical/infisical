@@ -34,29 +34,3 @@ export const useListAlertChannels = (
     queryFn: () => fetchAlertChannels(filters),
     ...options
   });
-
-const fetchAlertChannelById = async (channelId: string) => {
-  const { data } = await apiRequest.get<{ channel: TAlertChannel }>(
-    `/api/v1/alert-channels/${channelId}`
-  );
-  return data.channel;
-};
-
-export const useGetAlertChannelById = (
-  channelId: string,
-  options?: Omit<
-    UseQueryOptions<
-      TAlertChannel,
-      unknown,
-      TAlertChannel,
-      ReturnType<typeof alertChannelKeys.byId>
-    >,
-    "queryKey" | "queryFn"
-  >
-) =>
-  useQuery({
-    queryKey: alertChannelKeys.byId(channelId),
-    queryFn: () => fetchAlertChannelById(channelId),
-    enabled: Boolean(channelId),
-    ...options
-  });

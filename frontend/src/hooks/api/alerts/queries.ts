@@ -29,22 +29,3 @@ export const useListAlerts = (
     queryFn: () => fetchAlerts(filters),
     ...options
   });
-
-const fetchAlertById = async (alertId: string) => {
-  const { data } = await apiRequest.get<{ alert: TAlert }>(`/api/v1/alerts/${alertId}`);
-  return data.alert;
-};
-
-export const useGetAlertById = (
-  alertId: string,
-  options?: Omit<
-    UseQueryOptions<TAlert, unknown, TAlert, ReturnType<typeof alertKeys.byId>>,
-    "queryKey" | "queryFn"
-  >
-) =>
-  useQuery({
-    queryKey: alertKeys.byId(alertId),
-    queryFn: () => fetchAlertById(alertId),
-    enabled: Boolean(alertId),
-    ...options
-  });

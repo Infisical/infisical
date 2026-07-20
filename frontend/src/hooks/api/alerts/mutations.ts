@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { alertKeys } from "./queries";
-import { TAlert, TCreateAlertDTO, TDeleteAlertDTO, TUpdateAlertDTO } from "./types";
+import { TAlert, TCreateAlertDTO, TUpdateAlertDTO } from "./types";
 
 export const useCreateAlert = () => {
   const queryClient = useQueryClient();
@@ -30,23 +30,6 @@ export const useUpdateAlert = () => {
     onSuccess: (_, { alertId }) => {
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
       queryClient.invalidateQueries({ queryKey: alertKeys.byId(alertId) });
-    }
-  });
-};
-
-export const useDeleteAlert = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<{ id: string }, unknown, TDeleteAlertDTO>({
-    mutationFn: async ({ alertId }) => {
-      const { data } = await apiRequest.delete<{ alert: { id: string } }>(
-        `/api/v1/alerts/${alertId}`
-      );
-      return data.alert;
-    },
-    onSuccess: (_, { alertId }) => {
-      queryClient.invalidateQueries({ queryKey: alertKeys.all });
-      queryClient.removeQueries({ queryKey: alertKeys.byId(alertId) });
     }
   });
 };

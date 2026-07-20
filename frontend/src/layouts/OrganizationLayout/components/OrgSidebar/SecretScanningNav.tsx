@@ -1,4 +1,4 @@
-import { BellRing, Cable, Database, FileText, Search, Settings, Shield } from "lucide-react";
+import { Cable, Database, FileText, Search, Settings, Shield } from "lucide-react";
 
 import {
   ProjectPermissionSub,
@@ -51,7 +51,6 @@ export const SecretScanningNav = ({
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
-    { label: "Alerts", icon: BellRing, pathSuffix: "alerts" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     {
       label: "Settings",

@@ -36,11 +36,6 @@ export const ALERT_TIME_UNIT_LABELS: Record<AlertTimeUnit, string> = {
   [AlertTimeUnit.Years]: "years"
 };
 
-export const ALERT_PRINCIPAL_TYPE_LABELS: Record<AlertPrincipalType, string> = {
-  [AlertPrincipalType.User]: "User",
-  [AlertPrincipalType.Group]: "Group"
-};
-
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityCredential]: "Identity Credential"
 };
@@ -112,11 +107,6 @@ export type TUpdateAlertDTO = {
   filters?: unknown;
   enabled?: boolean;
   channelIds?: string[];
-};
-
-export type TDeleteAlertDTO = {
-  alertId: string;
-  projectId?: string | null;
 };
 
 export const alertFormSchema = z.object({

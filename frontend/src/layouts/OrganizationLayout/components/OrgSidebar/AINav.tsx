@@ -1,4 +1,4 @@
-import { BellRing, FileText, Settings, Shield, Terminal } from "lucide-react";
+import { FileText, Settings, Shield, Terminal } from "lucide-react";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import { MCP_SUBMENU, PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
@@ -14,7 +14,6 @@ export const AINav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) => 
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
-    { label: "Alerts", icon: BellRing, pathSuffix: "alerts" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];

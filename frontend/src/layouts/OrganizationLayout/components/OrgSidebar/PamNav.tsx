@@ -1,5 +1,4 @@
 import {
-  BellRing,
   ClipboardList,
   FileText,
   FolderOpen,
@@ -64,8 +63,7 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
             icon: Shield,
             pathSuffix: "access-management",
             activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
-          },
-          { label: "Alerts", icon: BellRing, pathSuffix: "alerts" }
+          }
         ]
       : [])
   ];
