@@ -59,7 +59,7 @@ const LaunchTab = ({
   const cliHost = selectedHost ?? (needsHost ? "HOST" : undefined);
   const cliCommand = `infisical pam access ${account.folderName}/${account.name}${
     cliHost ? ` --target '${cliHost}'` : ""
-  }`;
+  } --domain ${window.location.origin}`;
   const handleCopyCommand = async () => {
     await navigator.clipboard.writeText(cliCommand);
     createNotification({ text: "Command copied to clipboard", type: "success" });
