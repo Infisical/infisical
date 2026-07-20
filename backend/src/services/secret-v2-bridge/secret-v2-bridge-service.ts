@@ -1267,6 +1267,7 @@ export const secretV2BridgeServiceFactory = ({
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
       // Cache the fingerprint for the marker window so repeated polls
       // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
+      // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
       permissionFingerprint = await withCache({
         keyStore,
         key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
