@@ -24,7 +24,8 @@ export enum ProjectPermissionSecretActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Subscribe = "subscribe"
+  Subscribe = "subscribe",
+  PersonalOverride = "personal-override"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
@@ -44,6 +45,8 @@ export enum ProjectPermissionCmekActions {
   Decrypt = "decrypt",
   Sign = "sign",
   Verify = "verify",
+  GenerateMac = "generate-mac",
+  VerifyMac = "verify-mac",
   Rotate = "rotate",
   ExportPrivateKey = "export-private-key"
 }
@@ -285,6 +288,14 @@ export enum ProjectPermissionHoneyTokenActions {
   Revoke = "revoke"
 }
 
+export enum ProjectPermissionProxiedServiceActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  Proxy = "proxy"
+}
+
 export enum ProjectPermissionApprovalRequestActions {
   Read = "read",
   Create = "create"
@@ -346,6 +357,7 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.Groups
   | ProjectPermissionSub.Commits
   | ProjectPermissionSub.HoneyTokens
+  | ProjectPermissionSub.ProxiedServices
   | ProjectPermissionSub.ProjectFolderGrant;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
@@ -440,6 +452,7 @@ export enum ProjectPermissionSub {
   McpServers = "mcp-servers",
   McpActivityLogs = "mcp-activity-logs",
   HoneyTokens = "honey-tokens",
+  ProxiedServices = "proxied-services",
   ApprovalRequests = "approval-requests",
   ApprovalRequestGrants = "approval-request-grants",
   ProjectFolderGrant = "project-folder-grant",
@@ -478,6 +491,11 @@ export type SecretImportSubjectFields = {
 };
 
 export type HoneyTokenSubjectFields = {
+  environment: string;
+  secretPath: string;
+};
+
+export type ProxiedServiceSubjectFields = {
   environment: string;
   secretPath: string;
 };
@@ -717,6 +735,13 @@ export type ProjectPermissionSet =
       (
         | ProjectPermissionSub.HoneyTokens
         | (ForcedSubject<ProjectPermissionSub.HoneyTokens> & HoneyTokenSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionProxiedServiceActions,
+      (
+        | ProjectPermissionSub.ProxiedServices
+        | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
   | [

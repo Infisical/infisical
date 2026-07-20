@@ -29,6 +29,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -541,6 +542,8 @@ export enum EventType {
   CMEK_DECRYPT = "cmek-decrypt",
   CMEK_SIGN = "cmek-sign",
   CMEK_VERIFY = "cmek-verify",
+  CMEK_GENERATE_MAC = "cmek-generate-mac",
+  CMEK_VERIFY_MAC = "cmek-verify-mac",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
@@ -744,6 +747,11 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
+  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
+  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
+  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
+  PAM_DISCOVERED_ACCOUNT_IMPORT = "pam-discovered-account-import",
   PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
   PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
@@ -816,6 +824,12 @@ export enum EventType {
   DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
   GET_DYNAMIC_SECRET = "get-dynamic-secret",
   LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Proxied Services
+  CREATE_PROXIED_SERVICE = "create-proxied-service",
+  UPDATE_PROXIED_SERVICE = "update-proxied-service",
+  DELETE_PROXIED_SERVICE = "delete-proxied-service",
+  SIGN_AGENT_PROXY_INTERMEDIATE_CA = "sign-agent-proxy-intermediate-ca",
 
   // Dynamic Secret Leases
   CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
@@ -4330,7 +4344,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
   };
 }
@@ -4403,6 +4417,25 @@ interface CmekVerifyEvent {
     signingAlgorithm: SigningAlgorithm;
     signature: string;
     signatureValid: boolean;
+  };
+}
+
+interface CmekGenerateMacEvent {
+  type: EventType.CMEK_GENERATE_MAC;
+  metadata: {
+    keyId: string;
+    macAlgorithm: HmacAlgorithm;
+    mac: string;
+  };
+}
+
+interface CmekVerifyMacEvent {
+  type: EventType.CMEK_VERIFY_MAC;
+  metadata: {
+    keyId: string;
+    macAlgorithm: HmacAlgorithm;
+    mac: string;
+    macValid: boolean;
   };
 }
 
@@ -4765,6 +4798,8 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    connectionId?: string;
+    hasCredentials?: boolean;
   };
 }
 
@@ -6142,6 +6177,45 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamDiscoverySourceCreateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
+  metadata: { sourceId: string; discoveryType: string; name: string };
+}
+
+interface PamDiscoverySourceUpdateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
+  metadata: { sourceId: string; discoveryType: string };
+}
+
+interface PamDiscoverySourceDeleteEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
+  metadata: { sourceId: string; discoveryType: string };
+}
+
+interface PamDiscoveryScanEvent {
+  type: EventType.PAM_DISCOVERY_SCAN;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    runId?: string;
+    status?: string;
+    triggeredBy?: string;
+    discoveredCount?: number;
+    newCount?: number;
+    errorMessage?: string;
+  };
+}
+
+interface PamDiscoveredAccountImportEvent {
+  type: EventType.PAM_DISCOVERED_ACCOUNT_IMPORT;
+  metadata: {
+    sourceId: string;
+    folderId: string;
+    importedCount: number;
+    importedAccounts: { discoveredAccountId: string; accountId?: string; name?: string }[];
+  };
+}
+
 interface PamAccountRotateCredentialsEvent {
   type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
   metadata: {
@@ -6200,6 +6274,7 @@ interface PamApprovalConfigUpdateEvent {
     folderId: string;
     policyId: string | null;
     stepCount: number;
+    notificationConfigCount?: number;
   };
 }
 
@@ -6882,6 +6957,52 @@ interface ListDynamicSecretsEvent {
     environment: string;
     secretPath: string;
     projectId: string;
+  };
+}
+
+interface CreateProxiedServiceEvent {
+  type: EventType.CREATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    // secret / dynamic secret names only; never placeholder/secret/lease values
+    secretKeys: string[];
+    dynamicSecretNames: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateProxiedServiceEvent {
+  type: EventType.UPDATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    updatedFields: string[];
+    secretKeys: string[];
+    dynamicSecretNames: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProxiedServiceEvent {
+  type: EventType.DELETE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface SignAgentProxyIntermediateCaEvent {
+  type: EventType.SIGN_AGENT_PROXY_INTERMEDIATE_CA;
+  metadata: {
+    serialNumber: string;
+    expiration: string;
   };
 }
 
@@ -7635,6 +7756,8 @@ export type Event =
   | CmekDecryptEvent
   | CmekSignEvent
   | CmekVerifyEvent
+  | CmekGenerateMacEvent
+  | CmekVerifyMacEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent
@@ -7838,6 +7961,11 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamDiscoverySourceCreateEvent
+  | PamDiscoverySourceUpdateEvent
+  | PamDiscoverySourceDeleteEvent
+  | PamDiscoveryScanEvent
+  | PamDiscoveredAccountImportEvent
   | PamAccountRotateCredentialsEvent
   | PamAccountSetRotationAccountEvent
   | PamAccessRequestCreateEvent
@@ -7912,6 +8040,10 @@ export type Event =
   | DeleteDynamicSecretEvent
   | GetDynamicSecretEvent
   | ListDynamicSecretsEvent
+  | CreateProxiedServiceEvent
+  | UpdateProxiedServiceEvent
+  | DeleteProxiedServiceEvent
+  | SignAgentProxyIntermediateCaEvent
   | ListDynamicSecretLeasesEvent
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent

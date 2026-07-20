@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
-import { buildCrlDistributionPointUrls, signatureAlgorithmToAlgCfg } from "./certificate-authority-fns";
+import {
+  buildCrlDistributionPointUrls,
+  createDistinguishedName,
+  signatureAlgorithmToAlgCfg
+} from "./certificate-authority-fns";
 
 // Helper to access properties on the union return type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -235,5 +239,33 @@ describe("buildCrlDistributionPointUrls", () => {
   it("should include managed URL when disableManagedUrl is undefined", () => {
     const result = buildCrlDistributionPointUrls(managedUrl, null, undefined);
     expect(result).toEqual([managedUrl]);
+  });
+});
+
+describe("createDistinguishedName", () => {
+  it("should build a DN with only the standard attributes", () => {
+    const dn = createDistinguishedName({ commonName: "example.com", organization: "Acme" });
+    expect(dn).toBe("O=Acme, CN=example.com");
+  });
+
+  it("should emit one DC RDN per domain component, in the given order, after the CN", () => {
+    const dn = createDistinguishedName({
+      commonName: "auth-AD-MANAGER02-CA",
+      domainComponents: ["app", "example", "auth"]
+    });
+    expect(dn).toBe("CN=auth-AD-MANAGER02-CA, DC=app, DC=example, DC=auth");
+  });
+
+  it("should skip empty domain component values", () => {
+    const dn = createDistinguishedName({
+      commonName: "host",
+      domainComponents: ["app", "", "auth"]
+    });
+    expect(dn).toBe("CN=host, DC=app, DC=auth");
+  });
+
+  it("should omit DC RDNs when no domain components are provided", () => {
+    const dn = createDistinguishedName({ commonName: "host" });
+    expect(dn).toBe("CN=host");
   });
 });

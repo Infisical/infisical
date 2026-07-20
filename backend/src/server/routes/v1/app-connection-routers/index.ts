@@ -52,6 +52,7 @@ import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
 import { registerNetScalerConnectionRouter } from "./netscaler-connection-router";
 import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
+import { registerNutanixPrismCentralConnectionRouter } from "./nutanix-prism-central-connection-router";
 import { registerOctopusDeployConnectionRouter } from "./octopus-deploy-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerOnaConnectionRouter } from "./ona-connection-router";
@@ -77,6 +78,7 @@ import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
 import { registerWindmillConnectionRouter } from "./windmill-connection-router";
+import { registerWinRMConnectionRouter } from "./winrm-connection-router";
 import { registerZabbixConnectionRouter } from "./zabbix-connection-router";
 
 export * from "./app-connection-router";
@@ -134,6 +136,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.SSH]: registerSshConnectionRouter,
     [AppConnection.Dbt]: registerDbtConnectionRouter,
     [AppConnection.SMB]: registerSmbConnectionRouter,
+    [AppConnection.WinRM]: registerWinRMConnectionRouter,
     [AppConnection.OpenRouter]: registerOpenRouterConnectionRouter,
     [AppConnection.OpenAI]: registerOpenAIConnectionRouter,
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
@@ -160,5 +163,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.HasuraCloud]: registerHasuraCloudConnectionRouter,
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
-    [AppConnection.Fireworks]: registerFireworksConnectionRouter
+    [AppConnection.Fireworks]: registerFireworksConnectionRouter,
+    [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter
   };

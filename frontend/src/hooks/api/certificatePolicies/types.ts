@@ -2,7 +2,14 @@ import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components
 
 export type TCertificatePolicyRule = {
   subject?: Array<{
-    type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
+    type:
+      | "common_name"
+      | "organization"
+      | "country"
+      | "state"
+      | "locality"
+      | "organizational_unit"
+      | "domain_component";
     allowed?: string[];
     required?: string[];
     denied?: string[];

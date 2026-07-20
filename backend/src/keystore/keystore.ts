@@ -39,7 +39,8 @@ export const PgSqlLock = {
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   LastAdminGuard: (scope: "org", scopeId: string) => pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
-  AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`)
+  AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -69,6 +70,9 @@ export const KeyStorePrefixes = {
     `identity-access-token-status:${identityAccessTokenId}`,
   IdentityTokenUsesRemaining: (identityId: string, jti: string) =>
     `identity-token-uses-remaining:${identityId}:${jti}` as const,
+  IdentityRevocationVersion: (identityId: string) => `identity-revocation-version:${identityId}` as const,
+  IdentityRevocationVerdict: (identityId: string, fingerprint: string) =>
+    `identity-revocation-verdict:${identityId}:${fingerprint}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
@@ -86,9 +90,13 @@ export const KeyStorePrefixes = {
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
+  MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
   UserMfaLockoutLock: (userId: string) => `user-mfa-lockout-lock:${userId}` as const,
   UserMfaUnlockEmailSent: (userId: string) => `user-mfa-unlock-email-sent:${userId}` as const,
+  UserStepUpMfaAttempts: (userId: string) => `user-step-up-mfa-attempts:${userId}` as const,
+  UserStepUpMfaLockout: (userId: string) => `user-step-up-mfa-lockout:${userId}` as const,
+  RecentMfaAuth: (userId: string, tokenVersionId: string) => `recent-mfa-auth:${userId}:${tokenVersionId}` as const,
   UsedTotpCode: (userId: string, code: string) => `used-totp-code:${userId}:${code}` as const,
   UsedAccountRecoveryToken: (userId: string, jti: string) => `used-account-recovery-token:${userId}:${jti}` as const,
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
@@ -156,9 +164,16 @@ export const KeyStoreTtls = {
   SetSyncSecretIntegrationLastRunTimestampInSeconds: 60,
   SetSecretSyncLastRunTimestampInSeconds: 60,
   AccessTokenStatusUpdateInSeconds: 120,
+  IdentityRevocationVerdictBaseInSeconds: 600, // 10 minutes
+  IdentityRevocationVerdictJitterInSeconds: 120, // +/- 2 minutes
+  IdentityRevocationVersionInSeconds: 604800, // 7 days
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
+
   MfaSessionInSeconds: 300, // 5 minutes
+  RecentMfaAuthInSeconds: 600, // 10 minutes
+  MfaCodeResendCooldownInSeconds: 60, // 1 minute
+
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
   ProjectSSEConnectionTtlSeconds: 180, // Must be > heartbeat interval (60s) * 2
@@ -181,8 +196,10 @@ export const KeyStoreTtls = {
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes
+  StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
+  StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
-  TelemetryAggregatedEventInSeconds: 600, // 10 minutes
+  TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
   GatewayRelayCredentialInSeconds: 600, // 10 minutes - TURN credential lifetime
@@ -208,6 +225,7 @@ type TWaitTillReady = {
 export type TKeyStoreFactory = {
   setItem: (key: string, value: string | number | Buffer, prefix?: string) => Promise<"OK">;
   getItem: (key: string, prefix?: string) => Promise<string | null>;
+  getItemPrimary: (key: string, prefix?: string) => Promise<string | null>;
   getItems: (keys: string[], prefix?: string) => Promise<(string | null)[]>;
   setExpiry: (key: string, expiryInSeconds: number) => Promise<number>;
   ttl: (key: string) => Promise<number>;
@@ -230,6 +248,7 @@ export type TKeyStoreFactory = {
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
   incrementByWithExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
+  incrementSeededWithExpiry: (key: string, seed: number, expiryInSeconds: number) => Promise<number>;
   getKeysByPattern: (pattern: string, limit?: number) => Promise<string[]>;
   // list operations
   listPush: (key: string, value: string) => Promise<number>;
@@ -297,6 +316,8 @@ export const keyStoreFactory = (
 
   const getItem = async (key: string, prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).get(prefix ? `${prefix}:${key}` : key);
+
+  const getItemPrimary = async (key: string, prefix?: string) => primaryRedis.get(prefix ? `${prefix}:${key}` : key);
 
   const getItems = async (keys: string[], prefix?: string) =>
     pickPrimaryOrSecondaryRedis(primaryRedis, redisReadReplicas).mget(
@@ -410,6 +431,24 @@ export const keyStoreFactory = (
   const incrementByWithExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
     const result = await primaryRedis.eval(INCREMENT_WITH_EXPIRY, 1, key, String(value), String(expiryInSeconds));
     return result as number;
+  };
+
+  // Timestamp-seeded INCR. When the key is missing (INCR returns 1) it rebases
+  // the counter by `seed` (a caller-supplied Date.now()), so a resurrected key
+  // restarts above any value it held before and a stale cached allow stamped
+  // with an old version can never match again.
+  const INCREMENT_SEEDED_WITH_EXPIRY = `
+    local v = redis.call('INCR', KEYS[1])
+    if v == 1 then
+      v = redis.call('INCRBY', KEYS[1], ARGV[1])
+    end
+    redis.call('EXPIRE', KEYS[1], ARGV[2])
+    return v
+  `;
+
+  const incrementSeededWithExpiry = async (key: string, seed: number, expiryInSeconds: number): Promise<number> => {
+    const result = await primaryRedis.eval(INCREMENT_SEEDED_WITH_EXPIRY, 1, key, String(seed), String(expiryInSeconds));
+    return Number(result);
   };
 
   const setExpiry = async (key: string, expiryInSeconds: number) => primaryRedis.expire(key, expiryInSeconds);
@@ -534,6 +573,7 @@ export const keyStoreFactory = (
   return {
     setItem,
     getItem,
+    getItemPrimary,
     setExpiry,
     ttl,
     setItemWithExpiry,
@@ -544,6 +584,7 @@ export const keyStoreFactory = (
     incrementByAndRefreshExpiryIfUnderLimit,
     decrementByOrDelete,
     incrementByWithExpiry,
+    incrementSeededWithExpiry,
     acquireLock(resources: string[], duration: number, settings?: Partial<Settings>) {
       return redisLock.acquire(resources, duration, settings);
     },

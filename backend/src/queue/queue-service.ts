@@ -103,6 +103,7 @@ export enum QueueName {
   UserNotification = "user-notification",
   AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
+  PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
@@ -111,6 +112,7 @@ export enum QueueName {
   AuditLogStreamOutbox = "audit-log-stream-outbox",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
+  ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event"
@@ -171,6 +173,7 @@ export enum QueueJobs {
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamSessionExpiration = "pam-session-expiration",
+  PamDiscoverySourceScan = "pam-discovery-source-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -188,6 +191,7 @@ export enum QueueJobs {
   DigiCertOrderPolling = "digicert-order-polling-job",
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
+  ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job"
@@ -200,8 +204,7 @@ export enum JobState {
   Failed = "failed"
 }
 
-export type TQueueOptions = {
-  jobId: string;
+type BaseQueueOptions = {
   removeOnComplete?: boolean | { count: number } | { age: number };
   removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
@@ -220,6 +223,26 @@ export type TQueueOptions = {
     utc?: boolean;
   };
 };
+
+type DeduplicationOptions = {
+  id: string;
+  keepLastIfActive?: boolean;
+  replace?: boolean;
+  extend?: boolean;
+  ttl?: number;
+};
+
+export type TQueueOptions = BaseQueueOptions &
+  (
+    | {
+        jobId: string;
+        deduplication?: undefined;
+      }
+    | {
+        jobId?: undefined;
+        deduplication: DeduplicationOptions;
+      }
+  );
 
 export type TQueueJobTypes = {
   [QueueName.SecretReminder]: {
@@ -463,6 +486,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
   };
+  [QueueName.PamDiscoveryScan]: {
+    name: QueueJobs.PamDiscoverySourceScan;
+    payload: { sourceId: string; triggeredBy: string };
+  };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
     payload: { challengeId: string };
@@ -518,6 +545,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.ProjectHardDelete;
     payload: { projectId: string };
   };
+  [QueueName.ProjectEnvHardDelete]: {
+    name: QueueJobs.ProjectEnvHardDelete;
+    payload: { envId: string; projectId: string };
+  };
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;
     payload: undefined;
@@ -528,7 +559,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
-    payload: { orgId: string; featureKey: string };
+    payload: { orgId: string; dimensionKey: string };
   };
 };
 
@@ -685,7 +716,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "pki-sync-cleanup",
       "pam-account-rotation",
       "pam-session-ai-summary",
-      "pam-discovery-scan",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value

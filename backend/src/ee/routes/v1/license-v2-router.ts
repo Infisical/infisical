@@ -35,11 +35,23 @@ const BillingV2CompareRowSchema = z.object({
   cells: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 });
 
+// Deprecation detail shown to the user: formatted sunset date + whole days remaining (both nullable).
+const BillingV2DeprecationSchema = z.object({
+  reason: z.string().optional(),
+  nextSteps: z.string().optional(),
+  date: z.string().nullable(),
+  daysLeft: z.number().nullable()
+});
+
 const BillingV2PlanSchema = z.object({
   tier: z.string(),
   name: z.string(),
   selfServe: z.boolean(),
   salesLed: z.boolean(),
+  trialable: z.boolean(),
+  deprecated: z.boolean().optional(),
+  deprecation: BillingV2DeprecationSchema.optional(),
+  displayOrder: z.number().optional(),
   feature: z.string().optional(),
   base: z.object({ monthly: z.number(), annual: z.number() }).optional(),
   dims: BillingV2DimSchema.array()
@@ -50,10 +62,11 @@ const BillingV2CatalogProductSchema = z.object({
   name: z.string(),
   icon: z.string(),
   color: z.string(),
-  model: z.enum(["seat", "usage", "limit", "flat"]),
   addon: z.boolean().optional(),
-  desc: z.string(),
   tagline: z.string().optional(),
+  deprecated: z.boolean().optional(),
+  deprecation: BillingV2DeprecationSchema.optional(),
+  displayOrder: z.number().optional(),
   plans: BillingV2PlanSchema.array(),
   includes: z.string().array().optional(),
   compare: BillingV2CompareRowSchema.array().optional()
@@ -74,21 +87,36 @@ const BillingV2EntitlementDimSchema = z.object({
   noun: z.string(),
   unit: z.string(),
   metered: z.boolean(),
+  cadence: z.enum(["monthly", "annual"]).nullable(),
   used: z.number(),
   limit: z.number().nullable(),
-  // Present for metered dimensions: the included allowance and per-unit overage rate (dollars).
+  committed: z.number().nullable(),
+  // Rates in dollars. per_resource dims: committedRate (annual) + onDemandRate (monthly overage);
+  // metered dims: rate (per-unit) + freeBand (included). onDemandAmount is the computed monthly
+  // overage cost.
+  committedRate: z.number().optional(),
+  onDemandRate: z.number().optional(),
+  rate: z.number().optional(),
   freeBand: z.number().optional(),
-  rate: z.number().optional()
+  onDemandAmount: z.number()
 });
 
 const BillingV2EntitlementSchema = z.object({
   entitled: z.boolean(),
   planTier: z.string().optional(),
-  // Fixed recurring charge and estimated metered usage for the product (dollars); the headline is
-  // their sum. dimensions drives the per-dimension usage bars.
+  // Product cadence + recurring amount + monthly on-demand overage; dimensions drives the usage bars.
+  cadence: z.enum(["monthly", "annual"]).nullable().optional(),
   amount: z.number().optional(),
-  estimatedUsageAmount: z.number().optional(),
+  onDemandAmount: z.number().optional(),
   dimensions: BillingV2EntitlementDimSchema.array().optional(),
+  // Trial state; trialEndsAt is a formatted date string.
+  status: z.string().optional(),
+  isTrialing: z.boolean().optional(),
+  trialEndsAt: z.string().nullable().optional(),
+  renewsOn: z.string().nullable().optional(),
+  deprecation: BillingV2DeprecationSchema.extend({
+    kind: z.enum(["product", "plan"])
+  }).optional(),
   limit: z.number().nullable().optional(),
   used: z.number().optional(),
   unit: z.string().nullable().optional()
@@ -99,14 +127,19 @@ const BillingV2OverviewSchema = z.object({
   mode: z.enum(["self-serve", "managed"]),
   subState: z.enum(["active", "trialing", "past-due", "suspended", "no-subscription"]),
   planName: z.string(),
-  nextBillingDate: z.string().nullable(),
-  recurringAmount: z.number().nullable(),
-  interval: z.enum(["month", "year"]).nullable(),
-  usage: z.object({
-    members: z.number(),
-    memberLimit: z.number().nullable(),
-    identities: z.number(),
-    identityLimit: z.number().nullable()
+  billing: z.object({
+    monthlyRecurring: z.number(),
+    annualCommitted: z.number(),
+    activeProductCount: z.number(),
+    nextCharge: z
+      .object({
+        amount: z.number(),
+        at: z.string(),
+        productKeys: z.string().array(),
+        cadence: z.enum(["monthly", "annual"]).nullable(),
+        hasUsage: z.boolean()
+      })
+      .nullable()
   }),
   payment: z.object({ brand: z.string(), last4: z.string(), expMonth: z.number(), expYear: z.number() }).nullable(),
   billingDetails: z
@@ -129,7 +162,8 @@ const BillingV2OverviewSchema = z.object({
     .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
-  estimatedUsageAmount: z.number()
+  trialedProductKeys: z.string().array(),
+  onDemandAmount: z.number()
 });
 
 const BillingV2PreviewLineSchema = z.object({
@@ -138,31 +172,24 @@ const BillingV2PreviewLineSchema = z.object({
   proration: z.boolean()
 });
 
-const BillingV2EstimatedUsageLineSchema = z.object({
-  dimension: z.string(),
-  unit: z.string(),
-  peak: z.number(),
-  freeBand: z.number(),
-  rate: z.number(),
-  amount: z.number()
-});
-
 const BillingV2PreviewSchema = z.object({
   currency: z.string(),
   prorationAmount: z.number(),
   nextInvoiceTotal: z.number(),
   nextRecurringTotal: z.number(),
-  prorationDate: z.number(),
-  lines: BillingV2PreviewLineSchema.array(),
-  // Projected metered usage (dollars) and its breakdown; estimatedTotal = nextRecurringTotal + usage.
-  estimatedUsage: z.number(),
-  estimatedUsageLines: BillingV2EstimatedUsageLineSchema.array(),
-  estimatedTotal: z.number()
+  lines: BillingV2PreviewLineSchema.array()
 });
 
 // Subscription mutations mirror the checkout result: the change applies in place and the affected
 // subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
 const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
+
+// Per-dimension committed quantities (annual per_resource) and a single commitment quantity change.
+const BillingV2CommitmentsSchema = z.record(z.string().trim(), z.number().int().min(0));
+const BillingV2CommitmentChangeSchema = z.object({
+  dimensionKey: z.string().trim(),
+  quantity: z.number().int().min(1)
+});
 
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
   // Every route is gated on LICENSE_SERVER_V2_MODE="on"; the billing surface is invisible until full v2 cutover.
@@ -258,6 +285,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         productId: z.string().trim(),
         plan: z.string().trim().optional(),
         cadence: z.enum(["monthly", "annual"]).optional(),
+        commitments: BillingV2CommitmentsSchema.optional(),
         email: z.string().trim().email().optional(),
         returnPath: ReturnPathSchema
       }),
@@ -277,6 +305,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         productId: req.body.productId,
         plan: req.body.plan,
         cadence: req.body.cadence,
+        commitments: req.body.commitments,
         email: req.body.email,
         returnPath: req.body.returnPath
       });
@@ -319,10 +348,12 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
           addProductId: z.string().trim().optional(),
           plan: z.string().trim().optional(),
           cadence: z.enum(["monthly", "annual"]).optional(),
-          removeProductId: z.string().trim().optional()
+          commitments: BillingV2CommitmentsSchema.optional(),
+          removeProductId: z.string().trim().optional(),
+          commitmentChanges: BillingV2CommitmentChangeSchema.array().optional()
         })
-        .refine((b) => Boolean(b.addProductId) || Boolean(b.removeProductId), {
-          message: "provide a product to add or remove"
+        .refine((b) => Boolean(b.addProductId) || Boolean(b.removeProductId) || Boolean(b.commitmentChanges?.length), {
+          message: "provide a product to add or remove, or a commitment change"
         }),
       response: {
         200: z.object({ preview: BillingV2PreviewSchema })
@@ -336,7 +367,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         addProductId: req.body.addProductId,
         plan: req.body.plan,
         cadence: req.body.cadence,
-        removeProductId: req.body.removeProductId
+        commitments: req.body.commitments,
+        removeProductId: req.body.removeProductId,
+        commitmentChanges: req.body.commitmentChanges
       });
     }
   });
@@ -352,7 +385,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       body: z.object({
         productId: z.string().trim(),
         plan: z.string().trim().optional(),
-        cadence: z.enum(["monthly", "annual"]).optional()
+        cadence: z.enum(["monthly", "annual"]).optional(),
+        commitments: BillingV2CommitmentsSchema.optional()
       }),
       response: {
         200: BillingV2MutationResultSchema
@@ -365,7 +399,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         actor: buildActor(req.permission),
         productId: req.body.productId,
         plan: req.body.plan,
-        cadence: req.body.cadence
+        cadence: req.body.cadence,
+        commitments: req.body.commitments
       });
     }
   });
@@ -388,6 +423,93 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.params.productId
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/subscription/commitments",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z.object({
+        // One or more per_resource commitment changes; the service applies them per dimension
+        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20)
+      }),
+      response: {
+        200: BillingV2MutationResultSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.changeCommitment({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        changes: req.body.changes
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/trial",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z.object({
+        productId: z.string().trim(),
+        plan: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          outcome: z.literal("trial_started"),
+          cardSetupUrl: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
+      // user (this route is JWT-only) rather than trusting a client-supplied value.
+      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
+      return server.services.licenseV2.startTrial({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        productId: req.body.productId,
+        plan: req.body.plan,
+        email
+      });
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:organizationId/billing/v2/trial/cancel",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({ organizationId: z.string().trim() }),
+      body: z.object({
+        productId: z.string().trim()
+      }),
+      response: {
+        200: z.object({
+          outcome: z.literal("trial_completed")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      return server.services.licenseV2.cancelTrial({
+        orgId: req.params.organizationId,
+        actor: buildActor(req.permission),
+        productId: req.body.productId
       });
     }
   });

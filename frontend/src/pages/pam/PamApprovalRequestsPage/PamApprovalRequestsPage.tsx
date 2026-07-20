@@ -106,7 +106,7 @@ const RequestTable = ({
   if (!isPending && filtered.length === 0) {
     return (
       <CardContent>
-        <Empty>
+        <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>
               {search ? "No requests match your search" : "No requests found"}

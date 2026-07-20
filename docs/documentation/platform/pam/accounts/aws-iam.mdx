@@ -6,9 +6,83 @@ description: "Add and connect to AWS accounts via IAM role assumption."
 
 AWS IAM accounts let you manage access to AWS through IAM role assumption. Users can open the AWS console directly or use the CLI to get temporary credentials, and every access is logged.
 
+Infisical assumes the IAM role you configure directly, then returns short-lived STS credentials. Those credentials work with the AWS CLI and can also be exchanged for a federated AWS Management Console sign-in URL.
+
 <Note>
-AWS IAM accounts do not require a Gateway — Infisical connects directly to AWS.
+AWS IAM accounts do not require a Gateway. Infisical communicates directly with the AWS STS API.
 </Note>
+
+## How It Works
+
+When a user accesses an AWS IAM account, Infisical assumes the account's IAM role using AWS STS and returns the temporary credentials:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Infisical
+    participant Role as IAM Role<br/>(Your AWS Account)
+    participant Console as AWS Console
+    User->>Infisical: Request AWS access
+    Infisical->>Role: AssumeRole (with ExternalId = Org ID)
+    Role-->>Infisical: Temporary credentials
+    Infisical-->>User: Return credentials (CLI)
+    Infisical->>Console: Exchange for federation URL (Console)
+    Console-->>Infisical: Signed console URL
+    Infisical-->>User: Return console URL
+```
+
+There is a single role per account. Its trust policy allows Infisical to assume it, scoped by an **External ID** set to your **Infisical Organization ID**. The External ID prevents [confused deputy attacks](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), where another Infisical customer could otherwise trick Infisical into assuming your role.
+
+## Prerequisites
+
+Before adding the account in Infisical, create the IAM role in your AWS account with a trust policy that allows Infisical to assume it.
+
+<Steps>
+  <Step title="Create the role with a trust policy">
+    Create an IAM role (e.g., `infisical-pam-readonly`) with the following trust policy. Replace `<INFISICAL_AWS_ACCOUNT_ID>` with the Infisical account ID for your region and `<YOUR_INFISICAL_ORG_ID>` with your Infisical Organization ID.
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [{
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::<INFISICAL_AWS_ACCOUNT_ID>:root"
+        },
+        "Action": "sts:AssumeRole",
+        "Condition": {
+          "StringEquals": {
+            "sts:ExternalId": "<YOUR_INFISICAL_ORG_ID>"
+          }
+        }
+      }]
+    }
+    ```
+
+    <Warning>
+      Always include the External ID condition. Without it, another Infisical customer could potentially trick Infisical into assuming your role.
+    </Warning>
+
+    **Infisical AWS Account IDs:**
+
+    | Region | Account ID |
+    |--------|------------|
+    | US | `381492033652` |
+    | EU | `345594589636` |
+
+    <Note>
+      **For Dedicated Instances**: Your AWS account ID differs from the ones listed above. Contact Infisical support to obtain your dedicated AWS account ID.
+    </Note>
+    <Note>
+      **For Self-Hosted Instances**: Use the AWS account ID where your Infisical instance is deployed. This is the account that hosts your Infisical infrastructure and will be assuming the role.
+    </Note>
+
+    You can find your Infisical Organization ID under **Organization Settings**.
+  </Step>
+  <Step title="Attach permissions to the role">
+    Attach whatever permissions policies define what this role can do in AWS. These are the permissions users receive when they access this account through Infisical.
+  </Step>
+</Steps>
 
 ## Creating an Account
 
@@ -23,27 +97,26 @@ AWS IAM accounts do not require a Gateway — Infisical connects directly to AWS
     | Field | Description |
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `prod-admin-access`) |
-    | **PAM Role ARN** | The ARN of the IAM role that Infisical assumes to broker access |
-  </Step>
-  <Step title="Enter credentials">
-    | Field | Description |
-    |-------|-------------|
-    | **Target Role ARN** | The ARN of the IAM role the user will assume |
+    | **Role ARN** | The ARN of the IAM role Infisical assumes for this account (e.g., `arn:aws:iam::123456789012:role/infisical-pam-readonly`) |
   </Step>
   <Step title="Save">
     Click **Create**.
   </Step>
 </Steps>
 
-## How It Works
+<Note>
+  To expose the same role in more than one folder, add an account in each folder pointing at the same **Role ARN**. Each account is a distinct entry that references the same underlying IAM role.
+</Note>
 
-When a user accesses an AWS IAM account:
+## Session Duration
 
-1. Infisical assumes the **PAM Role** (configured at the account level)
-2. Using that role, Infisical assumes the **Target Role** on behalf of the user
-3. The user receives temporary AWS credentials for the target role
+Sessions use short-lived STS credentials. The duration is bounded by the target role's **maximum session duration** in AWS (`MaxSessionDuration`), with a minimum of 15 minutes. Requesting longer than the role allows will cause AWS to reject the request, so set the role's `MaxSessionDuration` to cover the session lengths you expect.
 
-This lets you centralize access control through Infisical while using standard AWS IAM roles.
+<Info>
+  AWS Console sessions cannot be terminated early. Once a federated URL is generated, the session remains valid until it expires. You can [revoke active sessions](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_revoke-sessions.html) by modifying the role's trust policy.
+</Info>
+
+All actions performed with the credentials are logged in [AWS CloudTrail](https://console.aws.amazon.com/cloudtrail). The session is identified by the `RoleSessionName`, which includes the user's email for attribution.
 
 ## Connecting
 
@@ -51,7 +124,7 @@ This lets you centralize access control through Infisical while using standard A
   <Tab title="AWS Console">
     1. Go to **Privileged Access Management → My Access**
     2. Find the account and click **Launch → Connect in Browser**
-    3. You'll be taken directly to the AWS console, logged in with the target role
+    3. You'll be taken directly to the AWS console, logged in with the role
   </Tab>
   <Tab title="CLI">
     The CLI writes temporary credentials to your AWS credentials file as a named profile:
@@ -76,7 +149,7 @@ This lets you centralize access control through Infisical while using standard A
     Press **Ctrl+C** to stop and remove the credentials profile.
 
     **Flags:**
-    - `--reason <reason>` — provide an access reason (if required by template)
+    - `--reason <reason>`: provide an access reason (if required by template)
   </Tab>
 </Tabs>
 

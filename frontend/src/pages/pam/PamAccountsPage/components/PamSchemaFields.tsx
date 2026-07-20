@@ -13,6 +13,7 @@ import {
 import { Switch } from "@app/components/v3/generic/Switch";
 import { TextArea } from "@app/components/v3/generic/TextArea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3/generic/Tooltip";
+import { useOrganization } from "@app/context";
 import { PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
 
 import { TAccountFormValues } from "./accountFormSchema";
@@ -27,6 +28,22 @@ type Props = {
 };
 
 const RequiredMark = () => <span className="text-product-pam">*</span>;
+
+// Tooltips may reference the org's ID via a {{organizationId}} placeholder (e.g. the AWS IAM role's
+// External ID); resolve it here so the user sees their actual ID inline.
+const FieldTooltip = ({ text }: { text?: string }) => {
+  const { currentOrg } = useOrganization();
+  if (!text) return null;
+  const resolved = text.replace(/\{\{organizationId\}\}/g, currentOrg.id);
+  return (
+    <Tooltip>
+      <TooltipTrigger>
+        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs whitespace-pre-line">{resolved}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 type FieldProps = {
   field: ControllerRenderProps<TAccountFormValues>;
@@ -116,16 +133,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                 <FieldLabel>
                   {descriptor.label}
                   {(descriptor.required || descriptor.secret) && <RequiredMark />}
-                  {descriptor.tooltip && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent className="whitespace-pre-line">
-                        {descriptor.tooltip}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                  <FieldTooltip text={descriptor.tooltip} />
                 </FieldLabel>
                 <Switch
                   variant="pam"
@@ -138,16 +146,7 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                 <FieldLabel>
                   {descriptor.label}
                   {(descriptor.required || descriptor.secret) && <RequiredMark />}
-                  {descriptor.tooltip && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="text-muted-foreground ml-1 inline h-3.5 w-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent className="whitespace-pre-line">
-                        {descriptor.tooltip}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                  <FieldTooltip text={descriptor.tooltip} />
                 </FieldLabel>
                 <FieldContent>
                   <FieldWidget field={field} descriptor={descriptor} isError={!!fieldState.error} />

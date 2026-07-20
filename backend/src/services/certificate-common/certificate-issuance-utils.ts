@@ -276,6 +276,12 @@ export const detectSanType = (value: string): { type: CertSubjectAlternativeName
 
 export type TSelfSignedCertificateRequest = {
   commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  domainComponents?: string[];
   keyUsages?: CertKeyUsageType[];
   extendedKeyUsages?: CertExtendedKeyUsageType[];
   altNames?: Array<{
@@ -370,12 +376,13 @@ export const generateSelfSignedCertificate = async ({
 
   const serialNumber = createSerialNumber();
   const dn = createDistinguishedName({
-    commonName: certificateSubject.common_name,
-    organization: certificateSubject.organization,
-    ou: certificateSubject.organizational_unit,
-    country: certificateSubject.country,
-    province: certificateSubject.state_or_province_name,
-    locality: certificateSubject.locality_name
+    commonName: certificateRequest.commonName,
+    organization: certificateRequest.organization,
+    ou: certificateRequest.organizationalUnit,
+    country: certificateRequest.country,
+    province: certificateRequest.state,
+    locality: certificateRequest.locality,
+    domainComponents: certificateRequest.domainComponents
   });
 
   const cert = await x509.X509CertificateGenerator.createSelfSigned({

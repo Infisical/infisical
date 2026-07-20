@@ -1,3 +1,8 @@
+## 1.2.0 (July 17, 2026)
+* Added `extraEnv` for injecting additional environment variables into the gateway container.
+* Added `extraEnvFrom` for loading environment variables from Secrets or ConfigMaps.
+* Added `extraObjects` for deploying additional Kubernetes manifests alongside the chart.
+
 ## 1.1.0 (May 11, 2026)
 * Added support for the new enrollment-based gateway registration flow (`gateway.enrollment.method: token` or `aws`).
 * Added PersistentVolumeClaim support (`persistence.*`) for credential storage across pod restarts.

@@ -210,6 +210,11 @@ import {
   validateNorthflankConnectionCredentials
 } from "./northflank";
 import {
+  getNutanixPrismCentralConnectionListItem,
+  NutanixPrismCentralConnectionMethod,
+  validateNutanixPrismCentralConnectionCredentials
+} from "./nutanix-prism-central";
+import {
   getOctopusDeployConnectionListItem,
   OctopusDeployConnectionMethod,
   validateOctopusDeployConnectionCredentials
@@ -281,6 +286,7 @@ import {
   validateWindmillConnectionCredentials,
   WindmillConnectionMethod
 } from "./windmill";
+import { getWinRMConnectionListItem, validateWinRMConnectionCredentials, WinRMConnectionMethod } from "./winrm";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
@@ -310,7 +316,10 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.NetScaler,
   AppConnection.DigiCert,
   AppConnection.F5BigIp,
-  AppConnection.GoDaddy
+  AppConnection.GoDaddy,
+  AppConnection.SSH,
+  AppConnection.WinRM,
+  AppConnection.NutanixPrismCentral
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -324,6 +333,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getAzureDevopsConnectionListItem(),
     getAzureADCSConnectionListItem(),
     getADCSConnectionListItem(),
+    getWinRMConnectionListItem(),
     getDatabricksConnectionListItem(),
     getHumanitecConnectionListItem(),
     getTerraformCloudConnectionListItem(),
@@ -392,7 +402,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRundeckConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
-    getFireworksConnectionListItem()
+    getFireworksConnectionListItem(),
+    getNutanixPrismCentralConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -567,6 +578,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureDevOps]: validateAzureDevOpsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ADCS]: validateADCSConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.WinRM]: validateWinRMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Humanitec]: validateHumanitecConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Postgres]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.MsSql]: validateSqlConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -641,7 +653,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.NutanixPrismCentral]:
+      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -694,6 +708,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -706,6 +721,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
     case ADCSConnectionMethod.UsernamePassword:
+    case WinRMConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
@@ -742,9 +758,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
-    case DatadogConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
+    case NutanixPrismCentralConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -752,8 +769,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
-      return "Basic Auth";
     case F5BigIpConnectionMethod.BasicAuth:
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -833,6 +850,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.AzureDevOps]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureADCS]: platformManagedCredentialsNotSupported,
   [AppConnection.ADCS]: platformManagedCredentialsNotSupported,
+  [AppConnection.WinRM]: platformManagedCredentialsNotSupported,
   [AppConnection.Humanitec]: platformManagedCredentialsNotSupported,
   [AppConnection.Postgres]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
   [AppConnection.MsSql]: transferSqlConnectionCredentialsToPlatform as TAppConnectionTransitionCredentialsToPlatform,
@@ -900,7 +918,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
-  [AppConnection.Fireworks]: platformManagedCredentialsNotSupported
+  [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
+  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

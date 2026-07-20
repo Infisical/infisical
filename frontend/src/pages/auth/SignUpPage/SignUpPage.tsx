@@ -96,7 +96,16 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       const orgId = userOrgs[0]?.id;
 
       if (orgId) {
-        await selectOrganization({ organizationId: orgId });
+        const { isMfaEnabled } = await selectOrganization({ organizationId: orgId });
+
+        if (isMfaEnabled) {
+          navigate({
+            to: "/login/select-organization",
+            search: { org_id: orgId }
+          });
+          return;
+        }
+
         navigate({
           to: "/organizations/$orgId/projects",
           params: { orgId }

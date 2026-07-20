@@ -604,30 +604,36 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         const dependents = (await pamAccountDAL.find({ rotationAccountId: accountId })).filter(
           (dependent) => dependent.id !== accountId
         );
-        const readChecks = await Promise.all(
-          dependents.map(async (dependent) => ({
-            name: dependent.name,
-            canRead: await checkAccount(
-              dependent.id,
-              dependent.folderId,
-              projectId,
-              ResourcePermissionPamResourceActions.ReadAccounts,
-              ctx
-            )
-              .then(() => true)
-              .catch(() => false)
-          }))
-        );
-        const readableNames = readChecks.filter((c) => c.canRead).map((c) => c.name);
-        const hiddenCount = readChecks.length - readableNames.length;
-        const parts = [
-          ...(readableNames.length ? [readableNames.join(", ")] : []),
-          ...(hiddenCount ? [`${hiddenCount} other account${hiddenCount > 1 ? "s" : ""}`] : [])
-        ];
+        if (dependents.length) {
+          const readChecks = await Promise.all(
+            dependents.map(async (dependent) => ({
+              name: dependent.name,
+              canRead: await checkAccount(
+                dependent.id,
+                dependent.folderId,
+                projectId,
+                ResourcePermissionPamResourceActions.ReadAccounts,
+                ctx
+              )
+                .then(() => true)
+                .catch(() => false)
+            }))
+          );
+          const readableNames = readChecks.filter((c) => c.canRead).map((c) => c.name);
+          const hiddenCount = readChecks.length - readableNames.length;
+          const parts = [
+            ...(readableNames.length ? [readableNames.join(", ")] : []),
+            ...(hiddenCount ? [`${hiddenCount} other account${hiddenCount > 1 ? "s" : ""}`] : [])
+          ];
+          throw new BadRequestError({
+            message: parts.length
+              ? `This account is the rotation account for: ${parts.join(", and ")}. Reassign or clear their rotation account before deleting this one.`
+              : "This account is used as the rotation account for another account. Reassign it before deleting this one."
+          });
+        }
+        // The other restricting reference is a discovery source using this account as its credential
         throw new BadRequestError({
-          message: parts.length
-            ? `This account is the rotation account for: ${parts.join(", and ")}. Reassign or clear their rotation account before deleting this one.`
-            : "This account is used as the rotation account for another account. Reassign it before deleting this one."
+          message: "This account is used as the credential for a discovery source. Delete that source first."
         });
       }
       throw err;
@@ -758,25 +764,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     return { publicKey, created: true, keyAlgorithm };
   };
 
-  const getSshCaPublicKey = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
-    if (!account || account.projectId !== projectId) {
-      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
-    }
-
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.EditAccounts, ctx);
-
-    const metadata = parseInternalMetadata(
-      account.accountType as PamAccountType,
-      await decryptInternalMetadata(projectId, account.encryptedInternalMetadata)
-    );
-
-    if (!metadata?.caPublicKey) {
-      throw new BadRequestError({ message: "SSH CA has not been configured for this account" });
-    }
-    return { publicKey: metadata.caPublicKey };
-  };
-
   const getAccountPermissions = async ({ accountId, projectId, ...ctx }: TGetPamAccountDTO & TActorContext) => {
     const account = await pamAccountDAL.findById(accountId);
     if (!account || account.projectId !== projectId) {
@@ -847,7 +834,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     update,
     deleteAccount,
     getOrCreateSshCa,
-    getSshCaPublicKey,
     getAccountPermissions
   };
 };

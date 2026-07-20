@@ -32,6 +32,10 @@ import {
   TPamAccountTemplateWithCount,
   TPamAccountTypeMetadata,
   TPamApprovalConfig,
+  TPamDiscoveredAccount,
+  TPamDiscoveryRun,
+  TPamDiscoverySource,
+  TPamDiscoveryTypeOption,
   TPamFolderWithCount,
   TPamMember,
   TPamMembersData,
@@ -45,6 +49,10 @@ export const fetchPamProjectId = async () => {
   const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/pam/project");
   return data.projectId;
 };
+
+// For imperative (non-hook) callers; skips the fetch when the id is already cached.
+export const resolvePamProjectId = async (cachedPamProjectId?: string | null) =>
+  cachedPamProjectId ?? fetchPamProjectId();
 
 export const pamKeys = {
   all: ["pam"] as const,
@@ -79,6 +87,15 @@ export const pamKeys = {
   resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
   accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
   accountTypes: () => [...pamKeys.all, "account-types"] as const,
+  discovery: () => [...pamKeys.all, "discovery"] as const,
+  discoveryTypes: () => [...pamKeys.discovery(), "types"] as const,
+  listDiscoverySources: (params?: { search?: string }) =>
+    [...pamKeys.discovery(), "sources", params] as const,
+  listDiscoveryRuns: (sourceId: string) => [...pamKeys.discovery(), "runs", sourceId] as const,
+  listDiscoveredAccounts: (
+    sourceId: string,
+    params?: { search?: string; offset?: number; limit?: number }
+  ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
   rotationCandidates: (accountId: string) =>
     [...pamKeys.account(), "rotation-candidates", accountId] as const,
@@ -500,6 +517,68 @@ export const useGetPamAccessCapabilities = () => {
       }>("/api/v1/pam/memberships/capabilities");
       return data;
     }
+  });
+};
+
+export const useListPamDiscoveryTypes = () => {
+  return useQuery({
+    queryKey: pamKeys.discoveryTypes(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ discoveryTypes: TPamDiscoveryTypeOption[] }>(
+        "/api/v1/pam/discovery-sources/types"
+      );
+      return data.discoveryTypes;
+    },
+    staleTime: Infinity
+  });
+};
+
+export const useListPamDiscoverySources = (params?: { search?: string }) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoverySources(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ sources: TPamDiscoverySource[] }>(
+        "/api/v1/pam/discovery-sources",
+        { params }
+      );
+      return data.sources;
+    },
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamDiscoveryRuns = (
+  sourceId: string,
+  options?: { refetchInterval?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoveryRuns(sourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ runs: TPamDiscoveryRun[] }>(
+        `/api/v1/pam/discovery-sources/${sourceId}/runs`
+      );
+      return data.runs;
+    },
+    enabled: Boolean(sourceId),
+    refetchInterval: options?.refetchInterval
+  });
+};
+
+export const useListPamDiscoveredAccounts = (
+  sourceId: string,
+  params?: { search?: string; offset?: number; limit?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoveredAccounts(sourceId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        discoveredAccounts: TPamDiscoveredAccount[];
+        totalCount: number;
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered`, { params });
+      return data;
+    },
+    enabled: Boolean(sourceId),
+    placeholderData: (prev) => prev
   });
 };
 

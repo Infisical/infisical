@@ -44,7 +44,19 @@ export enum DynamicSecretProviders {
   Clickhouse = "clickhouse",
   Milvus = "milvus",
   Ssh = "ssh",
-  IbmApiConnect = "ibm-api-connect"
+  IbmApiConnect = "ibm-api-connect",
+  Tailscale = "tailscale"
+}
+
+export enum TailscaleKeyAuthType {
+  AuthKeys = "auth_keys",
+  OAuthKeys = "oauth_keys",
+  FederatedKeys = "federated_keys"
+}
+
+export enum TailscaleAuthMethod {
+  ApiKey = "api_key",
+  OAuth = "oauth"
 }
 
 export enum KubernetesDynamicSecretCredentialType {
@@ -523,6 +535,44 @@ export type TDynamicSecretProvider =
         gatewayId?: string;
         gatewayPoolId?: string;
       };
+    }
+  | {
+      type: DynamicSecretProviders.Tailscale;
+      inputs:
+        | {
+            authType: TailscaleKeyAuthType.AuthKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            reusable: boolean;
+            preauthorized: boolean;
+          }
+        | {
+            authType: TailscaleKeyAuthType.OAuthKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            scopes: string[];
+          }
+        | {
+            authType: TailscaleKeyAuthType.FederatedKeys;
+            auth:
+              | { method: TailscaleAuthMethod.ApiKey; apiKey: string }
+              | { method: TailscaleAuthMethod.OAuth; clientId: string; clientSecret: string };
+            tailnet: string;
+            description?: string;
+            tags: string[];
+            scopes: string[];
+            issuer: string;
+            subject: string;
+            audience?: string;
+          };
     };
 
 export type TCreateDynamicSecretDTO = {

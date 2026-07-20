@@ -116,6 +116,7 @@ export const applyProfileDefaults = <
     country?: string;
     state?: string;
     locality?: string;
+    domainComponents?: string[];
     keyAlgorithm?: string;
     signatureAlgorithm?: string;
     keyUsages?: string[];
@@ -139,6 +140,7 @@ export const applyProfileDefaults = <
     country: "country" in request ? request.country : defaults.country,
     state: "state" in request ? request.state : defaults.state,
     locality: "locality" in request ? request.locality : defaults.locality,
+    domainComponents: "domainComponents" in request ? request.domainComponents : defaults.domainComponents,
     keyAlgorithm: "keyAlgorithm" in request ? request.keyAlgorithm : defaults.keyAlgorithm,
     signatureAlgorithm: "signatureAlgorithm" in request ? request.signatureAlgorithm : defaults.signatureAlgorithm,
     keyUsages: request.keyUsages !== undefined ? request.keyUsages : defaults.keyUsages,

@@ -16,7 +16,8 @@ const SUBJECT_ATTRIBUTE_LABELS: Record<CertSubjectAttributeType, string> = {
   [CertSubjectAttributeType.ORGANIZATIONAL_UNIT]: "Organizational Unit",
   [CertSubjectAttributeType.COUNTRY]: "Country",
   [CertSubjectAttributeType.STATE]: "State/Province",
-  [CertSubjectAttributeType.LOCALITY]: "Locality"
+  [CertSubjectAttributeType.LOCALITY]: "Locality",
+  [CertSubjectAttributeType.DOMAIN_COMPONENT]: "Domain Component"
 };
 
 const getSubjectAttributePlaceholder = (type: CertSubjectAttributeType): string => {
@@ -33,6 +34,8 @@ const getSubjectAttributePlaceholder = (type: CertSubjectAttributeType): string 
       return "California";
     case CertSubjectAttributeType.LOCALITY:
       return "San Francisco";
+    case CertSubjectAttributeType.DOMAIN_COMPONENT:
+      return "example";
     default:
       return "";
   }
@@ -62,7 +65,12 @@ export const SubjectAttributesField = ({
       render={({ field: { onChange, value } }) => {
         const currentValues = value || [];
         const usedTypes = currentValues.map((attr: SubjectAttribute) => attr.type);
-        const availableTypes = allowedAttributeTypes.filter((type) => !usedTypes.includes(type));
+        // Domain components are multi-valued, so they may appear in more than one row.
+        const isMultiValued = (type: CertSubjectAttributeType) =>
+          type === CertSubjectAttributeType.DOMAIN_COMPONENT;
+        const availableTypes = allowedAttributeTypes.filter(
+          (type) => isMultiValued(type) || !usedTypes.includes(type)
+        );
         const canAddMore = availableTypes.length > 0;
 
         return (
@@ -70,11 +78,15 @@ export const SubjectAttributesField = ({
             <div className="space-y-2">
               {currentValues.map((attr: SubjectAttribute, index: number) => {
                 const selectableTypes = allowedAttributeTypes.filter(
-                  (type) => type === attr.type || !usedTypes.includes(type)
+                  (type) => type === attr.type || isMultiValued(type) || !usedTypes.includes(type)
                 );
 
                 return (
-                  <div key={`subject-attr-${attr.type}`} className="flex items-center gap-2">
+                  <div
+                    // eslint-disable-next-line react/no-array-index-key
+                    key={`subject-attr-${attr.type}-${index}`}
+                    className="flex items-center gap-2"
+                  >
                     <Select
                       value={attr.type}
                       onValueChange={(newType) => {

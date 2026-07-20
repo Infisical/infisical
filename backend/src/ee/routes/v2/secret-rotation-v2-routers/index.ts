@@ -5,6 +5,7 @@ import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-ro
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
 import { registerConvexAccessKeyRotationRouter } from "./convex-access-key-rotation-router";
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
+import { registerDatadogApiKeyRotationRouter } from "./datadog-api-key-rotation-router";
 import { registerDatadogApplicationKeySecretRotationRouter } from "./datadog-application-key-secret-rotation-router";
 import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
 import { registerFireworksApiKeyRotationRouter } from "./fireworks-api-key-rotation-router";
@@ -53,6 +54,7 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.SupabaseApiKey]: registerSupabaseApiKeyRotationRouter,
   [SecretRotation.SalesforceOauthCredentials]: registerSalesforceOauthCredentialsRotationRouter,
   [SecretRotation.DatadogApplicationKeySecret]: registerDatadogApplicationKeySecretRotationRouter,
+  [SecretRotation.DatadogApiKey]: registerDatadogApiKeyRotationRouter,
   [SecretRotation.ConvexAccessKey]: registerConvexAccessKeyRotationRouter,
   [SecretRotation.FireworksApiKey]: registerFireworksApiKeyRotationRouter
 };

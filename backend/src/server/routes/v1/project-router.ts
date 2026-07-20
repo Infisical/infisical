@@ -218,7 +218,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .max(1024, { message: "Description must be 1024 or fewer characters" })
           .optional()
           .describe(PROJECTS.CREATE.projectDescription),
-        slug: slugSchema({ min: 5, max: 36 }).optional().describe(PROJECTS.CREATE.slug),
+        slug: slugSchema({ min: 5, max: 64 }).optional().describe(PROJECTS.CREATE.slug),
         kmsKeyId: z.string().optional(),
         template: slugSchema({ field: "Template Name", max: 64 })
           .optional()
@@ -1165,9 +1165,12 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         name: z
           .string()
           .trim()
-          .refine((val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Hyphen])(val), {
-            message: "Invalid pattern: only alphanumeric characters, - are allowed."
-          })
+          .refine(
+            (val) => characterValidator([CharacterType.AlphaNumeric, CharacterType.Spaces, CharacterType.Hyphen])(val),
+            {
+              message: "Invalid pattern: only alphanumeric characters, spaces, - are allowed."
+            }
+          )
           .optional()
       }),
       response: {

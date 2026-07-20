@@ -24,12 +24,13 @@ import {
   InputGroupInput,
   TextArea
 } from "@app/components/v3";
+import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
-import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
@@ -139,7 +140,7 @@ export default function UserInfoStep({
 
     if (!isInvite) {
       await initProjectHelper({
-        projectName: "Example Project"
+        projectName: EXAMPLE_PROJECT_NAME
       });
     }
 

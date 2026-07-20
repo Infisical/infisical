@@ -501,6 +501,95 @@ export const recordSsoConfigChangeMetric = (params: {
   ssoConfigChangeCounter.add(1, attributes);
 };
 
+// -- Secret operation metrics (InfisicalCore meter) ------------------------------------------------
+export const secretOperationDurationHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.secret.operation.duration",
+  {
+    description: "Secret operation latency by operation type, outcome, and environment.",
+    unit: "s"
+  }
+);
+
+export const secretWriteCounter = infisicalCoreMeter.createCounter("infisical.secret.write.count", {
+  description: "Secret write operations (create/update/delete).",
+  unit: "{operation}"
+});
+
+export const recordSecretOperationDuration = (params: {
+  startTime: number;
+  operation: "read" | "write" | "delete";
+  outcome: "success" | "failure";
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretOperationDurationHistogram.record((performance.now() - params.startTime) / 1000, {
+    operation: params.operation,
+    outcome: params.outcome
+  });
+};
+
+export const recordSecretWriteMetric = (params: { operation: "create" | "update" | "delete" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretWriteCounter.add(1, {
+    operation: params.operation
+  });
+};
+
+// -- Secret sync outcome (InfisicalCore meter) ----------------------------------------------------
+export const secretSyncOutcomeCounter = infisicalCoreMeter.createCounter("infisical.secret_sync.outcome.count", {
+  description:
+    "Secret sync attempts by destination, operation, and outcome. Alert on failure ratio > 50% over 15m with >= 10 attempts, grouped by destination.",
+  unit: "{attempt}"
+});
+
+export const recordSecretSyncOutcomeMetric = (params: {
+  destination: string;
+  operation: "sync" | "import" | "remove";
+  outcome: "success" | "failure";
+  attemptsExhausted: boolean;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretSyncOutcomeCounter.add(1, {
+    destination: params.destination,
+    operation: params.operation,
+    outcome: params.outcome,
+    "attempts.exhausted": String(params.attemptsExhausted)
+  });
+};
+
+// -- Secret rotation outcome (InfisicalCore meter) --------------------------------------------------
+export const secretRotationOutcomeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_rotation.outcome.count",
+  {
+    description:
+      "Secret rotation attempts by type and outcome. Alert on failure ratio > 50% per type with >= 5 total rotations.",
+    unit: "{attempt}"
+  }
+);
+
+export const recordSecretRotationOutcomeMetric = (params: { type: string; outcome: "success" | "failure" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretRotationOutcomeCounter.add(1, {
+    type: params.type,
+    outcome: params.outcome
+  });
+};
+
+// -- Dynamic secret orphaned lease (InfisicalCore meter) ---------------------------------------------
+export const dynamicSecretOrphanedLeaseCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.orphaned_lease.count",
+  {
+    description: "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
+    unit: "{failure}"
+  }
+);
+
+export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string }) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretOrphanedLeaseCounter.add(1, {
+    provider: params.provider
+  });
+};
+
 // -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------
 // Registered once at boot from main.ts with the primary Knex instance. Runs AFTER setupTelemetry() has
 // installed the real MeterProvider, so we resolve the real meter directly here (observable gauges can't

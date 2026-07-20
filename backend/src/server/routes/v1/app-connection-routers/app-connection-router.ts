@@ -169,6 +169,10 @@ import {
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
 import {
+  NutanixPrismCentralConnectionListItemSchema,
+  SanitizedNutanixPrismCentralConnectionSchema
+} from "@app/services/app-connection/nutanix-prism-central";
+import {
   OctopusDeployConnectionListItemSchema,
   SanitizedOctopusDeployConnectionSchema
 } from "@app/services/app-connection/octopus-deploy";
@@ -238,6 +242,10 @@ import {
   SanitizedWindmillConnectionSchema,
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
+import {
+  SanitizedWinRMConnectionSchema,
+  WinRMConnectionListItemSchema
+} from "@app/services/app-connection/winrm/winrm-connection-schemas";
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -287,6 +295,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedADCSConnectionSchema.options,
+  ...SanitizedWinRMConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
@@ -320,7 +329,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
-  ...SanitizedFireworksConnectionSchema.options
+  ...SanitizedFireworksConnectionSchema.options,
+  ...SanitizedNutanixPrismCentralConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -368,6 +378,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   ADCSConnectionListItemSchema,
+  WinRMConnectionListItemSchema,
   RedisConnectionListItemSchema,
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
@@ -401,7 +412,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RundeckConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
-  FireworksConnectionListItemSchema
+  FireworksConnectionListItemSchema,
+  NutanixPrismCentralConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
