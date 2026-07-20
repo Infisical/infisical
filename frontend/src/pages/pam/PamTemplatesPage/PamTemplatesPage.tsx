@@ -253,7 +253,7 @@ export const PamTemplatesPage = () => {
 
           {!isLoading && filteredTemplates.length === 0 && (
             <CardContent>
-              <Empty>
+              <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>
                     {hasActiveFilters ? "No templates match your filters" : "No templates yet"}

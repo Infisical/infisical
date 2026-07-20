@@ -268,7 +268,7 @@ export const PamAccountsPage = () => {
 
         {showEmpty && (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {hasActiveFilters ? "No results match your filters" : "No accounts yet"}
