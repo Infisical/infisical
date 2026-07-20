@@ -1,0 +1,142 @@
+import { z } from "zod";
+
+// Resource types an alert can attach to. Only identity credentials are supported for now.
+export enum AlertResourceType {
+  IdentityCredential = "identity.credential"
+}
+
+// Events an alert can fire on. Only expiration is supported for now.
+export enum AlertEventType {
+  IdentityCredentialExpiry = "identity.credential.expiry"
+}
+
+export enum AlertChannelType {
+  Email = "email",
+  Slack = "slack",
+  Webhook = "webhook",
+  PagerDuty = "pagerduty"
+}
+
+export enum AlertPrincipalType {
+  User = "user",
+  Group = "group",
+  Role = "role",
+  Email = "email"
+}
+
+export enum AlertTimeUnit {
+  Days = "d",
+  Weeks = "w",
+  Months = "m",
+  Years = "y"
+}
+
+export const ALERT_TIME_UNIT_LABELS: Record<AlertTimeUnit, string> = {
+  [AlertTimeUnit.Days]: "days",
+  [AlertTimeUnit.Weeks]: "weeks",
+  [AlertTimeUnit.Months]: "months",
+  [AlertTimeUnit.Years]: "years"
+};
+
+export const ALERT_PRINCIPAL_TYPE_LABELS: Record<AlertPrincipalType, string> = {
+  [AlertPrincipalType.Email]: "Email",
+  [AlertPrincipalType.User]: "User",
+  [AlertPrincipalType.Group]: "Group",
+  [AlertPrincipalType.Role]: "Role"
+};
+
+export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
+  [AlertResourceType.IdentityCredential]: "Identity Credential"
+};
+
+export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
+  [AlertEventType.IdentityCredentialExpiry]: "Expiration"
+};
+
+export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
+  [AlertChannelType.Email]: "Email",
+  [AlertChannelType.Slack]: "Slack",
+  [AlertChannelType.Webhook]: "Webhook",
+  [AlertChannelType.PagerDuty]: "PagerDuty"
+};
+
+// Lightweight channel reference embedded in an alert (full channel lives in the alertChannels domain).
+export type TAlertChannelSummary = {
+  id: string;
+  name: string;
+  channelType: AlertChannelType;
+  directed: boolean;
+  enabled: boolean;
+};
+
+export type TAlert = {
+  id: string;
+  name: string;
+  description: string | null;
+  resourceType: string;
+  resourceId: string | null;
+  eventType: string;
+  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
+  filters: unknown | null;
+  enabled: boolean;
+  orgId: string;
+  projectId: string | null;
+  channels: TAlertChannelSummary[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TListAlertsDTO = {
+  resourceType: string;
+  projectId?: string;
+  resourceId?: string;
+  enabled?: boolean;
+};
+
+export type TCreateAlertDTO = {
+  name: string;
+  description?: string;
+  resourceType: string;
+  resourceId?: string | null;
+  eventType: string;
+  condition?: unknown;
+  filters?: unknown;
+  enabled?: boolean;
+  projectId?: string | null;
+  channelIds: string[];
+};
+
+export type TUpdateAlertDTO = {
+  alertId: string;
+  // Carried only so mutations can invalidate the right scope; not sent to the API.
+  projectId?: string | null;
+  name?: string;
+  description?: string | null;
+  condition?: unknown;
+  filters?: unknown;
+  enabled?: boolean;
+  channelIds?: string[];
+};
+
+export type TDeleteAlertDTO = {
+  alertId: string;
+  projectId?: string | null;
+};
+
+export const alertFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  description: z.string().max(1000).optional(),
+  resourceType: z.nativeEnum(AlertResourceType),
+  eventType: z.nativeEnum(AlertEventType),
+  alertBeforeValue: z
+    .number({ invalid_type_error: "Enter a number" })
+    .int("Must be a whole number")
+    .min(1, "Must be at least 1")
+    .max(3650, "Too large"),
+  alertBeforeUnit: z.nativeEnum(AlertTimeUnit),
+  dailyReminder: z.boolean().default(false),
+  enabled: z.boolean().default(true),
+  channelIds: z.array(z.string()).min(1, "At least one channel is required")
+});
+
+export type TAlertForm = z.infer<typeof alertFormSchema>;

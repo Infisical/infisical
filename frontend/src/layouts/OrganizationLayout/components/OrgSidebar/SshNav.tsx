@@ -25,7 +25,7 @@ export const SshNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
       activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//,
       submenu: PROJECT_ACCESS_CONTROL_SUBMENU
     },
-    { label: "Alarms", icon: BellRing, pathSuffix: "alarms" },
+    { label: "Alerts", icon: BellRing, pathSuffix: "alerts" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];

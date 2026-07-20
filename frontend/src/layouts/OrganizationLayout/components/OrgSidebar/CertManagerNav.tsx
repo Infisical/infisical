@@ -194,7 +194,7 @@ export const CertManagerNav = ({
       pathSuffix: "access-management",
       activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
-    { label: "Alarms", icon: BellRing, pathSuffix: "alarms" },
+    { label: "Alerts", icon: BellRing, pathSuffix: "alerts" },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings" }
   ];

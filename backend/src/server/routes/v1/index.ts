@@ -11,8 +11,8 @@ import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/
 
 import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
-import { registerAlarmChannelRouter } from "./alarm-channel-router";
-import { registerAlarmRouter } from "./alarm-router";
+import { registerAlertChannelRouter } from "./alert-channel-router";
+import { registerAlertRouter } from "./alert-router";
 import { registerAnnouncementRouter } from "./announcement-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
@@ -140,8 +140,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
   await server.register(registerNotificationRouter, { prefix: "/notifications" });
-  await server.register(registerAlarmRouter, { prefix: "/alarms" });
-  await server.register(registerAlarmChannelRouter, { prefix: "/alarm-channels" });
+  await server.register(registerAlertRouter, { prefix: "/alerts" });
+  await server.register(registerAlertChannelRouter, { prefix: "/alert-channels" });
   await server.register(registerAnnouncementRouter, { prefix: "/announcement" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });

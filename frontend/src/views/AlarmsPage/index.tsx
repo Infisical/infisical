@@ -1,1 +1,0 @@
-export { AlarmsPage } from "./AlarmsPage";

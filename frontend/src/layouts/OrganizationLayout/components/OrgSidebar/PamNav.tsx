@@ -65,7 +65,7 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
             pathSuffix: "access-management",
             activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
           },
-          { label: "Alarms", icon: BellRing, pathSuffix: "alarms" }
+          { label: "Alerts", icon: BellRing, pathSuffix: "alerts" }
         ]
       : [])
   ];

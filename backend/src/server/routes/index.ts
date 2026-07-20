@@ -236,19 +236,19 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
-import { alarmChannelDALFactory } from "@app/services/alarm/alarm-channel-dal";
-import { alarmChannelMembershipDALFactory } from "@app/services/alarm/alarm-channel-membership-dal";
-import { alarmChannelRecipientDALFactory } from "@app/services/alarm/alarm-channel-recipient-dal";
-import { alarmChannelServiceFactory } from "@app/services/alarm/alarm-channel-service";
-import { alarmDALFactory } from "@app/services/alarm/alarm-dal";
-import { alarmEngineFactory } from "@app/services/alarm/alarm-engine";
-import { alarmHistoryDALFactory } from "@app/services/alarm/alarm-history-dal";
-import { alarmProviderRegistryFactory } from "@app/services/alarm/alarm-provider-registry";
-import { alarmQueueServiceFactory } from "@app/services/alarm/alarm-queue";
-import { alarmRecipientResolverFactory } from "@app/services/alarm/alarm-recipient-resolver";
-import { alarmServiceFactory } from "@app/services/alarm/alarm-service";
-import { identityCredentialAlarmDALFactory } from "@app/services/alarm/providers/identity-credential-alarm-dal";
-import { identityCredentialAlarmProviderFactory } from "@app/services/alarm/providers/identity-credential-alarm-provider";
+import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
+import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
+import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { alertChannelServiceFactory } from "@app/services/alert/alert-channel-service";
+import { alertDALFactory } from "@app/services/alert/alert-dal";
+import { alertEngineFactory } from "@app/services/alert/alert-engine";
+import { alertHistoryDALFactory } from "@app/services/alert/alert-history-dal";
+import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider-registry";
+import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
+import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
+import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
+import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -1012,47 +1012,47 @@ export const registerRoutes = async (
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
 
-  const alarmDAL = alarmDALFactory(db);
-  const alarmChannelDAL = alarmChannelDALFactory(db);
-  const alarmChannelRecipientDAL = alarmChannelRecipientDALFactory(db);
-  const alarmChannelMembershipDAL = alarmChannelMembershipDALFactory(db);
-  const alarmHistoryDAL = alarmHistoryDALFactory(db);
-  const alarmProviderRegistry = alarmProviderRegistryFactory();
-  alarmProviderRegistry.register(
-    identityCredentialAlarmProviderFactory({
-      identityCredentialAlarmDAL: identityCredentialAlarmDALFactory(db),
+  const alertDAL = alertDALFactory(db);
+  const alertChannelDAL = alertChannelDALFactory(db);
+  const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
+  const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
+  const alertHistoryDAL = alertHistoryDALFactory(db);
+  const alertProviderRegistry = alertProviderRegistryFactory();
+  alertProviderRegistry.register(
+    identityCredentialAlertProviderFactory({
+      identityCredentialAlertDAL: identityCredentialAlertDALFactory(db),
       permissionService
     })
   );
-  const alarmRecipientResolver = alarmRecipientResolverFactory({ userDAL, userGroupMembershipDAL });
-  const alarmEngine = alarmEngineFactory({
-    alarmChannelDAL,
-    alarmChannelRecipientDAL,
-    alarmHistoryDAL,
-    alarmProviderRegistry,
-    alarmRecipientResolver,
+  const alertRecipientResolver = alertRecipientResolverFactory({ userDAL, userGroupMembershipDAL });
+  const alertEngine = alertEngineFactory({
+    alertChannelDAL,
+    alertChannelRecipientDAL,
+    alertHistoryDAL,
+    alertProviderRegistry,
+    alertRecipientResolver,
     kmsService,
     orgDAL,
     notificationService,
     smtpService
   });
-  const alarmQueue = alarmQueueServiceFactory({
+  const alertQueue = alertQueueServiceFactory({
     cronJob,
     queueService,
-    alarmDAL,
-    alarmProviderRegistry,
-    alarmEngine
+    alertDAL,
+    alertProviderRegistry,
+    alertEngine
   });
-  const alarmService = alarmServiceFactory({
-    alarmDAL,
-    alarmChannelDAL,
-    alarmChannelMembershipDAL,
-    alarmProviderRegistry
+  const alertService = alertServiceFactory({
+    alertDAL,
+    alertChannelDAL,
+    alertChannelMembershipDAL,
+    alertProviderRegistry
   });
-  const alarmChannelService = alarmChannelServiceFactory({
-    alarmChannelDAL,
-    alarmChannelRecipientDAL,
-    alarmChannelMembershipDAL,
+  const alertChannelService = alertChannelServiceFactory({
+    alertChannelDAL,
+    alertChannelRecipientDAL,
+    alertChannelMembershipDAL,
     kmsService,
     permissionService,
     orgDAL,
@@ -3909,7 +3909,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
-  alarmQueue.init();
+  alertQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pamDiscoveryService.init();
@@ -4097,8 +4097,8 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
-    alarm: alarmService,
-    alarmChannel: alarmChannelService,
+    alert: alertService,
+    alertChannel: alertChannelService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

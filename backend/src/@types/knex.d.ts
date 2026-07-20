@@ -41,24 +41,24 @@ import {
   TAiMcpServerUserCredentials,
   TAiMcpServerUserCredentialsInsert,
   TAiMcpServerUserCredentialsUpdate,
-  TAlarmChannelMemberships,
-  TAlarmChannelMembershipsInsert,
-  TAlarmChannelMembershipsUpdate,
-  TAlarmChannelRecipients,
-  TAlarmChannelRecipientsInsert,
-  TAlarmChannelRecipientsUpdate,
-  TAlarmChannels,
-  TAlarmChannelsInsert,
-  TAlarmChannelsUpdate,
-  TAlarmHistory,
-  TAlarmHistoryInsert,
-  TAlarmHistoryTarget,
-  TAlarmHistoryTargetInsert,
-  TAlarmHistoryTargetUpdate,
-  TAlarmHistoryUpdate,
-  TAlarms,
-  TAlarmsInsert,
-  TAlarmsUpdate,
+  TAlertChannelMemberships,
+  TAlertChannelMembershipsInsert,
+  TAlertChannelMembershipsUpdate,
+  TAlertChannelRecipients,
+  TAlertChannelRecipientsInsert,
+  TAlertChannelRecipientsUpdate,
+  TAlertChannels,
+  TAlertChannelsInsert,
+  TAlertChannelsUpdate,
+  TAlertHistory,
+  TAlertHistoryInsert,
+  TAlertHistoryTarget,
+  TAlertHistoryTargetInsert,
+  TAlertHistoryTargetUpdate,
+  TAlertHistoryUpdate,
+  TAlerts,
+  TAlertsInsert,
+  TAlertsUpdate,
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
@@ -1577,27 +1577,27 @@ declare module "knex/types/tables" {
       TResourceMetadataInsert,
       TResourceMetadataUpdate
     >;
-    [TableName.Alarm]: KnexOriginal.CompositeTableType<TAlarms, TAlarmsInsert, TAlarmsUpdate>;
-    [TableName.AlarmChannel]: KnexOriginal.CompositeTableType<
-      TAlarmChannels,
-      TAlarmChannelsInsert,
-      TAlarmChannelsUpdate
+    [TableName.Alert]: KnexOriginal.CompositeTableType<TAlerts, TAlertsInsert, TAlertsUpdate>;
+    [TableName.AlertChannel]: KnexOriginal.CompositeTableType<
+      TAlertChannels,
+      TAlertChannelsInsert,
+      TAlertChannelsUpdate
     >;
-    [TableName.AlarmChannelRecipient]: KnexOriginal.CompositeTableType<
-      TAlarmChannelRecipients,
-      TAlarmChannelRecipientsInsert,
-      TAlarmChannelRecipientsUpdate
+    [TableName.AlertChannelRecipient]: KnexOriginal.CompositeTableType<
+      TAlertChannelRecipients,
+      TAlertChannelRecipientsInsert,
+      TAlertChannelRecipientsUpdate
     >;
-    [TableName.AlarmChannelMembership]: KnexOriginal.CompositeTableType<
-      TAlarmChannelMemberships,
-      TAlarmChannelMembershipsInsert,
-      TAlarmChannelMembershipsUpdate
+    [TableName.AlertChannelMembership]: KnexOriginal.CompositeTableType<
+      TAlertChannelMemberships,
+      TAlertChannelMembershipsInsert,
+      TAlertChannelMembershipsUpdate
     >;
-    [TableName.AlarmHistory]: KnexOriginal.CompositeTableType<TAlarmHistory, TAlarmHistoryInsert, TAlarmHistoryUpdate>;
-    [TableName.AlarmHistoryTarget]: KnexOriginal.CompositeTableType<
-      TAlarmHistoryTarget,
-      TAlarmHistoryTargetInsert,
-      TAlarmHistoryTargetUpdate
+    [TableName.AlertHistory]: KnexOriginal.CompositeTableType<TAlertHistory, TAlertHistoryInsert, TAlertHistoryUpdate>;
+    [TableName.AlertHistoryTarget]: KnexOriginal.CompositeTableType<
+      TAlertHistoryTarget,
+      TAlertHistoryTargetInsert,
+      TAlertHistoryTargetUpdate
     >;
     [TableName.AppConnection]: KnexOriginal.CompositeTableType<
       TAppConnections,
