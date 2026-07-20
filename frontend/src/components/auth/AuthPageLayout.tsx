@@ -50,7 +50,7 @@ export const AuthPageLayout = ({
       <div className="relative z-10 flex flex-1 items-center justify-center px-10 pb-16 xl:px-20">
         <div className="max-w-xl">
           <p className="mb-4 font-jetbrains-mono text-xs tracking-[0.02em] text-project uppercase">
-            Trusted by 40,000+ users
+            Trusted by 400,000+ developers
           </p>
           <h2 className="font-alliance text-3xl leading-tight font-normal text-foreground xl:text-4xl">
             The <span className="text-highlight">all-in-one</span> security stack for developers and
