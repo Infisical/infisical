@@ -13,6 +13,7 @@ import {
   AlertDescription,
   Button,
   Field,
+  FieldError,
   FieldGroup,
   FieldLabel,
   Input
@@ -107,6 +108,9 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
               autoComplete="given-name"
               isError={showDangerState && Boolean(errors.firstName)}
             />
+            {showDangerState && errors.firstName ? (
+              <FieldError>{errors.firstName.message}</FieldError>
+            ) : null}
           </Field>
           <Field data-invalid={showDangerState && Boolean(errors.lastName)}>
             <FieldLabel htmlFor="admin-signup-last-name">Last Name</FieldLabel>
@@ -117,6 +121,9 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
               autoComplete="family-name"
               isError={showDangerState && Boolean(errors.lastName)}
             />
+            {showDangerState && errors.lastName ? (
+              <FieldError>{errors.lastName.message}</FieldError>
+            ) : null}
           </Field>
         </div>
         <Field data-invalid={showDangerState && Boolean(errors.email)}>
@@ -129,6 +136,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
             autoComplete="email"
             isError={showDangerState && Boolean(errors.email)}
           />
+          {showDangerState && errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
         </Field>
         <PasswordField
           id="admin-signup-password"
@@ -149,6 +157,9 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
             autoComplete="new-password"
             isError={showDangerState && Boolean(errors.confirmPassword)}
           />
+          {showDangerState && errors.confirmPassword ? (
+            <FieldError>{errors.confirmPassword.message}</FieldError>
+          ) : null}
         </Field>
       </FieldGroup>
       <Button
