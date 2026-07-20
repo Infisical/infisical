@@ -421,8 +421,8 @@ export const CreatePolicyModal = ({
   });
 
   const resetToggles = (source?: TCertificatePolicy) => {
-    setRestrictSubject(Boolean(source?.subject?.length));
-    setRestrictSans(Boolean(source?.sans?.length));
+    setRestrictSubject(Boolean(source?.subject));
+    setRestrictSans(Boolean(source?.sans));
     setRestrictSignature(Boolean(source?.algorithms?.signature?.length));
     setRestrictKeyAlg(Boolean(source?.algorithms?.keyAlgorithm?.length));
     setRestrictKeyUsages(
@@ -1057,6 +1057,13 @@ export const CreatePolicyModal = ({
                     }}
                   >
                     <div className="space-y-3">
+                      {watchedAttributes.length === 0 && (
+                        <p className="text-xs text-muted">
+                          No attributes configured. Certificates issued under this policy cannot
+                          include any subject attributes. Turn this off to allow any subject
+                          attribute.
+                        </p>
+                      )}
                       {watchedAttributes.map((attr, index) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <div key={`attr-${index}`} className="flex items-start gap-2">
@@ -1146,6 +1153,12 @@ export const CreatePolicyModal = ({
                     }}
                   >
                     <div className="space-y-3">
+                      {watchedSans.length === 0 && (
+                        <p className="text-xs text-muted">
+                          No SANs configured. Certificates issued under this policy cannot include
+                          any subject alternative names. Turn this off to allow any SAN.
+                        </p>
+                      )}
                       {watchedSans.map((san, index) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <div key={`san-${index}`} className="flex items-start gap-2">

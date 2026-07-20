@@ -326,7 +326,7 @@ export const certificatePolicyServiceFactory = ({
     if (request.state) requestAttributes.set(CertSubjectAttributeType.STATE, request.state);
     if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
-    if (subjectPolicies && subjectPolicies.length > 0) {
+    if (subjectPolicies) {
       // Domain components are multi-valued and are validated separately below (like SANs).
       const singleValuedPolicies = subjectPolicies.filter(
         (attrPolicy) => attrPolicy.type !== CertSubjectAttributeType.DOMAIN_COMPONENT
@@ -391,7 +391,6 @@ export const certificatePolicyServiceFactory = ({
         }
       }
     }
-    // No subject policy defined means no subject constraint (allow all)
 
     const domainComponentPolicy = subjectPolicies?.find(
       (attrPolicy) => attrPolicy.type === CertSubjectAttributeType.DOMAIN_COMPONENT
@@ -435,15 +434,16 @@ export const certificatePolicyServiceFactory = ({
           }
         }
       }
-    } else if (subjectPolicies && subjectPolicies.length > 0 && requestDomainComponents.length > 0) {
-      // A subject policy is defined but has no domain_component rule, so DCs aren't permitted.
-      // When no subject policy is defined at all, every subject attribute is allowed (see above).
+    } else if (subjectPolicies && requestDomainComponents.length > 0) {
+      // A subject policy is defined but has no domain_component rule, so DCs aren't
+      // permitted. When no subject policy is defined at all, every subject attribute is allowed.
       errors.push(`${dcFieldName} is not allowed by template policy (not defined in template)`);
     }
 
-    // Validate Subject Alternative Names
+    // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
+    // an empty array means nothing is allowed, so every request SAN below is rejected as uncovered.
     const sansPolicies = template.sans;
-    if (sansPolicies && sansPolicies.length > 0) {
+    if (sansPolicies) {
       const requestSansByType = new Map<string, string[]>();
 
       // Group request SANs by type
@@ -513,7 +513,6 @@ export const certificatePolicyServiceFactory = ({
         }
       }
     }
-    // No SAN policy defined means no SAN constraint (allow all)
 
     // Validate key usages
     const keyUsagePolicy = template.keyUsages;

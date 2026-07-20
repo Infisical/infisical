@@ -443,6 +443,52 @@ describe("CertificatePolicyService", () => {
       expect(result.errors).toContain("organization value 'Forbidden Corp' is denied by template policy");
     });
 
+    it("should treat an empty subject policy as nothing allowed (reject request subject attributes)", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, subject: [] });
+
+      const result = await service.validateCertificateRequest("template-123", validRequest);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("common_name is not allowed by template policy (not defined in template)");
+    });
+
+    it("should treat an undefined subject policy as allow all (no subject constraint)", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, subject: undefined });
+
+      const result = await service.validateCertificateRequest("template-123", validRequest);
+
+      expect(result.isValid).toBe(true);
+    });
+
+    it("should treat an empty SAN policy as nothing allowed (reject request SANs)", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, sans: [] });
+
+      const result = await service.validateCertificateRequest("template-123", validRequest);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("dns_name SAN is not allowed by template policy (not defined in template)");
+    });
+
+    it("should treat an undefined SAN policy as allow all (no SAN constraint)", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, sans: undefined });
+
+      const result = await service.validateCertificateRequest("template-123", validRequest);
+
+      expect(result.isValid).toBe(true);
+    });
+
+    it("should reject domain components when an empty subject policy is defined", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue({ ...sampleTemplate, subject: [] });
+
+      const result = await service.validateCertificateRequest("template-123", {
+        ...validRequest,
+        domainComponents: ["example"]
+      });
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain("domain_component is not allowed by template policy (not defined in template)");
+    });
+
     it("should detect missing required key usages", async () => {
       const invalidRequest = { ...validRequest, keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE] };
 

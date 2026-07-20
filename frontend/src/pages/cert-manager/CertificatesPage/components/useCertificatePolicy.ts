@@ -222,7 +222,9 @@ export const useCertificatePolicy = (
       }
 
       // Handle SAN types. An undefined SAN policy allows every SAN type (allow all).
-      if (templateData.sans && templateData.sans.length > 0) {
+      // A defined SAN policy constrains to exactly its listed types — an empty
+      // array means no SAN is allowed. Only an undefined policy allows all SAN types.
+      if (templateData.sans) {
         const sanTypes: CertSubjectAlternativeNameType[] = [];
         templateData.sans.forEach((sanPolicy: any) => {
           if (!sanTypes.includes(sanPolicy.type)) {
@@ -230,7 +232,7 @@ export const useCertificatePolicy = (
           }
         });
         newConstraints.allowedSanTypes = sanTypes;
-        newConstraints.shouldShowSanSection = true;
+        newConstraints.shouldShowSanSection = sanTypes.length > 0;
       } else {
         newConstraints.allowedSanTypes = [
           CertSubjectAlternativeNameType.DNS_NAME,
@@ -241,17 +243,19 @@ export const useCertificatePolicy = (
         newConstraints.shouldShowSanSection = true;
       }
 
-      newConstraints.shouldShowSubjectSection = true;
-      if (templateData.subject && templateData.subject.length > 0) {
+      // A defined subject policy constrains to exactly its listed types — an
+      // empty array means no subject attribute is allowed. Only an undefined policy allows all.
+      if (templateData.subject) {
         const subjectTypes: CertSubjectAttributeType[] = [];
         templateData.subject.forEach((subjectPolicy: any) => {
           if (!subjectTypes.includes(subjectPolicy.type)) {
             subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
           }
         });
-        newConstraints.allowedSubjectAttributeTypes =
-          subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
+        newConstraints.allowedSubjectAttributeTypes = subjectTypes;
+        newConstraints.shouldShowSubjectSection = subjectTypes.length > 0;
       } else {
+        newConstraints.shouldShowSubjectSection = true;
         // No subject policy allows every subject attribute type (allow all)
         newConstraints.allowedSubjectAttributeTypes = [
           CertSubjectAttributeType.COMMON_NAME,
@@ -319,7 +323,9 @@ export const useCertificatePolicy = (
 
       const currentSubjectAttrs = watch("subjectAttributes");
       if (profileChanged || !currentSubjectAttrs || currentSubjectAttrs.length === 0) {
-        if (defaultSubjectAttrs.length > 0) {
+        if (newConstraints.allowedSubjectAttributeTypes.length === 0) {
+          setValue("subjectAttributes", []);
+        } else if (defaultSubjectAttrs.length > 0) {
           // Filter to only allowed attribute types
           const filteredDefaults = defaultSubjectAttrs.filter((attr) =>
             newConstraints.allowedSubjectAttributeTypes.includes(attr.type)
