@@ -1069,7 +1069,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       // }
 
       const shouldCapture =
-        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" && req.headers["user-agent"] !== "k8-operator";
+        req.query.workspaceId !== "650e71fbae3e6c8572f436d4" &&
+        getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR;
       if (shouldCapture) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
