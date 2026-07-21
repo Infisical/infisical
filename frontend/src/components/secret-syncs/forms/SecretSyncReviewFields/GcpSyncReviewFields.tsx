@@ -31,7 +31,9 @@ export const GcpSyncReviewFields = () => {
         Boolean(destinationConfig.userReplicaLocationIds?.length) && (
           <Detail>
             <DetailLabel>Replica Regions</DetailLabel>
-            <DetailValue>{destinationConfig.userReplicaLocationIds?.join(", ")}</DetailValue>
+            <DetailValue>
+              {destinationConfig.userReplicaLocationIds?.join(", ") ?? destinationConfig.locationId}
+            </DetailValue>
           </Detail>
         )}
     </>

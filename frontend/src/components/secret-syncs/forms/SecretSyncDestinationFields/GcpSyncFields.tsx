@@ -73,7 +73,7 @@ export const GcpSyncFields = () => {
         shouldDirty: false
       });
     }
-  }, [selectedScope, locationId, userReplicaLocationIds, setValue]);
+  }, []);
 
   return (
     <FieldGroup>
