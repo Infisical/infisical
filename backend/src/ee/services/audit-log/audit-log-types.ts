@@ -5743,7 +5743,7 @@ interface SearchSecretsByMetadataEvent {
     filters: { key: string; value: string; operator: string }[];
     tags?: string[];
     numberOfSecrets: number;
-    secretIds: string[];
+    secrets: { id: string; secretKey: string; environment: string; secretPath: string }[];
   };
 }
 

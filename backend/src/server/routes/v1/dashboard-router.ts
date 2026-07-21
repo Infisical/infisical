@@ -152,7 +152,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             filters: filters.map((filter) => ({ key: filter.key, value: filter.value, operator: filter.operator })),
             tags: tagSlugs,
             numberOfSecrets: secrets.length,
-            secretIds: secrets.map((secret) => secret.secretId)
+            secrets: secrets.map((secret) => ({
+              id: secret.secretId,
+              secretKey: secret.secretKey,
+              environment: secret.environment,
+              secretPath: secret.secretPath
+            }))
           }
         }
       });
