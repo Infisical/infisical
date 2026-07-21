@@ -23,7 +23,10 @@ const ENV_KEY = "e2e-search-env";
 const TEAM_KEY = "e2e-search-team";
 const TEST_PATH = "/";
 
-const createSecretWithMetadata = async (dto: { key: string; metadata: { key: string; value: string }[] }) => {
+const createSecretWithMetadata = async (dto: {
+  key: string;
+  metadata: { key: string; value: string; isEncrypted?: boolean }[];
+}) => {
   const res = await testServer.inject({
     method: "POST",
     url: `/api/v3/secrets/raw/${dto.key}`,
@@ -121,13 +124,7 @@ describe("Dashboard - search secrets by metadata", async () => {
     secretCId = secretC.id;
   });
 
-  afterAll(async () => {
-    await Promise.all([
-      deleteSecret({ key: secretKeys.a }),
-      deleteSecret({ key: secretKeys.b }),
-      deleteSecret({ key: secretKeys.c })
-    ]);
-  });
+  afterAll(() => Promise.all(Object.values(secretKeys).map((key) => deleteSecret({ key }))));
 
   test("OR operator returns secrets matching any condition", async () => {
     const secrets = await searchSecretMetadata({
@@ -186,5 +183,110 @@ describe("Dashboard - search secrets by metadata", async () => {
     // only C has env=staging
     expect(matchedIds).toEqual(expect.arrayContaining([secretCId]));
     expect(matchedIds).toEqual(expect.not.arrayContaining([secretAId, secretBId]));
+  });
+});
+
+// distinctive keys so the org-wide search only ever matches the secrets seeded by this block
+const ENC_ENV_KEY = "e2e-search-enc-env";
+const ENC_TEAM_KEY = "e2e-search-enc-team";
+
+describe("Dashboard - search secrets by encrypted metadata", async () => {
+  const secretKeys = {
+    d: "E2E_METADATA_SEARCH_ENC_D",
+    e: "E2E_METADATA_SEARCH_ENC_E",
+    f: "E2E_METADATA_SEARCH_ENC_F"
+  };
+
+  let secretDId = "";
+  let secretEId = "";
+  let secretFId = "";
+
+  beforeAll(async () => {
+    // D -> env=prod, team=payments (both encrypted)
+    // E -> env=prod (plaintext) + team=payments (encrypted) — mixed, exercises the and-across-storage path
+    // F -> env=staging, team=billing (both encrypted)
+    const [secretD, secretE, secretF] = await Promise.all([
+      createSecretWithMetadata({
+        key: secretKeys.d,
+        metadata: [
+          { key: ENC_ENV_KEY, value: "prod", isEncrypted: true },
+          { key: ENC_TEAM_KEY, value: "payments", isEncrypted: true }
+        ]
+      }),
+      createSecretWithMetadata({
+        key: secretKeys.e,
+        metadata: [
+          { key: ENC_ENV_KEY, value: "prod", isEncrypted: false },
+          { key: ENC_TEAM_KEY, value: "payments", isEncrypted: true }
+        ]
+      }),
+      createSecretWithMetadata({
+        key: secretKeys.f,
+        metadata: [
+          { key: ENC_ENV_KEY, value: "staging", isEncrypted: true },
+          { key: ENC_TEAM_KEY, value: "billing", isEncrypted: true }
+        ]
+      })
+    ]);
+
+    secretDId = secretD.id;
+    secretEId = secretE.id;
+    secretFId = secretF.id;
+  });
+
+  afterAll(() => Promise.all(Object.values(secretKeys).map((key) => deleteSecret({ key }))));
+
+  test("OR matches encrypted values by decrypting server-side", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "or",
+      filters: [
+        { key: ENC_ENV_KEY, value: "prod" },
+        { key: ENC_TEAM_KEY, value: "payments" }
+      ]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // D and E both hold env=prod / team=payments; F (staging/billing) matches neither
+    expect(matchedIds).toEqual(expect.arrayContaining([secretDId, secretEId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretFId]));
+
+    // the decrypted value is surfaced in the response, not the ciphertext
+    const secretD = secrets.find((secret) => secret.secretId === secretDId);
+    expect(secretD?.metadata).toEqual(expect.arrayContaining([{ key: ENC_ENV_KEY, value: "prod" }]));
+  });
+
+  test("AND matches every condition, including across mixed plaintext + encrypted rows", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "and",
+      filters: [
+        { key: ENC_ENV_KEY, value: "prod" },
+        { key: ENC_TEAM_KEY, value: "payments" }
+      ]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // D (both encrypted) and E (env plaintext + team encrypted) satisfy both conditions; F does not
+    expect(matchedIds).toEqual(expect.arrayContaining([secretDId, secretEId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretFId]));
+
+    const secretE = secrets.find((secret) => secret.secretId === secretEId);
+    expect(secretE?.metadata).toEqual(
+      expect.arrayContaining([
+        { key: ENC_ENV_KEY, value: "prod" },
+        { key: ENC_TEAM_KEY, value: "payments" }
+      ])
+    );
+  });
+
+  test("does not match a non-matching encrypted value", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "and",
+      filters: [{ key: ENC_TEAM_KEY, value: "billing" }]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // only F has team=billing
+    expect(matchedIds).toEqual(expect.arrayContaining([secretFId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretDId, secretEId]));
   });
 });

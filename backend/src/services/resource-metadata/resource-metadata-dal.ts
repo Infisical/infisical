@@ -27,11 +27,86 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
     });
   };
 
+  const buildScopedSecretMetadataQuery = (knex: Knex, orgId: string, projectId: string) =>
+    knex(TableName.ResourceMetadata)
+      .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+      .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretV2}.folderId`)
+      .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
+      .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
+      .where(`${TableName.ResourceMetadata}.orgId`, orgId)
+      .where(`${TableName.Environment}.projectId`, projectId)
+      .whereNotNull(`${TableName.ResourceMetadata}.secretId`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .where(`${TableName.SecretV2}.type`, SecretType.Shared);
+
+  // Shared step-2 hydration: for the resolved candidate secretIds, fetch the metadata rows matching
+  // `applyMetadataMatch` plus the secret key and tags, and nest into
+  // { secretId, secretKey, folderId, metadata: [{ key, value, encryptedValue }], tags: [{ id, slug }] }.
+  // encryptedValue is always selected (null for plaintext rows); the service decrypts it when present.
+  const hydrateMatchedSecretMetadata = async (
+    knex: Knex,
+    secretIds: string[],
+    applyMetadataMatch: (qb: Knex.QueryBuilder) => void
+  ) => {
+    const rows = await knex(TableName.ResourceMetadata)
+      .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+      .leftJoin(
+        TableName.SecretV2JnTag,
+        `${TableName.SecretV2}.id`,
+        `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+      )
+      .leftJoin(TableName.SecretTag, `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+      .whereIn(`${TableName.ResourceMetadata}.secretId`, secretIds)
+      .where(applyMetadataMatch)
+      .select(
+        db.ref("secretId").withSchema(TableName.ResourceMetadata).as("secretId"),
+        db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+        db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+        db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+        db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue"),
+        db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
+        db.ref("folderId").withSchema(TableName.SecretV2).as("folderId"),
+        db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+        db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+      );
+
+    return sqlNestRelationships({
+      data: rows,
+      key: "secretId",
+      parentMapper: (row) => ({
+        secretId: row.secretId as string,
+        secretKey: row.secretKey,
+        folderId: row.folderId
+      }),
+      childrenMapper: [
+        {
+          key: "metadataId",
+          label: "metadata" as const,
+          mapper: ({ metadataKey, metadataValue, metadataEncryptedValue }) => ({
+            key: metadataKey,
+            value: metadataValue as string | null,
+            encryptedValue: metadataEncryptedValue as Buffer | null
+          })
+        },
+        {
+          key: "tagId",
+          label: "tags" as const,
+          mapper: ({ tagId, tagSlug }) => ({
+            id: tagId,
+            slug: tagSlug
+          })
+        }
+      ]
+    });
+  };
+
   // Project-scoped search of secret metadata. A resource_metadata row holds a single key/value and a
   // secret has many rows, so the and/or combinator is evaluated per secret:
   //  - or  -> a secret matches if any condition matches one of its rows
   //  - and -> a secret matches only if every condition matches some row of that secret
-  // Only plaintext `value` is matched (encrypted metadata values cannot be matched by equality).
+  // Only plaintext `value` is matched here; encrypted values are handled by
+  // searchSecretMetadataWithEncryptedValues.
   const searchSecretMetadata = async (
     { orgId, projectId, filters, operator, limit = MAX_SECRET_METADATA_SEARCH_SECRETS }: TSearchSecretMetadataDALDTO,
     tx?: Knex
@@ -39,18 +114,8 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
     try {
       const knex = tx || db.replicaNode();
 
-      // step 1: resolve the bounded set of matching secret ids (org-scoped, non-soft-deleted, shared).
-      const matchedSecretIdsQuery = knex(TableName.ResourceMetadata)
-        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
-        .join(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretV2}.folderId`)
-        .join(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
-        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Environment}.projectId`)
-        .where(`${TableName.ResourceMetadata}.orgId`, orgId)
-        .where(`${TableName.Environment}.projectId`, projectId)
-        .whereNotNull(`${TableName.ResourceMetadata}.secretId`)
-        .whereNull(`${TableName.Environment}.deleteAfter`)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .where(`${TableName.SecretV2}.type`, SecretType.Shared);
+      // step 1: resolve the bounded set of matching secret ids (scoping enforced by the shared builder).
+      const matchedSecretIdsQuery = buildScopedSecretMetadataQuery(knex, orgId, projectId);
 
       if (operator === SecretMetadataSearchLogicalOperator.And) {
         // and: every condition must match a row of the secret. Drive the scan from the first condition
@@ -85,65 +150,51 @@ export const resourceMetadataDALFactory = (db: TDbClient) => {
       const secretIds = matchedSecretRows.map((row) => row.secretId as string);
       if (!secretIds.length) return [];
 
-      // step 2: hydrate the matched metadata rows + tags + permission context for those secrets, then nest.
-      const rows = await knex(TableName.ResourceMetadata)
-        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
-        .leftJoin(
-          TableName.SecretV2JnTag,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
-        )
-        .leftJoin(
-          TableName.SecretTag,
-          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-          `${TableName.SecretTag}.id`
-        )
-        .whereIn(`${TableName.ResourceMetadata}.secretId`, secretIds)
-        .where(buildMatchesAnyCondition(filters))
-        .select(
-          db.ref("secretId").withSchema(TableName.ResourceMetadata).as("secretId"),
-          db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
-          db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
-          db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
-          db.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
-          db.ref("folderId").withSchema(TableName.SecretV2).as("folderId"),
-          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
-          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
-        );
-
-      const docs = sqlNestRelationships({
-        data: rows,
-        key: "secretId",
-        parentMapper: (row) => ({
-          secretId: row.secretId as string,
-          secretKey: row.secretKey,
-          folderId: row.folderId
-        }),
-        childrenMapper: [
-          {
-            key: "metadataId",
-            label: "metadata" as const,
-            mapper: ({ metadataKey, metadataValue }) => ({
-              key: metadataKey,
-              value: metadataValue as string | null
-            })
-          },
-          {
-            key: "tagId",
-            label: "tags" as const,
-            mapper: ({ tagId, tagSlug }) => ({
-              id: tagId,
-              slug: tagSlug
-            })
-          }
-        ]
-      });
-
+      // step 2: hydrate the matched metadata rows + tags for those secrets, then nest.
+      const docs = await hydrateMatchedSecretMetadata(knex, secretIds, buildMatchesAnyCondition(filters));
       return docs;
     } catch (error) {
       throw new DatabaseError({ error, name: "SearchSecretMetadata" });
     }
   };
 
-  return { ...orm, searchSecretMetadata };
+  // Companion to searchSecretMetadata for encrypted metadata. Encrypted values are stored as
+  // non-deterministic KMS ciphertext, so they cannot be equality-matched in SQL. This query therefore
+  // bounds candidates by KEY only (the requested filter keys) among rows that carry an encryptedValue,
+  // then returns every requested-key row (plaintext `value` + `encryptedValue`) for those secrets so the
+  // service can decrypt and match the value in-app. Plaintext rows are included so an `and` query
+  // satisfied partly by plaintext and partly by encrypted rows still matches after decryption. Kept as a
+  // separate query so the common plaintext path stays untouched, and it returns early (no hydration) when
+  // a project has no encrypted metadata for the requested keys.
+  const searchSecretMetadataWithEncryptedValues = async (
+    { orgId, projectId, filters, limit = MAX_SECRET_METADATA_SEARCH_SECRETS }: TSearchSecretMetadataDALDTO,
+    tx?: Knex
+  ) => {
+    try {
+      const knex = tx || db.replicaNode();
+      const keys = [...new Set(filters.map((filter) => filter.key))];
+
+      // step 1: bounded set of secrets holding at least one encrypted metadata row for a requested key
+      // — narrowed by the (orgId, key) partial index.
+      const matchedSecretRows = await buildScopedSecretMetadataQuery(knex, orgId, projectId)
+        .whereNotNull(`${TableName.ResourceMetadata}.encryptedValue`)
+        .whereIn(`${TableName.ResourceMetadata}.key`, keys)
+        .distinct(`${TableName.ResourceMetadata}.secretId`)
+        .orderBy(`${TableName.ResourceMetadata}.secretId`)
+        .limit(limit);
+
+      const secretIds = matchedSecretRows.map((row) => row.secretId as string);
+      if (!secretIds.length) return [];
+
+      // step 2: hydrate every requested-key row (plaintext value + encryptedValue) + tags for those secrets.
+      const docs = await hydrateMatchedSecretMetadata(knex, secretIds, (qb) => {
+        void qb.whereIn(`${TableName.ResourceMetadata}.key`, keys);
+      });
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "SearchSecretMetadataWithEncryptedValues" });
+    }
+  };
+
+  return { ...orm, searchSecretMetadata, searchSecretMetadataWithEncryptedValues };
 };

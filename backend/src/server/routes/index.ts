@@ -802,12 +802,6 @@ export const registerRoutes = async (
     groupDAL
   });
 
-  const resourceMetadataService = resourceMetadataServiceFactory({
-    resourceMetadataDAL,
-    permissionService,
-    folderDAL
-  });
-
   const assumePrivilegeService = assumePrivilegeServiceFactory({
     permissionService
   });
@@ -970,6 +964,13 @@ export const registerRoutes = async (
     projectDAL,
     hsmService,
     envConfig
+  });
+
+  const resourceMetadataService = resourceMetadataServiceFactory({
+    resourceMetadataDAL,
+    permissionService,
+    folderDAL,
+    kmsService
   });
 
   const externalKmsService = externalKmsServiceFactory({

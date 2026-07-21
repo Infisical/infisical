@@ -18,6 +18,9 @@ export type TSecretMetadataSearchFilter = {
   operator: SecretMetadataSearchOperator;
 };
 
+// A secret's metadata entry after any encrypted value has been decrypted (value is always plaintext here).
+export type TResolvedSecretMetadata = { key: string; value: string };
+
 // DAL input
 export type TSearchSecretMetadataDALDTO = {
   orgId: string;
