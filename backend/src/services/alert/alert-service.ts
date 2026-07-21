@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
@@ -52,6 +53,27 @@ export const alertServiceFactory = ({
     return provider;
   };
 
+  const $toActor = (dto: TGenericPermission): TGenericPermission => ({
+    actor: dto.actor,
+    actorId: dto.actorId,
+    actorAuthMethod: dto.actorAuthMethod,
+    actorOrgId: dto.actorOrgId
+  });
+
+  const $assertAlertPermission = (
+    provider: IResourceAlertProvider,
+    action: AlertPermissionAction,
+    scope: { orgId: string; projectId?: string | null; resourceId?: string | null },
+    dto: TGenericPermission
+  ) =>
+    provider.assertPermission({
+      action,
+      orgId: scope.orgId,
+      projectId: scope.projectId,
+      resourceId: scope.resourceId,
+      actor: $toActor(dto)
+    });
+
   const $validate = (
     provider: IResourceAlertProvider,
     input: { eventType?: string; condition?: unknown },
@@ -94,18 +116,12 @@ export const alertServiceFactory = ({
     const provider = $getProvider(dto.resourceType);
     $validate(provider, dto, { alwaysValidateCondition: true });
 
-    await provider.assertPermission({
-      action: AlertPermissionAction.Create,
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId,
-      resourceId: dto.resourceId,
-      actor: {
-        actor: dto.actor,
-        actorId: dto.actorId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
-      }
-    });
+    await $assertAlertPermission(
+      provider,
+      AlertPermissionAction.Create,
+      { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId: dto.resourceId },
+      dto
+    );
 
     await provider.assertResourceInScope({
       orgId: dto.actorOrgId,
@@ -187,18 +203,12 @@ export const alertServiceFactory = ({
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
 
     const provider = $getProvider(alert.resourceType);
-    await provider.assertPermission({
-      action: AlertPermissionAction.Read,
-      orgId: alert.orgId,
-      projectId: alert.projectId,
-      resourceId: alert.resourceId,
-      actor: {
-        actor: dto.actor,
-        actorId: dto.actorId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
-      }
-    });
+    await $assertAlertPermission(
+      provider,
+      AlertPermissionAction.Read,
+      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId },
+      dto
+    );
 
     const channels = await alertChannelDAL.findByAlertId(alert.id);
     const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
@@ -208,18 +218,12 @@ export const alertServiceFactory = ({
 
   const listAlerts = async (dto: TListAlertsDTO): Promise<TAlertResponse[]> => {
     const provider = $getProvider(dto.resourceType);
-    await provider.assertPermission({
-      action: AlertPermissionAction.Read,
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId,
-      resourceId: dto.resourceId,
-      actor: {
-        actor: dto.actor,
-        actorId: dto.actorId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
-      }
-    });
+    await $assertAlertPermission(
+      provider,
+      AlertPermissionAction.Read,
+      { orgId: dto.actorOrgId, projectId: dto.projectId, resourceId: dto.resourceId },
+      dto
+    );
 
     const alerts = await alertDAL.findActiveByScope({
       orgId: dto.actorOrgId,
@@ -317,18 +321,12 @@ export const alertServiceFactory = ({
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
 
     const provider = $getProvider(alert.resourceType);
-    await provider.assertPermission({
-      action: AlertPermissionAction.Edit,
-      orgId: alert.orgId,
-      projectId: alert.projectId,
-      resourceId: alert.resourceId,
-      actor: {
-        actor: dto.actor,
-        actorId: dto.actorId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
-      }
-    });
+    await $assertAlertPermission(
+      provider,
+      AlertPermissionAction.Edit,
+      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId },
+      dto
+    );
 
     if (dto.condition !== undefined) $validate(provider, { condition: dto.condition });
     if (dto.channels !== undefined && dto.channels.length === 0) {
@@ -368,18 +366,12 @@ export const alertServiceFactory = ({
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
 
     const provider = $getProvider(alert.resourceType);
-    await provider.assertPermission({
-      action: AlertPermissionAction.Delete,
-      orgId: alert.orgId,
-      projectId: alert.projectId,
-      resourceId: alert.resourceId,
-      actor: {
-        actor: dto.actor,
-        actorId: dto.actorId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
-      }
-    });
+    await $assertAlertPermission(
+      provider,
+      AlertPermissionAction.Delete,
+      { orgId: alert.orgId, projectId: alert.projectId, resourceId: alert.resourceId },
+      dto
+    );
 
     await alertDAL.transaction(async (tx) => {
       const channels = await alertChannelDAL.findByAlertId(alert.id, tx);

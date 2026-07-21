@@ -9,7 +9,6 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   resourceKind: string;
   summary: string;
   severity?: string;
-  condition?: string;
   viewUrl: string;
   items: { title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
 }
@@ -115,7 +114,6 @@ AlertNotificationTemplate.PreviewProps = {
   resourceKind: "Identity Credential",
   summary: "2 identity credential(s) expiring within 30d",
   severity: "critical",
-  condition: "30d",
   viewUrl: "https://infisical.com/organizations/org-1/access-management?selectedTab=identities",
   siteUrl: "https://infisical.com",
   items: [

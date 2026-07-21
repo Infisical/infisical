@@ -1,8 +1,5 @@
-import { AxiosError } from "axios";
-
 import { safeRequest } from "@app/lib/validator";
 
-import { RETRYABLE_NETWORK_ERRORS } from "../alert-channel-constants";
 import {
   PagerDutyChannelConfigSchema,
   pagerDutyIntegrationKeyRegex,
@@ -11,7 +8,7 @@ import {
   TAlertPayload,
   TChannelResult
 } from "../alert-channel-types";
-import { retryWithBackoff } from "./alert-channel-retry-fns";
+import { deliverWithRetry, isAxiosErrorRetryable } from "./alert-channel-retry-fns";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 const PAGERDUTY_TIMEOUT = 7 * 1000;
@@ -70,17 +67,6 @@ export const buildPagerDutyEvent = (
   links: [{ href: payload.alert.viewUrl, text: "View in Infisical" }]
 });
 
-const isPagerDutyErrorRetryable = (err: unknown): boolean => {
-  const axiosErr = err as AxiosError;
-  const status = axiosErr.response?.status;
-  if (status === 400) return false;
-  if (status === 429) return true;
-  if (status && status >= 500) return true;
-  if (axiosErr.code && RETRYABLE_NETWORK_ERRORS.includes(axiosErr.code)) return true;
-  if (axiosErr.message?.toLowerCase().includes("timeout")) return true;
-  return false;
-};
-
 const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> => {
   await safeRequest.post(PAGERDUTY_EVENTS_URL, payload, {
     headers: { "Content-Type": "application/json" },
@@ -98,9 +84,9 @@ export const sendPagerDutyNotification = async (ctx: TAlertChannelSendContext): 
 
   const results = await Promise.all(
     ctx.payload.items.map((item) =>
-      retryWithBackoff(
+      deliverWithRetry(
         () => triggerPagerDutyEvent(buildPagerDutyEvent(ctx.payload, item, config.integrationKey)),
-        isPagerDutyErrorRetryable,
+        isAxiosErrorRetryable,
         { channelId: ctx.channelId, channelLabel: "PagerDuty" }
       )
     )

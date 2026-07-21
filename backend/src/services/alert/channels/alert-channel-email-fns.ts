@@ -7,7 +7,7 @@ import {
   TAlertPayload,
   TChannelResult
 } from "../alert-channel-types";
-import { retryWithBackoff } from "./alert-channel-retry-fns";
+import { deliverWithRetry } from "./alert-channel-retry-fns";
 
 const isEmailErrorRetryable = (err: unknown): boolean => {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
@@ -23,7 +23,6 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
   resourceKind: payload.resourceKind,
   summary: payload.summary,
   severity: payload.severity,
-  condition: payload.alert.condition,
   viewUrl: payload.alert.viewUrl,
   items: payload.items.map((item) => ({
     title: item.title,
@@ -53,7 +52,7 @@ export const sendEmailNotification = async (ctx: TAlertChannelSendContext): Prom
   }
   const recipients = [ctx.recipient.email];
 
-  return retryWithBackoff(() => sendEmail(ctx.deps.smtpService, recipients, ctx.payload), isEmailErrorRetryable, {
+  return deliverWithRetry(() => sendEmail(ctx.deps.smtpService, recipients, ctx.payload), isEmailErrorRetryable, {
     channelId: ctx.channelId,
     channelLabel: "email"
   });

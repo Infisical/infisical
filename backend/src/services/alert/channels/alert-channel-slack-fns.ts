@@ -8,7 +8,7 @@ import {
   TAlertSeverity,
   TChannelResult
 } from "../alert-channel-types";
-import { isAxiosErrorRetryable, retryWithBackoff } from "./alert-channel-retry-fns";
+import { deliverWithRetry, isAxiosErrorRetryable } from "./alert-channel-retry-fns";
 
 const MAX_ITEMS_DISPLAYED = 2;
 
@@ -93,7 +93,7 @@ export const sendSlackNotification = async (ctx: TAlertChannelSendContext): Prom
   const config = SlackChannelConfigSchema.parse(ctx.config);
   const payload = buildSlackPayload(ctx.payload);
 
-  return retryWithBackoff(() => triggerSlackWebhook(config.webhookUrl, payload), isAxiosErrorRetryable, {
+  return deliverWithRetry(() => triggerSlackWebhook(config.webhookUrl, payload), isAxiosErrorRetryable, {
     channelId: ctx.channelId,
     channelLabel: "Slack"
   });

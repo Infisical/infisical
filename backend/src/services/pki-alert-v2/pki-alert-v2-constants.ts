@@ -1,11 +1,3 @@
-export const PKI_ALERT_RETRY_CONFIG = { maxRetries: 3, delayMs: 3000 };
+export { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
 
-export const RETRYABLE_NETWORK_ERRORS = [
-  "ECONNREFUSED",
-  "ENOTFOUND",
-  "ETIMEDOUT",
-  "ECONNRESET",
-  "ECONNABORTED",
-  "ENETUNREACH",
-  "EHOSTUNREACH"
-];
+export const PKI_ALERT_RETRY_CONFIG = { maxRetries: 3, delayMs: 3000 };

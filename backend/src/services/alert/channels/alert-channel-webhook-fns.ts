@@ -8,7 +8,7 @@ import {
   TChannelResult,
   WebhookChannelConfigSchema
 } from "../alert-channel-types";
-import { isAxiosErrorRetryable, retryWithBackoff } from "./alert-channel-retry-fns";
+import { deliverWithRetry, isAxiosErrorRetryable } from "./alert-channel-retry-fns";
 
 const ALERT_WEBHOOK_TIMEOUT = 7 * 1000;
 
@@ -81,7 +81,7 @@ export const sendWebhookNotification = async (ctx: TAlertChannelSendContext): Pr
   const config = WebhookChannelConfigSchema.parse(ctx.config);
   const payload = buildWebhookPayload(ctx.payload);
 
-  return retryWithBackoff(
+  return deliverWithRetry(
     () => triggerWebhook({ url: config.url, payload, signingSecret: config.signingSecret }),
     isAxiosErrorRetryable,
     { channelId: ctx.channelId, channelLabel: "webhook" }

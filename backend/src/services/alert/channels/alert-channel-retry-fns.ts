@@ -6,7 +6,7 @@ import { logger } from "@app/lib/logger";
 import { ALERT_CHANNEL_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "../alert-channel-constants";
 import { TChannelResult } from "../alert-channel-types";
 
-export const retryWithBackoff = async (
+export const deliverWithRetry = async (
   fn: () => Promise<void>,
   isRetryable: (err: unknown) => boolean,
   ctx: { channelId: string; channelLabel: string }

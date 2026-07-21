@@ -10,7 +10,7 @@ import { TAlertProviderRegistry } from "./alert-provider-registry";
 type TAlertQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
   queueService: TQueueServiceFactory;
-  alertDAL: Pick<TAlertDALFactory, "findEnabledByResourceType" | "findById">;
+  alertDAL: Pick<TAlertDALFactory, "findEnabledByResourceType" | "findActiveById">;
   alertProviderRegistry: TAlertProviderRegistry;
   alertEngine: Pick<TAlertEngine, "runAlert">;
 };
@@ -56,7 +56,7 @@ export const alertQueueServiceFactory = ({
       QueueName.AlertDispatch,
       async (job) => {
         const { alertId } = job.data;
-        const alert = await alertDAL.findById(alertId);
+        const alert = await alertDAL.findActiveById(alertId);
         if (!alert || !alert.enabled) return;
         await alertEngine.runAlert(alert);
       },

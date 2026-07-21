@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
+import { z } from "zod";
 
 import { ActionProjectType, OrganizationActionScope, TAlertChannels } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -72,6 +73,13 @@ export type TUpdateChannelInTxInput = {
 
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
 
+const ORG_TO_PROJECT_ACTION: Record<OrgPermissionActions, ProjectPermissionActions> = {
+  [OrgPermissionActions.Read]: ProjectPermissionActions.Read,
+  [OrgPermissionActions.Create]: ProjectPermissionActions.Create,
+  [OrgPermissionActions.Edit]: ProjectPermissionActions.Edit,
+  [OrgPermissionActions.Delete]: ProjectPermissionActions.Delete
+};
+
 export const alertChannelServiceFactory = ({
   alertChannelDAL,
   alertChannelRecipientDAL,
@@ -103,10 +111,7 @@ export const alertChannelServiceFactory = ({
         actorOrgId: actor.actorOrgId,
         actionProjectType: ActionProjectType.Any
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        action as unknown as ProjectPermissionActions,
-        ProjectPermissionSub.Settings
-      );
+      ForbiddenError.from(permission).throwUnlessCan(ORG_TO_PROJECT_ACTION[action], ProjectPermissionSub.Settings);
       return;
     }
 
@@ -202,7 +207,10 @@ export const alertChannelServiceFactory = ({
     try {
       definition.configSchema.parse(config);
     } catch (err) {
-      throw new BadRequestError({ message: `Invalid ${channelType} channel config` });
+      const detail = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : null;
+      throw new BadRequestError({
+        message: detail ? `Invalid ${channelType} channel config: ${detail}` : `Invalid ${channelType} channel config`
+      });
     }
   };
 
@@ -219,11 +227,6 @@ export const alertChannelServiceFactory = ({
     return redacted;
   };
 
-  // Three-state merge of secret fields on update:
-  //   - field omitted        -> keep the existing secret
-  //   - field empty / null   -> clear it (valid only for optional secrets; the config schema rejects
-  //                             clearing a required secret)
-  //   - field with a value   -> set the new secret
   const $mergeConfigForUpdate = (
     channelType: string,
     incomingConfig: Record<string, unknown>,
