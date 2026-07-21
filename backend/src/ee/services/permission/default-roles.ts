@@ -476,7 +476,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionProxiedServiceActions.Create,
       ProjectPermissionProxiedServiceActions.Edit,
       ProjectPermissionProxiedServiceActions.Delete,
-      ProjectPermissionProxiedServiceActions.Proxy
+      ProjectPermissionProxiedServiceActions.Proxy,
+      ProjectPermissionProxiedServiceActions.ReportUsage
     ],
     ProjectPermissionSub.ProxiedServices
   );

@@ -31,6 +31,7 @@ import {
   TProxiedServiceCredentialInput,
   TProxiedServiceDashboardCountDTO,
   TProxiedServiceDashboardListDTO,
+  TReportProxiedServiceUsageDTO,
   TUpdateProxiedServiceDTO
 } from "./proxied-service-types";
 
@@ -650,6 +651,33 @@ export const proxiedServiceServiceFactory = ({
     }));
   };
 
+  const reportUsage = async ({ serviceId }: TReportProxiedServiceUsageDTO, actor: OrgServiceActor) => {
+    await $checkLicense(actor.orgId);
+    const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
+    if (!service) {
+      throw new NotFoundError({ message: `Proxied service with ID "${serviceId}" not found` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId: service.projectId
+    });
+    const resolvedSecretPath = await $resolveSecretPath(service.projectId, service.folderId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionProxiedServiceActions.ReportUsage,
+      subject(ProjectPermissionSub.ProxiedServices, {
+        environment: service.environmentSlug,
+        secretPath: resolvedSecretPath
+      })
+    );
+
+    await proxiedServiceDAL.stampLastUsed(serviceId);
+  };
+
   return {
     create,
     list,
@@ -657,6 +685,7 @@ export const proxiedServiceServiceFactory = ({
     getByName,
     updateById,
     deleteById,
+    reportUsage,
     getDashboardProxiedServiceCount,
     getDashboardProxiedServices
   };

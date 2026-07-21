@@ -296,7 +296,8 @@ export enum ProjectPermissionProxiedServiceActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Proxy = "proxy"
+  Proxy = "proxy",
+  ReportUsage = "report-usage"
 }
 
 export enum ProjectPermissionApprovalRequestActions {
