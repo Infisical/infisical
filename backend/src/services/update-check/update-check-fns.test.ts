@@ -1,4 +1,10 @@
-import { isVersionNewer, parseSemanticVersion, TSemanticVersion } from "./update-check-fns";
+import {
+  isUpdateCheckEnabled,
+  isVersionNewer,
+  parseSemanticVersion,
+  TSemanticVersion,
+  TUpdateCheckGateInput
+} from "./update-check-fns";
 
 const version = (value: string): TSemanticVersion => {
   const parsed = parseSemanticVersion(value);
@@ -54,5 +60,38 @@ describe("isVersionNewer", () => {
   test("compares numerically, not lexicographically", () => {
     expect(isVersionNewer(version("0.10.0"), version("0.9.0"))).toBe(true);
     expect(isVersionNewer(version("0.100.0"), version("0.99.0"))).toBe(true);
+  });
+});
+
+describe("isUpdateCheckEnabled", () => {
+  const connectedSelfHosted: TUpdateCheckGateInput = {
+    isInfisicalCloud: false,
+    isCloud: false,
+    isUpdateCheckDisabled: false,
+    hasOfflineLicense: false,
+    platformVersion: "0.162.10"
+  };
+
+  test("enabled for a standard self-hosted instance with a semver version", () => {
+    expect(isUpdateCheckEnabled(connectedSelfHosted)).toBe(true);
+  });
+
+  test("disabled on cloud instances", () => {
+    expect(isUpdateCheckEnabled({ ...connectedSelfHosted, isInfisicalCloud: true })).toBe(false);
+    expect(isUpdateCheckEnabled({ ...connectedSelfHosted, isCloud: true })).toBe(false);
+  });
+
+  test("disabled by the DISABLE_UPDATE_CHECK flag", () => {
+    expect(isUpdateCheckEnabled({ ...connectedSelfHosted, isUpdateCheckDisabled: true })).toBe(false);
+  });
+
+  test("disabled when an offline license is configured", () => {
+    expect(isUpdateCheckEnabled({ ...connectedSelfHosted, hasOfflineLicense: true })).toBe(false);
+  });
+
+  test("disabled without a comparable platform version", () => {
+    expect(isUpdateCheckEnabled({ ...connectedSelfHosted, platformVersion: undefined })).toBe(false);
+    // dedicated instances use commit hash versions
+    expect(isUpdateCheckEnabled({ ...connectedSelfHosted, platformVersion: "a1b2c3d" })).toBe(false);
   });
 });

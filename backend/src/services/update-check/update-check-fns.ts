@@ -17,3 +17,21 @@ export const isVersionNewer = (candidate: TSemanticVersion, current: TSemanticVe
   if (candidate.minor !== current.minor) return candidate.minor > current.minor;
   return candidate.patch > current.patch;
 };
+
+export type TUpdateCheckGateInput = {
+  isInfisicalCloud: boolean;
+  isCloud: boolean;
+  isUpdateCheckDisabled: boolean;
+  hasOfflineLicense: boolean;
+  platformVersion?: string;
+};
+
+// The update check only applies to standard self-hosted instances: cloud deploys
+// continuously, dedicated instances use hash versions that cannot be compared, and
+// an offline license explicitly signals an intentionally air-gapped instance.
+export const isUpdateCheckEnabled = (input: TUpdateCheckGateInput) =>
+  !input.isInfisicalCloud &&
+  !input.isCloud &&
+  !input.isUpdateCheckDisabled &&
+  !input.hasOfflineLicense &&
+  Boolean(parseSemanticVersion(input.platformVersion));

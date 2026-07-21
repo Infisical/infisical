@@ -6,7 +6,7 @@ import { request } from "@app/lib/config/request";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
-import { isVersionNewer, parseSemanticVersion } from "./update-check-fns";
+import { isUpdateCheckEnabled, isVersionNewer, parseSemanticVersion } from "./update-check-fns";
 
 const GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/Infisical/infisical/releases/latest";
 
@@ -21,17 +21,14 @@ export const updateCheckServiceFactory = ({ cronJob, keyStore }: TUpdateCheckSer
   const appCfg = getConfig();
 
   const licenseKeyConfig = getLicenseKeyConfig();
-  const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
-  // The update check only applies to standard self-hosted instances: cloud deploys
-  // continuously, dedicated instances use hash versions that cannot be compared, and
-  // an offline license explicitly signals an intentionally air-gapped instance.
-  const isEnabled =
-    !appCfg.INFISICAL_CLOUD &&
-    !appCfg.isCloud &&
-    !appCfg.DISABLE_UPDATE_CHECK &&
-    !hasOfflineLicense &&
-    Boolean(parseSemanticVersion(appCfg.INFISICAL_PLATFORM_VERSION));
+  const isEnabled = isUpdateCheckEnabled({
+    isInfisicalCloud: appCfg.INFISICAL_CLOUD,
+    isCloud: appCfg.isCloud,
+    isUpdateCheckDisabled: appCfg.DISABLE_UPDATE_CHECK,
+    hasOfflineLicense: Boolean(licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline),
+    platformVersion: appCfg.INFISICAL_PLATFORM_VERSION
+  });
 
   const refreshLatestVersion = async () => {
     try {
@@ -78,12 +75,19 @@ export const updateCheckServiceFactory = ({ cronJob, keyStore }: TUpdateCheckSer
       .catch((err) => logger.debug(err, "update-check: failed to refresh latest platform version at boot"));
   };
 
-  // Returns the latest release version when it is newer than the running instance,
-  // null otherwise (up to date, check disabled, or no data fetched yet).
+  // Returns the latest release version when it is newer than the running instance, null
+  // otherwise (up to date, check disabled, no data fetched yet, or keystore unavailable).
+  // Never throws: the optional indicator must not be able to fail admin config reads.
   const getAvailableUpdateVersion = async () => {
     if (!isEnabled) return null;
 
-    const latestVersion = await keyStore.getItem(KeyStorePrefixes.UpdateCheckLatestVersion);
+    let latestVersion: string | null;
+    try {
+      latestVersion = await keyStore.getItem(KeyStorePrefixes.UpdateCheckLatestVersion);
+    } catch (err) {
+      logger.debug(err, "update-check: failed to read latest platform version from the keystore");
+      return null;
+    }
     if (!latestVersion) return null;
 
     const latest = parseSemanticVersion(latestVersion);
