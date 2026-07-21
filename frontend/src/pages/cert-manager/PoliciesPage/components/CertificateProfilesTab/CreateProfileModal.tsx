@@ -564,17 +564,12 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     const templateAllowsCA =
       isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
 
-    const hasKeyUsagePolicy = Boolean(
-      templateData.keyUsages?.required?.length || templateData.keyUsages?.allowed?.length
-    );
+    const hasKeyUsagePolicy = Boolean(templateData.keyUsages);
     const allowedKeyUsages = hasKeyUsagePolicy
       ? [...(templateData.keyUsages?.required || []), ...(templateData.keyUsages?.allowed || [])]
       : KEY_USAGES_OPTIONS.map((option) => option.value);
 
-    const hasExtendedKeyUsagePolicy = Boolean(
-      templateData.extendedKeyUsages?.required?.length ||
-        templateData.extendedKeyUsages?.allowed?.length
-    );
+    const hasExtendedKeyUsagePolicy = Boolean(templateData.extendedKeyUsages);
     const allowedExtendedKeyUsages = hasExtendedKeyUsagePolicy
       ? [
           ...(templateData.extendedKeyUsages?.required || []),
@@ -600,15 +595,14 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       : certKeyAlgorithms.map((option) => ({ value: option.value as string, label: option.label }));
 
     let allowedSubjectAttributeTypes: CertSubjectAttributeType[];
-    if (templateData.subject && templateData.subject.length > 0) {
+    if (templateData.subject) {
       const subjectTypes: CertSubjectAttributeType[] = [];
       templateData.subject.forEach((subjectPolicy: { type: string }) => {
         if (!subjectTypes.includes(subjectPolicy.type as CertSubjectAttributeType)) {
           subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
         }
       });
-      allowedSubjectAttributeTypes =
-        subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
+      allowedSubjectAttributeTypes = subjectTypes;
     } else {
       allowedSubjectAttributeTypes = Object.values(
         CertSubjectAttributeType
@@ -617,7 +611,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     const shouldShowSubjectSection = true;
 
     let allowedSanTypes: CertSubjectAlternativeNameType[];
-    if (templateData.sans && templateData.sans.length > 0) {
+    if (templateData.sans) {
       const sanTypes: CertSubjectAlternativeNameType[] = [];
       templateData.sans.forEach((sanPolicy: { type: string }) => {
         if (!sanTypes.includes(sanPolicy.type as CertSubjectAlternativeNameType)) {

@@ -425,14 +425,8 @@ export const CreatePolicyModal = ({
     setRestrictSans(Boolean(source?.sans));
     setRestrictSignature(Boolean(source?.algorithms?.signature?.length));
     setRestrictKeyAlg(Boolean(source?.algorithms?.keyAlgorithm?.length));
-    setRestrictKeyUsages(
-      Boolean(source?.keyUsages?.required?.length || source?.keyUsages?.allowed?.length)
-    );
-    setRestrictExtendedKeyUsages(
-      Boolean(
-        source?.extendedKeyUsages?.required?.length || source?.extendedKeyUsages?.allowed?.length
-      )
-    );
+    setRestrictKeyUsages(Boolean(source?.keyUsages));
+    setRestrictExtendedKeyUsages(Boolean(source?.extendedKeyUsages));
     setRestrictValidity(Boolean(source?.validity?.max));
     setConfigureBasicConstraints(Boolean(source?.basicConstraints?.isCA));
     setErrors({});
@@ -779,20 +773,11 @@ export const CreatePolicyModal = ({
     const stepErrors: Record<string, string> = {};
 
     if (step === 1) {
-      if (restrictSubject) {
-        if (!watchedAttributes.length) {
-          stepErrors.subject = "Add at least one subject attribute, or turn off the restriction.";
-        } else if (watchedAttributes.some((a) => !a.value?.[0]?.trim())) {
-          stepErrors.subject = "Every subject attribute needs a value (use * for any).";
-        }
+      if (restrictSubject && watchedAttributes.some((a) => !a.value?.[0]?.trim())) {
+        stepErrors.subject = "Every subject attribute needs a value (use * for any).";
       }
-      if (restrictSans) {
-        if (!watchedSans.length) {
-          stepErrors.sans =
-            "Add at least one subject alternative name, or turn off the restriction.";
-        } else if (watchedSans.some((s) => !s.value?.[0]?.trim())) {
-          stepErrors.sans = "Every subject alternative name needs a value (use * for any).";
-        }
+      if (restrictSans && watchedSans.some((s) => !s.value?.[0]?.trim())) {
+        stepErrors.sans = "Every subject alternative name needs a value (use * for any).";
       }
     }
 
@@ -803,25 +788,6 @@ export const CreatePolicyModal = ({
       }
       if (restrictKeyAlg && !watchedKeyAlgs.length) {
         stepErrors.keyAlgorithm = "Select at least one key algorithm, or turn off the restriction.";
-      }
-    }
-
-    if (step === 3) {
-      if (
-        restrictKeyUsages &&
-        watchedKeyUsages.requiredUsages.length === 0 &&
-        watchedKeyUsages.optionalUsages.length === 0
-      ) {
-        stepErrors.keyUsages =
-          "Set at least one key usage to Require or Allow, or turn off the restriction.";
-      }
-      if (
-        restrictExtendedKeyUsages &&
-        watchedExtendedKeyUsages.requiredUsages.length === 0 &&
-        watchedExtendedKeyUsages.optionalUsages.length === 0
-      ) {
-        stepErrors.extendedKeyUsages =
-          "Set at least one extended key usage to Require or Allow, or turn off the restriction.";
       }
     }
 

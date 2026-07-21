@@ -64,14 +64,10 @@ const Page = () => {
   const projectId = currentProject?.id || "";
 
   const hasAnyEnforcement = Boolean(
-    policy?.subject?.length ||
-      policy?.sans?.length ||
-      policy?.keyUsages?.required?.length ||
-      policy?.keyUsages?.allowed?.length ||
-      policy?.keyUsages?.denied?.length ||
-      policy?.extendedKeyUsages?.required?.length ||
-      policy?.extendedKeyUsages?.allowed?.length ||
-      policy?.extendedKeyUsages?.denied?.length ||
+    policy?.subject ||
+      policy?.sans ||
+      policy?.keyUsages ||
+      policy?.extendedKeyUsages ||
       policy?.algorithms?.signature?.length ||
       policy?.algorithms?.keyAlgorithm?.length ||
       policy?.validity?.max ||

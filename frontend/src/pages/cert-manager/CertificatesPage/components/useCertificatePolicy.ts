@@ -59,6 +59,8 @@ export type TemplateConstraints = {
   allowedExtendedKeyUsages: string[];
   requiredKeyUsages: string[];
   requiredExtendedKeyUsages: string[];
+  restrictKeyUsages: boolean;
+  restrictExtendedKeyUsages: boolean;
   allowedSignatureAlgorithms: string[];
   allowedKeyAlgorithms: string[];
   allowedSanTypes: CertSubjectAlternativeNameType[];
@@ -82,6 +84,8 @@ export const useCertificatePolicy = (
     allowedExtendedKeyUsages: [],
     requiredKeyUsages: [],
     requiredExtendedKeyUsages: [],
+    restrictKeyUsages: false,
+    restrictExtendedKeyUsages: false,
     allowedSignatureAlgorithms: [],
     allowedKeyAlgorithms: [],
     allowedSanTypes: [
@@ -99,16 +103,16 @@ export const useCertificatePolicy = (
   });
 
   const filteredKeyUsages = useMemo(() => {
-    if (constraints.allowedKeyUsages.length === 0) return [...KEY_USAGES_OPTIONS];
+    if (!constraints.restrictKeyUsages) return [...KEY_USAGES_OPTIONS];
     return KEY_USAGES_OPTIONS.filter(({ value }) => constraints.allowedKeyUsages.includes(value));
-  }, [constraints.allowedKeyUsages]);
+  }, [constraints.allowedKeyUsages, constraints.restrictKeyUsages]);
 
   const filteredExtendedKeyUsages = useMemo(() => {
-    if (constraints.allowedExtendedKeyUsages.length === 0) return [...EXTENDED_KEY_USAGES_OPTIONS];
+    if (!constraints.restrictExtendedKeyUsages) return [...EXTENDED_KEY_USAGES_OPTIONS];
     return EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) =>
       constraints.allowedExtendedKeyUsages.includes(value)
     );
-  }, [constraints.allowedExtendedKeyUsages]);
+  }, [constraints.allowedExtendedKeyUsages, constraints.restrictExtendedKeyUsages]);
 
   const availableSignatureAlgorithms = useMemo(() => {
     if (constraints.allowedSignatureAlgorithms.length === 0) {
@@ -142,6 +146,8 @@ export const useCertificatePolicy = (
       allowedExtendedKeyUsages: [],
       requiredKeyUsages: [],
       requiredExtendedKeyUsages: [],
+      restrictKeyUsages: false,
+      restrictExtendedKeyUsages: false,
       allowedSignatureAlgorithms: [],
       allowedKeyAlgorithms: [],
       allowedSanTypes: [
@@ -187,6 +193,8 @@ export const useCertificatePolicy = (
         ],
         requiredKeyUsages: templateData.keyUsages?.required || [],
         requiredExtendedKeyUsages: templateData.extendedKeyUsages?.required || [],
+        restrictKeyUsages: Boolean(templateData.keyUsages),
+        restrictExtendedKeyUsages: Boolean(templateData.extendedKeyUsages),
         allowedSanTypes: [],
         allowedSubjectAttributeTypes: [],
         shouldShowSanSection: true,
