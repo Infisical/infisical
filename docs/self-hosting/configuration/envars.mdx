@@ -54,6 +54,17 @@ Example values:
   this to `false`.
 </ParamField>
 
+<ParamField query="DISABLE_UPDATE_CHECK" type="bool" default="false" optional>
+  Self-hosted instances check GitHub for the latest Infisical release once a week
+  (and once at startup) and show a subtle indicator in the UI when a newer version
+  is available. Set this to `true` to disable the check; no request is made to
+  GitHub when disabled.
+
+  Air-gapped deployments should set this to `true` to suppress the outbound
+  request entirely. Instances configured with an offline license disable the
+  check automatically.
+</ParamField>
+
 <ParamField
   query="ALLOW_INTERNAL_IP_CONNECTIONS"
   type="bool"

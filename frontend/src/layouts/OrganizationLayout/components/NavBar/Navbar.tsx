@@ -66,6 +66,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useServerConfig,
   useSubscription,
   useUser
 } from "@app/context";
@@ -142,6 +143,7 @@ export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { config: serverConfig } = useServerConfig();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
@@ -595,6 +597,7 @@ export const Navbar = () => {
         )}
       </div>
 
+      <VersionBadge />
       {subscription &&
       subscription.slug === SubscriptionPlanTypes.Starter &&
       !subscription.has_used_trial ? (
@@ -624,7 +627,6 @@ export const Navbar = () => {
           {getSubscriptionPlanLabel(subscription)}
         </Badge>
       )}
-      <VersionBadge />
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
@@ -699,6 +701,16 @@ export const Navbar = () => {
                 <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted">
                   <Info className="size-3.5" />
                   Version: {envConfig.PLATFORM_VERSION}
+                  {serverConfig.latestAvailableVersion && (
+                    <a
+                      href="https://github.com/Infisical/infisical/releases"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-info hover:underline"
+                    >
+                      (v{serverConfig.latestAvailableVersion} available)
+                    </a>
+                  )}
                 </div>
               </>
             )}
