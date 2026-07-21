@@ -8,6 +8,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   Button,
   IconButton,
   InfisicalSecretInput,
@@ -470,165 +474,183 @@ export const CreateSecretForm = ({
           )}
         />
 
-        <Controller
-          control={control}
-          name="comment"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel>Comment</FieldLabel>
-              <FieldContent>
-                <TextArea
-                  {...field}
-                  placeholder="Add a comment for this secret..."
-                  className="max-h-32 min-h-[60px] resize-y"
-                />
-              </FieldContent>
-            </Field>
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="tags"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel>Tags</FieldLabel>
-              <FieldContent>
-                {!canReadTags ? (
-                  <FieldDescription>
-                    <span className="flex items-center gap-1.5 text-warning">
-                      <TriangleAlertIcon className="size-3" />
-                      You do not have permission to read tags.
-                    </span>
-                  </FieldDescription>
-                ) : (
-                  <CreatableSelect
-                    isMulti
-                    className="w-full"
-                    placeholder="Select tags to assign to secret..."
-                    isValidNewOption={(v) => slugSchema().safeParse(v).success}
-                    name="tagIds"
-                    isDisabled={!canReadTags}
-                    isLoading={isTagsLoading && canReadTags}
-                    options={tagOptions}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onCreateOption={createNewTag}
-                  />
-                )}
-              </FieldContent>
-            </Field>
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="skipMultilineEncoding"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldLabel className="cursor-pointer">Enable Multiline Encoding</FieldLabel>
-              <Switch variant="project" checked={field.value} onCheckedChange={field.onChange} />
-            </Field>
-          )}
-        />
-
-        <div>
-          <div className="mb-1">
-            <p className="text-sm font-medium">Metadata</p>
-            <p className="mt-1 text-xs text-accent">
-              Encrypted Metadata will not be searchable via the UI or API.
-            </p>
-          </div>
-          <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4">
-            {metadataFields.length === 0 && (
-              <p className="text-center text-sm text-muted">
-                No metadata entries. Click below to add.
-              </p>
-            )}
-            {metadataFields.map((metaField, index) => (
-              <div key={metaField.id} className="flex items-start gap-3">
-                <Field className="flex-1">
-                  {index === 0 && <FieldLabel className="text-xs">Key</FieldLabel>}
-                  <FieldContent>
-                    <Controller
-                      control={control}
-                      name={`metadata.${index}.key`}
-                      render={({ field: inputField, fieldState: { error } }) => (
-                        <>
-                          <Input {...inputField} placeholder="Enter key" className="h-8" />
-                          <FieldError errors={[error]} />
-                        </>
-                      )}
-                    />
-                  </FieldContent>
-                </Field>
-
-                <Field className="flex-1">
-                  {index === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
-                  <FieldContent>
-                    <Controller
-                      control={control}
-                      name={`metadata.${index}.value`}
-                      render={({ field: inputField, fieldState: { error } }) => (
-                        <>
-                          <Input {...inputField} placeholder="Enter value" className="h-8" />
-                          <FieldError errors={[error]} />
-                        </>
-                      )}
-                    />
-                  </FieldContent>
-                </Field>
-
-                <Field className="w-10">
-                  {index === 0 && <FieldLabel className="text-xs">Encrypt</FieldLabel>}
-                  <Controller
-                    control={control}
-                    name={`metadata.${index}.isEncrypted`}
-                    render={({ field: switchField }) => (
-                      <Switch
-                        className="mt-2"
-                        variant="project"
-                        size="default"
-                        checked={switchField.value}
-                        onCheckedChange={switchField.onChange}
-                      />
-                    )}
-                  />
-                </Field>
-
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  type="button"
-                  className={twMerge(
-                    index === 0 ? "mt-6.5" : "mt-0.5",
-                    "transition-transform hover:text-danger"
+        <Accordion type="single" collapsible variant="ghost">
+          <AccordionItem value="advanced" className="border-b-0">
+            <AccordionTrigger>Advanced Options</AccordionTrigger>
+            <AccordionContent>
+              <div className="flex flex-col gap-4">
+                <Controller
+                  control={control}
+                  name="comment"
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel>Comment</FieldLabel>
+                      <FieldContent>
+                        <TextArea
+                          {...field}
+                          placeholder="Add a comment for this secret..."
+                          className="max-h-32 min-h-[60px] resize-y"
+                        />
+                      </FieldContent>
+                    </Field>
                   )}
-                  onClick={() => removeMetadata(index)}
-                >
-                  <TrashIcon className="size-4" />
-                </IconButton>
-              </div>
-            ))}
-          </div>
+                />
 
-          <Button
-            variant="ghost"
-            size="xs"
-            type="button"
-            className="mt-2"
-            onClick={() =>
-              appendMetadata({
-                key: "",
-                value: "",
-                isEncrypted: currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false
-              })
-            }
-          >
-            <PlusIcon className="mr-1 size-4" />
-            Add Entry
-          </Button>
-        </div>
+                <Controller
+                  control={control}
+                  name="tags"
+                  render={({ field }) => (
+                    <Field>
+                      <FieldLabel>Tags</FieldLabel>
+                      <FieldContent>
+                        {!canReadTags ? (
+                          <FieldDescription>
+                            <span className="flex items-center gap-1.5 text-warning">
+                              <TriangleAlertIcon className="size-3" />
+                              You do not have permission to read tags.
+                            </span>
+                          </FieldDescription>
+                        ) : (
+                          <CreatableSelect
+                            isMulti
+                            className="w-full"
+                            placeholder="Select tags to assign to secret..."
+                            isValidNewOption={(v) => slugSchema().safeParse(v).success}
+                            name="tagIds"
+                            isDisabled={!canReadTags}
+                            isLoading={isTagsLoading && canReadTags}
+                            options={tagOptions}
+                            value={field.value}
+                            onChange={field.onChange}
+                            onCreateOption={createNewTag}
+                          />
+                        )}
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="skipMultilineEncoding"
+                  render={({ field }) => (
+                    <Field orientation="horizontal">
+                      <FieldLabel className="cursor-pointer">Enable Multiline Encoding</FieldLabel>
+                      <Switch
+                        variant="project"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+
+                <div>
+                  <div className="mb-1">
+                    <p className="text-sm font-medium">Metadata</p>
+                    <p className="mt-1 text-xs text-accent">
+                      Encrypted Metadata will not be searchable via the UI or API.
+                    </p>
+                  </div>
+                  <div className="flex max-h-64 thin-scrollbar flex-col gap-3 overflow-y-auto rounded-md border border-border bg-container/50 p-4">
+                    {metadataFields.length === 0 && (
+                      <p className="text-center text-sm text-muted">
+                        No metadata entries. Click below to add.
+                      </p>
+                    )}
+                    {metadataFields.map((metaField, index) => (
+                      <div key={metaField.id} className="flex items-start gap-3">
+                        <Field className="flex-1">
+                          {index === 0 && <FieldLabel className="text-xs">Key</FieldLabel>}
+                          <FieldContent>
+                            <Controller
+                              control={control}
+                              name={`metadata.${index}.key`}
+                              render={({ field: inputField, fieldState: { error } }) => (
+                                <>
+                                  <Input {...inputField} placeholder="Enter key" className="h-8" />
+                                  <FieldError errors={[error]} />
+                                </>
+                              )}
+                            />
+                          </FieldContent>
+                        </Field>
+
+                        <Field className="flex-1">
+                          {index === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
+                          <FieldContent>
+                            <Controller
+                              control={control}
+                              name={`metadata.${index}.value`}
+                              render={({ field: inputField, fieldState: { error } }) => (
+                                <>
+                                  <Input
+                                    {...inputField}
+                                    placeholder="Enter value"
+                                    className="h-8"
+                                  />
+                                  <FieldError errors={[error]} />
+                                </>
+                              )}
+                            />
+                          </FieldContent>
+                        </Field>
+
+                        <Field className="w-10">
+                          {index === 0 && <FieldLabel className="text-xs">Encrypt</FieldLabel>}
+                          <Controller
+                            control={control}
+                            name={`metadata.${index}.isEncrypted`}
+                            render={({ field: switchField }) => (
+                              <Switch
+                                className="mt-2"
+                                variant="project"
+                                size="default"
+                                checked={switchField.value}
+                                onCheckedChange={switchField.onChange}
+                              />
+                            )}
+                          />
+                        </Field>
+
+                        <IconButton
+                          variant="ghost"
+                          size="xs"
+                          type="button"
+                          className={twMerge(
+                            index === 0 ? "mt-6.5" : "mt-0.5",
+                            "transition-transform hover:text-danger"
+                          )}
+                          onClick={() => removeMetadata(index)}
+                        >
+                          <TrashIcon className="size-4" />
+                        </IconButton>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    type="button"
+                    className="mt-2"
+                    onClick={() =>
+                      appendMetadata({
+                        key: "",
+                        value: "",
+                        isEncrypted:
+                          currentProject?.enforceEncryptedSecretManagerSecretMetadata ?? false
+                      })
+                    }
+                  >
+                    <PlusIcon className="mr-1 size-4" />
+                    Add Entry
+                  </Button>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
       <SheetFooter className="border-t">
         <Button isPending={isSubmitting} isDisabled={isSubmitting} variant="project" type="submit">
