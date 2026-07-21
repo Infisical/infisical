@@ -40,7 +40,8 @@ import { AuthPagePanel } from "./AuthPagePanel";
 const createUserInfoFormSchema = (isInvite: boolean, passwordPolicy: TPasswordPolicy) =>
   z
     .object({
-      name: z.string().min(1, "Please, specify your name"),
+      firstName: z.string().trim().min(1, "First name is required"),
+      lastName: z.string().trim().optional(),
       organizationName: isInvite ? z.string().optional() : GenericResourceNameSchema,
       password: createPasswordSchema(passwordPolicy),
       confirmPassword: z.string().min(1, "Please confirm your password"),
@@ -81,7 +82,8 @@ export default function UserInfoStep({
     resolver: zodResolver(createUserInfoFormSchema(isInvite, config.passwordPolicy)),
     mode: "onChange",
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       organizationName: "",
       password: "",
       confirmPassword: "",
@@ -120,8 +122,8 @@ export default function UserInfoStep({
       type: "email",
       email,
       password: formData.password,
-      firstName: formData.name.split(" ")[0],
-      lastName: formData.name.split(" ").slice(1).join(" "),
+      firstName: formData.firstName,
+      lastName: formData.lastName ?? "",
       organizationName: formData.organizationName || undefined,
       attributionSource: formData.attributionSource,
       hubspotUtk: getHubSpotUtk()
@@ -168,21 +170,38 @@ export default function UserInfoStep({
         <CardContent className="flex flex-col gap-4">
           {!isAttributionStep && (
             <>
-              <Field data-invalid={showDangerState && Boolean(errors.name)}>
-                <FieldLabel className="sr-only" htmlFor="signup-name">
-                  Your Name
-                </FieldLabel>
-                <Input
-                  {...register("name")}
-                  id="signup-name"
-                  placeholder="Your Name"
-                  autoComplete="name"
-                  isError={showDangerState && Boolean(errors.name)}
-                />
-                {showDangerState && errors.name ? (
-                  <FieldError>{errors.name.message}</FieldError>
-                ) : null}
-              </Field>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
+                  <FieldLabel className="sr-only" htmlFor="signup-first-name">
+                    First Name
+                  </FieldLabel>
+                  <Input
+                    {...register("firstName")}
+                    id="signup-first-name"
+                    placeholder="First Name"
+                    autoComplete="given-name"
+                    isError={showDangerState && Boolean(errors.firstName)}
+                  />
+                  {showDangerState && errors.firstName ? (
+                    <FieldError>{errors.firstName.message}</FieldError>
+                  ) : null}
+                </Field>
+                <Field data-invalid={showDangerState && Boolean(errors.lastName)}>
+                  <FieldLabel className="sr-only" htmlFor="signup-last-name">
+                    Last Name
+                  </FieldLabel>
+                  <Input
+                    {...register("lastName")}
+                    id="signup-last-name"
+                    placeholder="Last Name"
+                    autoComplete="family-name"
+                    isError={showDangerState && Boolean(errors.lastName)}
+                  />
+                  {showDangerState && errors.lastName ? (
+                    <FieldError>{errors.lastName.message}</FieldError>
+                  ) : null}
+                </Field>
+              </div>
               {!isInvite && (
                 <Field data-invalid={showOrganizationNameError}>
                   <FieldLabel className="sr-only" htmlFor="signup-organization-name">

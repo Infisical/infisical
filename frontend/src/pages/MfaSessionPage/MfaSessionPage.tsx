@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useParams } from "@tanstack/react-router";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v2";
@@ -52,6 +54,12 @@ const codeInputPropsPhone = {
     borderColor: "#2d2f33"
   }
 } as const;
+
+const MfaAuthPage = ({ children }: { children: ReactNode }) => (
+  <AuthPageLayout contentClassName="max-w-2xl" showFooter={false}>
+    <AuthPagePanel className="flex flex-col items-center">{children}</AuthPagePanel>
+  </AuthPageLayout>
+);
 
 export const MfaSessionPage = () => {
   const { mfaSessionId } = useParams({ strict: false }) as { mfaSessionId: string };
@@ -195,55 +203,39 @@ export const MfaSessionPage = () => {
 
   if (isStatusError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800 bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
-          <div className="mb-4 flex justify-center">
-            <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-          </div>
-          <div className="mb-6 text-center">
-            <h2 className="mb-3 text-xl font-medium text-red-400">Session Expired</h2>
-            <p className="text-bunker-300">
-              This MFA session has expired or is invalid. Please try your action again.
-            </p>
-          </div>
+      <MfaAuthPage>
+        <div className="mb-6 text-center">
+          <h2 className="mb-3 text-xl font-medium text-red-400">Session Expired</h2>
+          <p className="text-bunker-300">
+            This MFA session has expired or is invalid. Please try your action again.
+          </p>
         </div>
-      </div>
+      </MfaAuthPage>
     );
   }
 
   if (!sessionStatus) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800 bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <div className="text-center">
-          <div className="mb-4 text-bunker-300">Loading...</div>
-        </div>
-      </div>
+      <MfaAuthPage>
+        <div className="mb-4 text-center text-bunker-300">Loading...</div>
+      </MfaAuthPage>
     );
   }
 
   if (sessionStatus.status === MfaSessionStatus.ACTIVE) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800 bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
-          <div className="mb-4 flex justify-center">
-            <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-          </div>
-          <div className="mb-6 text-center">
-            <h2 className="mb-3 text-xl font-medium text-bunker-50">Verification Complete</h2>
-            <p className="text-bunker-300">This window will close automatically...</p>
-          </div>
+      <MfaAuthPage>
+        <div className="mb-6 text-center">
+          <h2 className="mb-3 text-xl font-medium text-bunker-50">Verification Complete</h2>
+          <p className="text-bunker-300">This window will close automatically...</p>
         </div>
-      </div>
+      </MfaAuthPage>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800 bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-      <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
-        <div className="mb-4 flex justify-center">
-          <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-        </div>
-
+    <MfaAuthPage>
+      <div className="w-full">
         <div className="mb-8 text-center">
           <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
@@ -323,6 +315,6 @@ export const MfaSessionPage = () => {
           </form>
         )}
       </div>
-    </div>
+    </MfaAuthPage>
   );
 };

@@ -23,10 +23,10 @@ export const PASSWORD_POLICY = {
   requirements: [
     {
       code: "minimumLength",
-      patterns: [String.raw`^[\s\S]{10,}$`],
+      patterns: [String.raw`^[\s\S]{14,}$`],
       shouldMatch: true,
-      message: "At least 10 characters",
-      validationMessage: "Password must contain at least 10 characters",
+      message: "At least 14 characters",
+      validationMessage: "Password must contain at least 14 characters",
       isPrimary: true
     },
     {

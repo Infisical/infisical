@@ -2,18 +2,24 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
+import { Check, Eye, EyeOff, X } from "lucide-react";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
   Alert,
   AlertDescription,
+  AnimatedCollapse,
   Button,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  Input
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useCreateAdminUser } from "@app/hooks/api";
@@ -31,6 +37,7 @@ type AdminSignUpFormProps = {
 
 export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   const [formError, setFormError] = useState<string>();
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { config } = useServerConfig();
   const { mutateAsync: createAdminUser } = useCreateAdminUser();
   const {
@@ -57,6 +64,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
     password,
     policy: config.passwordPolicy
   });
+  const confirmPassword = watch("confirmPassword");
 
   const onSubmit = async ({ confirmPassword: _, ...values }: AdminSignUpFormData) => {
     setFormError(undefined);
@@ -87,10 +95,11 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   const showDangerState = submitCount > 0;
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
+  const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const canSubmit = isPasswordValidated && !isSubmitting;
 
   return (
-    <form className="flex flex-col gap-5" noValidate onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
       {formError && (
         <Alert variant="danger">
           <AlertDescription>{formError}</AlertDescription>
@@ -99,11 +108,13 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
       <FieldGroup>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
-            <FieldLabel htmlFor="admin-signup-first-name">First Name</FieldLabel>
+            <FieldLabel className="sr-only" htmlFor="admin-signup-first-name">
+              First Name
+            </FieldLabel>
             <Input
               {...register("firstName")}
               id="admin-signup-first-name"
-              placeholder="Jane"
+              placeholder="First Name"
               autoComplete="given-name"
               isError={showDangerState && Boolean(errors.firstName)}
             />
@@ -112,11 +123,13 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
             ) : null}
           </Field>
           <Field data-invalid={showDangerState && Boolean(errors.lastName)}>
-            <FieldLabel htmlFor="admin-signup-last-name">Last Name</FieldLabel>
+            <FieldLabel className="sr-only" htmlFor="admin-signup-last-name">
+              Last Name
+            </FieldLabel>
             <Input
               {...register("lastName")}
               id="admin-signup-last-name"
-              placeholder="Doe"
+              placeholder="Last Name"
               autoComplete="family-name"
               isError={showDangerState && Boolean(errors.lastName)}
             />
@@ -126,12 +139,14 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
           </Field>
         </div>
         <Field data-invalid={showDangerState && Boolean(errors.email)}>
-          <FieldLabel htmlFor="admin-signup-email">Email</FieldLabel>
+          <FieldLabel className="sr-only" htmlFor="admin-signup-email">
+            Email
+          </FieldLabel>
           <Input
             {...register("email")}
             id="admin-signup-email"
             type="email"
-            placeholder="you@company.com"
+            placeholder="Email"
             autoComplete="email"
             isError={showDangerState && Boolean(errors.email)}
           />
@@ -147,30 +162,61 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
           error={showDangerState ? errors.password : undefined}
           submitCount={submitCount}
         />
-        <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
-          <FieldLabel htmlFor="admin-signup-confirm-password">Confirm Password</FieldLabel>
-          <Input
-            {...register("confirmPassword")}
-            id="admin-signup-confirm-password"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="new-password"
-            isError={showDangerState && Boolean(errors.confirmPassword)}
-          />
-          {showDangerState && errors.confirmPassword ? (
-            <FieldError>{errors.confirmPassword.message}</FieldError>
-          ) : null}
-        </Field>
+        <AnimatedCollapse
+          isOpen={isPasswordValidated}
+          contentClassName={isPasswordValidated ? "overflow-visible" : undefined}
+        >
+          <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
+            <FieldLabel htmlFor="admin-signup-confirm-password">Confirm Password</FieldLabel>
+            <InputGroup>
+              <InputGroupInput
+                {...register("confirmPassword")}
+                id="admin-signup-confirm-password"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                aria-invalid={showDangerState && Boolean(errors.confirmPassword)}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  onClick={() => setShowConfirmPassword((current) => !current)}
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide password confirmation"
+                      : "Show password confirmation"
+                  }
+                >
+                  {showConfirmPassword ? <EyeOff /> : <Eye />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <AnimatedCollapse isOpen={confirmPassword.length > 0}>
+              <div className="flex items-start gap-2 pt-1 text-xs" aria-live="polite">
+                {doPasswordsMatch ? (
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-success" />
+                ) : (
+                  <X className="mt-0.5 size-3.5 shrink-0 text-danger" />
+                )}
+                <span className={doPasswordsMatch ? "text-muted" : "text-danger"}>
+                  {doPasswordsMatch ? "Passwords match" : "Passwords do not match"}
+                </span>
+              </div>
+            </AnimatedCollapse>
+            {showDangerState && errors.confirmPassword ? (
+              <FieldError>{errors.confirmPassword.message}</FieldError>
+            ) : null}
+          </Field>
+        </AnimatedCollapse>
       </FieldGroup>
       <Button
         type="submit"
-        variant="neutral"
+        variant="project"
         size="lg"
         isFullWidth
         isPending={isSubmitting}
         isDisabled={!canSubmit}
       >
-        Create Super Admin Account
+        Create Super Admin
       </Button>
     </form>
   );

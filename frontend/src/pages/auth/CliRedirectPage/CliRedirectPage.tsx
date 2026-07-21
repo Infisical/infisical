@@ -2,6 +2,8 @@ import { Helmet } from "react-helmet";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { IconButton, SecretInput } from "@app/components/v2";
 import { SessionStorageKeys } from "@app/const";
 import { useTimedReset } from "@app/hooks";
@@ -35,22 +37,12 @@ export const CliRedirectPage = () => {
   };
 
   return (
-    <div className="flex flex-col justify-between bg-bunker-800 md:h-screen">
+    <AuthPageLayout contentClassName="max-w-xl">
       <Helmet>
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="flex h-screen w-screen flex-col items-center justify-center space-y-4 text-gray-200">
-        <div className="mb-4 flex justify-center">
-          <img
-            src="/images/gradientLogo.svg"
-            style={{
-              height: "90px",
-              width: "120px"
-            }}
-            alt="Infisical Logo"
-          />
-        </div>
+      <AuthPagePanel className="flex flex-col items-center space-y-4 text-gray-200">
         {cliToken ? (
           <>
             <div className="pb-4">
@@ -91,7 +83,7 @@ export const CliRedirectPage = () => {
             </p>
           </>
         )}
-      </div>
-    </div>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };

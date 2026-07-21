@@ -33,9 +33,11 @@ export const SignUpPage = () => {
       </Helmet>
       <AuthPagePanel>
         <CardHeader className="mb-6 gap-2">
-          <CardTitle className="font-alliance text-2xl font-normal">Welcome to Infisical</CardTitle>
+          <CardTitle className="font-alliance text-2xl font-normal">
+            Set up your Infisical instance
+          </CardTitle>
           <CardDescription className="font-alliance text-base">
-            Create your first Super Admin account
+            Create a local Super Admin account
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,46 +1,39 @@
 import { useState } from "react";
-import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { ChevronLeft } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, ChevronLeft, Eye, EyeOff, X } from "lucide-react";
+import { z } from "zod";
 
-import { checkIsPasswordBreached } from "@app/components/utilities/checks/password/checkIsPasswordBreached";
+import { PasswordField } from "@app/components/auth/PasswordField";
+import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
+import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
-  escapeCharRegex,
-  letterCharRegex,
-  lowEntropyRegexes,
-  numAndSpecialCharRegex,
-  repeatedCharRegex
-} from "@app/components/utilities/checks/password/passwordRegexes";
-import { FormControl, Input } from "@app/components/v2";
-import { Button } from "@app/components/v3";
+  AnimatedCollapse,
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput
+} from "@app/components/v3";
+import { useServerConfig } from "@app/context";
 import { useResetPasswordV2 } from "@app/hooks/api";
+import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
-type PasswordErrors = {
-  tooShort: boolean;
-  tooLong: boolean;
-  noLetterChar: boolean;
-  noNumOrSpecialChar: boolean;
-  repeatedChar: boolean;
-  escapeChar: boolean;
-  lowEntropy: boolean;
-  breached: boolean;
-};
+const createSchema = (passwordPolicy: TPasswordPolicy) =>
+  z
+    .object({
+      password: createPasswordSchema(passwordPolicy),
+      confirmPassword: z.string().min(1, "Please confirm your password")
+    })
+    .refine(({ confirmPassword, password }) => confirmPassword === password, {
+      message: "Passwords do not match",
+      path: ["confirmPassword"]
+    });
 
-const validatePassword = (password: string): Omit<PasswordErrors, "breached"> => {
-  return {
-    tooShort: password.length < 14,
-    tooLong: password.length > 100,
-    noLetterChar: !letterCharRegex.test(password),
-    noNumOrSpecialChar: !numAndSpecialCharRegex.test(password),
-    repeatedChar: repeatedCharRegex.test(password),
-    escapeChar: escapeCharRegex.test(password),
-    lowEntropy: lowEntropyRegexes.some((regex) => regex.test(password))
-  };
-};
-
-const hasValidationErrors = (errors: PasswordErrors): boolean => {
-  return Object.values(errors).some(Boolean);
-};
+type FormData = z.infer<ReturnType<typeof createSchema>>;
 
 type Props = {
   verificationToken: string;
@@ -49,96 +42,52 @@ type Props = {
 };
 
 export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Props) => {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({
-    tooShort: false,
-    tooLong: false,
-    noLetterChar: false,
-    noNumOrSpecialChar: false,
-    repeatedChar: false,
-    escapeChar: false,
-    lowEntropy: false,
-    breached: false
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { config } = useServerConfig();
+  const {
+    formState: { errors, isSubmitting, submitCount },
+    handleSubmit,
+    register,
+    setError,
+    watch
+  } = useForm<FormData>({
+    resolver: zodResolver(createSchema(config.passwordPolicy)),
+    mode: "onChange",
+    defaultValues: { password: "", confirmPassword: "" }
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const password = watch("password");
+  const confirmPassword = watch("confirmPassword");
+  const { breachStatus, validatePassword } = usePasswordBreachCheck({
+    password,
+    policy: config.passwordPolicy
+  });
+  const { mutateAsync: resetPasswordV2, isPending } = useResetPasswordV2();
 
-  const passwordsMatch = password === confirmPassword;
-  const showConfirmError = confirmPassword.length > 0 && !passwordsMatch;
-
-  const { mutateAsync: resetPasswordV2, isPending: isLoadingV2 } = useResetPasswordV2();
-
-  const handlePasswordChange = (value: string) => {
-    setPassword(value);
-    const errors = validatePassword(value);
-    setPasswordErrors((prev) => ({ ...prev, ...errors }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate and check for breached password on submit
-    const errors = validatePassword(password);
-    const isBreached = await checkIsPasswordBreached(password);
-    const finalErrors = { ...errors, breached: isBreached };
-    setPasswordErrors(finalErrors);
-
-    if (hasValidationErrors(finalErrors) || !passwordsMatch) return;
-
-    setIsSubmitting(true);
-
-    try {
-      await resetPasswordV2({
-        newPassword: password,
-        verificationToken
+  const handlePasswordReset = async ({ password: nextPassword }: FormData) => {
+    const latestBreachStatus = await validatePassword(nextPassword);
+    if (latestBreachStatus === "breached") {
+      setError("password", {
+        type: "validate",
+        message: "This password was found in a known data breach."
       });
-      onComplete();
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+
+    await resetPasswordV2({
+      newPassword: nextPassword,
+      verificationToken
+    });
+    onComplete();
   };
 
-  const isPasswordError = hasValidationErrors(passwordErrors);
-  const isFormLoading = isSubmitting || isLoadingV2;
-
-  const validationRules = [
-    { key: "tooShort", label: "at least 14 characters", hasError: passwordErrors.tooShort },
-    { key: "tooLong", label: "at most 100 characters", hasError: passwordErrors.tooLong },
-    {
-      key: "noLetterChar",
-      label: "at least 1 letter character",
-      hasError: passwordErrors.noLetterChar
-    },
-    {
-      key: "noNumOrSpecialChar",
-      label: "at least 1 number or special character",
-      hasError: passwordErrors.noNumOrSpecialChar
-    },
-    {
-      key: "repeatedChar",
-      label: "at most 3 repeated, consecutive characters",
-      hasError: passwordErrors.repeatedChar
-    },
-    {
-      key: "escapeChar",
-      label: "No escape characters allowed.",
-      hasError: passwordErrors.escapeChar
-    },
-    {
-      key: "lowEntropy",
-      label: "Password contains personal info.",
-      hasError: passwordErrors.lowEntropy
-    },
-    {
-      key: "breached",
-      label: "Password was found in a data breach.",
-      hasError: passwordErrors.breached
-    }
-  ];
+  const isLoading = isSubmitting || isPending;
+  const showDangerState = submitCount > 0;
+  const isPasswordValidated = breachStatus === "safe" || breachStatus === "unavailable";
+  const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(handlePasswordReset)}
       className="mx-auto flex w-full max-w-md flex-col items-center justify-center"
     >
       <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
@@ -147,51 +96,71 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
       <p className="w-max justify-center text-center text-sm text-gray-400">
         Make sure you save it somewhere safe.
       </p>
-      <FormControl
-        className="mt-8 w-full"
-        label="New Password"
-        isRequired
-        isError={isPasswordError}
-      >
-        <Input
+      <div className="mt-8 w-full">
+        <PasswordField
+          id="account-recovery-password"
           value={password}
-          onChange={(e) => handlePasswordChange(e.target.value)}
-          type="password"
+          policy={config.passwordPolicy}
+          breachStatus={breachStatus}
+          registration={register("password")}
+          error={errors.password}
+          submitCount={submitCount}
         />
-      </FormControl>
-      <FormControl
+      </div>
+      <AnimatedCollapse
+        isOpen={isPasswordValidated}
         className="w-full"
-        label="Confirm Password"
-        isRequired
-        isError={showConfirmError}
-        errorText="Passwords do not match"
+        contentClassName={isPasswordValidated ? "overflow-visible" : undefined}
       >
-        <Input
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          type="password"
-        />
-      </FormControl>
-      <Button type="submit" isFullWidth isPending={isFormLoading} isDisabled={isFormLoading}>
+        <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
+          <FieldLabel htmlFor="account-recovery-confirm-password">Confirm Password</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              {...register("confirmPassword")}
+              id="account-recovery-confirm-password"
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              aria-invalid={showDangerState && Boolean(errors.confirmPassword)}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                onClick={() => setShowConfirmPassword((current) => !current)}
+                aria-label={
+                  showConfirmPassword ? "Hide password confirmation" : "Show password confirmation"
+                }
+              >
+                {showConfirmPassword ? <EyeOff /> : <Eye />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+          <AnimatedCollapse isOpen={confirmPassword.length > 0}>
+            <div className="flex items-start gap-2 pt-1 text-xs" aria-live="polite">
+              {doPasswordsMatch ? (
+                <Check className="mt-0.5 size-3.5 shrink-0 text-success" />
+              ) : (
+                <X className="mt-0.5 size-3.5 shrink-0 text-danger" />
+              )}
+              <span className={doPasswordsMatch ? "text-muted" : "text-danger"}>
+                {doPasswordsMatch ? "Passwords match" : "Passwords do not match"}
+              </span>
+            </div>
+          </AnimatedCollapse>
+          {showDangerState && errors.confirmPassword ? (
+            <FieldError>{errors.confirmPassword.message}</FieldError>
+          ) : null}
+        </Field>
+      </AnimatedCollapse>
+      <Button
+        type="submit"
+        isFullWidth
+        isPending={isLoading}
+        isDisabled={isLoading || breachStatus === "checking" || breachStatus === "breached"}
+      >
         Change Password
       </Button>
-      <div className="mt-4 w-full rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4 drop-shadow-sm">
-        <div className="mb-1 ml-2 text-sm text-gray-300">Password requirements</div>
-        {validationRules.map((rule) => (
-          <div key={rule.key} className="mt-2 ml-2 flex flex-row items-center justify-start">
-            {rule.hasError ? (
-              <FontAwesomeIcon icon={faXmark} className="mr-2.5 text-lg text-red" />
-            ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-green" />
-            )}
-            <div className={`${rule.hasError ? "text-gray-400" : "text-gray-600"} text-sm`}>
-              {rule.label}
-            </div>
-          </div>
-        ))}
-      </div>
       <div>
-        <Button variant="ghost" className="mt-6 text-mineshaft-300" onClick={onBack}>
+        <Button type="button" variant="ghost" className="mt-6 text-mineshaft-300" onClick={onBack}>
           <ChevronLeft className="mr-2 h-4 w-4" />
           <span className="text-sm">Back to recovery options</span>
         </Button>

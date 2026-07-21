@@ -8,7 +8,7 @@ import {
 } from "./password-policy";
 
 describe("PasswordPolicySchema", () => {
-  const validPassword = ["Horse", 7, "Ba"].join("-");
+  const validPassword = ["Horse", "Battery", 7].join("-");
 
   test("accepts a strong password", () => {
     expect(PasswordPolicySchema.safeParse(validPassword).success).toBe(true);
@@ -16,7 +16,7 @@ describe("PasswordPolicySchema", () => {
 
   test.each([
     "Short-7",
-    validPassword.slice(0, -1),
+    validPassword.slice(0, -2),
     "a".repeat(101),
     "12345678901234!",
     "abcdefghijklmn",
@@ -37,7 +37,7 @@ describe("PasswordPolicySchema", () => {
   });
 
   test("allows up to three repeated Unicode characters", () => {
-    expect(PasswordPolicySchema.safeParse("Strong😀😀😀7").success).toBe(true);
+    expect(PasswordPolicySchema.safeParse("StrongPassword😀😀😀7").success).toBe(true);
   });
 
   test("preserves the public validation error copy", () => {
@@ -45,7 +45,7 @@ describe("PasswordPolicySchema", () => {
 
     expect(result.success).toBe(false);
     if (result.success) throw new Error("Expected password validation to fail");
-    expect(result.error.issues[0]?.message).toBe("Password must contain at least 10 characters");
+    expect(result.error.issues[0]?.message).toBe("Password must contain at least 14 characters");
   });
 
   test.each([validPassword, "Short-7", "密码安全-7", "Password!!!!7"])(

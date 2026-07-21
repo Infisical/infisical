@@ -2,11 +2,10 @@ import { FormEvent, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { EmailServiceSetupModal } from "@app/components/v2";
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
+import { Button, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
 import { usePopUp } from "@app/hooks";
 import { useSendAccountRecoveryEmail } from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -44,8 +43,13 @@ export const AccountRecoveryEmailPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
-      <AuthPageBackground />
+    <AuthPageLayout
+      headerAction={
+        <Button asChild>
+          <Link to="/login">Log In</Link>
+        </Button>
+      }
+    >
       <Helmet>
         <title>Account Recovery</title>
         <link rel="icon" href="/infisical.ico" />
@@ -56,15 +60,10 @@ export const AccountRecoveryEmailPage = () => {
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
         />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild>
-          <Link to="/login">Log In</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+      <div className="flex flex-col items-center">
         {step === 1 && (
-          <form onSubmit={onSubmit} className="mx-auto w-full max-w-sm">
-            <Card className="w-full items-stretch gap-0 p-6">
+          <form onSubmit={onSubmit} className="w-full">
+            <AuthPagePanel>
               <CardHeader className="mb-4 gap-4">
                 <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
                   Recover your account
@@ -95,11 +94,11 @@ export const AccountRecoveryEmailPage = () => {
                   </Link>
                 </div>
               </CardContent>
-            </Card>
+            </AuthPagePanel>
           </form>
         )}
         {step === 2 && (
-          <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+          <AuthPagePanel>
             <CardHeader className="mb-4 gap-4">
               <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.35rem] font-medium text-transparent">
                 Check your inbox
@@ -118,14 +117,13 @@ export const AccountRecoveryEmailPage = () => {
                 </Link>
               </div>
             </CardContent>
-          </Card>
+          </AuthPagePanel>
         )}
       </div>
-      <AuthPageFooter />
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
       />
-    </div>
+    </AuthPageLayout>
   );
 };
