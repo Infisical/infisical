@@ -11,6 +11,7 @@ export enum GatewayProxyProtocol {
   Health = "health",
   Pam = "pam",
   PamRdpBrowser = "pam-rdp-browser",
+  PamWebApp = "pam-webapp",
   PamSessionCancellation = "pam-session-cancellation",
   Pkcs11 = "pkcs11",
   Adcs = "adcs",
