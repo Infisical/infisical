@@ -3101,6 +3101,7 @@ export const registerRoutes = async (
     secretRotationV2DAL,
     reminderDAL,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretValidationRuleDAL,
     kmsService
   });
