@@ -717,8 +717,8 @@ export const certificatePolicyServiceFactory = ({
 
     const consolidatedData = {
       ...data,
-      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
-      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+      subject: data.subject ? consolidateAttributeArray(data.subject) : data.subject,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : data.sans
     };
 
     if (consolidatedData.subject) {
@@ -792,8 +792,8 @@ export const certificatePolicyServiceFactory = ({
 
     const consolidatedData = {
       ...data,
-      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
-      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+      subject: data.subject ? consolidateAttributeArray(data.subject) : data.subject,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : data.sans
     };
 
     if (consolidatedData.subject) {

@@ -638,22 +638,22 @@ export const CreatePolicyModal = ({
         return result;
       }) || [];
 
-    const subject = restrictSubject ? consolidateByType(subjectRaw) : undefined;
-    const sans = restrictSans ? consolidateByType(sansRaw) : undefined;
+    const subject = restrictSubject ? consolidateByType(subjectRaw) : null;
+    const sans = restrictSans ? consolidateByType(sansRaw) : null;
 
-    const keyUsages: KeyUsagesTransform | undefined = restrictKeyUsages
+    const keyUsages: KeyUsagesTransform | null = restrictKeyUsages
       ? {
           required: data.keyUsages?.requiredUsages ?? [],
           allowed: data.keyUsages?.optionalUsages ?? []
         }
-      : undefined;
+      : null;
 
-    const extendedKeyUsages: ExtendedKeyUsagesTransform | undefined = restrictExtendedKeyUsages
+    const extendedKeyUsages: ExtendedKeyUsagesTransform | null = restrictExtendedKeyUsages
       ? {
           required: data.extendedKeyUsages?.requiredUsages ?? [],
           allowed: data.extendedKeyUsages?.optionalUsages ?? []
         }
-      : undefined;
+      : null;
 
     const algorithms: AlgorithmsTransform = {};
     if (restrictSignature && data.signatureAlgorithm?.allowedAlgorithms?.length) {
@@ -697,8 +697,8 @@ export const CreatePolicyModal = ({
       sans,
       keyUsages,
       extendedKeyUsages,
-      algorithms: algorithms.signature || algorithms.keyAlgorithm ? algorithms : undefined,
-      validity: validity.max ? validity : undefined,
+      algorithms: algorithms.signature || algorithms.keyAlgorithm ? algorithms : null,
+      validity: validity.max ? validity : null,
       basicConstraints
     };
   };
