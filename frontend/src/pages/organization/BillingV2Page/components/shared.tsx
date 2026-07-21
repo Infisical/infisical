@@ -117,9 +117,20 @@ export const CostSummaryRow = ({
   </Item>
 );
 
+// Committed usage (meter fill + legend dot) takes the product's catalog tint, the same source as
+// ProductIcon, at the 85% strength the old static token used. On-demand keeps the warning token:
+// it flags overage cost, not product identity.
+const committedTint = (color: string) => `color-mix(in srgb, ${color} 85%, transparent)`;
+
 // Rate legend for annually-committed dimensions. DimensionMeter renders it per dim by default; a
 // caller can hideLegend the meters and render one combined legend for the block.
-export const DimensionRateLegend = ({ dims }: { dims: BillingV2EntitlementDim[] }) => {
+export const DimensionRateLegend = ({
+  dims,
+  color
+}: {
+  dims: BillingV2EntitlementDim[];
+  color: string;
+}) => {
   const entries = dims.filter(
     (dim) =>
       dimAnnualCommitted(dim) && (dim.committedRate !== undefined || dim.onDemandRate !== undefined)
@@ -133,7 +144,7 @@ export const DimensionRateLegend = ({ dims }: { dims: BillingV2EntitlementDim[] 
         <Fragment key={dim.key}>
           {dim.committedRate !== undefined && (
             <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-primary/85" />
+              <span className="size-2 rounded-full" style={{ background: committedTint(color) }} />
               Committed {`${fmtMoney(dim.committedRate)} / ${dim.noun} /yr`}
             </span>
           )}
@@ -151,6 +162,8 @@ export const DimensionRateLegend = ({ dims }: { dims: BillingV2EntitlementDim[] 
 
 type DimensionMeterProps = {
   dim: BillingV2EntitlementDim;
+  // The product's catalog color; the committed fill and legend dot derive from it (like ProductIcon).
+  color: string;
   // Suppress the per-dimension rate legend (the caller renders a combined DimensionRateLegend).
   hideLegend?: boolean;
 };
@@ -158,7 +171,7 @@ type DimensionMeterProps = {
 // One usage line for a product dimension: an annual committed dimension shows committed fill plus
 // on-demand overflow with a rate legend; a capped dimension a single used/limit fill; an uncapped
 // one just its cost line, no bar.
-export const DimensionMeter = ({ dim, hideLegend }: DimensionMeterProps) => {
+export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) => {
   const committed = dimAnnualCommitted(dim);
   const { committedPct, onDemandPct } = dimBarSegments(dim);
   const onDemandQty = dimOnDemandQuantity(dim);
@@ -203,11 +216,8 @@ export const DimensionMeter = ({ dim, hideLegend }: DimensionMeterProps) => {
         <div className="flex h-[5px] w-full gap-0.5 overflow-hidden rounded-xs bg-border">
           {/* Segments keep the soft outer corner but sit square against each other at the joint. */}
           <div
-            className={cn(
-              "h-full rounded-xs bg-primary/85 transition-all",
-              onDemandPct > 0 && "rounded-r-none"
-            )}
-            style={{ width: `${committedPct}%` }}
+            className={cn("h-full rounded-xs transition-all", onDemandPct > 0 && "rounded-r-none")}
+            style={{ width: `${committedPct}%`, background: committedTint(color) }}
           />
           {onDemandPct > 0 && (
             <div
@@ -217,7 +227,7 @@ export const DimensionMeter = ({ dim, hideLegend }: DimensionMeterProps) => {
           )}
         </div>
       )}
-      {committed && !hideLegend && <DimensionRateLegend dims={[dim]} />}
+      {committed && !hideLegend && <DimensionRateLegend dims={[dim]} color={color} />}
     </div>
   );
 };

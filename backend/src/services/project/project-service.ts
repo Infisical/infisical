@@ -61,7 +61,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
@@ -785,9 +785,10 @@ export const projectServiceFactory = ({
 
     await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
     // A new project seeds its creator (plus any template members/identities); emit so a new
-    // secret-manager project's seats are metered. Org-scoped (not emitForProject) to avoid racing the
-    // just-committed row; the counter filters by project type.
+    // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
+    // the just-committed row; the counter filters by project type.
     usageMeteringService.emit(results.orgId, SecretIdentities.key);
+    usageMeteringService.emit(results.orgId, PamIdentities.key);
     return results;
   };
 
@@ -869,8 +870,9 @@ export const projectServiceFactory = ({
       // refresh the cached plan so the freed workspace slot is reflected immediately
       // (countOfOrgProjects now excludes soft-deleted projects)
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(actorOrgId));
-      // The soft-deleted project drops out of the meter's count, so its members no longer count.
+      // The soft-deleted project drops out of the meters' counts, so its members no longer count.
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
+      usageMeteringService.emit(project.orgId, PamIdentities.key);
       return { ...softDeletedProject, slug: project.slug };
     } finally {
       await lock.release();

@@ -43,13 +43,14 @@ import {
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
     | "invalidateEntitlements"
+    | "refreshEntitlements"
     | "getCatalog"
     | "getSubscription"
     | "getCloudPlan"
@@ -347,6 +348,19 @@ const buildCheckoutItems = (
 
   const item: TCheckoutLineItem = { productId: product.id, plan: plan.tier, cadence };
   if (commitments && Object.keys(commitments).length > 0) {
+    // Commitment mode (prepaid annual units with monthly on-demand overage) only makes sense when the
+    // committed dimension is priced on BOTH cadences: annual for the commitment, monthly for the
+    // overage. Reject it for a single-cadence plan (annual-only or monthly-only).
+    const dimensionHasBothCadences = (dimensionKey: string): boolean => {
+      const prices = plan.prices.filter((price) => price.dimensionKey === dimensionKey && isKnownPriceKind(price.kind));
+      return prices.some((price) => price.cadence === "annual") && prices.some((price) => price.cadence === "monthly");
+    };
+    const unsupported = Object.keys(commitments).filter((dimensionKey) => !dimensionHasBothCadences(dimensionKey));
+    if (cadence !== "annual" || unsupported.length > 0) {
+      throw new BadRequestError({
+        message: "Commitment mode is only available when the plan has both monthly and annual pricing."
+      });
+    }
     item.commitments = commitments;
   }
   return [item];
@@ -740,6 +754,14 @@ export const licenseV2ServiceFactory = ({
     return { overview };
   };
 
+  // Force-refresh entitlements: ask the license server to recompute and drop the local cache, so the
+  // next overview read pulls the latest and re-populates the cache. Exposed as a manual refresh button.
+  const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
+    await ensureBillingRead(orgId, actor);
+    await licenseClient.refreshEntitlements({ id: orgId });
+    return { success: true as const };
+  };
+
   const getCatalog = async ({ orgId, actor }: TGetBillingV2CatalogDTO) => {
     await ensureBillingRead(orgId, actor);
 
@@ -752,9 +774,23 @@ export const licenseV2ServiceFactory = ({
     return { products };
   };
 
-  // Stripe billing portal: manages the existing subscription, payment methods, and billing details.
+  const buildReturnUrl = (orgId: string, returnPath?: string): string => {
+    if (!envConfig.SITE_URL) {
+      throw new InternalServerError({ message: "Failed to build a billing return URL" });
+    }
+    const path = returnPath && returnPath.startsWith("/") ? returnPath : `/organizations/${orgId}/billing`;
+    try {
+      return new URL(path, envConfig.SITE_URL).toString();
+    } catch {
+      throw new InternalServerError({ message: "Failed to build a billing return URL" });
+    }
+  };
+
   const openPortal = async (orgId: string, returnPath?: string) => {
-    const session = await licenseClient.createPortal(orgId, { returnPath });
+    const session = await licenseClient.createPortal(orgId, {
+      returnPath,
+      returnUrl: buildReturnUrl(orgId, returnPath)
+    });
     return { url: session.url };
   };
 
@@ -786,7 +822,12 @@ export const licenseV2ServiceFactory = ({
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
 
-    const result = await licenseClient.createCheckout(orgId, { items, email, returnPath });
+    const result = await licenseClient.createCheckout(orgId, {
+      items,
+      email,
+      returnPath,
+      returnUrl: buildReturnUrl(orgId, returnPath)
+    });
     if (result.outcome === "subscription_updated") {
       return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
     }
@@ -953,6 +994,7 @@ export const licenseV2ServiceFactory = ({
     // Billing surface (portal, checkout, overview) goes live only at full v2 cutover, not during read-compare.
     isEnabled: () => envConfig.LICENSE_SERVER_V2_MODE === "on",
     getOverview,
+    refreshEntitlements,
     getCatalog,
     portalSession,
     checkoutSession,

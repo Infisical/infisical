@@ -238,6 +238,17 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return Number(result[0]?.count ?? 0);
   };
 
+  // Total PAM accounts across the org's projects (excluding soft-deleted projects), used to enforce the
+  // plan's maxPamAccounts at creation time.
+  const countByOrgId = async (orgId: string, tx?: Knex): Promise<number> => {
+    const result = await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.Project, `${TableName.PamAccount}.projectId`, `${TableName.Project}.id`)
+      .where(`${TableName.Project}.orgId`, orgId)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .count<[{ count: string }]>(`${TableName.PamAccount}.id`);
+    return Number(result[0]?.count ?? 0);
+  };
+
   const findRotationCandidates = async (
     projectId: string,
     accessibleFolderIds: string[],
@@ -355,6 +366,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     findByIdWithDetails,
     findAccountsToRotate,
     countAccountsToRotate,
+    countByOrgId,
     findRotationCandidates,
     reconcileRotationScheduleForTemplate,
     reconcileRotationScheduleForAccount

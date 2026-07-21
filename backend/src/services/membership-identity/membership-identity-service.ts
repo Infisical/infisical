@@ -9,12 +9,13 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -107,6 +108,15 @@ export const membershipIdentityServiceFactory = ({
       });
     }
 
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
+
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     await factory.onCreateMembershipIdentityGuard(dto);
 
@@ -190,9 +200,10 @@ export const membershipIdentityServiceFactory = ({
       return doc;
     });
 
-    // Adding an identity to a project changes the secret-manager identity meter (a direct member).
+    // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
     }
     return { membership };
   };
@@ -233,6 +244,15 @@ export const membershipIdentityServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
@@ -368,11 +388,13 @@ export const membershipIdentityServiceFactory = ({
       : await membershipIdentityDAL.transaction(performDelete);
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
-    // project + group memberships. Either way the secret-manager identity meter changes.
+    // project + group memberships. Either way the secret-manager and PAM identity meters change.
     if (scopeData.scope === AccessScope.Project) {
       usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
     }
     return { membership: membershipDoc };
   };

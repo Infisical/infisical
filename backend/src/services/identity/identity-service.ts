@@ -14,7 +14,7 @@ import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/li
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
-import { MaxIdentities, SecretIdentities } from "@app/services/license-client";
+import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
@@ -186,7 +186,7 @@ export const identityServiceFactory = ({
       };
     });
     await licenseService.updateSubscriptionOrgMemberCount(orgId);
-    usageMeteringService.emit(orgId, MaxIdentities.key);
+    usageMeteringService.emit(orgId, IdentitiesMeter.key);
 
     return identity;
   };
@@ -378,9 +378,9 @@ export const identityServiceFactory = ({
 
       const deletedIdentity = await identityDAL.deleteById(id);
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
-      usageMeteringService.emit(identityOrgMembership.scopeOrgId, MaxIdentities.key);
-      // Deleting the identity cascades its project + group memberships, so the secret-manager meter changes too.
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
@@ -414,9 +414,11 @@ export const identityServiceFactory = ({
     });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    usageMeteringService.emit(identityOrgMembership.scopeOrgId, MaxIdentities.key);
-    // Deleting the identity cascades its project + group memberships, so the secret-manager meter changes too.
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
+    // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
+    // identity meters change too.
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 
