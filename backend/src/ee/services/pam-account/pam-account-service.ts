@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
+import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -322,6 +323,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     );
 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
+    if (accountType === PamAccountType.WebApp) {
+      await verifyHostInputValidity({
+        host: new URL((validatedConnectionDetails as { url: string }).url).hostname,
+        isDynamicSecret: false
+      });
+    }
     const validatedCredentials = validateCredentials(accountType, credentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
 
@@ -486,6 +493,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     if (connectionDetails) {
       const validated = validateConnectionDetails(accountType, connectionDetails);
+      if (accountType === PamAccountType.WebApp) {
+        await verifyHostInputValidity({
+          host: new URL((validated as { url: string }).url).hostname,
+          isDynamicSecret: false
+        });
+      }
       updateData.encryptedConnectionDetails = await encrypt(projectId, validated);
     }
 
