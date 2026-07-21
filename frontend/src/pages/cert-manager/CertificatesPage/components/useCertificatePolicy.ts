@@ -324,9 +324,22 @@ export const useCertificatePolicy = (
         });
       }
 
-      // Switching profiles resets SAN entries so a previous profile's values don't carry over.
+      // Pre-populate SANs from profile defaults or reset when profile changes
       if (profileChanged) {
-        setValue("subjectAltNames", []);
+        if (
+          defaults?.subjectAltNames &&
+          Array.isArray(defaults.subjectAltNames) &&
+          defaults.subjectAltNames.length > 0
+        ) {
+          // Filter to only allowed SAN types
+          const filteredSans = defaults.subjectAltNames.filter(
+            (san: { type: CertSubjectAlternativeNameType; value: string }) =>
+              newConstraints.allowedSanTypes.includes(san.type)
+          );
+          setValue("subjectAltNames", filteredSans.length > 0 ? filteredSans : []);
+        } else {
+          setValue("subjectAltNames", []);
+        }
       }
 
       const currentSubjectAttrs = watch("subjectAttributes");

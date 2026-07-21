@@ -622,7 +622,6 @@ export const CertificateIssuanceModal = ({
                     errorText={error?.message}
                     isError={Boolean(error)}
                     isRequired
-                    helperText={isAdcsProfile ? externalCaHint : undefined}
                   >
                     <Select
                       defaultValue=""
@@ -654,10 +653,6 @@ export const CertificateIssuanceModal = ({
 
             {(actualSelectedProfile || profileId) && (
               <>
-                {profileId && isAdcsProfile && (
-                  <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
-                )}
-
                 {requestMethod === RequestMethod.CSR && (
                   <Controller
                     control={control}
@@ -750,6 +745,10 @@ export const CertificateIssuanceModal = ({
                           ?.message
                       }
                     />
+
+                    {isAdcsProfile && (
+                      <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
+                    )}
 
                     {!isAdcsProfile && (
                       <Accordion type="single" collapsible className="w-full">
