@@ -106,7 +106,7 @@ export default function InitialSignupStep({
                 isFullWidth
                 onClick={() => handleSocialSignup(LoginMethod.GITHUB)}
               >
-                <FontAwesomeIcon icon={faGithub} className="!size-4" />
+                <FontAwesomeIcon icon={faGithub} />
                 Continue with GitHub
                 <ButtonBadge variant="project">Recommended</ButtonBadge>
               </Button>
@@ -119,7 +119,7 @@ export default function InitialSignupStep({
                 isFullWidth
                 onClick={() => handleSocialSignup(LoginMethod.GOOGLE)}
               >
-                <FontAwesomeIcon icon={faGoogle} className="!size-4" />
+                <FontAwesomeIcon icon={faGoogle} />
                 {t("signup.continue-with-google")}
               </Button>
             )}
@@ -131,7 +131,7 @@ export default function InitialSignupStep({
                 isFullWidth
                 onClick={() => handleSocialSignup(LoginMethod.GITLAB)}
               >
-                <FontAwesomeIcon icon={faGitlab} className="!size-4" />
+                <FontAwesomeIcon icon={faGitlab} />
                 Continue with GitLab
               </Button>
             )}

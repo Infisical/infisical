@@ -34,16 +34,7 @@ export const LoginLdapPage = () => {
   const [password, setPassword] = useState("");
   const isFormValid = Boolean(organizationSlug.trim() && username.trim() && password);
 
-  const handleBackToSso = () => {
-    navigate({
-      to: "/login/sso",
-      search: {
-        callback_port: callbackPort,
-        is_admin_login: isAdminLogin || undefined,
-        organizationSlug: passedOrgSlug || config.defaultAuthOrgSlug || undefined
-      }
-    });
-  };
+  const handleBackToLogin = () => navigate({ to: isAdminLogin ? "/login/admin" : "/login" });
 
   const handleSubmission = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,11 +86,11 @@ export const LoginLdapPage = () => {
           <CardHeader className="mb-4 gap-4">
             <div className="flex items-center gap-1.5">
               <IconButton
-                aria-label="Back to SSO login"
+                aria-label="Back to login"
                 variant="ghost-muted"
                 size="xs"
                 className="-ml-2"
-                onClick={handleBackToSso}
+                onClick={handleBackToLogin}
               >
                 <ChevronLeft />
               </IconButton>
@@ -138,7 +129,7 @@ export const LoginLdapPage = () => {
               className="h-10"
             />
             <Button type="submit" variant="project" size="lg" isFullWidth isDisabled={!isFormValid}>
-              {t("login.login")}
+              Continue with LDAP
             </Button>
           </CardContent>
         </AuthPagePanel>

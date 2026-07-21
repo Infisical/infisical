@@ -41,7 +41,7 @@ const buttonVariants = cva(
         xs: "h-7 gap-2 rounded-sm px-2 text-xs [&>svg]:size-3",
         sm: "h-8 gap-2 px-2.5 text-sm [&>svg]:size-3",
         md: "h-9 gap-2 px-3 text-sm [&>svg]:size-3.5",
-        lg: "h-10 gap-2 px-3 text-sm [&>svg]:size-3.5"
+        lg: "h-10 gap-2 px-3 text-sm [&>svg]:size-4"
       },
       isPending: {
         true: "text-transparent"

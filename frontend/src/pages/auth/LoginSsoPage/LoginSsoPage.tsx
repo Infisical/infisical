@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ChevronLeft, Users } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
@@ -17,49 +17,31 @@ import {
   IconButton,
   Input
 } from "@app/components/v3";
-import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
-import {
-  getLastLoginIdentifier,
-  LEGACY_GENERIC_SSO_LOGIN_METHOD,
-  useLastLogin
-} from "@app/hooks/useLastLogin";
+import { getLastLoginIdentifier, useLastLogin } from "@app/hooks/useLastLogin";
 
 const workEmailSchema = z.string().trim().email();
 
-export const LoginSsoPage = () => {
+type Props = {
+  type: "SAML" | "OIDC";
+};
+
+export const LoginSsoPage = ({ type }: Props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { config } = useServerConfig();
   const { lastLogin, saveLastLogin } = useLastLogin();
-  const {
-    callback_port: callbackPort,
-    is_admin_login: isAdminLogin,
-    organizationSlug
-  } = useSearch({ from: "/_restrict-login-signup/login/sso" });
-
-  const isPreviousSsoLogin =
-    lastLogin?.method === LEGACY_GENERIC_SSO_LOGIN_METHOD ||
-    lastLogin?.method === LoginMethod.SAML ||
-    lastLogin?.method === LoginMethod.OIDC;
-  const previousSsoIdentifier = isPreviousSsoLogin ? getLastLoginIdentifier(lastLogin) : undefined;
-  const initialEmail = previousSsoIdentifier?.type === "email" ? previousSsoIdentifier.value : "";
+  const queryParams = new URLSearchParams(window.location.search);
+  const callbackPort = queryParams.get("callback_port");
+  const isAdminLogin = queryParams.get("is_admin_login") === "true";
+  const organizationSlug = queryParams.get("organizationSlug") || undefined;
+  const method = type === "SAML" ? LoginMethod.SAML : LoginMethod.OIDC;
+  const previousIdentifier =
+    lastLogin?.method === method ? getLastLoginIdentifier(lastLogin) : null;
+  const initialEmail = previousIdentifier?.type === "email" ? previousIdentifier.value : "";
   const [workEmail, setWorkEmail] = useState(initialEmail);
 
-  const shouldDisplayLoginMethod = (method: LoginMethod) =>
-    isAdminLogin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
-
-  const shouldDisplaySaml = shouldDisplayLoginMethod(LoginMethod.SAML);
-  const shouldDisplayOidc = shouldDisplayLoginMethod(LoginMethod.OIDC);
-  const shouldDisplayLdap = shouldDisplayLoginMethod(LoginMethod.LDAP);
-  const shouldDisplayFederatedSso = shouldDisplaySaml || shouldDisplayOidc;
-  const needsWorkEmail = !organizationSlug && shouldDisplayFederatedSso;
-  const isWorkEmailValid = workEmailSchema.safeParse(workEmail).success;
-
-  const getWorkEmailDomain = () => workEmail.trim().split("@")[1]?.toLowerCase();
-
-  const handleSsoLogin = (method: LoginMethod.SAML | LoginMethod.OIDC) => {
-    const domain = getWorkEmailDomain();
+  const handleLogin = () => {
+    const domain = workEmail.trim().split("@")[1]?.toLowerCase();
     if (!organizationSlug && !domain) return;
 
     saveLastLogin({
@@ -88,25 +70,13 @@ export const LoginSsoPage = () => {
     window.location.assign(`/api/v1/sso/oidc/login?${query.toString()}`);
   };
 
-  const handleLdapLogin = () => {
-    navigate({
-      to: "/login/ldap",
-      search: {
-        callback_port: callbackPort,
-        is_admin_login: isAdminLogin || undefined,
-        organizationSlug: organizationSlug || "",
-        username: undefined
-      }
-    });
-  };
-
-  const canSubmitSso = Boolean(organizationSlug) || isWorkEmailValid;
+  const canSubmit = Boolean(organizationSlug) || workEmailSchema.safeParse(workEmail).success;
   const loginPath = isAdminLogin ? "/login/admin" : "/login";
 
   return (
     <AuthPageLayout>
       <Helmet>
-        <title>{t("common.head-title", { title: "SSO Login" })}</title>
+        <title>{t("common.head-title", { title: `${type} Login` })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={t("login.og-title") ?? ""} />
@@ -126,16 +96,16 @@ export const LoginSsoPage = () => {
                 <ChevronLeft />
               </IconButton>
               <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
-                Single Sign-On
+                {type} Login
               </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {needsWorkEmail && (
+            {!organizationSlug && (
               <Field>
-                <FieldLabel htmlFor="sso-work-email">Work Email</FieldLabel>
+                <FieldLabel htmlFor={`${type.toLowerCase()}-work-email`}>Work Email</FieldLabel>
                 <Input
-                  id="sso-work-email"
+                  id={`${type.toLowerCase()}-work-email`}
                   value={workEmail}
                   onChange={(event) => setWorkEmail(event.target.value)}
                   type="email"
@@ -145,41 +115,15 @@ export const LoginSsoPage = () => {
                 />
               </Field>
             )}
-
-            <div className="flex flex-col gap-2">
-              {shouldDisplayFederatedSso && (
-                <div className="flex flex-col gap-2">
-                  {shouldDisplaySaml && (
-                    <Button
-                      variant="project"
-                      size="lg"
-                      isFullWidth
-                      isDisabled={!canSubmitSso}
-                      onClick={() => handleSsoLogin(LoginMethod.SAML)}
-                    >
-                      Continue with SAML
-                    </Button>
-                  )}
-                  {shouldDisplayOidc && (
-                    <Button
-                      variant="project"
-                      size="lg"
-                      isFullWidth
-                      isDisabled={!canSubmitSso}
-                      onClick={() => handleSsoLogin(LoginMethod.OIDC)}
-                    >
-                      Continue with OIDC
-                    </Button>
-                  )}
-                </div>
-              )}
-              {shouldDisplayLdap && (
-                <Button variant="outline" size="lg" isFullWidth onClick={handleLdapLogin}>
-                  <Users />
-                  Continue with LDAP
-                </Button>
-              )}
-            </div>
+            <Button
+              variant="project"
+              size="lg"
+              isFullWidth
+              isDisabled={!canSubmit}
+              onClick={handleLogin}
+            >
+              Continue with {type}
+            </Button>
           </CardContent>
         </AuthPagePanel>
       </div>

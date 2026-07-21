@@ -2,17 +2,17 @@ import { createFileRoute, stripSearchParams } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { LoginSsoPage } from "./LoginSsoPage";
+import { LoginOidcPage } from "./LoginOidcPage";
 
-const LoginSsoPageQueryParamsSchema = z.object({
+const LoginOidcPageQueryParamsSchema = z.object({
   callback_port: z.coerce.number().optional().catch(undefined),
   is_admin_login: z.boolean().optional().catch(false),
   organizationSlug: z.string().optional().catch(undefined)
 });
 
-export const Route = createFileRoute("/_restrict-login-signup/login/sso")({
-  component: LoginSsoPage,
-  validateSearch: zodValidator(LoginSsoPageQueryParamsSchema),
+export const Route = createFileRoute("/_restrict-login-signup/login/oidc")({
+  component: LoginOidcPage,
+  validateSearch: zodValidator(LoginOidcPageQueryParamsSchema),
   search: {
     middlewares: [
       stripSearchParams({

@@ -34,7 +34,7 @@ import { useServerConfig } from "@app/context";
 import { preserveHubSpotUtk } from "@app/helpers/utmTracking";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
-import { LEGACY_GENERIC_SSO_LOGIN_METHOD, useLastLogin } from "@app/hooks/useLastLogin";
+import { useLastLogin } from "@app/hooks/useLastLogin";
 
 import { useNavigateToSelectOrganization } from "../../Login.utils";
 import { OrgLoginButton } from "../OrgLoginButton";
@@ -71,6 +71,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [areMoreLoginOptionsVisible, setAreMoreLoginOptionsVisible] = useState(false);
+  const [areSsoOptionsVisible, setAreSsoOptionsVisible] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
@@ -110,9 +111,24 @@ export const InitialStep = ({ isAdmin }: Props) => {
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
 
-  const handleSso = () => {
+  const handleOrganizationLogin = (
+    method: LoginMethod.LDAP | LoginMethod.OIDC | LoginMethod.SAML
+  ) => {
+    if (method === LoginMethod.LDAP) {
+      navigate({
+        to: "/login/ldap",
+        search: {
+          callback_port: callbackPort ? Number(callbackPort) : undefined,
+          is_admin_login: isAdmin || undefined,
+          organizationSlug: config.defaultAuthOrgSlug || "",
+          username: undefined
+        }
+      });
+      return;
+    }
+
     navigate({
-      to: "/login/sso",
+      to: method === LoginMethod.OIDC ? "/login/oidc" : "/login/saml",
       search: {
         callback_port: callbackPort ? Number(callbackPort) : undefined,
         is_admin_login: isAdmin || undefined,
@@ -139,18 +155,6 @@ export const InitialStep = ({ isAdmin }: Props) => {
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
-
-  const shouldDisplaySso = [LoginMethod.SAML, LoginMethod.OIDC, LoginMethod.LDAP].some(
-    shouldDisplayLoginMethod
-  );
-  const isLastUsedSso = Boolean(
-    lastLogin &&
-      ((lastLogin.method === LEGACY_GENERIC_SSO_LOGIN_METHOD &&
-        [LoginMethod.SAML, LoginMethod.OIDC].some(shouldDisplayLoginMethod)) ||
-        (lastLogin.method === LoginMethod.SAML && shouldDisplayLoginMethod(LoginMethod.SAML)) ||
-        (lastLogin.method === LoginMethod.OIDC && shouldDisplayLoginMethod(LoginMethod.OIDC)) ||
-        (lastLogin.method === LoginMethod.LDAP && shouldDisplayLoginMethod(LoginMethod.LDAP)))
-  );
 
   const socialLoginMethods = (
     [
@@ -187,22 +191,21 @@ export const InitialStep = ({ isAdmin }: Props) => {
         />
       )
     })),
-    ...(shouldDisplaySso
-      ? [
-          {
-            id: "organization-sso",
-            kind: "organization" as const,
-            isLastUsed: isLastUsedSso,
-            render: (showLastUsed: boolean) => (
-              <OrgLoginButton
-                label="Sign in with SSO/LDAP"
-                onClick={handleSso}
-                showLastUsed={showLastUsed}
-              />
-            )
-          }
-        ]
-      : [])
+    ...([LoginMethod.LDAP, LoginMethod.OIDC, LoginMethod.SAML] as const)
+      .filter(shouldDisplayLoginMethod)
+      .map((method) => ({
+        id: method,
+        kind: "organization" as const,
+        isLastUsed: isLastUsedMethod(method),
+        render: (showLastUsed: boolean, showLabel = false) => (
+          <OrgLoginButton
+            label={method.toUpperCase()}
+            onClick={() => handleOrganizationLogin(method)}
+            showLabel={showLabel}
+            showLastUsed={showLastUsed}
+          />
+        )
+      }))
   ];
   const lastUsedLoginOption = loginOptions.find(({ isLastUsed }) => isLastUsed);
   const orderedLoginOptions = lastUsedLoginOption
@@ -292,7 +295,14 @@ export const InitialStep = ({ isAdmin }: Props) => {
             </CardAction>
           </CardHeader>
           <CardContent>
-            <OrgLoginButton label="Sign in with SSO/LDAP" onClick={handleSso} />
+            <OrgLoginButton
+              label={config.defaultAuthOrgAuthMethod.toUpperCase()}
+              onClick={() =>
+                handleOrganizationLogin(
+                  config.defaultAuthOrgAuthMethod === "saml" ? LoginMethod.SAML : LoginMethod.OIDC
+                )
+              }
+            />
           </CardContent>
         </AuthPagePanel>
       </form>
@@ -359,9 +369,30 @@ export const InitialStep = ({ isAdmin }: Props) => {
                       ))}
                     </div>
                   )}
-                  {organizationLoginOptions.map((option) => (
-                    <Fragment key={option.id}>{option.render(false, true)}</Fragment>
-                  ))}
+                  {organizationLoginOptions.length > 0 && (
+                    <div className="w-full">
+                      <AnimatedCollapse isOpen={!areSsoOptionsVisible}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          isFullWidth
+                          className="text-accent hover:text-foreground"
+                          aria-controls="sso-login-options"
+                          aria-expanded={areSsoOptionsVisible}
+                          onClick={() => setAreSsoOptionsVisible(true)}
+                        >
+                          View SSO options
+                        </Button>
+                      </AnimatedCollapse>
+                      <AnimatedCollapse id="sso-login-options" isOpen={areSsoOptionsVisible}>
+                        <div className="flex w-full flex-col gap-2">
+                          {organizationLoginOptions.map((option) => (
+                            <Fragment key={option.id}>{option.render(false, true)}</Fragment>
+                          ))}
+                        </div>
+                      </AnimatedCollapse>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
