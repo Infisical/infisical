@@ -23,12 +23,24 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   // INSERT ... ON CONFLICT) so overlapping scans of the same machine can't race on the unique index. Discovery
   // owns fingerprint / machine / type / name / data and the account linkage; on conflict only those are merged,
   // so rotation-owned columns (rotationStatus, lastRotatedAt, encryptedLastRotationMessage) are never touched.
+  //
+  // Imported wins: a row already linked to a managed account (accountId set) is never demoted back to a staged
+  // link, so a second discovery source scanning the same machine can't silently break rotation sync for an
+  // account another source imported.
   const upsertByIdentity = async (dep: TUpsertDependency, tx?: Knex): Promise<string> => {
+    const conn = tx || db;
     const { fingerprint, machine, type, name, data, accountId, discoveredAccountId } = dep;
-    const [row] = await (tx || db)(TableName.PamAccountDependency)
+    const [row] = await conn(TableName.PamAccountDependency)
       .insert({ fingerprint, machine, type, name, data, accountId, discoveredAccountId })
       .onConflict(["fingerprint", "machine", "type", "name"])
-      .merge({ data, accountId, discoveredAccountId })
+      .merge({
+        data,
+        accountId: conn.raw(`COALESCE(??."accountId", EXCLUDED."accountId")`, [TableName.PamAccountDependency]),
+        discoveredAccountId: conn.raw(
+          `CASE WHEN ??."accountId" IS NOT NULL THEN NULL ELSE EXCLUDED."discoveredAccountId" END`,
+          [TableName.PamAccountDependency]
+        )
+      })
       .returning("id");
     return row.id;
   };

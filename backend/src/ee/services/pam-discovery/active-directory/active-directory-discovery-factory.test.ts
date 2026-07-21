@@ -66,4 +66,29 @@ describe("resolveRunAsFingerprint", () => {
   ])("does not anchor a same-named account from another domain (%s)", (runAs) => {
     expect(resolveRunAsFingerprint(runAs, domain, userGuidByName)).toBeNull();
   });
+
+  test("accepts the real NetBIOS name when it differs from the DNS label", () => {
+    // Without the NetBIOS name, a CONTOSO\ run-as would be wrongly dropped (DNS label is "corp").
+    expect(resolveRunAsFingerprint("CONTOSO\\svc-sql", domain, userGuidByName)).toBeNull();
+    expect(resolveRunAsFingerprint("CONTOSO\\svc-sql", domain, userGuidByName, "CONTOSO")).toBe(
+      "corp.example.com:11111111-1111-1111-1111-111111111111"
+    );
+  });
+
+  const machine = { objectGUID: "99999999-9999-9999-9999-999999999999", name: "WEB01" };
+
+  test.each([[".\\localsvc"], ["WEB01\\localsvc"]])(
+    "anchors a local run-as (%s) to the machine's local account",
+    (runAs) => {
+      expect(resolveRunAsFingerprint(runAs, domain, userGuidByName, null, machine)).toBe(
+        `corp.example.com:${machine.objectGUID}:localsvc`
+      );
+    }
+  );
+
+  test("still anchors a domain run-as to the domain user when machine context is present", () => {
+    expect(resolveRunAsFingerprint("CORP\\svc-sql", domain, userGuidByName, null, machine)).toBe(
+      "corp.example.com:11111111-1111-1111-1111-111111111111"
+    );
+  });
 });

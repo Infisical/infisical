@@ -21,7 +21,7 @@ import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-acc
 import { validateConnectionDetails, validateCredentials } from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamAccountDependencyDALFactory } from "../pam-discovery/pam-account-dependency-dal";
-import { winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
+import { resolveHostsViaDcDns, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import {
   TGetPamAccountRotationDTO,
   TListPamRotationCandidatesDTO,
@@ -38,7 +38,12 @@ import {
   redactRotationError,
   ROTATION_FAILURE_RETRY_CAP_SECONDS
 } from "./pam-rotation-fns";
-import { PAM_ROTATION_FACTORY_MAP } from "./pam-rotation-handlers";
+import {
+  PAM_ROTATION_FACTORY_MAP,
+  winrmConnectUsername,
+  winrmPortFromConn,
+  winrmTransportFromConn
+} from "./pam-rotation-handlers";
 
 export const ROTATION_STATUS = { Success: "success", Failed: "failed" } as const;
 
@@ -150,8 +155,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     raw: Record<string, unknown>
   ): Record<string, unknown> => validateConnectionDetails(accountType, raw) as Record<string, unknown>;
 
-  // Windows dependencies have no per-machine WinRM port; use the WinRM HTTP default like discovery/rotation.
-  const WINRM_DEPENDENCY_SYNC_PORT = 5985;
   const DEPENDENCY_SYNC_CONCURRENCY = 5;
 
   // postRotate: push the new password into every service / scheduled task / IIS app pool that runs as the
@@ -161,6 +164,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     accountId,
     projectId,
     accountType,
+    connectionDetails,
     targetUsername,
     newPassword,
     connectAuth,
@@ -170,14 +174,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     accountId: string;
     projectId: string;
     accountType: PamAccountType;
+    connectionDetails: Record<string, unknown>;
     targetUsername: string;
     newPassword: string;
     connectAuth: { username: string; password: string };
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
   }) => {
-    // Dependencies are detected only for domain accounts today.
-    if (accountType !== PamAccountType.WindowsAd) return;
+    // Dependencies are detected for both domain (WindowsAd) and local (Windows) accounts.
+    if (!isWindowsRotatableType(accountType)) return;
 
     const dependencies = await pamAccountDependencyDAL.findByAccountId(accountId);
     if (!dependencies.length) return;
@@ -190,25 +195,44 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       return;
     }
 
+    // Machines share the account's WinRM settings (HTTPS / port / CA), populated from the source on import.
+    const winrmPort = winrmPortFromConn(connectionDetails);
+    const winrmTransport = winrmTransportFromConn(connectionDetails);
+    // A domain rotator must connect as a UPN over WinRM (NTLM 401s on a bare name); local stays bare.
+    const connectUsername = winrmConnectUsername(accountType, connectionDetails, connectAuth.username);
+
+    // Re-resolve each machine via the DC's DNS at sync time so a scan-time IP that went stale (DHCP) can't
+    // target the wrong host. Domain accounts only (a local account has no DC); fall back to the scan-time IP.
+    const { dcAddress } = connectionDetails as { dcAddress?: string };
+    const freshIpByMachine =
+      accountType === PamAccountType.WindowsAd && dcAddress
+        ? await resolveHostsViaDcDns(
+            [...new Set(dependencies.map((d) => d.machine))],
+            dcAddress,
+            resolvedGatewayId,
+            gatewayV2Service
+          ).catch(() => new Map<string, string>())
+        : new Map<string, string>();
+
     const { encryptor } = await getProjectCipher(projectId);
     const limit = pLimit(DEPENDENCY_SYNC_CONCURRENCY);
 
     await Promise.all(
       dependencies.map((dep) =>
+        // Only terminal states are written: a crash mid-sync leaves the prior status (self-corrects on the next
+        // rotation) rather than a "pending" that could stick forever.
         limit(async () => {
-          await pamAccountDependencyDAL.updateById(dep.id, { rotationStatus: "pending" });
           try {
             const depData = dep.data as { runAsAccount?: string; resolvedIp?: string };
             const runAsAccount = depData?.runAsAccount ?? targetUsername;
-            // Prefer the IP resolved at scan time: the gateway can't always resolve AD hostnames directly.
-            const targetHost = depData?.resolvedIp || dep.machine;
+            const targetHost = freshIpByMachine.get(dep.machine) || depData?.resolvedIp || dep.machine;
             await winrmRpcWithGateway<{ ok: boolean }>({
               targetHost,
-              targetPort: WINRM_DEPENDENCY_SYNC_PORT,
+              targetPort: winrmPort,
               gatewayId: resolvedGatewayId,
               gatewayV2Service,
               endpoint: WinRmRpcEndpoint.SyncDependency,
-              credentials: { username: connectAuth.username, password: connectAuth.password },
+              credentials: { username: connectUsername, password: connectAuth.password, ...winrmTransport },
               params: { type: dep.type, name: dep.name, runAsUsername: runAsAccount, newPassword }
             });
             await pamAccountDependencyDAL.updateById(dep.id, {
@@ -424,6 +448,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         accountId: account.id,
         projectId,
         accountType,
+        connectionDetails,
         targetUsername,
         newPassword,
         // For self-rotation the account's old password is now dead, so connect with the new one; a delegated

@@ -229,7 +229,10 @@ export const extractSamAccountName = (runAs: string): string | null => parseRunA
 export const resolveRunAsFingerprint = (
   runAs: string,
   domain: string,
-  userGuidByName: Map<string, string>
+  userGuidByName: Map<string, string>,
+  netbiosName?: string | null,
+  // The machine currently being swept; lets a local run-as anchor to that machine's local account.
+  machine?: { objectGUID: string; name: string }
 ): string | null => {
   const parsed = parseRunAs(runAs);
   if (!parsed) return null;
@@ -238,8 +241,18 @@ export const resolveRunAsFingerprint = (
 
   if (parsed.domain !== null) {
     const runAsDomain = parsed.domain.toLowerCase();
-    const netbios = domain.split(".")[0]; // corp.example.com -> corp
-    if (runAsDomain !== netbios && runAsDomain !== domain) return null;
+
+    // Local run-as (.\user or MACHINE\user for this machine) anchors to the machine's local account, whose
+    // fingerprint mirrors how enumerateLocalUsers mints it: domain:machineObjectGUID:username.
+    if (machine && (runAsDomain === "." || runAsDomain === machine.name.toLowerCase())) {
+      return `${domain}:${machine.objectGUID}:${account}`;
+    }
+
+    // Domain run-as: accept the DNS first label, the FQDN, or the real NetBIOS name (which can differ).
+    const accepted = [domain.split(".")[0], domain, netbiosName]
+      .filter((d): d is string => Boolean(d))
+      .map((d) => d.toLowerCase());
+    if (!accepted.includes(runAsDomain)) return null;
   }
 
   const guid = userGuidByName.get(account);
@@ -312,46 +325,67 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     // Both local-account and dependency sweeps need the machine list from LDAP.
     const enumerateComputers = Boolean(config.scanLocalAccounts || config.discoverDependencies);
 
-    const { users, computers } = await runLdap<{ users: TLdapUser[]; computers: TLdapComputer[] }>(
-      conn,
-      credentials,
-      gatewayId,
-      gatewayV2Service,
-      async (client) => {
-        const userEntries = await ldapSearch(client, baseDN, "(&(objectClass=user)(objectCategory=person))", [
-          "sAMAccountName",
-          "objectGUID"
-        ]);
-        const parsedUsers = userEntries
-          .map((entry) => ({
-            sAMAccountName: getAttr(entry, "sAMAccountName"),
-            objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
-          }))
-          .filter((u) => u.sAMAccountName && u.objectGUID);
+    const { users, computers, netbiosName } = await runLdap<{
+      users: TLdapUser[];
+      computers: TLdapComputer[];
+      netbiosName: string | null;
+    }>(conn, credentials, gatewayId, gatewayV2Service, async (client) => {
+      const userEntries = await ldapSearch(client, baseDN, "(&(objectClass=user)(objectCategory=person))", [
+        "sAMAccountName",
+        "objectGUID"
+      ]);
+      const parsedUsers = userEntries
+        .map((entry) => ({
+          sAMAccountName: getAttr(entry, "sAMAccountName"),
+          objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
+        }))
+        .filter((u) => u.sAMAccountName && u.objectGUID);
 
-        if (!enumerateComputers) return { users: parsedUsers, computers: [] as TLdapComputer[] };
+      if (!enumerateComputers) return { users: parsedUsers, computers: [] as TLdapComputer[], netbiosName: null };
 
-        const computerEntries = await ldapSearch(
+      const computerEntries = await ldapSearch(client, baseDN, "(&(objectClass=computer)(operatingSystem=*Server*))", [
+        "cn",
+        "dNSHostName",
+        "objectGUID"
+      ]);
+      const parsedComputers = computerEntries
+        .map((entry) => ({
+          cn: getAttr(entry, "cn"),
+          dNSHostName: getAttr(entry, "dNSHostName"),
+          objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
+        }))
+        .filter((c) => (c.dNSHostName || c.cn) && c.objectGUID);
+
+      // The real NetBIOS domain name can differ from the DNS first label (renamed/legacy domains). Read it from
+      // the Partitions container so a NETBIOS\user run-as isn't wrongly rejected and its dependencies dropped.
+      let resolvedNetbios: string | null = null;
+      try {
+        const partitions = await ldapSearch(
           client,
-          baseDN,
-          "(&(objectClass=computer)(operatingSystem=*Server*))",
-          ["cn", "dNSHostName", "objectGUID"]
+          `CN=Partitions,CN=Configuration,${baseDN}`,
+          `(&(objectClass=crossRef)(nETBIOSName=*)(nCName=${baseDN}))`,
+          ["nETBIOSName"]
         );
-        const parsedComputers = computerEntries
-          .map((entry) => ({
-            cn: getAttr(entry, "cn"),
-            dNSHostName: getAttr(entry, "dNSHostName"),
-            objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
-          }))
-          .filter((c) => (c.dNSHostName || c.cn) && c.objectGUID);
-
-        return { users: parsedUsers, computers: parsedComputers };
+        resolvedNetbios = partitions.length ? getAttr(partitions[0], "nETBIOSName") || null : null;
+      } catch (err) {
+        logger.warn(err, `PAM AD discovery could not read the NetBIOS name; using the DNS label [domain=${domain}]`);
       }
-    );
+
+      return { users: parsedUsers, computers: parsedComputers, netbiosName: resolvedNetbios };
+    });
 
     logger.info(
       `PAM AD discovery enumerated ${users.length} domain accounts and ${computers.length} servers [domain=${domain}]`
     );
+
+    // Carry the source's WinRM settings onto imported accounts so rotation and dependency sync honor HTTPS /
+    // a custom port / a pinned CA (the account connection schema has no separate WinRM discovery step).
+    const winrmConnDetails = {
+      winrmPort: config.winrmPort ?? 5985,
+      useWinrmHttps: config.useWinrmHttps ?? false,
+      winrmRejectUnauthorized: config.winrmRejectUnauthorized ?? true,
+      ...(config.winrmCaCert ? { winrmCaCert: config.winrmCaCert } : {})
+    };
 
     // Domain accounts inherit the source's connection target; only the login user differs
     const domainShortName = domain.split(".")[0];
@@ -361,11 +395,20 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
         .slice(0, 64)
         .replace(TRAILING_HYPHENS_REGEX, ""),
       fingerprint: `${domain}:${u.objectGUID}`,
-      details: { connectionDetails, credentials: { username: u.sAMAccountName } }
+      details: {
+        connectionDetails: { ...connectionDetails, ...winrmConnDetails },
+        credentials: { username: u.sAMAccountName }
+      }
     }));
 
     if (enumerateComputers && computers.length > 0) {
-      await resolveHostnamesViaDc(computers, conn, gatewayId, gatewayV2Service);
+      // A DC unreachable on TCP/53 must not abort the whole scan (account enumeration already succeeded);
+      // WinRM then falls back to the hostname, which resolves in environments where the gateway has DNS.
+      try {
+        await resolveHostnamesViaDc(computers, conn, gatewayId, gatewayV2Service);
+      } catch (err) {
+        logger.warn(err, `PAM AD discovery could not resolve hostnames via the DC; using hostnames [domain=${domain}]`);
+      }
 
       const winrm: TWinrmConfig = {
         port: config.winrmPort ?? 5985,
@@ -396,7 +439,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
                   .replace(TRAILING_HYPHENS_REGEX, ""),
                 fingerprint: `${domain}:${computer.objectGUID}:${u.Name.toLowerCase()}`,
                 details: {
-                  connectionDetails: { host, port: connectionDetails.rdpPort },
+                  connectionDetails: { host, port: connectionDetails.rdpPort, ...winrmConnDetails },
                   credentials: { username: u.Name }
                 }
               });
@@ -421,8 +464,12 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
             );
 
             for (const dep of machineDeps) {
-              // built-in or non-domain run-as resolves to null: nothing to anchor to an account or rotate
-              const fingerprint = resolveRunAsFingerprint(dep.runAs, domain, userGuidByName);
+              // built-in run-as resolves to null: nothing to anchor to an account or rotate. A local run-as
+              // anchors to this machine's local account; a domain run-as to the enumerated domain user.
+              const fingerprint = resolveRunAsFingerprint(dep.runAs, domain, userGuidByName, netbiosName, {
+                objectGUID: computer.objectGUID,
+                name: computer.cn
+              });
               if (fingerprint) {
                 dependencies.push({
                   fingerprint,

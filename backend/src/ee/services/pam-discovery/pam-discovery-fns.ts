@@ -8,6 +8,7 @@ import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-r
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
+import { resolveDnsTcp } from "./active-directory/dns-over-dc";
 
 type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 
@@ -69,6 +70,31 @@ export const executeWithGateway = async <T>(
     relayHost: platform.relayHost,
     gateway: platform.gateway,
     relay: platform.relay
+  });
+};
+
+// Resolve hostnames to IPs through the DC's DNS in one gateway session. Used at rotation-sync time so a
+// dependency's machine is targeted by a fresh IP (a scan-time snapshot can go stale via DHCP). Never throws;
+// unresolved hosts are simply absent from the map.
+export const resolveHostsViaDcDns = async (
+  hostnames: string[],
+  dcAddress: string,
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep
+): Promise<Map<string, string>> => {
+  if (!hostnames.length) return new Map();
+  return executeWithGateway(dcAddress, 53, gatewayId, gatewayV2Service, async (proxyPort) => {
+    const resolved = new Map<string, string>();
+    for (const hostname of hostnames) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const ip = await resolveDnsTcp(hostname, proxyPort);
+        if (ip) resolved.set(hostname, ip);
+      } catch {
+        // leave unresolved; the caller falls back to a stored IP or the hostname
+      }
+    }
+    return resolved;
   });
 };
 

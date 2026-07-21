@@ -99,11 +99,20 @@ const sqlRotationHandler: TPamRotationHandler = {
   }
 };
 
-// Windows accounts have no per-account WinRM port in their connection details, so use the WinRM HTTP default.
-const WINRM_ROTATION_PORT = 5985;
+// Default when an account carries no explicit WinRM port (e.g. an older imported/manual account).
+const DEFAULT_WINRM_PORT = 5985;
 
-type TWindowsConnDetails = { host?: string };
-type TWindowsAdConnDetails = {
+// WinRM connection settings live on the account's connection details, populated from the discovery source on
+// import (or set manually), so rotation and dependency sync honor HTTPS / a custom port / a pinned CA.
+type TWinrmConnSettings = {
+  winrmPort?: number;
+  useWinrmHttps?: boolean;
+  winrmRejectUnauthorized?: boolean;
+  winrmCaCert?: string;
+};
+
+type TWindowsConnDetails = TWinrmConnSettings & { host?: string };
+type TWindowsAdConnDetails = TWinrmConnSettings & {
   domain?: string;
   dcAddress?: string;
   port?: number;
@@ -111,6 +120,21 @@ type TWindowsAdConnDetails = {
   ldapRejectUnauthorized?: boolean;
   ldapCaCert?: string;
   ldapTlsServerName?: string;
+};
+
+export const winrmPortFromConn = (conn: Record<string, unknown>): number =>
+  typeof conn.winrmPort === "number" ? conn.winrmPort : DEFAULT_WINRM_PORT;
+
+export const winrmTransportFromConn = (
+  conn: Record<string, unknown>
+): { useHttps: boolean; insecure: boolean; caCertificate?: string } => {
+  const useHttps = Boolean(conn.useWinrmHttps);
+  return {
+    useHttps,
+    // insecure skips cert verification (HTTPS only); it maps from the account's reject-unauthorized flag
+    insecure: useHttps && conn.winrmRejectUnauthorized === false,
+    caCertificate: typeof conn.winrmCaCert === "string" ? conn.winrmCaCert : undefined
+  };
 };
 
 // Local accounts rotate on their own host; domain accounts rotate on the DC (which has the AD tooling).
@@ -139,6 +163,27 @@ const resolveRotationGatewayId = async (
   return resolved;
 };
 
+// Set-ADAccountPassword -Identity and Set-LocalUser -Name want a bare sAMAccountName, not DOMAIN\user or a
+// UPN (both accepted by the account schema), so strip any domain qualifier before building the rotate script.
+const toBareAccountName = (username: string): string => {
+  if (username.includes("\\")) return username.split("\\").pop() ?? username;
+  if (username.includes("@")) return username.split("@")[0];
+  return username;
+};
+
+// The identity WinRM connects AS must be domain-qualified for a domain rotator: NTLM resolves a bare name
+// against the target's local SAM (and 401s), so qualify to a UPN. Local accounts stay bare.
+export const winrmConnectUsername = (
+  accountType: TRotatableType,
+  connectionDetails: Record<string, unknown>,
+  username: string
+): string => {
+  if (accountType !== PamAccountType.WindowsAd) return username;
+  if (username.includes("\\") || username.includes("@")) return username;
+  const { domain } = connectionDetails as TWindowsAdConnDetails;
+  return domain ? `${username}@${domain}` : username;
+};
+
 const windowsRotationHandler: TPamRotationHandler = {
   validateTarget: () => {
     // Domain rotation needs a delegated admin (an account can't -Reset itself); AD enforces this at runtime.
@@ -152,14 +197,18 @@ const windowsRotationHandler: TPamRotationHandler = {
     try {
       await winrmRpcWithGateway<{ ok: boolean }>({
         targetHost,
-        targetPort: WINRM_ROTATION_PORT,
+        targetPort: winrmPortFromConn(connectionDetails),
         gatewayId: resolvedGatewayId,
         gatewayV2Service: deps.gatewayV2Service,
         endpoint: WinRmRpcEndpoint.RotateCredential,
-        credentials: { username: auth.username, password: auth.password },
+        credentials: {
+          username: winrmConnectUsername(accountType, connectionDetails, auth.username),
+          password: auth.password,
+          ...winrmTransportFromConn(connectionDetails)
+        },
         params: {
           kind: accountType === PamAccountType.WindowsAd ? "domain" : "local",
-          targetUsername,
+          targetUsername: toBareAccountName(targetUsername),
           newPassword
         }
       });
@@ -200,11 +249,11 @@ const windowsRotationHandler: TPamRotationHandler = {
       // Local account: prove the credential over WinRM against its own host.
       await winrmRpcWithGateway<{ ok: boolean }>({
         targetHost: winrmRotationTargetHost(accountType, connectionDetails),
-        targetPort: WINRM_ROTATION_PORT,
+        targetPort: winrmPortFromConn(connectionDetails),
         gatewayId: resolvedGatewayId,
         gatewayV2Service: deps.gatewayV2Service,
         endpoint: WinRmRpcEndpoint.Test,
-        credentials: { username: auth.username, password: auth.password }
+        credentials: { username: auth.username, password: auth.password, ...winrmTransportFromConn(connectionDetails) }
       });
       return true;
     } catch {

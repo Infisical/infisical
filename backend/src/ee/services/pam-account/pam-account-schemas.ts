@@ -453,7 +453,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Windows.png",
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
-      port: z.coerce.number().int().min(1).max(65535)
+      port: z.coerce.number().int().min(1).max(65535),
+      winrmPort: z.coerce.number().int().min(1).max(65535).default(5985),
+      useWinrmHttps: z.boolean().default(false),
+      winrmRejectUnauthorized: z.boolean().default(true),
+      winrmCaCert: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -463,7 +467,18 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: z.string()
     }),
     ui: {
-      port: { defaultValue: 3389 },
+      port: { label: "RDP Port", defaultValue: 3389 },
+      winrmPort: { label: "WinRM Port", defaultValue: 5985 },
+      useWinrmHttps: { label: "Use WinRM HTTPS" },
+      winrmRejectUnauthorized: {
+        label: "Reject Unauthorized (WinRM)",
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
+      winrmCaCert: {
+        label: "WinRM CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   },
@@ -480,7 +495,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
       useLdaps: z.boolean(),
       ldapRejectUnauthorized: z.boolean(),
       ldapCaCert: optionalTrimmedString,
-      ldapTlsServerName: optionalTrimmedString
+      ldapTlsServerName: optionalTrimmedString,
+      winrmPort: z.coerce.number().int().min(1).max(65535).default(5985),
+      useWinrmHttps: z.boolean().default(false),
+      winrmRejectUnauthorized: z.boolean().default(true),
+      winrmCaCert: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -516,6 +535,17 @@ export const ACCOUNT_TYPE_CONFIGS = {
       ldapTlsServerName: {
         label: "TLS Server Name",
         showWhen: { field: "useLdaps", equals: true }
+      },
+      winrmPort: { label: "WinRM Port", defaultValue: 5985 },
+      useWinrmHttps: { label: "Use WinRM HTTPS" },
+      winrmRejectUnauthorized: {
+        label: "Reject Unauthorized (WinRM)",
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
+      winrmCaCert: {
+        label: "WinRM CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useWinrmHttps", equals: true }
       },
       username: {
         tooltip: "Use the DOMAIN\\username format for domain authentication (e.g. CORP\\Administrator)."
