@@ -126,11 +126,10 @@ export const ValidateAzureClientSecretsConnectionCredentialsSchema = z.discrimin
   })
 ]);
 
-export const CreateAzureClientSecretsConnectionSchema = ValidateAzureClientSecretsConnectionCredentialsSchema
-  .and(
+export const CreateAzureClientSecretsConnectionSchema =
+  ValidateAzureClientSecretsConnectionCredentialsSchema.and(
     GenericCreateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets, { supportsCredentialRotation: true })
-  )
-  .superRefine((data, ctx) => {
+  ).superRefine((data, ctx) => {
     if (data.method !== AzureClientSecretsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

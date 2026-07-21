@@ -98,14 +98,13 @@ export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedU
   })
 ]);
 
-export const CreateAzureKeyVaultConnectionSchema = ValidateAzureKeyVaultConnectionCredentialsSchema
-  .and(
+export const CreateAzureKeyVaultConnectionSchema =
+  ValidateAzureKeyVaultConnectionCredentialsSchema.and(
     GenericCreateAppConnectionFieldsSchema(AppConnection.AzureKeyVault, {
       supportsCredentialRotation: true,
       supportsGateways: true
     })
-  )
-  .superRefine((data, ctx) => {
+  ).superRefine((data, ctx) => {
     if (data.method !== AzureKeyVaultConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

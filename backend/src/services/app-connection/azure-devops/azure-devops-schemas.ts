@@ -111,13 +111,12 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
   })
 ]);
 
-export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCredentialsSchema
-  .and(
+export const CreateAzureDevOpsConnectionSchema =
+  ValidateAzureDevOpsConnectionCredentialsSchema.and(
     GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDevOps, {
       supportsCredentialRotation: true
     })
-  )
-  .superRefine((data, ctx) => {
+  ).superRefine((data, ctx) => {
     if (data.method !== AzureDevOpsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

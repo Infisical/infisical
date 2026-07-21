@@ -74,13 +74,12 @@ export const ValidateAzureAppConfigurationConnectionCredentialsSchema = z.discri
   })
 ]);
 
-export const CreateAzureAppConfigurationConnectionSchema = ValidateAzureAppConfigurationConnectionCredentialsSchema
-  .and(
+export const CreateAzureAppConfigurationConnectionSchema =
+  ValidateAzureAppConfigurationConnectionCredentialsSchema.and(
     GenericCreateAppConnectionFieldsSchema(AppConnection.AzureAppConfiguration, {
       supportsCredentialRotation: true
     })
-  )
-  .superRefine((data, ctx) => {
+  ).superRefine((data, ctx) => {
     if (data.method !== AzureAppConfigurationConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
