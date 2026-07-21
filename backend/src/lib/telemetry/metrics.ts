@@ -328,10 +328,10 @@ export enum SecretCacheAccessResult {
   MISS = "miss"
 }
 
-// Why an If-None-Match request did not 304.
+// What the server observed when an If-None-Match request did not 304 (cause is inferred downstream).
 export enum SecretEtagMissReason {
-  FIELD_ABSENT = "field_absent", // no stored ETag field: churned or expired
-  VALUE_DIFFERS = "value_differs" // field exists, content hash differs: secrets changed
+  FIELD_ABSENT = "field_absent", // no stored ETag for this (actor, fingerprint, params) key
+  VALUE_DIFFERS = "value_differs" // a stored ETag exists but differs from the client's If-None-Match
 }
 
 export const secretCacheAccessCounter = infisicalCoreMeter.createCounter("infisical.secret.cache.access.count", {
