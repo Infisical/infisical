@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
@@ -65,5 +65,103 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { countInternalCas, countActiveCerts, countPamResources };
+  // Distinct users + machine identities that belong to a project of the given type, either through a
+  // direct membership or through a group assigned to the project. Project memberships (user, identity,
+  // and group actors) all live in the unified `memberships` table with scope = project; the group's
+  // members are then resolved through the user/identity group-membership tables. When orgId is given
+  // the count is scoped to that org (cloud); when omitted it spans the whole instance (self-hosted).
+  // The four sources are UNION-ed (not UNION ALL) with a per-kind prefix so an identity in several
+  // projects, or reachable via both a direct and a group membership, is only counted once.
+  const countProjectIdentities = async (projectType: ProjectType, orgId?: string): Promise<number> => {
+    // The live project ids for this type, resolved once per source. Scoping happens here on
+    // projects.orgId (indexed via projects_orgid_type_idx) rather than on memberships.scopeOrgId:
+    // leading with the org's handful of typed projects lets each source drive off the small project set
+    // and probe memberships through the partial (scopeProjectId, actor*) unique indexes as an
+    // index-only scan, instead of scanning every project-scope membership row in the org. Self-hosted
+    // passes no orgId and counts the whole instance. A fresh builder per call keeps knex from
+    // mutating a shared subquery.
+    const typedProjectIds = () => {
+      const qb = db
+        .replicaNode()(TableName.Project)
+        .where(`${TableName.Project}.type`, projectType)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(`${TableName.Project}.id`);
+      if (orgId) void qb.where(`${TableName.Project}.orgId`, orgId);
+      return qb;
+    };
+
+    // scope = project + a non-null actor column + whereIn against the typed project ids matches the
+    // partial unique indexes exactly; each project-scope row carries exactly one actor column.
+    const directUsers = db
+      .replicaNode()(TableName.Membership)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .whereNotNull(`${TableName.Membership}.actorUserId`)
+      .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+      .select(db.raw("'u' as kind"))
+      .select(`${TableName.Membership}.actorUserId as entityId`);
+
+    const distinctEntities = directUsers.union(
+      [
+        (qb) =>
+          void qb
+            .from(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+            .select(db.raw("'i' as kind"))
+            .select(`${TableName.Membership}.actorIdentityId as entityId`),
+        // A group assigned to a project (membership with actorGroupId) brings its members into it. A
+        // pending group membership (invited, not yet joined) does not occupy a seat.
+        (qb) =>
+          void qb
+            .from(TableName.UserGroupMembership)
+            .join(
+              TableName.Membership,
+              `${TableName.UserGroupMembership}.groupId`,
+              `${TableName.Membership}.actorGroupId`
+            )
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .where(`${TableName.UserGroupMembership}.isPending`, false)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+            .select(db.raw("'u' as kind"))
+            .select(`${TableName.UserGroupMembership}.userId as entityId`),
+        (qb) =>
+          void qb
+            .from(TableName.IdentityGroupMembership)
+            .join(
+              TableName.Membership,
+              `${TableName.IdentityGroupMembership}.groupId`,
+              `${TableName.Membership}.actorGroupId`
+            )
+            .where(`${TableName.Membership}.scope`, AccessScope.Project)
+            .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+            .select(db.raw("'i' as kind"))
+            .select(`${TableName.IdentityGroupMembership}.identityId as entityId`)
+      ],
+      true
+    );
+    // .as() on a union builder is typed as any, so cast the awaited row before counting.
+    const row = (await db.replicaNode().count("* as count").from(distinctEntities.as("project_identities")).first()) as
+      | { count?: string | number }
+      | undefined;
+    return toCount(row);
+  };
+
+  const countSecretManagementIdentities = async (orgId?: string): Promise<number> => {
+    try {
+      return await countProjectIdentities(ProjectType.SecretManager, orgId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count secret management identities for usage" });
+    }
+  };
+
+  const countPamIdentities = async (orgId?: string): Promise<number> => {
+    try {
+      return await countProjectIdentities(ProjectType.PAM, orgId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count PAM identities for usage" });
+    }
+  };
+
+  return { countInternalCas, countActiveCerts, countPamResources, countSecretManagementIdentities, countPamIdentities };
 };

@@ -115,6 +115,11 @@ export const SECRET_ROTATION_MAP: Record<
     image: "DatadogWhite.png",
     size: 50
   },
+  [SecretRotation.DatadogApiKey]: {
+    name: "Datadog API Key",
+    image: "DatadogWhite.png",
+    size: 50
+  },
   [SecretRotation.ConvexAccessKey]: {
     name: "Convex Access Key",
     image: "Convex.png",
@@ -150,6 +155,7 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
   [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog,
+  [SecretRotation.DatadogApiKey]: AppConnection.Datadog,
   [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
   [SecretRotation.FireworksApiKey]: AppConnection.Fireworks
 };
@@ -178,6 +184,7 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.SupabaseApiKey]: true,
   [SecretRotation.SalesforceOauthCredentials]: true,
   [SecretRotation.DatadogApplicationKeySecret]: true,
+  [SecretRotation.DatadogApiKey]: true,
   [SecretRotation.ConvexAccessKey]: true,
   [SecretRotation.FireworksApiKey]: true
 };

@@ -32,6 +32,8 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
@@ -132,6 +134,7 @@ type TScimServiceFactoryDep = {
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export const scimServiceFactory = ({
@@ -155,7 +158,8 @@ export const scimServiceFactory = ({
   approvalPolicyDAL,
   scimEventsDAL,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
@@ -878,6 +882,10 @@ export const scimServiceFactory = ({
       approvalPolicyDAL
     });
 
+    // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
+    usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
+
     await scimEventsDAL.create({
       orgId,
       eventType: ScimEvent.DELETE_USER,
@@ -1102,6 +1110,7 @@ export const scimServiceFactory = ({
         );
 
         const newMembers = await addUsersToGroupByUserIds({
+          usageMeteringService,
           group,
           userIds: orgMemberships.map((membership) => membership.actorUserId as string),
           userDAL,
@@ -1317,6 +1326,7 @@ export const scimServiceFactory = ({
 
       if (toAddUserIds.length) {
         await addUsersToGroupByUserIds({
+          usageMeteringService,
           group,
           userIds: toAddUserIds.map((member) => member.actorUserId as string),
           userDAL,
@@ -1333,6 +1343,7 @@ export const scimServiceFactory = ({
 
       if (toRemoveUserIds.length) {
         await removeUsersFromGroupByUserIds({
+          usageMeteringService,
           group,
           userIds: toRemoveUserIds,
           userDAL,

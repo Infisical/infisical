@@ -38,6 +38,8 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -128,6 +130,7 @@ type TOrgServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -163,7 +166,8 @@ export const orgServiceFactory = ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
-  certificatePolicyDAL
+  certificatePolicyDAL,
+  usageMeteringService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -729,6 +733,9 @@ export const orgServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
+    // The PAM bootstrap above seeds the creator as a project member, which changes the pam_identities meter.
+    usageMeteringService.emit(organization.id, PamIdentities.key);
+
     return organization;
   };
 
@@ -1202,6 +1209,9 @@ export const orgServiceFactory = ({
       approvalPolicyDAL
     });
 
+    // Removing an org member cascades their project + group memberships, changing the identity meters.
+    usageMeteringService.emit(orgId, SecretIdentities.key);
+    usageMeteringService.emit(orgId, PamIdentities.key);
     return deletedMembership;
   };
 
@@ -1241,6 +1251,9 @@ export const orgServiceFactory = ({
       approvalPolicyDAL
     });
 
+    // Removing org members cascades their project + group memberships, changing the identity meters.
+    usageMeteringService.emit(orgId, SecretIdentities.key);
+    usageMeteringService.emit(orgId, PamIdentities.key);
     return deletedMemberships;
   };
 

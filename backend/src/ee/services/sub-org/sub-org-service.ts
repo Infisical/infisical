@@ -7,6 +7,8 @@ import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { PamIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -28,6 +30,7 @@ type TSubOrgServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -39,7 +42,8 @@ export const subOrgServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
-  certificatePolicyDAL
+  certificatePolicyDAL,
+  usageMeteringService
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -119,6 +123,9 @@ export const subOrgServiceFactory = ({
 
       return org;
     });
+
+    // The PAM bootstrap seeds the creator as a project member, which changes the pam_identities meter.
+    usageMeteringService.emit(organization.id, PamIdentities.key);
 
     return {
       organization

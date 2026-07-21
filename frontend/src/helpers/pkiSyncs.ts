@@ -47,6 +47,10 @@ export const PKI_SYNC_MAP: Record<
   [PkiSync.WindowsServer]: {
     name: "Windows Server",
     image: "Windows.png"
+  },
+  [PkiSync.NutanixPrismCentral]: {
+    name: "Nutanix Prism Central",
+    image: "Nutanix.png"
   }
 };
 
@@ -60,5 +64,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.NetScaler]: AppConnection.NetScaler,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.LinuxServer]: AppConnection.SSH,
-  [PkiSync.WindowsServer]: AppConnection.WinRM
+  [PkiSync.WindowsServer]: AppConnection.WinRM,
+  [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };

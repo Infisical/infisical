@@ -169,6 +169,10 @@ import {
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
 import {
+  NutanixPrismCentralConnectionListItemSchema,
+  SanitizedNutanixPrismCentralConnectionSchema
+} from "@app/services/app-connection/nutanix-prism-central";
+import {
   OctopusDeployConnectionListItemSchema,
   SanitizedOctopusDeployConnectionSchema
 } from "@app/services/app-connection/octopus-deploy";
@@ -325,7 +329,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
-  ...SanitizedFireworksConnectionSchema.options
+  ...SanitizedFireworksConnectionSchema.options,
+  ...SanitizedNutanixPrismCentralConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -407,7 +412,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RundeckConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
-  FireworksConnectionListItemSchema
+  FireworksConnectionListItemSchema,
+  NutanixPrismCentralConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

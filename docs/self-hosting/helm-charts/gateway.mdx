@@ -92,6 +92,9 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `nodeSelector` | `{}` | Node selector. |
 | `tolerations` | `{}` | Pod tolerations. |
 | `affinity` | `{}` | Pod affinity rules. |
+| `extraEnv` | `[]` | Extra environment variables for the gateway container. |
+| `extraEnvFrom` | `[]` | Load environment variables from Secrets or ConfigMaps. |
+| `extraObjects` | `[]` | Extra Kubernetes manifests to deploy with this chart. |
 
 ## Default Helm Values
 
@@ -193,4 +196,24 @@ service:
 
 ingress:
   enabled: false
+
+# Extra environment variables for the gateway container
+extraEnv: []
+#  - name: LOG_LEVEL
+#    value: debug
+#  - name: MY_SECRET
+#    valueFrom:
+#      secretKeyRef:
+#        name: my-secret
+#        key: my-key
+
+# Load environment variables from Secrets or ConfigMaps
+extraEnvFrom: []
+#  - secretRef:
+#      name: my-secret
+#  - configMapRef:
+#      name: my-configmap
+
+# Extra Kubernetes manifests to deploy with this chart
+extraObjects: []
 ```

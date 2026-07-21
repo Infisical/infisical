@@ -79,9 +79,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
             >
               <img
                 src={`/images/integrations/${image}`}
-                height={40}
-                width={40}
-                className="mt-auto"
+                className="mt-auto h-10 w-full max-w-24 object-contain"
                 alt={`${name} logo`}
               />
               <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">

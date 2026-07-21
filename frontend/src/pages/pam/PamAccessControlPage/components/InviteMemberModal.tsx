@@ -17,7 +17,8 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { useAddUserToWsNonE2EE, useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
+import { useAddPamProductUserMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
@@ -36,7 +37,7 @@ type SelectOption = {
 export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const { mutate: addUser, isPending } = useAddUserToWsNonE2EE();
+  const { mutate: addUser, isPending } = useAddPamProductUserMember();
   const navigate = useNavigate({ from: "" });
 
   const requesterEmail = useSearch({
@@ -96,20 +97,25 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
   const handleSubmit = () => {
     if (!selectedUsers.length) return;
 
-    const usernames = selectedUsers
-      .map((selection) => {
-        const orgUser = orgUsers?.find((ou) => ou.id === selection.value);
-        return orgUser?.user.username || orgUser?.user.email;
-      })
-      .filter(Boolean) as string[];
+    const userIds: string[] = [];
+    const emails: string[] = [];
+    selectedUsers.forEach((selection) => {
+      const orgUser = orgUsers?.find((ou) => ou.id === selection.value);
+      if (!orgUser) return;
+      if (orgUser.user?.id) {
+        userIds.push(orgUser.user.id);
+      } else {
+        const email = orgUser.user?.email || orgUser.inviteEmail;
+        if (email) emails.push(email.toLowerCase());
+      }
+    });
 
     addUser(
       {
-        usernames,
-        orgId: currentOrg.id,
-        projectId: currentProject.id,
-        projectType: currentProject.type,
-        roleSlugs: [selectedRole]
+        userIds,
+        emails,
+        role: selectedRole,
+        projectId: currentProject.id
       },
       {
         onSuccess: () => {

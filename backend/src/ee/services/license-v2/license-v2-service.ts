@@ -4,7 +4,6 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TLicenseClientFactory } from "@app/services/license-client";
 import {
   TCatalogProduct,
@@ -13,7 +12,6 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/services/license-client/license-client-types";
-import { TMeteredFeature } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isV2SelfHostedLicenseKey } from "../license/license-fns";
@@ -22,10 +20,10 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import {
   BillingV2CatalogProduct,
   BillingV2CompareRow,
+  BillingV2Deprecation,
   BillingV2Dim,
   BillingV2Entitlement,
   BillingV2EntitlementDim,
-  BillingV2Model,
   BillingV2Overview,
   BillingV2Plan,
   BillingV2Preview,
@@ -33,26 +31,26 @@ import {
   TAddBillingV2PaymentMethodDTO,
   TAddBillingV2ProductDTO,
   TBillingV2SubscriptionLifecycleDTO,
+  TCancelBillingV2TrialDTO,
+  TChangeBillingV2CommitmentDTO,
   TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
   TGetBillingV2CatalogDTO,
   TGetBillingV2OverviewDTO,
   TPreviewBillingV2ChangeDTO,
-  TRemoveBillingV2ProductDTO
+  TRemoveBillingV2ProductDTO,
+  TStartBillingV2TrialDTO
 } from "./license-v2-types";
 
 type TLicenseV2ServiceFactoryDep = {
-  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "countAllOrgIdentities">;
+  envConfig: Pick<TEnvConfig, "LICENSE_SERVER_V2_MODE" | "LICENSE_KEY" | "SITE_URL">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  // Feature-keyed live-count fns (the same source the usage meter uses), so per-unit dimensions can
-  // show real utilization instead of the zero the license server reports for non-metered dimensions.
-  meteredFeatures: TMeteredFeature[];
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
     | "invalidateEntitlements"
+    | "refreshEntitlements"
     | "getCatalog"
     | "getSubscription"
     | "getCloudPlan"
@@ -62,6 +60,10 @@ type TLicenseV2ServiceFactoryDep = {
     | "previewSubscriptionChange"
     | "addSubscriptionItems"
     | "removeSubscriptionItem"
+    | "changeCommitment"
+    | "startTrial"
+    | "cancelTrial"
+    | "getTrials"
     | "cancelSubscription"
     | "resumeSubscription"
   >;
@@ -73,20 +75,6 @@ export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory
 // glyph on the client.
 const FALLBACK_ICON = "box";
 const FALLBACK_COLOR = "#6b7280";
-
-// Self-hosted has no cloud-plan endpoint, so the org seat caps ride on the license entitlements
-// instead. These keys mirror the v2 keys in dual-read feature-mapping (MaxIdentities.key, member_limit).
-const IDENTITY_LIMIT_FEATURE_KEY = "max_identities";
-const MEMBER_LIMIT_FEATURE_KEY = "member_limit";
-
-const CATALOG_MODELS: BillingV2Model[] = ["seat", "usage", "limit", "flat"];
-
-const toModel = (model: string): BillingV2Model => {
-  if (CATALOG_MODELS.includes(model as BillingV2Model)) {
-    return model as BillingV2Model;
-  }
-  return "usage";
-};
 
 // Price kinds we understand; an unknown kind is treated as non-purchasable, never sold as per_unit.
 const PER_UNIT_KIND = "per_unit";
@@ -112,6 +100,55 @@ const formatDate = (unixSeconds: number | null | undefined): string | null => {
   });
 };
 
+// Entitlement product dates (trial_ends_at, current_period_end) are ISO strings, not unix seconds.
+const formatIsoDate = (iso: string | null | undefined): string | null => {
+  if (!iso) {
+    return null;
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+};
+
+// Compact date ("Aug 16") for the header's next-charge line, where the year is noise.
+const formatShortDate = (unixSeconds: number | null | undefined): string | null => {
+  if (!unixSeconds) {
+    return null;
+  }
+  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+// deprecationDate arrives as unix seconds/ms or an ISO string depending on the server; normalize both.
+const parseDeprecationDate = (value: number | string | null | undefined): Date | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const date = typeof value === "number" ? new Date(value < 1e12 ? value * 1000 : value) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// Build the client-facing deprecation detail (formatted date + whole days remaining) when deprecated.
+const toDeprecation = (input: {
+  deprecated?: boolean;
+  reason?: string | null;
+  nextSteps?: string | null;
+  date?: number | string | null;
+}): BillingV2Deprecation | undefined => {
+  if (!input.deprecated) {
+    return undefined;
+  }
+  const date = parseDeprecationDate(input.date);
+  const daysLeft = date ? Math.max(0, Math.ceil((date.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : null;
+  return {
+    reason: input.reason ?? undefined,
+    nextSteps: input.nextSteps ?? undefined,
+    date: date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null,
+    daysLeft
+  };
+};
+
 const resolveSubState = (subscription: TSubscriptionResponse | null): BillingV2SubState => {
   if (!subscription || !subscription.status) {
     return "no-subscription";
@@ -132,18 +169,22 @@ const resolveSubState = (subscription: TSubscriptionResponse | null): BillingV2S
   return "active";
 };
 
-const resolveInterval = (cadence: string | null | undefined): "month" | "year" | null => {
-  if (cadence === "month" || cadence === "year") {
-    return cadence;
-  }
-  return null;
-};
-
 const normalizeCadence = (cadence: string | undefined): "monthly" | "annual" => {
   if (cadence === "annual") {
     return "annual";
   }
   return "monthly";
+};
+
+// Per-dimension cadence off the subscription contract; "" or anything unknown resolves to null.
+const toCadence = (cadence: string | null | undefined): "monthly" | "annual" | null => {
+  if (cadence === "annual") {
+    return "annual";
+  }
+  if (cadence === "monthly") {
+    return "monthly";
+  }
+  return null;
 };
 
 // A plan carries pricing as a known-kind price, a flat base fee, or both. An unknown price kind is
@@ -209,11 +250,21 @@ const toPlan = (product: TCatalogProduct, plan: TCatalogProduct["plans"][number]
     });
   });
 
+  const deprecation = toDeprecation({
+    deprecated: plan.deprecated,
+    reason: plan.deprecationReason,
+    nextSteps: plan.deprecationNextSteps,
+    date: plan.deprecationDate
+  });
   const result: BillingV2Plan = {
     tier: plan.tier,
     name: plan.name,
     selfServe: plan.selfServe,
     salesLed: plan.salesLed,
+    trialable: plan.trialable ?? false,
+    deprecated: plan.deprecated ?? false,
+    ...(deprecation ? { deprecation } : {}),
+    displayOrder: plan.displayOrder ?? undefined,
     feature: plan.feature,
     dims
   };
@@ -245,28 +296,37 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
     return { label: row.label, cells };
   });
 
+  const deprecation = toDeprecation({
+    deprecated: product.deprecated,
+    reason: product.deprecationReason,
+    nextSteps: product.deprecationNextSteps,
+    date: product.deprecationDate
+  });
   return {
     id: product.id,
     name: product.name,
     icon: product.icon || FALLBACK_ICON,
     color: product.color || FALLBACK_COLOR,
-    model: toModel(product.model),
     addon: product.addon,
-    desc: product.description ?? "",
     tagline: product.tagline,
+    deprecated: product.deprecated ?? false,
+    ...(deprecation ? { deprecation } : {}),
+    displayOrder: product.displayOrder ?? undefined,
     plans,
     includes: product.includes,
     compare
   };
 };
 
-// Translates a catalog product into the line items the checkout endpoint expects: the chosen plan's
-// per_unit dimensions at quantity 1. Metered and base lines are added server-side, so a metered-only
-// or base-only plan (e.g. the NHI add-on) checks out with no quantities.
+// Translates a catalog product into the line item the checkout endpoint expects. Monthly is
+// usage-based (no commitment); an annual per_resource line carries the caller-chosen per-dimension
+// commitments. Metered and base lines are added server-side. Returns null when the plan is not
+// purchasable for the cadence (no priced line and no base fee).
 const buildCheckoutItems = (
   product: TCatalogProduct,
   cadence: "monthly" | "annual",
-  planTier?: string
+  planTier?: string,
+  commitments?: Record<string, number>
 ): TCheckoutLineItem[] | null => {
   // A requested tier must resolve to a self-serve plan; with none requested, fall back to the first
   // paid self-serve plan (the legacy single-"pro" behaviour).
@@ -277,38 +337,40 @@ const buildCheckoutItems = (
     return null;
   }
 
-  const quantities: Record<string, number> = {};
-  const perUnitPrice = plan.prices.find(
-    (candidate) => candidate.cadence === cadence && candidate.kind === PER_UNIT_KIND && candidate.unitAmountCents > 0
+  const hasPriceForCadence = plan.prices.some(
+    (candidate) => candidate.cadence === cadence && isKnownPriceKind(candidate.kind)
   );
-  if (perUnitPrice) {
-    quantities[perUnitPrice.dimensionKey] = 1;
-  }
-
-  const hasMetered = plan.prices.some((candidate) => candidate.cadence === cadence && candidate.kind === METERED_KIND);
   const baseForCadence = cadence === "annual" ? plan.basePriceAnnualCents : plan.basePriceMonthlyCents;
   const hasBase = baseForCadence !== null && baseForCadence !== undefined;
-  if (!perUnitPrice && !hasMetered && !hasBase) {
+  if (!hasPriceForCadence && !hasBase) {
     return null;
   }
 
-  return [
-    {
-      productId: product.id,
-      plan: plan.tier,
-      cadence,
-      quantities
+  const item: TCheckoutLineItem = { productId: product.id, plan: plan.tier, cadence };
+  if (commitments && Object.keys(commitments).length > 0) {
+    // Commitment mode (prepaid annual units with monthly on-demand overage) only makes sense when the
+    // committed dimension is priced on BOTH cadences: annual for the commitment, monthly for the
+    // overage. Reject it for a single-cadence plan (annual-only or monthly-only).
+    const dimensionHasBothCadences = (dimensionKey: string): boolean => {
+      const prices = plan.prices.filter((price) => price.dimensionKey === dimensionKey && isKnownPriceKind(price.kind));
+      return prices.some((price) => price.cadence === "annual") && prices.some((price) => price.cadence === "monthly");
+    };
+    const unsupported = Object.keys(commitments).filter((dimensionKey) => !dimensionHasBothCadences(dimensionKey));
+    if (cadence !== "annual" || unsupported.length > 0) {
+      throw new BadRequestError({
+        message: "Commitment mode is only available when the plan has both monthly and annual pricing."
+      });
     }
-  ];
+    item.commitments = commitments;
+  }
+  return [item];
 };
 
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
-  identityOrgMembershipDAL,
   permissionService,
-  licenseClient,
-  meteredFeatures
+  licenseClient
 }: TLicenseV2ServiceFactoryDep) => {
   // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
   // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
@@ -341,74 +403,23 @@ export const licenseV2ServiceFactory = ({
     );
   };
 
-  const counterByFeatureKey = new Map(meteredFeatures.map((metered) => [metered.feature.key, metered.count]));
-
-  // Live per-org usage for the subscription's non-metered dimensions, keyed by feature key. Seeded
-  // values (e.g. the shared member+identity pool, computed once for the Usage card) win, so a
-  // dimension that also has its own count elsewhere on the page reads the same number. The rest are
-  // counted once each, in parallel, via the same counters the usage meter uses. A count failure is
-  // logged and dropped so the overview still renders.
-  const resolveLiveUsage = async (
-    orgId: string,
-    subscription: TSubscriptionResponse | null,
-    seed: Map<string, number>
-  ): Promise<Map<string, number>> => {
-    const usage = new Map<string, number>(seed);
-    if (!subscription) {
-      return usage;
-    }
-
-    const featureKeys = new Set<string>();
-    subscription.items.forEach((item) => {
-      item.dimensions.forEach((dimension) => {
-        if (
-          !dimension.metered &&
-          dimension.featureKey &&
-          !usage.has(dimension.featureKey) &&
-          counterByFeatureKey.has(dimension.featureKey)
-        ) {
-          featureKeys.add(dimension.featureKey);
-        }
-      });
-    });
-
-    await Promise.all(
-      [...featureKeys].map(async (featureKey) => {
-        const count = counterByFeatureKey.get(featureKey);
-        if (count === undefined) {
-          return;
-        }
-        try {
-          usage.set(featureKey, await count(orgId));
-        } catch (error) {
-          logger.error(error, `billing-v2: failed to count live usage [orgId=${orgId}, feature=${featureKey}]`);
-        }
-      })
-    );
-
-    return usage;
-  };
-
   // Fold the subscription items and the entitlement features sourced from a product into a single
   // per-product entitlement map, keyed by the server's product ids.
-  const buildEntitlements = async (
-    org: TEntitlementOrg,
-    subscription: TSubscriptionResponse | null,
-    liveUsageSeed: Map<string, number>
-  ) => {
+  const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
 
     const labelByDimension = new Map<string, string>();
     const nounByDimension = new Map<string, string>();
-    // Fetch the catalog when any item carries dimensions or limits to name; the pinned subscription
-    // dimensions supply used/limit/rate, the catalog supplies each dimension's label and noun.
-    const needsCatalog = Boolean(
-      subscription?.items.some((item) => item.dimensions.length > 0 || Object.keys(item.limits).length > 0)
-    );
+    const catalogProductById = new Map<string, TCatalogProduct>();
+    // Fetch the catalog whenever there are items: the pinned subscription dimensions supply
+    // used/limit/rate while the catalog supplies each dimension's label/noun and the product/plan
+    // deprecation flags (an item can be deprecated without carrying dimensions).
+    const needsCatalog = Boolean(subscription?.items.length);
     if (needsCatalog) {
       try {
         const catalog = await licenseClient.getCatalog();
         catalog?.products.forEach((product) => {
+          catalogProductById.set(product.id, product);
           product.dimensions.forEach((dimension) => {
             labelByDimension.set(`${product.id}:${dimension.key}`, dimension.label);
             nounByDimension.set(`${product.id}:${dimension.key}`, dimension.noun);
@@ -419,48 +430,49 @@ export const licenseV2ServiceFactory = ({
       }
     }
 
-    // The license server only tracks usage for metered dimensions, so per-unit ones come back with
-    // used=0. Overlay live counts, matched on the stable feature key (dimension keys drift). Metered
-    // dimensions keep the server's period peak, which is the billed figure.
-    const liveUsageByFeatureKey = await resolveLiveUsage(org.id, subscription, liveUsageSeed);
-
     if (subscription) {
       subscription.items.forEach((item) => {
         // Resolve the pinned per-dimension contract into a display-ready list: label/noun from the
-        // catalog, metered/used/limit/rate/freeBand from the org's pinned subscription version. Money
-        // is converted to dollars here so *Cents fields never reach the client. rate/freeBand are set
-        // only for metered dimensions; per-unit dimensions get their rate from the catalog client-side.
+        // catalog, everything else from the org's version-pinned subscription. Money is converted to
+        // dollars here so *Cents fields never reach the client. per_resource dims carry committedRate
+        // (annual) + onDemandRate (monthly overage); metered dims carry rate + freeBand.
         const dimensions: BillingV2EntitlementDim[] = item.dimensions.map((dimension) => {
           const catalogKey = `${item.productId}:${dimension.key}`;
           const metered = dimension.metered ?? false;
+          const cadence = toCadence(dimension.cadence);
+          const committed = dimension.committed ?? null;
+          const hasCommittedRate = dimension.committedRateCents !== null && dimension.committedRateCents !== undefined;
+          const hasOnDemandRate = dimension.onDemandRateCents !== null && dimension.onDemandRateCents !== undefined;
           const hasRate = dimension.rateCents !== null && dimension.rateCents !== undefined;
           const hasFreeBand = dimension.freeBand !== null && dimension.freeBand !== undefined;
-          let used = dimension.used ?? 0;
-          const liveUsed = dimension.featureKey ? liveUsageByFeatureKey.get(dimension.featureKey) : undefined;
-          if (!metered && liveUsed !== undefined) {
-            used = liveUsed;
-          }
+
+          // The license server reports usage for every dimension now: metered dims carry the period
+          // reading, per_resource dims the latest reported snapshot. Use it directly so the figure
+          // matches what the customer is billed on (no separate live count that could diverge).
+          const used = dimension.used ?? 0;
+
+          const onDemandRate = hasOnDemandRate ? centsToDollars(dimension.onDemandRateCents) : undefined;
+          // Monthly overage cost: usage above the prepaid commitment at the on-demand rate.
+          const onDemandAmount =
+            committed !== null && onDemandRate !== undefined ? Math.max(0, used - committed) * onDemandRate : 0;
+
           return {
             key: dimension.key,
             label: labelByDimension.get(catalogKey) ?? dimension.key,
             noun: nounByDimension.get(catalogKey) ?? dimension.unit ?? dimension.key,
             unit: dimension.unit ?? nounByDimension.get(catalogKey) ?? dimension.key,
             metered,
+            cadence,
             used,
             limit: dimension.limit ?? null,
-            ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {}),
-            ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {})
+            committed,
+            onDemandAmount,
+            ...(hasCommittedRate ? { committedRate: centsToDollars(dimension.committedRateCents) } : {}),
+            ...(onDemandRate !== undefined ? { onDemandRate } : {}),
+            ...(metered && hasRate ? { rate: centsToDollars(dimension.rateCents) } : {}),
+            ...(metered && hasFreeBand ? { freeBand: dimension.freeBand as number } : {})
           };
         });
-
-        // Estimated metered usage cost for the period: sum of max(0, used - freeBand) * rate over the
-        // metered dimensions. Fixed recurring (item.amount) excludes this per the contract.
-        const estimatedUsageAmount = dimensions.reduce((sum, dimension) => {
-          if (!dimension.metered || dimension.rate === undefined) {
-            return sum;
-          }
-          return sum + Math.max(0, dimension.used - (dimension.freeBand ?? 0)) * dimension.rate;
-        }, 0);
 
         // Collapsed "most constraining" summary retained for callers that render a single limit line
         // (the product sheet). Derived from the resolved dimensions when present, else from the legacy
@@ -501,12 +513,63 @@ export const licenseV2ServiceFactory = ({
 
         const unit = limitKey ? (nounByDimension.get(`${item.productId}:${limitKey}`) ?? null) : null;
 
+        // Product cadence is annual when any dimension is annually committed, else monthly; drives the
+        // YEARLY/MONTHLY badge and the headline period.
+        let cadence: "monthly" | "annual" | null = null;
+        if (dimensions.some((dimension) => dimension.cadence === "annual")) {
+          cadence = "annual";
+        } else if (dimensions.length > 0) {
+          cadence = "monthly";
+        }
+        const onDemandAmount = dimensions.reduce((sum, dimension) => sum + dimension.onDemandAmount, 0);
+
+        // Each product renews on its own line's cycle; a product can have several lines, so show the
+        // one about to close (soonest currentPeriodEnd) as this product's renewal date.
+        const productLineEnds = (subscription.billing?.lines ?? [])
+          .filter((line) => line.productKey === item.productId && typeof line.currentPeriodEnd === "number")
+          .map((line) => line.currentPeriodEnd as number);
+        const renewsOn = productLineEnds.length > 0 ? formatDate(Math.min(...productLineEnds)) : null;
+
+        // Deprecation kind + sunset come from the catalog (product deprecation supersedes plan). The
+        // sunset date lives only on the catalog; the subscription item's deprecation may carry
+        // contract-specific reason/nextSteps text, which wins over the catalog copy when present.
+        const catalogProduct = catalogProductById.get(item.productId);
+        const catalogPlan = catalogProduct?.plans.find((candidate) => candidate.tier === item.plan);
+        let deprecation: BillingV2Entitlement["deprecation"];
+        if (catalogProduct?.deprecated) {
+          const base = toDeprecation({
+            deprecated: true,
+            reason: item.deprecation?.reason ?? catalogProduct.deprecationReason,
+            nextSteps: item.deprecation?.nextSteps ?? catalogProduct.deprecationNextSteps,
+            date: catalogProduct.deprecationDate
+          });
+          if (base) {
+            deprecation = { kind: "product", ...base };
+          }
+        } else if (catalogPlan?.deprecated) {
+          const base = toDeprecation({
+            deprecated: true,
+            reason: item.deprecation?.reason ?? catalogPlan.deprecationReason,
+            nextSteps: item.deprecation?.nextSteps ?? catalogPlan.deprecationNextSteps,
+            date: catalogPlan.deprecationDate
+          });
+          if (base) {
+            deprecation = { kind: "plan", ...base };
+          }
+        }
+
         entitlements[item.productId] = {
           entitled: true,
           planTier: item.plan,
+          cadence,
           amount: item.amount !== undefined ? centsToDollars(item.amount) : undefined,
-          estimatedUsageAmount,
+          onDemandAmount,
           dimensions: dimensions.length > 0 ? dimensions : undefined,
+          status: item.status,
+          isTrialing: item.isTrialing ?? false,
+          trialEndsAt: item.trialEndsAt ? formatDate(item.trialEndsAt) : null,
+          renewsOn,
+          ...(deprecation ? { deprecation } : {}),
           used,
           limit,
           unit
@@ -515,12 +578,35 @@ export const licenseV2ServiceFactory = ({
     }
 
     let features = null;
+    let products: NonNullable<Awaited<ReturnType<typeof licenseClient.getEntitlements>>>["products"] = [];
     try {
       const result = await licenseClient.getEntitlements(org);
       features = result?.features ?? null;
+      products = result?.products ?? [];
     } catch (error) {
       logger.error(error, `billing-v2: failed to read entitlements [orgId=${org.id}]`);
     }
+
+    // The entitlement products[] list is authoritative for what the org holds: an entitlement can
+    // exist without a Stripe subscription (paygo / account-based), so a product here that the
+    // subscription didn't cover must still render as active. A subscription item, when present, wins
+    // (it carries the dimensions/amount); here we only fill the entitled flag, plan, and trial state.
+    products.forEach((product) => {
+      const isTrialing = product.status === "trialing";
+      const existing = entitlements[product.product_key];
+      if (existing) {
+        existing.planTier = existing.planTier ?? product.plan_key ?? undefined;
+        existing.status = existing.status ?? product.status ?? undefined;
+        return;
+      }
+      entitlements[product.product_key] = {
+        entitled: true,
+        planTier: product.plan_key ?? undefined,
+        status: product.status ?? undefined,
+        isTrialing,
+        trialEndsAt: formatIsoDate(product.trial_ends_at)
+      };
+    });
 
     if (features) {
       Object.values(features).forEach((feature) => {
@@ -556,51 +642,6 @@ export const licenseV2ServiceFactory = ({
     }
 
     const subState = resolveSubState(subscription);
-
-    let interval: "month" | "year" | null = null;
-    let nextBillingDate: string | null = null;
-    let recurringAmount: number | null = null;
-    if (subscription) {
-      interval = resolveInterval(subscription.cadence);
-      nextBillingDate = formatDate(subscription.currentPeriodEnd);
-      if (subscription.recurringTotal !== null) {
-        recurringAmount = centsToDollars(subscription.recurringTotal);
-      }
-    }
-
-    const members = await orgDAL.countAllOrgMembers(orgId);
-    const identities = await identityOrgMembershipDAL.countAllOrgIdentities({
-      scopeOrgId: orgId
-    });
-
-    // Plan caps come from the license server (a null limit means genuinely unlimited). Used counts
-    // are overlaid here; a missing plan leaves limits unknown. Self-hosted has no cloud-plan endpoint,
-    // so the caps are read off the license entitlements instead.
-    let memberLimit: number | null = null;
-    let identityLimit: number | null = null;
-    if (isSelfHostedLicense) {
-      try {
-        const entitlements = await licenseClient.getEntitlements({
-          id: orgId,
-          name: organization.name,
-          slug: organization.slug
-        });
-        const memberCap = entitlements?.features[MEMBER_LIMIT_FEATURE_KEY]?.value;
-        const identityCap = entitlements?.features[IDENTITY_LIMIT_FEATURE_KEY]?.value;
-        memberLimit = typeof memberCap === "number" ? memberCap : null;
-        identityLimit = typeof identityCap === "number" ? identityCap : null;
-      } catch (error) {
-        logger.error(error, `billing-v2: failed to read entitlement caps [orgId=${orgId}]`);
-      }
-    } else {
-      try {
-        const cloudPlan = await licenseClient.getCloudPlan(orgId);
-        memberLimit = cloudPlan?.currentPlan.memberLimit ?? null;
-        identityLimit = cloudPlan?.currentPlan.identityLimit ?? null;
-      } catch (error) {
-        logger.error(error, `billing-v2: failed to read cloud plan [orgId=${orgId}]`);
-      }
-    }
 
     // Name the plan from the subscription's tier so enterprise/trial orgs aren't all labelled "Pro".
     let planName = "Free";
@@ -642,19 +683,57 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
-    // The identity dimension caps against the same shared member+identity pool the Usage card shows,
-    // so seed its usage from that one figure instead of a separate count that could diverge from it.
     const entitlements = await buildEntitlements(
       { id: orgId, name: organization.name, slug: organization.slug },
-      subscription,
-      new Map([[IDENTITY_LIMIT_FEATURE_KEY, members + identities]])
+      subscription
     );
-    // Org-wide projected metered usage (dollars): the summary adds this to recurringAmount for the
-    // next-month total, so every product's estimate is summed once here.
-    const estimatedUsageAmount = Object.values(entitlements).reduce(
-      (sum, entitlement) => sum + (entitlement.estimatedUsageAmount ?? 0),
+    // Org-wide monthly on-demand overage (dollars), summed once for the summary's on-demand note.
+    const onDemandAmount = Object.values(entitlements).reduce(
+      (sum, entitlement) => sum + (entitlement.onDemandAmount ?? 0),
       0
     );
+
+    // Products whose one-per-product trial is used up (any outcome — trialing/converted/expired/
+    // canceled/completed). The UI gates the trial CTA on this so a canceled trial isn't re-offered.
+    // A failed lookup degrades to empty: the server still blocks a repeat trial with a 409 on start.
+    let trialedProductKeys: string[] = [];
+    if (!isSelfHostedLicense) {
+      try {
+        const trials = await licenseClient.getTrials(orgId);
+        trialedProductKeys = [...new Set(trials.trials.map((trial) => trial.product_key))];
+      } catch (error) {
+        logger.error(error, `billing-v2: failed to read trial history [orgId=${orgId}]`);
+      }
+    }
+
+    // Header billing summary. Monthly-recurring and annual-committed are two independent clocks and are
+    // never summed. The next charge is the soonest line to close: derive its amount/product(s)/cadence
+    // from the lines whose currentPeriodEnd matches nextChargeAt (usage-based lines make the total an
+    // estimate, so flag hasUsage). activeProductCount is the number of entitled products.
+    const subBilling = subscription?.billing;
+    const closingLines = subBilling?.nextChargeAt
+      ? (subBilling.lines ?? []).filter((line) => line.currentPeriodEnd === subBilling.nextChargeAt)
+      : [];
+    const closingCadences = new Set(closingLines.map((line) => normalizeCadence(line.cadence ?? undefined)));
+    const nextCharge =
+      subBilling?.nextChargeAt && closingLines.length > 0
+        ? {
+            amount: centsToDollars(closingLines.reduce((sum, line) => sum + (line.amountCents ?? 0), 0)),
+            at: formatShortDate(subBilling.nextChargeAt) ?? "",
+            productKeys: [...new Set(closingLines.map((line) => line.productKey))],
+            cadence: closingCadences.size === 1 ? [...closingCadences][0] : null,
+            hasUsage: closingLines.some((line) => line.usageBased)
+          }
+        : null;
+    const activeProductCount = Object.values(entitlements).filter(
+      (entitlement) => entitlement.entitled && entitlement.status !== "churned"
+    ).length;
+    const billing = {
+      monthlyRecurring: centsToDollars(subBilling?.monthlyRecurringCents),
+      annualCommitted: centsToDollars(subBilling?.annualRecurringCents),
+      activeProductCount,
+      nextCharge
+    };
 
     const overview: BillingV2Overview = {
       // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
@@ -663,23 +742,24 @@ export const licenseV2ServiceFactory = ({
       mode: isSelfHostedLicense ? "managed" : "self-serve",
       subState,
       planName,
-      nextBillingDate,
-      recurringAmount,
-      interval,
-      usage: {
-        members,
-        memberLimit,
-        identities,
-        identityLimit
-      },
+      billing,
       payment,
       billingDetails,
       invoices,
       entitlements,
-      estimatedUsageAmount
+      trialedProductKeys,
+      onDemandAmount
     };
 
     return { overview };
+  };
+
+  // Force-refresh entitlements: ask the license server to recompute and drop the local cache, so the
+  // next overview read pulls the latest and re-populates the cache. Exposed as a manual refresh button.
+  const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
+    await ensureBillingRead(orgId, actor);
+    await licenseClient.refreshEntitlements({ id: orgId });
+    return { success: true as const };
   };
 
   const getCatalog = async ({ orgId, actor }: TGetBillingV2CatalogDTO) => {
@@ -694,9 +774,23 @@ export const licenseV2ServiceFactory = ({
     return { products };
   };
 
-  // Stripe billing portal: manages the existing subscription, payment methods, and billing details.
+  const buildReturnUrl = (orgId: string, returnPath?: string): string => {
+    if (!envConfig.SITE_URL) {
+      throw new InternalServerError({ message: "Failed to build a billing return URL" });
+    }
+    const path = returnPath && returnPath.startsWith("/") ? returnPath : `/organizations/${orgId}/billing`;
+    try {
+      return new URL(path, envConfig.SITE_URL).toString();
+    } catch {
+      throw new InternalServerError({ message: "Failed to build a billing return URL" });
+    }
+  };
+
   const openPortal = async (orgId: string, returnPath?: string) => {
-    const session = await licenseClient.createPortal(orgId, { returnPath });
+    const session = await licenseClient.createPortal(orgId, {
+      returnPath,
+      returnUrl: buildReturnUrl(orgId, returnPath)
+    });
     return { url: session.url };
   };
 
@@ -711,6 +805,7 @@ export const licenseV2ServiceFactory = ({
     productId,
     plan,
     cadence,
+    commitments,
     email,
     returnPath
   }: TCreateBillingV2CheckoutSessionDTO) => {
@@ -722,12 +817,17 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
     }
 
-    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan);
+    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan, commitments);
     if (!items) {
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
 
-    const result = await licenseClient.createCheckout(orgId, { items, email, returnPath });
+    const result = await licenseClient.createCheckout(orgId, {
+      items,
+      email,
+      returnPath,
+      returnUrl: buildReturnUrl(orgId, returnPath)
+    });
     if (result.outcome === "subscription_updated") {
       return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
     }
@@ -749,14 +849,15 @@ export const licenseV2ServiceFactory = ({
   const resolveAddItems = async (
     productId: string,
     cadence?: "monthly" | "annual",
-    plan?: string
+    plan?: string,
+    commitments?: Record<string, number>
   ): Promise<TCheckoutLineItem[]> => {
     const catalog = await licenseClient.getCatalog();
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     if (!product) {
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
     }
-    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan);
+    const items = buildCheckoutItems(product, normalizeCadence(cadence), plan, commitments);
     if (!items) {
       throw new BadRequestError({ message: "This product is not available for self-serve checkout" });
     }
@@ -771,61 +872,99 @@ export const licenseV2ServiceFactory = ({
     addProductId,
     plan,
     cadence,
-    removeProductId
+    commitments,
+    removeProductId,
+    commitmentChanges
   }: TPreviewBillingV2ChangeDTO): Promise<{ preview: BillingV2Preview }> => {
     await ensureManageBilling(orgId, actor);
-    if (!addProductId && !removeProductId) {
-      throw new BadRequestError({ message: "Provide a product to add or remove" });
+    if (!addProductId && !removeProductId && !(commitmentChanges && commitmentChanges.length > 0)) {
+      throw new BadRequestError({ message: "Provide a product to add or remove, or a commitment change" });
     }
 
     const payload: TSubscriptionPreviewPayload = {};
     if (addProductId) {
-      payload.add = await resolveAddItems(addProductId, cadence, plan);
+      payload.add = await resolveAddItems(addProductId, cadence, plan, commitments);
     }
     if (removeProductId) {
       payload.remove = [removeProductId];
     }
+    if (commitmentChanges && commitmentChanges.length > 0) {
+      payload.commitmentChanges = commitmentChanges;
+    }
 
     const preview = await licenseClient.previewSubscriptionChange(orgId, payload);
-    const estimatedUsage = centsToDollars(preview.estimatedUsageCents);
     return {
       preview: {
         currency: preview.currency,
         prorationAmount: centsToDollars(preview.prorationAmount),
         nextInvoiceTotal: centsToDollars(preview.nextInvoiceTotal),
         nextRecurringTotal: centsToDollars(preview.nextRecurringTotal),
-        prorationDate: preview.prorationDate,
         lines: preview.lines.map((line) => ({
           description: line.description,
           amount: centsToDollars(line.amount),
           proration: line.proration
-        })),
-        estimatedUsage,
-        estimatedUsageLines: preview.estimatedUsageLines.map((line) => ({
-          dimension: line.dimension,
-          unit: line.unit ?? line.dimension,
-          peak: line.peak,
-          freeBand: line.freeBand,
-          rate: centsToDollars(line.rateCents),
-          amount: centsToDollars(line.amountCents)
-        })),
-        // Fall back to nextRecurringTotal + estimatedUsage when an older server omits estimatedTotal.
-        estimatedTotal:
-          preview.estimatedTotal !== null && preview.estimatedTotal !== undefined
-            ? centsToDollars(preview.estimatedTotal)
-            : centsToDollars(preview.nextRecurringTotal) + estimatedUsage
+        }))
       }
     };
   };
 
   // Add a product to an existing active subscription (clears any scheduled cancel server-side). The
   // first-purchase / no-subscription path stays on checkoutSession, which opens Stripe Checkout.
-  const addProduct = async ({ orgId, actor, productId, plan, cadence }: TAddBillingV2ProductDTO) => {
+  const addProduct = async ({ orgId, actor, productId, plan, cadence, commitments }: TAddBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
-    const items = await resolveAddItems(productId, cadence, plan);
+    const items = await resolveAddItems(productId, cadence, plan, commitments);
     const result = await licenseClient.addSubscriptionItems(orgId, { items });
     await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };
+  };
+
+  // Apply one or more previewed per_resource commitment changes. The License Server's apply endpoint
+  // is single-dimension, so loop per change; the server prorates each at commit time, so the preview
+  // total may drift slightly if the user waits before confirming. A mid-loop failure leaves earlier
+  // changes applied and surfaces the error to retry the rest.
+  const changeCommitment = async ({ orgId, actor, changes }: TChangeBillingV2CommitmentDTO) => {
+    await ensureManageBilling(orgId, actor);
+    if (!changes.length) {
+      throw new BadRequestError({ message: "Provide at least one commitment change" });
+    }
+
+    let subscriptionId: string | undefined;
+    for (const change of changes) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await licenseClient.changeCommitment(orgId, {
+        dimensionKey: change.dimensionKey,
+        quantity: change.quantity
+      });
+      subscriptionId = result.subscriptionId ?? subscriptionId;
+    }
+    await licenseClient.invalidateEntitlements(orgId);
+    return { subscriptionId };
+  };
+
+  // Start a plan-scoped self-serve trial. The trial is granted immediately (no upfront charge);
+  // cardSetupUrl, when present, is a best-effort card-setup checkout the client redirects to.
+  const startTrial = async ({ orgId, actor, productId, plan, email }: TStartBillingV2TrialDTO) => {
+    await ensureManageBilling(orgId, actor);
+    // The trial has no Stripe customer yet, so the server creates one from the org's own name + the
+    // authenticated user's email; neither is client-supplied.
+    const organization = await orgDAL.findById(orgId);
+    const result = await licenseClient.startTrial(orgId, {
+      productKey: productId,
+      planKey: plan,
+      email,
+      name: organization?.name
+    });
+    await licenseClient.invalidateEntitlements(orgId);
+    return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
+  };
+
+  // Cancel an in-progress trial: the product drops to free and the trial never converts. A 404 from
+  // the server (no active trial) propagates so the UI can surface it.
+  const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
+    await licenseClient.invalidateEntitlements(orgId);
+    return { outcome: result.outcome };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer
@@ -855,6 +994,7 @@ export const licenseV2ServiceFactory = ({
     // Billing surface (portal, checkout, overview) goes live only at full v2 cutover, not during read-compare.
     isEnabled: () => envConfig.LICENSE_SERVER_V2_MODE === "on",
     getOverview,
+    refreshEntitlements,
     getCatalog,
     portalSession,
     checkoutSession,
@@ -862,6 +1002,9 @@ export const licenseV2ServiceFactory = ({
     previewChange,
     addProduct,
     removeProduct,
+    changeCommitment,
+    startTrial,
+    cancelTrial,
     cancelSubscription,
     resumeSubscription
   };

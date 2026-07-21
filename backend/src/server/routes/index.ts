@@ -812,6 +812,10 @@ export const registerRoutes = async (
   // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
   const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
 
+  // Created before licenseService so the latter can emit the v2 user-seat meter from its
+  // updateSubscriptionOrgMemberCount chokepoint.
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+
   const licenseService = licenseServiceFactory({
     permissionService,
     orgDAL,
@@ -820,16 +824,16 @@ export const registerRoutes = async (
     projectDAL,
     envConfig,
     licenseClient,
-    licenseDualRead
+    licenseDualRead,
+    usageMeteringService
   });
 
-  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert while
+  // Usage metering: counts the metered features and reports them to the License Server. Inert while
   // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
-  const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL });
+  const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
   const usageReporter = buildUsageReporter(envConfig);
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {
     usageSource = "cloud";
@@ -842,6 +846,7 @@ export const registerRoutes = async (
     usageMeteringService,
     meteredFeatures,
     usageReporter,
+    licenseClient,
     source: usageSource
   });
 
@@ -850,10 +855,8 @@ export const registerRoutes = async (
   const licenseV2Service = licenseV2ServiceFactory({
     envConfig,
     orgDAL,
-    identityOrgMembershipDAL,
     permissionService,
-    licenseClient,
-    meteredFeatures
+    licenseClient
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
@@ -902,7 +905,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     emailDomainDAL,
     oidcConfigDAL,
-    samlConfigDAL
+    samlConfigDAL,
+    usageMeteringService
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
@@ -916,7 +920,8 @@ export const registerRoutes = async (
     licenseService,
     applicationMembershipCleanupService,
     projectDAL,
-    keyStore
+    keyStore,
+    usageMeteringService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -932,7 +937,8 @@ export const registerRoutes = async (
     groupDAL,
     licenseService,
     applicationMembershipCleanupService,
-    projectDAL
+    projectDAL,
+    usageMeteringService
   });
 
   const roleService = roleServiceFactory({
@@ -1071,7 +1077,8 @@ export const registerRoutes = async (
     licenseService,
     oidcConfigDAL,
     membershipGroupDAL,
-    membershipRoleDAL
+    membershipRoleDAL,
+    usageMeteringService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1148,7 +1155,8 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     approvalPolicyDAL,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    usageMeteringService
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1160,7 +1168,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     orgMembershipDAL,
     membershipRoleDAL,
-    membershipGroupDAL
+    membershipGroupDAL,
+    usageMeteringService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1189,7 +1198,8 @@ export const registerRoutes = async (
     membershipUserDAL,
     totpConfigDAL,
     webAuthnCredentialDAL,
-    mfaRecoveryCodeService
+    mfaRecoveryCodeService,
+    usageMeteringService
   });
 
   const totpService = totpServiceFactory({
@@ -1257,7 +1267,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     loginService,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    usageMeteringService
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1280,7 +1291,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     loginService,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    usageMeteringService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1342,7 +1354,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     additionalPrivilegeDAL,
     approvalPolicyDAL,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    usageMeteringService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1352,7 +1365,8 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     permissionService,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    usageMeteringService
   });
 
   const signupService = authSignupServiceFactory({
@@ -1396,7 +1410,8 @@ export const registerRoutes = async (
     tokenService,
     membershipIdentityDAL,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    usageMeteringService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -1457,7 +1472,8 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyDAL,
     membershipRoleDAL,
-    applicationMembershipCleanupService
+    applicationMembershipCleanupService,
+    usageMeteringService
   });
 
   const projectKeyService = projectKeyServiceFactory({
@@ -1695,7 +1711,8 @@ export const registerRoutes = async (
     projectDAL,
     membershipDAL,
     membershipRoleDAL,
-    keyStore
+    keyStore,
+    usageMeteringService
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
@@ -1712,7 +1729,8 @@ export const registerRoutes = async (
     userDAL,
     groupDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    usageMeteringService
   });
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({
@@ -1907,7 +1925,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     appConnectionDAL,
-    pamAccessRequestService
+    pamAccessRequestService,
+    licenseService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
@@ -2121,7 +2140,8 @@ export const registerRoutes = async (
     membershipUserDAL,
     roleDAL,
     groupDAL,
-    projectAccessRequestDAL
+    projectAccessRequestDAL,
+    usageMeteringService
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -2470,7 +2490,8 @@ export const registerRoutes = async (
     keyStore,
     projectDAL,
     orgDAL,
-    roleDAL
+    roleDAL,
+    usageMeteringService
   });
 
   const identityProjectService = identityProjectServiceFactory({
@@ -2710,7 +2731,8 @@ export const registerRoutes = async (
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    projectDAL
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -2823,7 +2845,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     loginService,
     emailDomainDAL,
-    telemetryService
+    telemetryService,
+    usageMeteringService
   });
 
   const userActivationService = userActivationServiceFactory({
@@ -2962,7 +2985,9 @@ export const registerRoutes = async (
     folderDAL,
     secretV2BridgeService,
     permissionService,
-    licenseService
+    licenseService,
+    dynamicSecretDAL,
+    projectDAL
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({
@@ -3209,7 +3234,8 @@ export const registerRoutes = async (
     gatewayPoolService,
     usageMeteringService,
     hsmConnectorService,
-    certificateAuthoritySecretDAL
+    certificateAuthoritySecretDAL,
+    licenseService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3618,7 +3644,8 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     membershipDAL,
     membershipRoleDAL,
-    hsmConnectorService
+    hsmConnectorService,
+    licenseService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({

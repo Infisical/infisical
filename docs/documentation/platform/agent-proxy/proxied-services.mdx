@@ -126,6 +126,26 @@ A folder-local secret always wins over an imported one with the same key. Read p
 
 Either way, the value is fully resolved before the proxy applies it.
 
+## Using Dynamic Secrets
+
+A credential can reference a [dynamic secret](/documentation/platform/dynamic-secrets/overview) instead of a static secret. Instead of injecting a fixed value, the agent proxy mints a short-lived lease and injects one of its output fields (for example a database password, a GitHub App token, or a Kubernetes service-account token). Because the value rotates on its own at the lease TTL, a credential that leaks is worthless shortly after.
+
+In the credential form, choose a dynamic secret from the **Dynamic Secrets** group of the secret picker, then pick which **Output Field** of the lease to inject. Each provider exposes different fields (SQL databases give `DB_USERNAME` / `DB_PASSWORD`, GitHub gives a `TOKEN`, and so on); pick the field you want to inject. Basic auth works by pointing the username and password at two fields of the same dynamic secret.
+
+How the agent proxy handles the lease:
+
+- **Minted lazily, per agent session.** The first request that needs the credential mints a lease; each agent session gets its own lease, and subsequent requests reuse it.
+- **Refreshed before expiry.** The proxy mints a fresh lease shortly before the current one expires and swaps it in with no failed requests in between. It does not renew the old lease; the old one is left to expire on its own.
+- **Cleaned up.** Leases are revoked when the proxy shuts down; anything missed is reaped by the lease's own TTL on the server.
+
+<Warning>
+  Prefer TTLs of at least a few minutes on dynamic secrets used for brokering. Each agent session on each proxy instance holds its own lease and re-mints it as it nears expiry, so a very short TTL (e.g. one minute) causes constant re-minting.
+</Warning>
+
+<Note>
+  Only the agent proxy's machine identity mints leases, and only it needs the **Lease** permission on the referenced dynamic secrets. The agent identity must **not** hold Lease on a brokered dynamic secret; if it does, it could mint the credential itself and bypass the proxy, so `infisical secrets agent-proxy connect` refuses to start (pass `--allow-readable-brokered-secrets` to override). Creating or updating a proxied service that references a dynamic secret requires that you hold Lease on it, and requires a plan that includes dynamic secrets.
+</Note>
+
 ## Example: API Request
 
 Proxied services can also be managed via the [API](/api-reference/endpoints/proxied-services/create). For example, creating the Telegram service described above:
@@ -153,3 +173,15 @@ curl -X POST https://app.infisical.com/api/v1/proxied-services \
 ```
 
 Header-rewrite credentials use `"role": "header-rewrite"` with `headerName` and an optional `headerPrefix`, or `headerPurpose` (`username`/`password`) for basic auth.
+
+To reference a dynamic secret, replace `secretKey` on a credential with `dynamicSecretName` and `dynamicSecretField`:
+
+```json
+{
+  "dynamicSecretName": "my-postgres",
+  "dynamicSecretField": "DB_PASSWORD",
+  "role": "header-rewrite",
+  "headerName": "Authorization",
+  "headerPrefix": "Bearer"
+}
+```

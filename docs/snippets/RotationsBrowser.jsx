@@ -197,6 +197,14 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Datadog API Key",
+      slug: "datadog-api-key",
+      path: "/documentation/platform/secret-rotation/datadog-api-key",
+      description: "Learn how to automatically rotate Datadog API keys.",
+      category: "Monitoring",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "LiteLLM API Key",
       slug: "litellm-api-key",
       path: "/documentation/platform/secret-rotation/litellm-api-key",

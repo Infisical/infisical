@@ -188,22 +188,24 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
                 </DropdownMenuItem>
               )}
 
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={faEraser} />}
-                onClick={() => handlePopUpOpen("removeCertificates")}
-                isDisabled={!canRemoveCertificates}
-              >
-                <Tooltip
-                  position="left"
-                  sideOffset={42}
-                  content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
+              {syncOption?.canRemoveCertificates && (
+                <DropdownMenuItem
+                  icon={<FontAwesomeIcon icon={faEraser} />}
+                  onClick={() => handlePopUpOpen("removeCertificates")}
+                  isDisabled={!canRemoveCertificates}
                 >
-                  <div className="flex h-full w-full items-center justify-between gap-1">
-                    <span>Remove Certificates</span>
-                    <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
-                  </div>
-                </Tooltip>
-              </DropdownMenuItem>
+                  <Tooltip
+                    position="left"
+                    sideOffset={42}
+                    content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
+                  >
+                    <div className="flex h-full w-full items-center justify-between gap-1">
+                      <span>Remove Certificates</span>
+                      <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
+                    </div>
+                  </Tooltip>
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuItem
                 isDisabled={!canEditSync || updatePkiSyncMutation.isPending}
@@ -234,11 +236,13 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
           pkiSync={pkiSync}
         />
       )}
-      <PkiSyncRemoveCertificatesModal
-        onOpenChange={(isOpen) => handlePopUpToggle("removeCertificates", isOpen)}
-        isOpen={popUp.removeCertificates.isOpen}
-        pkiSync={pkiSync}
-      />
+      {syncOption?.canRemoveCertificates && (
+        <PkiSyncRemoveCertificatesModal
+          onOpenChange={(isOpen) => handlePopUpToggle("removeCertificates", isOpen)}
+          isOpen={popUp.removeCertificates.isOpen}
+          pkiSync={pkiSync}
+        />
+      )}
       <DeletePkiSyncModal
         onOpenChange={(isOpen) => handlePopUpToggle("deleteSync", isOpen)}
         isOpen={popUp.deleteSync.isOpen}

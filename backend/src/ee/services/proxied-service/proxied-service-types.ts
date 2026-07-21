@@ -7,7 +7,9 @@ import {
 } from "./proxied-service-enums";
 
 export type TProxiedServiceCredentialInput = {
-  secretKey: string;
+  secretKey?: string | null;
+  dynamicSecretName?: string | null;
+  dynamicSecretField?: string | null;
   role: ProxiedServiceCredentialRole;
   headerName?: string | null;
   headerPrefix?: string | null;

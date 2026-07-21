@@ -45,6 +45,13 @@ import {
   TDatabricksServicePrincipalSecretRotationWithConnection
 } from "./databricks-service-principal-secret";
 import {
+  TDatadogApiKeyRotation,
+  TDatadogApiKeyRotationGeneratedCredentials,
+  TDatadogApiKeyRotationInput,
+  TDatadogApiKeyRotationListItem,
+  TDatadogApiKeyRotationWithConnection
+} from "./datadog-api-key";
+import {
   TDatadogApplicationKeySecretRotation,
   TDatadogApplicationKeySecretRotationGeneratedCredentials,
   TDatadogApplicationKeySecretRotationInput,
@@ -198,6 +205,7 @@ export type TSecretRotationV2 =
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
+  | TDatadogApiKeyRotation
   | TConvexAccessKeyRotation
   | TFireworksApiKeyRotation;
 
@@ -224,6 +232,7 @@ export type TSecretRotationV2WithConnection =
   | TSupabaseApiKeyRotationWithConnection
   | TSalesforceOauthCredentialsRotationWithConnection
   | TDatadogApplicationKeySecretRotationWithConnection
+  | TDatadogApiKeyRotationWithConnection
   | TConvexAccessKeyRotationWithConnection
   | TFireworksApiKeyRotationWithConnection;
 
@@ -246,6 +255,7 @@ export type TSecretRotationV2GeneratedCredentials =
   | TSupabaseApiKeyRotationGeneratedCredentials
   | TSalesforceOauthCredentialsRotationGeneratedCredentials
   | TDatadogApplicationKeySecretRotationGeneratedCredentials
+  | TDatadogApiKeyRotationGeneratedCredentials
   | TConvexAccessKeyRotationGeneratedCredentials
   | TFireworksApiKeyRotationGeneratedCredentials;
 
@@ -272,6 +282,7 @@ export type TSecretRotationV2Input =
   | TSupabaseApiKeyRotationInput
   | TSalesforceOauthCredentialsRotationInput
   | TDatadogApplicationKeySecretRotationInput
+  | TDatadogApiKeyRotationInput
   | TConvexAccessKeyRotationInput
   | TFireworksApiKeyRotationInput;
 
@@ -298,6 +309,7 @@ export type TSecretRotationV2ListItem =
   | TSupabaseApiKeyRotationListItem
   | TSalesforceOauthCredentialsRotationListItem
   | TDatadogApplicationKeySecretRotationListItem
+  | TDatadogApiKeyRotationListItem
   | TConvexAccessKeyRotationListItem
   | TFireworksApiKeyRotationListItem;
 

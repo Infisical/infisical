@@ -1,4 +1,8 @@
-import { ProxiedServiceCredentialRole, ProxiedServiceHeaderPurpose } from "./proxied-service-enums";
+import {
+  ProxiedServiceCredentialRole,
+  ProxiedServiceHeaderPurpose,
+  ProxiedServiceSubstitutionSurface
+} from "./proxied-service-enums";
 import { CredentialsArraySchema, hostPatternSchema } from "./proxied-service-schemas";
 
 // The host-pattern grammar mirrors the agent-proxy CLI matcher (packages/agentproxy/match.go);
@@ -119,6 +123,87 @@ describe("hostPatternSchema", () => {
     it("invalid IPv6 address", () => {
       expect(firstError("[not-an-ip]")).toContain("is not a valid IPv6 address");
     });
+  });
+});
+
+describe("CredentialsArraySchema credential source (static vs dynamic)", () => {
+  const bearerHeader = {
+    role: ProxiedServiceCredentialRole.HeaderRewrite,
+    headerName: "Authorization",
+    headerPrefix: "Bearer"
+  };
+  const parseArray = (creds: unknown[]) => CredentialsArraySchema.safeParse(creds);
+  const errorsOf = (creds: unknown[]) => {
+    const result = parseArray(creds);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+
+  it("accepts a static secretKey credential", () => {
+    expect(parseArray([{ ...bearerHeader, secretKey: "STRIPE_API_KEY" }]).success).toBe(true);
+  });
+
+  it("accepts a dynamic credential with a field", () => {
+    expect(
+      parseArray([{ ...bearerHeader, dynamicSecretName: "my-postgres", dynamicSecretField: "DB_PASSWORD" }]).success
+    ).toBe(true);
+  });
+
+  it("rejects a credential with neither secretKey nor dynamicSecretName", () => {
+    expect(errorsOf([bearerHeader])).toContain("Provide exactly one of secretKey or dynamicSecretName");
+  });
+
+  it("rejects a credential with both secretKey and dynamicSecretName", () => {
+    expect(
+      errorsOf([
+        { ...bearerHeader, secretKey: "K", dynamicSecretName: "my-postgres", dynamicSecretField: "DB_PASSWORD" }
+      ])
+    ).toContain("Provide exactly one of secretKey or dynamicSecretName");
+  });
+
+  it("rejects a dynamic credential missing dynamicSecretField", () => {
+    expect(errorsOf([{ ...bearerHeader, dynamicSecretName: "my-postgres" }])).toContain(
+      "dynamicSecretField is required when dynamicSecretName is set"
+    );
+  });
+
+  it("rejects a static credential that also sets a dynamic field", () => {
+    expect(errorsOf([{ ...bearerHeader, secretKey: "K", dynamicSecretField: "DB_PASSWORD" }])).toContain(
+      "dynamicSecretField is only valid with dynamicSecretName"
+    );
+  });
+
+  it("allows the same dynamic secret referenced twice with different fields (basic auth)", () => {
+    expect(
+      parseArray([
+        {
+          role: ProxiedServiceCredentialRole.HeaderRewrite,
+          headerPurpose: ProxiedServiceHeaderPurpose.Username,
+          dynamicSecretName: "my-postgres",
+          dynamicSecretField: "DB_USERNAME"
+        },
+        {
+          role: ProxiedServiceCredentialRole.HeaderRewrite,
+          headerPurpose: ProxiedServiceHeaderPurpose.Password,
+          dynamicSecretName: "my-postgres",
+          dynamicSecretField: "DB_PASSWORD"
+        }
+      ]).success
+    ).toBe(true);
+  });
+
+  it("accepts a dynamic substitution credential", () => {
+    expect(
+      parseArray([
+        {
+          role: ProxiedServiceCredentialRole.CredentialSubstitution,
+          placeholderKey: "TOKEN",
+          placeholderValue: "placeholder_token",
+          substitutionSurfaces: [ProxiedServiceSubstitutionSurface.Path],
+          dynamicSecretName: "gh-app",
+          dynamicSecretField: "TOKEN"
+        }
+      ]).success
+    ).toBe(true);
   });
 });
 

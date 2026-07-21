@@ -79,7 +79,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Qovery]: "Qovery",
   [AppConnection.Cloud66]: "Cloud 66",
   [AppConnection.LiteLLM]: "LiteLLM",
-  [AppConnection.Fireworks]: "Fireworks"
+  [AppConnection.Fireworks]: "Fireworks",
+  [AppConnection.NutanixPrismCentral]: "Nutanix Prism Central"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -161,5 +162,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
   [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
   [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
-  [AppConnection.Fireworks]: AppConnectionPlanType.Regular
+  [AppConnection.Fireworks]: AppConnectionPlanType.Regular,
+  [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular
 };
