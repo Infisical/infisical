@@ -115,6 +115,7 @@ import { pamAccountRotationQueueServiceFactory } from "@app/ee/services/pam-acco
 import { pamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
 import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
+import { pamAccountDependencyDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependency-dal";
 import { pamDiscoveredAccountDALFactory } from "@app/ee/services/pam-discovery/pam-discovered-account-dal";
 import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
 import { pamDiscoverySourceRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
@@ -1919,11 +1920,13 @@ export const registerRoutes = async (
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
+  const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
 
   const pamDiscoveryService = pamDiscoverySourceServiceFactory({
     pamDiscoverySourceDAL,
     pamDiscoverySourceRunDAL,
     pamDiscoveredAccountDAL,
+    pamAccountDependencyDAL,
     pamAccountDAL,
     pamAccountService,
     permissionService,
@@ -1945,7 +1948,8 @@ export const registerRoutes = async (
     keyStore,
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    pamAccountDependencyDAL
   });
 
   const pamSessionService = pamSessionServiceFactory({

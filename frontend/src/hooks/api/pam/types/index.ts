@@ -54,12 +54,28 @@ export type TPamDiscoveryRun = {
   createdAt: string;
 };
 
+export type TPamDependency = {
+  id: string;
+  type: string;
+  name: string;
+  machine: string;
+};
+
 export type TPamDiscoveredAccount = {
   id: string;
   accountType: PamAccountType;
   name: string;
   fingerprint: string;
   createdAt: string;
+  dependencyCount: number;
+  dependencies: TPamDependency[];
+};
+
+export type TPamAccountDependency = TPamDependency & {
+  data: Record<string, unknown> | null;
+  rotationStatus: string | null;
+  lastRotatedAt: string | null;
+  lastRotationMessage: string | null;
 };
 
 export type TCreatePamDiscoverySourceDTO = {

@@ -2,16 +2,31 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { PamAccountType } from "../pam/pam-enums";
 
-export const ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.MsSQL] as const;
+export const SQL_ROTATABLE_ACCOUNT_TYPES = [
+  PamAccountType.Postgres,
+  PamAccountType.MySQL,
+  PamAccountType.MsSQL
+] as const;
 
-export const isRotatableAccountType = (
-  accountType: PamAccountType | string
-): accountType is (typeof ROTATABLE_ACCOUNT_TYPES)[number] =>
+// Windows accounts rotate over WinRM through the gateway: local accounts on their host, domain accounts
+// on the DC. They do not use the SQL rotation path.
+export const WINDOWS_ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Windows, PamAccountType.WindowsAd] as const;
+
+export const ROTATABLE_ACCOUNT_TYPES = [...SQL_ROTATABLE_ACCOUNT_TYPES, ...WINDOWS_ROTATABLE_ACCOUNT_TYPES] as const;
+
+export type TSqlRotatableType = (typeof SQL_ROTATABLE_ACCOUNT_TYPES)[number];
+export type TWindowsRotatableType = (typeof WINDOWS_ROTATABLE_ACCOUNT_TYPES)[number];
+export type TRotatableType = (typeof ROTATABLE_ACCOUNT_TYPES)[number];
+
+export const isRotatableAccountType = (accountType: PamAccountType | string): accountType is TRotatableType =>
   (ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
+
+export const isWindowsRotatableType = (accountType: PamAccountType | string): accountType is TWindowsRotatableType =>
+  (WINDOWS_ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
 
 // PamAccountType -> AppConnection, so we can reuse the per-dialect ALTER statement map keyed by AppConnection.
 export const PAM_ROTATION_APP_MAP: Record<
-  (typeof ROTATABLE_ACCOUNT_TYPES)[number],
+  TSqlRotatableType,
   AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql
 > = {
   [PamAccountType.Postgres]: AppConnection.Postgres,

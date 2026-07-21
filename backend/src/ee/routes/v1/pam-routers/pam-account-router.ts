@@ -510,6 +510,47 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:accountId/dependencies",
+    schema: {
+      operationId: "listPamAccountDependencies",
+      description:
+        "List the detected dependencies (Windows services, scheduled tasks, IIS app pools) for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          dependencies: z.array(
+            z.object({
+              id: z.string(),
+              type: z.string(),
+              name: z.string(),
+              machine: z.string(),
+              data: z.unknown(),
+              rotationStatus: z.string().nullable(),
+              lastRotatedAt: z.date().nullable(),
+              lastRotationMessage: z.string().nullable()
+            })
+          )
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscovery.listAccountDependencies({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { dependencies };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:accountId/rotation",
     schema: {

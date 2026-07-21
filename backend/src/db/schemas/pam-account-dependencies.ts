@@ -11,20 +11,18 @@ import { TImmutableDBKeys } from "./models";
 
 export const PamAccountDependenciesSchema = z.object({
   id: z.string().uuid(),
-  accountId: z.string().uuid(),
-  resourceId: z.string().uuid(),
-  dependencyType: z.string(),
+  fingerprint: z.string(),
+  accountId: z.string().uuid().nullable().optional(),
+  discoveredAccountId: z.string().uuid().nullable().optional(),
+  type: z.string(),
   name: z.string(),
-  displayName: z.string().nullable().optional(),
-  state: z.string().nullable().optional(),
+  machine: z.string(),
   data: z.unknown(),
-  source: z.string(),
-  isRotationSyncEnabled: z.boolean().default(false).nullable().optional(),
+  rotationStatus: z.string().nullable().optional(),
+  lastRotatedAt: z.date().nullable().optional(),
+  encryptedLastRotationMessage: zodBuffer.nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  syncStatus: z.string().nullable().optional(),
-  lastSyncedAt: z.date().nullable().optional(),
-  encryptedLastSyncMessage: zodBuffer.nullable().optional()
+  updatedAt: z.date()
 });
 
 export type TPamAccountDependencies = z.infer<typeof PamAccountDependenciesSchema>;

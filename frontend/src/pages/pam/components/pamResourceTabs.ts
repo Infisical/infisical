@@ -6,7 +6,8 @@ import {
   Settings,
   Settings2,
   ShieldCheck,
-  Users
+  Users,
+  Workflow
 } from "lucide-react";
 
 import { PamResourcePermissionActions } from "@app/hooks/api/pam";
@@ -37,6 +38,12 @@ export const PAM_ACCOUNT_TABS: PamResourceTab[] = [
     label: "Rotation",
     icon: RotateCcw,
     action: PamResourcePermissionActions.ManageRotation
+  },
+  {
+    value: PamSheetTab.Dependencies,
+    label: "Dependencies",
+    icon: Workflow,
+    action: PamResourcePermissionActions.ReadAccounts
   },
   {
     value: PamSheetTab.Advanced,

@@ -109,8 +109,10 @@ Old tables/columns/code kept temporarily for rollback safety; target removal ~20
 migration. Tracked items:
 
 - **Legacy tables**: `pam_resources`, `pam_domains`, `pam_account_policies`,
-  `pam_resource_rotation_rules`, `pam_account_dependencies`, `pam_resource_favorites`,
+  `pam_resource_rotation_rules`, `pam_resource_favorites`,
   `pam_project_recording_configs`, `pam_session_event_batches`.
+  (`pam_account_dependencies` was **repurposed**, not dropped: it now backs dependency detection,
+  keyed off `pam_accounts` / `pam_discovered_accounts` instead of the legacy `pam_resources`.)
 - **`pam_accounts` columns**: `resourceId`, `domainId`, `policyId`, `requireMfa`, `internalMetadata`,
   `discoveryFingerprint`. (`lastRotatedAt`, `rotationStatus`, `encryptedLastRotationMessage` are **kept** —
   credential rotation reuses them.)

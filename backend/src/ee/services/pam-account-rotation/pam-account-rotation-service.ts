@@ -1,3 +1,5 @@
+import pLimit from "p-limit";
+
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -6,6 +8,8 @@ import { ResourcePermissionPamResourceActions } from "@app/ee/services/permissio
 import { generatePassword } from "@app/ee/services/secret-rotation-v2/shared/utils";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -16,6 +20,8 @@ import { checkAccountAccess, getResourceIdsWithActions, TActorContext } from "..
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import { validateConnectionDetails, validateCredentials } from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamAccountDependencyDALFactory } from "../pam-discovery/pam-account-dependency-dal";
+import { winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import {
   TGetPamAccountRotationDTO,
   TListPamRotationCandidatesDTO,
@@ -27,11 +33,12 @@ import {
   computeNextRotationAt,
   getRotationReadiness,
   isRotatableAccountType,
+  isWindowsRotatableType,
   PamRotationReadinessIssue,
+  redactRotationError,
   ROTATION_FAILURE_RETRY_CAP_SECONDS
 } from "./pam-rotation-fns";
 import { PAM_ROTATION_FACTORY_MAP } from "./pam-rotation-handlers";
-import { TPamSqlConnectionDetails } from "./shared/pam-rotation-sql-connection";
 
 export const ROTATION_STATUS = { Success: "success", Failed: "failed" } as const;
 
@@ -62,6 +69,7 @@ type TPamAccountRotationServiceFactoryDep = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  pamAccountDependencyDAL: Pick<TPamAccountDependencyDALFactory, "findByAccountId" | "updateById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
 };
 
@@ -78,6 +86,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     gatewayService,
     gatewayV2Service,
     gatewayPoolService,
+    pamAccountDependencyDAL,
     rotationHandlers = PAM_ROTATION_FACTORY_MAP
   } = deps;
 
@@ -136,19 +145,122 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       nextRotationAt: nextRotationAfter(account.templateSettings, now)
     });
 
-  const toSqlConnectionDetails = (
+  const resolveConnectionDetails = (
     accountType: PamAccountType,
     raw: Record<string, unknown>
-  ): TPamSqlConnectionDetails => validateConnectionDetails(accountType, raw) as TPamSqlConnectionDetails;
+  ): Record<string, unknown> => validateConnectionDetails(accountType, raw) as Record<string, unknown>;
+
+  // Windows dependencies have no per-machine WinRM port; use the WinRM HTTP default like discovery/rotation.
+  const WINRM_DEPENDENCY_SYNC_PORT = 5985;
+  const DEPENDENCY_SYNC_CONCURRENCY = 5;
+
+  // postRotate: push the new password into every service / scheduled task / IIS app pool that runs as the
+  // account, connecting to each dependency's machine as the (delegated admin) rotator. Best-effort: a per-
+  // dependency failure is recorded on the row and never fails the account rotation.
+  const syncDependenciesAfterRotation = async ({
+    accountId,
+    projectId,
+    accountType,
+    targetUsername,
+    newPassword,
+    connectAuth,
+    gatewayId,
+    gatewayPoolId
+  }: {
+    accountId: string;
+    projectId: string;
+    accountType: PamAccountType;
+    targetUsername: string;
+    newPassword: string;
+    connectAuth: { username: string; password: string };
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  }) => {
+    // Dependencies are detected only for domain accounts today.
+    if (accountType !== PamAccountType.WindowsAd) return;
+
+    const dependencies = await pamAccountDependencyDAL.findByAccountId(accountId);
+    if (!dependencies.length) return;
+
+    const resolvedGatewayId = gatewayPoolId
+      ? await gatewayPoolService.resolveEffectiveGatewayId({ gatewayId, gatewayPoolId })
+      : gatewayId;
+    if (!resolvedGatewayId) {
+      logger.warn(`PAM dependency sync skipped, no gateway available [accountId=${accountId}]`);
+      return;
+    }
+
+    const { encryptor } = await getProjectCipher(projectId);
+    const limit = pLimit(DEPENDENCY_SYNC_CONCURRENCY);
+
+    await Promise.all(
+      dependencies.map((dep) =>
+        limit(async () => {
+          await pamAccountDependencyDAL.updateById(dep.id, { rotationStatus: "pending" });
+          try {
+            const depData = dep.data as { runAsAccount?: string; resolvedIp?: string };
+            const runAsAccount = depData?.runAsAccount ?? targetUsername;
+            // Prefer the IP resolved at scan time: the gateway can't always resolve AD hostnames directly.
+            const targetHost = depData?.resolvedIp || dep.machine;
+            await winrmRpcWithGateway<{ ok: boolean }>({
+              targetHost,
+              targetPort: WINRM_DEPENDENCY_SYNC_PORT,
+              gatewayId: resolvedGatewayId,
+              gatewayV2Service,
+              endpoint: WinRmRpcEndpoint.SyncDependency,
+              credentials: { username: connectAuth.username, password: connectAuth.password },
+              params: { type: dep.type, name: dep.name, runAsUsername: runAsAccount, newPassword }
+            });
+            await pamAccountDependencyDAL.updateById(dep.id, {
+              rotationStatus: "success",
+              lastRotatedAt: new Date(),
+              encryptedLastRotationMessage: null
+            });
+          } catch (err) {
+            const message = redactRotationError(err, [newPassword, connectAuth.password]);
+            logger.warn(err, `PAM dependency sync failed [accountId=${accountId}] [dependencyId=${dep.id}]`);
+            await pamAccountDependencyDAL.updateById(dep.id, {
+              rotationStatus: "failed",
+              encryptedLastRotationMessage: encryptor({ plainText: Buffer.from(message) }).cipherTextBlob
+            });
+          }
+        })
+      )
+    );
+  };
+
+  // A delegated rotator must sit on the same resource as its target so its credential can reach it: same
+  // host for SQL / local Windows, same domain controller for Windows AD.
+  const isSameResource = (
+    accountType: PamAccountType,
+    a: Record<string, unknown>,
+    b: Record<string, unknown>
+  ): boolean => {
+    if (accountType === PamAccountType.WindowsAd) return a.dcAddress === b.dcAddress && a.domain === b.domain;
+    if (isWindowsRotatableType(accountType)) return a.host === b.host;
+    return a.host === b.host && a.port === b.port;
+  };
+
+  const assertRotatorSameResource = (
+    accountType: PamAccountType,
+    rotatorConn: Record<string, unknown>,
+    targetConn: Record<string, unknown>
+  ) => {
+    if (isSameResource(accountType, rotatorConn, targetConn)) return;
+    let detail = "on the same resource (host and port) as";
+    if (accountType === PamAccountType.WindowsAd) detail = "in the same domain as";
+    else if (isWindowsRotatableType(accountType)) detail = "on the same host as";
+    throw new BadRequestError({ message: `Rotation account is no longer ${detail} this account` });
+  };
 
   const resolveRotator = async (
     account: TPamAccountDetail,
     targetCredentials: TSqlAccountCredentials,
-    targetConnectionDetails: TPamSqlConnectionDetails,
+    targetConnectionDetails: Record<string, unknown>,
     targetGateway: { gatewayId?: string | null; gatewayPoolId?: string | null }
   ): Promise<{
     auth: { username: string; password: string };
-    connectionDetails: TPamSqlConnectionDetails;
+    connectionDetails: Record<string, unknown>;
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
   }> => {
@@ -178,7 +290,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     if (!rotatorCredentials.password) {
       throw new BadRequestError({ message: "Rotation account has no stored password" });
     }
-    const rotatorConnectionDetails = toSqlConnectionDetails(
+    const rotatorConnectionDetails = resolveConnectionDetails(
       account.accountType as PamAccountType,
       await decrypt(projectId, rotator.encryptedConnectionDetails)
     );
@@ -207,7 +319,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
     handler.validateTarget({ accountType, authMethod: targetCredentials.authMethod });
 
-    const connectionDetails = toSqlConnectionDetails(
+    const connectionDetails = resolveConnectionDetails(
       accountType,
       await decrypt(projectId, account.encryptedConnectionDetails)
     );
@@ -220,15 +332,11 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       if (!rotator || rotator.projectId !== projectId) {
         throw new BadRequestError({ message: "Rotation account no longer exists" });
       }
-      const rotatorConnection = toSqlConnectionDetails(
+      const rotatorConnection = resolveConnectionDetails(
         accountType,
         await decrypt(projectId, rotator.encryptedConnectionDetails)
       );
-      if (rotatorConnection.host !== connectionDetails.host || rotatorConnection.port !== connectionDetails.port) {
-        throw new BadRequestError({
-          message: "Rotation account is no longer on the same resource (host and port) as this account"
-        });
-      }
+      assertRotatorSameResource(accountType, rotatorConnection, connectionDetails);
     }
 
     // Recovery from an interrupted rotation: probe the candidate then the current credential, acting only on a
@@ -308,6 +416,26 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     }
 
     await markRotated(account, encryptedPending, now);
+
+    // postRotate: propagate the new password to the account's dependent services. Best-effort and fully
+    // guarded so a dependency-sync failure never undoes the already-committed account rotation.
+    try {
+      await syncDependenciesAfterRotation({
+        accountId: account.id,
+        projectId,
+        accountType,
+        targetUsername,
+        newPassword,
+        // For self-rotation the account's old password is now dead, so connect with the new one; a delegated
+        // rotator authenticates with its own (unchanged) password.
+        connectAuth:
+          account.rotationAccountId === account.id ? { username: auth.username, password: newPassword } : auth,
+        gatewayId,
+        gatewayPoolId
+      });
+    } catch (err) {
+      logger.warn(err, `PAM dependency sync errored after rotation [accountId=${account.id}]`);
+    }
   };
 
   // Advance nextRotationAt to a capped retry, but only when the account is schedulable: a ready account's early
@@ -468,19 +596,15 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         if (!rotator.credentialConfigured) {
           throw new BadRequestError({ message: "Rotation account has no stored credential to perform rotations" });
         }
-        const targetConn = toSqlConnectionDetails(
+        const targetConn = resolveConnectionDetails(
           account.accountType,
           await decrypt(projectId, account.encryptedConnectionDetails)
         );
-        const rotatorConn = toSqlConnectionDetails(
+        const rotatorConn = resolveConnectionDetails(
           account.accountType,
           await decrypt(projectId, rotator.encryptedConnectionDetails)
         );
-        if (targetConn.host !== rotatorConn.host || targetConn.port !== rotatorConn.port) {
-          throw new BadRequestError({
-            message: "Rotation account must be on the same resource (host and port) as this account"
-          });
-        }
+        assertRotatorSameResource(account.accountType as PamAccountType, rotatorConn, targetConn);
         // Binding a rotator causes its credential to be used to authenticate rotations, so require credential access
         // to it (not just metadata read): otherwise a caller could leverage a privileged account they can only see.
         await checkAccount(
@@ -571,18 +695,20 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     );
 
     const { decryptor } = await getProjectCipher(projectId);
+    const accountType = account.accountType as PamAccountType;
     const detailsOf = (blob: Buffer) =>
-      toSqlConnectionDetails(
-        account.accountType as PamAccountType,
+      resolveConnectionDetails(
+        accountType,
         JSON.parse(decryptor({ cipherTextBlob: blob }).toString("utf-8")) as Record<string, unknown>
       );
     const target = detailsOf(account.encryptedConnectionDetails);
     const withHost = candidates
-      .map((candidate) => {
-        const details = detailsOf(candidate.encryptedConnectionDetails);
-        return { ...candidate, host: details.host, port: details.port };
-      })
-      .filter((candidate) => candidate.host === target.host && candidate.port === target.port);
+      .map((candidate) => ({ ...candidate, details: detailsOf(candidate.encryptedConnectionDetails) }))
+      .filter((candidate) => isSameResource(accountType, candidate.details, target));
+
+    // The resource label shown per candidate: the DC for a domain account, otherwise the host.
+    const displayHost = (details: Record<string, unknown>) =>
+      String((accountType === PamAccountType.WindowsAd ? details.dcAddress : details.host) ?? "");
 
     const groupsByFolder = new Map<
       string,
@@ -593,7 +719,9 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       if (!groupsByFolder.has(key)) {
         groupsByFolder.set(key, { folderId: candidate.folderId, folderName: candidate.folderName, accounts: [] });
       }
-      groupsByFolder.get(key)!.accounts.push({ id: candidate.id, name: candidate.name, host: candidate.host });
+      groupsByFolder
+        .get(key)!
+        .accounts.push({ id: candidate.id, name: candidate.name, host: displayHost(candidate.details) });
     }
 
     return { candidates: Array.from(groupsByFolder.values()) };

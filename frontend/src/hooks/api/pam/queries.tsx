@@ -27,6 +27,7 @@ import {
   TListPamAccountTemplatesDTO,
   TPamAccessRequest,
   TPamAccount,
+  TPamAccountDependency,
   TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
@@ -97,6 +98,8 @@ export const pamKeys = {
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  accountDependencies: (accountId: string) =>
+    [...pamKeys.account(), "dependencies", accountId] as const,
   rotationCandidates: (accountId: string) =>
     [...pamKeys.account(), "rotation-candidates", accountId] as const,
   accessRequest: () => [...pamKeys.all, "access-request"] as const,
@@ -579,6 +582,19 @@ export const useListPamDiscoveredAccounts = (
     },
     enabled: Boolean(sourceId),
     placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamAccountDependencies = (accountId: string) => {
+  return useQuery({
+    queryKey: pamKeys.accountDependencies(accountId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ dependencies: TPamAccountDependency[] }>(
+        `/api/v1/pam/accounts/${accountId}/dependencies`
+      );
+      return data.dependencies;
+    },
+    enabled: Boolean(accountId)
   });
 };
 

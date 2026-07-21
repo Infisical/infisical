@@ -1,7 +1,10 @@
+import ldapjs from "@infisical/ldapjs";
+
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway-v2/ssh-rpc";
+import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -67,6 +70,138 @@ export const executeWithGateway = async <T>(
     gateway: platform.gateway,
     relay: platform.relay
   });
+};
+
+const LDAP_BIND_CHECK_TIMEOUT_MS = 15 * 1000;
+
+// Confirms directory credentials by performing an LDAP simple bind through the gateway. Used to verify a
+// rotated domain account's new password: an LDAP bind needs only the credential, unlike a WinRM logon that
+// most service accounts lack. Returns whether the bind succeeds; never throws.
+export const ldapBindCheckViaGateway = async (
+  {
+    dcAddress,
+    port,
+    useLdaps,
+    rejectUnauthorized,
+    caCert,
+    tlsServerName,
+    bindDn,
+    password
+  }: {
+    dcAddress: string;
+    port: number;
+    useLdaps: boolean;
+    rejectUnauthorized: boolean;
+    caCert?: string;
+    tlsServerName?: string;
+    bindDn: string;
+    password: string;
+  },
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep
+): Promise<boolean> =>
+  executeWithGateway(
+    dcAddress,
+    port,
+    gatewayId,
+    gatewayV2Service,
+    (proxyPort) =>
+      new Promise<boolean>((resolve) => {
+        const client = ldapjs.createClient({
+          url: `${useLdaps ? "ldaps" : "ldap"}://localhost:${proxyPort}`,
+          connectTimeout: LDAP_BIND_CHECK_TIMEOUT_MS,
+          timeout: LDAP_BIND_CHECK_TIMEOUT_MS,
+          ...(useLdaps && {
+            tlsOptions: {
+              rejectUnauthorized,
+              servername: tlsServerName || dcAddress,
+              ...(caCert && { ca: [caCert] })
+            }
+          })
+        });
+
+        let settled = false;
+        const done = (ok: boolean) => {
+          if (settled) return;
+          settled = true;
+          try {
+            client.unbind();
+          } catch {
+            // client may already be destroyed
+          }
+          resolve(ok);
+        };
+
+        // Unhandled 'error' events (e.g. TLS mismatch) would crash the process, so capture them as a failed bind.
+        client.on("error", () => done(false));
+        client.bind(bindDn, password, (err) => done(!err));
+      })
+  );
+
+export type TWinRmGatewayCredentials = {
+  username: string;
+  password: string;
+  useHttps?: boolean;
+  insecure?: boolean;
+  caCertificate?: string;
+};
+
+// runs one WinRM operation on the gateway inside the customer network. Node can't perform WinRM message
+// sealing, so the gateway (Go/masterzen) owns the WinRM client; the backend only names a vetted operation
+// and its params. Targets internal hosts by design, so it uses the gateway host validator (not the SSRF block).
+export const winrmRpcWithGateway = async <T>({
+  targetHost,
+  targetPort,
+  gatewayId,
+  gatewayV2Service,
+  endpoint,
+  credentials,
+  params
+}: {
+  targetHost: string;
+  targetPort: number;
+  gatewayId: string;
+  gatewayV2Service: TGatewayDep;
+  endpoint: WinRmRpcEndpoint;
+  credentials: TWinRmGatewayCredentials;
+  params?: Record<string, unknown>;
+}): Promise<T> => {
+  const [host] = await verifyHostInputValidity({ host: targetHost, isGateway: true, isDynamicSecret: false });
+  const platform = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost: host,
+    targetPort
+  });
+  if (!platform) throw new BadRequestError({ message: "Unable to connect to gateway" });
+
+  const response = await withGatewayV2Proxy(
+    (proxyPort) =>
+      callWinRmEndpoint<T>({
+        port: proxyPort,
+        endpoint,
+        body: {
+          username: credentials.username,
+          password: credentials.password,
+          params: {
+            useHttps: credentials.useHttps ?? false,
+            insecure: credentials.insecure ?? false,
+            ...(credentials.caCertificate ? { caCertificate: credentials.caCertificate } : {}),
+            ...params
+          }
+        }
+      }),
+    {
+      protocol: GatewayProxyProtocol.WinRm,
+      relayHost: platform.relayHost,
+      gateway: platform.gateway,
+      relay: platform.relay
+    }
+  );
+
+  if (!response.ok) {
+    throw new BadRequestError({ message: `WinRM gateway operation failed: ${response.errorMessage ?? ""}` });
+  }
+  return response.result;
 };
 
 // one gateway round-trip that TCP-probes every target and returns the reachable "host:port" set,

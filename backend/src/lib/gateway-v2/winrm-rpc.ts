@@ -5,7 +5,11 @@ import { logger } from "@app/lib/logger";
 export enum WinRmRpcEndpoint {
   Test = "/v1/test-connection",
   DeliverFiles = "/v1/deliver-files",
-  RemoveFiles = "/v1/remove-files"
+  RemoveFiles = "/v1/remove-files",
+  EnumerateAccounts = "/v1/enumerate-accounts",
+  EnumerateDependencies = "/v1/enumerate-dependencies",
+  RotateCredential = "/v1/rotate-credential",
+  SyncDependency = "/v1/sync-dependency"
 }
 
 export type WinRmTransportParams = {

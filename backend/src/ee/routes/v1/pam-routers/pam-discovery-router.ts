@@ -30,12 +30,21 @@ const SourceSchema = PamDiscoverySourcesSchema.extend({
   lastRunError: z.string().nullable().optional()
 });
 
+const DiscoveredDependencySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  machine: z.string()
+});
+
 const DiscoveredAccountSchema = z.object({
   id: z.string(),
   accountType: z.nativeEnum(PamAccountType),
   name: z.string(),
   fingerprint: z.string(),
-  createdAt: z.date()
+  createdAt: z.date(),
+  dependencyCount: z.number(),
+  dependencies: z.array(DiscoveredDependencySchema)
 });
 
 const toPascalCase = (s: string) =>

@@ -59,7 +59,9 @@ const buildService = (
   const rotationHandlers: typeof PAM_ROTATION_FACTORY_MAP = {
     [PamAccountType.Postgres]: handler,
     [PamAccountType.MySQL]: handler,
-    [PamAccountType.MsSQL]: handler
+    [PamAccountType.MsSQL]: handler,
+    [PamAccountType.Windows]: handler,
+    [PamAccountType.WindowsAd]: handler
   };
 
   const identityCipher = {
@@ -84,6 +86,7 @@ const buildService = (
     gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
+    pamAccountDependencyDAL: { findByAccountId: vi.fn(async () => []), updateById: vi.fn(async () => undefined) },
     rotationHandlers
   };
 
