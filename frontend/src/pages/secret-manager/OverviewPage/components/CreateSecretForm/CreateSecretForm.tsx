@@ -2,16 +2,27 @@ import { ClipboardEvent, KeyboardEvent, useMemo, useRef, useState } from "react"
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangleIcon, InfoIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  InfoIcon,
+  PlusIcon,
+  TrashIcon,
+  TriangleAlertIcon,
+  UploadIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { parseDotEnv } from "@app/components/utilities/parseSecrets";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   IconButton,
   InfisicalSecretInput,
@@ -76,6 +87,8 @@ const formSchema = z
 
 type TFormSchema = z.infer<typeof formSchema>;
 
+type TParsedEnv = Record<string, { value: string; comments: string[] }>;
+
 type Props = {
   secretPath?: string;
   defaultSelectedEnvs?: { name: string; slug: string }[];
@@ -93,6 +106,10 @@ type Props = {
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
   // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
   onSecretCreated?: () => void;
+  // Called when the user opts to bulk-upload secrets instead. The parent owns the import modal,
+  // so it swaps popups; when the user pasted multiple KEY=VALUE pairs, the parsed set is passed
+  // along so the modal can skip its upload step.
+  onUploadSecrets?: (env?: TParsedEnv) => void;
 };
 
 export const CreateSecretForm = ({
@@ -101,7 +118,8 @@ export const CreateSecretForm = ({
   onClose,
   isBatchMode,
   onBatchSecretCreate,
-  onSecretCreated
+  onSecretCreated,
+  onUploadSecrets
 }: Props) => {
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
@@ -159,6 +177,9 @@ export const CreateSecretForm = ({
   );
 
   const [createMore, setCreateMore] = useState(false);
+  // Set when a paste into the key field contained multiple KEY=VALUE pairs; drives the
+  // "upload them all instead" hint under the field.
+  const [pastedSecrets, setPastedSecrets] = useState<TParsedEnv | null>(null);
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
   const secretKey = watch("key");
   const selectedEnvironments = watch("environments");
@@ -172,6 +193,7 @@ export const CreateSecretForm = ({
     tags,
     metadata
   }: TFormSchema) => {
+    setPastedSecrets(null);
     const filteredMetadata = metadata?.filter((m) => m.key && m.value);
 
     if (isBatchMode && onBatchSecretCreate) {
@@ -310,6 +332,22 @@ export const CreateSecretForm = ({
 
     if (!secretKey || isWholeKeyHighlighted) {
       e.preventDefault();
+
+      // If the paste holds multiple KEY=VALUE pairs (e.g. a whole .env file), keep the first
+      // pair in the form and offer to hand the full set to the bulk upload modal instead.
+      if (onUploadSecrets) {
+        const parsedEnv = parseDotEnv(pastedContent);
+        const parsedKeys = Object.keys(parsedEnv);
+        if (parsedKeys.length > 1) {
+          const firstKey = parsedKeys[0];
+          setValue("key", currentProject.autoCapitalization ? firstKey.toUpperCase() : firstKey);
+          setValue("value", parsedEnv[firstKey].value);
+          setPastedSecrets(parsedEnv);
+          return;
+        }
+      }
+
+      setPastedSecrets(null);
       const keyStr = currentProject.autoCapitalization ? key.toUpperCase() : key;
       setValue("key", keyStr);
       if (value) {
@@ -429,6 +467,24 @@ export const CreateSecretForm = ({
                   )}
                 </div>
                 <FieldError errors={[error]} />
+                {pastedSecrets && onUploadSecrets && (
+                  <FieldDescription>
+                    <span className="flex items-center gap-1.5">
+                      <UploadIcon className="size-3 shrink-0" />
+                      <span>
+                        Pasted {Object.keys(pastedSecrets).length} secrets, but only the first was
+                        kept.{" "}
+                        <button
+                          type="button"
+                          className="text-foreground/95 underline underline-offset-2 hover:text-foreground"
+                          onClick={() => onUploadSecrets(pastedSecrets)}
+                        >
+                          Upload all {Object.keys(pastedSecrets).length}
+                        </button>
+                      </span>
+                    </span>
+                  </FieldDescription>
+                )}
               </FieldContent>
             </Field>
           )}
@@ -652,6 +708,18 @@ export const CreateSecretForm = ({
           </AccordionItem>
         </Accordion>
       </div>
+      {onUploadSecrets && (
+        <Alert className="mx-4 w-auto">
+          <UploadIcon />
+          <AlertTitle>Adding more than one secret?</AlertTitle>
+          <AlertDescription>
+            <p>Upload a file or paste contents in .env, .json or .yml format instead.</p>
+            <Button variant="outline" size="xs" type="button" onClick={() => onUploadSecrets()}>
+              Upload Secrets
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       <SheetFooter className="border-t">
         <Button isPending={isSubmitting} isDisabled={isSubmitting} variant="project" type="submit">
           Create Secret
