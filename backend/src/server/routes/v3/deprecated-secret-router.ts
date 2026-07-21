@@ -2380,7 +2380,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
             actorId: req.permission.id,
             actor: req.permission.type,
             actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
+            actorOrgId: req.permission.orgId
           });
 
           projectId = extractedProjectId;

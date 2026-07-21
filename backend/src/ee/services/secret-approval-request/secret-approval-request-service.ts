@@ -1887,9 +1887,7 @@ export const secretApprovalRequestServiceFactory = ({
           // Make sure we don't create 2 Create operations for the same key
           const upsertSecrets = [
             ...new Map(
-              missingSecrets
-                .filter((s) => !createdKeys.has(s.secretKey))
-                .map((s) => [s.secretKey, s] as const)
+              missingSecrets.filter((s) => !createdKeys.has(s.secretKey)).map((s) => [s.secretKey, s] as const)
             ).values()
           ];
 
