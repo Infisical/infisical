@@ -2415,7 +2415,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       const createdSecrets = secrets.filter((el) => el.version === 1);
       if (createdSecrets.length) {
         await server.services.auditLog.createAuditLog({
-          projectId: secrets[0].workspace,
+          projectId,
           ...req.auditLogInfo,
           event: {
             type: EventType.CREATE_SECRETS,
@@ -2445,7 +2445,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         organizationId: req.permission.orgId,
         properties: {
           numberOfSecrets: secrets.length,
-          projectId: secrets[0].workspace,
+          projectId,
           environment: req.body.environment,
           secretPath: req.body.secretPath,
           channel: getUserAgentType(req.headers["user-agent"]),
