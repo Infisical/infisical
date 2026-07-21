@@ -694,6 +694,12 @@ export const extractGatewayTarget = async (
       const parsed = new URL(url);
       return { host: parsed.hostname };
     }
+    case PamAccountType.WebApp: {
+      const { url } = validated as { url: string };
+      const parsed = new URL(url);
+      const port = parsed.port ? Number(parsed.port) : parsed.protocol === "https:" ? 443 : 80;
+      return { host: parsed.hostname, port };
+    }
     case PamAccountType.MongoDB: {
       const { connectionString } = validated as { connectionString: string };
       const cs = new ConnectionString(connectionString);
