@@ -1,29 +1,48 @@
+import { useState } from "react";
 import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
-import { faEllipsis, faGear, faInfoCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import axios from "axios";
-import { twMerge } from "tailwind-merge";
+import { Info, MoreHorizontal, Plus, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Badge,
   Button,
-  DeleteActionModal,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
+  Input,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -61,6 +80,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
       "integrationDetails",
       "removeIntegration"
     ] as const);
+    const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
     const { currentOrg } = useOrganization();
     const { data: workflowIntegrations, isPending: isWorkflowIntegrationsLoading } =
@@ -71,12 +91,16 @@ export const OrgWorkflowIntegrationTab = withPermission(
     const { mutateAsync: checkMicrosoftTeamsInstallationStatus } =
       useCheckMicrosoftTeamsIntegrationInstallationStatus();
 
+    const removeIntegrationData = popUp.removeIntegration.data as
+      | { id: string; slug: string; platform: WorkflowIntegrationPlatform }
+      | undefined;
+
     const handleRemoveIntegration = async () => {
-      if (!currentOrg) {
+      if (!currentOrg || !removeIntegrationData) {
         return;
       }
 
-      const { platform, id } = popUp.removeIntegration.data;
+      const { platform, id, slug } = removeIntegrationData;
       if (platform === WorkflowIntegrationPlatform.SLACK) {
         await deleteSlackIntegration({
           id,
@@ -93,7 +117,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
 
       handlePopUpClose("removeIntegration");
       createNotification({
-        text: "Successfully deleted integration",
+        text: `Deleted integration "${slug}"`,
         type: "success"
       });
     };
@@ -130,169 +154,182 @@ export const OrgWorkflowIntegrationTab = withPermission(
     };
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex justify-between">
-          <p className="text-xl font-medium text-mineshaft-100">Workflow Integrations</p>
-          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
-            {(isAllowed) => (
-              <Button
-                onClick={() => {
-                  handlePopUpOpen("addWorkflowIntegration");
-                }}
-                isDisabled={!isAllowed}
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              >
-                Add
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="mb-4 text-gray-400">
-          Connect Infisical to other platforms for notification and workflow integrations.
-        </p>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Td>Provider</Td>
-                <Td>Alias</Td>
-                <Td>Status</Td>
-              </Tr>
-            </THead>
-            <TBody>
-              {isWorkflowIntegrationsLoading && (
-                <TableSkeleton columns={2} innerKey="integrations-loading" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Workflow Integrations</CardTitle>
+          <CardDescription>
+            Connect Infisical to other platforms for notification and workflow integrations.
+          </CardDescription>
+          <CardAction>
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
+              {(isAllowed) => (
+                <Button
+                  variant="org"
+                  size="sm"
+                  onClick={() => {
+                    handlePopUpOpen("addWorkflowIntegration");
+                  }}
+                  isDisabled={!isAllowed}
+                >
+                  <Plus />
+                  Add integration
+                </Button>
               )}
-              {!isWorkflowIntegrationsLoading &&
-                workflowIntegrations &&
-                workflowIntegrations.length === 0 && (
-                  <Tr>
-                    <Td colSpan={5}>
-                      <EmptyState title="No workflow integrations found" icon={faGear} />
-                    </Td>
-                  </Tr>
-                )}
-              {workflowIntegrations?.map((workflowIntegration) => (
-                <Tr key={workflowIntegration.id}>
-                  <Td className="flex max-w-xs items-center gap-2 overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-                    {workflowIntegration.integration === WorkflowIntegrationPlatform.SLACK ? (
-                      <BsSlack />
-                    ) : (
-                      <BsMicrosoftTeams />
-                    )}
-                    <div className="capitalize">
-                      {workflowIntegration.integration.replaceAll("-", " ")}
-                    </div>
-                    {workflowIntegration.description && (
-                      <Tooltip content={workflowIntegration.description}>
-                        <FontAwesomeIcon icon={faInfoCircle} className="text-gray-400" size="sm" />
-                      </Tooltip>
-                    )}
-                  </Td>
-                  <Td>{workflowIntegration.slug}</Td>
-                  <Td>{renderStatus(workflowIntegration.status)}</Td>
-                  <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
-                          <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="p-1">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-
-                            handlePopUpOpen("integrationDetails", {
-                              id: workflowIntegration.id,
-                              platform: workflowIntegration.integration
-                            });
-                          }}
-                        >
-                          More details
-                        </DropdownMenuItem>
-
-                        {workflowIntegration.integration === WorkflowIntegrationPlatform.SLACK && (
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Create}
-                            an={OrgPermissionSubjects.Settings}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                disabled={!isAllowed}
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-
-                                  await triggerSlackReinstall(workflowIntegration.id);
-                                }}
-                              >
-                                Reinstall
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                        )}
-
-                        {workflowIntegration.integration ===
-                          WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
-                          <OrgPermissionCan
-                            I={OrgPermissionActions.Edit}
-                            an={OrgPermissionSubjects.Settings}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                disabled={!isAllowed}
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-
-                                  await triggerMicrosoftTeamsInstallationStatusCheck(
-                                    workflowIntegration.id
-                                  );
-                                }}
-                              >
-                                Check Installation Status
-                              </DropdownMenuItem>
-                            )}
-                          </OrgPermissionCan>
-                        )}
-
-                        <OrgPermissionCan
-                          I={OrgPermissionActions.Delete}
-                          an={OrgPermissionSubjects.Settings}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              disabled={!isAllowed}
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-
-                                handlePopUpOpen("removeIntegration", {
-                                  id: workflowIntegration.id,
-                                  slug: workflowIntegration.slug,
-                                  platform: workflowIntegration.integration
-                                });
-                              }}
-                            >
-                              Delete
-                            </DropdownMenuItem>
+            </OrgPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {!isWorkflowIntegrationsLoading && workflowIntegrations?.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No workflow integrations connected</EmptyTitle>
+                <EmptyDescription>
+                  Connect Slack or Microsoft Teams to enable notification and approval workflows.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/3">Provider</TableHead>
+                  <TableHead>Alias</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-px text-right" aria-label="Actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isWorkflowIntegrationsLoading &&
+                  Array.from({ length: 2 }).map((_, idx) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`workflow-integration-skeleton-${idx}`}>
+                      <TableCell colSpan={4}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!isWorkflowIntegrationsLoading &&
+                  workflowIntegrations?.map((workflowIntegration) => (
+                    <TableRow key={workflowIntegration.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {workflowIntegration.integration === WorkflowIntegrationPlatform.SLACK ? (
+                            <BsSlack />
+                          ) : (
+                            <BsMicrosoftTeams />
                           )}
-                        </OrgPermissionCan>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
-        </TableContainer>
+                          <span className="capitalize">
+                            {workflowIntegration.integration.replaceAll("-", " ")}
+                          </span>
+                          {workflowIntegration.description && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <Info className="size-3.5 text-muted" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{workflowIntegration.description}</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-0">
+                        <p className="truncate">{workflowIntegration.slug}</p>
+                      </TableCell>
+                      <TableCell>{renderStatus(workflowIntegration.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
+                                aria-label={`Actions for integration ${workflowIntegration.slug}`}
+                              >
+                                <MoreHorizontal />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handlePopUpOpen("integrationDetails", {
+                                    id: workflowIntegration.id,
+                                    platform: workflowIntegration.integration
+                                  })
+                                }
+                              >
+                                <Info />
+                                View details
+                              </DropdownMenuItem>
+                              {workflowIntegration.integration ===
+                                WorkflowIntegrationPlatform.SLACK && (
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Create}
+                                  an={OrgPermissionSubjects.Settings}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() => triggerSlackReinstall(workflowIntegration.id)}
+                                    >
+                                      <RotateCcw />
+                                      Reinstall
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              )}
+                              {workflowIntegration.integration ===
+                                WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+                                <OrgPermissionCan
+                                  I={OrgPermissionActions.Edit}
+                                  an={OrgPermissionSubjects.Settings}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      isDisabled={!isAllowed}
+                                      onClick={() =>
+                                        triggerMicrosoftTeamsInstallationStatusCheck(
+                                          workflowIntegration.id
+                                        )
+                                      }
+                                    >
+                                      <ShieldCheck />
+                                      Check installation status
+                                    </DropdownMenuItem>
+                                  )}
+                                </OrgPermissionCan>
+                              )}
+                              <OrgPermissionCan
+                                I={OrgPermissionActions.Delete}
+                                an={OrgPermissionSubjects.Settings}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    isDisabled={!isAllowed}
+                                    onClick={() =>
+                                      handlePopUpOpen("removeIntegration", {
+                                        id: workflowIntegration.id,
+                                        slug: workflowIntegration.slug,
+                                        platform: workflowIntegration.integration
+                                      })
+                                    }
+                                  >
+                                    <Trash2 />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
+                              </OrgPermissionCan>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
         <AddWorkflowIntegrationForm
           isOpen={popUp.addWorkflowIntegration.isOpen}
           onToggle={(state) => handlePopUpToggle("addWorkflowIntegration", state)}
@@ -303,14 +340,53 @@ export const OrgWorkflowIntegrationTab = withPermission(
           id={popUp.integrationDetails?.data?.id}
           onOpenChange={(state) => handlePopUpToggle("integrationDetails", state)}
         />
-        <DeleteActionModal
-          isOpen={popUp.removeIntegration.isOpen}
-          title={`Are you sure you want to remove ${popUp?.removeIntegration?.data?.slug}?`}
-          onChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={handleRemoveIntegration}
-        />
-      </div>
+        <AlertDialog
+          open={popUp.removeIntegration.isOpen}
+          onOpenChange={(isOpen) => {
+            handlePopUpToggle("removeIntegration", isOpen);
+            if (!isOpen) setDeleteConfirmation("");
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogMedia>
+                <Trash2 />
+              </AlertDialogMedia>
+              <AlertDialogTitle>
+                Delete integration &quot;{removeIntegrationData?.slug}&quot;?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Projects using this integration will stop sending notifications to it. This cannot
+                be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="w-full">
+              <p className="mb-2 text-sm text-muted">
+                Type {removeIntegrationData?.slug ?? ""} to confirm.
+              </p>
+              <Input
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder={removeIntegrationData?.slug ?? ""}
+                aria-label="Confirm integration alias"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleRemoveIntegration}
+                isDisabled={
+                  !removeIntegrationData?.slug || deleteConfirmation !== removeIntegrationData.slug
+                }
+              >
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Card>
     );
   },
   { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings }
