@@ -418,7 +418,11 @@ export const membershipIdentityServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipIdentityDAL.transaction(performDelete);
 
-    if (scopeData.scope === AccessScope.Organization) {
+    // The version bump must run after the delete commits. When we own the tx it
+    // has already committed here; when the caller owns externalTx we cannot know when
+    // it commits, so we return the pending bump for the caller to run post-commit.
+    const needsRevocationBump = scopeData.scope === AccessScope.Organization;
+    if (needsRevocationBump && !externalTx) {
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
     }
 
@@ -430,6 +434,13 @@ export const membershipIdentityServiceFactory = ({
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+    }
+
+    if (needsRevocationBump && externalTx) {
+      return {
+        membership: membershipDoc,
+        revocationBumpPending: { identityId: dto.selector.identityId }
+      };
     }
     return { membership: membershipDoc };
   };
