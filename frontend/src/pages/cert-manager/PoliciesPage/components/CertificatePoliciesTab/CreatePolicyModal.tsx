@@ -192,6 +192,70 @@ const STEPS = [
   }
 ] as const;
 
+const DurationInput = ({
+  field,
+  error,
+  onCustomPreset
+}: {
+  field: {
+    value: number | undefined;
+    onChange: (value: number | undefined) => void;
+    onBlur: () => void;
+    name: string;
+    ref: React.Ref<HTMLInputElement>;
+  };
+  error?: { message?: string };
+  onCustomPreset: () => void;
+}) => {
+  const [localValue, setLocalValue] = useState<string>(
+    field.value !== undefined ? String(field.value) : ""
+  );
+
+  useEffect(() => {
+    if (field.value !== undefined) {
+      setLocalValue(String(field.value));
+    }
+  }, [field.value]);
+
+  return (
+    <Field className="flex-1">
+      <FieldLabel>Duration</FieldLabel>
+      <FieldContent>
+        <Input
+          type="number"
+          min={1}
+          isError={Boolean(error)}
+          value={localValue}
+          onChange={(e) => {
+            const rawValue = e.target.value;
+            setLocalValue(rawValue);
+            onCustomPreset();
+
+            if (rawValue === "") {
+              return;
+            }
+
+            const parsed = parseInt(rawValue, 10);
+            if (!Number.isNaN(parsed) && parsed > 0) {
+              field.onChange(parsed);
+            }
+          }}
+          onBlur={() => {
+            if (localValue === "" || Number.isNaN(parseInt(localValue, 10))) {
+              setLocalValue(field.value !== undefined ? String(field.value) : "365");
+              if (field.value === undefined) {
+                field.onChange(365);
+              }
+            }
+            field.onBlur();
+          }}
+        />
+        <FieldError errors={[error]} />
+      </FieldContent>
+    </Field>
+  );
+};
+
 const SectionToggle = ({
   title,
   description,
@@ -1312,23 +1376,11 @@ export const CreatePolicyModal = ({
                         control={control}
                         name="validity.maxDuration.value"
                         render={({ field, fieldState: { error } }) => (
-                          <Field className="flex-1">
-                            <FieldLabel>Duration</FieldLabel>
-                            <FieldContent>
-                              <Input
-                                type="number"
-                                min={1}
-                                isError={Boolean(error)}
-                                value={field.value ?? ""}
-                                onChange={(e) => {
-                                  const parsed = parseInt(e.target.value, 10);
-                                  field.onChange(Number.isNaN(parsed) ? undefined : parsed);
-                                  markCustomPreset();
-                                }}
-                              />
-                              <FieldError errors={[error]} />
-                            </FieldContent>
-                          </Field>
+                          <DurationInput
+                            field={field}
+                            error={error}
+                            onCustomPreset={markCustomPreset}
+                          />
                         )}
                       />
                       <Controller

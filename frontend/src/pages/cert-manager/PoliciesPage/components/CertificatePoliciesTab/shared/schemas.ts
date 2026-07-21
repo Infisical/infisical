@@ -36,7 +36,7 @@ export const uiExtendedKeyUsagesSchema = z.object({
 
 export const uiValiditySchema = z.object({
   maxDuration: z.object({
-    value: z.coerce.number().min(1, "Duration must be at least 1"),
+    value: z.number().min(1, "Duration must be at least 1"),
     unit: z.nativeEnum(CertDurationUnit)
   })
 });
