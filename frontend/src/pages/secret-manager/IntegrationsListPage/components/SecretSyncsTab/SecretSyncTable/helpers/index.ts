@@ -54,8 +54,8 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
     case SecretSync.GCPSecretManager:
       primaryText = destinationConfig.projectId;
       if (destinationConfig.scope === GcpSyncScope.Global) {
-        secondaryText = destinationConfig.locationId
-          ? `Global - ${destinationConfig.locationId}`
+        secondaryText = destinationConfig.userReplicaLocationIds?.length
+          ? `Global - ${destinationConfig.userReplicaLocationIds.join(", ")}`
           : "Global";
       } else {
         secondaryText = destinationConfig.locationId;

@@ -16,9 +16,12 @@ import {
   TGcpSyncWithCredentials
 } from "./gcp-sync-types";
 
-const getGlobalReplication = (locationId?: string) => {
-  if (locationId) {
-    return { userManaged: { replicas: [{ location: locationId }] } };
+const getGlobalReplication = (userReplicaLocationIds?: string[], locationId?: string) => {
+  // eslint-disable-next-line no-nested-ternary
+  const locations = userReplicaLocationIds?.length ? userReplicaLocationIds : locationId ? [locationId] : [];
+
+  if (locations.length) {
+    return { userManaged: { replicas: locations.map((location) => ({ location })) } };
   }
   return { automatic: {} };
 };
@@ -130,7 +133,7 @@ export const GcpSyncFns = {
             {
               replication:
                 destinationConfig.scope === GcpSyncScope.Global
-                  ? getGlobalReplication(destinationConfig.locationId)
+                  ? getGlobalReplication(destinationConfig.userReplicaLocationIds, destinationConfig.locationId)
                   : undefined
             },
             {

@@ -3194,7 +3194,9 @@ export const SecretSyncs = {
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
       projectId: "The ID of the Google project secrets should be synced to.",
-      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").',
+      userReplicaLocationIds:
+        'The Google project locations to replicate secrets to under user-managed replication (global scope, ie ["us-west4"]).'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."

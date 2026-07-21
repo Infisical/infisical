@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
+import { MultiValue, SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
@@ -46,6 +46,11 @@ export const GcpSyncFields = () => {
   const connectionId = useWatch({ name: "connection.id", control });
   const projectId = useWatch({ name: "destinationConfig.projectId", control });
   const selectedScope = useWatch({ name: "destinationConfig.scope", control });
+  const locationId = useWatch({ name: "destinationConfig.locationId", control });
+  const userReplicaLocationIds = useWatch({
+    name: "destinationConfig.userReplicaLocationIds",
+    control
+  });
 
   const { data: projects, isPending } = useGcpConnectionListProjects(connectionId, {
     enabled: Boolean(connectionId)
@@ -62,12 +67,21 @@ export const GcpSyncFields = () => {
     if (!selectedScope) setValue("destinationConfig.scope", GcpSyncScope.Global);
   }, []);
 
+  useEffect(() => {
+    if (selectedScope === GcpSyncScope.Global && locationId && !userReplicaLocationIds?.length) {
+      setValue("destinationConfig.userReplicaLocationIds", [locationId], {
+        shouldDirty: false
+      });
+    }
+  }, [selectedScope, locationId, userReplicaLocationIds, setValue]);
+
   return (
     <FieldGroup>
       <SecretSyncConnectionField
         onChange={() => {
           setValue("destinationConfig.projectId", "");
           setValue("destinationConfig.locationId", "");
+          setValue("destinationConfig.userReplicaLocationIds", []);
         }}
       />
       <Controller
@@ -95,6 +109,7 @@ export const GcpSyncFields = () => {
                 value={projects?.find((project) => project.id === value) ?? null}
                 onChange={(option) => {
                   setValue("destinationConfig.locationId", "");
+                  setValue("destinationConfig.userReplicaLocationIds", []);
                   onChange((option as SingleValue<TGcpProject>)?.id ?? null);
                 }}
                 options={projects}
@@ -144,6 +159,7 @@ export const GcpSyncFields = () => {
                 onValueChange={(val) => {
                   onChange(val);
                   setValue("destinationConfig.locationId", "");
+                  setValue("destinationConfig.userReplicaLocationIds", []);
                 }}
                 disabled={!projectId}
               >
@@ -163,41 +179,64 @@ export const GcpSyncFields = () => {
           </Field>
         )}
       />
-      {(selectedScope === GcpSyncScope.Region || selectedScope === GcpSyncScope.Global) && (
+      {selectedScope === GcpSyncScope.Region && (
         <Controller
           name="destinationConfig.locationId"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
-              <FieldLabel>
-                Region
-                {selectedScope === GcpSyncScope.Global && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-md">
-                      Optionally specify a region for user-managed replication. If not set,
-                      automatic replication will be used.
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </FieldLabel>
+              <FieldLabel>Region</FieldLabel>
               <FieldContent>
                 <FilterableSelect
                   isLoading={areLocationsPending && Boolean(projectId)}
                   isDisabled={!projectId}
-                  isClearable={selectedScope === GcpSyncScope.Global}
                   value={locations?.find((option) => option.locationId === value) ?? null}
                   onChange={(option) =>
                     onChange((option as SingleValue<TGcpLocation>)?.locationId ?? "")
                   }
                   options={locations}
-                  placeholder={
-                    selectedScope === GcpSyncScope.Global
-                      ? "Automatic replication"
-                      : "Select a region..."
+                  placeholder="Select a region..."
+                  getOptionValue={(option) => option.locationId}
+                  formatOptionLabel={formatOptionLabel}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
+      {selectedScope === GcpSyncScope.Global && (
+        <Controller
+          name="destinationConfig.userReplicaLocationIds"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>
+                Replica Regions
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    Optionally specify one or more regions for user-managed replication. If none are
+                    set, automatic replication will be used.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FieldContent>
+                <FilterableSelect
+                  isMulti
+                  isLoading={areLocationsPending && Boolean(projectId)}
+                  isDisabled={!projectId}
+                  isClearable
+                  value={
+                    locations?.filter((option) => (value || []).includes(option.locationId)) ?? []
                   }
+                  onChange={(option) =>
+                    onChange((option as MultiValue<TGcpLocation>).map((o) => o.locationId))
+                  }
+                  options={locations}
+                  placeholder="Automatic replication"
                   getOptionValue={(option) => option.locationId}
                   formatOptionLabel={formatOptionLabel}
                 />
