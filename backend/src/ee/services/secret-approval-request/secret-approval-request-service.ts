@@ -1882,8 +1882,15 @@ export const secretApprovalRequestServiceFactory = ({
         }
 
         if (updateMode === SecretUpdateMode.Upsert) {
+          const createdKeys = new Set(commits.filter((c) => c.op === SecretOperations.Create).map((c) => c.key));
+
+          // Make sure secrets in the update list are not present in the create list as well
+          // This prevents a commit from having the same secret being created twice and causing
+          // conflicts.
+          const upsertSecrets = missingSecrets.filter((s) => !createdKeys.has(s.secretKey));
+
           commits.push(
-            ...missingSecrets.map((secret) => ({
+            ...upsertSecrets.map((secret) => ({
               op: SecretOperations.Create as const,
               version: 1,
               encryptedComment: setKnexStringValue(
@@ -1907,7 +1914,7 @@ export const secretApprovalRequestServiceFactory = ({
               type: SecretType.Shared
             }))
           );
-          missingSecrets.forEach(({ tagIds, secretKey }) => {
+          upsertSecrets.forEach(({ tagIds, secretKey }) => {
             if (tagIds?.length) commitTagIds[secretKey] = tagIds;
           });
         }
