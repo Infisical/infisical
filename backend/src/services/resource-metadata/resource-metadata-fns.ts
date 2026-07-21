@@ -164,7 +164,6 @@ export const applyMetadataFilter = <T extends Knex.QueryBuilder>(
   }) as T;
 };
 
-// de-duplicates resolved metadata entries by (key, value), keeping the first occurrence.
 export const dedupeMetadata = (metadata: TResolvedSecretMetadata[]): TResolvedSecretMetadata[] =>
   unique(metadata, (entry) => JSON.stringify([entry.key, entry.value]));
 

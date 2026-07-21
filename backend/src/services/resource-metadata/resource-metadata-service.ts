@@ -3,6 +3,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permiss
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -101,12 +102,26 @@ export const resourceMetadataServiceFactory = ({
       });
 
       encryptedCandidates.forEach((secret) => {
-        const resolvedMetadata = secret.metadata.map((entry) => ({
-          key: entry.key,
-          value: entry.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: entry.encryptedValue }).toString()
-            : (entry.value ?? "")
-        }));
+        const resolvedMetadata = secret.metadata.flatMap((entry) => {
+          if (!entry.encryptedValue) {
+            return [{ key: entry.key, value: entry.value ?? "" }];
+          }
+
+          try {
+            return [
+              {
+                key: entry.key,
+                value: secretManagerDecryptor({ cipherTextBlob: entry.encryptedValue }).toString()
+              }
+            ];
+          } catch (err) {
+            logger.error(
+              { err },
+              `Failed to decrypt secret metadata [projectId=${projectId}] [secretId=${secret.secretId}] [key=${entry.key}]`
+            );
+            return [];
+          }
+        });
 
         const { matched, matchedMetadata } = matchesSecretMetadataFilters(operator, filters, resolvedMetadata);
         if (matched) addMatch(secret, matchedMetadata);
