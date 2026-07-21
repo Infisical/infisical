@@ -4047,7 +4047,38 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         subject: ProjectPermissionSub.Webhooks,
         actions: Object.values(ProjectPermissionActions)
       }
-    ])
+    ]),
+    {
+      id: "agent-proxy",
+      name: "Agent Proxy Policies",
+      description:
+        "For the Agent Proxy identity: reads brokered secret values and mints dynamic-secret leases",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.Secrets,
+          actions: [
+            ProjectPermissionSecretActions.DescribeSecret,
+            ProjectPermissionSecretActions.ReadValue
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.DynamicSecrets,
+          actions: [ProjectPermissionDynamicSecretActions.Lease]
+        }
+      ]
+    },
+    {
+      id: "agent",
+      name: "Agent Policies",
+      description:
+        "For an agent identity: routes traffic through proxied services without reading secrets",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: [ProjectPermissionProxiedServiceActions.Proxy]
+        }
+      ]
+    }
   ],
   [ProjectType.PAM]: [projectManagerTemplate()],
   [ProjectType.AI]: [projectManagerTemplate()]
