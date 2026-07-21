@@ -216,7 +216,7 @@ const LoadBackupModal = ({
             }}
           >
             <UploadIcon className="size-4" />
-            Choose backup file
+            Choose Backup File
           </Button>
           {backupFileName && (
             <span className="max-w-full truncate px-4 text-center text-sm text-muted">
@@ -296,13 +296,13 @@ export const EncryptionTab = () => {
             {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => handlePopUpOpen("loadBackup")}>
-                  Load backup
+                  Load Backup
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => handlePopUpOpen("createBackupConfirmation")}
                 >
-                  Create backup
+                  Create Backup
                 </Button>
               </div>
             )}
@@ -317,7 +317,7 @@ export const EncryptionTab = () => {
                   name="kmsKeyId"
                   render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <Field className="max-w-md">
-                      <FieldLabel htmlFor="kmsKeyId">Key management system</FieldLabel>
+                      <FieldLabel htmlFor="kmsKeyId">Key Management System</FieldLabel>
                       <Select
                         value={value}
                         onValueChange={onChange}
@@ -326,7 +326,7 @@ export const EncryptionTab = () => {
                         <SelectTrigger
                           id="kmsKeyId"
                           className="w-full"
-                          aria-label="Key management system"
+                          aria-label="Key Management System"
                         >
                           <SelectValue placeholder="Select a KMS" />
                         </SelectTrigger>
