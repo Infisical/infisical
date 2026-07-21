@@ -1,6 +1,6 @@
 # Documentation Style Guide
 
-This guide defines how to write user-facing documentation for Infisical. These principles are enforced by Greptile on every PR that touches `docs/`.
+This guide defines how to write user-facing documentation for Infisical.
 
 ## Quick Summary
 

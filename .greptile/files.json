@@ -1,6 +1,12 @@
 {
   "files": [
-    { "path": "DESIGN.md", "description": "v3 design system: tokens, components, and UI conventions for all frontend changes" },
-    { "path": "docs/STYLE_GUIDE.md", "description": "Documentation style guide: writing conventions, Mintlify components, and cross-referencing rules for all docs changes" }
+    {
+      "path": "DESIGN.md",
+      "description": "Frontend design system (v3): color tokens, typography, component inventory (Button, Card, Table, Sheet, Dialog, Badge, etc.), layout principles, voice/tone for UI copy. Reference for all frontend/UI changes."
+    },
+    {
+      "path": "docs/STYLE_GUIDE.md",
+      "description": "Documentation style guide: writing for users (not implementers), cross-referencing, Mintlify components (Steps, Tabs, Cards, Accordions, callouts, diagrams), page structure by type (guides, concepts, overviews, references), FAQs, prerequisites, terminology consistency. Reference for all docs/ changes."
+    }
   ]
 }
