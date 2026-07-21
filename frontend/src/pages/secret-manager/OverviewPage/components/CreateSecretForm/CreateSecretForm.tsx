@@ -714,7 +714,13 @@ export const CreateSecretForm = ({
           <AlertTitle>Adding more than one secret?</AlertTitle>
           <AlertDescription>
             <p>Upload a file or paste contents in .env, .json or .yml format instead.</p>
-            <Button variant="outline" size="xs" type="button" onClick={() => onUploadSecrets()}>
+            <Button
+              variant="outline"
+              size="xs"
+              className="mt-0.5"
+              type="button"
+              onClick={() => onUploadSecrets()}
+            >
               Upload Secrets
             </Button>
           </AlertDescription>
