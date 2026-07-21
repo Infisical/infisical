@@ -7,7 +7,8 @@ export const SnowflakeUserKeyPairRotationSchema = z
   .object({
     type: z.literal(SecretRotation.SnowflakeUserKeyPair),
     parameters: z.object({
-      username: z.string().trim().min(1, "User required")
+      username: z.string().trim().min(1, "User required"),
+      modulusLength: z.union([z.literal(2048), z.literal(4096)])
     }),
     secretsMapping: z.object({
       privateKey: z.string().trim().min(1, "Private Key required"),

@@ -9,6 +9,7 @@ export type TSnowflakeUserKeyPairRotation = TSecretRotationV2Base & {
   type: SecretRotation.SnowflakeUserKeyPair;
   parameters: {
     username: string;
+    modulusLength: number;
   };
   secretsMapping: {
     privateKey: string;

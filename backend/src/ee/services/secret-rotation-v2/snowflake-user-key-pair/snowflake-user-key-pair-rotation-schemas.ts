@@ -24,7 +24,11 @@ const SnowflakeUserKeyPairRotationParametersSchema = z.object({
     .string()
     .trim()
     .min(1, "User Required")
-    .describe(SecretRotations.PARAMETERS.SNOWFLAKE_USER_KEY_PAIR.username)
+    .describe(SecretRotations.PARAMETERS.SNOWFLAKE_USER_KEY_PAIR.username),
+  modulusLength: z
+    .union([z.literal(2048), z.literal(4096)])
+    .default(2048)
+    .describe(SecretRotations.PARAMETERS.SNOWFLAKE_USER_KEY_PAIR.modulusLength)
 });
 
 const SnowflakeUserKeyPairRotationSecretsMappingSchema = z.object({

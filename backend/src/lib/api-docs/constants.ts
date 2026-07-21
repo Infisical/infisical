@@ -3567,7 +3567,8 @@ export const SecretRotations = {
     },
     SNOWFLAKE_USER_KEY_PAIR: {
       username:
-        "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user."
+        "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
+      modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
     }
   },
   SECRETS_MAPPING: {

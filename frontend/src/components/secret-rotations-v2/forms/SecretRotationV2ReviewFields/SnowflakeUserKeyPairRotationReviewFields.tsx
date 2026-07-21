@@ -13,12 +13,16 @@ export const SnowflakeUserKeyPairRotationReviewFields = () => {
     }
   >();
 
-  const [{ username }, { privateKey, publicKey }] = watch(["parameters", "secretsMapping"]);
+  const [{ username, modulusLength }, { privateKey, publicKey }] = watch([
+    "parameters",
+    "secretsMapping"
+  ]);
 
   return (
     <>
       <SecretRotationReviewSection label="Parameters">
         <GenericFieldLabel label="User">{username}</GenericFieldLabel>
+        <GenericFieldLabel label="RSA Modulus Length">{`${modulusLength}-bit`}</GenericFieldLabel>
       </SecretRotationReviewSection>
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="Private Key">{privateKey}</GenericFieldLabel>

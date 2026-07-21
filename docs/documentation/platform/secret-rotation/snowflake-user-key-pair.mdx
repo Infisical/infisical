@@ -9,7 +9,7 @@ description: "Learn how to automatically rotate a Snowflake user's RSA key pair.
   This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles. It uses Snowflake's two public-key slots (`RSA_PUBLIC_KEY` and `RSA_PUBLIC_KEY_2`), alternating between them on each rotation so the retired key pair stays valid until the next cycle.
 </Note>
 
-Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair** and assigns its public key to a target Snowflake user for [key-pair authentication](https://docs.snowflake.com/en/user-guide/key-pair-auth). On each rotation, Infisical generates a fresh key pair, writes the public key to the currently-inactive slot on the user, and maps the new private and public keys to the secrets of your choice.
+Infisical's Snowflake User Key Pair rotation generates an **RSA key pair** (2048-bit or 4096-bit, defaulting to 2048) and assigns its public key to a target Snowflake user for [key-pair authentication](https://docs.snowflake.com/en/user-guide/key-pair-auth). On each rotation, Infisical generates a fresh key pair, writes the public key to the currently-inactive slot on the user, and maps the new private and public keys to the secrets of your choice.
 
 ## Prerequisites
 
@@ -51,10 +51,11 @@ Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair
             - **Rotate At** - the local time of day when rotation should occur once the interval has elapsed.
             - **Auto-Rotation Enabled** - whether secrets should automatically be rotated once the rotation interval has elapsed. Disable this option to manually rotate secrets or pause secret rotation.
 
-        4. Select the Snowflake user whose key pair should be rotated, or enter a new username to create one. Then click **Next**.
+        4. Select the Snowflake user whose key pair should be rotated (or enter a new username to create one) and choose the **RSA Modulus Length**. Then click **Next**.
         ![Rotation Parameters](/images/secret-rotations-v2/snowflake-user-key-pair/step-3.png)
 
             - **User** - the Snowflake user whose RSA key pair will be rotated. Select an existing user, or type a new username to create one. New users are created as key-pair-only `SERVICE` users.
+            - **RSA Modulus Length** - the size in bits of the generated RSA key pairs (2048 or 4096). Defaults to 2048. Changing this on an existing rotation only affects keys generated on future rotations.
 
         5. Specify the secret names that the generated key pair should be mapped to. Then click **Next**.
         ![Rotation Secrets Mapping](/images/secret-rotations-v2/snowflake-user-key-pair/step-4.png)
@@ -98,7 +99,8 @@ Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair
                 "minutes": 0
             },
             "parameters": {
-                "username": "MY_SERVICE_USER"
+                "username": "MY_SERVICE_USER",
+                "modulusLength": 2048
             },
             "secretsMapping": {
                 "privateKey": "SNOWFLAKE_PRIVATE_KEY",
@@ -153,7 +155,8 @@ Infisical's Snowflake User Key Pair rotation generates a **2048-bit RSA key pair
                 "lastRotationMessage": null,
                 "type": "snowflake-user-key-pair",
                 "parameters": {
-                    "username": "MY_SERVICE_USER"
+                    "username": "MY_SERVICE_USER",
+                    "modulusLength": 2048
                 }
             }
         }

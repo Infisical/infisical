@@ -23,8 +23,6 @@ import {
   TSnowflakeUserKeyPairRotationWithConnection
 } from "./snowflake-user-key-pair-rotation-types";
 
-const RSA_MODULUS_LENGTH = 2048;
-
 const RSA_PUBLIC_KEY_FIRST_SLOT = "RSA_PUBLIC_KEY";
 const RSA_PUBLIC_KEY_SECOND_SLOT = "RSA_PUBLIC_KEY_2";
 
@@ -35,12 +33,12 @@ type TSnowflakePublicKeySlot = (typeof RSA_PUBLIC_KEY_SLOTS)[number];
 const slotForIndex = (index: number): TSnowflakePublicKeySlot =>
   index === 0 ? RSA_PUBLIC_KEY_FIRST_SLOT : RSA_PUBLIC_KEY_SECOND_SLOT;
 
-const generateRsaKeyPair = () =>
+const generateRsaKeyPair = (modulusLength: number) =>
   new Promise<{ privateKey: string; publicKey: string }>((resolve, reject) => {
     crypto.nativeCrypto.generateKeyPair(
       "rsa",
       {
-        modulusLength: RSA_MODULUS_LENGTH,
+        modulusLength,
         publicKeyEncoding: { type: "spki", format: "pem" },
         privateKeyEncoding: { type: "pkcs8", format: "pem" }
       },
@@ -71,7 +69,7 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
 > = (secretRotation) => {
   const {
     connection,
-    parameters: { username },
+    parameters: { username, modulusLength },
     activeIndex,
     secretsMapping
   } = secretRotation;
@@ -176,7 +174,7 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     callback
   ) => {
     // On creation the first credential always occupies slot 0 (activeIndex defaults to 0).
-    const keyPair = await generateRsaKeyPair();
+    const keyPair = await generateRsaKeyPair(modulusLength);
     await ensureUserExists();
 
     // Block creation if the RSA_PUBLIC_KEY slot already holds a key, so we never overwrite a
@@ -204,7 +202,7 @@ export const snowflakeUserKeyPairRotationFactory: TRotationFactory<
     // (invalidating the credential from two rotations ago), while the active slot's key remains
     // valid as the retired credential - Snowflake's documented no-downtime dual-key rotation.
     const inactiveIndex = (activeIndex + 1) % RSA_PUBLIC_KEY_SLOTS.length;
-    const keyPair = await generateRsaKeyPair();
+    const keyPair = await generateRsaKeyPair(modulusLength);
     await setPublicKeyForSlot(slotForIndex(inactiveIndex), keyPair);
     return callback(keyPair);
   };
