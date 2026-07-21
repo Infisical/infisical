@@ -33,6 +33,22 @@ const FK_INDEXES = [
 const MIGRATION_TIMEOUT = 60 * 60 * 1000; // 60 minutes
 const MIGRATION_LOCK_TIMEOUT = 30 * 1000; // 30 seconds
 
+// An interrupted CREATE INDEX CONCURRENTLY (deploy cancel, statement_timeout, lost connection)
+// leaves the index row in pg_class with indisvalid=false. A rerun with IF NOT EXISTS then no-ops,
+// so the migration "succeeds" without producing a usable index. Drop any such invalid index
+// before recreating.
+const dropIfInvalid = async (knex: Knex, indexName: string): Promise<void> => {
+  const result = await knex.raw(
+    `SELECT 1 FROM pg_class c
+     JOIN pg_index i ON i.indexrelid = c.oid
+     WHERE c.relname = ? AND c.relkind = 'i' AND i.indisvalid = false`,
+    [indexName]
+  );
+  if (result.rows.length > 0) {
+    await knex.raw(`DROP INDEX CONCURRENTLY IF EXISTS "${indexName}"`);
+  }
+};
+
 export async function up(knex: Knex): Promise<void> {
   const stmtResult = await knex.raw("SHOW statement_timeout");
   const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
@@ -45,6 +61,7 @@ export async function up(knex: Knex): Promise<void> {
 
     for await (const idx of FK_INDEXES) {
       if ((await knex.schema.hasTable(idx.table)) && (await knex.schema.hasColumn(idx.table, idx.column))) {
+        await dropIfInvalid(knex, idx.name);
         const predicate = idx.partial ? `WHERE "${idx.column}" IS NOT NULL` : "";
         await knex.raw(`
           CREATE INDEX CONCURRENTLY IF NOT EXISTS "${idx.name}"
