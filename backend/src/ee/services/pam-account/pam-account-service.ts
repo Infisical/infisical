@@ -43,7 +43,7 @@ import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-acces
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { PAM_CONNECTION_TEST_BUILDERS } from "./pam-account-connection-test";
+import { PAM_CONNECTION_TEST_BUILDERS, TestConnectionMode } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
@@ -288,7 +288,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   const assertConnectionOk = async (
     accountType: PamAccountType,
     connectionDetails: Record<string, unknown>,
-    credentials: Record<string, unknown>,
+    credentials: Record<string, unknown> | null,
     gateway: {
       gatewayId?: string | null;
       gatewayPoolId?: string | null;
@@ -315,7 +315,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (!capabilities?.connectionTest) return;
 
     const cd = connectionDetails as { host: string; port: number };
-    const request = buildRequest(connectionDetails, credentials);
+    const request =
+      credentials === null || !isCredentialConfigured(accountType, credentials)
+        ? { mode: TestConnectionMode.Tcp }
+        : buildRequest(connectionDetails, credentials);
 
     try {
       await testConnectionWithGateway(
@@ -635,7 +638,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
 
       // only test with credentials supplied in this request to prevent exfiltration
-      const testCredentials = credentials ? validateCredentials(accountType, credentials) : {};
+      const testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
       await assertConnectionOk(accountType, effectiveConnectionDetails, testCredentials, {
         gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
         gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,

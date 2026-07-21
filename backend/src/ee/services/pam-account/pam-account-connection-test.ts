@@ -1,5 +1,4 @@
 import { PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
-import { isCredentialConfigured } from "./pam-account-schemas";
 
 export enum TestConnectionMode {
   Postgres = "postgres",
@@ -36,7 +35,6 @@ type ConnectionTestBuilder = (
 // single source of truth for which account types support a connection test and how each is tested
 export const PAM_CONNECTION_TEST_BUILDERS: Partial<Record<PamAccountType, ConnectionTestBuilder>> = {
   [PamAccountType.Postgres]: (connectionDetails, credentials) => {
-    if (!isCredentialConfigured(PamAccountType.Postgres, credentials)) return { mode: TestConnectionMode.Tcp };
     const cd = connectionDetails as {
       database: string;
       sslEnabled?: boolean;
@@ -56,11 +54,7 @@ export const PAM_CONNECTION_TEST_BUILDERS: Partial<Record<PamAccountType, Connec
   },
   [PamAccountType.SSH]: (_connectionDetails, credentials) => {
     const creds = credentials as { authMethod: string; username: string; password?: string; privateKey?: string };
-
-    if (creds.authMethod === PamSshAuthMethod.Certificate || !isCredentialConfigured(PamAccountType.SSH, credentials)) {
-      return { mode: TestConnectionMode.Tcp };
-    }
-
+    if (creds.authMethod === PamSshAuthMethod.Certificate) return { mode: TestConnectionMode.Tcp };
     return {
       mode: TestConnectionMode.SSH,
       authMethod: creds.authMethod,
