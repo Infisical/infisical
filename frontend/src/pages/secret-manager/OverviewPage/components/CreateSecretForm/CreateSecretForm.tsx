@@ -89,6 +89,13 @@ type TFormSchema = z.infer<typeof formSchema>;
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
+// Parse pasted content as .env lines, dropping pairs without a real value so base64 padding
+// lines ("abc==") in a pasted PEM/private key don't register as KEY=VALUE pairs.
+const getParsedEnvPairs = (content: string): TParsedEnv =>
+  Object.fromEntries(
+    Object.entries(parseDotEnv(content)).filter(([, v]) => v.value && v.value !== "=")
+  );
+
 type Props = {
   secretPath?: string;
   defaultSelectedEnvs?: { name: string; slug: string }[];
@@ -177,9 +184,13 @@ export const CreateSecretForm = ({
   );
 
   const [createMore, setCreateMore] = useState(false);
-  // Set when a paste into the key field contained multiple KEY=VALUE pairs; drives the
-  // "upload them all instead" hint under the field.
-  const [pastedSecrets, setPastedSecrets] = useState<TParsedEnv | null>(null);
+  // Set when a paste into the key or value field contained multiple KEY=VALUE pairs; flips the
+  // upload alert above the footer into its "upload them all instead" state. keptFirst records
+  // whether the paste was reduced to its first pair (key field) or left untouched (value field).
+  const [pastedSecrets, setPastedSecrets] = useState<{
+    env: TParsedEnv;
+    keptFirst: boolean;
+  } | null>(null);
   const secretKeyInputRef = useRef<HTMLInputElement>(null);
   const secretKey = watch("key");
   const selectedEnvironments = watch("environments");
@@ -336,13 +347,13 @@ export const CreateSecretForm = ({
       // If the paste holds multiple KEY=VALUE pairs (e.g. a whole .env file), keep the first
       // pair in the form and offer to hand the full set to the bulk upload modal instead.
       if (onUploadSecrets) {
-        const parsedEnv = parseDotEnv(pastedContent);
+        const parsedEnv = getParsedEnvPairs(pastedContent);
         const parsedKeys = Object.keys(parsedEnv);
         if (parsedKeys.length > 1) {
           const firstKey = parsedKeys[0];
           setValue("key", currentProject.autoCapitalization ? firstKey.toUpperCase() : firstKey);
           setValue("value", parsedEnv[firstKey].value);
-          setPastedSecrets(parsedEnv);
+          setPastedSecrets({ env: parsedEnv, keptFirst: true });
           return;
         }
       }
@@ -354,6 +365,23 @@ export const CreateSecretForm = ({
         setValue("value", value);
       }
     }
+  };
+
+  const handleValuePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onUploadSecrets) return;
+
+    // Only consider pastes that replace the whole value. Pastes into an existing value are
+    // assumed to be assembling a legitimate multiline value.
+    const { value: currentValue, selectionStart, selectionEnd } = e.currentTarget;
+    const isReplacingWholeValue =
+      !currentValue || (selectionStart === 0 && selectionEnd === currentValue.length);
+    if (!isReplacingWholeValue) return;
+
+    // Leave the pasted content in place and just offer the bulk path if it looks like a .env file.
+    const parsedEnv = getParsedEnvPairs(e.clipboardData.getData("text"));
+    setPastedSecrets(
+      Object.keys(parsedEnv).length > 1 ? { env: parsedEnv, keptFirst: false } : null
+    );
   };
 
   const createWsTag = useCreateWsTag();
@@ -467,24 +495,6 @@ export const CreateSecretForm = ({
                   )}
                 </div>
                 <FieldError errors={[error]} />
-                {pastedSecrets && onUploadSecrets && (
-                  <FieldDescription>
-                    <span className="flex items-center gap-1.5">
-                      <UploadIcon className="size-3 shrink-0" />
-                      <span>
-                        Pasted {Object.keys(pastedSecrets).length} secrets, but only the first was
-                        kept.{" "}
-                        <button
-                          type="button"
-                          className="text-foreground/95 underline underline-offset-2 hover:text-foreground"
-                          onClick={() => onUploadSecrets(pastedSecrets)}
-                        >
-                          Upload all {Object.keys(pastedSecrets).length}
-                        </button>
-                      </span>
-                    </span>
-                  </FieldDescription>
-                )}
               </FieldContent>
             </Field>
           )}
@@ -514,6 +524,7 @@ export const CreateSecretForm = ({
                   <InfisicalSecretInput
                     value={field.value ?? ""}
                     onChange={field.onChange}
+                    onPaste={handleValuePaste}
                     placeholder="Enter secret value..."
                   />
                   <PasswordGenerator
@@ -708,24 +719,57 @@ export const CreateSecretForm = ({
           </AccordionItem>
         </Accordion>
       </div>
-      {onUploadSecrets && (
-        <Alert className="mx-4 w-auto">
-          <UploadIcon />
-          <AlertTitle>Adding more than one secret?</AlertTitle>
-          <AlertDescription>
-            <p>Upload a file or paste contents in .env, .json or .yml format instead.</p>
-            <Button
-              variant="outline"
-              size="xs"
-              className="mt-0.5"
-              type="button"
-              onClick={() => onUploadSecrets()}
-            >
-              Upload Secrets
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      {onUploadSecrets &&
+        (pastedSecrets ? (
+          <Alert variant="project" className="mx-4 w-auto">
+            <UploadIcon />
+            <AlertTitle>
+              Found {Object.keys(pastedSecrets.env).length} secrets in your paste
+            </AlertTitle>
+            <AlertDescription>
+              <p>
+                {pastedSecrets.keptFirst
+                  ? "Only the first pair was kept in the form."
+                  : "It looks like you meant to add multiple secrets, not one value."}
+              </p>
+              <div className="mt-0.5 flex gap-2">
+                <Button
+                  variant="project"
+                  size="xs"
+                  type="button"
+                  onClick={() => onUploadSecrets(pastedSecrets.env)}
+                >
+                  Upload all {Object.keys(pastedSecrets.env).length}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  type="button"
+                  onClick={() => setPastedSecrets(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="mx-4 w-auto">
+            <UploadIcon />
+            <AlertTitle>Adding more than one secret?</AlertTitle>
+            <AlertDescription>
+              <p>Upload a file or paste contents in .env, .json or .yml format instead.</p>
+              <Button
+                variant="outline"
+                size="xs"
+                className="mt-0.5"
+                type="button"
+                onClick={() => onUploadSecrets()}
+              >
+                Upload Secrets
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ))}
       <SheetFooter className="border-t">
         <Button isPending={isSubmitting} isDisabled={isSubmitting} variant="project" type="submit">
           Create Secret
