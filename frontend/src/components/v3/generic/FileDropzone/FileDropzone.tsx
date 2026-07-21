@@ -35,7 +35,18 @@ type FileDropzoneProps = {
   dropTitle?: ReactNode;
   description?: ReactNode;
   isDisabled?: boolean;
+  /** Layout/width on the outer dropzone wrapper */
   className?: string;
+  /** Merged onto the inner `Empty` surface (background, padding, etc.) */
+  emptyClassName?: string;
+  /** SVG frame stroke at rest — forwarded to `Empty`'s `frameClassName` */
+  frameClassName?: string;
+  /** Frame stroke while dragging — defaults to `text-info` */
+  activeFrameClassName?: string;
+  /** Surface tint while dragging — defaults to `bg-info/10` */
+  activeEmptyClassName?: string;
+  /** Accent on the default "Choose file" label — defaults to `text-info` */
+  accentClassName?: string;
 };
 
 function FileDropzone({
@@ -48,7 +59,12 @@ function FileDropzone({
   dropTitle,
   description,
   isDisabled,
-  className
+  className,
+  emptyClassName,
+  frameClassName,
+  activeFrameClassName = "text-info",
+  activeEmptyClassName = "bg-info/10",
+  accentClassName = "text-info"
 }: FileDropzoneProps) {
   const [isDragActive, setIsDragActive] = useState(false);
 
@@ -83,10 +99,11 @@ function FileDropzone({
     <div data-slot="file-dropzone" className={cn("flex min-w-0 flex-col gap-4", className)}>
       <Empty
         frame={isDragActive ? "solid" : "dashed"}
-        frameClassName={isDragActive ? "text-info" : undefined}
+        frameClassName={cn(frameClassName, isDragActive && activeFrameClassName)}
         className={cn(
-          "cursor-pointer bg-transparent transition-colors duration-75",
-          isDragActive && "bg-info/10",
+          "cursor-pointer bg-transparent",
+          emptyClassName,
+          isDragActive && activeEmptyClassName,
           isDisabled && "pointer-events-none opacity-50"
         )}
         onDragEnter={handleDrag}
@@ -103,7 +120,7 @@ function FileDropzone({
               ? (dropTitle ?? `Drop your file${multiple ? "s" : ""} here`)
               : (title ?? (
                   <>
-                    Drag & drop or <span className="text-info">Choose file</span> to upload
+                    Drag & drop or <span className={accentClassName}>Choose file</span> to upload
                   </>
                 ))}
           </EmptyTitle>

@@ -196,6 +196,9 @@ const LoadBackupModal = ({
           accept=".txt"
           description=".infisical.txt backup file"
           files={backupFiles}
+          accentClassName="text-project"
+          activeFrameClassName="text-project"
+          activeEmptyClassName="bg-project/10"
           onFilesSelect={(files) => {
             const file = files[0];
             parseFile(file);

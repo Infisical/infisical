@@ -19,6 +19,13 @@ import { FileDropzone } from "./FileDropzone";
  * visible, size), and `onFileRemove` to expose a remove action on each row.
  * Omit `files` when selection immediately advances to another step, as in the
  * secrets import dialog.
+ *
+ * Colors default to the `info` tint. When the surface belongs to a specific
+ * scope (e.g. a project-level dialog), override `accentClassName`,
+ * `activeFrameClassName`, and `activeEmptyClassName` with that scope's color
+ * (`text-project`, `bg-project/10`, etc.) per the design system's scope-color
+ * convention. `emptyClassName` and `frameClassName` are open escape hatches
+ * for anything else.
  */
 const meta = {
   title: "Generic/FileDropzone",
@@ -120,6 +127,28 @@ export const WithFile: Story = {
       />
     );
   }
+};
+
+export const ScopedAccent: Story = {
+  name: "Variant: Scoped Accent",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Override `accentClassName` / `activeFrameClassName` / `activeEmptyClassName` to match the surface's scope color instead of the `info` default — e.g. `text-project` for a project-settings dialog like the KMS backup upload."
+      }
+    }
+  },
+  render: (args) => (
+    <FileDropzone
+      {...args}
+      accept=".txt"
+      description=".infisical.txt backup file"
+      accentClassName="text-project"
+      activeFrameClassName="text-project"
+      activeEmptyClassName="bg-project/10"
+    />
+  )
 };
 
 export const Disabled: Story = {

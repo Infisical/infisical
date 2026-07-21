@@ -3,16 +3,44 @@ import { cva, VariantProps } from "cva";
 import { cn } from "../../utils";
 
 type EmptyFrameProps = {
-  // Draws the dashed/solid frame with an SVG rect instead of a CSS border.
-  // CSS `border-style: dashed` has no dash-length control; `stroke-dasharray`
-  // does, and unlike `border-image` it still respects the rounded corners.
-  // Opt-in and off by default so existing `className="border"` consumers
-  // (the CSS-border convention documented in this file's stories) render
-  // unchanged — this is a distinct, additive frame for new call sites.
+  // SVG-drawn dashed/solid frame — `stroke-dasharray` controls dash proportions
+  // in a way `border-style: dashed` can't. Opt-in and independent from the
+  // `className="border"` CSS-border convention; frame="none" consumers are
+  // byte-for-byte unchanged (no wrapper, no hover, no extra padding).
   frame?: "none" | "dashed" | "solid";
-  // Merged onto the frame's default `text-border` (e.g. to recolor on drag-active)
+  // Stroke color via `currentColor` (e.g. `text-info` on drag-active)
   frameClassName?: string;
 };
+
+const FRAME = { stroke: 2, dash: "4 2", radius: 6 } as const;
+
+function EmptyFrameSvg({ dashed, className }: { dashed: boolean; className?: string }) {
+  const inset = FRAME.stroke / 2;
+
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute inset-0 size-full text-border transition-colors duration-75",
+        className
+      )}
+    >
+      <rect
+        x={inset}
+        y={inset}
+        rx={FRAME.radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={FRAME.stroke}
+        strokeDasharray={dashed ? FRAME.dash : undefined}
+        style={{
+          width: `calc(100% - ${FRAME.stroke}px)`,
+          height: `calc(100% - ${FRAME.stroke}px)`
+        }}
+      />
+    </svg>
+  );
+}
 
 function Empty({
   className,
@@ -21,43 +49,27 @@ function Empty({
   children,
   ...props
 }: React.ComponentProps<"div"> & EmptyFrameProps) {
+  const hasFrame = frame !== "none";
+
   const box = (
     <div
       data-slot="empty"
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md border-dashed border-border bg-container p-6 text-center text-balance text-foreground shadow-inner md:p-12",
-        frame !== "none" && "relative",
+        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md bg-container p-6 text-center text-balance text-foreground shadow-inner md:p-12",
+        frame === "none" && "border-dashed border-border",
+        hasFrame && "relative transition-colors duration-200 hover:bg-container-hover",
         className
       )}
       {...props}
     >
-      {frame !== "none" && (
-        <svg
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-0 size-full text-border transition-colors duration-75",
-            frameClassName
-          )}
-        >
-          <rect
-            x="1"
-            y="1"
-            rx="4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeDasharray={frame === "dashed" ? "10 6" : undefined}
-            style={{ width: "calc(100% - 2px)", height: "calc(100% - 2px)" }}
-          />
-        </svg>
-      )}
+      {hasFrame && <EmptyFrameSvg dashed={frame === "dashed"} className={frameClassName} />}
       {children}
     </div>
   );
 
   // Only the SVG-framed variant gets outer breathing room — the plain CSS-border
   // convention (className="border") keeps its existing flush layout untouched.
-  if (frame === "none") return box;
+  if (!hasFrame) return box;
 
   return <div className="p-0.5">{box}</div>;
 }

@@ -29,11 +29,14 @@ import {
  * so the empty state reads as visually distinct from its container.
  *
  * **`frame` prop** — an alternate, SVG-drawn frame for surfaces that want a more
- * pronounced dashed (or solid) boundary than the CSS border gives — e.g. a
- * drag-and-drop target. `stroke-dasharray` allows a longer dash/gap than
- * `border-style: dashed` supports, without losing the rounded corners the way
- * `border-image` would. Opt-in and independent from `className="border"`; existing
- * consumers are unaffected. Recolor with `frameClassName` (defaults to `text-border`).
+ * deliberate dashed (or solid) boundary than the CSS border gives — e.g. a
+ * drag-and-drop target. `stroke-dasharray` allows precise control over dash and
+ * gap length, something `border-style: dashed` doesn't offer, without losing the
+ * rounded corners the way `border-image` would. Opt-in and independent from
+ * `className="border"`; `frame="none"` consumers render byte-for-byte unchanged.
+ * Recolor with `frameClassName` (defaults to `text-border`). The framed variant
+ * also adds a small outer margin and a hover tint, since it's meant for
+ * interactive surfaces (see `FileDropzone`) rather than static empty states.
  */
 const meta = {
   title: "Generic/Empty",
@@ -241,18 +244,18 @@ export const InsideCard: Story = {
   )
 };
 
-export const WithSvgFrame: Story = {
-  name: "Variant: SVG Frame (Dashed / Solid)",
+export const WithFrame: Story = {
+  name: "Variant: Frame (Dashed / Solid)",
   parameters: {
     docs: {
       description: {
         story:
-          'Pass `frame="dashed"` or `frame="solid"` for the SVG-drawn boundary — used by `FileDropzone` for its passive (dashed) and drag-active (solid, recolored via `frameClassName`) states. Prefer this over `className="border"` when the dash proportions need to stand out, such as an interactive drop target.'
+          'Pass `frame="dashed"` or `frame="solid"` for an SVG-drawn frame — used by `FileDropzone` for its passive (dashed) and drag-active (solid, recolored via `frameClassName`) states. Prefer this over `className="border"` when the dash proportions need to stand out, such as an interactive drop target.'
       }
     }
   },
   render: () => (
-    <div className="flex gap-4">
+    <div className="flex flex-wrap gap-4">
       <Empty frame="dashed" className="w-72">
         <EmptyHeader>
           <EmptyMedia variant="icon">
