@@ -27,6 +27,13 @@ import {
  * at the page level the frame-less look is intentional. When nesting `Empty` inside a
  * `Card`, `Sheet`, or `Dialog`, add `className="border"` to activate the dashed frame
  * so the empty state reads as visually distinct from its container.
+ *
+ * **`frame` prop** — an alternate, SVG-drawn frame for surfaces that want a more
+ * pronounced dashed (or solid) boundary than the CSS border gives — e.g. a
+ * drag-and-drop target. `stroke-dasharray` allows a longer dash/gap than
+ * `border-style: dashed` supports, without losing the rounded corners the way
+ * `border-image` would. Opt-in and independent from `className="border"`; existing
+ * consumers are unaffected. Recolor with `frameClassName` (defaults to `text-border`).
  */
 const meta = {
   title: "Generic/Empty",
@@ -231,5 +238,41 @@ export const InsideCard: Story = {
         </Empty>
       </CardContent>
     </Card>
+  )
+};
+
+export const WithSvgFrame: Story = {
+  name: "Variant: SVG Frame (Dashed / Solid)",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Pass `frame="dashed"` or `frame="solid"` for the SVG-drawn boundary — used by `FileDropzone` for its passive (dashed) and drag-active (solid, recolored via `frameClassName`) states. Prefer this over `className="border"` when the dash proportions need to stand out, such as an interactive drop target.'
+      }
+    }
+  },
+  render: () => (
+    <div className="flex gap-4">
+      <Empty frame="dashed" className="w-72">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UploadIcon />
+          </EmptyMedia>
+          <EmptyTitle>Dashed frame</EmptyTitle>
+          <EmptyDescription>frame=&quot;dashed&quot;</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+      <Empty frame="solid" frameClassName="text-info" className="w-72 bg-info/10">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UploadIcon />
+          </EmptyMedia>
+          <EmptyTitle>Solid frame</EmptyTitle>
+          <EmptyDescription>
+            frame=&quot;solid&quot; frameClassName=&quot;text-info&quot;
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </div>
   )
 };

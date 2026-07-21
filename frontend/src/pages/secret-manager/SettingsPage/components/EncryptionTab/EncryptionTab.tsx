@@ -1,8 +1,7 @@
-import { ChangeEvent, useRef, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileSaver from "file-saver";
-import { UploadIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -23,6 +22,7 @@ import {
   Field,
   FieldError,
   FieldLabel,
+  FileDropzone,
   Select,
   SelectContent,
   SelectItem,
@@ -131,10 +131,9 @@ const LoadBackupModal = ({
   org?: Organization;
   workspace: Project;
 }) => {
-  const fileUploadRef = useRef<HTMLInputElement>(null);
   const { mutateAsync: loadKmsBackup, isPending } = useLoadProjectKmsBackup(project.id);
   const [backupContent, setBackupContent] = useState("");
-  const [backupFileName, setBackupFileName] = useState("");
+  const [backupFiles, setBackupFiles] = useState<File[]>([]);
 
   const handleOpenChange = (state: boolean) => {
     // Clear on every open-change (open and close), not only close: a FileReader
@@ -142,7 +141,7 @@ const LoadBackupModal = ({
     // clearing on reopen recovers from that stale state (Continue would otherwise
     // be enabled with no filename shown).
     setBackupContent("");
-    setBackupFileName("");
+    setBackupFiles([]);
     onOpenChange(state);
   };
 
@@ -183,12 +182,6 @@ const LoadBackupModal = ({
     }
   };
 
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    parseFile(e.target?.files?.[0]);
-    setBackupFileName(e.target?.files?.[0]?.name || "");
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-lg">
@@ -199,31 +192,20 @@ const LoadBackupModal = ({
             KMS.
           </DialogDescription>
         </DialogHeader>
-        <input
-          id="fileSelect"
-          className="hidden"
-          type="file"
+        <FileDropzone
           accept=".txt"
-          onChange={handleFileUpload}
-          ref={fileUploadRef}
+          description=".infisical.txt backup file"
+          files={backupFiles}
+          onFilesSelect={(files) => {
+            const file = files[0];
+            parseFile(file);
+            setBackupFiles(file ? [file] : []);
+          }}
+          onFileRemove={() => {
+            setBackupFiles([]);
+            setBackupContent("");
+          }}
         />
-        <div className="flex flex-col items-center gap-2 py-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              fileUploadRef?.current?.click();
-            }}
-          >
-            <UploadIcon className="size-4" />
-            Choose Backup File
-          </Button>
-          {backupFileName && (
-            <span className="max-w-full truncate px-4 text-center text-sm text-muted">
-              {backupFileName}
-            </span>
-          )}
-        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
