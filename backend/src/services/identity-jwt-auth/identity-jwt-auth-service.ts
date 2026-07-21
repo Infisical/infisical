@@ -72,7 +72,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -546,6 +546,7 @@ export const identityJwtAuthServiceFactory = ({
 
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.JWT_AUTH);
     return { ...identityJwtAuth, orgId: identityMembershipOrg.scopeOrgId, jwksCaCert, publicKeys };
   };
 
@@ -686,6 +687,7 @@ export const identityJwtAuthServiceFactory = ({
       .toString()
       .split(",");
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.JWT_AUTH);
     return {
       ...updatedJwtAuth,
       orgId: identityMembershipOrg.scopeOrgId,
@@ -851,6 +853,7 @@ export const identityJwtAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.JWT_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.JWT_AUTH);
 
     return revokedIdentityJwtAuth;
   };

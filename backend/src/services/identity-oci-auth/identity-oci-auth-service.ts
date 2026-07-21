@@ -61,7 +61,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -371,6 +371,7 @@ export const identityOciAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
     return { ...identityOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -469,6 +470,7 @@ export const identityOciAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
     return { ...updatedOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -616,6 +618,7 @@ export const identityOciAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.OCI_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
 
     return revokedIdentityOciAuth;
   };

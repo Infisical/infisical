@@ -57,7 +57,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -403,6 +403,7 @@ export const identityGcpAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.GCP_AUTH);
     return { ...identityGcpAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -504,6 +505,7 @@ export const identityGcpAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.GCP_AUTH);
     return {
       ...updatedGcpAuth,
       orgId: identityMembershipOrg.scopeOrgId
@@ -652,6 +654,7 @@ export const identityGcpAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.GCP_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.GCP_AUTH);
 
     return revokedIdentityGcpAuth;
   };

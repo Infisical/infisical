@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { IdentityAuthMethod, OrgMembershipStatus, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { applyJitter } from "@app/lib/dates";
@@ -85,7 +86,12 @@ type TIdentityAccessTokenServiceFactoryDep = {
     | "setItemWithExpiry"
     | "setItemWithExpiryNX"
     | "incrementSeededWithExpiry"
+    | "deleteItem"
   >;
+};
+
+type TTrustedIpsCachePayload = {
+  accessTokenTrustedIps: TIp[] | null;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
@@ -103,6 +109,14 @@ export const identityAccessTokenServiceFactory = ({
       ttlSeconds,
       usesRemaining
     );
+  };
+
+  const invalidateTrustedIpsCache = async (identityId: string, authMethod: IdentityAuthMethod | string) => {
+    try {
+      await keyStore.deleteItem(KeyStorePrefixes.IdentityTrustedIps(identityId, authMethod));
+    } catch (error) {
+      logger.warn(error, `identity-trusted-ips: failed to invalidate cache [identityId=${identityId}]`);
+    }
   };
 
   // On revoke, bump this identity's version number. Every cached "allowed" answer
@@ -446,8 +460,16 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     if (ipAddress) {
-      const trustedIps = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
-      if (hasNonWildcardTrustedIps(trustedIps as TIp[] | null | undefined)) {
+      const { accessTokenTrustedIps: trustedIps } = await withCache<TTrustedIpsCachePayload>({
+        keyStore,
+        key: KeyStorePrefixes.IdentityTrustedIps(token.identityId, source.authMethod),
+        ttlSeconds: KeyStoreTtls.IdentityTrustedIpsInSeconds,
+        fetcher: async () => {
+          const ips = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
+          return { accessTokenTrustedIps: (ips as TIp[] | null | undefined) ?? null };
+        }
+      });
+      if (hasNonWildcardTrustedIps(trustedIps)) {
         checkIPAgainstBlocklist({
           ipAddress,
           trustedIps: trustedIps as TIp[]
@@ -732,6 +754,7 @@ export const identityAccessTokenServiceFactory = ({
     revokeAllTokensForClientSecret,
     revokeTokensForIdentityAuthMethod,
     markPerTokenRevocation,
+    invalidateTrustedIpsCache,
     fnValidateIdentityAccessTokenFast
   };
 };

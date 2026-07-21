@@ -73,7 +73,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -708,6 +708,7 @@ export const identityOidcAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
     return { ...identityOidcAuth, orgId: identityMembershipOrg.scopeOrgId, caCert };
   };
 
@@ -834,6 +835,7 @@ export const identityOidcAuthServiceFactory = ({
       ? decryptor({ cipherTextBlob: updatedOidcAuth.encryptedCaCertificate }).toString()
       : "";
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
     return {
       ...updatedOidcAuth,
       orgId: identityMembershipOrg.scopeOrgId,
@@ -994,6 +996,7 @@ export const identityOidcAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.OIDC_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OIDC_AUTH);
 
     return revokedIdentityOidcAuth;
   };

@@ -64,7 +64,10 @@ type TIdentityUaServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "revokeAllTokensForClientSecret"
+    | "issueIdentityAccessToken"
+    | "revokeTokensForIdentityAuthMethod"
+    | "revokeAllTokensForClientSecret"
+    | "invalidateTrustedIpsCache"
   >;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -551,6 +554,10 @@ export const identityUaServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(
+      identityMembershipOrg.identity.id,
+      IdentityAuthMethod.UNIVERSAL_AUTH
+    );
     return { ...identityUa, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -678,6 +685,7 @@ export const identityUaServiceFactory = ({
       lockoutDurationSeconds,
       lockoutCounterResetSeconds
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
     return { ...updatedUaAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -825,6 +833,7 @@ export const identityUaServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
 
     return revokedIdentityUniversalAuth;
   };
