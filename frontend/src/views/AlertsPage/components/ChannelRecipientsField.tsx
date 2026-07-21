@@ -27,6 +27,17 @@ const userLabel = (user: {
   return name || user.username || user.email || "Unknown user";
 };
 
+const formatOptionLabel = (option: RecipientOption) => (
+  <span className="flex items-center gap-2">
+    {option.principalType === AlertPrincipalType.Group ? (
+      <UsersIcon className="size-3.5 text-muted" />
+    ) : (
+      <UserIcon className="size-3.5 text-muted" />
+    )}
+    {option.label}
+  </span>
+);
+
 type SelectProps = {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
@@ -41,13 +52,12 @@ const RecipientSelect = ({
 }: SelectProps & { options: RecipientOption[] }) => {
   const byKey = new Map(options.map((o) => [`${o.principalType}-${o.principalId}`, o]));
   const selected = value.map(
-    (recipient) =>
+    (recipient): RecipientOption =>
       byKey.get(`${recipient.principalType}-${recipient.principalId}`) ?? {
         principalType: recipient.principalType,
         principalId: recipient.principalId,
         label: recipient.principalId,
-        groupLabel:
-          recipient.principalType === AlertPrincipalType.Group ? "Groups" : ("Users" as const)
+        groupLabel: recipient.principalType === AlertPrincipalType.Group ? "Groups" : "Users"
       }
   );
 
@@ -62,16 +72,7 @@ const RecipientSelect = ({
       getGroupHeaderLabel={(groupValue) => groupValue}
       getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
       getOptionLabel={(option) => option.label}
-      formatOptionLabel={(option) => (
-        <span className="flex items-center gap-2">
-          {option.principalType === AlertPrincipalType.Group ? (
-            <UsersIcon className="size-3.5 text-muted" />
-          ) : (
-            <UserIcon className="size-3.5 text-muted" />
-          )}
-          {option.label}
-        </span>
-      )}
+      formatOptionLabel={formatOptionLabel}
       onChange={(newValue) =>
         onChange(
           (newValue as RecipientOption[]).map((option) => ({

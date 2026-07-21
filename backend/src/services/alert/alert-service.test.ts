@@ -1,37 +1,32 @@
 import { z } from "zod";
 
+import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
 import { alertServiceFactory, TAlertServiceFactoryDep } from "./alert-service";
-import { IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
+import { AlertPrincipalType, IResourceAlertProvider, TAlertPermissionInput } from "./alert-types";
 
 const RESOURCE_TYPE = "test.resource";
 
 type TChannelRow = {
   id: string;
   name: string;
-  channelType: AlertChannelType;
+  channelType: AlertChannelType | string;
   enabled: boolean;
   orgId: string;
   projectId: string | null;
+  recipients: { principalType: string; principalId: string }[];
   createdAt: Date;
   updatedAt: Date;
 };
 
-const channelRow = (over: Partial<TChannelRow> & { id: string; channelType: AlertChannelType }): TChannelRow => ({
-  name: over.id,
-  enabled: true,
-  orgId: "org-1",
-  projectId: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  ...over
-});
+// Email is the only directed channel type; mirror the registry so response assembly reports `directed` correctly.
+const isDirected = (channelType: AlertChannelType | string) => channelType === AlertChannelType.EMAIL;
 
 const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
-  channels?: TChannelRow[];
+  duplicateExists?: boolean;
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
   const provider: IResourceAlertProvider = {
@@ -53,12 +48,20 @@ const buildService = (opts?: {
   const registry = alertProviderRegistryFactory();
   registry.register(provider);
 
-  const channelStore = new Map<string, TChannelRow>();
-  (opts?.channels ?? []).forEach((c) => channelStore.set(c.id, c));
-
   const alerts = new Map<string, Record<string, unknown>>();
+  const channels = new Map<string, TChannelRow>(); // channelId -> row
   const memberships = new Map<string, string[]>(); // alertId -> channelIds
   const findFilters: Array<Record<string, unknown>> = [];
+  let channelSeq = 0;
+
+  const detach = (channelId: string) => {
+    memberships.forEach((ids, alertId) =>
+      memberships.set(
+        alertId,
+        ids.filter((id) => id !== channelId)
+      )
+    );
+  };
 
   const service = alertServiceFactory({
     alertDAL: {
@@ -82,6 +85,7 @@ const buildService = (opts?: {
           Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
         );
       },
+      findScopedDuplicate: async () => (opts?.duplicateExists ? { id: "dup" } : undefined),
       updateById: async (id: string, data: Record<string, unknown>) => {
         // Mirror knex, which throws "Empty .update() call detected!" on an empty patch.
         if (Object.keys(data).length === 0) throw new Error("Empty .update() call detected!");
@@ -92,11 +96,11 @@ const buildService = (opts?: {
     },
     alertChannelDAL: {
       findByAlertId: async (alertId: string) =>
-        (memberships.get(alertId) ?? []).map((id) => channelStore.get(id)).filter(Boolean),
+        (memberships.get(alertId) ?? []).map((id) => channels.get(id)).filter(Boolean),
       findByAlertIds: async (alertIds: string[]) =>
         alertIds.flatMap((alertId) =>
           (memberships.get(alertId) ?? [])
-            .map((id) => channelStore.get(id))
+            .map((id) => channels.get(id))
             .filter(Boolean)
             .map((c) => ({ ...(c as TChannelRow), alertId }))
         )
@@ -109,10 +113,70 @@ const buildService = (opts?: {
         return data;
       }
     },
+    alertChannelService: {
+      createChannelInTx: async (input: {
+        name: string;
+        channelType: AlertChannelType | string;
+        enabled?: boolean;
+        recipients?: { principalType: string; principalId: string }[];
+        orgId: string;
+        projectId?: string | null;
+      }) => {
+        channelSeq += 1;
+        const row: TChannelRow = {
+          id: `ch-${channelSeq}`,
+          name: input.name,
+          channelType: input.channelType,
+          enabled: input.enabled ?? true,
+          orgId: input.orgId,
+          projectId: input.projectId ?? null,
+          recipients: input.recipients ?? [],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        channels.set(row.id, row);
+        return row;
+      },
+      updateChannelInTx: async (input: {
+        channelId: string;
+        name?: string;
+        enabled?: boolean;
+        recipients?: { principalType: string; principalId: string }[];
+      }) => {
+        const existing = channels.get(input.channelId) as TChannelRow;
+        channels.set(input.channelId, {
+          ...existing,
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+          ...(input.recipients !== undefined ? { recipients: input.recipients } : {})
+        });
+        return {};
+      },
+      deleteChannelInTx: async (channelId: string) => {
+        channels.delete(channelId);
+        detach(channelId);
+      },
+      getDetailsForChannels: async (chans: TChannelRow[]) =>
+        chans.map((c) => ({
+          id: c.id,
+          name: c.name,
+          channelType: c.channelType,
+          directed: isDirected(c.channelType),
+          enabled: c.enabled,
+          config: {},
+          recipients: c.recipients ?? []
+        }))
+    },
+    kmsService: {
+      createCipherPairWithDataKey: async () => ({
+        encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
+        decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
+      })
+    },
     alertProviderRegistry: registry
   } as unknown as TAlertServiceFactoryDep);
 
-  return { service, permissionCalls, alerts, memberships, channelStore, findFilters };
+  return { service, permissionCalls, alerts, memberships, channels, findFilters };
 };
 
 const actor = {
@@ -122,71 +186,82 @@ const actor = {
   actorOrgId: "org-1"
 };
 
-const orgChannels: TChannelRow[] = [
-  channelRow({ id: "ch-email", channelType: AlertChannelType.EMAIL }),
-  channelRow({ id: "ch-webhook", channelType: AlertChannelType.WEBHOOK })
-];
+const emailChannel: TAlertChannelInput = {
+  name: "email-ch",
+  channelType: AlertChannelType.EMAIL,
+  recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }]
+};
+
+const webhookChannel: TAlertChannelInput = {
+  name: "webhook-ch",
+  channelType: AlertChannelType.WEBHOOK,
+  config: { url: "https://example.com/hook" }
+};
 
 const validCreate = {
   name: "test-alert",
   resourceType: RESOURCE_TYPE,
   eventType: "test.resource.expiration",
   condition: { alertBefore: "30d" },
-  channelIds: ["ch-email", "ch-webhook"],
+  channels: [emailChannel, webhookChannel],
   ...actor
 };
 
 describe("alert service", () => {
-  test("creates an alert, attaches channels, and checks Create permission", async () => {
-    const { service, permissionCalls, memberships } = buildService({ channels: orgChannels });
+  test("creates an alert, inlines channels, and checks Create permission", async () => {
+    const { service, permissionCalls, memberships } = buildService();
     const alert = await service.createAlert(validCreate);
 
     expect(alert.id).toBe("alert-1");
     expect(alert.orgId).toBe("org-1");
-    expect(alert.channels.map((c) => c.id).sort()).toEqual(["ch-email", "ch-webhook"]);
-    expect(alert.channels.find((c) => c.id === "ch-email")?.directed).toBe(true);
-    expect(alert.channels.find((c) => c.id === "ch-webhook")?.directed).toBe(false);
-    expect(memberships.get("alert-1")?.sort()).toEqual(["ch-email", "ch-webhook"]);
+    expect(alert.channels).toHaveLength(2);
+    expect(alert.channels.find((c) => c.channelType === AlertChannelType.EMAIL)?.directed).toBe(true);
+    expect(alert.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)?.directed).toBe(false);
+    expect(memberships.get("alert-1")).toHaveLength(2);
     expect(permissionCalls[0].action).toBe("create");
   });
 
   test("rejects an unknown resource type", async () => {
-    const { service } = buildService({ channels: orgChannels });
+    const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, resourceType: "nope.unknown" })).rejects.toThrow();
   });
 
+  test("rejects a duplicate alert in the same scope", async () => {
+    const { service } = buildService({ duplicateExists: true });
+    await expect(service.createAlert(validCreate)).rejects.toThrow(/already exists/);
+  });
+
   test("runs the provider resource-scope check when resourceId is set", async () => {
-    const { service } = buildService({ channels: orgChannels, resourceScopeThrows: true });
+    const { service } = buildService({ resourceScopeThrows: true });
     await expect(service.createAlert({ ...validCreate, resourceId: "foreign-resource" })).rejects.toThrow(
       "resource out of scope"
     );
   });
 
   test("skips the resource-scope check for a filter-based alert (no resourceId)", async () => {
-    const { service } = buildService({ channels: orgChannels, resourceScopeThrows: true });
+    const { service } = buildService({ resourceScopeThrows: true });
     await expect(service.createAlert(validCreate)).resolves.toBeDefined();
   });
 
   test("rejects a condition that fails the provider schema", async () => {
-    const { service } = buildService({ channels: orgChannels });
+    const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, condition: { wrong: 1 } })).rejects.toThrow();
   });
 
   test("rejects a create with no condition when the provider requires one", async () => {
-    const { service } = buildService({ channels: orgChannels });
+    const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, condition: undefined })).rejects.toThrow(
       /Invalid alert condition/
     );
   });
 
   test("rejects an event type the provider does not support", async () => {
-    const { service } = buildService({ channels: orgChannels });
+    const { service } = buildService();
     await expect(service.createAlert({ ...validCreate, eventType: "test.resource.renewal" })).rejects.toThrow();
   });
 
   test("propagates a permission denial from the provider", async () => {
     const { service } = buildService({
-      channels: orgChannels,
       assertPermission: async () => {
         throw new Error("forbidden");
       }
@@ -194,18 +269,9 @@ describe("alert service", () => {
     await expect(service.createAlert(validCreate)).rejects.toThrow("forbidden");
   });
 
-  test("rejects channel ids that are not in the alert's scope", async () => {
-    // The channel exists but belongs to a different project, so it must not be attachable here.
-    const foreign = channelRow({ id: "ch-foreign", channelType: AlertChannelType.WEBHOOK, projectId: "other" });
-    const { service } = buildService({ channels: [...orgChannels, foreign] });
-    await expect(service.createAlert({ ...validCreate, channelIds: ["ch-foreign"] })).rejects.toThrow(
-      /not found in this scope/
-    );
-  });
-
   test("rejects an empty channel list", async () => {
-    const { service } = buildService({ channels: orgChannels });
-    await expect(service.createAlert({ ...validCreate, channelIds: [] })).rejects.toThrow(
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, channels: [] })).rejects.toThrow(
       "At least one channel is required"
     );
   });
@@ -223,7 +289,7 @@ describe("alert service", () => {
   };
 
   test("org-scoped list returns only org-level alerts, never other projects'", async () => {
-    const { service, alerts, findFilters } = buildService({ channels: orgChannels });
+    const { service, alerts, findFilters } = buildService();
     alerts.set("org-alert", { id: "org-alert", name: "org", projectId: null, ...listBase });
     alerts.set("proj-alert", { id: "proj-alert", name: "proj", projectId: "proj-x", ...listBase });
 
@@ -234,7 +300,7 @@ describe("alert service", () => {
   });
 
   test("project-scoped list filters to the requested project", async () => {
-    const { service, alerts, findFilters } = buildService({ channels: orgChannels });
+    const { service, alerts, findFilters } = buildService();
     alerts.set("org-alert", { id: "org-alert", name: "org", projectId: null, ...listBase });
     alerts.set("proj-alert", { id: "proj-alert", name: "proj", projectId: "proj-x", ...listBase });
 
@@ -244,28 +310,51 @@ describe("alert service", () => {
     expect(findFilters[0]).toMatchObject({ projectId: "proj-x" });
   });
 
-  test("update replaces the alert's attached channels", async () => {
-    const { service, memberships } = buildService({ channels: orgChannels });
-    await service.createAlert(validCreate);
-    expect(memberships.get("alert-1")?.sort()).toEqual(["ch-email", "ch-webhook"]);
+  test("update reconciles channels: keeps the referenced ones, deletes the rest, adds new", async () => {
+    const { service, memberships } = buildService();
+    const created = await service.createAlert(validCreate);
+    expect(memberships.get("alert-1")).toHaveLength(2);
 
-    const updated = await service.updateAlert({ alertId: "alert-1", channelIds: ["ch-webhook"], ...actor });
+    const keep = created.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)!;
+    const updated = await service.updateAlert({
+      alertId: "alert-1",
+      channels: [
+        { id: keep.id, name: keep.name, channelType: AlertChannelType.WEBHOOK },
+        { name: "new-slack", channelType: AlertChannelType.SLACK }
+      ],
+      ...actor
+    });
 
-    expect(updated.channels.map((c) => c.id)).toEqual(["ch-webhook"]);
-    expect(memberships.get("alert-1")).toEqual(["ch-webhook"]);
+    expect(updated.channels.map((c) => c.channelType).sort()).toEqual([
+      AlertChannelType.SLACK,
+      AlertChannelType.WEBHOOK
+    ]);
+    expect(memberships.get("alert-1")).toContain(keep.id);
+    expect(memberships.get("alert-1")).toHaveLength(2);
   });
 
-  test("update rejects a channel id outside the alert's scope", async () => {
-    const foreign = channelRow({ id: "ch-foreign", channelType: AlertChannelType.WEBHOOK, projectId: "other" });
-    const { service } = buildService({ channels: [...orgChannels, foreign] });
+  test("update rejects a channel id that does not belong to the alert", async () => {
+    const { service } = buildService();
     await service.createAlert(validCreate);
-    await expect(service.updateAlert({ alertId: "alert-1", channelIds: ["ch-foreign"], ...actor })).rejects.toThrow(
-      /not found in this scope/
+    await expect(
+      service.updateAlert({
+        alertId: "alert-1",
+        channels: [{ id: "ch-foreign", name: "x", channelType: AlertChannelType.WEBHOOK }],
+        ...actor
+      })
+    ).rejects.toThrow(/does not belong to this alert/);
+  });
+
+  test("update rejects an empty channel list", async () => {
+    const { service } = buildService();
+    await service.createAlert(validCreate);
+    await expect(service.updateAlert({ alertId: "alert-1", channels: [], ...actor })).rejects.toThrow(
+      "At least one channel is required"
     );
   });
 
   test("deletes an alert after checking Delete permission", async () => {
-    const { service, permissionCalls } = buildService({ channels: orgChannels });
+    const { service, permissionCalls } = buildService();
     await service.createAlert(validCreate);
     const result = await service.deleteAlert({ alertId: "alert-1", ...actor });
     expect(result.id).toBe("alert-1");
