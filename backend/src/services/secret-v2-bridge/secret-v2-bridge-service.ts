@@ -1293,7 +1293,7 @@ export const secretV2BridgeServiceFactory = ({
     });
     const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
-    const hasIfNoneMatch = Boolean(ifNoneMatch);
+    const hasIfNoneMatch = ifNoneMatch !== undefined;
     let etagMissReason: SecretEtagMissReason | undefined;
 
     if (ifNoneMatch) {
