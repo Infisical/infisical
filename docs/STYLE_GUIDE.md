@@ -192,9 +192,45 @@ Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. FAQs are valuable �
 
 FAQs make documentation easier to scan — readers can jump straight to their question instead of hunting through paragraphs.
 
+### Code Examples
+
+Include code examples only when they genuinely help understanding — not to make documentation look technical or comprehensive. A well-placed example clarifies; too many examples overwhelm.
+
+**When to include code:**
+- The syntax isn't obvious from the description alone
+- Readers need something copy-pasteable to get started
+- Showing expected output helps verify success
+
+**When to skip code:**
+- The UI walkthrough is sufficient
+- The concept is better explained in prose
+- Adding code would just repeat what's already clear
+
+**When you do include code:**
+- Make it copy-pasteable — no `$` prompts that break pasting
+- Use obvious placeholders: `<your-api-key>`, `<project-id>`, not `abc123` or `foo`
+- Use realistic values where possible (actual domain names, plausible configs)
+- Show expected output when it helps readers verify they did it right
+- Keep examples minimal — show what's needed, not everything possible
+
+```bash
+# Good: obvious placeholder, minimal, copy-pasteable
+curl -X POST https://app.infisical.com/api/v1/secrets \
+  -H "Authorization: Bearer <your-access-token>" \
+  -d '{"key": "DATABASE_URL", "value": "postgres://..."}'
+
+# Bad: unnecessary headers, too verbose
+curl -X POST https://app.infisical.com/api/v1/secrets \
+  -H "X-Request-ID: 12345" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -H "X-Custom-Header: value" \
+  ...
+```
+
 ### Other Components
 
-Mintlify offers many more components — code groups for multiple examples, and more. Use whatever best serves the reader's understanding.
+Mintlify offers many more components — use whatever best serves the reader's understanding.
 
 ---
 
