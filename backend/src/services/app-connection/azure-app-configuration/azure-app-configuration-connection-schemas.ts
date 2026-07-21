@@ -74,11 +74,21 @@ export const ValidateAzureAppConfigurationConnectionCredentialsSchema = z.discri
   })
 ]);
 
-export const CreateAzureAppConfigurationConnectionSchema = ValidateAzureAppConfigurationConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureAppConfiguration, {
-    supportsCredentialRotation: true
-  })
-);
+export const CreateAzureAppConfigurationConnectionSchema = ValidateAzureAppConfigurationConnectionCredentialsSchema
+  .and(
+    GenericCreateAppConnectionFieldsSchema(AppConnection.AzureAppConfiguration, {
+      supportsCredentialRotation: true
+    })
+  )
+  .superRefine((data, ctx) => {
+    if (data.method !== AzureAppConfigurationConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Credential rotation is only supported for the client-secret method",
+        path: ["isAutoRotationEnabled"]
+      });
+    }
+  });
 
 export const UpdateAzureAppConfigurationConnectionSchema = z
   .object({

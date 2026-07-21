@@ -79,6 +79,7 @@ export const AzureDevOpsConnectionClientSecretOutputCredentialsSchema = z.object
   clientSecret: z.string(),
   tenantId: z.string(),
   orgName: z.string(),
+  clientSecretKeyId: z.string().optional(),
   accessToken: z.string(),
   expiresAt: z.number()
 });
@@ -110,11 +111,21 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
   })
 ]);
 
-export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDevOps, {
-    supportsCredentialRotation: true
-  })
-);
+export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCredentialsSchema
+  .and(
+    GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDevOps, {
+      supportsCredentialRotation: true
+    })
+  )
+  .superRefine((data, ctx) => {
+    if (data.method !== AzureDevOpsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Credential rotation is only supported for the client-secret method",
+        path: ["isAutoRotationEnabled"]
+      });
+    }
+  });
 
 export const UpdateAzureDevOpsConnectionSchema = z
   .object({
