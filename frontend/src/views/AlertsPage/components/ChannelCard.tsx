@@ -146,7 +146,7 @@ export const ChannelCard = ({ index, projectId, onRemove, canRemove }: Props) =>
           </Field>
           <Field>
             <FieldLabel htmlFor={`channel-${index}-signingSecret`}>
-              Signing secret <span className="text-mineshaft-400">(optional)</span>
+              Signing secret <span className="text-muted">(optional)</span>
             </FieldLabel>
             <FieldContent>
               <Input

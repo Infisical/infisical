@@ -61,7 +61,7 @@ type Props = {
 };
 
 const SectionHeader = ({ step, title }: { step: number; title: string }) => (
-  <p className="text-xs font-semibold tracking-wider text-mineshaft-400 uppercase">
+  <p className="text-xs font-semibold text-label">
     {step} · {title}
   </p>
 );
@@ -71,7 +71,7 @@ const SectionHeader = ({ step, title }: { step: number; title: string }) => (
 const FixedField = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="flex flex-col gap-1.5">
     <FieldLabel>{label}</FieldLabel>
-    <Card className="flex-row items-center justify-between p-4">
+    <Card className="flex-row items-center justify-between gap-3">
       <div className="flex items-center gap-3">{children}</div>
       <span className="flex items-center gap-1 text-xs text-muted">
         <LockIcon className="size-3" />
@@ -282,7 +282,7 @@ export const AlertForm = ({
 
             <Field>
               <FieldLabel htmlFor="alert-description">
-                Description <span className="text-mineshaft-400">(optional)</span>
+                Description <span className="text-muted">(optional)</span>
               </FieldLabel>
               <FieldContent>
                 <TextArea
@@ -316,7 +316,7 @@ export const AlertForm = ({
                         {Object.values(AlertResourceType).map((resourceType) => (
                           <SelectItem key={resourceType} value={resourceType}>
                             <span className="flex items-center gap-2">
-                              <KeyRoundIcon className="size-4 text-blue-400" />
+                              <KeyRoundIcon className="size-4 text-muted" />
                               <span className="font-medium">
                                 {ALERT_RESOURCE_TYPE_LABELS[resourceType]}
                               </span>
@@ -355,7 +355,7 @@ export const AlertForm = ({
                           <SelectItem key={eventType} value={eventType}>
                             <span className="flex items-center gap-2">
                               <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[eventType]}</Badge>
-                              <span className="text-mineshaft-300">
+                              <span className="text-muted">
                                 Fires as the credential nears expiration
                               </span>
                             </span>
@@ -372,7 +372,7 @@ export const AlertForm = ({
               <FieldLabel>Condition</FieldLabel>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-mineshaft-100">Alert before</span>
+                  <span className="text-sm text-foreground">Alert before</span>
                   <Input
                     id="alert-alert-before"
                     type="number"
@@ -391,7 +391,7 @@ export const AlertForm = ({
                         </SelectTrigger>
                         <SelectContent position="popper">
                           {Object.values(AlertTimeUnit).map((unit) => (
-                            <SelectItem key={unit} value={unit} className="capitalize">
+                            <SelectItem key={unit} value={unit}>
                               {ALERT_TIME_UNIT_LABELS[unit]}
                             </SelectItem>
                           ))}

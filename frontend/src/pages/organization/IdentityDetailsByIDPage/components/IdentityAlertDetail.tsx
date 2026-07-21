@@ -1,6 +1,8 @@
-import { BellPlusIcon, PencilIcon } from "lucide-react";
+import { BellPlusIcon, PencilIcon, TrashIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -20,6 +22,7 @@ import {
   AlertEventType,
   AlertResourceType,
   TAlert,
+  useDeleteAlert,
   useListAlerts
 } from "@app/hooks/api/alerts";
 import { AddAlertModal } from "@app/views/AlertsPage/components/AddAlertModal";
@@ -40,7 +43,9 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
     resourceId: identityId
   });
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["alert"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["alert", "deleteAlert"] as const);
+
+  const deleteAlert = useDeleteAlert();
 
   const existingAlert = alerts[0] as TAlert | undefined;
   const eventLabel = existingAlert
@@ -48,14 +53,39 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
       existingAlert.eventType)
     : "";
 
+  const handleDeleteAlert = async () => {
+    if (!existingAlert) return;
+
+    try {
+      await deleteAlert.mutateAsync({ alertId: existingAlert.id });
+      createNotification({ text: "Successfully deleted alert", type: "success" });
+      handlePopUpToggle("deleteAlert", false);
+    } catch {
+      createNotification({ text: "Failed to delete alert", type: "error" });
+    }
+  };
+
   return (
     <Detail>
       <DetailLabel>Alert</DetailLabel>
       <DetailValue>
         {existingAlert ? (
-          <div className="flex w-full items-center justify-between gap-2 rounded-md border border-mineshaft-600 p-3">
+          <div className="flex w-full items-center justify-between gap-2 rounded-md border border-border p-3">
             <div className="flex min-w-0 flex-col gap-2">
-              <span className="truncate font-medium text-foreground">{existingAlert.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="truncate text-foreground">{existingAlert.name}</span>
+                {existingAlert.enabled ? (
+                  <span className="flex items-center gap-1.5 text-sm text-success">
+                    <span className="size-1.5 rounded-full bg-success" aria-hidden />
+                    Enabled
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-sm text-muted">
+                    <span className="size-1.5 rounded-full bg-muted" aria-hidden />
+                    Disabled
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant="warning">{eventLabel}</Badge>
                 {existingAlert.channels.map((channel) => {
@@ -63,7 +93,7 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
                   return (
                     <Tooltip key={channel.id}>
                       <TooltipTrigger asChild>
-                        <span className="flex size-6 items-center justify-center rounded border border-mineshaft-600 text-muted">
+                        <span className="flex size-6 items-center justify-center rounded border border-border text-muted">
                           <Icon className="size-3.5" />
                         </span>
                       </TooltipTrigger>
@@ -75,21 +105,41 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
                 })}
               </div>
             </div>
-            <OrgPermissionCan
-              I={OrgPermissionIdentityActions.Edit}
-              a={OrgPermissionSubjects.Identity}
-            >
-              {(isAllowed) => (
-                <IconButton
-                  isDisabled={!isAllowed}
-                  onClick={() => handlePopUpOpen("alert")}
-                  variant="ghost"
-                  size="xs"
-                >
-                  <PencilIcon />
-                </IconButton>
-              )}
-            </OrgPermissionCan>
+            <div className="flex items-center gap-1">
+              <OrgPermissionCan
+                I={OrgPermissionIdentityActions.Edit}
+                a={OrgPermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    aria-label="Edit alert"
+                    isDisabled={!isAllowed}
+                    onClick={() => handlePopUpOpen("alert")}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    <PencilIcon />
+                  </IconButton>
+                )}
+              </OrgPermissionCan>
+              <OrgPermissionCan
+                I={OrgPermissionIdentityActions.Edit}
+                a={OrgPermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <IconButton
+                    aria-label="Delete alert"
+                    isDisabled={!isAllowed}
+                    onClick={() => handlePopUpOpen("deleteAlert")}
+                    variant="ghost"
+                    size="xs"
+                    className="hover:text-danger"
+                  >
+                    <TrashIcon />
+                  </IconButton>
+                )}
+              </OrgPermissionCan>
+            </div>
           </div>
         ) : (
           <OrgPermissionCan
@@ -116,6 +166,13 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
         resourceId={identityId}
         resourceName={identityName}
         alert={existingAlert}
+      />
+      <DeleteActionModal
+        isOpen={popUp.deleteAlert.isOpen}
+        title={`Are you sure you want to delete the alert ${existingAlert?.name ?? ""}?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteAlert", isOpen)}
+        deleteKey="confirm"
+        onDeleteApproved={handleDeleteAlert}
       />
     </Detail>
   );

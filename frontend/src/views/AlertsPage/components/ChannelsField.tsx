@@ -48,7 +48,7 @@ export const ChannelsField = ({ projectId }: Props) => {
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <FieldLabel>
-            Channels <span className="text-red">*</span>
+            Channels <span className="text-danger">*</span>
           </FieldLabel>
           <span className="text-xs text-muted">Add at least one delivery channel.</span>
         </div>
@@ -78,7 +78,7 @@ export const ChannelsField = ({ projectId }: Props) => {
         </DropdownMenu>
       </div>
 
-      {rootError && <p className="text-xs text-red-500">{rootError}</p>}
+      {rootError && <p className="text-xs text-danger">{rootError}</p>}
 
       {fields.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted">
