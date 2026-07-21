@@ -588,6 +588,33 @@ export const ACCOUNT_TYPE_CONFIGS = {
         tooltip: "A client secret for the service principal. Stored encrypted and never returned in read responses."
       }
     }
+  },
+
+  [PamAccountType.WebApp]: {
+    name: "Web Application",
+    icon: "Web.png",
+    connectionDetails: z.object({
+      url: z
+        .string()
+        .trim()
+        .url()
+        .max(2048)
+        .refine((v) => ["http:", "https:"].includes(new URL(v).protocol), {
+          message: "URL must use http or https"
+        })
+        .refine((v) => !new URL(v).username && !new URL(v).password, {
+          message: "URL must not include embedded credentials"
+        })
+    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
+    ui: {
+      url: {
+        label: "Internal URL",
+        tooltip:
+          "The address of the internal web application to broker access to (e.g. http://dashboard.internal:8080)."
+      }
+    }
   }
 } as const satisfies Partial<
   Record<
