@@ -229,6 +229,7 @@ import { ImportSecretsModal, SecretDropzone } from "./components/SecretDropzone"
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+import { TableColumnResizeHandle } from "./components/TableColumnResizeHandle";
 import {
   DownloadEnvButton,
   DynamicSecretTableRow,
@@ -289,6 +290,12 @@ const DEFAULT_FILTER_STATE = {
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
+
+const DEFAULT_ENVIRONMENT_COLUMN_WIDTH = 160;
+const NAME_COLUMN_ID = "name";
+const VALUE_COLUMN_ID = "value";
+
+const getColumnWidthStyle = (width?: number) => (width ? { width, minWidth: width } : undefined);
 
 const OverviewPageContent = () => {
   const { t } = useTranslation();
@@ -2504,6 +2511,11 @@ const OverviewPageContent = () => {
   // }, [debouncedHeaderHeight]);
 
   const [tableWidth, setTableWidth] = useState(0);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+
+  const handleColumnResize = useCallback((widths: Record<string, number>) => {
+    setColumnWidths((currentWidths) => ({ ...currentWidths, ...widths }));
+  }, []);
 
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
@@ -2954,6 +2966,7 @@ const OverviewPageContent = () => {
                             !isSingleEnvView && "sticky",
                             "left-10 z-10 max-w-60 min-w-60 border-r bg-container lg:max-w-none lg:min-w-96"
                           )}
+                          style={getColumnWidthStyle(columnWidths[NAME_COLUMN_ID])}
                           onClick={() =>
                             setOrderDirection((prev) =>
                               prev === OrderByDirection.ASC
@@ -2972,17 +2985,22 @@ const OverviewPageContent = () => {
                         </TableHead>
                         {visibleEnvs.length > 1 ? (
                           visibleEnvs?.map(({ name, slug, id }, index) => {
+                            const previousEnvironment = visibleEnvs[index - 1];
+                            const leftColumnId = previousEnvironment?.slug ?? NAME_COLUMN_ID;
+
                             return (
                               <TableHead
-                                className="w-40 max-w-40 border-r p-0 text-center last:border-r-0"
-                                isTruncatable
-                                key={`secret-overview-${name}-${index + 1}`}
+                                className="relative border-r p-0 text-center last:border-r-0"
+                                key={`secret-overview-${slug}`}
+                                style={getColumnWidthStyle(
+                                  columnWidths[slug] ?? DEFAULT_ENVIRONMENT_COLUMN_WIDTH
+                                )}
                               >
                                 <DropdownMenu>
                                   <Tooltip>
-                                    <TooltipTrigger className="h-full">
+                                    <TooltipTrigger className="h-full w-full">
                                       <DropdownMenuTrigger asChild>
-                                        <div className="flex h-full w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
+                                        <div className="flex h-full w-full cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5">
                                           <span className="truncate">{name}</span>
                                           <SettingsIcon className="size-3.5 shrink-0" />
                                         </div>
@@ -3075,11 +3093,19 @@ const OverviewPageContent = () => {
                                     </ProjectPermissionCan>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
+                                <TableColumnResizeHandle
+                                  leftColumnId={leftColumnId}
+                                  onResizeEnd={handleColumnResize}
+                                  rightColumnId={slug}
+                                />
                               </TableHead>
                             );
                           })
                         ) : (
-                          <TableHead className="w-full">
+                          <TableHead
+                            className="relative w-full p-0 text-left"
+                            style={getColumnWidthStyle(columnWidths[VALUE_COLUMN_ID])}
+                          >
                             <div className="flex w-full items-center justify-between">
                               Value
                               <div className="flex items-center gap-2">
@@ -3165,6 +3191,11 @@ const OverviewPageContent = () => {
                                 />
                               </div>
                             </div>
+                            <TableColumnResizeHandle
+                              leftColumnId={NAME_COLUMN_ID}
+                              onResizeEnd={handleColumnResize}
+                              rightColumnId={VALUE_COLUMN_ID}
+                            />
                           </TableHead>
                         )}
                       </TableRow>
