@@ -113,7 +113,7 @@ export const identityAccessTokenServiceFactory = ({
   };
 
   // Delayed re-delete: a request that missed cache before this delete can still
-  // write a stale allowlist back. Second delete ~1s later clears that race.
+  // write a stale allowlist back. Second delete ~1s later helps with race conditions, but still best effort.
   const TRUSTED_IPS_CACHE_REDELETE_DELAY_MS = 1000;
 
   const invalidateTrustedIpsCache = async (identityId: string, authMethod: IdentityAuthMethod | string) => {
