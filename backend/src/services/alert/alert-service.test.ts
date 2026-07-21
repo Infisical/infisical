@@ -60,9 +60,6 @@ const buildService = (opts?: {
   const memberships = new Map<string, string[]>(); // alertId -> channelIds
   const findFilters: Array<Record<string, unknown>> = [];
 
-  const inScope = (c: TChannelRow, scope: { orgId: string; projectId?: string | null }) =>
-    c.orgId === scope.orgId && (c.projectId ?? null) === (scope.projectId ?? null);
-
   const service = alertServiceFactory({
     alertDAL: {
       transaction: async (cb: (tx: unknown) => unknown) => cb({}),
@@ -94,8 +91,6 @@ const buildService = (opts?: {
       deleteById: async (id: string) => alerts.delete(id)
     },
     alertChannelDAL: {
-      findByIdsInScope: async (ids: string[], scope: { orgId: string; projectId?: string | null }) =>
-        ids.map((id) => channelStore.get(id)).filter((c): c is TChannelRow => Boolean(c) && inScope(c!, scope)),
       findByAlertId: async (alertId: string) =>
         (memberships.get(alertId) ?? []).map((id) => channelStore.get(id)).filter(Boolean),
       findByAlertIds: async (alertIds: string[]) =>
@@ -112,10 +107,6 @@ const buildService = (opts?: {
           memberships.set(alertId, [...(memberships.get(alertId) ?? []), channelId])
         );
         return data;
-      },
-      deleteByAlertId: async (alertId: string) => {
-        memberships.delete(alertId);
-        return 0;
       }
     },
     alertProviderRegistry: registry

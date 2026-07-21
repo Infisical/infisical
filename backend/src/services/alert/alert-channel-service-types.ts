@@ -46,14 +46,6 @@ export type TAlertChannelDetail = {
   updatedAt: Date;
 };
 
-export type TAlertChannelSummary = {
-  id: string;
-  name: string;
-  channelType: string;
-  directed: boolean;
-  enabled: boolean;
-};
-
 export type TAlertChannelEmbedded = {
   id: string;
   name: string;
@@ -72,5 +64,3 @@ export type TAlertChannelInput = {
   enabled?: boolean;
   recipients?: TChannelRecipientInput[];
 };
-
-export type { AlertChannelType };

@@ -61,22 +61,6 @@ export const alertChannelDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIdsInScope = async (
-    ids: string[],
-    { orgId, projectId }: { orgId: string; projectId?: string | null },
-    tx?: Knex
-  ): Promise<TAlertChannels[]> => {
-    try {
-      if (!ids.length) return [];
-      const query = (tx || db.replicaNode())(TableName.AlertChannel).whereIn(`${TableName.AlertChannel}.id`, ids);
-      scopeFilter(query, orgId, projectId);
-      const channels = await query.select(selectAllTableCols(TableName.AlertChannel));
-      return channels as TAlertChannels[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByIdsInScope" });
-    }
-  };
-
   const findByNameInScope = async (
     name: string,
     { orgId, projectId }: { orgId: string; projectId?: string | null },
@@ -135,7 +119,6 @@ export const alertChannelDALFactory = (db: TDbClient) => {
     ...alertChannelOrm,
     findWithUsageByScope,
     findActiveById,
-    findByIdsInScope,
     findByNameInScope,
     findByAlertId,
     findByAlertIds

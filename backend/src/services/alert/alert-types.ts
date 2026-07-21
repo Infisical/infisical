@@ -10,8 +10,7 @@ export enum AlertPrincipalType {
 }
 
 export enum AlertTriggerType {
-  Scheduled = "scheduled",
-  Event = "event"
+  Scheduled = "scheduled"
 }
 
 export enum AlertRunStatus {
