@@ -26,7 +26,15 @@ export const AzureDnsConnectionClientSecretCredentialsSchema = z.object({
     .trim()
     .min(1, "Client secret required")
     .max(256, "Client secret cannot exceed 256 characters"),
-  subscriptionId: azureGuidSchema.describe("Subscription ID must be a valid GUID")
+  subscriptionId: azureGuidSchema.describe("Subscription ID must be a valid GUID"),
+  clientSecretKeyId: z
+    .string()
+    .trim()
+    .refine((val) => AZURE_GUID_REGEX.test(val), { message: "Invalid GUID format" })
+    .optional()
+    .describe(
+      "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
+    )
 });
 
 const BaseAzureDnsConnectionSchema = BaseAppConnectionSchema.extend({
@@ -57,7 +65,9 @@ export const ValidateAzureDnsConnectionCredentialsSchema = z.discriminatedUnion(
 ]);
 
 export const CreateAzureDnsConnectionSchema = ValidateAzureDnsConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDNS)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDNS, {
+    supportsCredentialRotation: true
+  })
 );
 
 export const UpdateAzureDnsConnectionSchema = z
@@ -66,7 +76,11 @@ export const UpdateAzureDnsConnectionSchema = z
       AppConnections.UPDATE(AppConnection.AzureDNS).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureDNS));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureDNS, {
+      supportsCredentialRotation: true
+    })
+  );
 
 export const AzureDnsConnectionListItemSchema = z
   .object({

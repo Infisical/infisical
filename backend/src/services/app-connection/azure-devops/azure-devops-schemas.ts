@@ -63,7 +63,15 @@ export const AzureDevOpsConnectionClientSecretInputCredentialsSchema = z.object(
     .string()
     .trim()
     .min(1, "Organization name required")
-    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.orgName)
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.orgName),
+  clientSecretKeyId: z
+    .string()
+    .uuid()
+    .trim()
+    .optional()
+    .describe(
+      "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
+    )
 });
 
 export const AzureDevOpsConnectionClientSecretOutputCredentialsSchema = z.object({
@@ -103,7 +111,9 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
 ]);
 
 export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDevOps)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDevOps, {
+    supportsCredentialRotation: true
+  })
 );
 
 export const UpdateAzureDevOpsConnectionSchema = z
@@ -117,7 +127,11 @@ export const UpdateAzureDevOpsConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureDevOps).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureDevOps));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureDevOps, {
+      supportsCredentialRotation: true
+    })
+  );
 
 const BaseAzureDevOpsConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.AzureDevOps)

@@ -15,8 +15,12 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TAppConnection, TAppConnectionRaw } from "../app-connection-types";
-import { AzureClientSecretsConnectionMethod } from "../azure-client-secrets";
-import { AzureKeyVaultConnectionMethod } from "../azure-key-vault";
+import { AzureAppConfigurationConnectionMethod } from "../azure-app-configuration/azure-app-configuration-connection-enums";
+import { AzureClientSecretsConnectionMethod } from "../azure-client-secrets/azure-client-secrets-connection-enums";
+import { AzureDevOpsConnectionMethod } from "../azure-devops/azure-devops-enums";
+import { AzureDnsConnectionMethod } from "../azure-dns/azure-dns-connection-enums";
+import { AzureEntraIdConnectionMethod } from "../azure-entra-id/azure-entra-id-connection-enums";
+import { AzureKeyVaultConnectionMethod } from "../azure-key-vault/azure-key-vault-connection-enums";
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 import {
   AppConnectionCredentialRotationStatus,
@@ -62,6 +66,22 @@ const STRATEGY_MAP: Record<
     {
       app: AppConnection.AzureClientSecrets,
       method: AzureClientSecretsConnectionMethod.ClientSecret
+    },
+    {
+      app: AppConnection.AzureAppConfiguration,
+      method: AzureAppConfigurationConnectionMethod.ClientSecret
+    },
+    {
+      app: AppConnection.AzureDevOps,
+      method: AzureDevOpsConnectionMethod.ClientSecret
+    },
+    {
+      app: AppConnection.AzureDNS,
+      method: AzureDnsConnectionMethod.ClientSecret
+    },
+    {
+      app: AppConnection.AzureEntraId,
+      method: AzureEntraIdConnectionMethod.ClientSecret
     }
   ]
 };
