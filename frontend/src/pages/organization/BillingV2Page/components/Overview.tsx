@@ -7,7 +7,6 @@ import { DetailsCard } from "./cards/DetailsCard";
 import { InvoicesCard } from "./cards/InvoicesCard";
 import { PaymentCard } from "./cards/PaymentCard";
 import { ProductsCard } from "./cards/ProductsCard";
-import { DeprecationBanners } from "./deprecation/DeprecationBanners";
 import { ErrorPanel } from "./states/ErrorPanel";
 import { OverviewSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
@@ -89,12 +88,12 @@ export const Overview = ({
         onUpdatePayment={onUpdatePayment}
         onManageSubscription={onManageSubscription}
       />
-      <DeprecationBanners
+      {/* <DeprecationBanners
         overview={overview}
         catalog={catalog}
         onManage={onUpgrade}
         onContact={onContact}
-      />
+      /> */}
       <BillingHeaderCard overview={overview} catalog={catalog} />
       <ProductsCard
         overview={overview}

@@ -31,7 +31,7 @@ import {
   productAnnualCommitted,
   tierLabel
 } from "../../billing-v2-format";
-import { deprecationSubline } from "../deprecation/deprecation-data";
+import { asPlanDeprecation, deprecationSubline } from "../deprecation/deprecation-data";
 import {
   ActiveBadge,
   CardEmpty,
@@ -49,7 +49,8 @@ type ActiveProductCardProps = {
 
 // Full-width card for an active product: identity and status, price, Manage action, usage meters.
 const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProductCardProps) => {
-  const deprecation = entitlement?.deprecation;
+  // Every deprecation is presented as a retiring plan for now (see asPlanDeprecation).
+  const deprecation = asPlanDeprecation(entitlement?.deprecation);
   const isProductDeprecated = deprecation?.kind === "product";
   const isPlanDeprecated = deprecation?.kind === "plan";
 
@@ -259,7 +260,7 @@ export const ProductsCard = ({
           <Package className="size-4 text-accent" />
           Products
         </CardTitle>
-        <CardDescription>Everything you can run on your subscription.</CardDescription>
+        <CardDescription>Active products</CardDescription>
         {!readOnly && (
           <CardAction>
             <Tooltip>
@@ -286,39 +287,47 @@ export const ProductsCard = ({
             description="Products will appear here once they're available."
           />
         ) : (
-          <div className="flex flex-col gap-4">
-            {active.map((prod) => (
-              <ActiveProductCard
-                key={prod.id}
-                prod={prod}
-                entitlement={overview.entitlements[prod.id]}
-                readOnly={readOnly}
-                onManage={onManage}
+          <>
+            {active.length === 0 && (
+              <CardEmpty
+                title="No active products"
+                description="Activate your first product to get started."
               />
-            ))}
-            {available.length > 0 && (
-              <>
-                <div className="flex items-center gap-3 pt-1">
-                  <span className="text-sm font-medium text-muted">Available to add</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                {/* Container-keyed columns: the collapsible sidebar changes the room, not the viewport. */}
-                <div className="@container">
-                  <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3">
-                    {available.map((prod) => (
-                      <AvailableProductTile
-                        key={prod.id}
-                        prod={prod}
-                        readOnly={readOnly}
-                        onManage={onManage}
-                        onContact={onContact}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </>
             )}
-          </div>
+            <div className="flex flex-col gap-4">
+              {active.map((prod) => (
+                <ActiveProductCard
+                  key={prod.id}
+                  prod={prod}
+                  entitlement={overview.entitlements[prod.id]}
+                  readOnly={readOnly}
+                  onManage={onManage}
+                />
+              ))}
+              {available.length > 0 && (
+                <>
+                  <div className="flex items-center gap-3 pt-2">
+                    <span className="text-sm font-medium text-muted">Available products</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {/* Container-keyed columns: the collapsible sidebar changes the room, not the viewport. */}
+                  <div className="@container">
+                    <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3">
+                      {available.map((prod) => (
+                        <AvailableProductTile
+                          key={prod.id}
+                          prod={prod}
+                          readOnly={readOnly}
+                          onManage={onManage}
+                          onContact={onContact}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

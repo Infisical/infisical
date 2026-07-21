@@ -14,7 +14,7 @@ import {
 import { buildMeteredFeatures } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
 import { usageMeteringServiceFactory } from "./usage-metering-service";
-import { buildUsageReporter, TUsageSnapshot } from "./usage-reporter";
+import { buildUsageReporter, TUsageSnapshot, UsageReportError } from "./usage-reporter";
 
 type TQueueCall = [
   QueueName,
@@ -245,8 +245,6 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       usageReporter?: unknown;
       keyStore?: ReturnType<typeof createFakeKeyStore>;
       orgFind?: unknown;
-      // Feature keys the org's plan includes; defaults to the metered feature under test.
-      planFeatures?: string[];
     } = {}
   ) => {
     const reportSnapshots = vi.fn(async () => {});
@@ -254,10 +252,6 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const usageReporter = overrides.usageReporter === undefined ? { reportSnapshots } : overrides.usageReporter;
     const emit = vi.fn();
     const find = overrides.orgFind ?? vi.fn(async () => []);
-    const planFeatures = overrides.planFeatures ?? [IdentitiesMeter.key];
-    const getEntitlements = vi.fn(async () => ({
-      features: Object.fromEntries(planFeatures.map((key) => [key, { value: 100, source: "plan" }]))
-    }));
     const queue = usageEventQueueFactory({
       queueService: { start: vi.fn() },
       cronJob: { register: vi.fn(), start: vi.fn(), stop: vi.fn() } as never,
@@ -266,10 +260,9 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       usageMeteringService: { emit },
       meteredFeatures,
       usageReporter: usageReporter as never,
-      licenseClient: { getEntitlements } as never,
       source: "test-region"
     });
-    return { queue, reportSnapshots, keyStore, emit, find, getEntitlements };
+    return { queue, reportSnapshots, keyStore, emit, find };
   };
 
   beforeEach(() => {
@@ -312,12 +305,27 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     expect(reportSnapshots).not.toHaveBeenCalled();
   });
 
-  test("skips the count and report when the dimension is not in the org's plan", async () => {
-    // The org's plan has no metered features, so the dimension is absent from entitlements.features.
-    const { queue, reportSnapshots } = buildQueue({ planFeatures: [] });
-    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
-    expect(meteredFeatures[0].count).not.toHaveBeenCalled();
-    expect(reportSnapshots).not.toHaveBeenCalled();
+  test("swallows a 422 'not priced' report error without retrying or recording it", async () => {
+    const reportSnapshots = vi.fn(async () => {
+      throw new UsageReportError(422, "dimension X is not priced by any active product on this license");
+    });
+    const { queue, keyStore } = buildQueue({ usageReporter: { reportSnapshots } });
+
+    // Does not throw (so the job is not retried).
+    await expect(queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date())).resolves.toBeUndefined();
+    // Not recorded as reported, so a later change can retry.
+    expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`)).toBeUndefined();
+  });
+
+  test("rethrows other report errors so the job retries", async () => {
+    const reportSnapshots = vi.fn(async () => {
+      throw new UsageReportError(500, "internal server error");
+    });
+    const { queue } = buildQueue({ usageReporter: { reportSnapshots } });
+
+    await expect(queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date())).rejects.toBeInstanceOf(
+      UsageReportError
+    );
   });
 
   test("flushAllOrgs pages through orgs and emits per meter", async () => {
