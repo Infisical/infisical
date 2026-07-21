@@ -89,6 +89,7 @@ const REQUEUE_LIMIT = 30;
 const DASH_REGEX = new RE2("-", "g");
 const NON_ALPHANUMERIC_REGEX = new RE2("[^a-zA-Z0-9]", "g");
 const CONNECTION_CONCURRENCY_LIMIT = 3;
+const CONNECTION_CONCURRENCY_TTL_SECONDS = (REQUEUE_MS * REQUEUE_LIMIT) / 1000 / 2;
 
 const getRequeueDelay = (failureCount?: number) => {
   const jitter = Math.random() * JITTER_MS;
@@ -131,44 +132,19 @@ export const pkiSyncQueueFactory = ({
     unit: "1"
   });
 
-  const $isConnectionConcurrencyLimitReached = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    if (!concurrencyCount) return false;
-
-    const count = Number.parseInt(concurrencyCount, 10);
-
-    if (Number.isNaN(count)) return false;
-
-    return count >= CONNECTION_CONCURRENCY_LIMIT;
+  const $tryAdmitConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    const count = await keyStore.incrementByAndRefreshExpiryIfUnderLimit(
+      key,
+      CONNECTION_CONCURRENCY_LIMIT,
+      CONNECTION_CONCURRENCY_TTL_SECONDS
+    );
+    return count !== -1;
   };
 
-  const $incrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const incrementedCount = Number.isNaN(currentCount) ? 1 : currentCount + 1;
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      incrementedCount
-    );
-  };
-
-  const $decrementConnectionConcurrencyCount = async (connectionId: string) => {
-    const concurrencyCount = await keyStore.getItem(KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId));
-
-    const currentCount = Number.parseInt(concurrencyCount || "0", 10);
-
-    const decrementedCount = Math.max(0, Number.isNaN(currentCount) ? 0 : currentCount - 1);
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId),
-      (REQUEUE_MS * REQUEUE_LIMIT) / 1000, // in seconds
-      decrementedCount
-    );
+  const $releaseConnectionConcurrency = async (connectionId: string) => {
+    const key = KeyStorePrefixes.AppConnectionConcurrentJobs(connectionId);
+    await keyStore.decrementByOrDelete(key);
   };
 
   const $getInfisicalCertificates = async (
@@ -966,9 +942,9 @@ export const pkiSyncQueueFactory = ({
     const { connectionId } = pkiSync;
 
     if (job.name === QueueJobs.PkiSyncSyncCertificates) {
-      const isConcurrentLimitReached = await $isConnectionConcurrencyLimitReached(connectionId);
+      const admitted = await $tryAdmitConnectionConcurrency(connectionId);
 
-      if (isConcurrentLimitReached) {
+      if (!admitted) {
         await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
         return;
@@ -984,6 +960,10 @@ export const pkiSyncQueueFactory = ({
         5 * 60 * 1000
       );
     } catch (e) {
+      if (job.name === QueueJobs.PkiSyncSyncCertificates) {
+        await $releaseConnectionConcurrency(connectionId);
+      }
+
       await $handleAcquireLockFailure(job as PkiSyncActionJob);
 
       return;
@@ -992,7 +972,6 @@ export const pkiSyncQueueFactory = ({
     try {
       switch (job.name) {
         case QueueJobs.PkiSyncSyncCertificates: {
-          await $incrementConnectionConcurrencyCount(connectionId);
           await $handleSyncCertificatesJob(job as TPkiSyncSyncCertificatesDTO, pkiSync);
           break;
         }
@@ -1007,7 +986,7 @@ export const pkiSyncQueueFactory = ({
       }
     } finally {
       if (job.name === QueueJobs.PkiSyncSyncCertificates) {
-        await $decrementConnectionConcurrencyCount(connectionId);
+        await $releaseConnectionConcurrency(connectionId);
       }
 
       await lock.release();
