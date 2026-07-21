@@ -1,5 +1,6 @@
 {
   "files": [
-    { "path": "DESIGN.md", "description": "v3 design system: tokens, components, and UI conventions for all frontend changes" }
+    { "path": "DESIGN.md", "description": "v3 design system: tokens, components, and UI conventions for all frontend changes" },
+    { "path": "docs/STYLE_GUIDE.md", "description": "Documentation style guide: writing conventions, Mintlify components, and cross-referencing rules for all docs changes" }
   ]
 }

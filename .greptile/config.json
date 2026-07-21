@@ -9,6 +9,72 @@
   },
   "rules": [
     {
+      "id": "docs-provide-context-for-new-users",
+      "rule": "Documentation must provide enough context for a new user to understand what a feature is and why it matters before diving into how to use it. Don't assume prior knowledge of the product. Flag pages that jump straight into configuration or procedures without first explaining what the feature does and when it's relevant. A reader landing on the page with no prior context should understand what they're looking at within the first few sentences.",
+      "severity": "medium",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/sdks/**", "docs/self-hosting/**"]
+    },
+    {
+      "id": "docs-write-for-users-not-implementers",
+      "rule": "Documentation must be written for users, not implementers. The reader should be able to understand the page without any knowledge of Infisical's codebase or internal architecture. Flag content that exposes implementation details users don't need — how we built something rather than what it does for them. Architecture docs are the exception. Does not apply to API reference docs, which are inherently technical.",
+      "severity": "medium",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/sdks/**", "docs/self-hosting/**", "docs/changelog/**"]
+    },
+    {
+      "id": "docs-cross-reference-core-concepts",
+      "rule": "When documentation introduces or references a concept that is core to understanding the page, it must link to that concept's documentation. If a reader wouldn't understand the page without knowing what that concept means, link it. Don't require links for every mention — only when the concept is essential for comprehension.",
+      "severity": "low",
+      "scope": ["docs/**"]
+    },
+    {
+      "id": "docs-use-mintlify-components",
+      "rule": "Documentation should take full advantage of Mintlify's component library rather than relying on plain markdown. This includes Steps, Tabs, Cards, CardGroups, Accordions, callouts (Note, Warning, Tip, Info), diagrams, code groups, and other interactive components. Flag opportunities where Mintlify components would improve the reading experience. Does not apply to API reference docs, which have their own structured format.",
+      "severity": "medium",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/sdks/**", "docs/self-hosting/**", "docs/changelog/**"]
+    },
+    {
+      "id": "docs-clear-actionable-language",
+      "rule": "Documentation should be clear, direct, and actionable. Prefer active voice over passive. Use specific verbs over vague ones. Keep sentences and paragraphs concise. The goal is documentation that reads like instructions from a knowledgeable colleague — easy to follow and act on.",
+      "severity": "low",
+      "scope": ["docs/**"]
+    },
+    {
+      "id": "docs-keep-pages-focused",
+      "rule": "Each documentation page should have a clear, single purpose. Flag pages that try to cover too much — setup and advanced configuration and troubleshooting all in one, or content for different audiences mixed together. Long pages that require excessive scrolling should be split into focused pages that are easier to navigate, link to, and maintain. Suggest splitting when a page covers multiple distinct topics or workflows. Does not apply to API reference docs, which are comprehensive by nature.",
+      "severity": "low",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/sdks/**", "docs/self-hosting/**", "docs/changelog/**"]
+    },
+    {
+      "id": "docs-suggest-diagrams-for-technical-content",
+      "rule": "Technical documentation with multiple connecting pieces benefits from diagrams. Flag pages that explain architecture, data flows, component relationships, authentication flows, or multi-system interactions without any visual. Suggest adding a diagram (Mermaid or image) when the content describes how things connect or when understanding requires mentally assembling multiple parts. Does not apply to API reference docs.",
+      "severity": "low",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/sdks/**", "docs/self-hosting/**"]
+    },
+    {
+      "id": "docs-maintain-flow-when-editing",
+      "rule": "When content is added or modified on an existing page, it must fit naturally with the surrounding content. Flag changes that appear disconnected from context — content that doesn't follow logically from what comes before, breaks the page's narrative flow, or feels out of place. If new content doesn't fit the existing structure, suggest reorganizing the page or moving the content elsewhere.",
+      "severity": "medium",
+      "scope": ["docs/**"]
+    },
+    {
+      "id": "docs-state-prerequisites-explicitly",
+      "rule": "Documentation that assumes something is already set up — a Gateway deployed, permissions granted, a CLI installed, etc. — must state those prerequisites explicitly at the top of the page. Readers shouldn't get stuck halfway through because they missed an unstated requirement. Flag pages with procedures that depend on prior setup without mentioning it.",
+      "severity": "low",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/sdks/**", "docs/self-hosting/**"]
+    },
+    {
+      "id": "docs-consistent-terminology",
+      "rule": "Documentation must use consistent terminology. Don't switch between synonyms for the same concept within a page or across related pages — it confuses readers and makes searching harder. Flag inconsistent usage like mixing 'secret' and 'credential' for the same thing, or 'folder' and 'directory' interchangeably. Use Infisical's established terms.",
+      "severity": "low",
+      "scope": ["docs/**"]
+    },
+    {
+      "id": "docs-consider-faq-sections",
+      "rule": "Documentation for complex features should include a Frequently Asked Questions section using AccordionGroup. FAQs help readers quickly find answers to common questions, edge cases, and gotchas. Flag pages that cover complex topics — especially those with nuanced behavior, common misconceptions, or multiple interacting concepts — without an FAQ section. Also flag content buried in paragraphs that would be clearer as FAQ items (questions readers commonly have).",
+      "severity": "low",
+      "scope": ["docs/documentation/**", "docs/integrations/**", "docs/self-hosting/**"]
+    },
+    {
       "id": "audit-log-event-body-must-include-human-readable-labels",
       "rule": "Anywhere we define or emit an audit log event, every identifier field in the event's `metadata` body must be paired with a human-readable label (name, slug, email, etc.) resolved at emission time. A raw UUID alone is unactionable for admins reading the audit log UI. Scope is strictly the event body, not the surrounding audit log envelope. An identifier field is any field whose name is or ends in an id-like token in any casing — `id`, `Id`, `ID`, e.g. `groupId`, `groupID`, `group_id`, or a lone `id`. Optional IDs require an equally-optional label. The fix at emission sites is to load the parent record and include its label, not to add the field to the type and pass `undefined`.",
       "severity": "medium",
