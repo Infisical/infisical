@@ -5,10 +5,9 @@ import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TLicenseClientFactory } from "../license-client";
 import { TMeteredFeature } from "./usage-counters";
 import { TUsageMeteringServiceFactory } from "./usage-metering-service";
-import { TUsageReporter } from "./usage-reporter";
+import { TUsageReporter, UsageReportError } from "./usage-reporter";
 
 type TUsageEventQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "start">;
@@ -18,8 +17,6 @@ type TUsageEventQueueFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   meteredFeatures: TMeteredFeature[];
   usageReporter: TUsageReporter | null;
-  // Resolves the org's plan so we only report dimensions the plan actually includes. Cached.
-  licenseClient: Pick<TLicenseClientFactory, "getEntitlements">;
   source: string;
 };
 
@@ -31,7 +28,6 @@ export const usageEventQueueFactory = ({
   usageMeteringService,
   meteredFeatures,
   usageReporter,
-  licenseClient,
   source
 }: TUsageEventQueueFactoryDep) => {
   const featureByKey = new Map(meteredFeatures.map((m) => [m.feature.key, m]));
@@ -49,19 +45,6 @@ export const usageEventQueueFactory = ({
         return;
       }
 
-      // Only report a dimension the org's plan actually includes. Metered features are entitlement
-      // features (each meter resolves its cap from entitlements.features[key]), so a dimension the plan
-      // doesn't grant is absent here. Works for cloud (per-org entitlements) and self-hosted
-      // (instance-wide entitlements; the backend ignores the org id). Entitlements are cached, so this
-      // check is cheap and also spares the DB count below.
-      const entitlements = await licenseClient.getEntitlements({ id: orgId });
-      if (!entitlements || !(dimensionKey in entitlements.features)) {
-        logger.info(
-          `usage-event-queue: dimension not in org plan, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
-        );
-        return;
-      }
-
       const value = await metered.count(orgId);
 
       const lastReportedKey = KeyStorePrefixes.LicenseUsageLastReported(orgId, dimensionKey);
@@ -70,15 +53,33 @@ export const usageEventQueueFactory = ({
         return;
       }
 
-      await usageReporter.reportSnapshots(orgId, [
-        {
-          dimension_key: dimensionKey,
-          value,
-          observed_at: observedAt.toISOString(),
-          idempotency_key: `${source}:${orgId}:${dimensionKey}:${observedAt.getTime()}`,
-          source
+      // Send the snapshot and let the license server decide whether the dimension is billable. A 422
+      // "not priced by any active product on this license" means the org's plan doesn't carry this
+      // dimension, so swallow it (no retry, don't record it as reported). Any other failure rethrows to
+      // the outer handler so the job retries.
+      try {
+        await usageReporter.reportSnapshots(orgId, [
+          {
+            dimension_key: dimensionKey,
+            value,
+            observed_at: observedAt.toISOString(),
+            idempotency_key: `${source}:${orgId}:${dimensionKey}:${observedAt.getTime()}`,
+            source
+          }
+        ]);
+      } catch (error) {
+        if (
+          error instanceof UsageReportError &&
+          error.status === 422 &&
+          error.serverMessage.includes("not priced by any active product on this license")
+        ) {
+          logger.info(
+            `usage-event-queue: dimension not priced on this license, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+          );
+          return;
         }
-      ]);
+        throw error;
+      }
 
       logger.info(
         `usage-event-queue: reported usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}] [value=${value}]`

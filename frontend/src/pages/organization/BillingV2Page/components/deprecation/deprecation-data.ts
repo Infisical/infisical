@@ -11,6 +11,13 @@ export type DeprecatedEntry = {
   deprecation: Deprecation;
 };
 
+// The backend currently emits a single deprecation kind, so we can't yet distinguish a product being
+// discontinued from a plan retiring. Until it does, present every deprecation as a retiring plan (the
+// softer, forward-looking treatment) rather than the terminal product one. Coerce the kind at read
+// sites so all views stay consistent; drop this to restore the per-kind treatment.
+export const asPlanDeprecation = (deprecation?: Deprecation): Deprecation | undefined =>
+  deprecation ? { ...deprecation, kind: "plan" } : undefined;
+
 export const daysLeftLabel = (daysLeft: number | null): string | null => {
   if (daysLeft === null) {
     return null;

@@ -245,12 +245,6 @@ const PlanCard = ({
         <PlanPricing plan={plan} cadence={cadence} />
       )}
       {plan.feature && <div className="text-xs text-accent">{plan.feature}</div>}
-      {offersTrial && (
-        <div className="flex items-center gap-1.5 text-xs text-success">
-          <Check className="size-3.5" />
-          Free trial · no charge for your first cycle
-        </div>
-      )}
       {cta}
     </div>
   );
@@ -456,9 +450,6 @@ export const ProductSheet = ({
   const activatePlanObj = activatePlan
     ? plans.find((plan) => plan.tier === activatePlan)
     : (selfServePlan ?? undefined);
-  const trialPlanObj = trialConfirmTier
-    ? plans.find((plan) => plan.tier === trialConfirmTier)
-    : undefined;
 
   return (
     <>
@@ -586,11 +577,11 @@ export const ProductSheet = ({
             <AlertDialogMedia>
               <Sparkles />
             </AlertDialogMedia>
-            <AlertDialogTitle>Start your {prod.name} trial?</AlertDialogTitle>
+            <AlertDialogTitle>Start your {prod.name} trial</AlertDialogTitle>
             <AlertDialogDescription>
-              Your free trial starts now with no charge. When it ends, {prod.name} continues on the
-              monthly {trialPlanObj?.name ?? "Pro"} plan and you&apos;ll be billed for what you use.
-              Cancel anytime before then to avoid charges.
+              Your 30-day trial is free. After it ends, your subscription continues automatically
+              and you&apos;ll be billed monthly based on usage. Cancel before the trial ends to
+              avoid charges.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -623,10 +614,10 @@ export const ProductSheet = ({
             <AlertDialogMedia>
               <CalendarX2Icon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Cancel your {prod.name} trial?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel your {prod.name} trial</AlertDialogTitle>
             <AlertDialogDescription>
-              {prod.name} drops back to the free tier right away and the trial won&apos;t convert to
-              a paid plan. You can&apos;t restart this trial later.
+              Canceling returns you to the free tier immediately and stops the trial from converting
+              to a paid plan. This trial can&apos;t be restarted later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

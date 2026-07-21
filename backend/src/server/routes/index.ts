@@ -846,7 +846,6 @@ export const registerRoutes = async (
     usageMeteringService,
     meteredFeatures,
     usageReporter,
-    licenseClient,
     source: usageSource
   });
 
