@@ -264,11 +264,25 @@ const Content = ({
     setFilterTags({});
   };
 
+  // metadata search only supports secrets, so fully reset it (conditions, builder, match)
+  // whenever it should no longer apply
+  const resetMetadataSearch = () => {
+    setMetadataConditions([]);
+    setIsBuilderOpen(false);
+    setMetadataMatch("all");
+  };
+
   const handleToggleShowType = (type: string) => {
     setShowFilter((prev) => {
       const newValue = !prev[type as ResourceType];
       if (type === RowType.Secret && !newValue) {
+        // Secrets turned off: tags and metadata search are secrets-only
         setFilterTags({});
+        resetMetadataSearch();
+      }
+      if (type !== RowType.Secret && newValue) {
+        // switched to a non-secret resource type: metadata search only supports secrets
+        resetMetadataSearch();
       }
       return {
         ...prev,
@@ -305,8 +319,7 @@ const Content = ({
 
   // closing the builder discards the conditions so a metadata filter never stays active while hidden
   const handleCloseBuilder = () => {
-    setIsBuilderOpen(false);
-    setMetadataConditions([]);
+    resetMetadataSearch();
   };
 
   const hasActiveFilters =
