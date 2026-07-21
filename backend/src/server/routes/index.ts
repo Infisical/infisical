@@ -1050,12 +1050,6 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertEngine
   });
-  const alertService = alertServiceFactory({
-    alertDAL,
-    alertChannelDAL,
-    alertChannelMembershipDAL,
-    alertProviderRegistry
-  });
   const alertChannelService = alertChannelServiceFactory({
     alertChannelDAL,
     alertChannelRecipientDAL,
@@ -1065,6 +1059,14 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     groupDAL
+  });
+  const alertService = alertServiceFactory({
+    alertDAL,
+    alertChannelDAL,
+    alertChannelMembershipDAL,
+    alertChannelService,
+    kmsService,
+    alertProviderRegistry
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({

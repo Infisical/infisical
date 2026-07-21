@@ -1,12 +1,15 @@
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { TAlertChannels, TAlerts } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
+import { getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelMembershipDALFactory } from "./alert-channel-membership-dal";
-import { TAlertChannelSummary } from "./alert-channel-service-types";
-import { AlertChannelType } from "./alert-channel-types";
+import { TAlertChannelServiceFactory } from "./alert-channel-service";
+import { TAlertChannelEmbedded, TAlertChannelInput } from "./alert-channel-service-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import {
@@ -18,32 +21,27 @@ import {
   TUpdateAlertDTO
 } from "./alert-service-types";
 import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider } from "./alert-types";
-import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
-  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByIdsInScope" | "findByAlertId" | "findByAlertIds">;
-  alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany" | "deleteByAlertId">;
+  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId" | "findByAlertIds">;
+  alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany">;
+  alertChannelService: Pick<
+    TAlertChannelServiceFactory,
+    "createChannelInTx" | "updateChannelInTx" | "deleteChannelInTx" | "getDetailsForChannels"
+  >;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   alertProviderRegistry: TAlertProviderRegistry;
 };
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
 
-const toChannelSummary = (channel: TAlertChannels): TAlertChannelSummary => {
-  const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
-  return {
-    id: channel.id,
-    name: channel.name,
-    channelType: channel.channelType,
-    directed: Boolean(definition?.directed),
-    enabled: channel.enabled
-  };
-};
-
 export const alertServiceFactory = ({
   alertDAL,
   alertChannelDAL,
   alertChannelMembershipDAL,
+  alertChannelService,
+  kmsService,
   alertProviderRegistry
 }: TAlertServiceFactoryDep) => {
   const $getProvider = (resourceType: string): IResourceAlertProvider => {
@@ -75,23 +73,7 @@ export const alertServiceFactory = ({
     }
   };
 
-  const $resolveChannelsInScope = async (
-    channelIds: string[],
-    scope: { orgId: string; projectId?: string | null }
-  ): Promise<void> => {
-    if (channelIds.length === 0) {
-      throw new BadRequestError({ message: "At least one channel is required" });
-    }
-    const uniqueIds = [...new Set(channelIds)];
-    const found = await alertChannelDAL.findByIdsInScope(uniqueIds, scope);
-    if (found.length !== uniqueIds.length) {
-      const foundIds = new Set(found.map((c) => c.id));
-      const missing = uniqueIds.filter((id) => !foundIds.has(id));
-      throw new BadRequestError({ message: `Some channels were not found in this scope: ${missing.join(", ")}` });
-    }
-  };
-
-  const $buildResponse = (alert: TAlerts, channels: TAlertChannels[]): TAlertResponse => ({
+  const $assembleResponse = (alert: TAlerts, channels: TAlertChannelEmbedded[]): TAlertResponse => ({
     id: alert.id,
     name: alert.name,
     description: alert.description ?? null,
@@ -103,7 +85,7 @@ export const alertServiceFactory = ({
     enabled: alert.enabled,
     orgId: alert.orgId,
     projectId: alert.projectId ?? null,
-    channels: channels.map(toChannelSummary),
+    channels,
     createdAt: alert.createdAt,
     updatedAt: alert.updatedAt
   });
@@ -146,7 +128,12 @@ export const alertServiceFactory = ({
       });
     }
 
-    await $resolveChannelsInScope(dto.channelIds, { orgId: dto.actorOrgId, projectId: dto.projectId });
+    if (!dto.channels || dto.channels.length === 0) {
+      throw new BadRequestError({ message: "At least one channel is required" });
+    }
+
+    const scope = { orgId: dto.actorOrgId, projectId: dto.projectId ?? null };
+    const cipher = await getAlertChannelCipher(kmsService, scope);
 
     const { created, channels } = await alertDAL.transaction(async (tx) => {
       const createdAlert = await alertDAL.create(
@@ -167,16 +154,32 @@ export const alertServiceFactory = ({
         tx
       );
 
-      await alertChannelMembershipDAL.insertMany(
-        [...new Set(dto.channelIds)].map((channelId) => ({ alertId: createdAlert.id, channelId })),
-        tx
-      );
+      for (const channelInput of dto.channels) {
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        const channel = await alertChannelService.createChannelInTx(
+          {
+            name: channelInput.name,
+            channelType: channelInput.channelType,
+            config: channelInput.config ?? {},
+            enabled: channelInput.enabled,
+            recipients: channelInput.recipients,
+            orgId: dto.actorOrgId,
+            projectId: dto.projectId ?? null,
+            createdByUserId: dto.actorId
+          },
+          cipher.encryptor,
+          tx
+        );
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        await alertChannelMembershipDAL.insertMany([{ alertId: createdAlert.id, channelId: channel.id }], tx);
+      }
 
       const attachedChannels = await alertChannelDAL.findByAlertId(createdAlert.id, tx);
-      return { created: createdAlert, channels: attachedChannels };
+      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
+      return { created: createdAlert, channels: details };
     });
 
-    return $buildResponse(created, channels);
+    return $assembleResponse(created, channels);
   };
 
   const getAlertById = async (dto: TGetAlertDTO): Promise<TAlertResponse> => {
@@ -198,7 +201,9 @@ export const alertServiceFactory = ({
     });
 
     const channels = await alertChannelDAL.findByAlertId(alert.id);
-    return $buildResponse(alert, channels);
+    const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
+    const details = await alertChannelService.getDetailsForChannels(channels, cipher);
+    return $assembleResponse(alert, details);
   };
 
   const listAlerts = async (dto: TListAlertsDTO): Promise<TAlertResponse[]> => {
@@ -226,14 +231,85 @@ export const alertServiceFactory = ({
     if (alerts.length === 0) return [];
 
     const channels = await alertChannelDAL.findByAlertIds(alerts.map((alert) => alert.id));
-    const channelsByAlert = new Map<string, TAlertChannels[]>();
+    const cipher = await getAlertChannelCipher(kmsService, { orgId: dto.actorOrgId, projectId: dto.projectId ?? null });
+    const details = await alertChannelService.getDetailsForChannels(channels, cipher);
+
+    const detailById = new Map(details.map((detail) => [detail.id, detail]));
+    const channelIdsByAlert = new Map<string, string[]>();
     channels.forEach((channel) => {
-      const list = channelsByAlert.get(channel.alertId) ?? [];
-      list.push(channel);
-      channelsByAlert.set(channel.alertId, list);
+      const list = channelIdsByAlert.get(channel.alertId) ?? [];
+      list.push(channel.id);
+      channelIdsByAlert.set(channel.alertId, list);
     });
 
-    return alerts.map((alert) => $buildResponse(alert, channelsByAlert.get(alert.id) ?? []));
+    return alerts.map((alert) =>
+      $assembleResponse(
+        alert,
+        (channelIdsByAlert.get(alert.id) ?? [])
+          .map((id) => detailById.get(id))
+          .filter((detail): detail is TAlertChannelEmbedded => Boolean(detail))
+      )
+    );
+  };
+
+  const $reconcileChannels = async (
+    alert: TAlerts,
+    incoming: TAlertChannelInput[],
+    cipher: Awaited<ReturnType<typeof getAlertChannelCipher>>,
+    tx: Knex
+  ) => {
+    const existing = await alertChannelDAL.findByAlertId(alert.id, tx);
+    const existingById = new Map<string, TAlertChannels>(existing.map((channel) => [channel.id, channel]));
+
+    const incomingIds = new Set(incoming.filter((channel) => channel.id).map((channel) => channel.id as string));
+    for (const id of incomingIds) {
+      if (!existingById.has(id)) {
+        throw new BadRequestError({ message: `Channel '${id}' does not belong to this alert` });
+      }
+    }
+
+    const toDelete = existing.filter((channel) => !incomingIds.has(channel.id));
+    for (const channel of toDelete) {
+      // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+      await alertChannelService.deleteChannelInTx(channel.id, tx);
+    }
+
+    for (const channelInput of incoming) {
+      if (channelInput.id) {
+        const existingChannel = existingById.get(channelInput.id) as TAlertChannels;
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        await alertChannelService.updateChannelInTx(
+          {
+            channelId: channelInput.id,
+            name: channelInput.name,
+            config: channelInput.config,
+            enabled: channelInput.enabled,
+            recipients: channelInput.recipients
+          },
+          existingChannel,
+          cipher,
+          tx
+        );
+      } else {
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        const channel = await alertChannelService.createChannelInTx(
+          {
+            name: channelInput.name,
+            channelType: channelInput.channelType,
+            config: channelInput.config ?? {},
+            enabled: channelInput.enabled,
+            recipients: channelInput.recipients,
+            orgId: alert.orgId,
+            projectId: alert.projectId,
+            createdByUserId: alert.createdByUserId
+          },
+          cipher.encryptor,
+          tx
+        );
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        await alertChannelMembershipDAL.insertMany([{ alertId: alert.id, channelId: channel.id }], tx);
+      }
+    }
   };
 
   const updateAlert = async (dto: TUpdateAlertDTO): Promise<TAlertResponse> => {
@@ -255,9 +331,12 @@ export const alertServiceFactory = ({
     });
 
     if (dto.condition !== undefined) $validate(provider, { condition: dto.condition });
-    if (dto.channelIds !== undefined) {
-      await $resolveChannelsInScope(dto.channelIds, { orgId: alert.orgId, projectId: alert.projectId });
+    if (dto.channels !== undefined && dto.channels.length === 0) {
+      throw new BadRequestError({ message: "At least one channel is required" });
     }
+
+    const scope = { orgId: alert.orgId, projectId: alert.projectId };
+    const cipher = await getAlertChannelCipher(kmsService, scope);
 
     const { updated, channels } = await alertDAL.transaction(async (tx) => {
       const patch = {
@@ -272,19 +351,16 @@ export const alertServiceFactory = ({
 
       const updatedAlert = Object.keys(patch).length > 0 ? await alertDAL.updateById(alert.id, patch, tx) : alert;
 
-      if (dto.channelIds !== undefined) {
-        await alertChannelMembershipDAL.deleteByAlertId(alert.id, tx);
-        await alertChannelMembershipDAL.insertMany(
-          [...new Set(dto.channelIds)].map((channelId) => ({ alertId: alert.id, channelId })),
-          tx
-        );
+      if (dto.channels !== undefined) {
+        await $reconcileChannels(alert, dto.channels, cipher, tx);
       }
 
       const attachedChannels = await alertChannelDAL.findByAlertId(alert.id, tx);
-      return { updated: updatedAlert, channels: attachedChannels };
+      const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
+      return { updated: updatedAlert, channels: details };
     });
 
-    return $buildResponse(updated, channels);
+    return $assembleResponse(updated, channels);
   };
 
   const deleteAlert = async (dto: TDeleteAlertDTO): Promise<{ id: string }> => {
@@ -305,7 +381,15 @@ export const alertServiceFactory = ({
       }
     });
 
-    await alertDAL.deleteById(alert.id);
+    await alertDAL.transaction(async (tx) => {
+      const channels = await alertChannelDAL.findByAlertId(alert.id, tx);
+      for (const channel of channels) {
+        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
+        await alertChannelService.deleteChannelInTx(channel.id, tx);
+      }
+      await alertDAL.deleteById(alert.id, tx);
+    });
+
     return { id: alert.id };
   };
 

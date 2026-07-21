@@ -51,13 +51,19 @@ export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {
   [AlertChannelType.PagerDuty]: "PagerDuty"
 };
 
-// Lightweight channel reference embedded in an alert (full channel lives in the alertChannels domain).
-export type TAlertChannelSummary = {
+export type TAlertChannelRecipient = {
+  principalType: AlertPrincipalType;
+  principalId: string;
+};
+
+export type TAlertChannelEmbedded = {
   id: string;
   name: string;
   channelType: AlertChannelType;
   directed: boolean;
   enabled: boolean;
+  config: Record<string, unknown>;
+  recipients: TAlertChannelRecipient[];
 };
 
 export type TAlert = {
@@ -72,7 +78,7 @@ export type TAlert = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
-  channels: TAlertChannelSummary[];
+  channels: TAlertChannelEmbedded[];
   createdAt: string;
   updatedAt: string;
 };
@@ -82,6 +88,15 @@ export type TListAlertsDTO = {
   projectId?: string;
   resourceId?: string;
   enabled?: boolean;
+};
+
+export type TAlertChannelInput = {
+  id?: string;
+  name: string;
+  channelType: AlertChannelType;
+  config?: Record<string, unknown>;
+  enabled?: boolean;
+  recipients?: TAlertChannelRecipient[];
 };
 
 export type TCreateAlertDTO = {
@@ -94,20 +109,83 @@ export type TCreateAlertDTO = {
   filters?: unknown;
   enabled?: boolean;
   projectId?: string | null;
-  channelIds: string[];
+  channels: TAlertChannelInput[];
 };
 
 export type TUpdateAlertDTO = {
   alertId: string;
-  // Carried only so mutations can invalidate the right scope; not sent to the API.
   projectId?: string | null;
   name?: string;
   description?: string | null;
   condition?: unknown;
   filters?: unknown;
   enabled?: boolean;
-  channelIds?: string[];
+  channels?: TAlertChannelInput[];
 };
+
+export const channelFormSchema = z
+  .object({
+    id: z.string().optional(),
+    channelType: z.nativeEnum(AlertChannelType),
+    name: z.string().min(1, "Name is required").max(255),
+    enabled: z.boolean().default(true),
+    webhookUrl: z.string().optional(),
+    url: z.string().optional(),
+    signingSecret: z.string().optional(),
+    integrationKey: z.string().optional(),
+    recipients: z
+      .array(
+        z.object({
+          principalType: z.nativeEnum(AlertPrincipalType),
+          principalId: z.string()
+        })
+      )
+      .default([]),
+    hasWebhookUrl: z.boolean().optional(),
+    hasSigningSecret: z.boolean().optional(),
+    hasIntegrationKey: z.boolean().optional()
+  })
+  .superRefine((channel, ctx) => {
+    const isNew = !channel.id;
+    switch (channel.channelType) {
+      case AlertChannelType.Email:
+        if (channel.recipients.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["recipients"],
+            message: "Add at least one recipient"
+          });
+        }
+        break;
+      case AlertChannelType.Slack:
+        if ((isNew || !channel.hasWebhookUrl) && !channel.webhookUrl) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["webhookUrl"],
+            message: "Webhook URL is required"
+          });
+        }
+        break;
+      case AlertChannelType.Webhook:
+        if (!channel.url) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["url"], message: "URL is required" });
+        }
+        break;
+      case AlertChannelType.PagerDuty:
+        if ((isNew || !channel.hasIntegrationKey) && !channel.integrationKey) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["integrationKey"],
+            message: "Integration key is required"
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+export type TChannelForm = z.infer<typeof channelFormSchema>;
 
 export const alertFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -122,7 +200,7 @@ export const alertFormSchema = z.object({
   alertBeforeUnit: z.nativeEnum(AlertTimeUnit),
   dailyReminder: z.boolean().default(false),
   enabled: z.boolean().default(true),
-  channelIds: z.array(z.string()).min(1, "At least one channel is required")
+  channels: z.array(channelFormSchema).min(1, "At least one channel is required")
 });
 
 export type TAlertForm = z.infer<typeof alertFormSchema>;

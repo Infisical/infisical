@@ -33,17 +33,20 @@ import {
   ALERT_EVENT_TYPE_LABELS,
   ALERT_RESOURCE_TYPE_LABELS,
   ALERT_TIME_UNIT_LABELS,
+  AlertChannelType,
   AlertEventType,
   alertFormSchema,
   AlertResourceType,
   AlertTimeUnit,
   TAlert,
+  TAlertChannelInput,
   TAlertForm,
+  TChannelForm,
   useCreateAlert,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
 
-import { AttachChannelsField } from "./AttachChannelsField";
+import { ChannelsField } from "./ChannelsField";
 
 type Props = {
   projectId?: string;
@@ -84,6 +87,21 @@ const parseAlertBefore = (alertBefore?: string): { value: number; unit: AlertTim
   return { value: 7, unit: AlertTimeUnit.Days };
 };
 
+const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
+  id: channel.id,
+  channelType: channel.channelType,
+  name: channel.name,
+  enabled: channel.enabled,
+  recipients: channel.recipients,
+  webhookUrl: "",
+  url: (channel.config.url as string) ?? "",
+  signingSecret: "",
+  integrationKey: "",
+  hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
+  hasSigningSecret: Boolean(channel.config.hasSigningSecret),
+  hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
+});
+
 const buildFormDefaults = (alert?: TAlert): TAlertForm => {
   if (!alert) {
     return {
@@ -95,7 +113,7 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
       alertBeforeUnit: AlertTimeUnit.Days,
       dailyReminder: false,
       enabled: true,
-      channelIds: []
+      channels: []
     };
   }
 
@@ -110,8 +128,39 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
     alertBeforeUnit: unit,
     dailyReminder: alert.condition?.dailyReminder ?? false,
     enabled: alert.enabled,
-    channelIds: alert.channels.map((channel) => channel.id)
+    channels: alert.channels.map(toChannelForm)
   };
+};
+
+const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
+  const base: TAlertChannelInput = {
+    ...(channel.id ? { id: channel.id } : {}),
+    name: channel.name,
+    channelType: channel.channelType,
+    enabled: channel.enabled
+  };
+
+  switch (channel.channelType) {
+    case AlertChannelType.Email:
+      return { ...base, config: {}, recipients: channel.recipients };
+    case AlertChannelType.Slack:
+      return { ...base, config: channel.webhookUrl ? { webhookUrl: channel.webhookUrl } : {} };
+    case AlertChannelType.Webhook:
+      return {
+        ...base,
+        config: {
+          url: channel.url,
+          ...(channel.signingSecret ? { signingSecret: channel.signingSecret } : {})
+        }
+      };
+    case AlertChannelType.PagerDuty:
+      return {
+        ...base,
+        config: channel.integrationKey ? { integrationKey: channel.integrationKey } : {}
+      };
+    default:
+      return { ...base, config: {} };
+  }
 };
 
 export const AlertForm = ({
@@ -137,7 +186,7 @@ export const AlertForm = ({
     control,
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, dirtyFields }
+    formState: { errors, isSubmitting }
   } = formMethods;
 
   const isProjectScope = Boolean(projectId);
@@ -171,9 +220,9 @@ export const AlertForm = ({
   const onSubmit = async (data: TAlertForm) => {
     const alertBefore = `${data.alertBeforeValue}${data.alertBeforeUnit}`;
     const condition = { alertBefore, dailyReminder: data.dailyReminder };
+    const channels = data.channels.map(toChannelInput);
     try {
       if (isEditing && alert) {
-        const channelsDirty = Boolean(dirtyFields.channelIds);
         await updateAlert.mutateAsync({
           alertId: alert.id,
           projectId: alert.projectId,
@@ -181,7 +230,7 @@ export const AlertForm = ({
           description: data.description || null,
           enabled: data.enabled,
           condition,
-          ...(channelsDirty ? { channelIds: data.channelIds } : {})
+          channels
         });
         createNotification({ text: "Successfully updated alert", type: "success" });
       } else {
@@ -195,7 +244,7 @@ export const AlertForm = ({
           filters: null,
           enabled: data.enabled,
           projectId: projectId ?? null,
-          channelIds: data.channelIds
+          channels
         });
         createNotification({ text: "Successfully created alert", type: "success" });
       }
@@ -384,7 +433,7 @@ export const AlertForm = ({
 
           <section className="flex flex-col gap-4">
             <SectionHeader step={3} title="Delivery" />
-            <AttachChannelsField projectId={projectId} />
+            <ChannelsField projectId={projectId} />
           </section>
         </div>
 

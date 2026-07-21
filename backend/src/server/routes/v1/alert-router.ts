@@ -2,7 +2,31 @@ import { z } from "zod";
 
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AlertChannelType } from "@app/services/alert/alert-channel-types";
+import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const ChannelRecipientSchema = z.object({
+  principalType: z.nativeEnum(AlertPrincipalType),
+  principalId: z.string().min(1)
+});
+
+const CreateChannelInputSchema = z.object({
+  name: z.string().min(1).max(255),
+  channelType: z.nativeEnum(AlertChannelType),
+  config: z.record(z.unknown()).default({}),
+  enabled: z.boolean().optional(),
+  recipients: z.array(ChannelRecipientSchema).optional()
+});
+
+const UpdateChannelInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1).max(255),
+  channelType: z.nativeEnum(AlertChannelType),
+  config: z.record(z.unknown()).optional(),
+  enabled: z.boolean().optional(),
+  recipients: z.array(ChannelRecipientSchema).optional()
+});
 
 const AlertResponseSchema = z.object({
   id: z.string().uuid(),
@@ -22,7 +46,9 @@ const AlertResponseSchema = z.object({
       name: z.string(),
       channelType: z.string(),
       directed: z.boolean(),
-      enabled: z.boolean()
+      enabled: z.boolean(),
+      config: z.record(z.unknown()),
+      recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
     })
   ),
   createdAt: z.date(),
@@ -46,7 +72,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         filters: z.unknown().optional(),
         enabled: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
-        channelIds: z.array(z.string().uuid()).min(1)
+        channels: z.array(CreateChannelInputSchema).min(1)
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
@@ -128,7 +154,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         condition: z.unknown().optional(),
         filters: z.unknown().optional(),
         enabled: z.boolean().optional(),
-        channelIds: z.array(z.string().uuid()).min(1).optional()
+        channels: z.array(UpdateChannelInputSchema).min(1).optional()
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
