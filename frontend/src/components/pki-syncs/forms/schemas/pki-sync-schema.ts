@@ -39,6 +39,10 @@ import {
   UpdateNetScalerPkiSyncDestinationSchema
 } from "./netscaler-pki-sync-destination-schema";
 import {
+  NutanixPrismCentralPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
+} from "./nutanix-prism-central-pki-sync-destination-schema";
+import {
   UpdateWindowsServerPkiSyncDestinationSchema,
   WindowsServerPkiSyncDestinationSchema
 } from "./windows-server-pki-sync-destination-schema";
@@ -53,7 +57,8 @@ const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   NetScalerPkiSyncDestinationSchema,
   F5BigIpPkiSyncDestinationSchema,
   LinuxServerPkiSyncDestinationSchema,
-  WindowsServerPkiSyncDestinationSchema
+  WindowsServerPkiSyncDestinationSchema,
+  NutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
@@ -66,7 +71,8 @@ const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateNetScalerPkiSyncDestinationSchema,
   UpdateF5BigIpPkiSyncDestinationSchema,
   UpdateLinuxServerPkiSyncDestinationSchema,
-  UpdateWindowsServerPkiSyncDestinationSchema
+  UpdateWindowsServerPkiSyncDestinationSchema,
+  UpdateNutanixPrismCentralPkiSyncDestinationSchema
 ]);
 
 export const PkiSyncFormSchema = PkiSyncUnionSchema.superRefine((data, ctx) => {

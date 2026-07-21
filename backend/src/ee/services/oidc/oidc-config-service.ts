@@ -40,6 +40,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -111,6 +112,7 @@ type TOidcConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -135,7 +137,8 @@ export const oidcConfigServiceFactory = ({
   kmsService,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -401,7 +404,8 @@ export const oidcConfigServiceFactory = ({
           membershipGroupDAL,
           projectKeyDAL,
           projectDAL,
-          projectBotDAL
+          projectBotDAL,
+          usageMeteringService
         });
       }
 
@@ -431,7 +435,8 @@ export const oidcConfigServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
-          projectKeyDAL
+          projectKeyDAL,
+          usageMeteringService
         });
       }
 

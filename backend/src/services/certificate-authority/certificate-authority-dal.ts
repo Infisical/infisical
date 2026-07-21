@@ -365,11 +365,33 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Internal CAs (those with an internal_certificate_authorities row) across all of the org's projects,
+  // excluding soft-deleted projects. Used to enforce the plan's maxInternalCas at creation time; external
+  // CAs are intentionally not counted.
+  const countInternalCasByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .join(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Internal CAs By Org ID - Certificate Authority" });
+    }
+  };
+
   return {
     ...caOrm,
     findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa,
-    findByNameAndProjectIdWithAssociatedCa
+    findByNameAndProjectIdWithAssociatedCa,
+    countInternalCasByOrgId
   };
 };

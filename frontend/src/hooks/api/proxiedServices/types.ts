@@ -4,11 +4,6 @@ import {
   ProxiedServiceSubstitutionSurface
 } from "./enums";
 
-export type TProxiedServiceLeaseConfig = {
-  namespace?: string;
-  principals?: string[];
-};
-
 export type TProxiedServiceCredential = {
   id: string;
   serviceId: string;
@@ -22,7 +17,6 @@ export type TProxiedServiceCredential = {
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
   dynamicSecretName?: string | null;
   dynamicSecretField?: string | null;
-  dynamicSecretConfig?: TProxiedServiceLeaseConfig | null;
   callerCanLease?: boolean;
 };
 
@@ -62,7 +56,6 @@ export type TProxiedServiceCredentialInput = {
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
   dynamicSecretName?: string;
   dynamicSecretField?: string;
-  dynamicSecretConfig?: TProxiedServiceLeaseConfig;
 };
 
 export type TCreateProxiedServiceDTO = {

@@ -36,6 +36,7 @@ export type TCertificateProfileDefaults = {
   country?: string;
   state?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TCertificateProfile = Omit<

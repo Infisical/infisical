@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TProjectEnvironments } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, TFindFilter, TFindOpt } from "@app/lib/knex";
+import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 
 export type TProjectEnvDALFactory = ReturnType<typeof projectEnvDALFactory>;
 
@@ -97,6 +97,21 @@ export const projectEnvDALFactory = (db: TDbClient) => {
       return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find by id including expired" });
+    }
+  };
+
+  // Worker read: env row + orgId via a soft-delete-blind project join, so the hard-delete audit
+  // log resolves its org even while the parent project is pending deletion.
+  const findByIdWithOrgIncludingExpired = async (id: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.Environment)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Environment}.id`, id)
+        .select(selectAllTableCols(TableName.Environment), db.ref("orgId").withSchema(TableName.Project).as("orgId"))
+        .first();
+      return result as (TProjectEnvironments & { orgId: string }) | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find by id with org including expired" });
     }
   };
 
@@ -260,6 +275,7 @@ export const projectEnvDALFactory = (db: TDbClient) => {
     findBySlugs,
     softDeleteById,
     findByIdIncludingExpired,
+    findByIdWithOrgIncludingExpired,
     findBySlugIncludingExpired,
     restoreById,
     findLastEnvPosition,

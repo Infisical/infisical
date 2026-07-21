@@ -28,12 +28,15 @@ import { LINUX_SERVER_PKI_SYNC_LIST_OPTION } from "./linux-server/linux-server-p
 import { linuxServerPkiSyncFactory } from "./linux-server/linux-server-pki-sync-fns";
 import { NETSCALER_PKI_SYNC_LIST_OPTION } from "./netscaler/netscaler-pki-sync-constants";
 import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
+import { NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-constants";
+import { nutanixPrismCentralPkiSyncFactory } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-fns";
 import {
   buildManagedCertificateNameRegexSource,
   SHORT_UUID_NAME_REGEX_FRAGMENT,
   UUID_NAME_REGEX_FRAGMENT
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
+import { PkiSyncError } from "./pki-sync-errors";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "./pki-sync-types";
 import { WINDOWS_SERVER_PKI_SYNC_LIST_OPTION } from "./windows-server/windows-server-pki-sync-constants";
 import { windowsServerPkiSyncFactory } from "./windows-server/windows-server-pki-sync-fns";
@@ -50,7 +53,8 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
   [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
   [PkiSync.LinuxServer]: LINUX_SERVER_PKI_SYNC_LIST_OPTION,
-  [PkiSync.WindowsServer]: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION
+  [PkiSync.WindowsServer]: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.NutanixPrismCentral]: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -82,6 +86,14 @@ export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
     canImportCertificates: providerOption.canImportCertificates,
     canRemoveCertificates: providerOption.canRemoveCertificates
   };
+};
+
+export const getPkiSyncMaxCertificates = (destination: PkiSync): number | undefined => {
+  const providerOption = PKI_SYNC_LIST_OPTIONS[destination];
+  if (providerOption && "maxCertificates" in providerOption) {
+    return providerOption.maxCertificates;
+  }
+  return undefined;
 };
 
 export const matchesSchema = <T extends ZodSchema>(schema: T, data: unknown): data is z.infer<T> => {
@@ -171,6 +183,11 @@ export const PkiSyncFns = {
       }
       case PkiSync.WindowsServer: {
         throw new Error("Windows Server does not support importing certificates into Infisical");
+      }
+      case PkiSync.NutanixPrismCentral: {
+        throw new Error(
+          "Nutanix Prism Central does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -284,6 +301,16 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return windowsServerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.NutanixPrismCentral: {
+        checkPkiSyncDestination(pkiSync, PkiSync.NutanixPrismCentral as PkiSync);
+        const nutanixPkiSync = nutanixPrismCentralPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return nutanixPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -434,6 +461,12 @@ export const PkiSyncFns = {
           certificateMap: dependencies.certificateMap
         });
         break;
+      }
+      case PkiSync.NutanixPrismCentral: {
+        throw new PkiSyncError({
+          shouldRetry: false,
+          message: "Nutanix Prism Central does not support removing certificates"
+        });
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);

@@ -9,6 +9,7 @@ import { registerCloudflareCustomCertificatePkiSyncRouter } from "./cloudflare-c
 import { registerF5BigIpPkiSyncRouter } from "./f5-big-ip-pki-sync-router";
 import { registerLinuxServerPkiSyncRouter } from "./linux-server-pki-sync-router";
 import { registerNetScalerPkiSyncRouter } from "./netscaler-pki-sync-router";
+import { registerNutanixPrismCentralPkiSyncRouter } from "./nutanix-prism-central-pki-sync-router";
 import { registerWindowsServerPkiSyncRouter } from "./windows-server-pki-sync-router";
 
 export * from "./pki-sync-router";
@@ -26,5 +27,6 @@ export const PKI_SYNC_REGISTER_ROUTER_MAP: Record<
   [PkiSync.NetScaler]: registerNetScalerPkiSyncRouter,
   [PkiSync.F5BigIp]: registerF5BigIpPkiSyncRouter,
   [PkiSync.LinuxServer]: registerLinuxServerPkiSyncRouter,
-  [PkiSync.WindowsServer]: registerWindowsServerPkiSyncRouter
+  [PkiSync.WindowsServer]: registerWindowsServerPkiSyncRouter,
+  [PkiSync.NutanixPrismCentral]: registerNutanixPrismCentralPkiSyncRouter
 };

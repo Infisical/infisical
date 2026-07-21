@@ -30,6 +30,10 @@ const SECRET_VERSION_DELETE_BATCH = 5000;
 const BATCH_STATEMENT_TIMEOUT_MS = 30 * 1000;
 const INTER_BATCH_SLEEP_MS = 10;
 
+// Env count above which env deletion is delegated to the paced env hard-delete worker (one untimed
+// cascade per env, per-env retries). At or below it, deleteById cascades the envs inline as today.
+const ENV_DELEGATION_THRESHOLD = 100;
+
 // Generous so a large project's chunked delete won't see the lock expire mid-flight and let a
 // second worker start; crash recovery happens on the next cron tick after expiry.
 const PROJECT_DELETE_LOCK_TTL_MS = 30 * 60 * 1000;
@@ -43,6 +47,8 @@ type TProjectCleanupQueueFactoryDep = {
     | "findIncludingExpired"
     | "findProjectGhostUser"
     | "hardDeleteProjectSecretVersionsInBatches"
+    | "softDeleteProjectEnvironments"
+    | "countProjectEnvironments"
     | "deleteById"
     | "transaction"
   >;
@@ -117,7 +123,18 @@ export const projectCleanupQueueFactory = ({
         INTER_BATCH_SLEEP_MS
       );
 
-      // 2) Final cascade in one transaction — handles the remaining (smaller) child tables, including
+      // 2) For big projects: mark envs for the env worker; the cron re-fires this job until drained.
+      const envCount = await projectDAL.countProjectEnvironments(projectId);
+      if (envCount > ENV_DELEGATION_THRESHOLD) {
+        const marked = await projectDAL.softDeleteProjectEnvironments(projectId);
+        logger.info(
+          { projectId, envCount, marked },
+          `project-hard-delete: waiting on env drain [projectId=${projectId}] [envsRemaining=${envCount}] [newlyMarked=${marked}]`
+        );
+        return;
+      }
+
+      // 3) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
       const deleted = await projectDAL.transaction(async (tx) => {

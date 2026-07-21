@@ -83,6 +83,7 @@ export type TCertificatePolicyUpdate = Partial<
 
 export interface TCertificateRequest {
   commonName?: string;
+  domainComponents?: string[];
   organization?: string;
   organizationalUnit?: string;
   locality?: string;

@@ -9,6 +9,12 @@
   },
   "rules": [
     {
+      "id": "audit-log-event-body-must-include-human-readable-labels",
+      "rule": "Anywhere we define or emit an audit log event, every identifier field in the event's `metadata` body must be paired with a human-readable label (name, slug, email, etc.) resolved at emission time. A raw UUID alone is unactionable for admins reading the audit log UI. Scope is strictly the event body, not the surrounding audit log envelope. An identifier field is any field whose name is or ends in an id-like token in any casing — `id`, `Id`, `ID`, e.g. `groupId`, `groupID`, `group_id`, or a lone `id`. Optional IDs require an equally-optional label. The fix at emission sites is to load the parent record and include its label, not to add the field to the type and pass `undefined`.",
+      "severity": "medium",
+      "scope": ["backend/src/**"]
+    },
+    {
       "id": "use-safe-request-for-user-urls",
       "rule": "When making HTTP requests to user-supplied URLs (webhooks, app connections, syncs, rotations, etc.), use safeRequest from backend/src/lib/validator/safe-request.ts instead of blockLocalAndPrivateIpAddresses. blockLocalAndPrivateIpAddresses validates the host but is vulnerable to DNS rebinding: DNS can resolve to an internal IP between the validation check and the actual connect. safeRequest closes that window by validating and pinning the connection to the validated IP. Note: safeRequest disables redirects (maxRedirects=0), so call sites that need to follow redirects require redirect-aware handling that re-validates and pins each hop, not a mechanical swap. Flag new code that calls blockLocalAndPrivateIpAddresses, validateSsrfUrl, ssrfSafeGet, or ssrfSafePost (wrappers with the same validate-then-connect flaw), or passes a user-controlled URL to axios/fetch directly without safeRequest.",
       "severity": "high",
@@ -19,6 +25,12 @@
       "rule": "New UI must not override or deviate from the default styling of v3 design-system components (frontend/src/components/v3). Follow DESIGN.md. Flag: legacy v2 color tokens (e.g. mineshaft-*, bunker-*) instead of semantic tokens like bg-org or text-danger; casing changes such as uppercase text; className overrides of component defaults like height or border; and hex colors not defined in frontend/src/index.css. Inline styling must be a deliberate exception, not a default. If the same inline style is repeated across call sites, suggest a new component variant or a component update instead. Do not use v2 components for new code when a v3 equivalent exists (PageHeader is the known exception).",
       "severity": "medium",
       "scope": ["frontend/src/**"]
+    },
+    {
+      "id": "no-license-or-feature-flags-in-migrations",
+      "rule": "Database migrations must never depend on the license or feature flags, directly or transitively. Migrations run before the license service initializes, so any plan/entitlement/feature-flag lookup returns its default value instead of the deployment's real one, and a migration that branches on that value silently takes the wrong path and can corrupt data. (Real incident: a migration used getMigrationEncryptionServices, whose HSM check is license-gated; with the license uninitialized the flag read as off, so data was nearly re-encrypted with the wrong key.) Flag any migration that: reads the license service (licenseServiceFactory, licenseService, getPlan, entitlement/feature-set lookups); reads a feature flag (getFeatureFlag or any flag-provider call); or calls a shared helper that does either check internally without the option that skips it (e.g. getMigrationEncryptionServices without skipHsmLicenseCheck: true, or isHsmActiveAndEnabled given a licenseService). Migrations may only branch on DB state and env config (e.g. the kms_root_config encryption strategy).",
+      "severity": "high",
+      "scope": ["backend/src/db/migrations/**"]
     }
   ]
 }

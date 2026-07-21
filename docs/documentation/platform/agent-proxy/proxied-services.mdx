@@ -130,7 +130,7 @@ Either way, the value is fully resolved before the proxy applies it.
 
 A credential can reference a [dynamic secret](/documentation/platform/dynamic-secrets/overview) instead of a static secret. Instead of injecting a fixed value, the agent proxy mints a short-lived lease and injects one of its output fields (for example a database password, a GitHub App token, or a Kubernetes service-account token). Because the value rotates on its own at the lease TTL, a credential that leaks is worthless shortly after.
 
-In the credential form, choose a dynamic secret from the **Dynamic Secrets** group of the secret picker, then pick which **Output Field** of the lease to inject. Each provider exposes different fields (SQL databases give `DB_USERNAME` / `DB_PASSWORD`, GitHub gives a `TOKEN`, and so on); pick the field you want to inject. Basic auth works by pointing the username and password at two fields of the same dynamic secret. Some providers accept a per-lease input, such as a **Namespace** for Kubernetes, which you set on the credential.
+In the credential form, choose a dynamic secret from the **Dynamic Secrets** group of the secret picker, then pick which **Output Field** of the lease to inject. Each provider exposes different fields (SQL databases give `DB_USERNAME` / `DB_PASSWORD`, GitHub gives a `TOKEN`, and so on); pick the field you want to inject. Basic auth works by pointing the username and password at two fields of the same dynamic secret.
 
 How the agent proxy handles the lease:
 
@@ -174,7 +174,7 @@ curl -X POST https://app.infisical.com/api/v1/proxied-services \
 
 Header-rewrite credentials use `"role": "header-rewrite"` with `headerName` and an optional `headerPrefix`, or `headerPurpose` (`username`/`password`) for basic auth.
 
-To reference a dynamic secret, replace `secretKey` on a credential with `dynamicSecretName` and `dynamicSecretField` (and an optional `dynamicSecretConfig`, e.g. `{ "namespace": "prod" }` for Kubernetes):
+To reference a dynamic secret, replace `secretKey` on a credential with `dynamicSecretName` and `dynamicSecretField`:
 
 ```json
 {

@@ -21,8 +21,7 @@ export const ProxiedServiceCredentialsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   dynamicSecretName: z.string().nullable().optional(),
-  dynamicSecretField: z.string().nullable().optional(),
-  dynamicSecretConfig: z.unknown().nullable().optional()
+  dynamicSecretField: z.string().nullable().optional()
 });
 
 export type TProxiedServiceCredentials = z.infer<typeof ProxiedServiceCredentialsSchema>;

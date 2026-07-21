@@ -25,7 +25,12 @@ import { encryptPkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncExportFormat } from "./pki-sync-export-fns";
-import { enterprisePkiSyncCheck, getPkiSyncProviderCapabilities, listPkiSyncOptions } from "./pki-sync-fns";
+import {
+  enterprisePkiSyncCheck,
+  getPkiSyncMaxCertificates,
+  getPkiSyncProviderCapabilities,
+  listPkiSyncOptions
+} from "./pki-sync-fns";
 import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
@@ -197,6 +202,19 @@ export const pkiSyncServiceFactory = ({
     }
   };
 
+  // Enforced only on user-initiated changes. The renewal path writes membership rows
+  // directly via the DAL and relies on a transient old+new overlap, so it must not be capped here.
+  const assertWithinCertificateLimit = (destination: PkiSync, prospectiveCount: number) => {
+    const maxCertificates = getPkiSyncMaxCertificates(destination);
+    if (maxCertificates !== undefined && prospectiveCount > maxCertificates) {
+      throw new BadRequestError({
+        message: `${PKI_SYNC_NAME_MAP[destination]} PKI sync supports at most ${maxCertificates} certificate${
+          maxCertificates === 1 ? "" : "s"
+        }`
+      });
+    }
+  };
+
   const assertSchemaAllowsCertificateCount = (
     syncOptions: Record<string, unknown> | undefined,
     resultingCertificateCount: number
@@ -267,6 +285,7 @@ export const pkiSyncServiceFactory = ({
     };
 
     if (certificateIds.length > 0) {
+      assertWithinCertificateLimit(destination, certificateIds.length);
       await validateCertificatesForSync(certificateIds, projectId, applicationId);
       assertSchemaAllowsCertificateCount(resolvedSyncOptions, certificateIds.length);
     }
@@ -415,6 +434,7 @@ export const pkiSyncServiceFactory = ({
 
     if (certificateIds !== undefined) {
       if (certificateIds.length > 0) {
+        assertWithinCertificateLimit(pkiSync.destination, certificateIds.length);
         await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
         assertSchemaAllowsCertificateCount(effectiveSyncOptions, certificateIds.length);
       }
@@ -694,6 +714,14 @@ export const pkiSyncServiceFactory = ({
     const pkiSync = await pkiSyncDAL.findById(id);
     if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
 
+    // Check if the PKI sync destination supports removing certificates
+    const syncOptions = listPkiSyncOptions().find((option) => option.destination === pkiSync.destination);
+    if (!syncOptions?.canRemoveCertificates) {
+      throw new BadRequestError({
+        message: `Certificate removal is not supported for ${pkiSync.destination} PKI sync destination`
+      });
+    }
+
     let removeSubscriber;
     if (pkiSync.subscriberId) {
       removeSubscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
@@ -738,6 +766,10 @@ export const pkiSyncServiceFactory = ({
       pkiSyncSubscriber?.name,
       actor
     );
+
+    const existingCertificateIds = await certificateSyncDAL.findCertificateIdsByPkiSyncId(pkiSyncId);
+    const prospectiveCount = new Set([...existingCertificateIds, ...certificateIds]).size;
+    assertWithinCertificateLimit(pkiSync.destination, prospectiveCount);
 
     await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
 

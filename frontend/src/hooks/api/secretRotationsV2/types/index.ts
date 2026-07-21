@@ -42,6 +42,11 @@ import {
   TConvexAccessKeyRotationOption
 } from "./convex-access-key-rotation";
 import {
+  TDatadogApiKeyRotation,
+  TDatadogApiKeyRotationGeneratedCredentialsResponse,
+  TDatadogApiKeyRotationOption
+} from "./datadog-api-key-rotation";
+import {
   TDatadogApplicationKeySecretRotation,
   TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse,
   TDatadogApplicationKeySecretRotationOption
@@ -143,6 +148,7 @@ export type TSecretRotationV2 = (
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
+  | TDatadogApiKeyRotation
   | TConvexAccessKeyRotation
   | TFireworksApiKeyRotation
 ) & {
@@ -169,6 +175,7 @@ export type TSecretRotationV2Option =
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
   | TDatadogApplicationKeySecretRotationOption
+  | TDatadogApiKeyRotationOption
   | TConvexAccessKeyRotationOption
   | TFireworksApiKeyRotationOption;
 
@@ -199,6 +206,7 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
   | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse
+  | TDatadogApiKeyRotationGeneratedCredentialsResponse
   | TConvexAccessKeyRotationGeneratedCredentialsResponse
   | TFireworksApiKeyRotationGeneratedCredentialsResponse;
 
@@ -277,6 +285,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
+  [SecretRotation.DatadogApiKey]: TDatadogApiKeyRotationOption;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationOption;
   [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationOption;
 };
@@ -304,6 +313,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
+  [SecretRotation.DatadogApiKey]: TDatadogApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationGeneratedCredentialsResponse;
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Rocket, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -18,16 +18,18 @@ type Props = {
   accountId: string;
   onOpenTab: (tab: PamSheetTab) => void;
   onDelete: () => void;
+  onLaunch?: () => void;
 };
 
-export const AccountActionsMenu = ({ accountId, onOpenTab, onDelete }: Props) => {
+export const AccountActionsMenu = ({ accountId, onOpenTab, onDelete, onLaunch }: Props) => {
   // Defer the permission fetch until the menu is first opened to avoid a request per row
   const [hasOpened, setHasOpened] = useState(false);
   const { can, isLoading } = usePamAccountActions(accountId, hasOpened);
 
   const tabs = visiblePamTabs(PAM_ACCOUNT_TABS, can);
   const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
-  const hasAnyAction = tabs.length > 0 || canDelete;
+  const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
+  const hasAnyAction = tabs.length > 0 || canDelete || canLaunch;
 
   return (
     <DropdownMenu onOpenChange={(open) => open && setHasOpened(true)}>
@@ -46,6 +48,15 @@ export const AccountActionsMenu = ({ accountId, onOpenTab, onDelete }: Props) =>
         {isLoading && <DropdownMenuItem isDisabled>Checking access&hellip;</DropdownMenuItem>}
         {!isLoading && !hasAnyAction && (
           <DropdownMenuItem isDisabled>No actions available</DropdownMenuItem>
+        )}
+        {canLaunch && onLaunch && (
+          <>
+            <DropdownMenuItem onClick={onLaunch}>
+              <Rocket />
+              Launch Session
+            </DropdownMenuItem>
+            {tabs.length > 0 && <DropdownMenuSeparator />}
+          </>
         )}
         {tabs.map((tab) => (
           <DropdownMenuItem key={tab.value} onClick={() => onOpenTab(tab.value)}>

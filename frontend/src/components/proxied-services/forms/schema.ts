@@ -52,13 +52,6 @@ const hostPatternField = z
       });
   });
 
-const leaseConfigSchema = z.object({
-  namespace: z.string().trim().optional(),
-  principals: z.array(z.string().trim().min(1)).optional()
-});
-
-export type TLeaseConfig = z.infer<typeof leaseConfigSchema>;
-
 const credentialSourceSchema = z.object({
   secretKey: z.string().trim().default(""),
   dynamicSecretName: z.string().trim().default(""),
@@ -87,6 +80,7 @@ const substitutionSchema = credentialSourceSchema.extend({
   surfaces: z.array(z.nativeEnum(ProxiedServiceSubstitutionSurface)).min(1, "Select at least one")
 });
 
+// A credential source is exactly one of a static secret or a dynamic secret (with an output field).
 const refineCredentialSource = (
   row: TCredentialSourceForm,
   ctx: z.RefinementCtx,
@@ -129,8 +123,7 @@ export const proxiedServiceFormSchema = z
     headerMode: z.nativeEnum(HeaderRewritingMode).default(HeaderRewritingMode.Headers),
     headers: z.array(headerCredentialSchema).default([]),
     basicAuth: basicAuthSchema.optional(),
-    substitutions: z.array(substitutionSchema).default([]),
-    dynamicSecretConfigs: z.record(z.string(), leaseConfigSchema).default({})
+    substitutions: z.array(substitutionSchema).default([])
   })
   .superRefine((form, ctx) => {
     if (form.headerMode === HeaderRewritingMode.Headers) {
@@ -155,13 +148,6 @@ export const proxiedServiceFormSchema = z
           seenHeaderNames.set(key, i);
         }
       });
-      if (!form.headers.length && !form.substitutions.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Add at least one header or substitution",
-          path: ["headers"]
-        });
-      }
     } else if (form.basicAuth) {
       refineCredentialSource(form.basicAuth.username, ctx, ["basicAuth", "username"]);
       if (form.basicAuth.password.secretKey || form.basicAuth.password.dynamicSecretName) {
@@ -189,3 +175,32 @@ export const proxiedServiceFormSchema = z
   });
 
 export type TProxiedServiceForm = z.infer<typeof proxiedServiceFormSchema>;
+
+export enum ProxiedServiceStep {
+  Details = "details",
+  Headers = "headers",
+  Substitution = "substitution",
+  Review = "review"
+}
+
+// Field names validated when advancing past each step (via react-hook-form `trigger`).
+export const PROXIED_SERVICE_STEP_FIELDS: Record<
+  ProxiedServiceStep,
+  (keyof TProxiedServiceForm)[]
+> = {
+  [ProxiedServiceStep.Details]: ["name", "hostPattern", "isEnabled"],
+  [ProxiedServiceStep.Headers]: ["headerMode", "headers", "basicAuth"],
+  [ProxiedServiceStep.Substitution]: ["substitutions"],
+  [ProxiedServiceStep.Review]: []
+};
+
+// The "at least one credential" rule lives here rather than in the zod schema: in zod it would
+// attach to the headers node and block a substitution-only (or basic-auth-only) config on the
+// empty Header Rewrites step. Enforced imperatively when leaving Substitution / on submit.
+export const hasAtLeastOneCredential = (form: TProxiedServiceForm) => {
+  const hasSource = (source?: TCredentialSourceForm) =>
+    Boolean(source?.secretKey || source?.dynamicSecretName);
+  if (form.substitutions.length) return true;
+  if (form.headerMode === HeaderRewritingMode.BasicAuth) return hasSource(form.basicAuth?.username);
+  return form.headers.length > 0;
+};

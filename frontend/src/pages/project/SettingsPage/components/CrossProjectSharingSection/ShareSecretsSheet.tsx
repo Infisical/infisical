@@ -104,9 +104,10 @@ const PathAdder = ({ environment, existingPaths, onAdd }: PathAdderProps) => {
           }}
         />
       </div>
-      <IconButton variant="ghost-muted" size="sm" onClick={handleAdd} isDisabled={!canAdd}>
+      <Button variant="project" size="sm" onClick={handleAdd} isDisabled={!canAdd}>
         <Plus />
-      </IconButton>
+        Add
+      </Button>
     </div>
   );
 };
@@ -115,6 +116,7 @@ type EnvironmentGroupRowProps = {
   group: EnvironmentGroup;
   index: number;
   environments: { id: string; slug: string; name: string }[];
+  usedEnvironments: Set<string>;
   onChangeEnvironment: (index: number, env: string) => void;
   onAddPath: (index: number, path: string) => void;
   onRemovePath: (index: number, pathIndex: number) => void;
@@ -125,6 +127,7 @@ const EnvironmentGroupRow = ({
   group,
   index,
   environments,
+  usedEnvironments,
   onChangeEnvironment,
   onAddPath,
   onRemovePath,
@@ -137,7 +140,14 @@ const EnvironmentGroupRow = ({
       <div className="flex items-center gap-2 px-3 py-2.5">
         <Layers className="size-4 shrink-0 text-muted" />
         {group.environment ? (
-          <span className="flex-1 text-sm font-medium">{envName ?? group.environment}</span>
+          <span className="flex-1 text-sm font-medium">
+            {envName ?? group.environment}
+            <span className="ml-2 text-xs font-normal text-muted">
+              {group.secretPaths.length === 0
+                ? "No paths selected"
+                : `${String(group.secretPaths.length)} path${group.secretPaths.length === 1 ? "" : "s"}`}
+            </span>
+          </span>
         ) : (
           <div className="flex-1">
             <Select
@@ -148,11 +158,13 @@ const EnvironmentGroupRow = ({
                 <SelectValue placeholder="Select environment" />
               </SelectTrigger>
               <SelectContent position="popper">
-                {environments.map((env) => (
-                  <SelectItem key={env.id} value={env.slug}>
-                    {env.name}
-                  </SelectItem>
-                ))}
+                {environments
+                  .filter((env) => !usedEnvironments.has(env.slug))
+                  .map((env) => (
+                    <SelectItem key={env.id} value={env.slug}>
+                      {env.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -247,11 +259,14 @@ export const ShareSecretsSheet = ({
 
   const availableProjects = projects.filter((p) => p.id !== currentProject.id);
 
-  const hasValidEntry = groups.some((g) => g.environment && g.secretPaths.length > 0);
+  const usedEnvironments = new Set(groups.map((g) => g.environment).filter(Boolean));
+
+  const hasValidEntry =
+    groups.length > 0 && groups.every((g) => g.environment && g.secretPaths.length > 0);
 
   const handleChangeEnvironment = (index: number, env: string) => {
     setGroups((prev) =>
-      prev.map((g, i) => (i === index ? { ...g, environment: env, secretPaths: ["/"] } : g))
+      prev.map((g, i) => (i === index ? { ...g, environment: env, secretPaths: [] } : g))
     );
   };
 
@@ -385,6 +400,7 @@ export const ShareSecretsSheet = ({
                   group={group}
                   index={index}
                   environments={currentProject.environments}
+                  usedEnvironments={usedEnvironments}
                   onChangeEnvironment={handleChangeEnvironment}
                   onAddPath={handleAddPath}
                   onRemovePath={handleRemovePath}
@@ -393,10 +409,12 @@ export const ShareSecretsSheet = ({
               ))}
             </div>
 
-            <Button variant="outline" size="sm" className="w-fit" onClick={handleAddGroup}>
-              <Layers className="size-3.5" />
-              Add another environment
-            </Button>
+            {groups.length < currentProject.environments.length && (
+              <Button variant="outline" size="sm" className="w-fit" onClick={handleAddGroup}>
+                <Layers className="size-3.5" />
+                Add another environment
+              </Button>
+            )}
 
             <div className="flex justify-center py-2">
               <ArrowDown className="size-4 text-muted" />
