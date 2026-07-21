@@ -27,6 +27,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -95,6 +96,7 @@ type TSamlConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -117,7 +119,8 @@ export const samlConfigServiceFactory = ({
   membershipGroupDAL,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -228,6 +231,7 @@ export const samlConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
+              usageMeteringService,
               tx: transaction
             });
           } catch (error) {
@@ -249,6 +253,7 @@ export const samlConfigServiceFactory = ({
                 userGroupMembershipDAL,
                 membershipGroupDAL,
                 projectKeyDAL,
+                usageMeteringService,
                 tx: transaction
               });
             } catch (error) {

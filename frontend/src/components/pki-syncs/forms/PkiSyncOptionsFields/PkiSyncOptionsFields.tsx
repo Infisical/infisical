@@ -80,83 +80,41 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         )}
       />
       */}
-      <Controller
-        control={control}
-        name="syncOptions.canRemoveCertificates"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message}>
-            <Switch
-              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-              id="can-remove-certificates"
-              thumbClassName="bg-mineshaft-800"
-              onCheckedChange={onChange}
-              isChecked={value}
-            >
-              <p>
-                Enable Removal of Expired/Revoked Certificates{" "}
-                <Tooltip
-                  className="max-w-md"
-                  content={
-                    <>
-                      <p>
-                        When enabled, Infisical will remove certificates from the destination during
-                        a sync if they are no longer active in Infisical.
-                      </p>
-                      {currentDestination === PkiSync.AwsElasticLoadBalancer && (
-                        <p className="mt-4">
-                          For AWS Elastic Load Balancer, this will remove the certificate from both
-                          the load balancer listeners and AWS Certificate Manager. This only affects
-                          certificates managed by this specific sync and will not interfere with
-                          certificates managed by other syncs (such as ACM syncs or other ELB
-                          syncs).
-                        </p>
-                      )}
-                      <p className="mt-4">
-                        Disable this option if you intend to manage some certificates manually
-                        outside of Infisical.
-                      </p>
-                    </>
-                  }
-                >
-                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                </Tooltip>
-              </p>
-            </Switch>
-          </FormControl>
-        )}
-      />
-
-      {currentDestination !== PkiSync.CloudflareCustomCertificate && (
+      {syncOption?.canRemoveCertificates && (
         <Controller
           control={control}
-          name="syncOptions.includeRootCa"
+          name="syncOptions.canRemoveCertificates"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
               <Switch
                 className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="include-root-ca"
+                id="can-remove-certificates"
                 thumbClassName="bg-mineshaft-800"
                 onCheckedChange={onChange}
                 isChecked={value}
               >
                 <p>
-                  Include Root CA in Certificate Chain{" "}
+                  Enable Removal of Expired/Revoked Certificates{" "}
                   <Tooltip
                     className="max-w-md"
                     content={
                       <>
                         <p>
-                          When enabled, the full certificate chain including the root CA will be
-                          synced to the destination.
+                          When enabled, Infisical will remove certificates from the destination
+                          during a sync if they are no longer active in Infisical.
                         </p>
+                        {currentDestination === PkiSync.AwsElasticLoadBalancer && (
+                          <p className="mt-4">
+                            For AWS Elastic Load Balancer, this will remove the certificate from
+                            both the load balancer listeners and AWS Certificate Manager. This only
+                            affects certificates managed by this specific sync and will not
+                            interfere with certificates managed by other syncs (such as ACM syncs or
+                            other ELB syncs).
+                          </p>
+                        )}
                         <p className="mt-4">
-                          When disabled, the root CA will be excluded from the certificate chain
-                          during sync operations, reducing the size of the synced certificate chain.
-                        </p>
-                        <p className="mt-4">
-                          Most applications and services work correctly with intermediate
-                          certificates only, as they can validate the trust chain up to a root CA
-                          they already trust.
+                          Disable this option if you intend to manage some certificates manually
+                          outside of Infisical.
                         </p>
                       </>
                     }
@@ -169,6 +127,52 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
           )}
         />
       )}
+
+      {currentDestination !== PkiSync.CloudflareCustomCertificate &&
+        currentDestination !== PkiSync.NutanixPrismCentral && (
+          <Controller
+            control={control}
+            name="syncOptions.includeRootCa"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl isError={Boolean(error)} errorText={error?.message}>
+                <Switch
+                  className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                  id="include-root-ca"
+                  thumbClassName="bg-mineshaft-800"
+                  onCheckedChange={onChange}
+                  isChecked={value}
+                >
+                  <p>
+                    Include Root CA in Certificate Chain{" "}
+                    <Tooltip
+                      className="max-w-md"
+                      content={
+                        <>
+                          <p>
+                            When enabled, the full certificate chain including the root CA will be
+                            synced to the destination.
+                          </p>
+                          <p className="mt-4">
+                            When disabled, the root CA will be excluded from the certificate chain
+                            during sync operations, reducing the size of the synced certificate
+                            chain.
+                          </p>
+                          <p className="mt-4">
+                            Most applications and services work correctly with intermediate
+                            certificates only, as they can validate the trust chain up to a root CA
+                            they already trust.
+                          </p>
+                        </>
+                      }
+                    >
+                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                    </Tooltip>
+                  </p>
+                </Switch>
+              </FormControl>
+            )}
+          />
+        )}
 
       {(currentDestination === PkiSync.AwsCertificateManager ||
         currentDestination === PkiSync.AwsElasticLoadBalancer) && (
@@ -853,98 +857,101 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         </FormControl>
       )}
 
-      <Controller
-        control={control}
-        name="syncOptions.certificateNameSchema"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipClassName="max-w-md"
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <span>
-                  When a certificate is synced, the certificate name schema will be applied before
-                  it reaches the destination.
-                </span>
+      {currentDestination !== PkiSync.NutanixPrismCentral && (
+        <Controller
+          control={control}
+          name="syncOptions.certificateNameSchema"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipClassName="max-w-md"
+              tooltipText={
+                <div className="flex flex-col gap-3">
+                  <span>
+                    When a certificate is synced, the certificate name schema will be applied before
+                    it reaches the destination.
+                  </span>
 
-                <div className="flex flex-col">
-                  <span>Available placeholders:</span>
-                  <ul className="list-disc pl-4 text-sm">
-                    <li>
-                      <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
-                    </li>
-                    <li>
-                      <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of the
-                      certificate ID. Use it instead of <code>{"{{certificateId}}"}</code> when the
-                      destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63 characters).
-                    </li>
-                    <li>
-                      <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
-                    </li>
-                    <li>
-                      <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to the
-                      certificate ID when none is set)
-                    </li>
-                    <li>
-                      <code>{"{{applicationId}}"}</code> - The ID of the application the sync
-                      belongs to
-                    </li>
-                    <li>
-                      <code>{"{{applicationName}}"}</code> - The name of the application the sync
-                      belongs to
-                    </li>
-                  </ul>
-                  {currentDestination === PkiSync.LinuxServer ||
-                  currentDestination === PkiSync.WindowsServer ? (
-                    <span className="mt-1 text-xs text-bunker-300">
-                      A placeholder is optional here. Include one (for example{" "}
-                      <code>{"{{commonName}}"}</code>) so each certificate resolves to a distinct
-                      file name. A schema with no placeholder resolves to a fixed name and can be
-                      linked to only one certificate. When placeholders resolve, any characters the
-                      destination doesn&apos;t support are replaced with hyphens.
-                    </span>
-                  ) : (
-                    <span className="mt-1 text-xs text-bunker-300">
-                      The schema must include <code>{"{{certificateId}}"}</code> or{" "}
-                      <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique
-                      name. The template itself can only contain letters, numbers, and the
-                      separators allowed by the destination. When placeholders resolve, any
-                      characters the destination doesn&apos;t support are replaced with hyphens.
-                    </span>
+                  <div className="flex flex-col">
+                    <span>Available placeholders:</span>
+                    <ul className="list-disc pl-4 text-sm">
+                      <li>
+                        <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
+                      </li>
+                      <li>
+                        <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of
+                        the certificate ID. Use it instead of <code>{"{{certificateId}}"}</code>{" "}
+                        when the destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63
+                        characters).
+                      </li>
+                      <li>
+                        <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
+                      </li>
+                      <li>
+                        <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to
+                        the certificate ID when none is set)
+                      </li>
+                      <li>
+                        <code>{"{{applicationId}}"}</code> - The ID of the application the sync
+                        belongs to
+                      </li>
+                      <li>
+                        <code>{"{{applicationName}}"}</code> - The name of the application the sync
+                        belongs to
+                      </li>
+                    </ul>
+                    {currentDestination === PkiSync.LinuxServer ||
+                    currentDestination === PkiSync.WindowsServer ? (
+                      <span className="mt-1 text-xs text-bunker-300">
+                        A placeholder is optional here. Include one (for example{" "}
+                        <code>{"{{commonName}}"}</code>) so each certificate resolves to a distinct
+                        file name. A schema with no placeholder resolves to a fixed name and can be
+                        linked to only one certificate. When placeholders resolve, any characters
+                        the destination doesn&apos;t support are replaced with hyphens.
+                      </span>
+                    ) : (
+                      <span className="mt-1 text-xs text-bunker-300">
+                        The schema must include <code>{"{{certificateId}}"}</code> or{" "}
+                        <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique
+                        name. The template itself can only contain letters, numbers, and the
+                        separators allowed by the destination. When placeholders resolve, any
+                        characters the destination doesn&apos;t support are replaced with hyphens.
+                      </span>
+                    )}
+                  </div>
+                  {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-yellow">
+                        Character restrictions for {syncOption.name}:
+                      </span>
+                      <div className="text-xs text-bunker-300">
+                        The following characters are not allowed:{" "}
+                        {syncOption.forbiddenCharacters.split("").join(" ")}
+                      </div>
+                    </div>
                   )}
                 </div>
-                {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
-                  <div className="flex flex-col">
-                    <span className="text-yellow">
-                      Character restrictions for {syncOption.name}:
-                    </span>
-                    <div className="text-xs text-bunker-300">
-                      The following characters are not allowed:{" "}
-                      {syncOption.forbiddenCharacters.split("").join(" ")}
-                    </div>
-                  </div>
-                )}
-              </div>
-            }
-            isError={Boolean(error)}
-            isOptional={currentDestination === PkiSync.AwsElasticLoadBalancer}
-            errorText={error?.message}
-            label="Certificate Name Schema"
-            helperText={
-              currentDestination === PkiSync.AwsElasticLoadBalancer
-                ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
-                : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."
-            }
-          >
-            <Input
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={
-                syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
               }
-            />
-          </FormControl>
-        )}
-      />
+              isError={Boolean(error)}
+              isOptional={currentDestination === PkiSync.AwsElasticLoadBalancer}
+              errorText={error?.message}
+              label="Certificate Name Schema"
+              helperText={
+                currentDestination === PkiSync.AwsElasticLoadBalancer
+                  ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+                  : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+              }
+            >
+              <Input
+                value={value || ""}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={
+                  syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
+                }
+              />
+            </FormControl>
+          )}
+        />
+      )}
     </>
   );
 };

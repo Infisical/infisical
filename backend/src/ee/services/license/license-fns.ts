@@ -68,6 +68,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   tier: -1,
   workspaceLimit: null,
   workspacesUsed: 0,
+  secretSyncLimit: null,
+  maxInternalCas: null,
+  maxPamAccounts: null,
   memberLimit: null,
   membersUsed: 0,
   environmentLimit: null,
@@ -112,6 +115,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pkiAcme: true,
   pkiScep: false,
   pkiPqc: false,
+  pkiCodeSigning: null,
   kmsPqc: false,
   enforceMfa: false,
   projectTemplates: false,
@@ -131,7 +135,12 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   secretShareExternalBranding: false,
   honeyTokens: false,
   honeyTokenLimit: 0,
-  secretsBrokering: true
+  secretsBrokering: true,
+  // product gating
+  pam: null,
+  certManager: null,
+  secretsTemporaryAccess: null,
+  enterprisePamAccount: null
 });
 
 export const setupLicenseRequestWithStore = (

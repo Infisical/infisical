@@ -13,7 +13,8 @@ export const PKI_SYNC_NAME_MAP: Record<PkiSync, string> = {
   [PkiSync.F5BigIp]: "F5 BIG-IP",
   [PkiSync.KempLoadMaster]: "Kemp LoadMaster",
   [PkiSync.LinuxServer]: "Linux Server",
-  [PkiSync.WindowsServer]: "Windows Server"
+  [PkiSync.WindowsServer]: "Windows Server",
+  [PkiSync.NutanixPrismCentral]: "Nutanix Prism Central"
 };
 
 export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
@@ -27,5 +28,6 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
   [PkiSync.LinuxServer]: AppConnection.SSH,
-  [PkiSync.WindowsServer]: AppConnection.WinRM
+  [PkiSync.WindowsServer]: AppConnection.WinRM,
+  [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };

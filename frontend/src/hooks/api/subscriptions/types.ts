@@ -84,4 +84,6 @@ export type SubscriptionPlan = {
   honeyTokens: boolean;
   honeyTokenLimit: number;
   secretsBrokering: boolean;
+  pam?: boolean | null;
+  certManager?: boolean | null;
 };

@@ -4,6 +4,7 @@ import { packRules } from "@casl/ability/extra";
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -78,6 +79,7 @@ type TPamAccountServiceFactoryDep = {
     TPamAccessRequestServiceFactory,
     "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources"
   >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings: unknown) => {
@@ -130,7 +132,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     membershipDAL,
     membershipRoleDAL,
     permissionService,
-    kmsService
+    kmsService,
+    licenseService
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
@@ -289,6 +292,34 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ResourcePermissionPamResourceActions.CreateAccounts,
       ResourcePermissionSub.PamResource
     );
+
+    const plan = await licenseService.getPlan(ctx.actorOrgId);
+    if (typeof plan.pam === "boolean" && !plan.pam) {
+      throw new BadRequestError({
+        message: "PAM is not available on your current plan. Please upgrade to continue."
+      });
+    }
+
+    if (
+      (accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd) &&
+      typeof plan.enterprisePamAccount === "boolean" &&
+      !plan.enterprisePamAccount
+    ) {
+      throw new BadRequestError({
+        message: "Windows PAM accounts are not available on your current plan. Please upgrade to continue."
+      });
+    }
+
+    // maxPamAccounts is uncapped by default (null); only enforce a cap when the plan configures a numeric
+    // limit. Counted org-wide right before creation.
+    if (typeof plan.maxPamAccounts === "number") {
+      const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
+      if (currentPamAccountCount >= plan.maxPamAccounts) {
+        throw new BadRequestError({
+          message: "Failed to create PAM account due to plan limit reached. Upgrade plan to add more PAM accounts."
+        });
+      }
+    }
 
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {

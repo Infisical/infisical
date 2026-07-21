@@ -381,6 +381,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       operationId: "getUserWebAuthnCredentials",
       response: {
         200: z.object({
+          fipsEnabled: z.boolean(),
           credentials: z.array(
             z.object({
               id: z.string(),
@@ -396,10 +397,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const credentials = await server.services.webAuthn.getUserWebAuthnCredentials({
+      return server.services.webAuthn.getUserWebAuthnCredentials({
         userId: req.permission.id
       });
-      return { credentials };
     }
   });
 

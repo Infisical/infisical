@@ -826,7 +826,8 @@ export const pkiScepServiceFactory = ({
       organizationalUnit: certRequest.organizationalUnit,
       country: certRequest.country,
       state: certRequest.state,
-      locality: certRequest.locality
+      locality: certRequest.locality,
+      domainComponents: certRequest.domainComponents
     });
 
     await certificateIssuanceQueue.queueCertificateIssuance({

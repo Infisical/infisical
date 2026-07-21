@@ -52,28 +52,58 @@ const hostPatternField = z
       });
   });
 
-// Required-ness is enforced conditionally in the top-level superRefine so fields of the inactive header mode don't block submission.
-const headerCredentialSchema = z.object({
-  secretKey: z.string().trim(),
+const credentialSourceSchema = z.object({
+  secretKey: z.string().trim().default(""),
+  dynamicSecretName: z.string().trim().default(""),
+  dynamicSecretField: z.string().trim().default("")
+});
+
+export type TCredentialSourceForm = z.infer<typeof credentialSourceSchema>;
+
+const headerCredentialSchema = credentialSourceSchema.extend({
   headerName: z.string().trim(),
   headerPrefix: z.string().trim().optional()
 });
 
 const basicAuthSchema = z.object({
-  usernameSecretKey: z.string().trim(),
-  passwordSecretKey: z.string().trim().optional()
+  username: credentialSourceSchema,
+  password: credentialSourceSchema
 });
 
-const substitutionSchema = z.object({
+const substitutionSchema = credentialSourceSchema.extend({
   placeholderKey: z
     .string()
     .trim()
     .min(1, "Environment variable name is required")
     .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "Must be a valid environment variable name"),
   placeholderValue: z.string().trim().min(1),
-  secretKey: z.string().trim().min(1, "Select a secret"),
   surfaces: z.array(z.nativeEnum(ProxiedServiceSubstitutionSurface)).min(1, "Select at least one")
 });
+
+// A credential source is exactly one of a static secret or a dynamic secret (with an output field).
+const refineCredentialSource = (
+  row: TCredentialSourceForm,
+  ctx: z.RefinementCtx,
+  path: (string | number)[]
+) => {
+  const hasStatic = Boolean(row.secretKey);
+  const hasDynamic = Boolean(row.dynamicSecretName);
+  if (hasStatic === hasDynamic) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select a secret",
+      path: [...path, "secretKey"]
+    });
+    return;
+  }
+  if (hasDynamic && !row.dynamicSecretField) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Select an output field",
+      path: [...path, "dynamicSecretField"]
+    });
+  }
+};
 
 export enum HeaderRewritingMode {
   Headers = "headers",
@@ -99,13 +129,7 @@ export const proxiedServiceFormSchema = z
     if (form.headerMode === HeaderRewritingMode.Headers) {
       const seenHeaderNames = new Map<string, number>();
       form.headers.forEach((row, i) => {
-        if (!row.secretKey) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Select a secret",
-            path: ["headers", i, "secretKey"]
-          });
-        }
+        refineCredentialSource(row, ctx, ["headers", i]);
         if (!row.headerName) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -124,20 +148,16 @@ export const proxiedServiceFormSchema = z
           seenHeaderNames.set(key, i);
         }
       });
-      if (!form.headers.length && !form.substitutions.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Add at least one header or substitution",
-          path: ["headers"]
-        });
+    } else if (form.basicAuth) {
+      refineCredentialSource(form.basicAuth.username, ctx, ["basicAuth", "username"]);
+      if (form.basicAuth.password.secretKey || form.basicAuth.password.dynamicSecretName) {
+        refineCredentialSource(form.basicAuth.password, ctx, ["basicAuth", "password"]);
       }
-    } else if (!form.basicAuth?.usernameSecretKey) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Select a secret",
-        path: ["basicAuth", "usernameSecretKey"]
-      });
     }
+
+    form.substitutions.forEach((row, i) => {
+      refineCredentialSource(row, ctx, ["substitutions", i]);
+    });
 
     const seenPlaceholderKeys = new Map<string, number>();
     form.substitutions.forEach((row, i) => {
@@ -155,3 +175,32 @@ export const proxiedServiceFormSchema = z
   });
 
 export type TProxiedServiceForm = z.infer<typeof proxiedServiceFormSchema>;
+
+export enum ProxiedServiceStep {
+  Details = "details",
+  Headers = "headers",
+  Substitution = "substitution",
+  Review = "review"
+}
+
+// Field names validated when advancing past each step (via react-hook-form `trigger`).
+export const PROXIED_SERVICE_STEP_FIELDS: Record<
+  ProxiedServiceStep,
+  (keyof TProxiedServiceForm)[]
+> = {
+  [ProxiedServiceStep.Details]: ["name", "hostPattern", "isEnabled"],
+  [ProxiedServiceStep.Headers]: ["headerMode", "headers", "basicAuth"],
+  [ProxiedServiceStep.Substitution]: ["substitutions"],
+  [ProxiedServiceStep.Review]: []
+};
+
+// The "at least one credential" rule lives here rather than in the zod schema: in zod it would
+// attach to the headers node and block a substitution-only (or basic-auth-only) config on the
+// empty Header Rewrites step. Enforced imperatively when leaving Substitution / on submit.
+export const hasAtLeastOneCredential = (form: TProxiedServiceForm) => {
+  const hasSource = (source?: TCredentialSourceForm) =>
+    Boolean(source?.secretKey || source?.dynamicSecretName);
+  if (form.substitutions.length) return true;
+  if (form.headerMode === HeaderRewritingMode.BasicAuth) return hasSource(form.basicAuth?.username);
+  return form.headers.length > 0;
+};

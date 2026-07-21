@@ -17,6 +17,7 @@ import {
   KempLoadMasterPkiSyncDestinationSection,
   LinuxServerPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection,
+  NutanixPrismCentralPkiSyncDestinationSection,
   WindowsServerPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
@@ -68,6 +69,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       break;
     case PkiSync.WindowsServer:
       DestinationComponents = <WindowsServerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.NutanixPrismCentral:
+      DestinationComponents = <NutanixPrismCentralPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     default:
       // For future destinations, return null (no additional fields to show)

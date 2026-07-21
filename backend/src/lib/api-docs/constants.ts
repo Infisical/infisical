@@ -1640,7 +1640,12 @@ export const PROXIED_SERVICES = {
     serviceId: "The ID of the proxied service to delete."
   },
   CREDENTIAL: {
-    secretKey: "The key name of the referenced secret. The secret must live in the same folder as the service.",
+    secretKey:
+      "The key name of the referenced static secret. The secret must live in the same folder as the service. Provide exactly one of secretKey or dynamicSecretName.",
+    dynamicSecretName:
+      "The name of the referenced dynamic secret. The dynamic secret must live in the same folder as the service; the agent proxy mints a lease and injects a field from its output. Provide exactly one of secretKey or dynamicSecretName. Referenced by name (like secretKey), so a deleted-then-recreated dynamic secret with the same name re-links automatically.",
+    dynamicSecretField:
+      "For a dynamic secret credential: which lease output field to inject (e.g. 'DB_PASSWORD', 'TOKEN'). Must be a valid output field for the dynamic secret's provider type.",
     role: "How the credential is applied: 'header-rewrite' sets an HTTP header on the outbound request; 'credential-substitution' replaces a placeholder value in the request.",
     headerName: "For header rewriting: the header to set, e.g. 'Authorization' or 'x-api-key'.",
     headerPrefix: "For header rewriting: an optional prefix joined to the secret value with a space, e.g. 'Bearer'.",
@@ -2561,7 +2566,8 @@ export const KMS = {
     projectId: "The ID of the project to create the key in.",
     name: "The name of the key to be created. Must be slug-friendly.",
     description: "An optional description of the key.",
-    encryptionAlgorithm: "The algorithm to use when performing cryptographic operations with the key.",
+    algorithm: "The cryptographic algorithm of the key (e.g. aes-256-gcm, RSA_4096, HMAC_SHA_256).",
+    encryptionAlgorithm: "Deprecated: use 'algorithm' instead. Retained as an alias for backwards compatibility.",
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation."
@@ -2630,6 +2636,15 @@ export const KMS = {
     data: "The data in string format to be verified (base64 encoded). For data larger than 1MB you must first create a digest of the data and then pass the digest in the data parameter.",
     signature: "The signature to be verified (base64 encoded).",
     isDigest: "Whether the data is already digested or not."
+  },
+  GENERATE_MAC: {
+    keyId: "The ID of the key to generate the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format to generate the MAC for (base64 encoded)."
+  },
+  VERIFY_MAC: {
+    keyId: "The ID of the key to verify the MAC with. The key must be for generating and verifying MACs.",
+    data: "The data in string format the MAC was generated for (base64 encoded).",
+    mac: "The MAC to be verified (base64 encoded)."
   }
 };
 
@@ -2961,7 +2976,8 @@ export const AppConnections = {
     DATADOG: {
       url: "The Datadog site URL to connect to (e.g., 'https://api.datadoghq.com').",
       apiKey: "The Datadog API key used to authenticate.",
-      applicationKey: "The Datadog Application key used to authenticate."
+      applicationKey: "The Datadog Application key used to authenticate.",
+      token: "The Datadog Service Access Token used to authenticate."
     },
     SSH: {
       host: "The hostname or IP address of the SSH server.",
@@ -3559,6 +3575,9 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       serviceAccountId: "The ID of the Datadog service account to rotate the application key for."
     },
+    DATADOG_API_KEY: {
+      name: "The name for the generated Datadog API key."
+    },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
     },
@@ -3641,6 +3660,10 @@ export const SecretRotations = {
     DATADOG_APPLICATION_KEY_SECRET: {
       applicationKeyId: "The name of the secret that the rotated Datadog application key ID will be mapped to.",
       applicationKey: "The name of the secret that the rotated Datadog application key value will be mapped to."
+    },
+    DATADOG_API_KEY: {
+      apiKeyId: "The name of the secret that the rotated Datadog API key ID will be mapped to.",
+      apiKey: "The name of the secret that the rotated Datadog API key value will be mapped to."
     },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."

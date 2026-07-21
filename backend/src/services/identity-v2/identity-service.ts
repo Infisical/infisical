@@ -30,6 +30,8 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
@@ -69,6 +71,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -85,7 +88,8 @@ export const identityV2ServiceFactory = ({
   keyStore,
   projectDAL,
   orgDAL,
-  roleDAL
+  roleDAL,
+  usageMeteringService
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
     permissionService
@@ -292,6 +296,14 @@ export const identityV2ServiceFactory = ({
     });
     await licenseService.updateSubscriptionOrgMemberCount(dto.permission.orgId);
 
+    // A new identity always adds an org membership; a project-scoped one also joins that project, so
+    // it counts toward the secret-manager and PAM identity meters too.
+    usageMeteringService.emit(dto.permission.orgId, IdentitiesMeter.key);
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+    }
+
     return { identity };
   };
 
@@ -372,6 +384,11 @@ export const identityV2ServiceFactory = ({
     const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);
 
     await licenseService.updateSubscriptionOrgMemberCount(scopeData.orgId);
+
+    // Deleting the identity cascades its org + project + group memberships, so all meters change.
+    usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);
+    usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
 
     return { identity: deletedIdentity };
   };

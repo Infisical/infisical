@@ -3222,6 +3222,7 @@ const OverviewPageContent = () => {
                                   handlePopUpOpen("deleteSecretImport", secretImport)
                                 }
                                 importedSecrets={importedSecretsFlat}
+                                isVisible={isSingleEnvSecretsVisible}
                               />
                             ))}
                           {!isSingleEnvView &&
@@ -3243,6 +3244,7 @@ const OverviewPageContent = () => {
                                     handlePopUpOpen("deleteSecretImport", secretImport)
                                   }
                                   importedSecrets={importedSecretsFlat}
+                                  isVisible={isSingleEnvSecretsVisible}
                                 />
                               )
                             )}
@@ -3711,12 +3713,14 @@ const OverviewPageContent = () => {
         projectId={projectId}
         environment={singleEnvSlug}
         secretPath={secretPath}
+        existingNames={proxiedServiceNames}
       />
       <EditProxiedServiceModal
         isOpen={popUp.editProxiedService.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editProxiedService", isOpen)}
         proxiedService={popUp.editProxiedService.data as TDashboardProxiedService}
         projectId={projectId}
+        existingNames={proxiedServiceNames}
       />
       <DeleteProxiedServiceModal
         isOpen={popUp.deleteProxiedService.isOpen}

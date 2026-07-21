@@ -177,6 +177,34 @@ export const projectDALFactory = (db: TDbClient) => {
     return totalDeleted;
   };
 
+  // Hands a project's envs to the paced env hard-delete worker: marks them deleteAfter = now,
+  // collapsing any restore grace. Returns rows marked.
+  const softDeleteProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const now = new Date();
+      const marked = await (tx || db)(TableName.Environment)
+        .where({ projectId })
+        .andWhere((qb) => void qb.whereNull("deleteAfter").orWhere("deleteAfter", ">", now))
+        .update({
+          deleteAfter: now,
+          softDeletedAt: db.raw(`COALESCE("softDeletedAt", ?)`, [now]) as unknown as Date
+        });
+      return marked;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete project environments" });
+    }
+  };
+
+  // Counts ALL env rows (any soft-delete state). Primary-backed so a stale replica cannot end the drain early.
+  const countProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db)(TableName.Environment).where({ projectId }).count().first();
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count project environments" });
+    }
+  };
+
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
       const identityGroupSubquery = db
@@ -961,6 +989,8 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
+    softDeleteProjectEnvironments,
+    countProjectEnvironments,
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,

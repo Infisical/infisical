@@ -26,6 +26,7 @@ import {
   RadioGroupItem,
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -395,6 +396,9 @@ export const AddDiscoverySourceSheet = ({ isOpen, onOpenChange }: Props) => {
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Add Discovery Source</SheetTitle>
+            <SheetDescription>
+              Choose a source type to scan for privileged accounts in your infrastructure.
+            </SheetDescription>
           </SheetHeader>
 
           {step === 1 && (

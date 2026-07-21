@@ -9,7 +9,8 @@ export enum PkiSync {
   F5BigIp = "f5-big-ip",
   KempLoadMaster = "kemp-loadmaster",
   LinuxServer = "linux-server",
-  WindowsServer = "windows-server"
+  WindowsServer = "windows-server",
+  NutanixPrismCentral = "nutanix-prism-central"
 }
 
 export enum PkiSyncExportFormat {

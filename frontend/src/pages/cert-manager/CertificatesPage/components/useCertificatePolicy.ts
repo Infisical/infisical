@@ -269,6 +269,14 @@ export const useCertificatePolicy = (
             value: defaults.locality
           });
         }
+        if (defaults?.domainComponents) {
+          defaults.domainComponents.forEach((dc: string) => {
+            defaultSubjectAttrs.push({
+              type: CertSubjectAttributeType.DOMAIN_COMPONENT,
+              value: dc
+            });
+          });
+        }
 
         const currentSubjectAttrs = watch("subjectAttributes");
         if (!currentSubjectAttrs || currentSubjectAttrs.length === 0) {

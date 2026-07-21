@@ -17,9 +17,11 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { UserIdentities } from "@app/services/license-client";
 import { TDualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
 import { projectV2ToFeatureSet } from "@app/services/license-client/dual-read/entitlement-projection";
 import { TLicenseClientFactory } from "@app/services/license-client/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -62,6 +64,7 @@ type TLicenseServiceFactoryDep = {
     | "SITE_URL"
     | "LICENSE_SERVER_V2_MODE"
     | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "DISABLE_LICENSE_V1_CLOUD"
   >;
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -70,6 +73,8 @@ type TLicenseServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription" | "refreshEntitlements">;
   licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
+  // Fire-and-forget v2 usage meter for org user seats; no-ops when the v2 license server is disabled.
+  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -89,7 +94,8 @@ export const licenseServiceFactory = ({
   projectDAL,
   envConfig,
   licenseClient,
-  licenseDualRead
+  licenseDualRead,
+  usageMeteringService
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
@@ -432,6 +438,13 @@ export const licenseServiceFactory = ({
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     const rootOrgId = org.id;
+
+    // This is the single "org member count changed" signal in the codebase (invite/signup, SSO/SCIM
+    // provisioning, member removal all call it), so emit the v2 user-seat meter here. Fire-and-forget
+    // and no-op when the v2 license server is off; extra fires on identity-only changes re-count and
+    // report-only-if-changed, so they're harmless.
+    usageMeteringService?.emit(rootOrgId, UserIdentities.key);
+
     if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
       const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
@@ -517,6 +530,12 @@ export const licenseServiceFactory = ({
     actorAuthMethod,
     success_url
   }: TStartOrgTrialDTO) => {
+    if (envConfig.DISABLE_LICENSE_V1_CLOUD) {
+      throw new BadRequestError({
+        message: "We're currently updating our license system. Please check back again later."
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       actorId,
       actor,
@@ -556,6 +575,12 @@ export const licenseServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateOrgPortalSession) => {
+    if (envConfig.DISABLE_LICENSE_V1_CLOUD) {
+      throw new BadRequestError({
+        message: "We're currently updating our license system. Please check back again later."
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       actorId,
       actor,
@@ -850,6 +875,12 @@ export const licenseServiceFactory = ({
     success_url,
     cancel_url
   }: TAddOrgPmtMethodDTO) => {
+    if (envConfig.DISABLE_LICENSE_V1_CLOUD) {
+      throw new BadRequestError({
+        message: "We're currently updating our license system. Please check back again later."
+      });
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       actorId,
       actor,

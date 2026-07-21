@@ -1,0 +1,182 @@
+---
+title: "Nutanix Prism Central"
+sidebarTitle: "Nutanix Prism Central"
+description: "Update certificates on your Nutanix clusters."
+---
+
+Install certificates managed in Infisical directly on your Nutanix clusters. When a certificate is renewed, it is automatically updated on the cluster with no manual intervention required.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificate to sync, then configure the Nutanix Prism Central destination.
+</Info>
+
+## Prerequisites
+
+Before setting up the sync, gather the following from your Nutanix environment:
+
+- A **Nutanix Prism Central** instance reachable from Infisical over HTTPS (hostname or IP address, port default `9440`), either directly or via an [Infisical Gateway](/documentation/platform/gateways/overview).
+- A Prism Central account or API key with the **Cluster Admin** role on the target cluster.
+- A [Nutanix Prism Central Connection](/integrations/app-connections/nutanix-prism-central) correctly configured.
+
+## Create a Nutanix Prism Central Sync
+
+<Tabs>
+  <Tab title="Infisical UI">
+    1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+    2. Select the **Nutanix Prism Central** option.
+
+    3. Configure the **Destination**:
+        - **Nutanix Prism Central Connection**: Choose the connection to authenticate with.
+        - **Cluster**: From the list of clusters available in Prism Central, select the target cluster.
+
+    4. Configure the **Sync Options**:
+        - **Auto-Sync Enabled**: Automatically update the certificate on the Nutanix cluster whenever it is renewed or updated in Infisical.
+
+    5. Configure the **Details**:
+        - **Name**: A name for this sync.
+        - **Description**: Optional description.
+
+    6. Select the certificate to sync.
+
+    7. Review and click **Create Sync**.
+  </Tab>
+  <Tab title="API">
+    To create a **Nutanix Prism Central Certificate Sync**, make an API request to the [Create Nutanix Prism Central PKI Sync](/api-reference/endpoints/pki/syncs/nutanix-prism-central/create) API endpoint.
+
+    ### Sample request
+
+    <Note>
+      You can optionally specify `certificateIds` during sync creation to immediately add a certificate to the sync.
+      If not provided, you can add one later using the certificate management endpoints.
+    </Note>
+
+    ```bash Request
+    curl --request POST \
+    --url https://app.infisical.com/api/v1/cert-manager/syncs/nutanix-prism-central \
+    --header 'Authorization: Bearer <access-token>' \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "name": "my-nutanix-cert-sync",
+        "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "description": "Push TLS cert to production Nutanix cluster",
+        "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+        "destination": "nutanix-prism-central",
+        "isAutoSyncEnabled": true,
+        "certificateIds": [
+            "550e8400-e29b-41d4-a716-446655440000"
+        ],
+        "destinationConfig": {
+            "clusterId": "a29facad-8d6e-4f64-b745-bceca6f990d6",
+            "clusterName": "prod-cluster-01"
+        },
+        "syncOptions": {
+            "canImportCertificates": false,
+            "canRemoveCertificates": false
+        }
+    }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+        "pkiSync": {
+            "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "name": "my-nutanix-cert-sync",
+            "description": "Push TLS cert to production Nutanix cluster",
+            "destination": "nutanix-prism-central",
+            "isAutoSyncEnabled": true,
+            "destinationConfig": {
+                "clusterId": "a29facad-8d6e-4f64-b745-bceca6f990d6",
+                "clusterName": "prod-cluster-01"
+            },
+            "syncOptions": {
+                "canImportCertificates": false,
+                "canRemoveCertificates": false
+            },
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "createdAt": "2026-05-26T00:00:00.000Z",
+            "updatedAt": "2026-05-26T00:00:00.000Z"
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## How It Works
+
+When a sync runs, Infisical calls the Nutanix Clustermgmt API v4 to replace the SSL certificate on the selected cluster:
+
+1. Connects to Prism Central using the configured credentials (Basic Auth or API Key).
+2. Takes the certificate associated with the sync.
+3. Configures the certificate and private key onto the Nutanix cluster.
+
+After a few seconds, the Nutanix cluster will use the new certificate, no restart is required.
+
+<Note>
+  Each Nutanix Prism Central sync targets a single cluster. To update multiple clusters, create one sync per cluster.
+</Note>
+
+## Certificate Management
+
+The Nutanix Prism Central Certificate Sync provides:
+
+- **Automatic Deployment**: Replace the SSL certificate on the target Nutanix cluster whenever the synced certificate changes in Infisical.
+- **Certificate Updates**: Push renewed certificates to the cluster automatically when auto-sync is enabled.
+
+<Note>
+  Certificate removal is not supported for Nutanix Prism Central. A cluster always has exactly one active SSL certificate, which can only be replaced, not deleted.
+</Note>
+
+## Manual Certificate Sync
+
+You can manually trigger certificate synchronization to the Nutanix cluster using the sync certificates functionality. This is useful for:
+
+- Initial setup when deploying a certificate to a cluster for the first time
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/nutanix-prism-central/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## Certificate Renewal Behavior
+
+When a certificate is renewed in Infisical, the renewed certificate is automatically pushed to the Nutanix cluster on the next sync. If **Auto-Sync** is enabled, this happens without any manual action.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I import certificates from Nutanix back into Infisical?">
+    No. The Nutanix API does not allow private key extraction, so importing certificates from Nutanix into Infisical is not supported.
+  </Accordion>
+
+  <Accordion title="What happens if my Prism Central uses a self-signed TLS certificate?">
+    When creating the App Connection, disable the **Reject Unauthorized** option to allow connections to Prism Central instances with self-signed or untrusted TLS certificates. Use this only in trusted network environments.
+  </Accordion>
+
+  <Accordion title="Which Nutanix API version is used?">
+    Infisical uses the **Nutanix Clustermgmt API v4.2** to manage SSL certificates on clusters.
+  </Accordion>
+
+  <Accordion title="Do I need to restart the cluster after updating the certificate?">
+    No restart is required. Nutanix applies the new SSL certificate as an async task. Infisical waits for the task to complete before marking the sync as successful.
+  </Accordion>
+</AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="NetScaler" icon="network-wired" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
+    Deploy certificates to Citrix NetScaler ADC appliances.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

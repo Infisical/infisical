@@ -7,7 +7,7 @@ import {
 export type TProxiedServiceCredential = {
   id: string;
   serviceId: string;
-  secretKey: string;
+  secretKey?: string | null;
   role: ProxiedServiceCredentialRole;
   headerName?: string | null;
   headerPrefix?: string | null;
@@ -15,6 +15,9 @@ export type TProxiedServiceCredential = {
   placeholderKey?: string | null;
   placeholderValue?: string | null;
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
+  dynamicSecretName?: string | null;
+  dynamicSecretField?: string | null;
+  callerCanLease?: boolean;
 };
 
 export type TProxiedServiceBase = {
@@ -43,7 +46,7 @@ export type TDashboardProxiedService = TProxiedService & {
 };
 
 export type TProxiedServiceCredentialInput = {
-  secretKey: string;
+  secretKey?: string;
   role: ProxiedServiceCredentialRole;
   headerName?: string | null;
   headerPrefix?: string | null;
@@ -51,6 +54,8 @@ export type TProxiedServiceCredentialInput = {
   placeholderKey?: string | null;
   placeholderValue?: string | null;
   substitutionSurfaces?: ProxiedServiceSubstitutionSurface[] | null;
+  dynamicSecretName?: string;
+  dynamicSecretField?: string;
 };
 
 export type TCreateProxiedServiceDTO = {

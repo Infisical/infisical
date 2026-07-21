@@ -333,6 +333,10 @@ export type THasuraCloudConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.HasuraCloud;
 };
 
+export type TNutanixPrismCentralConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.NutanixPrismCentral;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -413,7 +417,8 @@ export type TAppConnectionOption =
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
-  | TFireworksConnectionOption;
+  | TFireworksConnectionOption
+  | TNutanixPrismCentralConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -496,4 +501,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Qovery]: TQoveryConnectionOption;
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
   [AppConnection.Fireworks]: TFireworksConnectionOption;
+  [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
 };

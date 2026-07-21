@@ -215,6 +215,11 @@ import {
   validateNorthflankConnectionCredentials
 } from "./northflank";
 import {
+  getNutanixPrismCentralConnectionListItem,
+  NutanixPrismCentralConnectionMethod,
+  validateNutanixPrismCentralConnectionCredentials
+} from "./nutanix-prism-central";
+import {
   getOctopusDeployConnectionListItem,
   OctopusDeployConnectionMethod,
   validateOctopusDeployConnectionCredentials
@@ -319,7 +324,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.F5BigIp,
   AppConnection.GoDaddy,
   AppConnection.SSH,
-  AppConnection.WinRM
+  AppConnection.WinRM,
+  AppConnection.NutanixPrismCentral
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -403,7 +409,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getRundeckConnectionListItem(),
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
-    getFireworksConnectionListItem()
+    getFireworksConnectionListItem(),
+    getNutanixPrismCentralConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -654,7 +661,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Rundeck]: validateRundeckConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Qovery]: validateQoveryConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.NutanixPrismCentral]:
+      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -707,6 +716,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
+    case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return "API Key & Secret";
@@ -756,9 +766,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
-    case DatadogConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
+    case NutanixPrismCentralConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -766,10 +777,9 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
-      return "Basic Auth";
     case KempLoadMasterConnectionMethod.BasicAuth:
-      return "Basic Auth";
     case F5BigIpConnectionMethod.BasicAuth:
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -918,7 +928,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Rundeck]: platformManagedCredentialsNotSupported,
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
-  [AppConnection.Fireworks]: platformManagedCredentialsNotSupported
+  [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
+  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

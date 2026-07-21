@@ -10,6 +10,7 @@ import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
 import { TKempLoadMasterPkiSync } from "./kemp-loadmaster-sync";
 import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
+import { TNutanixPrismCentralPkiSync } from "./nutanix-prism-central-sync";
 import { TWindowsServerPkiSync } from "./windows-server-sync";
 
 export type TPkiSyncOption = {
@@ -17,6 +18,7 @@ export type TPkiSyncOption = {
   destination: PkiSync;
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
+  maxCertificates?: number;
   enterprise?: boolean;
   defaultCertificateNameSchema?: string;
   forbiddenCharacters?: string;
@@ -36,7 +38,8 @@ export type TPkiSync =
   | TF5BigIpPkiSync
   | TKempLoadMasterPkiSync
   | TLinuxServerPkiSync
-  | TWindowsServerPkiSync;
+  | TWindowsServerPkiSync
+  | TNutanixPrismCentralPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
@@ -98,6 +101,8 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     profileName?: string;
     createProfileIfMissing?: boolean;
     parentProfile?: string;
+    clusterId?: string;
+    clusterName?: string;
     destinationPath?: string;
   };
 };
@@ -142,4 +147,5 @@ export * from "./f5-big-ip-sync";
 export * from "./kemp-loadmaster-sync";
 export * from "./linux-server-sync";
 export * from "./netscaler-sync";
+export * from "./nutanix-prism-central-sync";
 export * from "./windows-server-sync";

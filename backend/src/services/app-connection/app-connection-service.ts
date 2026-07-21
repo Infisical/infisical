@@ -146,6 +146,10 @@ import { netlifyConnectionService } from "./netlify/netlify-connection-service";
 import { ValidateNetScalerConnectionCredentialsSchema } from "./netscaler";
 import { ValidateNorthflankConnectionCredentialsSchema } from "./northflank";
 import { northflankConnectionService } from "./northflank/northflank-connection-service";
+import {
+  nutanixPrismCentralConnectionService,
+  ValidateNutanixPrismCentralConnectionCredentialsSchema
+} from "./nutanix-prism-central";
 import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-deploy";
 import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
@@ -295,7 +299,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
-  [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema
+  [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
+  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1398,6 +1403,11 @@ export const appConnectionServiceFactory = ({
     travisCI: travisCIConnectionService(connectAppConnectionById),
     snowflake: snowflakeConnectionService(connectAppConnectionById),
     litellm: liteLLMConnectionService(connectAppConnectionById),
-    fireworks: fireworksConnectionService(connectAppConnectionById)
+    fireworks: fireworksConnectionService(connectAppConnectionById),
+    nutanixPrismCentral: nutanixPrismCentralConnectionService(
+      connectAppConnectionById,
+      gatewayV2Service,
+      gatewayPoolService
+    )
   };
 };
