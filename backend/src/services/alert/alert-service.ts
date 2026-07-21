@@ -190,7 +190,7 @@ export const alertServiceFactory = ({
         await alertChannelMembershipDAL.insertMany([{ alertId: createdAlert.id, channelId: channel.id }], tx);
       }
 
-      const attachedChannels = await alertChannelDAL.findByAlertId(createdAlert.id, tx);
+      const attachedChannels = await alertChannelDAL.findByAlertId(createdAlert.id, {}, tx);
       const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
       return { created: createdAlert, channels: details };
     });
@@ -262,7 +262,7 @@ export const alertServiceFactory = ({
     cipher: Awaited<ReturnType<typeof getAlertChannelCipher>>,
     tx: Knex
   ) => {
-    const existing = await alertChannelDAL.findByAlertId(alert.id, tx);
+    const existing = await alertChannelDAL.findByAlertId(alert.id, {}, tx);
     const existingById = new Map<string, TAlertChannels>(existing.map((channel) => [channel.id, channel]));
 
     const incomingIds = new Set(incoming.filter((channel) => channel.id).map((channel) => channel.id as string));
@@ -353,7 +353,7 @@ export const alertServiceFactory = ({
         await $reconcileChannels(alert, dto.channels, cipher, tx);
       }
 
-      const attachedChannels = await alertChannelDAL.findByAlertId(alert.id, tx);
+      const attachedChannels = await alertChannelDAL.findByAlertId(alert.id, {}, tx);
       const details = await alertChannelService.getDetailsForChannels(attachedChannels, cipher, tx);
       return { updated: updatedAlert, channels: details };
     });
@@ -374,7 +374,7 @@ export const alertServiceFactory = ({
     );
 
     await alertDAL.transaction(async (tx) => {
-      const channels = await alertChannelDAL.findByAlertId(alert.id, tx);
+      const channels = await alertChannelDAL.findByAlertId(alert.id, {}, tx);
       for (const channel of channels) {
         // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
         await alertChannelService.deleteChannelInTx(channel.id, tx);

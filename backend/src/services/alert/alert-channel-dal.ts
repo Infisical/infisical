@@ -76,15 +76,23 @@ export const alertChannelDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByAlertId = async (alertId: string, tx?: Knex): Promise<TAlertChannels[]> => {
+  const findByAlertId = async (
+    alertId: string,
+    filter: { enabled?: boolean } = {},
+    tx?: Knex
+  ): Promise<TAlertChannels[]> => {
     try {
-      const channels = await (tx || db.replicaNode())(TableName.AlertChannel)
+      const query = (tx || db.replicaNode())(TableName.AlertChannel)
         .join(
           TableName.AlertChannelMembership,
           `${TableName.AlertChannel}.id`,
           `${TableName.AlertChannelMembership}.channelId`
         )
-        .where(`${TableName.AlertChannelMembership}.alertId`, alertId)
+        .where(`${TableName.AlertChannelMembership}.alertId`, alertId);
+
+      if (filter.enabled !== undefined) void query.where(`${TableName.AlertChannel}.enabled`, filter.enabled);
+
+      const channels = await query
         .select(selectAllTableCols(TableName.AlertChannel))
         .orderBy(`${TableName.AlertChannel}.createdAt`, "asc");
 

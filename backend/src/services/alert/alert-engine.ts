@@ -87,7 +87,7 @@ export const alertEngineFactory = ({
     });
     if (targets.length === 0) return;
 
-    const channels = (await alertChannelDAL.findByAlertId(alert.id)).filter((channel) => channel.enabled);
+    const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
     if (channels.length === 0) return;
 
     const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;

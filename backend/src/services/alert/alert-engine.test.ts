@@ -95,7 +95,10 @@ const buildEngine = (opts: {
   const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
 
   const engine = alertEngineFactory({
-    alertChannelDAL: { findByAlertId: async () => opts.channels },
+    alertChannelDAL: {
+      findByAlertId: async (_alertId: string, filter?: { enabled?: boolean }) =>
+        filter?.enabled === undefined ? opts.channels : opts.channels.filter((c) => c.enabled === filter.enabled)
+    },
     alertChannelRecipientDAL: {
       // One recipient row per directed channel in the run, so each resolves its own list.
       findByChannelIds: async (channelIds: string[]) =>
