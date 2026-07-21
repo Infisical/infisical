@@ -6,6 +6,7 @@ import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { applyJitter } from "@app/lib/dates";
+import { delay } from "@app/lib/delay";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
@@ -111,12 +112,23 @@ export const identityAccessTokenServiceFactory = ({
     );
   };
 
+  // Delayed re-delete: a request that missed cache before this delete can still
+  // write a stale allowlist back. Second delete ~1s later clears that race.
+  const TRUSTED_IPS_CACHE_REDELETE_DELAY_MS = 1000;
+
   const invalidateTrustedIpsCache = async (identityId: string, authMethod: IdentityAuthMethod | string) => {
+    const key = KeyStorePrefixes.IdentityTrustedIps(identityId, authMethod);
     try {
-      await keyStore.deleteItem(KeyStorePrefixes.IdentityTrustedIps(identityId, authMethod));
+      await keyStore.deleteItem(key);
     } catch (error) {
       logger.warn(error, `identity-trusted-ips: failed to invalidate cache [identityId=${identityId}]`);
     }
+
+    void delay(TRUSTED_IPS_CACHE_REDELETE_DELAY_MS)
+      .then(() => keyStore.deleteItem(key))
+      .catch((error) => {
+        logger.warn(error, `identity-trusted-ips: failed delayed re-delete [identityId=${identityId}]`);
+      });
   };
 
   // On revoke, bump this identity's version number. Every cached "allowed" answer
