@@ -2366,8 +2366,29 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         inputSecrets.map(({ secretKey, secretMetadata }) => [secretKey, secretMetadata])
       );
 
+      // updateManySecretsRaw can return an empty list of secrets
+      // if mode=ignore, a change policy exists and all secrets
+      // do not exist in the DB, so we have to resolve the projectId
+      // for the auditLog and posthog events
+      let projectId = req.body.workspaceId;
+      if (!projectId) {
+        if (secrets.length > 0) {
+          projectId = secrets[0].workspace;
+        } else {
+          const extractedProjectId = await server.services.project.extractProjectIdFromSlug({
+            projectSlug,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorAuthMethod: req.permission.authMethod,
+            actorOrgId: req.permission.orgId,
+          });
+
+          projectId = extractedProjectId;
+        }
+      }
+
       await server.services.auditLog.createAuditLog({
-        projectId: secrets[0].workspace,
+        projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.UPDATE_SECRETS,
