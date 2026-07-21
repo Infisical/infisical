@@ -82,6 +82,14 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     const dailyNotificationTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
     const frequentCleanupTimeoutMs = devMode ? 5 * 60_000 : 10 * 60_000;
 
+    // When audit logs are written to ClickHouse, Postgres audit logs stop growing and are no
+    // longer read, so the Postgres prune cron has nothing to do — and cannot drain the frozen
+    // pre-cutover backlog within its timeout, causing a nightly terminal failure. Skip it here
+    // (Postgres cleanup is handled out-of-band by dropping old partitions). This mirrors the
+    // write-path condition in audit-log-queue.ts so pruning stays enabled if ClickHouse inserts
+    // are turned off while CLICKHOUSE_URL is still set.
+    const isClickHouseAuditLogEnabled = appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED;
+
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
       pattern: devMode ? "*/5 * * * *" : "30 0 * * *",
@@ -136,7 +144,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       runHashTtlS: 3 * 24 * 60 * 60,
       handlerTimeoutMs: heavyCleanupTimeoutMs,
       leaseDurationMs: heavyCleanupTimeoutMs,
-      enabled: !appCfg.isSecondaryInstance,
+      enabled: !appCfg.isSecondaryInstance && !isClickHouseAuditLogEnabled,
       handler: async () => {
         logger.info(`cron[${CronJobName.DailyAuditLogCleanup}]: task started`);
         await auditLogDAL.pruneAuditLog();
