@@ -6,14 +6,15 @@ import { cn } from "@app/components/v3/utils";
 
 const Table = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"table"> & { containerClassName?: string }
->(({ className, containerClassName, ...props }, ref) => {
+  React.ComponentProps<"table"> & { containerClassName?: string; isScrollable?: boolean }
+>(({ className, containerClassName, isScrollable, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-slot="table-container"
       className={cn(
         "relative thin-scrollbar w-full overflow-x-auto rounded-md border border-border bg-container",
+        isScrollable && "overflow-y-auto",
         containerClassName
       )}
     >
@@ -28,11 +29,19 @@ const Table = React.forwardRef<
 
 Table.displayName = "Table";
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableHeader({
+  className,
+  isSticky,
+  ...props
+}: React.ComponentProps<"thead"> & { isSticky?: boolean }) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      className={cn(
+        "text-sm [&_tr]:border-b [&_tr]:hover:bg-transparent",
+        isSticky && "sticky -top-px z-20 bg-container [&_tr]:border-b-0",
+        className
+      )}
       {...props}
     />
   );
