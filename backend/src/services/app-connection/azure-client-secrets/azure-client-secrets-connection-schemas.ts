@@ -126,18 +126,17 @@ export const ValidateAzureClientSecretsConnectionCredentialsSchema = z.discrimin
   })
 ]);
 
-export const CreateAzureClientSecretsConnectionSchema =
-  ValidateAzureClientSecretsConnectionCredentialsSchema.and(
-    GenericCreateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets, { supportsCredentialRotation: true })
-  ).superRefine((data, ctx) => {
-    if (data.method !== AzureClientSecretsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Credential rotation is only supported for the client-secret method",
-        path: ["isAutoRotationEnabled"]
-      });
-    }
-  });
+export const CreateAzureClientSecretsConnectionSchema = ValidateAzureClientSecretsConnectionCredentialsSchema.and(
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets, { supportsCredentialRotation: true })
+).superRefine((data, ctx) => {
+  if (data.method !== AzureClientSecretsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Credential rotation is only supported for the client-secret method",
+      path: ["isAutoRotationEnabled"]
+    });
+  }
+});
 
 export const UpdateAzureClientSecretsConnectionSchema = z
   .object({
