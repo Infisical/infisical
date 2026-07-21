@@ -308,7 +308,7 @@ export const certificatePolicyServiceFactory = ({
   const validateRequestAgainstPolicy = (
     template: TCertificatePolicy,
     request: TCertificateRequest,
-    options?: { skipRequired?: boolean; skipCaManagedFieldValidation?: boolean }
+    options?: { skipRequired?: boolean }
   ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -518,12 +518,7 @@ export const certificatePolicyServiceFactory = ({
     const keyUsagePolicy = template.keyUsages;
     if (keyUsagePolicy) {
       // Check REQUIRED key usages - must have all required usages
-      if (
-        !options?.skipRequired &&
-        !options?.skipCaManagedFieldValidation &&
-        keyUsagePolicy.required &&
-        keyUsagePolicy.required.length > 0
-      ) {
+      if (!options?.skipRequired && keyUsagePolicy.required && keyUsagePolicy.required.length > 0) {
         const missingRequired = keyUsagePolicy.required.filter((usage) => !request.keyUsages?.includes(usage));
         if (missingRequired.length > 0) {
           errors.push(`Missing required key usages: ${missingRequired.join(", ")}`);
@@ -553,12 +548,7 @@ export const certificatePolicyServiceFactory = ({
     const extendedKeyUsagePolicy = template.extendedKeyUsages;
     if (extendedKeyUsagePolicy) {
       // Check REQUIRED extended key usages - must have all required usages
-      if (
-        !options?.skipRequired &&
-        !options?.skipCaManagedFieldValidation &&
-        extendedKeyUsagePolicy.required &&
-        extendedKeyUsagePolicy.required.length > 0
-      ) {
+      if (!options?.skipRequired && extendedKeyUsagePolicy.required && extendedKeyUsagePolicy.required.length > 0) {
         const missingRequired = extendedKeyUsagePolicy.required.filter(
           (usage) => !request.extendedKeyUsages?.includes(usage)
         );
@@ -620,7 +610,7 @@ export const certificatePolicyServiceFactory = ({
     }
 
     // Validate TTL against template validity constraints
-    if (!options?.skipCaManagedFieldValidation && request.validity?.ttl && template.validity) {
+    if (request.validity?.ttl && template.validity) {
       const requestDurationMs = parseTTL(request.validity.ttl);
 
       // Check maximum duration using max field
@@ -633,7 +623,7 @@ export const certificatePolicyServiceFactory = ({
       }
     }
     // Validate explicit date range against max duration
-    if (!options?.skipCaManagedFieldValidation && (request.notBefore || request.notAfter) && template.validity?.max) {
+    if ((request.notBefore || request.notAfter) && template.validity?.max) {
       const notBefore = request.notBefore || new Date();
       const { notAfter } = request;
 
@@ -658,11 +648,7 @@ export const certificatePolicyServiceFactory = ({
           "CA certificate issuance is denied by this policy. The policy does not allow issuing CA certificates."
         );
       }
-    } else if (
-      !options?.skipRequired &&
-      !options?.skipCaManagedFieldValidation &&
-      isCaPolicy === CertPolicyState.REQUIRED
-    ) {
+    } else if (!options?.skipRequired && isCaPolicy === CertPolicyState.REQUIRED) {
       if (!requestWantsCA) {
         errors.push(
           "CA certificate issuance is required by this policy. The request must include basicConstraints with isCA set to true."
@@ -1054,15 +1040,14 @@ export const certificatePolicyServiceFactory = ({
 
   const validateCertificateRequest = async (
     policyId: string,
-    request: TCertificateRequest,
-    options?: { skipCaManagedFieldValidation?: boolean }
+    request: TCertificateRequest
   ): Promise<TPolicyValidationResult> => {
     const policy = await certificatePolicyDAL.findById(policyId);
     if (!policy) {
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    return validateRequestAgainstPolicy(policy, request, options);
+    return validateRequestAgainstPolicy(policy, request);
   };
 
   return {

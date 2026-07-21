@@ -701,11 +701,9 @@ export const certificateApprovalServiceFactory = (
       ttl
     });
 
-    const isAdcsCa = caType === CaType.ADCS || caType === CaType.AZURE_AD_CS;
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
-      mappedReconstructedRequest,
-      isAdcsCa ? { skipCaManagedFieldValidation: true } : undefined
+      mappedReconstructedRequest
     );
     if (!revalidationResult.isValid) {
       throw new BadRequestError({
