@@ -42,7 +42,7 @@ export const resourceMetadataServiceFactory = ({
   // Project-scoped secret metadata search. The base query matches on org + project + key/value; the
   // results are then filtered so the requester actually has DescribeSecret permission on each returned
   // secret (path/tag aware). Requesting a project the actor cannot access throws (via getProjectPermission).
-  const searchSecretMetadata = async ({ projectId, filters, operator, actor }: TSearchSecretMetadataDTO) => {
+  const searchSecretMetadata = async ({ projectId, filters, operator, tagSlugs, actor }: TSearchSecretMetadataDTO) => {
     if (!filters.length) {
       throw new BadRequestError({ message: "At least one metadata filter is required" });
     }
@@ -61,11 +61,11 @@ export const resourceMetadataServiceFactory = ({
     // ciphertext), so their candidates are fetched by key and matched in-app after decryption below.
     const { plaintextMatched, encryptedCandidates } = await resourceMetadataDAL.transaction(async (tx) => {
       const plaintext = await resourceMetadataDAL.searchSecretMetadata(
-        { orgId: actor.orgId, projectId, filters, operator },
+        { orgId: actor.orgId, projectId, filters, operator, tagSlugs },
         tx
       );
       const encrypted = await resourceMetadataDAL.searchSecretMetadataWithEncryptedValues(
-        { orgId: actor.orgId, projectId, filters, operator },
+        { orgId: actor.orgId, projectId, filters, operator, tagSlugs },
         tx
       );
       return { plaintextMatched: plaintext, encryptedCandidates: encrypted };

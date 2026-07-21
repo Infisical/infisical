@@ -102,10 +102,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       querystring: z
         .object({
           projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
-          operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional()
+          operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional(),
+          tags: z.string().trim().transform(decodeURIComponent).optional()
         })
         .describe(
-          "Metadata conditions are passed as nested `filters[<n>][key|value|operator]` params (qs syntax); `operator` is the top-level and/or combinator."
+          "Metadata conditions are passed as nested `filters[<n>][key|value|operator]` params (qs syntax); `operator` is the top-level and/or combinator. `tags` is an optional comma-separated list of tag slugs that further narrows results to secrets carrying at least one of them."
         ),
       response: {
         200: z.object({
@@ -131,10 +132,12 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const rawQueryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
       const { filters, operator } = SecretMetadataSearchQuerySchema.parse(qs.parse(rawQueryString));
       const { projectId } = req.query;
+      const tagSlugs = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
 
       const { secrets } = await server.services.resourceMetadata.searchSecretMetadata({
         filters,
         operator,
+        tagSlugs,
         actor: req.permission,
         projectId
       });
@@ -147,6 +150,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           metadata: {
             operator,
             filters: filters.map((filter) => ({ key: filter.key, value: filter.value, operator: filter.operator })),
+            tags: tagSlugs,
             numberOfSecrets: secrets.length,
             secretIds: secrets.map((secret) => secret.secretId)
           }

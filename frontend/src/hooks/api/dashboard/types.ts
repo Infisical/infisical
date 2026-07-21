@@ -178,6 +178,7 @@ export type TSearchSecretsByMetadataDTO = {
   projectId: string;
   operator: SecretMetadataSearchLogicalOperator;
   filters: TSecretMetadataSearchFilter[];
+  tags: Record<string, boolean>;
 };
 
 export type TMetadataMatchedSecret = {

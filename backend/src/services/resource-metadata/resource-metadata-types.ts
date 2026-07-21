@@ -27,6 +27,7 @@ export type TSearchSecretMetadataDALDTO = {
   projectId: string;
   filters: TSecretMetadataSearchFilter[];
   operator: SecretMetadataSearchLogicalOperator;
+  tagSlugs?: string[];
   limit?: number;
 };
 
@@ -35,5 +36,6 @@ export type TSearchSecretMetadataDTO = {
   projectId: string;
   filters: TSecretMetadataSearchFilter[];
   operator: SecretMetadataSearchLogicalOperator;
+  tagSlugs?: string[];
   actor: OrgServiceActor;
 };

@@ -156,7 +156,8 @@ const Content = ({
         metadataMatch === "all"
           ? SecretMetadataSearchLogicalOperator.And
           : SecretMetadataSearchLogicalOperator.Or,
-      filters: metadataFilters
+      filters: metadataFilters,
+      tags: filterTags
     },
     { enabled: isMetadataMode }
   );

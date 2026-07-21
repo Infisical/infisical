@@ -5741,6 +5741,7 @@ interface SearchSecretsByMetadataEvent {
   metadata: {
     operator: string;
     filters: { key: string; value: string; operator: string }[];
+    tags?: string[];
     numberOfSecrets: number;
     secretIds: string[];
   };

@@ -527,7 +527,8 @@ export const useGetProjectSecretsQuickSearch = (
 export const fetchSearchSecretsByMetadata = async ({
   projectId,
   operator,
-  filters
+  filters,
+  tags
 }: TSearchSecretsByMetadataDTO) => {
   // /secrets-by-metadata parses nested `filters[<n>][key|value|operator]` params (qs syntax) from the
   // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
@@ -540,6 +541,12 @@ export const fetchSearchSecretsByMetadata = async ({
     params.append(`filters[${index}][operator]`, filter.operator);
   });
 
+  // tags are sent as a comma-separated list of enabled slugs (same convention as the deep-search endpoint).
+  const enabledTags = Object.entries(tags)
+    .filter(([, enabled]) => enabled)
+    .map(([slug]) => slug);
+  if (enabledTags.length) params.append("tags", enabledTags.join(","));
+
   const { data } = await apiRequest.get<TSearchSecretsByMetadataResponse>(
     `/api/v1/dashboard/secrets-by-metadata?${params.toString()}`
   );
@@ -548,7 +555,7 @@ export const fetchSearchSecretsByMetadata = async ({
 };
 
 export const useSearchSecretsByMetadata = (
-  { projectId, operator, filters }: TSearchSecretsByMetadataDTO,
+  { projectId, operator, filters, tags }: TSearchSecretsByMetadataDTO,
   options?: Omit<
     UseQueryOptions<
       TSearchSecretsByMetadataResponse,
@@ -562,8 +569,8 @@ export const useSearchSecretsByMetadata = (
   return useQuery({
     ...options,
     enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
-    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters }),
-    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters }),
+    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters, tags }),
+    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters, tags }),
     placeholderData: (previousData) => previousData
   });
 };
