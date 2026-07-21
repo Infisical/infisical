@@ -788,6 +788,8 @@ export const useRotatePamAccount = () => {
     onSettled: (_, __, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
       queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+      // Dependency sync runs as part of rotation, so refresh the Dependencies tab's badges too.
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
     }
   });
 };

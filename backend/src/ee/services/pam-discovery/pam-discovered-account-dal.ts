@@ -47,5 +47,12 @@ export const pamDiscoveredAccountDALFactory = (db: TDbClient) => {
     return { accounts, totalCount: Number(countResult?.count ?? 0) };
   };
 
-  return { ...orm, upsertByFingerprint, listStaged };
+  // Just the columns needed to map a run-as fingerprint to its account, without pulling every row's
+  // encryptedDetails buffer into memory (a large domain can have tens of thousands of discovered accounts).
+  const findFingerprintLinks = async (discoverySourceId: string, tx?: Knex) =>
+    (tx || db.replicaNode())(TableName.PamDiscoveredAccount)
+      .where({ discoverySourceId })
+      .select("id", "fingerprint", "importedAccountId");
+
+  return { ...orm, upsertByFingerprint, listStaged, findFingerprintLinks };
 };

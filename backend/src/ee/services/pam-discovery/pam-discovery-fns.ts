@@ -125,8 +125,11 @@ export const ldapBindCheckViaGateway = async (
   },
   gatewayId: string,
   gatewayV2Service: TGatewayDep
-): Promise<boolean> =>
-  executeWithGateway(
+): Promise<boolean> => {
+  // An empty password is an LDAP unauthenticated bind, which AD accepts as anonymous success, so it would
+  // falsely verify a nonexistent credential. Never let an empty password count as valid.
+  if (!password) return Promise.resolve(false);
+  return executeWithGateway(
     dcAddress,
     port,
     gatewayId,
@@ -163,6 +166,7 @@ export const ldapBindCheckViaGateway = async (
         client.bind(bindDn, password, (err) => done(!err));
       })
   );
+};
 
 export type TWinRmGatewayCredentials = {
   username: string;

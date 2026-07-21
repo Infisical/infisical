@@ -472,7 +472,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       // Persist dependencies found during the per-machine sweep, anchoring each to its run-as account by
       // fingerprint: point at the staged discovered account, or its imported managed account once imported.
       if (scannedDependencyMachines.length) {
-        const sourceAccounts = await pamDiscoveredAccountDAL.find({ discoverySourceId: sourceId });
+        const sourceAccounts = await pamDiscoveredAccountDAL.findFingerprintLinks(sourceId);
         const accountByFingerprint = new Map(
           sourceAccounts.map((a) => [
             a.fingerprint,

@@ -36,9 +36,9 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
-// Domain (Active Directory) accounts are the ones whose run-as dependencies discovery detects.
+// Windows accounts (domain and local) are the ones whose run-as dependencies discovery detects and syncs.
 export const supportsPamDependencies = (type: PamAccountType | string) =>
-  type === PamAccountType.WindowsAd;
+  type === PamAccountType.WindowsAd || type === PamAccountType.Windows;
 
 export const PAM_ROTATION_INTERVAL_OPTIONS: { seconds: number; label: string }[] = [
   { seconds: 3600, label: "1 hour" },

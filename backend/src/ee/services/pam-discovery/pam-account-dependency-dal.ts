@@ -59,13 +59,16 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   ): Promise<void> => {
     if (!scannedMachines.length || (!accountIds.length && !discoveredAccountIds.length)) return;
 
+    // Bind each list as a single array parameter (`= ANY(?)`) rather than one bind per element, so a large
+    // domain can't blow past Postgres's 65,535 bind-parameter cap and fail the reconcile after upserts wrote.
     await (tx || db)(TableName.PamAccountDependency)
-      .whereIn("machine", scannedMachines)
+      .whereRaw(`"machine" = ANY(?::text[])`, [scannedMachines])
       .where((qb) => {
-        if (accountIds.length) void qb.whereIn("accountId", accountIds);
-        if (discoveredAccountIds.length) void qb.orWhereIn("discoveredAccountId", discoveredAccountIds);
+        if (accountIds.length) void qb.whereRaw(`"accountId" = ANY(?::uuid[])`, [accountIds]);
+        if (discoveredAccountIds.length)
+          void qb.orWhereRaw(`"discoveredAccountId" = ANY(?::uuid[])`, [discoveredAccountIds]);
       })
-      .whereNotIn("id", keepIds)
+      .whereRaw(`NOT ("id" = ANY(?::uuid[]))`, [keepIds])
       .delete();
   };
 

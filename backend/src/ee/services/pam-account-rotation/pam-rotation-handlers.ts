@@ -32,6 +32,9 @@ type TTestCredentialInput = {
   accountType: TRotatableType;
   connectionDetails: Record<string, unknown>;
   auth: { username: string; password: string };
+  // When set, the credential in `auth` can't be authenticated as directly (a delegated local Windows account
+  // that can't log in over WinRM), so connect as this identity (the admin rotator) and validate on the box.
+  verifyVia?: { username: string; password: string };
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
 };
@@ -218,9 +221,10 @@ const windowsRotationHandler: TPamRotationHandler = {
   },
 
   testCredential: async (input, deps) => {
-    const { accountType, connectionDetails, auth, gatewayId, gatewayPoolId } = input;
+    const { accountType, connectionDetails, auth, verifyVia, gatewayId, gatewayPoolId } = input;
     try {
       const resolvedGatewayId = await resolveRotationGatewayId(deps, gatewayId, gatewayPoolId);
+      const transport = winrmTransportFromConn(connectionDetails);
 
       if (accountType === PamAccountType.WindowsAd) {
         // A domain service account usually can't WinRM to the DC, but an LDAP bind needs only the credential.
@@ -246,14 +250,32 @@ const windowsRotationHandler: TPamRotationHandler = {
         );
       }
 
-      // Local account: prove the credential over WinRM against its own host.
+      const targetHost = winrmRotationTargetHost(accountType, connectionDetails);
+      const targetPort = winrmPortFromConn(connectionDetails);
+
+      // Delegated local rotation: the target account usually can't WinRM in, so the rotator (admin) validates
+      // the credential on the box instead of us trying to log in as the account.
+      if (verifyVia) {
+        const { valid } = await winrmRpcWithGateway<{ valid: boolean }>({
+          targetHost,
+          targetPort,
+          gatewayId: resolvedGatewayId,
+          gatewayV2Service: deps.gatewayV2Service,
+          endpoint: WinRmRpcEndpoint.ValidateCredential,
+          credentials: { username: verifyVia.username, password: verifyVia.password, ...transport },
+          params: { targetUsername: toBareAccountName(auth.username), password: auth.password }
+        });
+        return valid;
+      }
+
+      // Self-rotation: the account can log in (that's how it applied the change), so prove the credential directly.
       await winrmRpcWithGateway<{ ok: boolean }>({
-        targetHost: winrmRotationTargetHost(accountType, connectionDetails),
-        targetPort: winrmPortFromConn(connectionDetails),
+        targetHost,
+        targetPort,
         gatewayId: resolvedGatewayId,
         gatewayV2Service: deps.gatewayV2Service,
         endpoint: WinRmRpcEndpoint.Test,
-        credentials: { username: auth.username, password: auth.password, ...winrmTransportFromConn(connectionDetails) }
+        credentials: { username: auth.username, password: auth.password, ...transport }
       });
       return true;
     } catch {

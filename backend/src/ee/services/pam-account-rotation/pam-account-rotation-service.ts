@@ -157,6 +157,23 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
   const DEPENDENCY_SYNC_CONCURRENCY = 5;
 
+  // The account-rotation phase (recovery probe + apply + verify) is bounded by a handful of WinRM/LDAP calls,
+  // each capped at the RPC deadline; this TTL covers the worst-case pile-up so the lock can't expire mid-run.
+  const ROTATION_LOCK_TTL_MS = 15 * 60 * 1000;
+
+  // Everything needed to run dependency sync after the account rotation commits (and after the lock releases).
+  type TPostRotate = {
+    accountId: string;
+    projectId: string;
+    accountType: PamAccountType;
+    connectionDetails: Record<string, unknown>;
+    targetUsername: string;
+    newPassword: string;
+    connectAuth: { username: string; password: string };
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+  };
+
   // postRotate: push the new password into every service / scheduled task / IIS app pool that runs as the
   // account, connecting to each dependency's machine as the (delegated admin) rotator. Best-effort: a per-
   // dependency failure is recorded on the row and never fails the account rotation.
@@ -170,17 +187,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     connectAuth,
     gatewayId,
     gatewayPoolId
-  }: {
-    accountId: string;
-    projectId: string;
-    accountType: PamAccountType;
-    connectionDetails: Record<string, unknown>;
-    targetUsername: string;
-    newPassword: string;
-    connectAuth: { username: string; password: string };
-    gatewayId?: string | null;
-    gatewayPoolId?: string | null;
-  }) => {
+  }: TPostRotate) => {
     // Dependencies are detected for both domain (WindowsAd) and local (Windows) accounts.
     if (!isWindowsRotatableType(accountType)) return;
 
@@ -326,7 +333,9 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     };
   };
 
-  const rotateWithinLock = async (account: TPamAccountDetail) => {
+  // Runs the account rotation under the per-account lock and returns the postRotate work (or null when nothing
+  // to sync); dependency sync itself runs outside the lock (see performRotation).
+  const rotateWithinLock = async (account: TPamAccountDetail): Promise<TPostRotate | null> => {
     const projectId = account.projectId as string;
     const accountType = account.accountType as PamAccountType;
 
@@ -351,23 +360,24 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     const gatewayPoolId = account.gatewayPoolId ?? account.templateGatewayPoolId;
     const now = new Date();
 
-    if (account.rotationAccountId !== account.id) {
-      const rotator = await pamAccountDAL.findByIdWithDetails(account.rotationAccountId);
-      if (!rotator || rotator.projectId !== projectId) {
-        throw new BadRequestError({ message: "Rotation account no longer exists" });
-      }
-      const rotatorConnection = resolveConnectionDetails(
-        accountType,
-        await decrypt(projectId, rotator.encryptedConnectionDetails)
-      );
-      assertRotatorSameResource(accountType, rotatorConnection, connectionDetails);
-    }
+    // Resolve the rotator (self or delegated) up front: its identity is needed to apply the change and, for a
+    // delegated local account, to verify the credential on the box (the account itself can't be logged in as).
+    const isDelegated = account.rotationAccountId !== account.id;
+    const {
+      auth,
+      connectionDetails: rotatorConnectionDetails,
+      gatewayId: rotatorGatewayId,
+      gatewayPoolId: rotatorGatewayPoolId
+    } = await resolveRotator(account, targetCredentials, connectionDetails, { gatewayId, gatewayPoolId });
+    if (isDelegated) assertRotatorSameResource(accountType, rotatorConnectionDetails, connectionDetails);
+    // A delegated local account can't be logged in as to verify, so validate via the admin rotator instead.
+    const verifyVia = isDelegated && accountType === PamAccountType.Windows ? auth : undefined;
 
     // Recovery from an interrupted rotation: probe the candidate then the current credential, acting only on a
     // definitive answer so a transient failure never discards a possibly-live credential.
     if (account.encryptedPendingCredentials) {
       const pending = await decryptSqlCredentials(projectId, accountType, account.encryptedPendingCredentials);
-      const gatewayTarget = { accountType, connectionDetails, gatewayId, gatewayPoolId };
+      const gatewayTarget = { accountType, connectionDetails, gatewayId, gatewayPoolId, verifyVia };
 
       const pendingWorks = await handler.testCredential(
         { ...gatewayTarget, auth: { username: targetUsername, password: pending.password ?? "" } },
@@ -375,7 +385,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       );
       if (pendingWorks) {
         await markRotated(account, account.encryptedPendingCredentials, now);
-        return;
+        return null;
       }
 
       const currentPassword = targetCredentials.password;
@@ -393,12 +403,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: null });
     }
 
-    const {
-      auth,
-      connectionDetails: rotatorConnectionDetails,
-      gatewayId: rotatorGatewayId,
-      gatewayPoolId: rotatorGatewayPoolId
-    } = await resolveRotator(account, targetCredentials, connectionDetails, { gatewayId, gatewayPoolId });
     const requirements = getPasswordRequirements(account.templateSettings);
     const newPassword = generatePassword(requirements);
     const encryptedPending = await encrypt(projectId, { ...targetCredentials, password: newPassword });
@@ -406,29 +410,28 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     // Stage before applying, so an apply interrupted mid-change leaves a credential the recovery probe can promote.
     await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: encryptedPending });
 
-    try {
-      await handler.applyPasswordChange(
-        {
-          accountType,
-          connectionDetails: rotatorConnectionDetails,
-          auth,
-          targetUsername,
-          newPassword,
-          gatewayId: rotatorGatewayId,
-          gatewayPoolId: rotatorGatewayPoolId
-        },
-        gatewayDeps
-      );
-    } catch (err) {
-      await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: null });
-      throw err;
-    }
+    // Do NOT discard pending on an apply error: a WinRM/gateway apply can succeed on the host after the client
+    // deadline fires, and for a self-rotating account pending is the only copy of the now-live password. The
+    // recovery probe resolves genuine-failure vs ambiguous-success on the next run.
+    await handler.applyPasswordChange(
+      {
+        accountType,
+        connectionDetails: rotatorConnectionDetails,
+        auth,
+        targetUsername,
+        newPassword,
+        gatewayId: rotatorGatewayId,
+        gatewayPoolId: rotatorGatewayPoolId
+      },
+      gatewayDeps
+    );
 
     const verified = await handler.testCredential(
       {
         accountType,
         connectionDetails,
         auth: { username: targetUsername, password: newPassword },
+        verifyVia,
         gatewayId,
         gatewayPoolId
       },
@@ -441,26 +444,19 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
     await markRotated(account, encryptedPending, now);
 
-    // postRotate: propagate the new password to the account's dependent services. Best-effort and fully
-    // guarded so a dependency-sync failure never undoes the already-committed account rotation.
-    try {
-      await syncDependenciesAfterRotation({
-        accountId: account.id,
-        projectId,
-        accountType,
-        connectionDetails,
-        targetUsername,
-        newPassword,
-        // For self-rotation the account's old password is now dead, so connect with the new one; a delegated
-        // rotator authenticates with its own (unchanged) password.
-        connectAuth:
-          account.rotationAccountId === account.id ? { username: auth.username, password: newPassword } : auth,
-        gatewayId,
-        gatewayPoolId
-      });
-    } catch (err) {
-      logger.warn(err, `PAM dependency sync errored after rotation [accountId=${account.id}]`);
-    }
+    return {
+      accountId: account.id,
+      projectId,
+      accountType,
+      connectionDetails,
+      targetUsername,
+      newPassword,
+      // For self-rotation the account's old password is now dead, so connect with the new one; a delegated
+      // rotator authenticates with its own (unchanged) password.
+      connectAuth: isDelegated ? auth : { username: auth.username, password: newPassword },
+      gatewayId,
+      gatewayPoolId
+    };
   };
 
   // Advance nextRotationAt to a capped retry, but only when the account is schedulable: a ready account's early
@@ -494,19 +490,35 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const performRotation = async (account: TPamAccountDetail) => {
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
     try {
-      // TTL must exceed the worst-case rotation (recovery probe + apply + verify) so it can't expire mid-rotation.
-      lock = await keyStore.acquireLock([KeyStorePrefixes.PamAccountRotationLock(account.id)], 5 * 60 * 1000);
+      lock = await keyStore.acquireLock([KeyStorePrefixes.PamAccountRotationLock(account.id)], ROTATION_LOCK_TTL_MS);
     } catch {
       // Held lock: another run owns the schedule bookkeeping, so don't record a failure here.
       throw new BadRequestError({ message: ROTATION_IN_PROGRESS_MESSAGE });
     }
+    let postRotate: TPostRotate | null = null;
     try {
-      await rotateWithinLock(account);
+      postRotate = await rotateWithinLock(account);
     } catch (err) {
       await recordRotationFailure(account, err);
       throw err;
     } finally {
-      await lock.release();
+      // A long rotation can outlive the TTL; releasing an expired lock throws, so tolerate it rather than
+      // report a rotation that actually succeeded as failed.
+      try {
+        await lock.release();
+      } catch (err) {
+        logger.warn(err, `PAM rotation lock release failed [accountId=${account.id}]`);
+      }
+    }
+
+    // Dependency sync runs OUTSIDE the lock: it can fan out to many machines (unbounded) and must not hold the
+    // per-account lock long enough to expire. Best-effort; the account rotation is already committed.
+    if (postRotate) {
+      try {
+        await syncDependenciesAfterRotation(postRotate);
+      } catch (err) {
+        logger.warn(err, `PAM dependency sync errored after rotation [accountId=${account.id}]`);
+      }
     }
   };
 

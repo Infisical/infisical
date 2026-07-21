@@ -9,7 +9,8 @@ export enum WinRmRpcEndpoint {
   EnumerateAccounts = "/v1/enumerate-accounts",
   EnumerateDependencies = "/v1/enumerate-dependencies",
   RotateCredential = "/v1/rotate-credential",
-  SyncDependency = "/v1/sync-dependency"
+  SyncDependency = "/v1/sync-dependency",
+  ValidateCredential = "/v1/validate-credential"
 }
 
 export type WinRmTransportParams = {
