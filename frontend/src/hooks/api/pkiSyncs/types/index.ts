@@ -60,7 +60,6 @@ type TCreatePkiSyncDTOBase = {
     updateExistingCertificates?: boolean;
     preserveSecretOnRenewal?: boolean;
     includeRootCa?: boolean;
-    syncCaCertificates?: boolean;
     caCertificateNameSchema?: string;
     exportFormat?: PkiSyncExportFormat;
     includePrivateKey?: boolean;

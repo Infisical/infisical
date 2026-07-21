@@ -34,14 +34,13 @@ describe("Kemp LoadMaster certificateNameSchema validation", () => {
   });
 });
 
-describe("Kemp LoadMaster caCertificateNameSchema + syncCaCertificates", () => {
+describe("Kemp LoadMaster caCertificateNameSchema", () => {
   const acceptsCa = (caCertificateNameSchema: string) => parseOptions({ caCertificateNameSchema }).success;
 
   test("applies sensible defaults when omitted", () => {
     const result = parseOptions({});
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.syncCaCertificates).toBe(true);
       expect(result.data.caCertificateNameSchema).toBe("Infisical-ca-{{fingerprint}}");
     }
   });

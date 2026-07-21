@@ -3,9 +3,12 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  BasePkiSyncOptionsSchema,
+  buildDestinationCertificateNameSchema,
+  PkiSyncSchema
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { KEMP_LOADMASTER_DEFAULT_CA_NAME_SCHEMA, KEMP_LOADMASTER_NAMING } from "./kemp-loadmaster-pki-sync-constants";
 
@@ -22,11 +25,7 @@ export const KempLoadMasterPkiSyncConfigSchema = z.object({
     .optional()
 });
 
-export const KempLoadMasterPkiSyncOptionsSchema = z.object({
-  canRemoveCertificates: z.boolean().default(true),
-  includeRootCa: z.boolean().default(false),
-  preserveItemOnRenewal: z.boolean().default(true),
-  syncCaCertificates: z.boolean().default(true),
+export const KempLoadMasterPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
   caCertificateNameSchema: z
     .string()
     .trim()
@@ -46,28 +45,12 @@ export const KempLoadMasterPkiSyncOptionsSchema = z.object({
           "CA certificate name schema must result in names 1-251 characters long containing only alphanumeric characters, hyphens (-), underscores (_), and periods (.). Available placeholders: {{fingerprint}} (recommended so each CA gets a unique name) and {{commonName}}. A schema with no placeholder can hold only one CA certificate. Defaults to Infisical-ca-{{fingerprint}}."
       }
     ),
-  certificateNameSchema: z
-    .string()
-    .trim()
-    .min(1, "Certificate name schema is required")
-    .refine(
-      (schema) => {
-        const testName = buildCertificateNameSchemaTestName(schema);
-
-        const hasForbiddenChars = KEMP_LOADMASTER_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
-          testName.includes(char)
-        );
-
-        const hasCertificateIdentifier =
-          schema.includes("{{certificateId}}") || schema.includes("{{shortCertificateId}}");
-
-        return hasCertificateIdentifier && KEMP_LOADMASTER_NAMING.NAME_PATTERN.test(testName) && !hasForbiddenChars;
-      },
-      {
-        message:
-          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder so each certificate gets a unique identifier, contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.), and be 1-251 characters long for Kemp LoadMaster. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders."
-      }
-    )
+  certificateNameSchema: buildDestinationCertificateNameSchema({
+    naming: KEMP_LOADMASTER_NAMING,
+    requireCertificateIdentifier: true,
+    message:
+      "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder so each certificate gets a unique identifier, contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.), and be 1-251 characters long for Kemp LoadMaster. It can also include {{profileId}}, {{applicationId}}, {{applicationName}}, and {{commonName}} placeholders."
+  })
 });
 
 export const KempLoadMasterPkiSyncSchema = PkiSyncSchema.extend({

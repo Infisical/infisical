@@ -17,6 +17,7 @@ import {
 } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-fns";
 import { TKempLoadMasterConnection } from "@app/services/app-connection/kemp-loadmaster/kemp-loadmaster-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { buildCertificateBundle, splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
@@ -61,22 +62,7 @@ const getKempCredentials = (pkiSync: TPkiSyncWithCredentials): TKempCredentials 
   return credentials;
 };
 
-export const buildCertificateBundle = (cert: string, privateKey: string, certificateChain?: string): string => {
-  const parts = [cert.trim()];
-  if (certificateChain) {
-    parts.push(certificateChain.trim());
-  }
-  parts.push(privateKey.trim());
-  return `${parts.join("\n")}\n`;
-};
-
-const PEM_CERT_BLOCK = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g");
 const WHITESPACE_SPLIT = new RE2("\\s+");
-
-export const splitPemChain = (chainPem?: string): string[] => {
-  if (!chainPem) return [];
-  return chainPem.match(PEM_CERT_BLOCK) ?? [];
-};
 
 const extractCertNames = (data: unknown): Set<string> => {
   const names = new Set<string>();
@@ -356,6 +342,362 @@ export const kempLoadMasterPkiSyncFactory = ({
     await setVirtualServiceCertFiles(makeRequest, baseUrl, headers, virtualServiceId, desired);
   };
 
+  type TPreparedCertificate = {
+    targetIdentifier: string;
+    cert: string;
+    privateKey: string;
+    certificateChain?: string;
+    certificateId?: string;
+    isUpdate: boolean;
+    oldCertificateIdToRemove?: string;
+  };
+
+  // Resolves the target identifier for each certificate (handling renewal reuse/rename) and filters out
+  // certificates that cannot be synced (missing data, superseded by a renewal).
+  const prepareCertificatesForUpload = async (
+    pkiSync: TPkiSyncWithCredentials,
+    certificateMap: TCertificateMap,
+    existingCertNames: Set<string>,
+    syncRecordsByCertId: Map<string, TCertificateSyncs>,
+    options: { preserveItemOnRenewal: boolean; certificateNameSchema?: string }
+  ): Promise<{
+    certificatesToUpload: TPreparedCertificate[];
+    skippedCertificates: Array<{ name: string; reason: string }>;
+  }> => {
+    const { preserveItemOnRenewal, certificateNameSchema } = options;
+    const certificatesToUpload: TPreparedCertificate[] = [];
+    const skippedCertificates: Array<{ name: string; reason: string }> = [];
+
+    for (const [certName, certData] of Object.entries(certificateMap)) {
+      const { cert, privateKey, certificateChain, certificateId } = certData;
+
+      if (!cert || !privateKey) {
+        skippedCertificates.push({ name: certName, reason: "Missing certificate or private key data" });
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      let certificate: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
+      if (typeof certificateId === "string") {
+        certificate = await certificateDAL.findById(certificateId);
+        if (certificate?.renewedByCertificateId) {
+          skippedCertificates.push({
+            name: certName,
+            reason: "Certificate has been renewed and replaced by a newer certificate"
+          });
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
+
+      let targetIdentifier = certName;
+      let isUpdate = false;
+      let oldCertificateIdToRemove: string | undefined;
+
+      if (typeof certificateId === "string") {
+        const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
+        const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
+
+        if (certificate?.renewedFromCertificateId && preserveItemOnRenewal && existingSyncRecord?.externalIdentifier) {
+          targetIdentifier = existingSyncRecord.externalIdentifier;
+          isUpdate = true;
+          oldCertificateIdToRemove = certificate.renewedFromCertificateId;
+        } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
+          if (certificateNameSchema) {
+            targetIdentifier = compileCertificateNameSchema(
+              certificateNameSchema,
+              {
+                certificateId,
+                profileId: certData.profileId,
+                applicationId: pkiSync.applicationId,
+                applicationName: pkiSync.applicationName,
+                commonName: certData.commonName
+              },
+              PkiSync.KempLoadMaster
+            );
+          } else {
+            targetIdentifier = `Infisical-${certificateId.replace(DASH_GLOBAL, "")}`;
+          }
+        } else {
+          const directSyncRecord = syncRecordsByCertId.get(certificateId);
+          if (directSyncRecord?.externalIdentifier && existingCertNames.has(directSyncRecord.externalIdentifier)) {
+            targetIdentifier = directSyncRecord.externalIdentifier;
+            isUpdate = true;
+          }
+        }
+      }
+
+      certificatesToUpload.push({
+        targetIdentifier,
+        cert,
+        privateKey,
+        certificateChain,
+        certificateId,
+        isUpdate,
+        oldCertificateIdToRemove
+      });
+    }
+
+    return { certificatesToUpload, skippedCertificates };
+  };
+
+  // Uploads chain/CA certificates (when enabled) and the leaf certificate bundles to the LoadMaster,
+  // recording each result on the certificate-sync row.
+  const syncCertificatesToLoadMaster = async (
+    makeRequest: TKempRequestFn,
+    baseUrl: string,
+    headers: Record<string, string>,
+    pkiSync: TPkiSyncWithCredentials,
+    hostname: string,
+    certificatesToUpload: TPreparedCertificate[],
+    existingCertNames: Set<string>,
+    activeIdentifiers: Set<string>,
+    managedIdentifiers: Set<string>,
+    options: { caCertificateNameSchema: string }
+  ): Promise<{ uploaded: number; failedUploads: Array<{ name: string; error: string }> }> => {
+    const { caCertificateNameSchema } = options;
+    let uploaded = 0;
+    const failedUploads: Array<{ name: string; error: string }> = [];
+    const failedIntermediateIds = new Set<string>();
+
+    // Push each chain/CA cert into the LoadMaster's dedicated intermediate store
+    const existingIntermediateNames = await listIntermediateIdentifiers(makeRequest, baseUrl, headers);
+    const processedIntermediates = new Set<string>();
+    for (const { certificateChain } of certificatesToUpload) {
+      for (const intermediatePem of splitPemChain(certificateChain ?? "")) {
+        const intermediateId = buildIntermediateIdentifier(intermediatePem, caCertificateNameSchema);
+        if (processedIntermediates.has(intermediateId) || existingIntermediateNames.has(intermediateId)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+        processedIntermediates.add(intermediateId);
+        try {
+          await addIntermediateCertificate(makeRequest, baseUrl, headers, intermediateId, intermediatePem);
+          existingIntermediateNames.add(intermediateId);
+          logger.info(
+            `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: ensured intermediate "${intermediateId}" on ${hostname}`
+          );
+        } catch (error: unknown) {
+          failedIntermediateIds.add(intermediateId);
+          logger.error(
+            { error },
+            `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to import intermediate "${intermediateId}"`
+          );
+        }
+      }
+    }
+
+    for (const {
+      targetIdentifier,
+      cert,
+      privateKey,
+      certificateChain,
+      certificateId,
+      isUpdate,
+      oldCertificateIdToRemove
+    } of certificatesToUpload) {
+      try {
+        const bundle = buildCertificateBundle(cert, privateKey, certificateChain);
+        await upsertCertificate(
+          makeRequest,
+          baseUrl,
+          headers,
+          targetIdentifier,
+          bundle,
+          existingCertNames.has(targetIdentifier)
+        );
+
+        existingCertNames.add(targetIdentifier);
+        activeIdentifiers.add(targetIdentifier);
+        managedIdentifiers.add(targetIdentifier);
+
+        const failedChainCaNames = failedIntermediateIds.size
+          ? splitPemChain(certificateChain ?? "")
+              .map((pem) => buildIntermediateIdentifier(pem, caCertificateNameSchema))
+              .filter((id) => failedIntermediateIds.has(id))
+          : [];
+        const caWarning = failedChainCaNames.length
+          ? ` (warning: could not push CA certificate(s) to the intermediate store: ${failedChainCaNames.join(", ")})`
+          : "";
+
+        if (certificateId) {
+          const existingCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+
+          if (existingCertSync) {
+            await certificateSyncDAL.updateById(existingCertSync.id, {
+              externalIdentifier: targetIdentifier,
+              syncStatus: CertificateSyncStatus.Succeeded,
+              lastSyncMessage: `${
+                isUpdate
+                  ? `Updated certificate on Kemp LoadMaster as "${targetIdentifier}"`
+                  : `Synced certificate to Kemp LoadMaster as "${targetIdentifier}"`
+              }${caWarning}`,
+              lastSyncedAt: new Date()
+            });
+          } else {
+            await certificateSyncDAL.addCertificates(pkiSync.id, [
+              { certificateId, externalIdentifier: targetIdentifier }
+            ]);
+          }
+
+          if (oldCertificateIdToRemove) {
+            await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateIdToRemove]);
+          }
+        }
+
+        uploaded += 1;
+
+        logger.info(
+          `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: ${isUpdate ? "updated" : "uploaded"} certificate "${targetIdentifier}" on ${hostname}`
+        );
+      } catch (error: unknown) {
+        const errorMessage = kempError(error, "Unknown error");
+        failedUploads.push({ name: targetIdentifier, error: errorMessage });
+
+        if (certificateId) {
+          const syncRecord = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+          if (syncRecord) {
+            await certificateSyncDAL.updateById(syncRecord.id, {
+              syncStatus: CertificateSyncStatus.Failed,
+              lastSyncMessage: `Failed to sync to Kemp LoadMaster: ${errorMessage}`.slice(0, 4096)
+            });
+          }
+        }
+
+        logger.error(
+          { error },
+          `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to upload certificate "${targetIdentifier}"`
+        );
+      }
+    }
+
+    return { uploaded, failedUploads };
+  };
+
+  // Removes certificates that are no longer managed by this sync (unbinding them from the Virtual
+  // Service first, since the LoadMaster refuses to delete a bound certificate).
+  const cleanupOrphanedCertificates = async (
+    makeRequest: TKempRequestFn,
+    baseUrl: string,
+    headers: Record<string, string>,
+    pkiSync: TPkiSyncWithCredentials,
+    hostname: string,
+    context: {
+      certificateMap: TCertificateMap;
+      certificatesToUpload: TPreparedCertificate[];
+      existingSyncRecords: TCertificateSyncs[];
+      existingCertNames: Set<string>;
+      activeIdentifiers: Set<string>;
+      managedIdentifiers: Set<string>;
+      virtualServiceId?: string;
+    },
+    options: { canRemoveCertificates: boolean; certificateNameSchema?: string }
+  ): Promise<{ removed: number; failedRemovals: Array<{ name: string; error: string }> }> => {
+    const { canRemoveCertificates, certificateNameSchema } = options;
+    const {
+      certificateMap,
+      certificatesToUpload,
+      existingSyncRecords,
+      existingCertNames,
+      activeIdentifiers,
+      managedIdentifiers,
+      virtualServiceId
+    } = context;
+    let removed = 0;
+    const failedRemovals: Array<{ name: string; error: string }> = [];
+
+    // Certificates this sync still manages, so a cert whose upload failed this run is not mistaken
+    // for an orphan and deleted.
+    const managedCertificateIds = new Set<string>();
+    for (const certData of Object.values(certificateMap)) {
+      if (certData.certificateId) managedCertificateIds.add(certData.certificateId);
+    }
+    const attemptedIdentifiers = new Set(certificatesToUpload.map((entry) => entry.targetIdentifier));
+
+    const identifiersToRemove = new Set<string>();
+    if (canRemoveCertificates) {
+      for (const syncRecord of existingSyncRecords) {
+        if (
+          syncRecord.externalIdentifier &&
+          !activeIdentifiers.has(syncRecord.externalIdentifier) &&
+          existingCertNames.has(syncRecord.externalIdentifier) &&
+          !(syncRecord.certificateId && managedCertificateIds.has(syncRecord.certificateId))
+        ) {
+          identifiersToRemove.add(syncRecord.externalIdentifier);
+        }
+      }
+
+      // Catch certificates whose sync records were lost, by name pattern. Skip anything attempted
+      // this run so a failed upload is not treated as an orphan.
+      if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
+        const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
+        for (const certName of existingCertNames) {
+          if (
+            managedCertNamePattern.test(certName) &&
+            !activeIdentifiers.has(certName) &&
+            !attemptedIdentifiers.has(certName)
+          ) {
+            identifiersToRemove.add(certName);
+          }
+        }
+      }
+
+      identifiersToRemove.forEach((identifier) => managedIdentifiers.add(identifier));
+    }
+
+    // Reconcile the Virtual Service binding BEFORE deleting: the LoadMaster refuses to delete a
+    // certificate that is still bound, so removed certificates must be unbound here first.
+    let virtualServiceBindingError: string | undefined;
+    if (virtualServiceId) {
+      try {
+        await reconcileVirtualServiceBinding(
+          makeRequest,
+          baseUrl,
+          headers,
+          virtualServiceId,
+          activeIdentifiers,
+          managedIdentifiers,
+          canRemoveCertificates,
+          existingCertNames
+        );
+      } catch (error: unknown) {
+        virtualServiceBindingError = kempError(error, "Failed to bind certificates to the Virtual Service");
+        logger.error(
+          { error },
+          `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to bind certificates to Virtual Service ${virtualServiceId}`
+        );
+      }
+    }
+
+    for (const identifier of identifiersToRemove) {
+      try {
+        await deleteCertificate(makeRequest, baseUrl, headers, identifier);
+        removed += 1;
+
+        logger.info(
+          `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: removed orphaned certificate "${identifier}" from ${hostname}`
+        );
+      } catch (error: unknown) {
+        failedRemovals.push({ name: identifier, error: kempError(error, "Unknown error") });
+        logger.error(
+          { error },
+          `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to remove certificate "${identifier}"`
+        );
+      }
+    }
+
+    // Leaves are already uploaded, so a binding failure can't block them; but it must surface as a
+    // failed sync
+    if (virtualServiceBindingError) {
+      throw new PkiSyncError({
+        message: `Failed to bind certificates to Virtual Service ${virtualServiceId}: ${virtualServiceBindingError}`,
+        shouldRetry: false
+      });
+    }
+
+    return { removed, failedRemovals };
+  };
+
   const syncCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
     certificateMap: TCertificateMap
@@ -377,11 +719,9 @@ export const kempLoadMasterPkiSyncFactory = ({
           certificateNameSchema?: string;
           canRemoveCertificates?: boolean;
           preserveItemOnRenewal?: boolean;
-          syncCaCertificates?: boolean;
           caCertificateNameSchema?: string;
         }
       | undefined;
-    const syncCaCertificates = syncOptions?.syncCaCertificates ?? true;
     const caCertificateNameSchema = syncOptions?.caCertificateNameSchema || KEMP_LOADMASTER_DEFAULT_CA_NAME_SCHEMA;
     const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
     const preserveItemOnRenewal = syncOptions?.preserveItemOnRenewal ?? true;
@@ -396,312 +736,55 @@ export const kempLoadMasterPkiSyncFactory = ({
       { gatewayId: effectiveGatewayId, credentials },
       gatewayV2Service,
       async (makeRequest) => {
-        let uploaded = 0;
-        let removed = 0;
-        const failedUploads: Array<{ name: string; error: string }> = [];
-        const failedRemovals: Array<{ name: string; error: string }> = [];
-        const skippedCertificates: Array<{ name: string; reason: string }> = [];
-        const failedIntermediateIds = new Set<string>();
-
         const existingCertNames = await listCertificateIdentifiers(makeRequest, baseUrl, headers);
-
         const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+
         const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
-        existingSyncRecords.forEach((record: TCertificateSyncs) => {
-          if (record.certificateId) {
-            syncRecordsByCertId.set(record.certificateId, record);
-          }
-        });
-
-        const activeIdentifiers = new Set<string>();
         const managedIdentifiers = new Set<string>();
-        existingSyncRecords.forEach((record) => {
-          if (record.externalIdentifier) {
-            managedIdentifiers.add(record.externalIdentifier);
-          }
+        existingSyncRecords.forEach((record: TCertificateSyncs) => {
+          if (record.certificateId) syncRecordsByCertId.set(record.certificateId, record);
+          if (record.externalIdentifier) managedIdentifiers.add(record.externalIdentifier);
         });
+        const activeIdentifiers = new Set<string>();
 
-        const certificatesToUpload: Array<{
-          targetIdentifier: string;
-          cert: string;
-          privateKey: string;
-          certificateChain?: string;
-          certificateId?: string;
-          isUpdate: boolean;
-          oldCertificateIdToRemove?: string;
-        }> = [];
+        const { certificatesToUpload, skippedCertificates } = await prepareCertificatesForUpload(
+          pkiSync,
+          certificateMap,
+          existingCertNames,
+          syncRecordsByCertId,
+          { preserveItemOnRenewal, certificateNameSchema }
+        );
 
-        for (const [certName, certData] of Object.entries(certificateMap)) {
-          const { cert, privateKey, certificateChain, certificateId } = certData;
+        const { uploaded, failedUploads } = await syncCertificatesToLoadMaster(
+          makeRequest,
+          baseUrl,
+          headers,
+          pkiSync,
+          credentials.hostname,
+          certificatesToUpload,
+          existingCertNames,
+          activeIdentifiers,
+          managedIdentifiers,
+          { caCertificateNameSchema }
+        );
 
-          if (!cert || !privateKey) {
-            skippedCertificates.push({ name: certName, reason: "Missing certificate or private key data" });
-            // eslint-disable-next-line no-continue
-            continue;
-          }
-
-          let certificate: Awaited<ReturnType<typeof certificateDAL.findById>> | undefined;
-          if (typeof certificateId === "string") {
-            certificate = await certificateDAL.findById(certificateId);
-            if (certificate?.renewedByCertificateId) {
-              skippedCertificates.push({
-                name: certName,
-                reason: "Certificate has been renewed and replaced by a newer certificate"
-              });
-              // eslint-disable-next-line no-continue
-              continue;
-            }
-          }
-
-          let targetIdentifier = certName;
-          let isUpdate = false;
-          let oldCertificateIdToRemove: string | undefined;
-
-          if (typeof certificateId === "string") {
-            const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-            const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
-
-            if (
-              certificate?.renewedFromCertificateId &&
-              preserveItemOnRenewal &&
-              existingSyncRecord?.externalIdentifier
-            ) {
-              targetIdentifier = existingSyncRecord.externalIdentifier;
-              isUpdate = true;
-              oldCertificateIdToRemove = certificate.renewedFromCertificateId;
-            } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
-              if (certificateNameSchema) {
-                targetIdentifier = compileCertificateNameSchema(
-                  certificateNameSchema,
-                  {
-                    certificateId,
-                    profileId: certData.profileId,
-                    applicationId: pkiSync.applicationId,
-                    applicationName: pkiSync.applicationName,
-                    commonName: certData.commonName
-                  },
-                  PkiSync.KempLoadMaster
-                );
-              } else {
-                targetIdentifier = `Infisical-${certificateId.replace(DASH_GLOBAL, "")}`;
-              }
-            } else {
-              const directSyncRecord = syncRecordsByCertId.get(certificateId);
-              if (directSyncRecord?.externalIdentifier && existingCertNames.has(directSyncRecord.externalIdentifier)) {
-                targetIdentifier = directSyncRecord.externalIdentifier;
-                isUpdate = true;
-              }
-            }
-          }
-
-          certificatesToUpload.push({
-            targetIdentifier,
-            cert,
-            privateKey,
-            certificateChain,
-            certificateId,
-            isUpdate,
-            oldCertificateIdToRemove
-          });
-        }
-
-        // Push each chain/CA cert into the LoadMaster's dedicated intermediate store
-        if (syncCaCertificates) {
-          const existingIntermediateNames = await listIntermediateIdentifiers(makeRequest, baseUrl, headers);
-          const processedIntermediates = new Set<string>();
-          for (const { certificateChain } of certificatesToUpload) {
-            for (const intermediatePem of splitPemChain(certificateChain)) {
-              const intermediateId = buildIntermediateIdentifier(intermediatePem, caCertificateNameSchema);
-              if (processedIntermediates.has(intermediateId) || existingIntermediateNames.has(intermediateId)) {
-                // eslint-disable-next-line no-continue
-                continue;
-              }
-              processedIntermediates.add(intermediateId);
-              try {
-                await addIntermediateCertificate(makeRequest, baseUrl, headers, intermediateId, intermediatePem);
-                existingIntermediateNames.add(intermediateId);
-                logger.info(
-                  `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: ensured intermediate "${intermediateId}" on ${credentials.hostname}`
-                );
-              } catch (error: unknown) {
-                failedIntermediateIds.add(intermediateId);
-                logger.error(
-                  { error },
-                  `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to import intermediate "${intermediateId}"`
-                );
-              }
-            }
-          }
-        }
-
-        for (const {
-          targetIdentifier,
-          cert,
-          privateKey,
-          certificateChain,
-          certificateId,
-          isUpdate,
-          oldCertificateIdToRemove
-        } of certificatesToUpload) {
-          try {
-            const bundle = buildCertificateBundle(cert, privateKey, certificateChain);
-            await upsertCertificate(
-              makeRequest,
-              baseUrl,
-              headers,
-              targetIdentifier,
-              bundle,
-              existingCertNames.has(targetIdentifier)
-            );
-
-            existingCertNames.add(targetIdentifier);
-            activeIdentifiers.add(targetIdentifier);
-            managedIdentifiers.add(targetIdentifier);
-
-            const failedChainCaNames = failedIntermediateIds.size
-              ? splitPemChain(certificateChain)
-                  .map((pem) => buildIntermediateIdentifier(pem, caCertificateNameSchema))
-                  .filter((id) => failedIntermediateIds.has(id))
-              : [];
-            const caWarning = failedChainCaNames.length
-              ? ` (warning: could not push CA certificate(s) to the intermediate store: ${failedChainCaNames.join(", ")})`
-              : "";
-
-            if (certificateId) {
-              const existingCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
-
-              if (existingCertSync) {
-                await certificateSyncDAL.updateById(existingCertSync.id, {
-                  externalIdentifier: targetIdentifier,
-                  syncStatus: CertificateSyncStatus.Succeeded,
-                  lastSyncMessage: `${
-                    isUpdate
-                      ? `Updated certificate on Kemp LoadMaster as "${targetIdentifier}"`
-                      : `Synced certificate to Kemp LoadMaster as "${targetIdentifier}"`
-                  }${caWarning}`,
-                  lastSyncedAt: new Date()
-                });
-              } else {
-                await certificateSyncDAL.addCertificates(pkiSync.id, [
-                  { certificateId, externalIdentifier: targetIdentifier }
-                ]);
-              }
-
-              if (oldCertificateIdToRemove) {
-                await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateIdToRemove]);
-              }
-            }
-
-            uploaded += 1;
-
-            logger.info(
-              `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: ${isUpdate ? "updated" : "uploaded"} certificate "${targetIdentifier}" on ${credentials.hostname}`
-            );
-          } catch (error: unknown) {
-            const errorMessage = kempError(error, "Unknown error");
-            failedUploads.push({ name: targetIdentifier, error: errorMessage });
-
-            if (certificateId) {
-              const syncRecord = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
-              if (syncRecord) {
-                await certificateSyncDAL.updateById(syncRecord.id, {
-                  syncStatus: CertificateSyncStatus.Failed,
-                  lastSyncMessage: `Failed to sync to Kemp LoadMaster: ${errorMessage}`.slice(0, 4096)
-                });
-              }
-            }
-
-            logger.error(
-              { error },
-              `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to upload certificate "${targetIdentifier}"`
-            );
-          }
-        }
-
-        const managedCertificateIds = new Set<string>();
-        for (const certData of Object.values(certificateMap)) {
-          if (certData.certificateId) managedCertificateIds.add(certData.certificateId);
-        }
-        const attemptedIdentifiers = new Set(certificatesToUpload.map((entry) => entry.targetIdentifier));
-
-        const identifiersToRemove = new Set<string>();
-        if (canRemoveCertificates) {
-          for (const syncRecord of existingSyncRecords) {
-            if (
-              syncRecord.externalIdentifier &&
-              !activeIdentifiers.has(syncRecord.externalIdentifier) &&
-              existingCertNames.has(syncRecord.externalIdentifier) &&
-              !(syncRecord.certificateId && managedCertificateIds.has(syncRecord.certificateId))
-            ) {
-              identifiersToRemove.add(syncRecord.externalIdentifier);
-            }
-          }
-
-          if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
-            const managedCertNamePattern = buildManagedCertNamePattern(certificateNameSchema);
-            for (const certName of existingCertNames) {
-              if (
-                managedCertNamePattern.test(certName) &&
-                !activeIdentifiers.has(certName) &&
-                !attemptedIdentifiers.has(certName)
-              ) {
-                identifiersToRemove.add(certName);
-              }
-            }
-          }
-
-          identifiersToRemove.forEach((identifier) => managedIdentifiers.add(identifier));
-        }
-
-        // Reconcile the Virtual Service binding BEFORE deleting: the LoadMaster refuses to delete a
-        // certificate that is still bound, so removed certificates must be unbound here first.
-        let virtualServiceBindingError: string | undefined;
-        if (virtualServiceId) {
-          try {
-            await reconcileVirtualServiceBinding(
-              makeRequest,
-              baseUrl,
-              headers,
-              virtualServiceId,
-              activeIdentifiers,
-              managedIdentifiers,
-              canRemoveCertificates,
-              existingCertNames
-            );
-          } catch (error: unknown) {
-            virtualServiceBindingError = kempError(error, "Failed to bind certificates to the Virtual Service");
-            logger.error(
-              { error },
-              `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to bind certificates to Virtual Service ${virtualServiceId}`
-            );
-          }
-        }
-
-        for (const identifier of identifiersToRemove) {
-          try {
-            await deleteCertificate(makeRequest, baseUrl, headers, identifier);
-            removed += 1;
-
-            logger.info(
-              `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: removed orphaned certificate "${identifier}" from ${credentials.hostname}`
-            );
-          } catch (error: unknown) {
-            failedRemovals.push({ name: identifier, error: kempError(error, "Unknown error") });
-            logger.error(
-              { error },
-              `Kemp LoadMaster PKI sync [syncId=${pkiSync.id}]: failed to remove certificate "${identifier}"`
-            );
-          }
-        }
-
-        // Leaves are already uploaded, so a binding failure can't block them; but it must surface as a
-        // failed sync
-        if (virtualServiceBindingError) {
-          throw new PkiSyncError({
-            message: `Failed to bind certificates to Virtual Service ${virtualServiceId}: ${virtualServiceBindingError}`,
-            shouldRetry: false
-          });
-        }
+        const { removed, failedRemovals } = await cleanupOrphanedCertificates(
+          makeRequest,
+          baseUrl,
+          headers,
+          pkiSync,
+          credentials.hostname,
+          {
+            certificateMap,
+            certificatesToUpload,
+            existingSyncRecords,
+            existingCertNames,
+            activeIdentifiers,
+            managedIdentifiers,
+            virtualServiceId
+          },
+          { canRemoveCertificates, certificateNameSchema }
+        );
 
         return {
           uploaded,

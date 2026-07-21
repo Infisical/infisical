@@ -112,7 +112,6 @@ export const CreatePkiSyncForm = ({
           includePrivateKey: true
         }),
         ...(destination === PkiSync.KempLoadMaster && {
-          syncCaCertificates: true,
           caCertificateNameSchema: KEMP_DEFAULT_CA_NAME_SCHEMA
         }),
         ...((destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && {

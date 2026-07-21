@@ -461,17 +461,20 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
                     content={
                       <>
                         <p>
-                          <strong>Only applies to certificate renewals:</strong> controls what
-                          happens on the LoadMaster when Infisical renews a certificate.
+                          <strong>Only applies to certificate renewals:</strong> controls the
+                          identifier a renewed certificate uses on the LoadMaster.
                         </p>
                         <p className="mt-4">
-                          When on, the renewed certificate replaces the existing one under the same
-                          identifier, so any Virtual Service binding keeps working without extra
-                          setup.
+                          When on, the renewed certificate keeps the original certificate&apos;s
+                          identifier and replaces that entry in place, so any Virtual Service
+                          binding keeps working. This matters when your name schema is
+                          certificate-specific (for example it includes{" "}
+                          <code>{"{{certificateId}}"}</code>), which would otherwise resolve to a
+                          new name on renewal.
                         </p>
                         <p className="mt-4">
-                          When off, the renewed certificate is imported under a new identifier and
-                          the original stays on the LoadMaster.
+                          When off, the renewed certificate is imported under a newly generated
+                          identifier and the original stays on the LoadMaster.
                         </p>
                       </>
                     }
@@ -488,46 +491,6 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
       {currentDestination === PkiSync.KempLoadMaster && (
         <Controller
           control={control}
-          name="syncOptions.syncCaCertificates"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="sync-ca-certificates"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Sync Certificate Authorities{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          When on, each certificate&apos;s chain (intermediate CA certificates) is
-                          uploaded into the LoadMaster&apos;s dedicated Intermediate Certs store so
-                          it can build the complete chain it presents to clients.
-                        </p>
-                        <p className="mt-4">
-                          When off, only the leaf certificates are managed and no CA certificates
-                          are pushed to the LoadMaster.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {currentDestination === PkiSync.KempLoadMaster && watch("syncOptions.syncCaCertificates") && (
-        <Controller
-          control={control}
           name="syncOptions.caCertificateNameSchema"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl
@@ -535,8 +498,8 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
               tooltipText={
                 <div className="flex flex-col gap-3">
                   <span>
-                    When Certificate Authorities are synced, this schema names each CA
-                    (intermediate) certificate in the LoadMaster&apos;s Intermediate Certs store.
+                    This schema names each CA (intermediate) certificate that Infisical pushes into
+                    the LoadMaster&apos;s Intermediate Certs store.
                   </span>
 
                   <div className="flex flex-col">

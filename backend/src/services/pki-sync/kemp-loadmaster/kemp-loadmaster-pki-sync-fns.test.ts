@@ -1,11 +1,6 @@
 import RE2 from "re2";
 
-import {
-  buildCertificateBundle,
-  buildIntermediateIdentifier,
-  buildManagedCertNamePattern,
-  splitPemChain
-} from "./kemp-loadmaster-pki-sync-fns";
+import { buildIntermediateIdentifier, buildManagedCertNamePattern } from "./kemp-loadmaster-pki-sync-fns";
 
 const HEX = "550e8400e29b41d4a716446655440000";
 
@@ -43,35 +38,6 @@ describe("Kemp buildManagedCertNamePattern (orphan cleanup detection)", () => {
     const pattern = buildManagedCertNamePattern("Infisical-{{certificateId}}");
     expect(pattern.test(`Infisical-${HEX}`)).toBe(true);
     expect(pattern.test("Infisical-notavalidid")).toBe(false);
-  });
-});
-
-describe("Kemp splitPemChain", () => {
-  test("returns an empty array for missing or empty chains", () => {
-    expect(splitPemChain(undefined)).toEqual([]);
-    expect(splitPemChain("")).toEqual([]);
-  });
-
-  test("returns each CERTIFICATE block for single and multi-CA chains", () => {
-    expect(splitPemChain(TEST_CA_PEM)).toHaveLength(1);
-    expect(splitPemChain(`${TEST_CA_PEM}\n${TEST_CA_PEM}`)).toHaveLength(2);
-  });
-
-  test("ignores non-certificate PEM blocks (e.g. private keys)", () => {
-    const withKey = `${TEST_CA_PEM}\n-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----`;
-    expect(splitPemChain(withKey)).toHaveLength(1);
-  });
-});
-
-describe("Kemp buildCertificateBundle", () => {
-  test("bundles cert + key when no chain is present", () => {
-    const bundle = buildCertificateBundle("CERT", "KEY");
-    expect(bundle).toBe("CERT\nKEY\n");
-  });
-
-  test("includes the chain between the leaf and the key when present", () => {
-    const bundle = buildCertificateBundle("CERT", "KEY", "CHAIN");
-    expect(bundle).toBe("CERT\nCHAIN\nKEY\n");
   });
 });
 

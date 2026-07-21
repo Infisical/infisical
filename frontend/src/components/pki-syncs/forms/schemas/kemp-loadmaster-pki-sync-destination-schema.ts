@@ -10,7 +10,6 @@ const KempLoadMasterSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
   preserveItemOnRenewal: z.boolean().default(true),
-  syncCaCertificates: z.boolean().default(true),
   caCertificateNameSchema: z
     .string()
     .trim()

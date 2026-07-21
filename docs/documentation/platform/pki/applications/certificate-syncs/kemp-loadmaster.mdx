@@ -31,9 +31,8 @@ Deploy certificates to Progress Kemp LoadMaster load balancers via the RESTful A
 
         4. Configure the **Sync Options**:
             - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
-            - **Preserve Certificate on Renewal**: Reuse the existing certificate identifier when a certificate renews, preserving the name and any Virtual Service binding.
-            - **Sync Certificate Authorities**: When enabled, each certificate's chain (intermediate CA certificates) is uploaded into the LoadMaster's Intermediate Certs store so it can build the complete chain it presents to clients. When disabled, only the leaf certificates are managed.
-            - **CA Certificate Name Schema**: Shown when Sync Certificate Authorities is enabled. Controls how CA certificates are named in the Intermediate Certs store using the `{{fingerprint}}` and `{{commonName}}` placeholders. Defaults to `Infisical-ca-{{fingerprint}}`.
+            - **Preserve Certificate on Renewal**: When a certificate is renewed, keep using the original certificate's identifier on the LoadMaster instead of generating a new name from the schema. This preserves the entry and any Virtual Service binding, and matters when your name schema is certificate-specific (for example it includes `{{certificateId}}`, which changes on renewal).
+            - **CA Certificate Name Schema**: Controls how each certificate's chain (intermediate CA certificates) is named in the LoadMaster's Intermediate Certs store, using the `{{fingerprint}}` and `{{commonName}}` placeholders. Defaults to `Infisical-ca-{{fingerprint}}`.
             - **Certificate Name Schema**: Customize certificate identifiers using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}` or `{{shortCertificateId}}`. Defaults to `Infisical-{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
@@ -128,20 +127,19 @@ The Kemp LoadMaster Certificate Sync provides:
 
 ## How It Works
 
-When syncing certificates, Infisical performs the following steps on the LoadMaster via the RESTful API:
+Infisical automatically keeps your LoadMaster certificates in sync:
 
-1. Lists the existing certificate identifiers on the LoadMaster.
-2. When **Sync Certificate Authorities** is enabled, uploads each certificate's chain (intermediate CA certificates) into the LoadMaster's dedicated intermediate certificate store, which is how the LoadMaster builds the complete chain it presents to clients. The chain is also included in the leaf import as a fallback.
-3. For each certificate, imports a PEM bundle (certificate, chain, and private key) under its identifier, replacing the entry if the identifier already exists.
-4. If a Virtual Service is configured, reconciles its bound certificate list so the managed certificates are bound while any certificates the sync does not manage are left in place.
-5. If removal is enabled, unbinds certificates that are no longer active in Infisical from the Virtual Service and then deletes them from the certificate store.
+- Uploads certificates, with their chains and private keys, to the LoadMaster.
+- Uploads the intermediate CA certificates into the LoadMaster's Intermediate Certs store so clients receive the complete trust chain.
+- Optionally binds them to a Virtual Service for HTTPS termination.
+- Optionally removes certificates that are no longer active in Infisical.
 
 ## Certificate Renewal Behavior
 
 When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
 
-- **Preserve enabled (default)**: The existing certificate identifier is reused and its content replaced with the renewed certificate. The identifier and any Virtual Service binding are preserved. This is ideal for production environments.
-- **Preserve disabled**: A new certificate identifier is created for the renewed certificate. The original certificate remains on the LoadMaster until it is revoked or removed.
+- **Preserve enabled (default)**: The renewed certificate reuses the original certificate's identifier and replaces that entry in place, so the name and any Virtual Service binding are preserved. This matters when your name schema is certificate-specific (for example it includes `{{certificateId}}`, which would otherwise resolve to a new name on renewal). Ideal for production environments.
+- **Preserve disabled**: The renewed certificate is imported under a newly generated identifier, and the original certificate remains on the LoadMaster until it is revoked or removed.
 
 ## Removing Certificates
 
