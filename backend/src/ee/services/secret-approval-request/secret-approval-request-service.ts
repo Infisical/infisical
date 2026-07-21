@@ -1884,10 +1884,14 @@ export const secretApprovalRequestServiceFactory = ({
         if (updateMode === SecretUpdateMode.Upsert) {
           const createdKeys = new Set(commits.filter((c) => c.op === SecretOperations.Create).map((c) => c.key));
 
-          // Make sure secrets in the update list are not present in the create list as well
-          // This prevents a commit from having the same secret being created twice and causing
-          // conflicts.
-          const upsertSecrets = missingSecrets.filter((s) => !createdKeys.has(s.secretKey));
+          // Make sure we don't create 2 Create operations for the same key
+          const upsertSecrets = [
+            ...new Map(
+              missingSecrets
+                .filter((s) => !createdKeys.has(s.secretKey))
+                .map((s) => [s.secretKey, s] as const)
+            ).values()
+          ];
 
           commits.push(
             ...upsertSecrets.map((secret) => ({
