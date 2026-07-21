@@ -470,6 +470,7 @@ import { reminderServiceFactory } from "@app/services/reminder/reminder-service"
 import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-recipient-dal";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { resourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { roleServiceFactory } from "@app/services/role/role-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -967,6 +968,13 @@ export const registerRoutes = async (
     projectDAL,
     hsmService,
     envConfig
+  });
+
+  const resourceMetadataService = resourceMetadataServiceFactory({
+    resourceMetadataDAL,
+    permissionService,
+    folderDAL,
+    kmsService
   });
 
   const externalKmsService = externalKmsServiceFactory({
@@ -3889,6 +3897,7 @@ export const registerRoutes = async (
     secretValidationRule: secretValidationRuleService,
     rateLimit: rateLimitService,
     folder: folderService,
+    resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
     projectFolderGrant: projectFolderGrantService,
     projectBot: projectBotService,
