@@ -45,7 +45,8 @@ import {
   recordSecretOperationDuration,
   recordSecretReadMetric,
   recordSecretWriteMetric,
-  SecretCacheAccessResult
+  SecretCacheAccessResult,
+  SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -1292,12 +1293,16 @@ export const secretV2BridgeServiceFactory = ({
     });
     const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
+    const hasIfNoneMatch = Boolean(ifNoneMatch);
+    let etagMissReason: SecretEtagMissReason | undefined;
+
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
       if (storedEtag && storedEtag === ifNoneMatch) {
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED, { hasIfNoneMatch: true });
         return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
       }
+      etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -1357,7 +1362,7 @@ export const secretV2BridgeServiceFactory = ({
         const payload = { secrets, imports };
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1617,7 +1622,7 @@ export const secretV2BridgeServiceFactory = ({
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
+      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
@@ -1708,7 +1713,7 @@ export const secretV2BridgeServiceFactory = ({
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
+    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };
