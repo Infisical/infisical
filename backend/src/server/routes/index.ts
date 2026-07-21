@@ -1086,7 +1086,8 @@ export const registerRoutes = async (
     oidcConfigDAL,
     membershipGroupDAL,
     membershipRoleDAL,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,

@@ -734,21 +734,39 @@ export const identityAccessTokenServiceFactory = ({
     await bumpRevocationVersion(identityId);
   };
 
-  // Org-scoped revoke for membership deactivate / remove-from-org: rejects every
-  // JWT for this identity whose orgId claim matches, with iat < revokedAt.
-  // Tokens scoped to other orgs (sub-org hierarchy) stay valid. Bumps the global
-  // version so cached allows are rechecked once; only this org's tokens deny.
-  const revokeTokensForIdentityOrgMembership = async ({ identityId, orgId }: { identityId: string; orgId: string }) => {
+  // Org-scoped revoke marker for membership deactivate / remove-from-org: rejects
+  // every JWT for this identity whose orgId claim matches, with iat < revokedAt.
+  // Tokens scoped to other orgs (sub-org hierarchy) stay valid. Accepts the caller's
+  // tx so the marker commits atomically with the membership mutation, making it the
+  // durable source of truth for the deny (see bumpIdentityRevocationVersion).
+  const insertOrgMembershipRevocationMarker = async ({
+    identityId,
+    orgId,
+    tx
+  }: {
+    identityId: string;
+    orgId: string;
+    tx?: Knex;
+  }) => {
     const appCfg = getConfig();
     const revokedAt = new Date();
 
-    await identityAccessTokenRevocationDAL.insertRevocation({
-      id: crypto.nativeCrypto.randomUUID(),
-      identityId,
-      scope: orgId,
-      revokedAt,
-      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
-    });
+    await identityAccessTokenRevocationDAL.insertRevocation(
+      {
+        id: crypto.nativeCrypto.randomUUID(),
+        identityId,
+        scope: orgId,
+        revokedAt,
+        expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+      },
+      tx
+    );
+  };
+
+  // Best-effort cache accelerator: bumps the version so cached allow verdicts are
+  // rechecked once. A failed bump only defers enforcement to the verdict TTL, since the committed
+  // membership row (and marker) remain the durable deny that the cold path reads.
+  const bumpIdentityRevocationVersion = async ({ identityId }: { identityId: string }) => {
     await bumpRevocationVersion(identityId);
   };
 
@@ -759,7 +777,8 @@ export const identityAccessTokenServiceFactory = ({
     revokeAllTokensForIdentity,
     revokeAllTokensForClientSecret,
     revokeTokensForIdentityAuthMethod,
-    revokeTokensForIdentityOrgMembership,
+    insertOrgMembershipRevocationMarker,
+    bumpIdentityRevocationVersion,
     markPerTokenRevocation,
     fnValidateIdentityAccessTokenFast
   };

@@ -52,7 +52,10 @@ type TMembershipIdentityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
-  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeTokensForIdentityOrgMembership">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
+  >;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -281,6 +284,9 @@ export const membershipIdentityServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    const shouldRevokeOrgTokens =
+      scopeData.scope === AccessScope.Organization && data.isActive === false && existingMembership.isActive !== false;
+
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
       const doc =
         typeof data.isActive === "undefined"
@@ -329,18 +335,20 @@ export const membershipIdentityServiceFactory = ({
         tx
       );
       const insertedRoleDocs = await membershipRoleDAL.insertMany(roleDocs, tx);
+
+      if (shouldRevokeOrgTokens) {
+        await identityAccessTokenService.insertOrgMembershipRevocationMarker({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return { ...doc, roles: insertedRoleDocs };
     });
 
-    if (
-      scopeData.scope === AccessScope.Organization &&
-      data.isActive === false &&
-      existingMembership.isActive !== false
-    ) {
-      await identityAccessTokenService.revokeTokensForIdentityOrgMembership({
-        identityId: dto.selector.identityId,
-        orgId: scopeData.orgId
-      });
+    if (shouldRevokeOrgTokens) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
     }
 
     return { membership: membershipDoc };
@@ -394,6 +402,15 @@ export const membershipIdentityServiceFactory = ({
         }
       }
 
+      // Durable deny atomic with the org-membership removal.
+      if (scopeData.scope === AccessScope.Organization) {
+        await identityAccessTokenService.insertOrgMembershipRevocationMarker({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return doc;
     };
 
@@ -402,10 +419,7 @@ export const membershipIdentityServiceFactory = ({
       : await membershipIdentityDAL.transaction(performDelete);
 
     if (scopeData.scope === AccessScope.Organization) {
-      await identityAccessTokenService.revokeTokensForIdentityOrgMembership({
-        identityId: dto.selector.identityId,
-        orgId: scopeData.orgId
-      });
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
     }
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its

@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TIdentityAccessTokenRevocations } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -27,9 +29,9 @@ const REVOCATION_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
 
 export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
-  const insertRevocation = async (row: TInsertRevocationInput) => {
+  const insertRevocation = async (row: TInsertRevocationInput, tx?: Knex) => {
     try {
-      await db(TableName.IdentityAccessTokenRevocation)
+      await (tx ?? db)(TableName.IdentityAccessTokenRevocation)
         .insert(row)
         .onConflict(["id"])
         .merge({

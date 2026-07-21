@@ -811,18 +811,32 @@ describe("identityAccessTokenServiceFactory", () => {
     expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
   });
 
-  test("revokeTokensForIdentityOrgMembership inserts an org-scoped marker and bumps version", async () => {
+  test("insertOrgMembershipRevocationMarker writes an org-scoped marker in the caller tx without bumping", async () => {
+    const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
+    const tx = {} as unknown as Parameters<typeof service.insertOrgMembershipRevocationMarker>[0]["tx"];
+
+    await service.insertOrgMembershipRevocationMarker({ identityId: "identity-id", orgId: "org-id", tx });
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith(
+      {
+        id: expect.any(String) as unknown as string,
+        identityId: "identity-id",
+        scope: "org-id",
+        revokedAt: new Date(NOW_SECONDS * 1000),
+        expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+      },
+      tx
+    );
+    // The bump is a separate post-commit step, never triggered by the marker insert.
+    expect(keyStore.incrementSeededWithExpiry).not.toHaveBeenCalled();
+  });
+
+  test("bumpIdentityRevocationVersion bumps the identity version without writing a marker", async () => {
     const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
 
-    await service.revokeTokensForIdentityOrgMembership({ identityId: "identity-id", orgId: "org-id" });
+    await service.bumpIdentityRevocationVersion({ identityId: "identity-id" });
 
-    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
-      id: expect.any(String) as unknown as string,
-      identityId: "identity-id",
-      scope: "org-id",
-      revokedAt: new Date(NOW_SECONDS * 1000),
-      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
-    });
+    expect(identityAccessTokenRevocationDAL.insertRevocation).not.toHaveBeenCalled();
     expect(keyStore.incrementSeededWithExpiry).toHaveBeenCalledWith(
       "identity-revocation-version:identity-id",
       expect.any(Number),
