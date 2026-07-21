@@ -259,7 +259,8 @@ export const evaluateRevocationMarkers = ({
   identityId,
   issuedAtMs,
   clientSecretId,
-  authMethod
+  authMethod,
+  orgId
 }: {
   markers: TRevocationMarker[];
   tokenId: string;
@@ -267,6 +268,7 @@ export const evaluateRevocationMarkers = ({
   issuedAtMs: number;
   clientSecretId?: string;
   authMethod?: string;
+  orgId?: string;
 }): TRevocationDenyReason | null => {
   for (const revocation of markers) {
     // A record with no scope either targets this exact token, or (when the whole
@@ -283,7 +285,7 @@ export const evaluateRevocationMarkers = ({
       }
     } else {
       // A scoped record blocks every token issued before the revocation whose
-      // client secret or login method matches the scope.
+      // client secret, login method, or org membership matches the scope.
       const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
       if (issuedAtMs < revokedAtMs) {
         if (clientSecretId && revocation.scope === clientSecretId) {
@@ -291,6 +293,9 @@ export const evaluateRevocationMarkers = ({
         }
         if (authMethod && revocation.scope === authMethod) {
           return "auth-method";
+        }
+        if (orgId && revocation.scope === orgId) {
+          return "org-membership";
         }
       }
     }
@@ -309,6 +314,10 @@ export const revocationDenyReasonToMessage = (
       return `${messagePrefix}: identity tokens have been revoked`;
     case "client-secret":
       return `${messagePrefix}: client secret has been revoked`;
+    case "org-membership":
+      return `${messagePrefix}: Identity is not a member of the organization`;
+    case "org-membership-inactive":
+      return `${messagePrefix}: Identity organization membership is inactive`;
     case "auth-method":
     default:
       return `${messagePrefix}: auth method has been revoked`;

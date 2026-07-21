@@ -743,8 +743,8 @@ describe("identityAccessTokenServiceFactory", () => {
     );
   });
 
-  test("serves a cached allow verdict without hitting the revocation DAL", async () => {
-    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+  test("serves a cached allow verdict without hitting the revocation DAL or membership", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL, orgDAL } = createService();
     keyStore.getItem.mockImplementation(async (key: string) => {
       if (key.startsWith("identity-revocation-version:")) return "5";
       if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ v: 5 });
@@ -755,6 +755,7 @@ describe("identityAccessTokenServiceFactory", () => {
       identityId: "identity-id"
     });
     expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).not.toHaveBeenCalled();
+    expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
   });
 
   test("serves a cached deny verdict without hitting the revocation DAL", async () => {
@@ -772,7 +773,7 @@ describe("identityAccessTokenServiceFactory", () => {
   });
 
   test("re-queries the primary when the cached allow version is stale", async () => {
-    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    const { service, keyStore, identityAccessTokenRevocationDAL, orgDAL } = createService();
     // Live version advanced past the version the cached allow was stamped with.
     keyStore.getItem.mockImplementation(async (key: string) => {
       if (key.startsWith("identity-revocation-version:")) return "6";
@@ -784,11 +785,48 @@ describe("identityAccessTokenServiceFactory", () => {
       identityId: "identity-id"
     });
     expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalledTimes(1);
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalledWith(
+      expect.objectContaining({ scopes: expect.arrayContaining(["org-id"]) as unknown as string[] })
+    );
+    expect(orgDAL.findEffectiveOrgMembership).toHaveBeenCalled();
     // Re-stamp the allow with the current live version.
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       expect.stringContaining("identity-revocation-verdict:identity-id:"),
       expect.any(Number),
       JSON.stringify({ v: 6 })
+    );
+  });
+
+  test("denies via org-scoped membership marker without a membership re-read when cached", async () => {
+    const { service, keyStore, orgDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "5";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ deny: "org-membership" });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "not a member"
+    );
+    expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
+  });
+
+  test("revokeTokensForIdentityOrgMembership inserts an org-scoped marker and bumps version", async () => {
+    const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
+
+    await service.revokeTokensForIdentityOrgMembership({ identityId: "identity-id", orgId: "org-id" });
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
+      id: expect.any(String) as unknown as string,
+      identityId: "identity-id",
+      scope: "org-id",
+      revokedAt: new Date(NOW_SECONDS * 1000),
+      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+    });
+    expect(keyStore.incrementSeededWithExpiry).toHaveBeenCalledWith(
+      "identity-revocation-version:identity-id",
+      expect.any(Number),
+      expect.any(Number)
     );
   });
 

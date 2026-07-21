@@ -908,6 +908,14 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
+  const identityAccessTokenService = identityAccessTokenServiceFactory({
+    identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL,
+    identityDAL,
+    orgDAL,
+    keyStore
+  });
+
   const membershipIdentityService = membershipIdentityServiceFactory({
     identityDAL,
     membershipIdentityDAL,
@@ -920,7 +928,8 @@ export const registerRoutes = async (
     applicationMembershipCleanupService,
     projectDAL,
     keyStore,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -2466,14 +2475,6 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL,
     usageMeteringService
-  });
-
-  const identityAccessTokenService = identityAccessTokenServiceFactory({
-    identityAccessTokenDAL,
-    identityAccessTokenRevocationDAL,
-    identityDAL,
-    orgDAL,
-    keyStore
   });
 
   const identityV2Service = identityV2ServiceFactory({

@@ -112,11 +112,8 @@ export const identityAccessTokenServiceFactory = ({
   // old version.
   const bumpRevocationVersion = async (identityId: string) => {
     try {
-      await keyStore.incrementSeededWithExpiry(
-        KeyStorePrefixes.IdentityRevocationVersion(identityId),
-        Date.now(),
-        KeyStoreTtls.IdentityRevocationVersionInSeconds
-      );
+      const versionKey = KeyStorePrefixes.IdentityRevocationVersion(identityId);
+      await keyStore.incrementSeededWithExpiry(versionKey, Date.now(), KeyStoreTtls.IdentityRevocationVersionInSeconds);
     } catch (error) {
       logger.warn(error, `identity-revocation: failed to bump version [identityId=${identityId}]`);
     }
@@ -146,12 +143,16 @@ export const identityAccessTokenServiceFactory = ({
   // storing the set of revocation records. A cached "denied"
   // answer needs no version check and stands for its whole lifetime, because a
   // revocation record always outlives any token it can block.
+  //
+  // Org membership is folded into this path: on a cache miss / version change we
+  // re-check membership in Postgres; on a stamped allow hit we skip that query.
   const assertTokenIsNotRevoked = async ({
     tokenId,
     identityId,
     issuedAtMs,
     clientSecretId,
     authMethod,
+    orgId,
     messagePrefix = "Failed to authorize"
   }: {
     tokenId: string;
@@ -159,11 +160,13 @@ export const identityAccessTokenServiceFactory = ({
     issuedAtMs: number;
     clientSecretId?: string;
     authMethod?: string;
+    orgId?: string;
     messagePrefix?: "Failed to authorize" | "Cannot renew";
   }) => {
     const scopes: string[] = [];
     if (clientSecretId) scopes.push(clientSecretId);
     if (authMethod) scopes.push(authMethod);
+    if (orgId) scopes.push(orgId);
 
     const fingerprint = computeRevocationVerdictFingerprint({ tokenId, issuedAtMs, clientSecretId, authMethod });
     const verdictKey = KeyStorePrefixes.IdentityRevocationVerdict(identityId, fingerprint);
@@ -222,14 +225,32 @@ export const identityAccessTokenServiceFactory = ({
       scopes
     });
 
-    const denyReason = evaluateRevocationMarkers({
+    let denyReason = evaluateRevocationMarkers({
       markers: activeRevocations,
       tokenId,
       identityId,
       issuedAtMs,
       clientSecretId,
-      authMethod
+      authMethod,
+      orgId
     });
+
+    // Cold-path membership check. Skipped on a stamped allow hit above; after a
+    // version bump every live token rechecks once, and only org-scoped markers
+    // deny (other orgs re-allow and re-cache).
+    if (!denyReason && orgId) {
+      const orgMembership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.IDENTITY,
+        actorId: identityId,
+        orgId,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (!orgMembership) {
+        denyReason = "org-membership";
+      } else if (!orgMembership.isActive) {
+        denyReason = "org-membership-inactive";
+      }
+    }
 
     if (cacheAvailable) {
       try {
@@ -416,7 +437,8 @@ export const identityAccessTokenServiceFactory = ({
         identityId: token.identityId,
         issuedAtMs,
         clientSecretId: source.clientSecretId,
-        authMethod: source.authMethod
+        authMethod: source.authMethod,
+        orgId: source.orgId
       }),
       keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId))
     ]);
@@ -453,19 +475,6 @@ export const identityAccessTokenServiceFactory = ({
           trustedIps: trustedIps as TIp[]
         });
       }
-    }
-
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: token.identityId,
-      orgId: source.orgId,
-      status: OrgMembershipStatus.Accepted
-    });
-    if (!orgMembership) {
-      throw new UnauthorizedError({ message: "Identity is not a member of the organization" });
-    }
-    if (!orgMembership.isActive) {
-      throw new UnauthorizedError({ message: "Identity organization membership is inactive" });
     }
 
     return {
@@ -522,6 +531,7 @@ export const identityAccessTokenServiceFactory = ({
         issuedAtMs: decodedToken.iat * 1000,
         clientSecretId: source.clientSecretId,
         authMethod: source.authMethod,
+        orgId: source.orgId,
         messagePrefix: "Cannot renew"
       }),
       keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(decodedToken.identityId, tokenId))
@@ -724,6 +734,24 @@ export const identityAccessTokenServiceFactory = ({
     await bumpRevocationVersion(identityId);
   };
 
+  // Org-scoped revoke for membership deactivate / remove-from-org: rejects every
+  // JWT for this identity whose orgId claim matches, with iat < revokedAt.
+  // Tokens scoped to other orgs (sub-org hierarchy) stay valid. Bumps the global
+  // version so cached allows are rechecked once; only this org's tokens deny.
+  const revokeTokensForIdentityOrgMembership = async ({ identityId, orgId }: { identityId: string; orgId: string }) => {
+    const appCfg = getConfig();
+    const revokedAt = new Date();
+
+    await identityAccessTokenRevocationDAL.insertRevocation({
+      id: crypto.nativeCrypto.randomUUID(),
+      identityId,
+      scope: orgId,
+      revokedAt,
+      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+    });
+    await bumpRevocationVersion(identityId);
+  };
+
   return {
     issueIdentityAccessToken,
     renewAccessToken,
@@ -731,6 +759,7 @@ export const identityAccessTokenServiceFactory = ({
     revokeAllTokensForIdentity,
     revokeAllTokensForClientSecret,
     revokeTokensForIdentityAuthMethod,
+    revokeTokensForIdentityOrgMembership,
     markPerTokenRevocation,
     fnValidateIdentityAccessTokenFast
   };

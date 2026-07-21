@@ -14,6 +14,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -51,6 +52,7 @@ type TMembershipIdentityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeTokensForIdentityOrgMembership">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -67,7 +69,8 @@ export const membershipIdentityServiceFactory = ({
   applicationMembershipCleanupService,
   projectDAL,
   keyStore,
-  usageMeteringService
+  usageMeteringService,
+  identityAccessTokenService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -329,6 +332,17 @@ export const membershipIdentityServiceFactory = ({
       return { ...doc, roles: insertedRoleDocs };
     });
 
+    if (
+      scopeData.scope === AccessScope.Organization &&
+      data.isActive === false &&
+      existingMembership.isActive !== false
+    ) {
+      await identityAccessTokenService.revokeTokensForIdentityOrgMembership({
+        identityId: dto.selector.identityId,
+        orgId: scopeData.orgId
+      });
+    }
+
     return { membership: membershipDoc };
   };
 
@@ -386,6 +400,13 @@ export const membershipIdentityServiceFactory = ({
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipIdentityDAL.transaction(performDelete);
+
+    if (scopeData.scope === AccessScope.Organization) {
+      await identityAccessTokenService.revokeTokensForIdentityOrgMembership({
+        identityId: dto.selector.identityId,
+        orgId: scopeData.orgId
+      });
+    }
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.

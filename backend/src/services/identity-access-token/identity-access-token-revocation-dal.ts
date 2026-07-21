@@ -11,8 +11,9 @@ export type TIdentityAccessTokenRevocationDALFactory = ReturnType<typeof identit
 // revoke-all sentinels, random UUID for scoped markers. `revokedAt` is populated
 // for every marker except per-token revocations so runtime validation can compare
 // the JWT iat against the exact revocation time. `scope` is null for legacy
-// (per-token / identity-wide) markers and holds the scope key (clientSecretId or
-// IdentityAuthMethod string) for scoped markers.
+// (per-token / identity-wide) markers and holds the scope key (clientSecretId,
+// IdentityAuthMethod string, or orgId for membership deactivate/removal) for
+// scoped markers.
 type TInsertRevocationInput = {
   id: string;
   identityId: string;
