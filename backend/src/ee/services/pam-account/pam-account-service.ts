@@ -140,6 +140,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     membershipRoleDAL,
     permissionService,
     kmsService,
+    gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService
   } = deps;
@@ -304,6 +305,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     if (!gatewayId) {
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
+
+    // gateways that predate connection testing don't advertise the capability; skip the test
+    const resolvedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
+    const capabilities = resolvedGateway?.capabilities as { connectionTest?: boolean } | null | undefined;
+    if (!capabilities?.connectionTest) return;
 
     const cd = connectionDetails as { host: string; port: number };
     const request = buildRequest(connectionDetails, credentials);

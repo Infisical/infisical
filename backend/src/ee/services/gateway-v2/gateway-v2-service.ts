@@ -963,7 +963,7 @@ export const gatewayV2ServiceFactory = ({
     capabilities
   }: {
     orgPermission: OrgServiceActor;
-    capabilities?: { pkcs11?: boolean };
+    capabilities?: { pkcs11?: boolean; connectionTest?: boolean };
   }) => {
     const nextCapabilities = capabilities ?? {};
 
