@@ -389,7 +389,7 @@ describe("verifyClientCertificateChain", () => {
 
     const width = 4;
     const levels = 4;
-    const deadEndChain = Array.from({ length: levels }, (_, level) =>
+    const deadEndChain = Array.from({ length: levels }, (__, level) =>
       Array.from({ length: width }, (_, index) =>
         toMockNative(`dead-${level}-${index}`, `CN=level-${level}`, `CN=level-${level + 1}`, true)
       )
