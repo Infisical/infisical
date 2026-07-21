@@ -517,9 +517,14 @@ export const pamWebAccessServiceFactory = ({
       };
 
       const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
+      const isWebApp = account.accountType === PamAccountType.WebApp;
 
       relayServer = await setupRelayServer({
-        protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
+        protocol: isRdp
+          ? GatewayProxyProtocol.PamRdpBrowser
+          : isWebApp
+            ? GatewayProxyProtocol.PamWebApp
+            : GatewayProxyProtocol.Pam,
         relayHost: certs.relayHost,
         relay: certs.relay,
         gateway: certs.gateway,
