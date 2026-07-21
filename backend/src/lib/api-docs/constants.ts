@@ -429,6 +429,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
@@ -441,6 +443,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
