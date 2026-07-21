@@ -137,10 +137,12 @@ const LoadBackupModal = ({
   const [backupFileName, setBackupFileName] = useState("");
 
   const handleOpenChange = (state: boolean) => {
-    if (!state) {
-      setBackupContent("");
-      setBackupFileName("");
-    }
+    // Clear on every open-change (open and close), not only close: a FileReader
+    // read can finish after the dialog closes and repopulate backupContent, so
+    // clearing on reopen recovers from that stale state (Continue would otherwise
+    // be enabled with no filename shown).
+    setBackupContent("");
+    setBackupFileName("");
     onOpenChange(state);
   };
 
