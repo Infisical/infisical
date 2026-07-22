@@ -115,7 +115,11 @@ describe("buildSlackPayload", () => {
     expect(mrkdwn).toContain("&lt;!channel&gt;");
     expect(mrkdwn).toContain("a &amp; b &lt; c &gt; d");
     // The plain_text header does not parse markup, so it keeps the raw value.
-    expect(slack.blocks[0].text?.text).toContain("<!channel> ping");
+    const headerBlock = slack.blocks[0];
+    expect(headerBlock.type).toBe("header");
+    if (headerBlock.type === "header") {
+      expect(headerBlock.text.text).toContain("<!channel> ping");
+    }
   });
 });
 
