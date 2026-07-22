@@ -25,7 +25,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -143,6 +143,7 @@ export const SecretDropzone = ({
   secretPath
 }: Props): JSX.Element => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
   const [isDragActive, setDragActive] = useToggle();
   const [isLoading, setIsLoading] = useToggle();
 
@@ -245,7 +246,14 @@ export const SecretDropzone = ({
     }
   };
 
-  const handleParsedEnv = async (env: TParsedEnv) => {
+  const handleParsedEnv = async (inputEnv: TParsedEnv) => {
+    // Apply auto-capitalization to secret keys when enabled for the project
+    const env: TParsedEnv = currentProject?.autoCapitalization
+      ? (Object.fromEntries(
+          Object.entries(inputEnv).map(([key, value]) => [key.toUpperCase(), value])
+        ) as TParsedEnv)
+      : inputEnv;
+
     const envSecretKeys = Object.keys(env);
 
     if (!envSecretKeys.length) {
