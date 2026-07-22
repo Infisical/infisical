@@ -32,6 +32,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
+  SessionChannelType,
   useGetPamSessionById,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
@@ -255,6 +256,20 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     });
   }, [events, logSearch, decoded]);
 
+  // The text log shows human-readable events only. Screencast frames (cdp-frame)
+  // are binary JPEG payloads meant for the video replay, not the log — exclude
+  // them here so the log tab doesn't render raw image bytes.
+  const logEvents = useMemo(
+    () =>
+      filteredEvents.filter(
+        (event) =>
+          isBrokenChunkMarker(event) ||
+          (event as TPamSessionLog as { channelType?: string }).channelType !==
+            SessionChannelType.CdpFrame
+      ),
+    [filteredEvents]
+  );
+
   if (!session) {
     return <PamDetailSheet isOpen={isOpen} onOpenChange={onOpenChange} isLoading={isLoading} />;
   }
@@ -327,7 +342,7 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
         ))}
       </div>
     );
-  } else if (filteredEvents.length === 0) {
+  } else if (logEvents.length === 0) {
     logContent = (
       <div className="flex flex-col items-center justify-center gap-2 p-10 text-center">
         <ClipboardListIcon className="size-6 text-muted" />
@@ -351,7 +366,7 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
         }
     )[] = [];
 
-    filteredEvents.forEach((event, i) => {
+    logEvents.forEach((event, i) => {
       if (isBrokenChunkMarker(event)) {
         prevTimestampLabel = null;
         items.push({
