@@ -193,7 +193,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     method: "GET",
     url: "/:collectionId/items",
     config: {
-      rateLimit: writeLimit
+      rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
