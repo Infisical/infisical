@@ -151,16 +151,19 @@ export const GcpKmsForm = ({
 
   const getCredentialFileJson = async (
     files: FileList | undefined = getValues("credentialFile"),
-    requestId?: number
+    requestId?: number,
+    shouldValidateMissingFile = true
   ): Promise<ExternalKmsGcpCredentialSchemaType | null> => {
     const isCurrentRequest = () =>
       requestId === undefined || requestId === keyLookupRequestId.current;
     const file = files?.[0];
     if (!file) {
-      if (isCurrentRequest()) {
+      if (isCurrentRequest() && shouldValidateMissingFile) {
         setError("credentialFile", {
           message: "Service account credential JSON is required."
         });
+      } else if (isCurrentRequest()) {
+        clearErrors("credentialFile");
       }
       return null;
     }
@@ -198,8 +201,15 @@ export const GcpKmsForm = ({
 
   const fetchGCPKeys = async ({
     gcpRegion = getValues("gcpRegion")?.value,
-    files = getValues("credentialFile")
-  }: { gcpRegion?: string; files?: FileList } = {}) => {
+    files = getValues("credentialFile"),
+    shouldValidateMissingCredential = true,
+    shouldSelectExistingKey = false
+  }: {
+    gcpRegion?: string;
+    files?: FileList;
+    shouldValidateMissingCredential?: boolean;
+    shouldSelectExistingKey?: boolean;
+  } = {}) => {
     keyLookupRequestId.current += 1;
     const requestId = keyLookupRequestId.current;
     resetField("keyObject");
@@ -208,7 +218,9 @@ export const GcpKmsForm = ({
 
     if (!gcpRegion) return;
 
-    const credentialJson = kms ? undefined : await getCredentialFileJson(files, requestId);
+    const credentialJson = kms
+      ? undefined
+      : await getCredentialFileJson(files, requestId, shouldValidateMissingCredential);
     if (requestId !== keyLookupRequestId.current) return;
     if (!kms && !credentialJson) return;
 
@@ -230,7 +242,7 @@ export const GcpKmsForm = ({
       });
 
       setKeys(returnedKeys);
-      if (kms) {
+      if (kms && shouldSelectExistingKey) {
         const existingKey = returnedKeys.find(
           (key) => key.value === kms.externalKms.configuration.keyName
         );
@@ -344,7 +356,10 @@ export const GcpKmsForm = ({
 
   useEffect(() => {
     if (kms && mode !== "credentials") {
-      fetchGCPKeys({ gcpRegion: kms.externalKms.configuration.gcpRegion });
+      fetchGCPKeys({
+        gcpRegion: kms.externalKms.configuration.gcpRegion,
+        shouldSelectExistingKey: true
+      });
     }
 
     return () => {
@@ -435,7 +450,10 @@ export const GcpKmsForm = ({
                     const region = option as SelectOption | null;
                     resetField("keyObject");
                     field.onChange(region);
-                    fetchGCPKeys({ gcpRegion: region?.value });
+                    fetchGCPKeys({
+                      gcpRegion: region?.value,
+                      shouldValidateMissingCredential: false
+                    });
                   }}
                   formatOptionLabel={formatOptionLabel}
                 />
@@ -468,9 +486,10 @@ export const GcpKmsForm = ({
                       const fileList = filesToFileList([]);
                       setCredentialFiles([]);
                       onChange(fileList);
-                      resetField("keyObject");
-                      setKeys([]);
-                      setIsCredentialValid(false);
+                      fetchGCPKeys({
+                        files: fileList,
+                        shouldValidateMissingCredential: false
+                      });
                     }}
                   />
                   <FieldDescription>
@@ -493,7 +512,7 @@ export const GcpKmsForm = ({
                   isDisabled={!isCredentialValid || !keys.length}
                   isLoading={isFetchGcpKeysLoading}
                   options={keys}
-                  value={field.value}
+                  value={field.value ?? null}
                   isError={Boolean(error)}
                   onChange={field.onChange}
                 />
