@@ -7,6 +7,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor, TDynamicSecretWithMetadata } from "@app/lib/types";
@@ -49,7 +50,10 @@ type TProxiedServiceServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
+
+const USAGE_REPORT_DEBOUNCE_SECONDS = 60;
 
 const toCredentialRow = (serviceId: string, credential: TProxiedServiceCredentialInput) => ({
   serviceId,
@@ -79,7 +83,8 @@ export const proxiedServiceServiceFactory = ({
   permissionService,
   licenseService,
   dynamicSecretDAL,
-  projectDAL
+  projectDAL,
+  keyStore
 }: TProxiedServiceServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
@@ -675,7 +680,15 @@ export const proxiedServiceServiceFactory = ({
       })
     );
 
-    await proxiedServiceDAL.stampLastUsed(serviceId);
+    // Only the report that claims the key writes; the rest within the window are dropped.
+    const claimed = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.ProxiedServiceUsageDebounce(serviceId),
+      USAGE_REPORT_DEBOUNCE_SECONDS,
+      "1"
+    );
+    if (claimed) {
+      await proxiedServiceDAL.stampLastUsed(serviceId);
+    }
   };
 
   return {
