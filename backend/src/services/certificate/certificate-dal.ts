@@ -555,11 +555,9 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Enrollment method from the cert's own request row, not the profile's enrollmentType (a legacy label that
-  // drifts under applications). null = no request row, so callers defer to the private-key check.
   const getRequestEnrollmentTypeByCertId = async (certId: string, tx?: Knex): Promise<string | null> => {
     try {
-      // Primary, not replica: a lagged miss on a fresh request row would wrongly defer the renewal guard.
+      // Primary, not replica: eligibility checks must not miss a recently-issued request row.
       const row = (await (tx || db)(TableName.CertificateRequests)
         .where(`${TableName.CertificateRequests}.certificateId`, certId)
         .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc")

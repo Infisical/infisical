@@ -2301,7 +2301,6 @@ export const certificateV3ServiceFactory = ({
     });
   };
 
-  // Only an explicit non-API enrollment blocks; a missing signal defers to the key-presence check.
   const $assertCertificateEnrollmentRenewable = async (
     certId: string,
     { context, tx }: { context: "renewal" | "auto-renewal"; tx?: Knex }
