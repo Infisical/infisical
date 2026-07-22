@@ -86,10 +86,16 @@ export const OrgWorkflowIntegrationTab = withPermission(
     const { data: workflowIntegrations, isPending: isWorkflowIntegrationsLoading } =
       useGetWorkflowIntegrations(currentOrg?.id);
 
-    const { mutateAsync: deleteSlackIntegration } = useDeleteSlackIntegration();
-    const { mutateAsync: deleteMicrosoftTeamsIntegration } = useDeleteMicrosoftTeamsIntegration();
+    const { mutateAsync: deleteSlackIntegration, isPending: isDeletingSlackIntegration } =
+      useDeleteSlackIntegration();
+    const {
+      mutateAsync: deleteMicrosoftTeamsIntegration,
+      isPending: isDeletingMicrosoftTeamsIntegration
+    } = useDeleteMicrosoftTeamsIntegration();
     const { mutateAsync: checkMicrosoftTeamsInstallationStatus } =
       useCheckMicrosoftTeamsIntegrationInstallationStatus();
+
+    const isDeletingIntegration = isDeletingSlackIntegration || isDeletingMicrosoftTeamsIntegration;
 
     const removeIntegrationData = popUp.removeIntegration.data as
       | { id: string; slug: string; platform: WorkflowIntegrationPlatform }
@@ -377,8 +383,11 @@ export const OrgWorkflowIntegrationTab = withPermission(
                 variant="danger"
                 size="sm"
                 onClick={handleRemoveIntegration}
+                isPending={isDeletingIntegration}
                 isDisabled={
-                  !removeIntegrationData?.slug || deleteConfirmation !== removeIntegrationData.slug
+                  isDeletingIntegration ||
+                  !removeIntegrationData?.slug ||
+                  deleteConfirmation !== removeIntegrationData.slug
                 }
               >
                 Delete
