@@ -829,12 +829,12 @@ const humanizeFieldKey = (key: string) =>
 const formatConnectionValue = (value: unknown): ReactNode => {
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
   const str = String(value);
-  if (str.length > 48) return "Provided";
   return <span className="font-mono">{str}</span>;
 };
 
 const buildConnectionMetadata = (connectionDetails: Record<string, unknown>) =>
   Object.entries(connectionDetails)
+    .filter(([key]) => key !== "sslCertificate")
     .filter(([, value]) => value !== null && value !== undefined && value !== "")
     .map(([key, value]) => ({
       label: CONNECTION_FIELD_LABELS[key] ?? humanizeFieldKey(key),

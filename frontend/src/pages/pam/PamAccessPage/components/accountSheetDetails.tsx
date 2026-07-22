@@ -12,7 +12,6 @@ import {
 const formatFieldValue = (value: unknown): ReactNode => {
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
   const str = String(value);
-  if (str.length > 48) return "Provided";
   return <span className="font-mono">{str}</span>;
 };
 
