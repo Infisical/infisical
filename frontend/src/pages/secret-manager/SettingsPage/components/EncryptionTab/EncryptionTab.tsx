@@ -9,6 +9,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -271,27 +272,20 @@ export const EncryptionTab = () => {
     <>
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Key Management</CardTitle>
-              <CardDescription>
-                Select which Key Management System to use for encrypting your project data
-              </CardDescription>
-            </div>
-            {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handlePopUpOpen("loadBackup")}>
-                  Load Backup
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handlePopUpOpen("createBackupConfirmation")}
-                >
-                  Create Backup
-                </Button>
-              </div>
-            )}
-          </div>
+          <CardTitle>Key Management</CardTitle>
+          <CardDescription>
+            Select which Key Management System to use for encrypting your project data
+          </CardDescription>
+          {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
+            <CardAction className="flex gap-2">
+              <Button variant="outline" onClick={() => handlePopUpOpen("loadBackup")}>
+                Load Backup
+              </Button>
+              <Button variant="outline" onClick={() => handlePopUpOpen("createBackupConfirmation")}>
+                Create Backup
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onUpdateProjectKms)}>
