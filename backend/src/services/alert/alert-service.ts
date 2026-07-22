@@ -25,7 +25,7 @@ import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider } from 
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
-  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId" | "findByAlertIds">;
+  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId" | "findByAlertIds" | "delete">;
   alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany">;
   alertChannelService: Pick<
     TAlertChannelServiceFactory,
@@ -382,5 +382,27 @@ export const alertServiceFactory = ({
     return { id: alert.id };
   };
 
-  return { createAlert, getAlertById, listAlerts, updateAlert, deleteAlert };
+  const deleteAlertsForResource = async (
+    { orgId, resourceType, resourceId }: { orgId: string; resourceType: string; resourceId: string },
+    tx?: Knex
+  ): Promise<number> => {
+    const run = async (trx: Knex) => {
+      const alerts = await alertDAL.find({ orgId, resourceType, resourceId }, { tx: trx });
+      if (alerts.length === 0) return 0;
+
+      const alertIds = alerts.map((alert) => alert.id);
+      // Capture the owned channels before deleting the alerts, since that cascades the membership rows.
+      const channels = await alertChannelDAL.findByAlertIds(alertIds, trx);
+
+      await alertDAL.delete({ $in: { id: alertIds } }, trx);
+      if (channels.length > 0) {
+        await alertChannelDAL.delete({ $in: { id: [...new Set(channels.map((channel) => channel.id))] } }, trx);
+      }
+      return alertIds.length;
+    };
+
+    return tx ? run(tx) : alertDAL.transaction(run);
+  };
+
+  return { createAlert, getAlertById, listAlerts, updateAlert, deleteAlert, deleteAlertsForResource };
 };

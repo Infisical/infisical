@@ -13,6 +13,8 @@ import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -51,6 +53,7 @@ type TIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -68,7 +71,8 @@ export const identityServiceFactory = ({
   membershipIdentityDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -376,7 +380,18 @@ export const identityServiceFactory = ({
       if (identityOrgMembership.identity.hasDeleteProtection)
         throw new BadRequestError({ message: "Identity has delete protection" });
 
-      const deletedIdentity = await identityDAL.deleteById(id);
+      const deletedIdentity = await identityDAL.transaction(async (tx) => {
+        const deleted = await identityDAL.deleteById(id, tx);
+        await alertService.deleteAlertsForResource(
+          {
+            orgId: identityOrgMembership.scopeOrgId,
+            resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+            resourceId: id
+          },
+          tx
+        );
+        return deleted;
+      });
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);

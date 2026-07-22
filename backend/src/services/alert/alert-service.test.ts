@@ -91,7 +91,18 @@ const buildService = (opts?: {
         alerts.set(id, { ...alerts.get(id), ...data });
         return alerts.get(id);
       },
-      deleteById: async (id: string) => alerts.delete(id)
+      deleteById: async (id: string) => alerts.delete(id),
+      find: async (filter: Record<string, unknown>) => {
+        findFilters.push(filter);
+        return [...alerts.values()].filter((row) =>
+          Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
+        );
+      },
+      delete: async (filter: { $in?: { id?: string[] } }) => {
+        const ids = filter.$in?.id ?? [];
+        ids.forEach((id) => alerts.delete(id));
+        return [];
+      }
     },
     alertChannelDAL: {
       findByAlertId: async (alertId: string) =>
@@ -102,7 +113,15 @@ const buildService = (opts?: {
             .map((id) => channels.get(id))
             .filter(Boolean)
             .map((c) => ({ ...(c as TChannelRow), alertId }))
-        )
+        ),
+      delete: async (filter: { $in?: { id?: string[] } }) => {
+        const ids = filter.$in?.id ?? [];
+        ids.forEach((id) => {
+          channels.delete(id);
+          detach(id);
+        });
+        return [];
+      }
     },
     alertChannelMembershipDAL: {
       insertMany: async (data: Array<{ alertId: string; channelId: string }>) => {
@@ -357,5 +376,38 @@ describe("alert service", () => {
     const result = await service.deleteAlert({ alertId: "alert-1", ...actor });
     expect(result.id).toBe("alert-1");
     expect(permissionCalls.some((c) => c.action === "delete")).toBe(true);
+  });
+
+  test("deleteAlertsForResource reaps a resource's alerts and their owned channels", async () => {
+    const { service, alerts, channels, memberships } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    expect(alerts.size).toBe(1);
+    expect(channels.size).toBe(2);
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect(alerts.size).toBe(0);
+    // The alert's two inline channels are removed too, not left dangling.
+    expect(channels.size).toBe(0);
+    expect(memberships.get("alert-1") ?? []).toHaveLength(0);
+  });
+
+  test("deleteAlertsForResource is a no-op when nothing matches", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-other"
+    });
+
+    expect(deleted).toBe(0);
+    expect(alerts.size).toBe(1);
   });
 });
