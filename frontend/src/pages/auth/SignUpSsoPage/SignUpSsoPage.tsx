@@ -123,19 +123,16 @@ export const SignupSsoPage = () => {
                   : undefined
               }
             >
-              <div className="flex flex-col items-center gap-2 text-xs text-label">
-                <div className="flex flex-row items-baseline gap-1">
-                  <button
-                    disabled={completeAccountSignup.isPending}
-                    onClick={handleResendCode}
-                    type="button"
-                  >
-                    <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                      Don&apos;t see the code? Resend
-                    </span>
-                  </button>
-                </div>
-                <p className="text-label">Make sure to check your spam inbox.</p>
+              <div className="flex items-center gap-1.5 text-sm">
+                <span className="text-label">Don&apos;t see the code?</span>
+                <button
+                  className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project disabled:cursor-not-allowed disabled:text-label/60 disabled:no-underline"
+                  disabled={completeAccountSignup.isPending}
+                  onClick={handleResendCode}
+                  type="button"
+                >
+                  Resend
+                </button>
               </div>
             </VerificationCodeForm>
           </CardContent>
