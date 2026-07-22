@@ -555,15 +555,11 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Returns how THIS certificate was actually enrolled, read from its originating certificate_requests row
-  // (earliest wins). Deliberately does NOT fall back to the profile's enrollmentType: that field is a legacy
-  // per-profile label that drifts under the application flow (a profile created as "acme" can still issue API
-  // certs), which is exactly what misjudges renewability. Returns null when there is no request row, so callers
-  // can defer to another signal (the stored-private-key check) rather than block on a stale label.
+  // Enrollment method from the cert's own request row, not the profile's enrollmentType (a legacy label that
+  // drifts under applications). null = no request row, so callers defer to the private-key check.
   const getRequestEnrollmentTypeByCertId = async (certId: string, tx?: Knex): Promise<string | null> => {
     try {
-      // Read from primary (not the replica): this feeds a renewal eligibility guard, and a replica miss on a
-      // freshly-attached request row would turn into a null and let the guard defer, so consistency wins here.
+      // Primary, not replica: a lagged miss on a fresh request row would wrongly defer the renewal guard.
       const row = (await (tx || db)(TableName.CertificateRequests)
         .where(`${TableName.CertificateRequests}.certificateId`, certId)
         .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc")

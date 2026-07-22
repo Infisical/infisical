@@ -2301,10 +2301,7 @@ export const certificateV3ServiceFactory = ({
     });
   };
 
-  // Blocks renewal for certificates enrolled via an external/protocol method (ACME/EST/SCEP), where the client
-  // owns the private key and drives its own renewal. Judged by the certificate's OWN enrollment record, never the
-  // profile's enrollmentType (a legacy label that drifts under the application flow). Only an explicit non-API
-  // value blocks; a missing signal defers to the stored-private-key check, so older certs are not wrongly blocked.
+  // Only an explicit non-API enrollment blocks; a missing signal defers to the key-presence check.
   const $assertCertificateEnrollmentRenewable = async (
     certId: string,
     { context, tx }: { context: "renewal" | "auto-renewal"; tx?: Knex }
