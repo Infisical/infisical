@@ -47,6 +47,8 @@ export type TPamDiscoveryRun = {
   triggeredBy: string;
   discoveredCount: number;
   newCount: number;
+  dependencyCount?: number | null;
+  newDependencyCount?: number | null;
   errorMessage?: string | null;
   machineErrors?: { machine: string; error: string }[] | null;
   startedAt?: string | null;
@@ -613,6 +615,7 @@ export type TPamAccountRotation = {
   rotationStatus: string | null;
   lastRotationError: string | null;
   isReady: boolean;
+  sharedIdentity: { id: string; name: string; discoverySources: string[] }[];
 };
 
 export type TPamRotationCandidateGroup = {

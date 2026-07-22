@@ -156,6 +156,41 @@ describe("rotateScheduledAccount recovery probe", () => {
     expect(applyPasswordChange).toHaveBeenCalledTimes(1);
   });
 
+  test("discards a pending credential whose probe throws once the current credential proves reachability", async () => {
+    // Self-rotation verify throws on a wrong password just as on a transport blip. A stale pending (left by an
+    // apply that failed its policy check) must not defer forever: a working current credential proves the target
+    // is reachable, so the pending is a real rejection and can be discarded.
+    const { service, applyPasswordChange, updateById } = buildService((password) => {
+      if (password === PENDING_PASSWORD) throw new Error("winrm auth rejected");
+      return true;
+    });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Success);
+    expect(applyPasswordChange).toHaveBeenCalledTimes(1);
+    // The freshly-rotated credential is written and the stale pending cleared.
+    expect(updateById).toHaveBeenCalledWith(
+      "acc-1",
+      expect.objectContaining({ encryptedPendingCredentials: null, rotationStatus: ROTATION_STATUS.Success })
+    );
+  });
+
+  test("defers when the pending probe throws and the current credential can't prove reachability", async () => {
+    // Both probes throw (target genuinely unreachable): can't tell a dead pending from a transient failure, so
+    // defer rather than risk discarding a possibly-live pending.
+    const { service, applyPasswordChange } = buildService((password) => {
+      if (password === PENDING_PASSWORD || password === CURRENT_PASSWORD) throw new Error("transport error");
+      return true;
+    });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
+    expect(result?.message).toContain("deferred");
+    expect(applyPasswordChange).not.toHaveBeenCalled();
+  });
+
   test("delegated target with no stored current password falls through instead of deferring, and applies over the rotator's own connection", async () => {
     // Delegated target: no stored current password, so the "neither works" defer is skipped (the rotator re-sets).
     const account = {

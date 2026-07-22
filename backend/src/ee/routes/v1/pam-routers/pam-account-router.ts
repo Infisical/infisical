@@ -481,7 +481,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     lastRotatedAt: z.date().nullable(),
     rotationStatus: z.string().nullable(),
     lastRotationError: z.string().nullable(),
-    isReady: z.boolean()
+    isReady: z.boolean(),
+    sharedIdentity: z.object({ id: z.string(), name: z.string(), discoverySources: z.string().array() }).array()
   });
 
   server.route({

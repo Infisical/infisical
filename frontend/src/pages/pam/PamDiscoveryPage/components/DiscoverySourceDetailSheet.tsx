@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ChevronRight, Play, Radar, Search, TriangleAlert } from "lucide-react";
+import { Play, Radar, Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -88,12 +88,6 @@ const STATUS_VARIANT: Record<string, "info" | "success" | "danger" | "neutral"> 
   running: "info",
   completed: "success",
   failed: "danger"
-};
-
-const DEPENDENCY_TYPE_LABELS: Record<string, string> = {
-  "windows-service": "Windows Service",
-  "scheduled-task": "Scheduled Task",
-  "iis-app-pool": "IIS App Pool"
 };
 
 const RunStatusBadge = ({ status }: { status: string }) => (
@@ -344,7 +338,6 @@ type Props = {
 
 export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: Props) => {
   const [selected, setSelected] = useState<Record<string, TPamDiscoveredAccount>>({});
-  const [expandedDeps, setExpandedDeps] = useState<Record<string, boolean>>({});
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [search, setSearch] = useState("");
@@ -394,6 +387,9 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
       queryClient.invalidateQueries({
         queryKey: [...pamKeys.discovery(), "discovered", sourceId ?? ""]
       });
+      // A scan reconciles dependencies onto managed accounts, so refresh account views (their dependency
+      // lists are keyed under pamKeys.account()) which the discovery scan otherwise never invalidates.
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
     prevRunStatus.current = latestRunStatus;
   }, [latestRunStatus, sourceId, queryClient]);
@@ -493,87 +489,40 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                   {visibleStaged.map((account) => {
                     const typeDetails = accountTypeMap[account.accountType as PamAccountType];
                     const hasDeps = account.dependencyCount > 0;
-                    const isExpanded = Boolean(expandedDeps[account.id]);
                     return (
-                      <Fragment key={account.id}>
-                        <TableRow className={isExpanded ? "border-b-0" : undefined}>
-                          <TableCell>
-                            <Checkbox
-                              id={`discovered-${account.id}`}
-                              isChecked={Boolean(selected[account.id])}
-                              onCheckedChange={() => toggle(account)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium text-foreground">
-                            <HighlightText text={account.name} highlight={search} />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {typeDetails && (
-                                <img
-                                  src={`/images/integrations/${typeDetails.icon}`}
-                                  alt={typeDetails.name}
-                                  className="size-5 shrink-0 rounded-sm"
-                                />
-                              )}
-                              <span className="text-sm">
-                                {typeDetails?.name ?? account.accountType}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {hasDeps ? (
-                              <button
-                                type="button"
-                                className="flex items-center gap-1 text-sm text-muted hover:text-foreground"
-                                onClick={() =>
-                                  setExpandedDeps((prev) => ({
-                                    ...prev,
-                                    [account.id]: !prev[account.id]
-                                  }))
-                                }
-                              >
-                                <ChevronRight
-                                  className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                                />
-                                <Badge variant="neutral">{account.dependencyCount}</Badge>
-                              </button>
-                            ) : (
-                              <span className="text-sm text-muted">-</span>
+                      <TableRow key={account.id}>
+                        <TableCell>
+                          <Checkbox
+                            id={`discovered-${account.id}`}
+                            isChecked={Boolean(selected[account.id])}
+                            onCheckedChange={() => toggle(account)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">
+                          <HighlightText text={account.name} highlight={search} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {typeDetails && (
+                              <img
+                                src={`/images/integrations/${typeDetails.icon}`}
+                                alt={typeDetails.name}
+                                className="size-5 shrink-0 rounded-sm"
+                              />
                             )}
-                          </TableCell>
-                        </TableRow>
-
-                        {isExpanded && hasDeps && (
-                          <TableRow className="hover:bg-transparent">
-                            <TableCell colSpan={4} className="pt-0 pb-4">
-                              <div className="ml-8 rounded-md border border-border">
-                                <div className="border-b border-border px-3 py-2 text-xs font-medium text-muted">
-                                  Dependencies · {account.dependencyCount}
-                                </div>
-                                <ul className="divide-y divide-border">
-                                  {account.dependencies.map((dep) => (
-                                    <li
-                                      key={dep.id}
-                                      className="flex items-center justify-between gap-4 px-3 py-2 text-sm"
-                                    >
-                                      <span className="font-medium text-foreground">
-                                        {dep.name}
-                                      </span>
-                                      <span className="flex items-center gap-2 text-xs text-muted">
-                                        <Badge variant="neutral">
-                                          {DEPENDENCY_TYPE_LABELS[dep.type] ?? dep.type}
-                                        </Badge>
-                                        <span className="font-mono">{dep.machine}</span>
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </Fragment>
+                            <span className="text-sm">
+                              {typeDetails?.name ?? account.accountType}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {hasDeps ? (
+                            <Badge variant="neutral">{account.dependencyCount}</Badge>
+                          ) : (
+                            <span className="text-sm text-muted">-</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
                 </TableBody>
@@ -628,10 +577,10 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Started</TableHead>
+                  <TableHead className="w-44">Started</TableHead>
                   <TableHead className="w-28">Status</TableHead>
                   <TableHead>Result</TableHead>
                 </TableRow>
@@ -644,7 +593,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
 
                   return (
                     <Fragment key={run.id}>
-                      <TableRow className={hasMachineErrors ? "border-b-0" : undefined}>
+                      <TableRow className={hasMachineErrors ? "[&>td]:border-b-0" : undefined}>
                         <TableCell className="text-muted">
                           {run.startedAt
                             ? format(new Date(run.startedAt), "MMM d, yyyy h:mm a")
@@ -653,34 +602,49 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <RunStatusBadge status={run.status} />
                         </TableCell>
-                        <TableCell className="text-muted">
+                        <TableCell className="whitespace-normal text-muted">
                           {run.status === "failed" ? (
-                            <span className="whitespace-pre-line text-danger">
+                            <span className="break-words whitespace-pre-line text-danger">
                               {run.errorMessage}
                             </span>
                           ) : (
-                            `${run.discoveredCount} found, ${run.newCount} new`
+                            <div className="grid w-fit grid-cols-[auto_auto] gap-x-6">
+                              <span>
+                                {run.discoveredCount}{" "}
+                                {run.discoveredCount === 1 ? "account" : "accounts"}
+                              </span>
+                              <span className="text-muted/60">{run.newCount} new</span>
+                              {typeof run.dependencyCount === "number" && (
+                                <>
+                                  <span>
+                                    {run.dependencyCount}{" "}
+                                    {run.dependencyCount === 1 ? "dep" : "deps"}
+                                  </span>
+                                  <span className="text-muted/60">
+                                    {run.newDependencyCount ?? 0} new
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
 
                       {hasMachineErrors && (
-                        <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={3} className="pt-0 pb-4">
-                            <div className="rounded-md border border-warning/20 bg-warning/[0.06] p-3">
-                              <div className="flex items-center gap-2 text-sm font-medium text-warning">
-                                <TriangleAlert className="size-4 shrink-0" />
-                                The scan failed to find local accounts on certain machines
-                              </div>
-                              <ul className="mt-2 flex flex-col gap-1.5">
-                                {machineErrors.map((m) => (
-                                  <li key={m.machine} className="text-xs">
-                                    <span className="font-medium text-foreground">{m.machine}</span>
-                                    <span className="text-muted">: {m.error}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                        <TableRow className="bg-warning/[0.04] hover:bg-warning/[0.04]">
+                          <TableCell colSpan={3} className="pt-3 pb-4 whitespace-normal">
+                            <div className="flex items-center gap-2 text-sm font-medium text-warning">
+                              <TriangleAlert className="size-4 shrink-0" />
+                              The scan couldn&apos;t complete on some machines
                             </div>
+                            <ul className="mt-2 flex flex-col gap-1.5">
+                              {machineErrors.map((m) => (
+                                <li key={m.machine} className="text-xs break-words">
+                                  <span className="font-medium text-foreground">{m.machine}</span>
+                                  <span className="text-muted">: {m.error}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </TableCell>
                         </TableRow>
                       )}

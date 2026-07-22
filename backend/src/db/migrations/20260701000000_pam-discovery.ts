@@ -50,6 +50,9 @@ export async function up(knex: Knex): Promise<void> {
       t.string("triggeredBy").notNullable();
       t.integer("discoveredCount").notNullable().defaultTo(0);
       t.integer("newCount").notNullable().defaultTo(0);
+      // Nullable: a scan that did not run dependency discovery leaves these null so the summary can omit deps.
+      t.integer("dependencyCount");
+      t.integer("newDependencyCount");
       t.text("errorMessage");
       t.jsonb("machineErrors");
       t.timestamp("startedAt");

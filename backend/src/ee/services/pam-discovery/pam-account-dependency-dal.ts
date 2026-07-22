@@ -27,7 +27,9 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   // Imported wins: a row already linked to a managed account (accountId set) is never demoted back to a staged
   // link, so a second discovery source scanning the same machine can't silently break rotation sync for an
   // account another source imported.
-  const upsertByIdentity = async (dep: TUpsertDependency, tx?: Knex): Promise<string> => {
+  // `xmax = 0` is true only for the freshly-inserted tuple; on an ON CONFLICT update xmax is the updating txid,
+  // so it distinguishes a newly-discovered dependency from one the scan merely re-saw (drives the run's new count).
+  const upsertByIdentity = async (dep: TUpsertDependency, tx?: Knex): Promise<{ id: string; isNew: boolean }> => {
     const conn = tx || db;
     const { fingerprint, machine, type, name, data, accountId, discoveredAccountId } = dep;
     const [row] = await conn(TableName.PamAccountDependency)
@@ -41,8 +43,9 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
           [TableName.PamAccountDependency]
         )
       })
-      .returning("id");
-    return row.id;
+      .returning(["id", conn.raw("(xmax = 0) AS inserted")]);
+    const inserted = row as { id: string; inserted?: boolean };
+    return { id: inserted.id, isNew: Boolean(inserted.inserted) };
   };
 
   // Prune dependencies the current scan no longer found. Scoped to this source's accounts (staged or their

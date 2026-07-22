@@ -91,4 +91,14 @@ describe("resolveRunAsFingerprint", () => {
       "corp.example.com:11111111-1111-1111-1111-111111111111"
     );
   });
+
+  test.each([
+    ["CORP\\svc-gmsa$"], // gMSA, even if it somehow made it into the enumerated users
+    [".\\localsvc$"], // local machine/managed account (would otherwise mint a local fingerprint)
+    ["WEB01\\web01$"] // machine account
+  ])("returns null for a $-suffixed managed/machine account (%s)", (runAs) => {
+    const withGmsa = new Map(userGuidByName);
+    withGmsa.set("svc-gmsa$", "22222222-2222-2222-2222-222222222222");
+    expect(resolveRunAsFingerprint(runAs, domain, withGmsa, null, machine)).toBeNull();
+  });
 });

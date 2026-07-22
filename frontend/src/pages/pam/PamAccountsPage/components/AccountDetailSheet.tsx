@@ -54,7 +54,6 @@ import {
   isRotatablePamAccountType,
   PamAccountAccessibilityIssue,
   PamAccountType,
-  supportsPamDependencies,
   TPamMember,
   useGetPamAccountById,
   useGetPamAccountTemplate,
@@ -84,7 +83,6 @@ import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
-import { DependenciesTab } from "./DependenciesTab";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
 import { RotationTab } from "./RotationTab";
@@ -855,17 +853,11 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   const typeInfo = accountType ? accountTypeMap[accountType] : undefined;
 
   const { can } = usePamAccountActions(accountId ?? "", isOpen && Boolean(accountId));
-  const availableTabs = visiblePamTabs(PAM_ACCOUNT_TABS, can)
-    .filter(
-      (tabDef) =>
-        tabDef.value !== PamSheetTab.Rotation ||
-        (accountType !== undefined && isRotatablePamAccountType(accountType))
-    )
-    .filter(
-      (tabDef) =>
-        tabDef.value !== PamSheetTab.Dependencies ||
-        (accountType !== undefined && supportsPamDependencies(accountType))
-    );
+  const availableTabs = visiblePamTabs(PAM_ACCOUNT_TABS, can).filter(
+    (tabDef) =>
+      tabDef.value !== PamSheetTab.Rotation ||
+      (accountType !== undefined && isRotatablePamAccountType(accountType))
+  );
 
   const tabsWithIssues = new Set(
     (account?.accessibilityIssues ?? []).map((issue) => ISSUE_TO_TAB[issue])
@@ -927,7 +919,6 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
     [PamSheetTab.Rotation]: accountId ? (
       <RotationTab accountId={accountId} onDirtyChange={setIsFormDirty} />
     ) : null,
-    [PamSheetTab.Dependencies]: accountId ? <DependenciesTab accountId={accountId} /> : null,
     [PamSheetTab.Advanced]: accountId ? (
       <SettingsTab accountId={accountId} onDirtyChange={setIsFormDirty} />
     ) : null

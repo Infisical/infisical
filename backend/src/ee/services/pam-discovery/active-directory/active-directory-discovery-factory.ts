@@ -238,6 +238,10 @@ export const resolveRunAsFingerprint = (
   if (!parsed) return null;
   const account = parsed.account.toLowerCase();
   if (BUILTIN_RUNAS.has(account)) return null;
+  // A trailing '$' marks a gMSA / sMSA / machine account, whose password AD manages automatically. There is
+  // nothing for rotation to set, so it is never a dependency's run-as (domain enumeration also excludes these
+  // via objectCategory=person; this makes the rule explicit and also covers the local-account branch below).
+  if (account.endsWith("$")) return null;
 
   if (parsed.domain !== null) {
     const runAsDomain = parsed.domain.toLowerCase();

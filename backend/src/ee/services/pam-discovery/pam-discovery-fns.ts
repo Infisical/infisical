@@ -102,7 +102,8 @@ const LDAP_BIND_CHECK_TIMEOUT_MS = 15 * 1000;
 
 // Confirms directory credentials by performing an LDAP simple bind through the gateway. Used to verify a
 // rotated domain account's new password: an LDAP bind needs only the credential, unlike a WinRM logon that
-// most service accounts lack. Returns whether the bind succeeds; never throws.
+// most service accounts lack. Returns true (bound) / false (definitive auth rejection); THROWS on a transport
+// error (TLS/tunnel/timeout) so a transient blip is retried rather than misread as a wrong password.
 export const ldapBindCheckViaGateway = async (
   {
     dcAddress,
@@ -135,7 +136,7 @@ export const ldapBindCheckViaGateway = async (
     gatewayId,
     gatewayV2Service,
     (proxyPort) =>
-      new Promise<boolean>((resolve) => {
+      new Promise<boolean>((resolve, reject) => {
         const client = ldapjs.createClient({
           url: `${useLdaps ? "ldaps" : "ldap"}://localhost:${proxyPort}`,
           connectTimeout: LDAP_BIND_CHECK_TIMEOUT_MS,
@@ -150,7 +151,7 @@ export const ldapBindCheckViaGateway = async (
         });
 
         let settled = false;
-        const done = (ok: boolean) => {
+        const finish = (run: () => void) => {
           if (settled) return;
           settled = true;
           try {
@@ -158,12 +159,19 @@ export const ldapBindCheckViaGateway = async (
           } catch {
             // client may already be destroyed
           }
-          resolve(ok);
+          run();
         };
 
-        // Unhandled 'error' events (e.g. TLS mismatch) would crash the process, so capture them as a failed bind.
-        client.on("error", () => done(false));
-        client.bind(bindDn, password, (err) => done(!err));
+        // A transport-level failure (TLS mismatch, a dropped gateway tunnel, a timeout) is NOT a credential
+        // rejection. Reject so the caller can retry, rather than silently reporting a valid credential as invalid.
+        client.on("error", (err) => finish(() => reject(err)));
+        client.bind(bindDn, password, (err) => {
+          if (!err) return finish(() => resolve(true));
+          // Only an actual "invalid credentials" (LDAP result 49) proves the password is wrong. Anything else
+          // (e.g. strongerAuthRequired, connection reset) is inconclusive and must not read as a bad password.
+          const isAuthRejection = err.name === "InvalidCredentialsError" || (err as { code?: number }).code === 49;
+          return finish(() => (isAuthRejection ? resolve(false) : reject(err)));
+        });
       })
   );
 };

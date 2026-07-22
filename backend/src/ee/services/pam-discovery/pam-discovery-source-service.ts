@@ -471,6 +471,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
 
       // Persist dependencies found during the per-machine sweep, anchoring each to its run-as account by
       // fingerprint: point at the staged discovered account, or its imported managed account once imported.
+      // null = dependency discovery did not run this scan, so the summary omits the dependencies clause.
+      let dependencyCount: number | null = null;
+      let newDependencyCount: number | null = null;
       if (scannedDependencyMachines.length) {
         const sourceAccounts = await pamDiscoveredAccountDAL.findFingerprintLinks(sourceId);
         const accountByFingerprint = new Map(
@@ -481,7 +484,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         );
 
         const depLimit = pLimit(DISCOVERED_UPSERT_CONCURRENCY);
-        const keepIds = (
+        const depResults = (
           await Promise.all(
             dependencies.map((dep) => {
               const match = accountByFingerprint.get(dep.fingerprint);
@@ -500,13 +503,18 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
               );
             })
           )
-        ).filter((id): id is string => Boolean(id));
+        ).filter((r): r is { id: string; isNew: boolean } => Boolean(r));
+
+        // Count only anchored dependencies (those matching an account this source knows); un-anchored run-as
+        // values aren't persisted or shown, so counting them would inflate the "found" number.
+        dependencyCount = depResults.length;
+        newDependencyCount = depResults.filter((r) => r.isNew).length;
 
         await pamAccountDependencyDAL.deleteStaleForSource({
           accountIds: sourceAccounts.map((a) => a.importedAccountId).filter((v): v is string => Boolean(v)),
           discoveredAccountIds: sourceAccounts.map((a) => a.id),
           scannedMachines: scannedDependencyMachines,
-          keepIds
+          keepIds: depResults.map((r) => r.id)
         });
       }
 
@@ -515,6 +523,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         status: PamDiscoveryRunStatus.Completed,
         discoveredCount: accounts.length,
         newCount,
+        dependencyCount,
+        newDependencyCount,
         machineErrors: machineErrors.length ? JSON.stringify(machineErrors) : null,
         completedAt: new Date()
       });

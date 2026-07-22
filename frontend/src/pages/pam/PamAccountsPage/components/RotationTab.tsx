@@ -31,6 +31,7 @@ import { TPamAccountRotation } from "@app/hooks/api/pam/types";
 
 import { formatDetailDate } from "../../components/PamDetailSheet";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
+import { DependenciesSection } from "./DependenciesSection";
 
 type Props = { accountId: string; onDirtyChange?: (isDirty: boolean) => void };
 
@@ -167,8 +168,10 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
       await updateRotation.mutateAsync({ accountId, rotationAccountId: data.rotationAccountId });
       createNotification({ type: "success", text: "Rotation account updated" });
       reset(data);
-    } catch {
-      createNotification({ type: "error", text: "Failed to update rotation account" });
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      createNotification({ type: "error", text: message ?? "Failed to update rotation account" });
     }
   };
 
@@ -246,10 +249,33 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
         {hasFailure && (
           <Alert variant="danger" className="mt-4">
             <AlertTitle>Last rotation failed</AlertTitle>
-            <AlertDescription>{rotation.lastRotationError}</AlertDescription>
+            <AlertDescription className="whitespace-pre-line">
+              {rotation.lastRotationError}
+            </AlertDescription>
           </Alert>
         )}
       </div>
+
+      {rotation.sharedIdentity.length > 0 && (
+        <Alert variant="warning">
+          <AlertTitle>Shared identity</AlertTitle>
+          <AlertDescription>
+            Rotating this account changes a credential that these other accounts also store. They
+            won&apos;t be updated automatically and will need their credentials refreshed:
+            <ul className="mt-1.5 list-disc pl-4">
+              {rotation.sharedIdentity.map((ref) => (
+                <li key={ref.id}>
+                  <span className="font-medium text-foreground">{ref.name}</span>
+                  {ref.discoverySources.length > 0 &&
+                    ` (credential for discovery source${
+                      ref.discoverySources.length > 1 ? "s" : ""
+                    } ${ref.discoverySources.join(", ")})`}
+                </li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="rounded-lg border border-border bg-container p-4">
         <h3 className="text-sm font-semibold text-foreground">Rotation account</h3>
@@ -274,6 +300,8 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
           not rotate.
         </p>
       </div>
+
+      <DependenciesSection accountId={accountId} />
 
       {!rotation.isReady && (
         <Alert variant="warning">

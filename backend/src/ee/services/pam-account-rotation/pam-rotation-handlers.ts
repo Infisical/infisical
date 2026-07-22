@@ -8,7 +8,13 @@ import {
 
 import { PamAccountType } from "../pam/pam-enums";
 import { ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
-import { PAM_ROTATION_APP_MAP, redactRotationError, TRotatableType, TSqlRotatableType } from "./pam-rotation-fns";
+import {
+  PAM_ROTATION_APP_MAP,
+  redactRotationError,
+  TRotatableType,
+  TSqlRotatableType,
+  withGatewayRetry
+} from "./pam-rotation-fns";
 import {
   SQL_QUERY_TIMEOUT,
   TPamRotationGatewayDeps,
@@ -42,7 +48,9 @@ type TTestCredentialInput = {
 export type TPamRotationHandler = {
   validateTarget: (input: { accountType: TRotatableType; authMethod?: string }) => void;
   applyPasswordChange: (input: TApplyPasswordChangeInput, deps: TPamRotationGatewayDeps) => Promise<void>;
-  // Returns whether the credential authenticates; never throws, so the recovery probe can rely on it.
+  // Returns whether the credential authenticates (true/false is a definitive answer). THROWS only when
+  // verification can't complete after retries (a transient transport error) — callers treat that as
+  // inconclusive and defer, never as a wrong password.
   testCredential: (input: TTestCredentialInput, deps: TPamRotationGatewayDeps) => Promise<boolean>;
 };
 
@@ -222,40 +230,46 @@ const windowsRotationHandler: TPamRotationHandler = {
 
   testCredential: async (input, deps) => {
     const { accountType, connectionDetails, auth, verifyVia, gatewayId, gatewayPoolId } = input;
-    try {
-      const resolvedGatewayId = await resolveRotationGatewayId(deps, gatewayId, gatewayPoolId);
-      const transport = winrmTransportFromConn(connectionDetails);
+    const resolvedGatewayId = await resolveRotationGatewayId(deps, gatewayId, gatewayPoolId);
+    const transport = winrmTransportFromConn(connectionDetails);
 
-      if (accountType === PamAccountType.WindowsAd) {
-        // A domain service account usually can't WinRM to the DC, but an LDAP bind needs only the credential.
-        const conn = connectionDetails as TWindowsAdConnDetails;
-        if (!conn.dcAddress || !conn.domain) return false;
-        const bindDn =
-          auth.username.includes("\\") || auth.username.includes("@")
-            ? auth.username
-            : `${auth.username}@${conn.domain}`;
-        return await ldapBindCheckViaGateway(
-          {
-            dcAddress: conn.dcAddress,
-            port: conn.port ?? 389,
-            useLdaps: conn.useLdaps ?? false,
-            rejectUnauthorized: conn.ldapRejectUnauthorized ?? true,
-            caCert: conn.ldapCaCert,
-            tlsServerName: conn.ldapTlsServerName,
-            bindDn,
-            password: auth.password
-          },
-          resolvedGatewayId,
-          deps.gatewayV2Service
-        );
-      }
+    if (accountType === PamAccountType.WindowsAd) {
+      // A domain service account usually can't WinRM to the DC, but an LDAP bind needs only the credential.
+      const conn = connectionDetails as TWindowsAdConnDetails;
+      const { dcAddress, domain } = conn;
+      if (!dcAddress || !domain) return false;
+      const bindDn =
+        auth.username.includes("\\") || auth.username.includes("@") ? auth.username : `${auth.username}@${domain}`;
+      // ldapBindCheckViaGateway returns false only on a real auth rejection and throws on transport errors, so
+      // withGatewayRetry retries a transient gateway/TLS blip instead of misreporting a valid credential as wrong.
+      return withGatewayRetry(
+        () =>
+          ldapBindCheckViaGateway(
+            {
+              dcAddress,
+              port: conn.port ?? 389,
+              useLdaps: conn.useLdaps ?? false,
+              rejectUnauthorized: conn.ldapRejectUnauthorized ?? true,
+              caCert: conn.ldapCaCert,
+              tlsServerName: conn.ldapTlsServerName,
+              bindDn,
+              password: auth.password
+            },
+            resolvedGatewayId,
+            deps.gatewayV2Service
+          ),
+        "verify"
+      );
+    }
 
-      const targetHost = winrmRotationTargetHost(accountType, connectionDetails);
-      const targetPort = winrmPortFromConn(connectionDetails);
+    const targetHost = winrmRotationTargetHost(accountType, connectionDetails);
+    const targetPort = winrmPortFromConn(connectionDetails);
 
-      // Delegated local rotation: the target account usually can't WinRM in, so the rotator (admin) validates
-      // the credential on the box instead of us trying to log in as the account.
-      if (verifyVia) {
+    // Delegated local rotation: the target account usually can't WinRM in, so the rotator (admin) validates the
+    // credential on the box instead of us trying to log in as the account. A wrong password comes back as
+    // valid=false (definitive); a transport error throws and is retried.
+    if (verifyVia) {
+      return withGatewayRetry(async () => {
         const { valid } = await winrmRpcWithGateway<{ valid: boolean }>({
           targetHost,
           targetPort,
@@ -266,9 +280,11 @@ const windowsRotationHandler: TPamRotationHandler = {
           params: { targetUsername: toBareAccountName(auth.username), password: auth.password }
         });
         return valid;
-      }
+      }, "verify");
+    }
 
-      // Self-rotation: the account can log in (that's how it applied the change), so prove the credential directly.
+    // Self-rotation: the account can log in (that's how it applied the change), so prove the credential directly.
+    return withGatewayRetry(async () => {
       await winrmRpcWithGateway<{ ok: boolean }>({
         targetHost,
         targetPort,
@@ -278,9 +294,7 @@ const windowsRotationHandler: TPamRotationHandler = {
         credentials: { username: auth.username, password: auth.password, ...transport }
       });
       return true;
-    } catch {
-      return false;
-    }
+    }, "verify");
   }
 };
 

@@ -1,6 +1,43 @@
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { PamAccountType } from "../pam/pam-enums";
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+// Rotation talks to the target through a freshly-opened gateway tunnel: to verify a new password, or to push it
+// into a dependency (service / task / IIS pool). A transient tunnel/TLS/auth blip is NOT a real failure, so the
+// probe throws on those and we retry. A definitive result short-circuits: verify returns true/false, a dependency
+// sync returns true on success. If every attempt throws, the last error propagates so the caller records it.
+export const GATEWAY_RETRY_ATTEMPTS = 3;
+
+export const withGatewayRetry = async (
+  probe: () => Promise<boolean>,
+  label = "operation",
+  { maxAttempts = GATEWAY_RETRY_ATTEMPTS, baseDelayMs = 500 }: { maxAttempts?: number; baseDelayMs?: number } = {}
+): Promise<boolean> => {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await probe();
+    } catch (err) {
+      lastErr = err;
+      logger.warn(
+        { err },
+        `PAM rotation ${label} attempt failed [attempt=${attempt}/${maxAttempts}] [error=${
+          err instanceof Error ? err.message : String(err)
+        }]`
+      );
+      // eslint-disable-next-line no-await-in-loop
+      if (attempt < maxAttempts) await sleep(baseDelayMs * attempt);
+    }
+  }
+  throw lastErr;
+};
 
 export const SQL_ROTATABLE_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
