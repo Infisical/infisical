@@ -98,6 +98,22 @@ async function getSecrets(input: { destination: TRenderSyncWithCredentials["dest
         value: item.value
       }));
     }
+    case RenderSyncScope.Workflow: {
+      const { workflowId } = input.destination;
+      const res = await makeRequestWithRetry(() =>
+        request.request<{
+          envVars: { key: string; value: string }[];
+        }>({
+          ...req,
+          url: `/workflows/${workflowId}`
+        })
+      );
+
+      return (res.data.envVars ?? []).map((item) => ({
+        key: item.key,
+        value: item.value
+      }));
+    }
     default:
       throw new BadRequestError({ message: "Unknown render sync destination scope" });
   }
@@ -163,6 +179,19 @@ const batchUpdateEnvironmentSecrets = async (
           })
         );
       }
+      break;
+    }
+
+    case RenderSyncScope.Workflow: {
+      const { workflowId } = destinationConfig;
+      await makeRequestWithRetry(() =>
+        request.request({
+          ...req,
+          method: "PATCH",
+          url: `/workflows/${workflowId}`,
+          data: { envVars }
+        })
+      );
       break;
     }
 
@@ -267,6 +296,10 @@ const redeployService = async (secretSync: TRenderSyncWithCredentials) => {
       break;
     }
 
+    case RenderSyncScope.Workflow:
+      // Render workflows don't expose a deploy endpoint; auto-redeploy is a no-op for this scope.
+      break;
+
     default:
       throw new BadRequestError({ message: "Unknown render sync destination scope" });
   }
@@ -336,18 +369,22 @@ export const RenderSyncFns = {
 
   removeSecrets: async (secretSync: TRenderSyncWithCredentials, secretMap: TSecretMap) => {
     const renderSecrets = await getRenderEnvironmentSecrets(secretSync);
-    const finalEnvVars: Array<{ key: string; value: string }> = [];
 
-    for (const renderSecret of renderSecrets) {
-      if (renderSecret.key in secretMap) {
-        finalEnvVars.push({
-          key: renderSecret.key,
-          value: renderSecret.value
-        });
+    if (secretSync.destinationConfig.scope === RenderSyncScope.Workflow) {
+      // Workflows don't support per-key deletes; PATCH with the remaining env vars instead.
+      const remaining = renderSecrets.filter((s) => !(s.key in secretMap));
+      await batchUpdateEnvironmentSecrets(secretSync, remaining);
+    } else {
+      const toDelete: Array<{ key: string; value: string }> = [];
+
+      for (const renderSecret of renderSecrets) {
+        if (renderSecret.key in secretMap) {
+          toDelete.push({ key: renderSecret.key, value: renderSecret.value });
+        }
       }
-    }
 
-    await Promise.all(finalEnvVars.map((el) => deleteEnvironmentSecret(secretSync, el)));
+      await Promise.all(toDelete.map((el) => deleteEnvironmentSecret(secretSync, el)));
+    }
 
     if (secretSync.syncOptions.autoRedeployServices) {
       await redeployService(secretSync);
