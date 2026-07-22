@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
@@ -129,7 +130,7 @@ import {
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
+    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find" | "getRequestEnrollmentTypeByCertId"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -2300,6 +2301,23 @@ export const certificateV3ServiceFactory = ({
     });
   };
 
+  // Blocks renewal for certificates enrolled via an external/protocol method (ACME/EST/SCEP), where the client
+  // owns the private key and drives its own renewal. Judged by the certificate's OWN enrollment record, never the
+  // profile's enrollmentType (a legacy label that drifts under the application flow). Only an explicit non-API
+  // value blocks; a missing signal defers to the stored-private-key check, so older certs are not wrongly blocked.
+  const $assertCertificateEnrollmentRenewable = async (
+    certId: string,
+    { context, tx }: { context: "renewal" | "auto-renewal"; tx?: Knex }
+  ) => {
+    const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certId, tx);
+    if (enrollmentType && enrollmentType !== EnrollmentType.API) {
+      const verb = context === "renewal" ? "renewed" : "auto-renewed";
+      throw new ForbiddenRequestError({
+        message: `Certificate is not eligible for ${context}: ${enrollmentType.toUpperCase()} certificates cannot be ${verb}`
+      });
+    }
+  };
+
   const renewCertificate = async ({
     certificateId,
     actor,
@@ -2355,14 +2373,9 @@ export const certificateV3ServiceFactory = ({
         if (!profile) {
           throw new NotFoundError({ message: "Certificate profile not found" });
         }
-
-        if (profile.enrollmentType !== EnrollmentType.API) {
-          throw new ForbiddenRequestError({
-            message:
-              "Certificate is not eligible for renewal: Only certificates issued from an API enrollment profile can be renewed through this endpoint"
-          });
-        }
       }
+
+      await $assertCertificateEnrollmentRenewable(originalCert.id, { context: "renewal", tx });
 
       const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
       if (!certificateSecret) {
@@ -2957,11 +2970,7 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
-      });
-    }
+    await $assertCertificateEnrollmentRenewable(certificate.id, { context: "auto-renewal" });
 
     const certificateSecret = await certificateSecretDAL.findOne({ certId: certificate.id });
     if (!certificateSecret) {
@@ -3088,12 +3097,6 @@ export const certificateV3ServiceFactory = ({
     const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    if (profile.enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
-      });
     }
 
     await certificateDAL.transaction(async (tx) => {
