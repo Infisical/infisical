@@ -14,14 +14,14 @@ export const PamDiscoverySourceRunsSchema = z.object({
   triggeredBy: z.string(),
   discoveredCount: z.number().default(0),
   newCount: z.number().default(0),
-  dependencyCount: z.number().nullable().optional(),
-  newDependencyCount: z.number().nullable().optional(),
   errorMessage: z.string().nullable().optional(),
   machineErrors: z.unknown().nullable().optional(),
   startedAt: z.date().nullable().optional(),
   completedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  dependencyCount: z.number().nullable().optional(),
+  newDependencyCount: z.number().nullable().optional()
 });
 
 export type TPamDiscoverySourceRuns = z.infer<typeof PamDiscoverySourceRunsSchema>;
