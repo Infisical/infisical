@@ -224,32 +224,17 @@ export const CreateOrgIdentitySheet = ({ isOpen, onOpenChange }: Props) => {
             </Tabs>
             <Tooltip>
               <TooltipTrigger>
-                <InfoIcon size={16} className="text-mineshaft-400" />
+                <InfoIcon size={16} className="text-muted" />
               </TooltipTrigger>
-              <TooltipContent side="left" align="start" className="max-w-sm">
-                <p className="mb-2 text-mineshaft-300">
-                  You can add machine identities to your sub-organization in one of two ways:
+              <TooltipContent side="left" align="start" className="max-w-md">
+                <p>
+                  <span className="font-medium">Create New</span> — a dedicated identity managed at
+                  the sub-organization level.
                 </p>
-                <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                  <li className="text-mineshaft-200">
-                    <strong className="font-medium text-mineshaft-100">Create New</strong> - Create
-                    a new machine identity specifically for this sub-organization. This machine
-                    identity will be managed at the sub-organization level.
-                    <p className="mt-2">
-                      This method is recommended for autonomous teams that need to manage machine
-                      identity authentication.
-                    </p>
-                  </li>
-                  <li>
-                    <strong className="font-medium text-mineshaft-100">Assign Existing</strong>{" "}
-                    Assign an existing machine identity from your parent organization. The machine
-                    identity will continue to be managed at its original scope.
-                    <p className="mt-2">
-                      This method is recommended for organizations that need to maintain centralized
-                      control.
-                    </p>
-                  </li>
-                </ul>
+                <p className="mt-1.5">
+                  <span className="font-medium">Assign Existing</span> — reuse an identity from your
+                  parent organization.
+                </p>
               </TooltipContent>
             </Tooltip>
           </div>

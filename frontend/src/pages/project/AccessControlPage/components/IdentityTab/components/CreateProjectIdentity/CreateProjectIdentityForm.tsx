@@ -202,7 +202,9 @@ export const CreateProjectIdentityForm = ({
 
       if (grantFailed) {
         createNotification({
-          text: "Machine identity created, but applying the policy grant failed. You can add it from the identity page.",
+          text: `Machine identity ${
+            data.mode === CreateProjectIdentityMode.Assign ? "added" : "created"
+          }, but applying the policy grant failed. You can add it from the identity page.`,
           type: "error"
         });
       } else {
@@ -263,31 +265,18 @@ export const CreateProjectIdentityForm = ({
             />
             <Tooltip>
               <TooltipTrigger type="button">
-                <InfoIcon size={16} className="text-mineshaft-400" />
+                <InfoIcon size={16} className="text-muted" />
               </TooltipTrigger>
-              <TooltipContent side="left" align="start" className="max-w-sm">
-                <p className="mb-2 text-mineshaft-300">
-                  You can add machine identities to your{" "}
-                  {isCertManager ? "Certificate Manager" : "project"} in one of two ways:
+              <TooltipContent side="left" align="start" className="max-w-md">
+                <p>
+                  <span className="font-medium">Create New</span>
+                  {" — a dedicated identity managed at the "}
+                  {isCertManager ? "Certificate Manager" : "project"} level.
                 </p>
-                <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                  <li className="text-mineshaft-200">
-                    <strong className="font-medium text-mineshaft-100">Create New</strong> - Create
-                    a dedicated machine identity managed at the{" "}
-                    {isCertManager ? "Certificate Manager level" : "project level"}.
-                    <p className="mt-2">
-                      Recommended for autonomous teams that manage their own machine identity
-                      authentication.
-                    </p>
-                  </li>
-                  <li>
-                    <strong className="font-medium text-mineshaft-100">Assign Existing</strong> -
-                    Assign an existing machine identity from your organization.
-                    <p className="mt-2">
-                      Recommended for organizations that need to maintain centralized control.
-                    </p>
-                  </li>
-                </ul>
+                <p className="mt-1.5">
+                  <span className="font-medium">Assign Existing</span> — reuse an identity from your
+                  organization.
+                </p>
               </TooltipContent>
             </Tooltip>
           </div>

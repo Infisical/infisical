@@ -21,7 +21,7 @@ type TemplateOption = {
 };
 
 const PermissionsTooltip = ({ permissions }: { permissions: TemplatePermission[] }) => (
-  <div className="flex flex-col gap-1.5">
+  <div className="flex flex-col gap-2">
     {permissions
       .map((permission) => ({
         ...permission,
@@ -30,13 +30,12 @@ const PermissionsTooltip = ({ permissions }: { permissions: TemplatePermission[]
       .sort((a, b) => a.object.title.localeCompare(b.object.title))
       .map(({ subject, actions, object }) => (
         <div key={subject}>
-          <span className="font-medium text-mineshaft-100">{object.title}</span>
-          <span className="text-mineshaft-300">
-            {" — "}
+          <div className="text-xs font-medium text-label">{object.title}</div>
+          <div className="text-sm">
             {actions
               .map((action) => object.actions.find((a) => a.value === action)?.label ?? action)
               .join(", ")}
-          </span>
+          </div>
         </div>
       ))}
   </div>
@@ -47,7 +46,7 @@ const TemplateOptionRow = ({ isSelected, children, ...props }: OptionProps<Templ
     <div className="flex flex-row items-center justify-between gap-2">
       <div className="min-w-0 flex-1">
         <p className="truncate">{children}</p>
-        <p className="text-xs leading-4 break-words whitespace-normal text-mineshaft-400">
+        <p className="text-xs leading-4 break-words whitespace-normal text-muted">
           {props.data.description}
         </p>
       </div>
@@ -63,7 +62,7 @@ const TemplateOptionRow = ({ isSelected, children, ...props }: OptionProps<Templ
               e.stopPropagation();
             }}
           >
-            <InfoIcon className="size-4 text-mineshaft-400 hover:text-mineshaft-200" />
+            <InfoIcon className="size-4 text-muted hover:text-foreground" />
           </TooltipTrigger>
           <TooltipContent side="left" align="start" className="max-w-sm">
             <PermissionsTooltip permissions={props.data.permissions} />
