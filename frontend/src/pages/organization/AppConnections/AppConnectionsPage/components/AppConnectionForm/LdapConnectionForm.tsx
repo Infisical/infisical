@@ -303,6 +303,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 )}
               />
             </div>
+            <CredentialRotationForm />
           </TabsContent>
           <TabsContent value="ssl">
             <p className="mb-3 text-xs text-muted">Requires ldaps:// URL</p>
@@ -352,7 +353,6 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             />
           </TabsContent>
         </Tabs>
-        <CredentialRotationForm />
         <AppConnectionFormFooter
           submitLabel={
             isUpdate
