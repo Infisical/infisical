@@ -13,7 +13,6 @@ import { OrgGeneralTab } from "../OrgGeneralTab";
 import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSubOrgsTab } from "../OrgSubOrgsTab";
-import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
 
 export const OrgTabGroup = () => {
   const { t } = useTranslation();
@@ -47,13 +46,6 @@ export const OrgTabGroup = () => {
       description: `Configure the key management systems (KMS) used to encrypt your ${
         isSubOrganization ? "sub-" : ""
       }organization's data.`
-    },
-    {
-      name: "Project Templates",
-      key: "project-templates",
-      component: ProjectTemplatesTab,
-      description:
-        "Create reusable templates that standardize roles and environments for new projects."
     },
     {
       name: "Product Settings",

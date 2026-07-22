@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, SlidersHorizontal } from "lucide-react";
 
-import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -60,6 +66,7 @@ export const ProjectNav = () => {
   else if (isSubOrganization) projectLabel = "Sub-Organization";
   else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
+  const hasProductSettings = currentProject.type !== ProjectType.SSH;
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
   // been consistent in using a route structure that reflects nested pages; once we refactor we can switch
@@ -171,6 +178,36 @@ export const ProjectNav = () => {
               </button>
             </SidebarGroupLabel>
             <NavComponent onSubmenuOpen={handleSubmenuOpen} />
+            {hasProductSettings && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
+                    scope="project"
+                    tooltip="Product Settings"
+                    onClick={() => {
+                      if (currentProject.type === ProjectType.SecretManager) {
+                        navigate({
+                          to: "/organizations/$orgId/projects/secret-management/product-settings",
+                          params: { orgId: currentOrg.id }
+                        });
+                        return;
+                      }
+                      navigate({
+                        to: "/organizations/$orgId/projects/product-settings/$type",
+                        params: {
+                          orgId: currentOrg.id,
+                          type: projectTypeToUrlSlug(currentProject.type)
+                        }
+                      });
+                    }}
+                  >
+                    <SlidersHorizontal className="size-4" />
+                    <span>Product Settings</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
           </SidebarGroup>
         </motion.div>
       )}

@@ -435,6 +435,13 @@ const organizationRoutes = route("/organizations/$orgId", [
       "organization/ProductSettingsPage/SecretsManagement/project-templates/route.tsx"
     )
   ]),
+  route("/projects/product-settings/$type", [
+    index("organization/ProductSettingsPage/ProjectTemplates/route.tsx"),
+    route(
+      "/project-templates/$templateId",
+      "organization/ProductSettingsPage/ProjectTemplates/project-templates/route.tsx"
+    )
+  ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),

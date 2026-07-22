@@ -31,11 +31,11 @@ export const ProjectTypeNav = () => {
   const isSecretManager = typeSlug
     ? urlSlugToProjectType(typeSlug) === ProjectType.SecretManager
     : false;
+  const projectType = typeSlug ? urlSlugToProjectType(typeSlug) : null;
+  const hasProductSettings = projectType !== null && projectType !== ProjectType.SSH;
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
-  const isOnSecretManagementProductSettings = pathname.includes(
-    "/secret-management/product-settings"
-  );
+  const isOnProductSettings = pathname.includes("/product-settings");
 
   return (
     <SidebarGroup>
@@ -55,9 +55,7 @@ export const ProjectTypeNav = () => {
             size="lg"
             scope="project"
             asChild
-            isActive={
-              !isOnKmipServers && !isOnSecretSharing && !isOnSecretManagementProductSettings
-            }
+            isActive={!isOnKmipServers && !isOnSecretSharing && !isOnProductSettings}
             tooltip="Projects"
           >
             <Link
@@ -107,22 +105,32 @@ export const ProjectTypeNav = () => {
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
-        {isSecretManager && (
+        {hasProductSettings && (
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               scope="project"
               asChild
-              isActive={isOnSecretManagementProductSettings}
+              isActive={isOnProductSettings}
               tooltip="Product Settings"
             >
-              <Link
-                to="/organizations/$orgId/projects/secret-management/product-settings"
-                params={{ orgId: resolvedOrgId }}
-              >
-                <SlidersHorizontal className="size-4" />
-                <span>Product Settings</span>
-              </Link>
+              {isSecretManager ? (
+                <Link
+                  to="/organizations/$orgId/projects/secret-management/product-settings"
+                  params={{ orgId: resolvedOrgId }}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span>Product Settings</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/organizations/$orgId/projects/product-settings/$type"
+                  params={{ orgId: resolvedOrgId, type: typeSlug ?? "" }}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span>Product Settings</span>
+                </Link>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}

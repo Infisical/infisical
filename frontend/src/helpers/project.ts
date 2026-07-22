@@ -76,7 +76,8 @@ const VALID_PROJECT_SLUGS = new Set<string>([
   ProjectType.CertificateManager,
   ProjectType.KMS,
   ProjectType.SecretScanning,
-  ProjectType.PAM
+  ProjectType.PAM,
+  ProjectType.AI
 ]);
 
 export const urlSlugToProjectType = (slug: string): ProjectType | null => {
