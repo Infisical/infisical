@@ -54,8 +54,8 @@ export type TFeatureSet = {
   rbac: false;
   customRateLimits: false;
   customAlerts: false;
-  auditLogs: false;
-  auditLogsRetentionDays: 0;
+  auditLogs: boolean;
+  auditLogsRetentionDays: number;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   githubOrgSync: false;
@@ -88,7 +88,7 @@ export type TFeatureSet = {
   enforceMfa: false;
   projectTemplates: false;
   kmip: false;
-  gateway: false;
+  gateway: boolean;
   gatewayPool: false;
   pamSlackNotifications: boolean;
   sshHostGroups: false;

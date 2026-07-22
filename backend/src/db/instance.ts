@@ -70,7 +70,10 @@ export const initDbConnection = ({
       ssl: sslConfig
     },
     // https://knexjs.org/guide/#pool
-    pool: { min: 0, max: 10 },
+    // superday dev-env: bumped from { min: 0, max: 10 } and added an explicit
+    // acquire timeout to rule out boot-migration pool starvation on the FIPS image.
+    pool: { min: 2, max: 20 },
+    acquireConnectionTimeout: 120000,
     migrations: {
       tableName: "infisical_migrations"
     }
