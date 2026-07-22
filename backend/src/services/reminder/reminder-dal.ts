@@ -171,7 +171,9 @@ export const reminderDALFactory = (db: TDbClient) => {
         `${TableName.SecretFolder}.envId`,
         `${TableName.Environment}.id`
       )
+      .join<TProjects>(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .where(`${TableName.Environment}.projectId`, projectId);
 
     const rawReminders = await query
