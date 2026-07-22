@@ -8,7 +8,8 @@ import {
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema,
-  PamFieldDescriptorSchema
+  PamFieldDescriptorSchema,
+  validateConnectionDetails
 } from "./pam-account-schemas";
 
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
@@ -206,6 +207,41 @@ describe("isCredentialConfigured", () => {
     expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "public-key" })).toBe(false);
 
     expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "certificate" })).toBe(true);
+  });
+});
+
+describe("validateConnectionDetails (AWS IAM roleArn)", () => {
+  test("accepts valid role ARNs across partitions and paths", () => {
+    const valid = [
+      "arn:aws:iam::123456789012:role/my-role",
+      "arn:aws:iam::123456789012:role/service-role/my-role",
+      "arn:aws:iam::123456789012:role/team.dev/deploy@svc+build",
+      "arn:aws-us-gov:iam::123456789012:role/gov-role",
+      "arn:aws-cn:iam::123456789012:role/cn-role"
+    ];
+    valid.forEach((roleArn) => {
+      expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn })).not.toThrow();
+    });
+  });
+
+  test("trims surrounding whitespace before validating", () => {
+    const result = validateConnectionDetails(PamAccountType.AwsIam, {
+      roleArn: "  arn:aws:iam::123456789012:role/my-role  "
+    });
+    expect(result).toEqual({ roleArn: "arn:aws:iam::123456789012:role/my-role" });
+  });
+
+  test("rejects malformed ARNs", () => {
+    const invalid = [
+      "not-an-arn",
+      "arn:aws:iam::123456789012:user/my-user", // user, not role
+      "arn:aws:iam::12345:role/my-role", // account id not 12 digits
+      "arn:aws:s3:::my-bucket", // wrong service
+      "arn:aws:iam::123456789012:role/" // empty role name
+    ];
+    invalid.forEach((roleArn) => {
+      expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn })).toThrow();
+    });
   });
 });
 

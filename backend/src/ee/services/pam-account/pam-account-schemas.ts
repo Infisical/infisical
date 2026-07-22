@@ -529,7 +529,15 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Amazon Web Services.png",
     requiresGateway: false,
     connectionDetails: z.object({
-      roleArn: z.string().trim().min(1).max(2048)
+      roleArn: z
+        .string()
+        .trim()
+        .min(1)
+        .max(2048)
+        .regex(
+          new RE2(/^arn:aws(-cn|-us-gov)?:iam::\d{12}:role\/[\w+=,.@/-]+$/),
+          "Must be a valid IAM role ARN (e.g. arn:aws:iam::123456789012:role/my-role)"
+        )
     }),
     credentials: z.object({}),
     sanitizedCredentials: z.object({}),
