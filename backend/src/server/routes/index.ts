@@ -199,11 +199,6 @@ import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/s
 import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
-import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
-import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
-import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
-import { snapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { sshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { sshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { sshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
@@ -696,11 +691,6 @@ export const registerRoutes = async (
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
   const secretApprovalRequestReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
   const secretApprovalRequestSecretDAL = secretApprovalRequestSecretDALFactory(db);
-
-  const snapshotDAL = snapshotDALFactory(db);
-  const snapshotSecretDAL = snapshotSecretDALFactory(db);
-  const snapshotSecretV2BridgeDAL = snapshotSecretV2DALFactory(db);
-  const snapshotFolderDAL = snapshotFolderDALFactory(db);
 
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
@@ -2081,8 +2071,6 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     integrationAuthDAL,
-    snapshotDAL,
-    snapshotSecretV2BridgeDAL,
     secretApprovalRequestDAL,
     projectKeyDAL,
     orgService,
@@ -2171,27 +2159,6 @@ export const registerRoutes = async (
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL
   });
 
-  const snapshotService = secretSnapshotServiceFactory({
-    permissionService,
-    licenseService,
-    folderDAL,
-    secretDAL,
-    snapshotDAL,
-    snapshotFolderDAL,
-    snapshotSecretDAL,
-    folderCommitService,
-    secretVersionDAL,
-    folderVersionDAL,
-    secretTagDAL,
-    secretVersionTagDAL,
-    projectBotService,
-    kmsService,
-    secretV2BridgeDAL,
-    secretVersionV2BridgeDAL,
-    snapshotSecretV2BridgeDAL,
-    secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL
-  });
-
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
@@ -2248,7 +2215,6 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     secretApprovalRequestSecretDAL,
     kmsService,
-    snapshotService,
     resourceMetadataDAL,
     reminderService,
     reminderDAL,
@@ -2270,7 +2236,6 @@ export const registerRoutes = async (
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
-    snapshotService,
     secretVersionTagDAL,
     secretQueueService,
     kmsService,
@@ -2300,7 +2265,6 @@ export const registerRoutes = async (
     projectDAL,
     secretDAL,
     secretTagDAL,
-    snapshotService,
     secretQueueService,
     secretImportDAL,
     projectEnvDAL,
@@ -2326,7 +2290,6 @@ export const registerRoutes = async (
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,
-    snapshotService,
     projectDAL,
     folderCommitService,
     secretApprovalPolicyService,
@@ -2791,7 +2754,6 @@ export const registerRoutes = async (
     cronJob,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
-    snapshotDAL,
     identityAccessTokenDAL,
     identityAccessTokenRevocationDAL,
     secretSharingDAL,
@@ -2968,7 +2930,6 @@ export const registerRoutes = async (
     secretTagDAL,
     folderCommitService,
     resourceMetadataDAL,
-    snapshotService,
     secretQueueService,
     webhookDAL,
     projectEnvDAL,
@@ -3052,7 +3013,6 @@ export const registerRoutes = async (
     secretVersionV2BridgeDAL,
     keyStore,
     resourceMetadataDAL,
-    snapshotService,
     secretQueueService,
     queueService,
     appConnectionDAL,
@@ -3919,7 +3879,6 @@ export const registerRoutes = async (
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
     emailDomain: emailDomainService,
-    snapshot: snapshotService,
     saml: samlService,
     ldap: ldapService,
     auditLog: auditLogService,

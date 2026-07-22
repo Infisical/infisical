@@ -994,16 +994,6 @@ export const PROJECTS = {
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
   },
-  GET_SNAPSHOTS: {
-    projectId: "The ID of the project to get snapshots from.",
-    environment: "The environment to get snapshots from.",
-    path: "The secret path to get snapshots from.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th snapshot.",
-    limit: "The number of snapshots to return."
-  },
-  ROLLBACK_TO_SNAPSHOT: {
-    secretSnapshotId: "The ID of the snapshot to rollback to."
-  },
   ADD_GROUP_TO_PROJECT: {
     projectId: "The ID of the project to add the group to.",
     groupIdOrName: "The ID or name of the group to add to the project.",

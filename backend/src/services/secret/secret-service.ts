@@ -28,7 +28,6 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
-import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -126,7 +125,6 @@ type TSecretServiceFactoryDep = {
   secretV2BridgeService: TSecretV2BridgeServiceFactory;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<
     TSecretQueueFactory,
     "syncSecrets" | "handleSecretReminder" | "removeSecretReminder" | "startSecretV2Migration"
@@ -164,7 +162,6 @@ export const secretServiceFactory = ({
   folderDAL,
   secretBlindIndexDAL,
   permissionService,
-  snapshotService,
   secretQueueService,
   projectDAL,
   projectBotService,
@@ -335,7 +332,6 @@ export const secretServiceFactory = ({
     );
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         actorId,
@@ -481,7 +477,6 @@ export const secretServiceFactory = ({
     );
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         orgId: actorOrgId,
@@ -597,7 +592,6 @@ export const secretServiceFactory = ({
     });
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath: path,
         actorId,
@@ -925,7 +919,6 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -1049,7 +1042,6 @@ export const secretServiceFactory = ({
       }));
     });
 
-    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -1152,7 +1144,6 @@ export const secretServiceFactory = ({
       }));
     });
 
-    await snapshotService.performSnapshot(folderId);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
@@ -2085,7 +2076,6 @@ export const secretServiceFactory = ({
       secretCommentCiphertext: secretCommentEncrypted.ciphertext
     });
 
-    await snapshotService.performSnapshot(secret.folderId);
     return { type: SecretProtectionType.Direct as const, secret: decryptSecretRaw(secret, botKey) };
   };
 
@@ -2801,7 +2791,6 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folder.id);
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
@@ -2913,7 +2902,6 @@ export const secretServiceFactory = ({
       })
     );
 
-    await snapshotService.performSnapshot(folder.id);
     await secretQueueService.syncSecrets({
       secretPath,
       projectId: project.id,
@@ -3377,7 +3365,6 @@ export const secretServiceFactory = ({
     });
 
     if (isDestinationUpdated) {
-      await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
         orgId: project.orgId,
@@ -3390,7 +3377,6 @@ export const secretServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      await snapshotService.performSnapshot(sourceFolder.id);
       await secretQueueService.syncSecrets({
         projectId: project.id,
         orgId: project.orgId,
@@ -3656,7 +3642,6 @@ export const secretServiceFactory = ({
       });
     }
 
-    await snapshotService.performSnapshot(destinationFolder.id);
     await secretQueueService.syncSecrets({
       actor,
       actorId,
