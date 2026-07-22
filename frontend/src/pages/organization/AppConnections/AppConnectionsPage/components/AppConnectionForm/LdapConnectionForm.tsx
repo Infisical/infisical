@@ -42,6 +42,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
@@ -97,20 +98,34 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: appConnection ?? {
-      app: AppConnection.LDAP,
-      method: LdapConnectionMethod.SimpleBind,
-      gatewayId: null,
-      gatewayPoolId: null,
-      credentials: {
-        provider: LdapConnectionProvider.ActiveDirectory,
-        url: "",
-        dn: "",
-        password: "",
-        sslRejectUnauthorized: true,
-        sslCertificate: undefined
-      }
-    }
+    defaultValues: appConnection
+      ? {
+          ...appConnection,
+          isAutoRotationEnabled: appConnection.isAutoRotationEnabled ?? false,
+          rotation: appConnection.rotation ?? {
+            rotationInterval: 30,
+            rotateAtUtc: { hours: 0, minutes: 0 }
+          }
+        }
+      : {
+          app: AppConnection.LDAP,
+          method: LdapConnectionMethod.SimpleBind,
+          gatewayId: null,
+          gatewayPoolId: null,
+          isAutoRotationEnabled: false,
+          rotation: {
+            rotationInterval: 30,
+            rotateAtUtc: { hours: 0, minutes: 0 }
+          },
+          credentials: {
+            provider: LdapConnectionProvider.ActiveDirectory,
+            url: "",
+            dn: "",
+            password: "",
+            sslRejectUnauthorized: true,
+            sslCertificate: undefined
+          }
+        }
   });
 
   const { handleSubmit, control, setValue, watch } = form;
@@ -337,6 +352,7 @@ export const LdapConnectionForm = ({ appConnection, onSubmit }: Props) => {
             />
           </TabsContent>
         </Tabs>
+        <CredentialRotationForm />
         <AppConnectionFormFooter
           submitLabel={
             isUpdate

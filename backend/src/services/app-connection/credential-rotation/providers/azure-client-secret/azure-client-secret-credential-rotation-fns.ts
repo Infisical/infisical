@@ -424,7 +424,8 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
     TAzureClientSecretStrategyConfig,
     TAzureClientSecretGeneratedCredential
   > = async (strategyConfig, credentials, rotationInterval, activeIndex) => {
-    const accessToken = await getGraphApiToken(credentials);
+    const azureCredentials = credentials as TAzureClientSecretCredentialRotationCredentials;
+    const accessToken = await getGraphApiToken(azureCredentials);
 
     return createAzureClientSecret({
       accessToken,
@@ -448,9 +449,10 @@ export const azureClientSecretRotationProviderFactory: TCredentialRotationProvid
   > = async (inactiveCredential, strategyConfig, credentials) => {
     if (!inactiveCredential?.keyId) return;
 
-    const accessToken = await getGraphApiToken(credentials);
+    const azureCredentials = credentials as TAzureClientSecretCredentialRotationCredentials;
+    const accessToken = await getGraphApiToken(azureCredentials);
 
-    await revokeAzureClientSecret(inactiveCredential.keyId, strategyConfig, credentials, accessToken);
+    await revokeAzureClientSecret(inactiveCredential.keyId, strategyConfig, azureCredentials, accessToken);
   };
 
   return {

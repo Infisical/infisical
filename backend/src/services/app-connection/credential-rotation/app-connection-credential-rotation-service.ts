@@ -17,6 +17,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TAppConnection, TAppConnectionRaw } from "../app-connection-types";
 import { AzureClientSecretsConnectionMethod } from "../azure-client-secrets";
 import { AzureKeyVaultConnectionMethod } from "../azure-key-vault";
+import { LdapConnectionMethod } from "../ldap";
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 import {
   AppConnectionCredentialRotationStatus,
@@ -44,6 +45,7 @@ import {
   AzureClientSecretCredentialRotationCredentialsSchema,
   azureClientSecretRotationProviderFactory
 } from "./providers/azure-client-secret";
+import { LdapCredentialRotationCredentialsSchema, ldapCredentialRotationProviderFactory } from "./providers/ldap";
 
 const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 
@@ -63,6 +65,12 @@ const STRATEGY_MAP: Record<
       app: AppConnection.AzureClientSecrets,
       method: AzureClientSecretsConnectionMethod.ClientSecret
     }
+  ],
+  [AppConnectionCredentialRotationStrategy.LdapPassword]: [
+    {
+      app: AppConnection.LDAP,
+      method: LdapConnectionMethod.SimpleBind
+    }
   ]
 };
 
@@ -70,7 +78,8 @@ const CREDENTIAL_ROTATION_CREDENTIALS_SCHEMA_MAP: Record<
   AppConnectionCredentialRotationStrategy,
   z.ZodSchema<TAppConnectionCredentialCredentials>
 > = {
-  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: AzureClientSecretCredentialRotationCredentialsSchema
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: AzureClientSecretCredentialRotationCredentialsSchema,
+  [AppConnectionCredentialRotationStrategy.LdapPassword]: LdapCredentialRotationCredentialsSchema
 };
 
 const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
@@ -78,7 +87,9 @@ const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
   TCredentialRotationProviderFactory
 > = {
   [AppConnectionCredentialRotationStrategy.AzureClientSecret]:
-    azureClientSecretRotationProviderFactory as TCredentialRotationProviderFactory
+    azureClientSecretRotationProviderFactory as TCredentialRotationProviderFactory,
+  [AppConnectionCredentialRotationStrategy.LdapPassword]:
+    ldapCredentialRotationProviderFactory as TCredentialRotationProviderFactory
 };
 
 export type TAppConnectionCredentialRotationServiceFactoryDep = {

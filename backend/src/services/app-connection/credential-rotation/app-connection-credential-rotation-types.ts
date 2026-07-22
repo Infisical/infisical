@@ -8,6 +8,11 @@ import {
   TAzureClientSecretGeneratedCredential,
   TAzureClientSecretStrategyConfig
 } from "./providers/azure-client-secret/azure-client-secret-credential-rotation-types";
+import {
+  TLdapCredentialRotationCredentials,
+  TLdapGeneratedCredential,
+  TLdapStrategyConfig
+} from "./providers/ldap/ldap-credential-rotation-types";
 
 export type TAppConnectionCredentialRotationRaw = TAppConnectionCredentialRotations;
 
@@ -21,13 +26,17 @@ export type TAppConnectionCredentialRotation = Omit<
 export type TCreateAppConnectionCredentialRotationSchema = z.infer<typeof CreateAppConnectionCredentialRotationSchema>;
 
 // Union of all strategy configs — expands as providers are added
-export type TAppConnectionCredentialRotationStrategyConfig = TAzureClientSecretStrategyConfig;
+export type TAppConnectionCredentialRotationStrategyConfig = TAzureClientSecretStrategyConfig | TLdapStrategyConfig;
 
 // Union of all individual generated credential types — expands as providers are added
-export type TAppConnectionCredentialRotationGeneratedCredential = TAzureClientSecretGeneratedCredential;
+export type TAppConnectionCredentialRotationGeneratedCredential =
+  | TAzureClientSecretGeneratedCredential
+  | TLdapGeneratedCredential;
 
 // Union of all individual credentials types — expands as providers are added
-export type TAppConnectionCredentialCredentials = TAzureClientSecretCredentialRotationCredentials;
+export type TAppConnectionCredentialCredentials =
+  | TAzureClientSecretCredentialRotationCredentials
+  | TLdapCredentialRotationCredentials;
 
 export type TAppConnectionCredentialRotationGeneratedCredentials =
   (TAppConnectionCredentialRotationGeneratedCredential | null)[];
