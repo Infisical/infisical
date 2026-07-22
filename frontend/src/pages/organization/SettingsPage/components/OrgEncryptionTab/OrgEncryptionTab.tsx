@@ -1,21 +1,36 @@
-import { faLock, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { KeyRound, Plus, Trash2 } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
-  DeleteActionModal,
-  EmptyState,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -32,12 +47,18 @@ import { EditExternalKmsCredentialsModal } from "./EditExternalKmsCredentialsMod
 import { EditExternalKmsDetailsModal } from "./EditExternalKmsDetailsModal";
 import { ExternalKmsItem } from "./ExternalKmsItem";
 
+type RemoveExternalKmsData = {
+  kmsId: string;
+  name: string;
+  provider: ExternalKmsProvider;
+};
+
 export const OrgEncryptionTab = withPermission(
   () => {
     const { currentOrg, isSubOrganization } = useOrganization();
     const { subscription } = useSubscription();
     const orgId = currentOrg?.id || "";
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    const { popUp, handlePopUpClose, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "upgradePlan",
       "addExternalKms",
       "editExternalKmsDetails",
@@ -47,81 +68,111 @@ export const OrgEncryptionTab = withPermission(
     const { data: externalKmsList, isPending: isExternalKmsListLoading } =
       useGetExternalKmsList(orgId);
 
-    const { mutateAsync: removeExternalKms } = useRemoveExternalKms(currentOrg.id);
+    const { mutateAsync: removeExternalKms, isPending: isRemovingExternalKms } =
+      useRemoveExternalKms(currentOrg.id);
+    const removeExternalKmsData = popUp.removeExternalKms.data as RemoveExternalKmsData | undefined;
 
     const handleRemoveExternalKms = async () => {
-      const { kmsId, provider } = popUp?.removeExternalKms?.data as {
-        kmsId: string;
-        provider: ExternalKmsProvider;
-      };
+      if (!removeExternalKmsData) return;
 
-      await removeExternalKms({ kmsId, provider });
+      try {
+        await removeExternalKms({
+          kmsId: removeExternalKmsData.kmsId,
+          provider: removeExternalKmsData.provider
+        });
 
-      createNotification({
-        text: "Successfully deleted external KMS",
-        type: "success"
-      });
+        createNotification({
+          text: `External KMS "${removeExternalKmsData.name}" deleted`,
+          type: "success"
+        });
 
-      handlePopUpToggle("removeExternalKms", false);
+        handlePopUpClose("removeExternalKms");
+      } catch {
+        createNotification({
+          text: "Failed to delete external KMS",
+          type: "error"
+        });
+      }
     };
 
     return (
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="flex justify-between">
-          <p className="text-xl font-medium text-mineshaft-100">Key Management System (KMS)</p>
-          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Kms}>
-            {(isAllowed) => (
-              <Button
-                onClick={() => {
-                  if (subscription && !subscription?.externalKms) {
-                    handlePopUpOpen("upgradePlan", {
-                      isEnterpriseFeature: true
-                    });
-                    return;
-                  }
-                  handlePopUpOpen("addExternalKms");
-                }}
-                isDisabled={!isAllowed}
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              >
-                Add
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-        <p className="mb-4 text-gray-400">
-          Encrypt your {isSubOrganization ? "sub-" : ""}organization&apos;s data with external KMS.
-        </p>
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Td>Provider</Td>
-                <Td>Alias</Td>
-                <Td>ID</Td>
-              </Tr>
-            </THead>
-            <TBody>
-              {isExternalKmsListLoading && <TableSkeleton columns={2} innerKey="kms-loading" />}
-              {!isExternalKmsListLoading && externalKmsList && externalKmsList?.length === 0 && (
-                <Tr>
-                  <Td colSpan={5}>
-                    <EmptyState title="No external KMS found" icon={faLock} />
-                  </Td>
-                </Tr>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>
+            <KeyRound className="size-4 text-accent" />
+            Key Management System (KMS)
+          </CardTitle>
+          <CardDescription>
+            Encrypt your {isSubOrganization ? "sub-" : ""}organization&apos;s data with an external
+            KMS.
+          </CardDescription>
+          <CardAction>
+            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Kms}>
+              {(isAllowed) => (
+                <Button
+                  variant={isSubOrganization ? "sub-org" : "org"}
+                  size="sm"
+                  onClick={() => {
+                    if (subscription && !subscription.externalKms) {
+                      handlePopUpOpen("upgradePlan", {
+                        isEnterpriseFeature: true
+                      });
+                      return;
+                    }
+                    handlePopUpOpen("addExternalKms");
+                  }}
+                  isDisabled={!isAllowed}
+                >
+                  <Plus />
+                  Add KMS
+                </Button>
               )}
-              {!isExternalKmsListLoading &&
-                externalKmsList?.map((kms) => (
-                  <ExternalKmsItem
-                    key={kms.id}
-                    kms={kms}
-                    handlePopUpOpen={handlePopUpOpen}
-                    subscription={subscription}
-                  />
-                ))}
-            </TBody>
-          </Table>
-        </TableContainer>
+            </OrgPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {!isExternalKmsListLoading && (externalKmsList?.length ?? 0) === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No external KMS configured</EmptyTitle>
+                <EmptyDescription>
+                  Add an external KMS to encrypt organization data with a key you control.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/4">Provider</TableHead>
+                  <TableHead>Alias</TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead className="w-px text-right" aria-label="Actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isExternalKmsListLoading &&
+                  Array.from({ length: 2 }).map((_, index) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`external-kms-skeleton-${index}`}>
+                      <TableCell colSpan={4}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!isExternalKmsListLoading &&
+                  externalKmsList?.map((kms) => (
+                    <ExternalKmsItem
+                      key={kms.id}
+                      kms={kms}
+                      handlePopUpOpen={handlePopUpOpen}
+                      subscription={subscription}
+                    />
+                  ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
@@ -148,16 +199,38 @@ export const OrgEncryptionTab = withPermission(
           }
           onOpenChange={(state) => handlePopUpToggle("editExternalKmsCredentials", state)}
         />
-        <DeleteActionModal
-          isOpen={popUp.removeExternalKms.isOpen}
-          title={`Are you sure you want to remove ${
-            (popUp?.removeExternalKms?.data as { slug: string })?.slug || ""
-          } from ${(popUp?.removeExternalKms?.data as { provider: string })?.provider || ""}?`}
-          onChange={(isOpen) => handlePopUpToggle("removeExternalKms", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={handleRemoveExternalKms}
-        />
-      </div>
+        <AlertDialog
+          open={popUp.removeExternalKms.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("removeExternalKms", isOpen)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogMedia>
+                <Trash2 />
+              </AlertDialogMedia>
+              <AlertDialogTitle>
+                Delete external KMS &quot;{removeExternalKmsData?.name}&quot;?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the external KMS configuration from your organization. This cannot be
+                undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleRemoveExternalKms}
+                isPending={isRemovingExternalKms}
+                isDisabled={isRemovingExternalKms}
+              >
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Card>
     );
   },
   { action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms }

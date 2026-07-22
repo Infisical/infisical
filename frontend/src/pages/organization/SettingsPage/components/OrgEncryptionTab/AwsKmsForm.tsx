@@ -2,8 +2,24 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  DialogFooter,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  SecretInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetFooter
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useAddExternalKms, useUpdateExternalKms } from "@app/hooks/api";
 import {
@@ -52,9 +68,18 @@ type Props = {
   onCancel: () => void;
   kms?: Kms;
   mode?: "full" | "credentials" | "details";
+  layout?: "dialog" | "sheet";
+  secondaryActionLabel?: string;
 };
 
-export const AwsKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props) => {
+export const AwsKmsForm = ({
+  onCompleted,
+  onCancel,
+  kms,
+  mode = "full",
+  layout = "dialog",
+  secondaryActionLabel = "Cancel"
+}: Props) => {
   const validationSchema = kms ? UpdateExternalKmsSchema : AddExternalKmsSchema;
 
   const {
@@ -62,11 +87,11 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
     handleSubmit,
     watch,
     setValue,
-    formState: { isSubmitting }
+    formState: { isSubmitting, isDirty }
   } = useForm<AddExternalKmsType>({
     resolver: zodResolver(validationSchema),
     defaultValues: {
-      name: kms?.name,
+      name: kms?.name ?? "",
       description: kms?.description ?? "",
       configuration: {
         type: ExternalKmsProvider.Aws,
@@ -98,7 +123,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
     }
   });
 
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { mutateAsync: addAwsExternalKms } = useAddExternalKms(currentOrg.id);
   const { mutateAsync: updateAwsExternalKms } = useUpdateExternalKms(
     currentOrg.id,
@@ -144,8 +169,8 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
         createNotification({
           text:
             mode === "credentials"
-              ? "Successfully updated AWS External KMS credentials"
-              : "Successfully updated AWS External KMS Details",
+              ? "AWS external KMS credentials updated"
+              : "AWS external KMS details updated",
           type: "success"
         });
       } else {
@@ -156,179 +181,256 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
         });
 
         createNotification({
-          text: "Successfully added AWS External KMS",
+          text: "AWS external KMS created",
           type: "success"
         });
       }
 
       onCompleted();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      createNotification({
+        text: kms ? "Failed to update AWS external KMS" : "Failed to create AWS external KMS",
+        type: "error"
+      });
     }
   };
 
+  let submitLabel = "Add KMS";
+  if (kms) submitLabel = "Save Changes";
+  if (mode === "credentials") submitLabel = "Update Credentials";
+
+  const formActions = (
+    <>
+      <Button type="button" variant="ghost" onClick={onCancel}>
+        {secondaryActionLabel}
+      </Button>
+      <Button
+        type="submit"
+        variant={isSubOrganization ? "sub-org" : "org"}
+        isPending={isSubmitting}
+        isDisabled={isSubmitting || Boolean(kms && !isDirty)}
+      >
+        {submitLabel}
+      </Button>
+    </>
+  );
+
   return (
-    <form onSubmit={handleSubmit(handleAwsKmsFormSubmit)} autoComplete="off">
-      {(mode === "full" || mode === "details") && (
-        <>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
-                <Input placeholder="" {...field} />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
-                <Input placeholder="" {...field} />
-              </FormControl>
-            )}
-          />
-        </>
-      )}
-      {(mode === "full" || mode === "credentials") && (
-        <>
-          <Controller
-            control={control}
-            name="configuration.inputs.credential.type"
-            defaultValue={KmsAwsCredentialType.AssumeRole}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Authentication Mode"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => {
-                    setValue("configuration.inputs.credential.data.accessKey", "");
-                    setValue("configuration.inputs.credential.data.secretKey", "");
-                    setValue("configuration.inputs.credential.data.assumeRoleArn", "");
-                    setValue("configuration.inputs.credential.data.externalId", "");
+    <form
+      onSubmit={handleSubmit(handleAwsKmsFormSubmit)}
+      autoComplete="off"
+      className={layout === "sheet" ? "flex min-h-0 flex-1 flex-col" : "flex flex-col gap-4"}
+    >
+      <FieldGroup className={layout === "sheet" ? "flex-1 overflow-y-auto px-4" : undefined}>
+        {(mode === "full" || mode === "details") && (
+          <>
+            <Controller
+              control={control}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="aws-kms-alias">Alias</FieldLabel>
+                  <Input
+                    {...field}
+                    id="aws-kms-alias"
+                    value={field.value ?? ""}
+                    isError={Boolean(error)}
+                    placeholder="production-kms"
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="aws-kms-description">Description</FieldLabel>
+                  <Input
+                    {...field}
+                    id="aws-kms-description"
+                    value={field.value ?? ""}
+                    isError={Boolean(error)}
+                    placeholder="KMS for production organization data"
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </>
+        )}
+        {(mode === "full" || mode === "credentials") && (
+          <>
+            <Controller
+              control={control}
+              name="configuration.inputs.credential.type"
+              defaultValue={KmsAwsCredentialType.AssumeRole}
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="aws-kms-auth-mode">Authentication Mode</FieldLabel>
+                  <Select
+                    value={value}
+                    onValueChange={(nextValue) => {
+                      setValue("configuration.inputs.credential.data.accessKey", "");
+                      setValue("configuration.inputs.credential.data.secretKey", "");
+                      setValue("configuration.inputs.credential.data.assumeRoleArn", "");
+                      setValue("configuration.inputs.credential.data.externalId", "");
+                      onChange(nextValue);
+                    }}
+                  >
+                    <SelectTrigger
+                      id="aws-kms-auth-mode"
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue placeholder="Select an authentication mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={KmsAwsCredentialType.AssumeRole}>
+                        AWS Assume Role
+                      </SelectItem>
+                      <SelectItem value={KmsAwsCredentialType.AccessKey}>Access Key</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
 
-                    onChange(e);
-                  }}
-                  className="w-full"
-                >
-                  <SelectItem value={KmsAwsCredentialType.AssumeRole}>AWS Assume Role</SelectItem>
-                  <SelectItem value={KmsAwsCredentialType.AccessKey}>Access Key</SelectItem>
-                </Select>
-              </FormControl>
+            {selectedAwsAuthType === KmsAwsCredentialType.AccessKey ? (
+              <>
+                <Controller
+                  control={control}
+                  name="configuration.inputs.credential.data.accessKey"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="aws-kms-access-key">Access Key ID</FieldLabel>
+                      <Input
+                        {...field}
+                        id="aws-kms-access-key"
+                        value={field.value ?? ""}
+                        isError={Boolean(error)}
+                        autoComplete="off"
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="configuration.inputs.credential.data.secretKey"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="aws-kms-secret-key">Secret Access Key</FieldLabel>
+                      <SecretInput
+                        {...field}
+                        id="aws-kms-secret-key"
+                        value={field.value ?? ""}
+                        containerClassName={error ? "border-danger" : undefined}
+                        autoComplete="new-password"
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </>
+            ) : (
+              <>
+                <Controller
+                  control={control}
+                  name="configuration.inputs.credential.data.assumeRoleArn"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="aws-kms-role-arn">IAM Role ARN</FieldLabel>
+                      <Input
+                        {...field}
+                        id="aws-kms-role-arn"
+                        value={field.value ?? ""}
+                        isError={Boolean(error)}
+                        placeholder="arn:aws:iam::123456789012:role/InfisicalKms"
+                      />
+                      <FieldDescription>
+                        The role Infisical assumes to access AWS KMS.
+                      </FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="configuration.inputs.credential.data.externalId"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="aws-kms-external-id">External ID</FieldLabel>
+                      <Input
+                        {...field}
+                        id="aws-kms-external-id"
+                        value={field.value ?? ""}
+                        isError={Boolean(error)}
+                        placeholder="Optional"
+                      />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              </>
             )}
-          />
-
-          {selectedAwsAuthType === KmsAwsCredentialType.AccessKey ? (
-            <>
-              <Controller
-                control={control}
-                name="configuration.inputs.credential.data.accessKey"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Access Key ID"
-                    errorText={error?.message}
+          </>
+        )}
+        {(mode === "full" || mode === "details") && (
+          <>
+            <Controller
+              control={control}
+              name="configuration.inputs.awsRegion"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="aws-kms-region">AWS Region</FieldLabel>
+                  <Select value={value} onValueChange={onChange}>
+                    <SelectTrigger id="aws-kms-region" className="w-full" isError={Boolean(error)}>
+                      <SelectValue placeholder="Select an AWS region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AWS_REGIONS.map((awsRegion) => (
+                        <SelectItem value={awsRegion.slug} key={`kms-aws-region-${awsRegion.slug}`}>
+                          <span>{awsRegion.name}</span>
+                          <Badge variant="neutral">{awsRegion.slug}</Badge>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="configuration.inputs.kmsKeyId"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="aws-kms-key-id">AWS KMS Key ID</FieldLabel>
+                  <Input
+                    {...field}
+                    id="aws-kms-key-id"
+                    value={field.value ?? ""}
                     isError={Boolean(error)}
-                  >
-                    <Input placeholder="" {...field} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="configuration.inputs.credential.data.secretKey"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secret Access Key"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input type="password" autoComplete="new-password" placeholder="" {...field} />
-                  </FormControl>
-                )}
-              />
-            </>
-          ) : (
-            <>
-              <Controller
-                control={control}
-                name="configuration.inputs.credential.data.assumeRoleArn"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="IAM Role ARN For Role Assumption"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input placeholder="" {...field} />
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="configuration.inputs.credential.data.externalId"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Assume Role External ID"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <Input placeholder="" {...field} />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-        </>
+                    placeholder="Optional"
+                  />
+                  <FieldDescription>
+                    Leave blank to create a new AWS KMS key automatically.
+                  </FieldDescription>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </>
+        )}
+      </FieldGroup>
+      {layout === "sheet" ? (
+        <SheetFooter className="justify-end border-t">{formActions}</SheetFooter>
+      ) : (
+        <DialogFooter>{formActions}</DialogFooter>
       )}
-      {(mode === "full" || mode === "details") && (
-        <>
-          <Controller
-            control={control}
-            name="configuration.inputs.awsRegion"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="AWS Region" errorText={error?.message} isError={Boolean(error)}>
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full border border-mineshaft-500"
-                >
-                  {AWS_REGIONS.map((awsRegion) => (
-                    <SelectItem value={awsRegion.slug} key={`kms-aws-region-${awsRegion.slug}`}>
-                      {awsRegion.name} <Badge variant="neutral">{awsRegion.slug}</Badge>
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="configuration.inputs.kmsKeyId"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="AWS KMS Key ID"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input placeholder="" {...field} />
-              </FormControl>
-            )}
-          />
-        </>
-      )}
-      <div className="mt-6 flex items-center space-x-4">
-        <Button type="submit" isLoading={isSubmitting}>
-          {mode === "credentials" ? "Update Credentials" : "Save"}
-        </Button>
-        <Button variant="outline_bg" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };
