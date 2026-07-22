@@ -122,6 +122,7 @@ export const OrgWorkflowIntegrationTab = withPermission(
       }
 
       handlePopUpClose("removeIntegration");
+      setDeleteConfirmation("");
       createNotification({
         text: `Deleted integration "${slug}"`,
         type: "success"
