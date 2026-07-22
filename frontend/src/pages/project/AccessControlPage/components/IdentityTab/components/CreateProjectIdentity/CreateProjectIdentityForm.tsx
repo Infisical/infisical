@@ -63,8 +63,6 @@ const UNIVERSAL_AUTH_DEFAULTS = {
   lockoutCounterResetSeconds: 30
 };
 
-// Merge the permissions of the selected templates into a single form-permission
-// object (union of actions per subject), then hand off to formRolePermission2API.
 const buildTemplatePermissions = (
   projectType: ProjectType,
   templateIds: string[]
@@ -222,7 +220,6 @@ export const CreateProjectIdentityForm = ({
 
       onClose();
 
-      // Create always lands on the new identity. Assign only navigates when a grant was applied.
       if (data.mode === CreateProjectIdentityMode.Create || (hasTemplateGrants && !grantFailed)) {
         navigate({
           to: `${getProjectBaseURL(projectType)}/identities/$identityId`,
@@ -312,8 +309,8 @@ export const CreateProjectIdentityForm = ({
                   <FieldLabel>Machine Identity</FieldLabel>
                   <FieldContent>
                     <FilterableSelect
-                      value={value ?? null}
-                      onChange={(newValue) => onChange(newValue ?? undefined)}
+                      value={value || null}
+                      onChange={(newValue) => onChange(newValue || undefined)}
                       isLoading={isAvailableLoading}
                       placeholder="Select machine identity..."
                       options={assignableIdentities}
