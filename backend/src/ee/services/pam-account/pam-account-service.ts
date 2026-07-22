@@ -314,22 +314,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         ? { mode: TestConnectionMode.Tcp }
         : buildRequest(connectionDetails, credentials);
 
-    let result;
-    try {
-      result = await testConnectionWithGateway(
-        cd.host,
-        cd.port,
-        gatewayId,
-        gatewayV2Service,
-        request,
-        CONNECTION_TEST_TIMEOUT_MS
-      );
-    } catch {
-      // gateway is unreachable or predates the connection-test protocol; don't block the write
-      return;
-    }
+    const result = await testConnectionWithGateway(
+      cd.host,
+      cd.port,
+      gatewayId,
+      gatewayV2Service,
+      request,
+      CONNECTION_TEST_TIMEOUT_MS
+    );
 
-    if (!result.ok) {
+    // a null result means the gateway couldn't be reached (offline / pre-protocol) — skip rather than block
+    if (result && !result.ok) {
       throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
     }
   };
