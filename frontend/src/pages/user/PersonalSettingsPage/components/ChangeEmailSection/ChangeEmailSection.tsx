@@ -1,5 +1,4 @@
 import { useState } from "react";
-import ReactCodeInput from "react-code-input";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -7,6 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import { VerificationCodeForm } from "@app/components/v3";
 import { useUser } from "@app/context";
 import {
   useRequestEmailChangeOTP,
@@ -23,27 +23,6 @@ const emailSchema = z
   .required();
 
 export type EmailFormData = z.infer<typeof emailSchema>;
-
-const otpInputProps = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield" as const,
-    width: "45px",
-    borderRadius: "6px",
-    fontSize: "18px",
-    height: "45px",
-    padding: "0",
-    paddingLeft: "0",
-    paddingRight: "0",
-    backgroundColor: "#262626",
-    color: "white",
-    border: "1px solid #404040",
-    textAlign: "center" as const,
-    outlineColor: "#8ca542",
-    borderColor: "#404040"
-  }
-};
 
 type OtpStep = "currentEmail" | "newEmail";
 
@@ -234,20 +213,15 @@ export const ChangeEmailSection = () => {
         }}
       >
         <ModalContent title={otpTitle} subTitle={otpSubTitle}>
-          <div className="flex flex-col items-center space-y-4">
-            <div className="flex justify-center">
-              <ReactCodeInput
-                key={otpStep ?? "closed"}
-                name="otp-input"
-                inputMode="tel"
-                type="text"
-                fields={6}
-                onChange={setTypedOTP}
-                value={typedOTP}
-                {...otpInputProps}
-                className="mb-4"
-              />
-            </div>
+          <VerificationCodeForm
+            key={otpStep ?? "closed"}
+            name="email-change-verification-code"
+            value={typedOTP}
+            onChange={setTypedOTP}
+            onSubmit={onOtpSubmit}
+            submitLabel={otpButtonLabel}
+            isPending={isOtpSubmitLoading}
+          >
             {otpStep === "newEmail" && (
               <p className="text-center text-xs text-mineshaft-400">
                 Didn&apos;t get a code? If the new address already belongs to another Infisical
@@ -255,19 +229,17 @@ export const ChangeEmailSection = () => {
                 completed.
               </p>
             )}
-            <div className="flex gap-2">
-              <Button colorSchema="secondary" variant="outline" onClick={closeOtpModal}>
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                colorSchema="secondary"
+                variant="outline"
+                onClick={closeOtpModal}
+              >
                 Cancel
               </Button>
-              <Button
-                onClick={onOtpSubmit}
-                isLoading={isOtpSubmitLoading}
-                isDisabled={typedOTP.length !== 6 || isOtpSubmitLoading}
-              >
-                {otpButtonLabel}
-              </Button>
             </div>
-          </div>
+          </VerificationCodeForm>
         </ModalContent>
       </Modal>
     </>

@@ -1,40 +1,17 @@
-/* eslint-disable react/jsx-props-no-spreading */
 import { useEffect, useState } from "react";
-import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import axios from "axios";
 
 import {
-  AnimatedCollapse,
   Button,
   CardContent,
-  CardDescription,
-  CardHeader,
-  FieldError
+  VerificationCodeForm,
+  VerificationCodeHeader
 } from "@app/components/v3";
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 
 import SecurityClient from "../utilities/SecurityClient";
 import { AuthPagePanel } from "./AuthPagePanel";
-
-const codeInputStyle = {
-  inputStyle: {
-    fontFamily: "var(--font-mono)",
-    margin: "0",
-    MozAppearance: "textfield",
-    width: "100%",
-    borderRadius: "6px",
-    fontSize: "20px",
-    height: "68px",
-    padding: "0",
-    backgroundColor: "var(--color-container)",
-    color: "var(--color-foreground)",
-    border: "1px solid var(--color-border)",
-    textAlign: "center",
-    outlineColor: "transparent",
-    borderColor: "var(--color-border)"
-  }
-} as const;
 
 interface CodeInputStepProps {
   email: string;
@@ -76,10 +53,6 @@ export default function CodeInputStep({
   const remainingCooldown = Math.max(0, Math.ceil((resendCooldownEndTime - Date.now()) / 1000));
 
   const isCooldownActive = resendCooldownEndTime > Date.now();
-  const emailSeparatorIndex = email.lastIndexOf("@");
-  const emailLocalPart = emailSeparatorIndex >= 0 ? email.slice(0, emailSeparatorIndex) : email;
-  const emailDomainPart = emailSeparatorIndex >= 0 ? email.slice(emailSeparatorIndex) : "";
-
   const handleVerify = async () => {
     const { token } = await verifyCode({ email, code });
     SecurityClient.setSignupToken(token);
@@ -110,19 +83,10 @@ export default function CodeInputStep({
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
-        <CardHeader className="mb-6 gap-2">
-          <CardDescription className="ml-0.5 text-base">
-            {t("signup.step2-message")}
-          </CardDescription>
-          <div className="flex min-w-0 items-baseline justify-between gap-3">
-            <div
-              aria-label={email}
-              className="ml-0.5 flex min-w-0 flex-1 items-baseline font-alliance text-2xl font-normal text-foreground"
-              title={email}
-            >
-              <span className="min-w-0 truncate">{emailLocalPart}</span>
-              <span className="max-w-[60%] shrink-0 truncate">{emailDomainPart}</span>
-            </div>
+        <VerificationCodeHeader
+          title={t("signup.step2-message")}
+          recipient={email}
+          action={
             <button
               aria-label={`Change email address from ${email}`}
               className="shrink-0 text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
@@ -131,35 +95,18 @@ export default function CodeInputStep({
             >
               Change
             </button>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
-            <ReactCodeInput
-              name="verification-code"
-              inputMode="tel"
-              type="text"
-              fields={6}
-              onChange={setCode}
-              {...codeInputStyle}
-              className={isCodeError ? "code-input-v3 code-input-v3-error" : "code-input-v3"}
-            />
-            {isCodeError && <FieldError>{t("signup.step2-code-error")}</FieldError>}
-          </div>
-          <div className="flex flex-col gap-3">
-            <AnimatedCollapse isOpen={code.length === 6 || isVerifying} contentClassName="px-1">
-              <Button
-                type="submit"
-                onClick={handleVerify}
-                variant="project"
-                size="lg"
-                isFullWidth
-                isPending={isVerifying}
-                isDisabled={isVerifying}
-              >
-                {String(t("signup.verify"))}
-              </Button>
-            </AnimatedCollapse>
+          }
+        />
+        <CardContent>
+          <VerificationCodeForm
+            name="verification-code"
+            value={code}
+            onChange={setCode}
+            onSubmit={handleVerify}
+            submitLabel={String(t("signup.verify"))}
+            isPending={isVerifying}
+            error={isCodeError ? t("signup.step2-code-error") : undefined}
+          >
             <div className="flex items-center gap-1.5 text-sm">
               <span className="text-label">{t("signup.step2-resend-alert")}</span>
               <button
@@ -176,7 +123,7 @@ export default function CodeInputStep({
                 Preview next step (development only)
               </Button>
             )}
-          </div>
+          </VerificationCodeForm>
         </CardContent>
       </AuthPagePanel>
     </div>

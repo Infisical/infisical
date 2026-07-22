@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import ReactCodeInput from "react-code-input";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
@@ -9,50 +8,17 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  VerificationCodeForm,
+  VerificationCodeHeader
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
-
-const codeInputStyle = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "55px",
-    borderRadius: "6px",
-    fontSize: "24px",
-    height: "55px",
-    paddingLeft: "7",
-    backgroundColor: "transparent",
-    color: "#ebebeb",
-    border: "1px solid #2b2c30",
-    textAlign: "center",
-    outlineColor: "#2d2f33",
-    borderColor: "#2b2c30"
-  }
-} as const;
-
-const codeInputStylePhone = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "40px",
-    borderRadius: "6px",
-    fontSize: "24px",
-    height: "40px",
-    paddingLeft: "7",
-    backgroundColor: "transparent",
-    color: "#ebebeb",
-    border: "1px solid #2b2c30",
-    textAlign: "center",
-    outlineColor: "#2d2f33",
-    borderColor: "#2b2c30"
-  }
-} as const;
 
 export const SignupSsoPage = () => {
   const { t } = useTranslation();
@@ -138,54 +104,25 @@ export const SignupSsoPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-        <div className="mx-auto flex w-full flex-col items-center justify-center">
-          <AuthPagePanel>
-            <CardHeader className="mb-2 gap-2">
-              <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
-                We&apos;ve sent a verification code to
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <p className="text-md flex justify-center font-medium text-foreground">
-                {decoded.email}
-              </p>
-              <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-                <ReactCodeInput
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={6}
-                  onChange={setCode}
-                  {...codeInputStyle}
-                  className="code-input-v3"
-                />
-              </div>
-              <div className="mx-auto block w-max md:hidden">
-                <ReactCodeInput
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={6}
-                  onChange={setCode}
-                  {...codeInputStylePhone}
-                  className="code-input-v3"
-                />
-              </div>
-              {completeAccountSignup.isError && (
-                <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
-              )}
-              <Button
-                type="submit"
-                onClick={handleSubmit}
-                variant="project"
-                size="lg"
-                isFullWidth
-                isPending={completeAccountSignup.isPending}
-                isDisabled={code.length !== 6 || completeAccountSignup.isPending}
-              >
-                Verify
-              </Button>
+      <div className="mx-auto flex w-full flex-col items-center justify-center">
+        <AuthPagePanel>
+          <VerificationCodeHeader
+            title="We've sent a verification code to"
+            recipient={decoded.email}
+          />
+          <CardContent>
+            <VerificationCodeForm
+              name="signup-sso-verification-code"
+              value={code}
+              onChange={setCode}
+              onSubmit={handleSubmit}
+              isPending={completeAccountSignup.isPending}
+              error={
+                completeAccountSignup.isError
+                  ? "Oops. Your code is wrong. Please try again."
+                  : undefined
+              }
+            >
               <div className="flex flex-col items-center gap-2 text-xs text-label">
                 <div className="flex flex-row items-baseline gap-1">
                   <button
@@ -200,10 +137,10 @@ export const SignupSsoPage = () => {
                 </div>
                 <p className="text-label">Make sure to check your spam inbox.</p>
               </div>
-            </CardContent>
-          </AuthPagePanel>
-        </div>
-      </form>
+            </VerificationCodeForm>
+          </CardContent>
+        </AuthPagePanel>
+      </div>
     </AuthPageLayout>
   );
 };

@@ -536,6 +536,26 @@ input[type="number"]::-webkit-outer-spin-button {
   box-shadow: none;
 }
 
+.code-input-v3-recovery {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (width < 40rem) {
+  .code-input-v3 {
+    gap: 0.5rem;
+  }
+
+  .code-input-v3 input {
+    height: auto !important;
+    aspect-ratio: 1;
+  }
+
+  .code-input-v3-recovery {
+    gap: 0.375rem;
+  }
+}
+
 .code-input-v3-error input {
   border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border)) !important;
 }

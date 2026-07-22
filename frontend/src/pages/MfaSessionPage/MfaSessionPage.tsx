@@ -1,13 +1,17 @@
 import { ReactNode, useEffect, useState } from "react";
-import ReactCodeInput from "react-code-input";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useParams } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import Error from "@app/components/basic/Error";
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import {
+  Button,
+  CardContent,
+  FieldError,
+  VerificationCodeForm,
+  VerificationCodeHeader
+} from "@app/components/v3";
 import { isMfaLockoutError, stashMfaLockoutError } from "@app/helpers/mfaSession";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import {
@@ -17,47 +21,9 @@ import {
 } from "@app/hooks/api/mfaSession";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
-const codeInputProps = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "55px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "55px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
-    textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
-  }
-} as const;
-
-const codeInputPropsPhone = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "40px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "40px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
-    textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
-  }
-} as const;
-
 const MfaAuthPage = ({ children }: { children: ReactNode }) => (
-  <AuthPageLayout contentClassName="max-w-2xl" showFooter={false}>
-    <AuthPagePanel className="flex flex-col items-center">{children}</AuthPagePanel>
+  <AuthPageLayout showFooter={false}>
+    <AuthPagePanel>{children}</AuthPagePanel>
   </AuthPageLayout>
 );
 
@@ -104,9 +70,7 @@ export const MfaSessionPage = () => {
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
-  const handleVerifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const handleVerifyMfa = async () => {
     if (!mfaCode.trim() || !isCodeComplete || !sessionStatus?.mfaMethod) return;
 
     setIsLoading(true);
@@ -204,12 +168,10 @@ export const MfaSessionPage = () => {
   if (isStatusError) {
     return (
       <MfaAuthPage>
-        <div className="mb-6 text-center">
-          <h2 className="mb-3 text-xl font-medium text-red-400">Session Expired</h2>
-          <p className="text-bunker-300">
-            This MFA session has expired or is invalid. Please try your action again.
-          </p>
-        </div>
+        <VerificationCodeHeader
+          title={<span className="text-danger">Session expired</span>}
+          description="This MFA session has expired or is invalid. Please try your action again."
+        />
       </MfaAuthPage>
     );
   }
@@ -217,7 +179,7 @@ export const MfaSessionPage = () => {
   if (!sessionStatus) {
     return (
       <MfaAuthPage>
-        <div className="mb-4 text-center text-bunker-300">Loading...</div>
+        <VerificationCodeHeader title="Loading verification…" />
       </MfaAuthPage>
     );
   }
@@ -225,96 +187,57 @@ export const MfaSessionPage = () => {
   if (sessionStatus.status === MfaSessionStatus.ACTIVE) {
     return (
       <MfaAuthPage>
-        <div className="mb-6 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-50">Verification Complete</h2>
-          <p className="text-bunker-300">This window will close automatically...</p>
-        </div>
+        <VerificationCodeHeader
+          title="Verification complete"
+          description="This window will close automatically…"
+        />
       </MfaAuthPage>
     );
   }
 
   return (
     <MfaAuthPage>
-      <div className="w-full">
-        <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-            {sessionStatus.mfaMethod === MfaMethod.EMAIL &&
-              "Enter the verification code sent to your email"}
-            {sessionStatus.mfaMethod === MfaMethod.TOTP &&
-              "Enter the verification code from your authenticator app"}
-            {sessionStatus.mfaMethod === MfaMethod.WEBAUTHN &&
-              "Use your registered passkey to complete two-factor authentication"}
-          </p>
-        </div>
-
-        {sessionStatus.mfaMethod === MfaMethod.WEBAUTHN ? (
+      <VerificationCodeHeader
+        title="Two-factor authentication"
+        description={
           <>
-            {error && <Error text={error} />}
-            <div className="mx-auto mt-6 flex w-full max-w-sm flex-col items-center justify-center text-center">
-              <Button
-                size="md"
-                onClick={handleWebAuthnVerification}
-                isFullWidth
-                className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
-                colorSchema="primary"
-                variant="outline_bg"
-                isLoading={isLoading}
-              >
-                Authenticate with Passkey
-              </Button>
-            </div>
+            {sessionStatus.mfaMethod === MfaMethod.EMAIL &&
+              "Enter the verification code sent to your email."}
+            {sessionStatus.mfaMethod === MfaMethod.TOTP &&
+              "Enter the verification code from your authenticator app."}
+            {sessionStatus.mfaMethod === MfaMethod.WEBAUTHN &&
+              "Use your registered passkey to continue."}
           </>
+        }
+      />
+
+      <CardContent className="flex flex-col gap-5">
+        {sessionStatus.mfaMethod === MfaMethod.WEBAUTHN ? (
+          <div className="flex flex-col gap-2">
+            <Button
+              size="lg"
+              onClick={handleWebAuthnVerification}
+              isFullWidth
+              variant="project"
+              isPending={isLoading}
+              isDisabled={isLoading}
+            >
+              Authenticate with passkey
+            </Button>
+            {error && <FieldError>{error}</FieldError>}
+          </div>
         ) : (
-          <form onSubmit={handleVerifyMfa}>
-            <div className="mx-auto hidden md:block" style={{ minWidth: "600px" }}>
-              <div className="mt-8 mb-6 flex justify-center">
-                <ReactCodeInput
-                  key={`code-input-desktop-${codeInputKey}`}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={getExpectedCodeLength()}
-                  onChange={setMfaCode}
-                  value={mfaCode}
-                  className="mb-2"
-                  {...codeInputProps}
-                />
-              </div>
-            </div>
-            <div className="mx-auto mt-4 block md:hidden" style={{ minWidth: "400px" }}>
-              <div className="mt-4 mb-6 flex justify-center">
-                <ReactCodeInput
-                  key={`code-input-phone-${codeInputKey}`}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={getExpectedCodeLength()}
-                  onChange={setMfaCode}
-                  value={mfaCode}
-                  className="mb-2"
-                  {...codeInputPropsPhone}
-                />
-              </div>
-            </div>
-            {error && <Error text={error} />}
-            <div className="mx-auto mt-6 flex w-full max-w-sm flex-col items-center justify-center text-center">
-              <Button
-                size="md"
-                type="submit"
-                isFullWidth
-                className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
-                colorSchema="primary"
-                variant="outline_bg"
-                isLoading={isLoading}
-                isDisabled={!isCodeComplete}
-              >
-                Verify
-              </Button>
-            </div>
-          </form>
+          <VerificationCodeForm
+            key={codeInputKey}
+            name="mfa-session-code"
+            value={mfaCode}
+            onChange={setMfaCode}
+            onSubmit={() => handleVerifyMfa()}
+            isPending={isLoading}
+            error={error}
+          />
         )}
-      </div>
+      </CardContent>
     </MfaAuthPage>
   );
 };

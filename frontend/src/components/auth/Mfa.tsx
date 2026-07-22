@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
-import ReactCodeInput from "react-code-input";
+import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
@@ -8,7 +7,8 @@ import Error from "@app/components/basic/Error";
 import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import { Button, VerificationCodeForm, VerificationCodeHeader } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
@@ -25,45 +25,6 @@ import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/
 import { RecoveryCodesStep } from "../mfa/setup";
 
 const MAX_MFA_ATTEMPTS = 5;
-
-// The style for the verification code input
-const codeInputProps = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "55px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "55px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
-    textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
-  }
-} as const;
-
-const codeInputPropsPhone = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "40px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "40px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
-    textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
-  }
-} as const;
 
 type Props = {
   successCallback: () => void | Promise<void>;
@@ -172,9 +133,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     await completeLogin();
   };
 
-  const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const verifyMfa = async () => {
     if (!mfaCode.trim() || !isCodeComplete) return;
 
     setIsLoading(true);
@@ -344,8 +303,24 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     );
   }
 
+  let headerTitle = "Two-factor authentication";
+  let headerDescription: string | undefined;
+  let headerRecipient: string | undefined;
+
+  if (showRecoveryCodeInput) {
+    headerDescription = "Enter one of your backup recovery codes.";
+  } else if (method === MfaMethod.EMAIL) {
+    headerTitle = String(t("mfa.step2-message"));
+    headerRecipient = email;
+  } else if (method === MfaMethod.TOTP) {
+    headerDescription = "Enter the verification code from your authenticator app.";
+  } else if (method === MfaMethod.WEBAUTHN) {
+    headerTitle = "Passkey authentication";
+    headerDescription = "Use your registered passkey to continue.";
+  }
+
   return (
-    <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
+    <div className="mx-auto w-full max-w-xl pt-6 pb-6 md:mb-16 md:px-8">
       {!hideLogo && (
         <Link to="/">
           <div className="mb-4 flex justify-center">
@@ -353,40 +328,11 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           </div>
         </Link>
       )}
-      {method === MfaMethod.EMAIL &&
-        (showRecoveryCodeInput ? (
-          <div className="mb-8 text-center">
-            <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
-            <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-              Enter one of your backup recovery codes
-            </p>
-          </div>
-        ) : (
-          <>
-            <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-            <p className="text-l my-1 flex justify-center font-medium text-bunker-300">{email}</p>
-          </>
-        ))}
-      {method === MfaMethod.TOTP && (
-        <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-            {showRecoveryCodeInput
-              ? "Enter one of your backup recovery codes"
-              : "Enter the verification code from your authenticator app"}
-          </p>
-        </div>
-      )}
-      {method === MfaMethod.WEBAUTHN && (
-        <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-100">Passkey Authentication</h2>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-            {showRecoveryCodeInput
-              ? "Enter one of your backup recovery codes"
-              : "Use your registered passkey to complete two-factor authentication"}
-          </p>
-        </div>
-      )}
+      <VerificationCodeHeader
+        title={headerTitle}
+        recipient={headerRecipient}
+        description={headerDescription}
+      />
       {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
         <>
           {typeof triesLeft === "number" && (
@@ -394,99 +340,34 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           )}
           <div className="mx-auto mt-6 flex w-full max-w-sm flex-col items-center justify-center text-center">
             <Button
-              size="md"
+              size="lg"
               onClick={handleWebAuthnVerification}
               isFullWidth
-              className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isLoading}
+              variant="project"
+              isPending={isLoading}
               isDisabled={typeof triesLeft === "number" && triesLeft <= 0}
             >
-              Authenticate with Passkey
+              Authenticate with passkey
             </Button>
           </div>
         </>
       ) : (
-        <form onSubmit={verifyMfa}>
-          <div className="mx-auto hidden md:block" style={{ minWidth: "600px" }}>
-            {method === MfaMethod.EMAIL && (
-              <div className="flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery" : "email"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mt-6 mb-2"
-                  {...codeInputProps}
-                />
-              </div>
-            )}
-            {(method === MfaMethod.TOTP || method === MfaMethod.WEBAUTHN) && (
-              <div className="mt-8 mb-6 flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery" : "totp"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mb-2"
-                  {...codeInputProps}
-                />
-              </div>
-            )}
-          </div>
-          <div className="mx-auto mt-4 block md:hidden" style={{ minWidth: "400px" }}>
-            {method === MfaMethod.EMAIL && (
-              <div className="flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery-mobile" : "email-mobile"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mt-2 mb-2"
-                  {...codeInputPropsPhone}
-                />
-              </div>
-            )}
-            {(method === MfaMethod.TOTP || method === MfaMethod.WEBAUTHN) && (
-              <div className="mt-4 mb-6 flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery-mobile" : "totp-mobile"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mb-2"
-                  {...codeInputPropsPhone}
-                />
-              </div>
-            )}
-          </div>
-          {typeof triesLeft === "number" && (
-            <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
-          )}
-          <div className="mx-auto mt-6 flex w-full max-w-sm flex-col items-center justify-center text-center">
-            <Button
-              size="md"
-              type="submit"
-              isFullWidth
-              className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isLoading}
-              isDisabled={!isCodeComplete || (typeof triesLeft === "number" && triesLeft <= 0)}
-            >
-              {String(t("mfa.verify"))}
-            </Button>
-          </div>
-        </form>
+        <VerificationCodeForm
+          key={showRecoveryCodeInput ? "recovery" : method}
+          name="mfa-code"
+          fields={showRecoveryCodeInput ? 8 : 6}
+          value={mfaCode}
+          onChange={setMfaCode}
+          onSubmit={verifyMfa}
+          submitLabel={String(t("mfa.verify"))}
+          isPending={isLoading}
+          isDisabled={typeof triesLeft === "number" && triesLeft <= 0}
+          error={
+            typeof triesLeft === "number"
+              ? `Invalid code. You have ${triesLeft} attempt(s) remaining.`
+              : undefined
+          }
+        />
       )}
       {method === MfaMethod.EMAIL && !showRecoveryCodeInput && (
         <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
