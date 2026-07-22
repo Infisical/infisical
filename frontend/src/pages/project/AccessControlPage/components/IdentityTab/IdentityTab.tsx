@@ -28,11 +28,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -63,9 +58,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -98,15 +90,9 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy, ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
-import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 import { IdentityAuthMethodSheet } from "@app/views/IdentityAuthMethods";
 
-import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
-
-enum AddIdentityType {
-  CreateNew = "create-new",
-  AssignExisting = "assign-existing"
-}
+import { CreateProjectIdentitySheet } from "./components/CreateProjectIdentity/CreateProjectIdentitySheet";
 
 export const IdentityTab = withProjectPermission(
   () => {
@@ -115,10 +101,6 @@ export const IdentityTab = withProjectPermission(
     const { isSubOrganization, currentOrg } = useOrganization();
     const isCertManager = currentProject?.type === ProjectType.CertificateManager;
     const productLabel = isCertManager ? "Certificate Manager" : "Project";
-
-    const [addMachineIdentityType, setAddMachineIdentityType] = useState<AddIdentityType>(
-      AddIdentityType.CreateNew
-    );
 
     const {
       offset,
@@ -642,75 +624,10 @@ export const IdentityTab = withProjectPermission(
             </div>
           </CardContent>
         </Card>
-        <Dialog
-          open={popUp.createIdentity.isOpen}
-          onOpenChange={(open) => {
-            handlePopUpToggle("createIdentity", open);
-            if (!open) {
-              setAddMachineIdentityType(AddIdentityType.CreateNew);
-            }
-          }}
-        >
-          <DialogContent className="max-w-xl overflow-visible">
-            <DialogHeader>
-              <DialogTitle>{`Add Machine Identity to ${productLabel}`}</DialogTitle>
-              <DialogDescription>
-                Create a new machine identity or assign an existing one
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mx-auto flex items-center gap-2">
-              <Tabs
-                value={addMachineIdentityType}
-                onValueChange={(value) => setAddMachineIdentityType(value as AddIdentityType)}
-              >
-                <TabsList>
-                  <TabsTrigger value={AddIdentityType.CreateNew}>Create New</TabsTrigger>
-                  <TabsTrigger value={AddIdentityType.AssignExisting}>Assign Existing</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <Tooltip>
-                <TooltipTrigger>
-                  <InfoIcon size={16} className="text-mineshaft-400" />
-                </TooltipTrigger>
-                <TooltipContent side="right" align="start" className="max-w-sm">
-                  <p className="mb-2 text-mineshaft-300">
-                    You can add machine identities to your{" "}
-                    {isCertManager ? "Certificate Manager" : "project"} in one of two ways:
-                  </p>
-                  <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                      Create a dedicated machine identity managed at the{" "}
-                      {isCertManager ? "Certificate Manager-level" : "project-level"}.
-                      <p className="mt-2">
-                        This method is recommended for autonomous teams that need to manage machine
-                        identity authentication.
-                      </p>
-                    </li>
-                    <li>
-                      <strong className="font-medium text-mineshaft-100">Assign Existing</strong> -
-                      Assign an existing machine identity from your organization.
-                      <p className="mt-2">
-                        This method is recommended for organizations that need to maintain
-                        centralized control.
-                      </p>
-                    </li>
-                  </ul>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            {addMachineIdentityType === AddIdentityType.CreateNew && (
-              <ProjectIdentityModal
-                onClose={() => {
-                  handlePopUpClose("createIdentity");
-                }}
-              />
-            )}
-            {addMachineIdentityType === AddIdentityType.AssignExisting && (
-              <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
-            )}
-          </DialogContent>
-        </Dialog>
+        <CreateProjectIdentitySheet
+          isOpen={popUp.createIdentity.isOpen}
+          onOpenChange={(open) => handlePopUpToggle("createIdentity", open)}
+        />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${

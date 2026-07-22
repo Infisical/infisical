@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { InfoIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -13,18 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DocumentationLinkBadge,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  DocumentationLinkBadge
 } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -39,26 +27,18 @@ import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTempla
 import { SubscriptionPlanTypes } from "@app/hooks/api/subscriptions/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { CreateOrgIdentitySheet } from "./CreateOrgIdentitySheet";
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
 import { IdentityAuthTemplatesTable } from "./IdentityAuthTemplatesTable";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
-import { OrgIdentityLinkForm } from "./OrgIdentityLinkForm";
-import { OrgIdentityModal } from "./OrgIdentityModal";
-
-enum IdentityWizardSteps {
-  CreateIdentity = "create-identity",
-  LinkIdentity = "link-identity"
-}
 
 export const IdentitySection = withPermission(
   () => {
     const { subscription } = useSubscription();
     const { currentOrg, isSubOrganization } = useOrganization();
     const orgId = currentOrg?.id || "";
-
-    const [wizardStep, setWizardStep] = useState(IdentityWizardSteps.CreateIdentity);
 
     const { mutateAsync: deleteMutateAsync } = useDeleteOrgIdentity();
     const { mutateAsync: deleteTemplateMutateAsync } = useDeleteIdentityAuthTemplate();
@@ -142,10 +122,6 @@ export const IdentitySection = withPermission(
                           return;
                         }
 
-                        if (!isSubOrganization) {
-                          setWizardStep(IdentityWizardSteps.CreateIdentity);
-                        }
-
                         handlePopUpOpen("identity");
                       }}
                       isDisabled={!isAllowed}
@@ -218,81 +194,10 @@ export const IdentitySection = withPermission(
           }
         />
         <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-        <Dialog
-          open={popUp.identity.isOpen}
-          onOpenChange={(open) => {
-            handlePopUpToggle("identity", open);
-            if (!open) {
-              setWizardStep(IdentityWizardSteps.CreateIdentity);
-            }
-          }}
-        >
-          <DialogContent className="max-w-xl overflow-visible">
-            <DialogHeader>
-              <DialogTitle>
-                {isSubOrganization
-                  ? "Add Machine Identity to Sub-Organization"
-                  : "Create Organization Machine Identity"}
-              </DialogTitle>
-              <DialogDescription>
-                {isSubOrganization
-                  ? "Create a new machine identity or assign an existing one"
-                  : "Create a new machine identity in the organization"}
-              </DialogDescription>
-            </DialogHeader>
-            {isSubOrganization && (
-              <div className="mx-auto flex items-center gap-2">
-                <Tabs
-                  value={wizardStep}
-                  onValueChange={(value) => setWizardStep(value as IdentityWizardSteps)}
-                >
-                  <TabsList className="w-fit">
-                    <TabsTrigger value={IdentityWizardSteps.CreateIdentity}>Create New</TabsTrigger>
-                    <TabsTrigger value={IdentityWizardSteps.LinkIdentity}>
-                      Assign Existing
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <InfoIcon size={16} className="text-mineshaft-400" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right" align="start" className="max-w-sm">
-                    <p className="mb-2 text-mineshaft-300">
-                      You can add machine identities to your sub-organization in one of two ways:
-                    </p>
-                    <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                      <li className="text-mineshaft-200">
-                        <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                        Create a new machine identity specifically for this sub-organization. This
-                        machine identity will be managed at the sub-organization level.
-                        <p className="mt-2">
-                          This method is recommended for autonomous teams that need to manage
-                          machine identity authentication.
-                        </p>
-                      </li>
-                      <li>
-                        <strong className="font-medium text-mineshaft-100">Assign Existing</strong>{" "}
-                        Assign an existing machine identity from your parent organization. The
-                        machine identity will continue to be managed at its original scope.
-                        <p className="mt-2">
-                          This method is recommended for organizations that need to maintain
-                          centralized control.
-                        </p>
-                      </li>
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-            {wizardStep === IdentityWizardSteps.CreateIdentity && (
-              <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-            )}
-            {wizardStep === IdentityWizardSteps.LinkIdentity && (
-              <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
-            )}
-          </DialogContent>
-        </Dialog>
+        <CreateOrgIdentitySheet
+          isOpen={popUp.identity.isOpen}
+          onOpenChange={(open) => handlePopUpToggle("identity", open)}
+        />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to delete ${

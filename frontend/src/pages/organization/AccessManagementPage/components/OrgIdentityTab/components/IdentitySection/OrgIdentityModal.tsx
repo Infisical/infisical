@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
 import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
@@ -24,8 +23,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
-import { useCreateOrgIdentity, useGetOrgRoles, useUpdateOrgIdentity } from "@app/hooks/api";
-import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { useGetOrgRoles, useUpdateOrgIdentity } from "@app/hooks/api";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -52,7 +50,6 @@ type Props = {
 };
 
 export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
@@ -65,9 +62,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: roles } = useGetOrgRoles(orgId);
   const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
-  const { mutateAsync: createMutateAsync } = useCreateOrgIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
-  const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
     control,
@@ -131,57 +126,19 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
       orgId: string;
     };
 
-    if (identity) {
-      // update
+    await updateMutateAsync({
+      identityId: identity.identityId,
+      name,
+      role: role.slug || undefined,
+      hasDeleteProtection,
+      organizationId: orgId,
+      metadata
+    });
 
-      await updateMutateAsync({
-        identityId: identity.identityId,
-        name,
-        role: role.slug || undefined,
-        hasDeleteProtection,
-        organizationId: orgId,
-        metadata
-      });
-
-      handlePopUpToggle("identity", false);
-    } else {
-      // create
-
-      const { id: createdId } = await createMutateAsync({
-        name,
-        role: role.slug || undefined,
-        hasDeleteProtection,
-        organizationId: orgId,
-        metadata
-      });
-
-      await addMutateAsync({
-        organizationId: orgId,
-        identityId: createdId,
-        clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-        accessTokenTTL: 2592000,
-        accessTokenMaxTTL: 2592000,
-        accessTokenNumUsesLimit: 0,
-        accessTokenPeriod: 0,
-        lockoutEnabled: true,
-        lockoutThreshold: 3,
-        lockoutDurationSeconds: 300,
-        lockoutCounterResetSeconds: 30
-      });
-
-      handlePopUpToggle("identity", false);
-      navigate({
-        to: "/organizations/$orgId/identities/$identityId",
-        params: {
-          identityId: createdId,
-          orgId
-        }
-      });
-    }
+    handlePopUpToggle("identity", false);
 
     createNotification({
-      text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} machine identity`,
+      text: "Successfully updated machine identity",
       type: "success"
     });
 
@@ -336,7 +293,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
           isPending={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {popUp?.identity?.data ? "Update" : "Create"}
+          Update
         </Button>
       </div>
       <UpgradePlanModal
