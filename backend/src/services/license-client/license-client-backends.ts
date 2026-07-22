@@ -284,7 +284,8 @@ export const licenseServerBackend = (
         product_key: payload.productKey,
         plan_key: payload.planKey,
         email: payload.email,
-        name: payload.name
+        name: payload.name,
+        returnUrl: payload.returnUrl
       }),
       redirect: "manual"
     });

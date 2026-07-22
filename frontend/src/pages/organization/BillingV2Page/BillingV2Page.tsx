@@ -103,12 +103,7 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
-  // A first-time customer checks out through Stripe; an org with a live subscription has products
-  // added / changed in place. Trialing and past-due orgs still have a usable subscription.
-  const hasActiveSubscription =
-    overview?.subState === "active" ||
-    overview?.subState === "trialing" ||
-    overview?.subState === "past-due";
+  const hasActiveSubscription = overview?.subState === "active";
 
   const onUpdatePayment = async () => {
     try {

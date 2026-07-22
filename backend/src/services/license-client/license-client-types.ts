@@ -391,6 +391,7 @@ export type TStartTrialPayload = {
   // A trial starts with no Stripe customer yet, so the server needs an email + org name to create one.
   email?: string;
   name?: string;
+  returnUrl?: string;
 };
 
 // The trial is always granted immediately (our-side, no Stripe subscription, no upfront charge), so

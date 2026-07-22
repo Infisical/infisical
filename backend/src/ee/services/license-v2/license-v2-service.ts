@@ -952,7 +952,9 @@ export const licenseV2ServiceFactory = ({
       productKey: productId,
       planKey: plan,
       email,
-      name: organization?.name
+      name: organization?.name,
+      // The trial's card-setup checkout redirects here; built server-side from SITE_URL like checkout.
+      returnUrl: buildReturnUrl(orgId)
     });
     await licenseClient.invalidateEntitlements(orgId);
     return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
