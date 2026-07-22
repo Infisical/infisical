@@ -1,11 +1,8 @@
 import pLimit from "p-limit";
 
-import { OrgMembershipRole, OrgMembershipStatus, TAlerts } from "@app/db/schemas";
+import { TAlerts } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { NotificationType } from "@app/services/notification/notification-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
@@ -18,8 +15,6 @@ import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, TAlertContext } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
-const FAILURE_NOTIFICATION_MAX_ERROR_LENGTH = 200;
-
 const RECIPIENT_SEND_CONCURRENCY = 10;
 
 export type TAlertEngineDep = {
@@ -29,8 +24,6 @@ export type TAlertEngineDep = {
   alertProviderRegistry: TAlertProviderRegistry;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
-  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -43,37 +36,8 @@ export const alertEngineFactory = ({
   alertProviderRegistry,
   alertRecipientResolver,
   kmsService,
-  orgDAL,
-  notificationService,
   smtpService
 }: TAlertEngineDep) => {
-  const notifyAdminsOfFailure = async (alert: TAlerts, viewUrl: string, error: string) => {
-    try {
-      const admins = (await orgDAL.findOrgMembersByRole(alert.orgId, OrgMembershipRole.Admin)).filter(
-        (admin) => admin.status !== OrgMembershipStatus.Invited && admin.user?.id
-      );
-      if (admins.length === 0) return;
-
-      const truncatedError =
-        error.length > FAILURE_NOTIFICATION_MAX_ERROR_LENGTH
-          ? `${error.substring(0, FAILURE_NOTIFICATION_MAX_ERROR_LENGTH)}...`
-          : error;
-
-      await notificationService.createUserNotifications(
-        admins.map((admin) => ({
-          userId: admin.user.id,
-          orgId: alert.orgId,
-          type: NotificationType.ALERT_CHANNEL_FAILED,
-          title: `Alert Channel Failed: ${alert.name}`,
-          body: `Your alert **${alert.name}** failed to deliver on one or more channels: \`${truncatedError}\``,
-          link: viewUrl
-        }))
-      );
-    } catch (err) {
-      logger.error(err, `Failed to notify admins of alert channel failure [alertId=${alert.id}]`);
-    }
-  };
-
   const runAlert = async (alert: TAlerts) => {
     const provider = alertProviderRegistry.get(alert.resourceType);
     if (!provider) {
@@ -222,7 +186,7 @@ export const alertEngineFactory = ({
     const errorText = errors.length > 0 ? errors.join("\n") : undefined;
 
     if (errorText) {
-      await notifyAdminsOfFailure(alert, viewUrl, errorText);
+      logger.error(`Alert delivery failed on one or more channels [alertId=${alert.id}]: ${errorText}`);
     }
 
     await alertHistoryDAL.createWithTargets(alert.id, { status, error: errorText }, deliveries);

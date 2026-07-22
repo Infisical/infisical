@@ -90,7 +90,6 @@ const buildEngine = (opts: {
   registry.register(makeProvider(opts.targets) as IResourceAlertProvider);
 
   const sentMail: Array<{ recipients: string[] }> = [];
-  const createdNotifications: unknown[][] = [];
   const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
 
   const engine = alertEngineFactory({
@@ -125,12 +124,6 @@ const buildEngine = (opts: {
       }
     },
     kmsService: kmsServiceMock,
-    orgDAL: { findOrgMembersByRole: async () => [] },
-    notificationService: {
-      createUserNotifications: async (data: unknown[]) => {
-        createdNotifications.push(data);
-      }
-    },
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
         if (opts.failEmail) throw new Error("smtp down");
@@ -140,12 +133,12 @@ const buildEngine = (opts: {
     }
   } as unknown as TAlertEngineDep);
 
-  return { engine, sentMail, createdNotifications, historyWrites };
+  return { engine, sentMail, historyWrites };
 };
 
 describe("alert engine", () => {
   test("dispatches email to resolved recipients and records a delivery per (target, channel)", async () => {
-    const { engine, sentMail, createdNotifications, historyWrites } = buildEngine({
+    const { engine, sentMail, historyWrites } = buildEngine({
       targets: [{ id: "t1" }, { id: "t2" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
@@ -154,7 +147,6 @@ describe("alert engine", () => {
 
     expect(sentMail).toHaveLength(1);
     expect(sentMail[0].recipients).toEqual(["user@example.com"]);
-    expect(createdNotifications).toHaveLength(0); // no failure fallback on success
     expect(historyWrites).toHaveLength(1);
     expect(historyWrites[0].status).toBe(AlertRunStatus.SUCCESS);
     expect(historyWrites[0].deliveries).toEqual([

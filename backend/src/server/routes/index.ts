@@ -1039,8 +1039,6 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertRecipientResolver,
     kmsService,
-    orgDAL,
-    notificationService,
     smtpService
   });
   const alertQueue = alertQueueServiceFactory({
