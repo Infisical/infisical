@@ -682,6 +682,8 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
+    const effectiveTtl = ttl || "1y";
+
     const mappedReconstructedRequest = buildRevalidationRequest({
       csr: certRequest.csr,
       commonName: certRequest.commonName,
@@ -698,7 +700,7 @@ export const certificateApprovalServiceFactory = (
       notAfter: certRequest.notAfter,
       altNames,
       profileDefaults: profile.defaults,
-      ttl
+      ttl: effectiveTtl
     });
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
@@ -718,7 +720,7 @@ export const certificateApprovalServiceFactory = (
       profileId: profile.id,
       caId: profile.caId || "",
       caType,
-      ttl: ttl || "1y",
+      ttl: effectiveTtl,
       signatureAlgorithm: certRequest.signatureAlgorithm || "",
       keyAlgorithm: certRequest.keyAlgorithm || "",
       commonName: certRequest.commonName || "",
