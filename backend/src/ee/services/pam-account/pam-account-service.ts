@@ -43,7 +43,7 @@ import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-acces
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { PAM_CONNECTION_TEST_BUILDERS, TestConnectionMode } from "./pam-account-connection-test";
+import { buildGatewayConnectionTest, CLOUD_CONNECTION_VALIDATORS } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
@@ -293,10 +293,23 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayPoolId?: string | null;
       templateGatewayId?: string | null;
       templateGatewayPoolId?: string | null;
-    }
+    },
+    orgId: string
   ): Promise<void> => {
-    const buildRequest = PAM_CONNECTION_TEST_BUILDERS[accountType];
-    if (!buildRequest) return;
+    const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
+    if (validateCloud) {
+      try {
+        await validateCloud({ connectionDetails, credentials, orgId });
+      } catch (err) {
+        throw new BadRequestError({
+          message: `Connection test failed: ${err instanceof Error ? err.message : "unable to validate credentials"}`
+        });
+      }
+      return;
+    }
+
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials);
+    if (!test) return;
 
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -308,18 +321,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
 
-    const cd = connectionDetails as { host: string; port: number };
-    const request =
-      credentials === null || !isCredentialConfigured(accountType, credentials)
-        ? { mode: TestConnectionMode.Tcp }
-        : buildRequest(connectionDetails, credentials);
-
     const result = await testConnectionWithGateway(
-      cd.host,
-      cd.port,
+      test.host,
+      test.port,
       gatewayId,
       gatewayV2Service,
-      request,
+      test.request,
       CONNECTION_TEST_TIMEOUT_MS
     );
 
@@ -416,12 +423,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
     if (!skipConnectionTest) {
-      await assertConnectionOk(accountType, validatedConnectionDetails, validatedCredentials, {
-        gatewayId,
-        gatewayPoolId,
-        templateGatewayId: template.gatewayId,
-        templateGatewayPoolId: template.gatewayPoolId
-      });
+      await assertConnectionOk(
+        accountType,
+        validatedConnectionDetails,
+        validatedCredentials,
+        {
+          gatewayId,
+          gatewayPoolId,
+          templateGatewayId: template.gatewayId,
+          templateGatewayPoolId: template.gatewayPoolId
+        },
+        ctx.actorOrgId
+      );
     }
 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
@@ -632,12 +645,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
       // only test with credentials supplied in this request to prevent exfiltration
       const testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
-      await assertConnectionOk(accountType, effectiveConnectionDetails, testCredentials, {
-        gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
-        gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,
-        templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
-        templateGatewayPoolId: template ? template.gatewayPoolId : existing.templateGatewayPoolId
-      });
+      await assertConnectionOk(
+        accountType,
+        effectiveConnectionDetails,
+        testCredentials,
+        {
+          gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
+          gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,
+          templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
+          templateGatewayPoolId: template ? template.gatewayPoolId : existing.templateGatewayPoolId
+        },
+        ctx.actorOrgId
+      );
     }
 
     try {

@@ -1,4 +1,3 @@
-import { Impersonated, JWT } from "google-auth-library";
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -7,10 +6,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -20,13 +17,7 @@ import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import {
-  GcpServiceAccountAuthMethod,
-  PamAccessMethod,
-  PamAccessStatus,
-  PamAccountType,
-  PamSessionStatus
-} from "../pam/pam-enums";
+import { PamAccessMethod, PamAccessStatus, PamAccountType, PamSessionStatus } from "../pam/pam-enums";
 import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
@@ -67,6 +58,7 @@ import {
   generateAwsIamSessionCredentials
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
+import { mintGcpAccessToken } from "./gcp/gcp-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -232,81 +224,13 @@ export const pamSessionServiceFactory = ({
     }
 
     if (account.accountType === PamAccountType.GcpServiceAccount) {
-      const serviceAccountEmail = connectionDetails.serviceAccountEmail as string;
       const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
-      const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
-
-      let tokenResponse;
-
-      if (credentials.authMethod === GcpServiceAccountAuthMethod.StaticKey) {
-        const keyJson = JSON.parse(credentials.serviceAccountKeyJson as string) as {
-          client_email: string;
-          private_key: string;
-        };
-        const jwtClient = new JWT({
-          email: keyJson.client_email,
-          key: keyJson.private_key,
-          scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-        });
-
-        if (keyJson.client_email === serviceAccountEmail) {
-          try {
-            tokenResponse = await jwtClient.getAccessToken();
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            throw new BadRequestError({
-              message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
-            });
-          }
-        } else {
-          const impersonated = new Impersonated({
-            sourceClient: jwtClient,
-            targetPrincipal: serviceAccountEmail,
-            lifetime: sessionTtlSeconds,
-            delegates: [],
-            targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
-          });
-          try {
-            tokenResponse = await impersonated.getAccessToken();
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            throw new BadRequestError({
-              message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
-            });
-          }
-        }
-      } else {
-        const appCfg = getConfig();
-        if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
-          throw new InternalServerError({
-            message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"
-          });
-        }
-        const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
-        const impersonated = new Impersonated({
-          sourceClient,
-          targetPrincipal: serviceAccountEmail,
-          lifetime: sessionTtlSeconds,
-          delegates: [],
-          targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
-        });
-        try {
-          tokenResponse = await impersonated.getAccessToken();
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          throw new BadRequestError({
-            message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
-          });
-        }
-      }
-
-      if (!tokenResponse?.token) {
-        throw new BadRequestError({
-          message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]`
-        });
-      }
-
-      credentials.token = tokenResponse.token;
+      credentials.token = await mintGcpAccessToken({
+        serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
+        authMethod: credentials.authMethod as string,
+        serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
+        ttlSeconds: Math.min(remainingSeconds, 3600)
+      });
       delete credentials.serviceAccountKeyJson;
     }
 
