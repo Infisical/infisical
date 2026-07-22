@@ -204,10 +204,14 @@ Infisical supports three methods for connecting to GitHub.
     <Tab title="Personal Access Token">
         Infisical will use a Personal Access Token to connect to GitHub.
 
-        ## Create a Personal Access Token
+        <Note>
+            A **fine-grained** Personal Access Token is required. Classic tokens are not supported.
+        </Note>
+
+        ## Create a Fine-Grained Personal Access Token
             <Steps>
-                <Step title="Create a Personal Access Token in GitHub">
-                    Navigate to your user Settings > Developer settings > Personal Access Tokens to create a new Personal Access Token.
+                <Step title="Create a Fine-Grained Personal Access Token in GitHub">
+                    Navigate to your user Settings > Developer settings > Personal Access Tokens > **Fine-grained tokens** to create a new token.
 
                     ![integrations github config](../../images/integrations/github/integrations-github-config-settings.png)
                     ![integrations github config](../../images/integrations/github/integrations-github-config-dev-settings.png)
@@ -216,14 +220,18 @@ Infisical supports three methods for connecting to GitHub.
                     Click **Generate new token** to create the token.
                 </Step>
                 <Step title="Fill in the Personal Access Token details">
-                    Fill in the Personal Access Token details:
+                    Fill in the fine-grained Personal Access Token details:
                     - **Token name:** A descriptive name for the token (e.g., "infisical-connection-token")
                     - **Repository access:** Select the repositories you want to grant access to
                         - Select `All repositories` or `Only selected repositories` to be able to manage the secrets in the selected repositories.
-                    - **Select scopes:** Add the following scopes:
+                    - **Permissions:** Under **Repository permissions**, add the following:
                         - **Metadata**: Read-only
                         - **Environments**: Read and write
                         - **Secrets**: Read and write
+
+                    <Warning>
+                        For **private repositories**, the token owner must have **admin access** to the repository. Without admin access, the repository will not appear in the sync destination list.
+                    </Warning>
 
                     ![Personal Access Token Form](/images/app-connections/github/create-pat-form.png)
 
