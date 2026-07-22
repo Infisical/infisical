@@ -228,7 +228,11 @@ export const CreateProjectIdentityForm = ({
     } catch (err) {
       const message = (err as AxiosError<{ message?: string }>)?.response?.data?.message;
       createNotification({
-        text: message ?? "Failed to create machine identity",
+        text:
+          message ??
+          (data.mode === CreateProjectIdentityMode.Assign
+            ? "Failed to add machine identity"
+            : "Failed to create machine identity"),
         type: "error"
       });
     }
