@@ -21,14 +21,18 @@ type Props = {
 };
 
 export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Props) => {
-  const [enrollment, setEnrollment] = useState<TGatewayEnrollmentToken | null>(null);
+  const [mintedEnrollment, setMintedEnrollment] = useState<
+    (TGatewayEnrollmentToken & { gatewayId: string }) | null
+  >(null);
   const { mutateAsync: mint, isPending: isMinting } = useMintGatewayToken();
+  const enrollment = mintedEnrollment?.gatewayId === gatewayId ? mintedEnrollment : null;
 
   if (authMethod.method === "identity") return null;
 
   const handleGenerate = async () => {
     try {
-      setEnrollment(await mint({ gatewayId }));
+      const result = await mint({ gatewayId });
+      setMintedEnrollment({ ...result, gatewayId });
     } catch {
       createNotification({ type: "error", text: "Failed to generate enrollment token" });
     }

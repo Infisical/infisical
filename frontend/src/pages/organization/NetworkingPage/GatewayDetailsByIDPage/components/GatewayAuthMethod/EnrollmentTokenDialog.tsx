@@ -95,11 +95,12 @@ export const EnrollmentTokenContent = ({ gatewayName, enrollmentToken, expiresAt
           </a>
         </div>
         <TabsContent value="cli" className="min-w-0">
-          <CodeBlock value={cliCommand} label={commandLabel} />
+          <CodeBlock value={cliCommand} label={commandLabel} isCopyable={!isExpired} />
         </TabsContent>
         <TabsContent value="systemd" className="min-w-0 space-y-4">
           <CodeBlock
             value={systemdInstallCommand}
+            isCopyable={!isExpired}
             label={
               <span className="flex flex-wrap items-center gap-2">
                 <span>Install service</span>

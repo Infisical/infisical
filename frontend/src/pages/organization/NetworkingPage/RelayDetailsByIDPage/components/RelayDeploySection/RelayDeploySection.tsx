@@ -19,17 +19,19 @@ type Props = {
   authMethod: TRelayAuthMethodView;
 };
 
-type Enrollment = { token: string; expiresAt: string };
+type Enrollment = { token: string; expiresAt: string; relayId: string };
 
 export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) => {
-  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [mintedEnrollment, setMintedEnrollment] = useState<Enrollment | null>(null);
   const { mutateAsync: mint, isPending: isMinting } = useGenerateRelayEnrollmentToken();
+  const enrollment = mintedEnrollment?.relayId === relayId ? mintedEnrollment : null;
 
   if (authMethod.method === "identity") return null;
 
   const handleGenerate = async () => {
     try {
-      setEnrollment(await mint({ relayId }));
+      const result = await mint({ relayId });
+      setMintedEnrollment({ ...result, relayId });
     } catch {
       createNotification({ type: "error", text: "Failed to generate enrollment token" });
     }

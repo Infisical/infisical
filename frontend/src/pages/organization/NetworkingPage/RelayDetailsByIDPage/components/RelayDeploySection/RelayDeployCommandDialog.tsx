@@ -57,6 +57,7 @@ export const RelayDeployCommandContent = ({
 
   const startServiceCommand = "sudo systemctl start infisical-relay";
   const expiryLabel = expiresAt ? formatTimeRemaining(expiresAt, now) : null;
+  const isExpired = expiryLabel === "Expired";
   const badgeLabel = authMethod === "aws" ? "AWS Auth" : "Token Auth";
   const label = (title: string) => (
     <span className="flex flex-wrap items-center gap-2">
@@ -87,10 +88,14 @@ export const RelayDeployCommandContent = ({
           </a>
         </div>
         <TabsContent value="cli" className="min-w-0">
-          <CodeBlock value={cliCommand} label={label("Command")} />
+          <CodeBlock value={cliCommand} label={label("Command")} isCopyable={!isExpired} />
         </TabsContent>
         <TabsContent value="systemd" className="min-w-0 space-y-4">
-          <CodeBlock value={systemdInstallCommand} label={label("Install service")} />
+          <CodeBlock
+            value={systemdInstallCommand}
+            label={label("Install service")}
+            isCopyable={!isExpired}
+          />
           <CodeBlock value={startServiceCommand} label="Start service" />
         </TabsContent>
       </Tabs>
