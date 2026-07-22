@@ -55,15 +55,18 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   const name = watch("name");
   const isNameProvided = Boolean(name.trim());
 
-  const onSubmit = async ({ name }: FormData) => {
+  const onSubmit = async ({ name: gatewayName }: FormData) => {
     const existingNames = gateways?.map((g) => g.name) ?? [];
-    if (existingNames.includes(name.trim())) {
+    if (existingNames.includes(gatewayName.trim())) {
       createNotification({ type: "error", text: "A gateway with this name already exists." });
       return;
     }
 
     try {
-      const gateway = await createGateway({ name, authMethod: { method: "token" } });
+      const gateway = await createGateway({
+        name: gatewayName,
+        authMethod: { method: "token" }
+      });
       onClose();
       navigate({
         to: "/organizations/$orgId/networking/gateways/$gatewayId" as const,

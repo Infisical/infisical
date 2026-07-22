@@ -33,11 +33,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -287,13 +287,15 @@ export const GatewayTab = withPermission(
                   </TableHeader>
                   <TableBody>
                     {isGatewaysLoading &&
-                      Array.from({ length: 3 }).map((_, row) => (
+                      ["first", "second", "third"].map((row) => (
                         <TableRow key={`gateway-skeleton-${row}`}>
-                          {Array.from({ length: showPoolsTab ? 5 : 4 }).map((__, cell) => (
-                            <TableCell key={`gateway-skeleton-${row}-${cell}`}>
-                              <Skeleton className="h-4 w-full" />
-                            </TableCell>
-                          ))}
+                          {["name", "pools", "connected", "health", "actions"]
+                            .slice(0, showPoolsTab ? 5 : 4)
+                            .map((cell) => (
+                              <TableCell key={`gateway-skeleton-${row}-${cell}`}>
+                                <Skeleton className="h-4 w-full" />
+                              </TableCell>
+                            ))}
                         </TableRow>
                       ))}
                     {filteredGateway?.map((el) => {

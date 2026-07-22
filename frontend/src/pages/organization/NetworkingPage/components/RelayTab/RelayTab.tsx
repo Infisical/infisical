@@ -203,9 +203,9 @@ export const RelayTab = withPermission(
               </TableHeader>
               <TableBody>
                 {isRelaysLoading &&
-                  Array.from({ length: 3 }).map((_, row) => (
+                  ["first", "second", "third"].map((row) => (
                     <TableRow key={`relay-skeleton-${row}`}>
-                      {Array.from({ length: 5 }).map((__, cell) => (
+                      {["name", "address", "connected", "health", "actions"].map((cell) => (
                         <TableCell key={`relay-skeleton-${row}-${cell}`}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>

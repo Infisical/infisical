@@ -107,9 +107,9 @@ export const GatewayPoolsContent = ({ search }: Props) => {
           </TableHeader>
           <TableBody>
             {isPoolsLoading &&
-              Array.from({ length: 3 }).map((_, row) => (
+              ["first", "second", "third"].map((row) => (
                 <TableRow key={`pool-skeleton-${row}`}>
-                  {Array.from({ length: 4 }).map((__, cell) => (
+                  {["name", "connected", "health", "actions"].map((cell) => (
                     <TableCell key={`pool-skeleton-${row}-${cell}`}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
