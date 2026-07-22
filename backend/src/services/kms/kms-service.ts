@@ -13,7 +13,8 @@ import {
 } from "@app/ee/services/external-kms/providers/model";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
-import { PgSqlLock } from "@app/keystore/keystore";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
@@ -70,10 +71,17 @@ type TKmsServiceFactoryDep = {
   internalKmsDAL: Pick<TInternalKmsDALFactory, "create" | "findByKmsKeyIdForUpdate" | "updateById">;
   internalKmsKeyVersionDAL: Pick<TInternalKmsKeyVersionDALFactory, "create" | "find">;
   hsmService: THsmServiceFactory;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   envConfig: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">;
 };
 
 export type TKmsServiceFactory = ReturnType<typeof kmsServiceFactory>;
+
+type TCachedProjectSmKmsMaterial = {
+  kmsSecretManagerKeyId: string | null;
+  kmsSecretManagerEncryptedDataKey: string | null;
+  orgId: string;
+};
 
 // akhilmhdh: Don't edit this value. This is measured for blob concatination in kms
 const KMS_VERSION = "v01";
@@ -87,6 +95,7 @@ const KMS_KEY_VERSION_BLOB_LENGTH = 4;
 // malformed/attacker input and must fall through to the legacy path rather than reading out of bounds.
 const MIN_AES_GCM_BLOB_LENGTH = 12 + 16;
 const MIN_V02_BLOB_LENGTH = MIN_AES_GCM_BLOB_LENGTH + KMS_KEY_VERSION_BLOB_LENGTH + KMS_VERSION_BLOB_LENGTH;
+const KMS_PROJECT_SM_MATERIAL_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
 
 // Single source of truth for the cipher-blob trailer so the encode side here and the decode side in
 // decryptWithKmsKey can never drift: v1 keys get the legacy 3-byte "v01" suffix (byte-identical to pre-rotation
@@ -112,7 +121,8 @@ export const kmsServiceFactory = ({
   internalKmsKeyVersionDAL,
   orgDAL,
   projectDAL,
-  hsmService
+  hsmService,
+  keyStore
 }: TKmsServiceFactoryDep) => {
   let ROOT_ENCRYPTION_KEY: Buffer = Buffer.alloc(0);
 
@@ -962,8 +972,58 @@ export const kmsServiceFactory = ({
     return key.id;
   };
 
+  // Drops the cached KMS material for a project. Best-effort: a failed delete only shortens
+  // the window to the TTL, never corrupts data.
+  const $invalidateProjectSecretManagerKmsMaterialCache = async (projectId: string) => {
+    try {
+      await keyStore.deleteItem(KeyStorePrefixes.KmsProjectSecretManagerMaterial(projectId));
+    } catch (err) {
+      logger.warn({ err, projectId }, `Failed to invalidate project KMS material cache [projectId=${projectId}]`);
+    }
+  };
+
+  const $getCachedProjectSecretManagerKmsMaterial = async (projectId: string) => {
+    const cached = await withCache<TCachedProjectSmKmsMaterial>({
+      keyStore,
+      key: KeyStorePrefixes.KmsProjectSecretManagerMaterial(projectId),
+      ttlSeconds: KMS_PROJECT_SM_MATERIAL_CACHE_TTL_SECONDS,
+      fetcher: async () => {
+        const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+          projectDAL.findById(projectId)
+        );
+        if (!project) {
+          throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+        }
+        return {
+          kmsSecretManagerKeyId: project.kmsSecretManagerKeyId ?? null,
+          kmsSecretManagerEncryptedDataKey: project.kmsSecretManagerEncryptedDataKey
+            ? Buffer.from(project.kmsSecretManagerEncryptedDataKey).toString("base64")
+            : null,
+          orgId: project.orgId
+        };
+      }
+    });
+
+    return {
+      kmsSecretManagerKeyId: cached.kmsSecretManagerKeyId,
+      kmsSecretManagerEncryptedDataKey: cached.kmsSecretManagerEncryptedDataKey
+        ? Buffer.from(cached.kmsSecretManagerEncryptedDataKey, "base64")
+        : null,
+      orgId: cached.orgId
+    };
+  };
+
   /** Single project row read; reuses snapshot for data-key path to avoid duplicate findById. */
   const $getProjectSecretManagerKmsKeyIdAndProject = async (projectId: string, trx?: Knex) => {
+    // Transactional callers (key/data-key creation, rotation, backup restore) must read fresh under their advisory lock.
+    if (!trx) {
+      const material = await $getCachedProjectSecretManagerKmsMaterial(projectId);
+      if (material.kmsSecretManagerKeyId) {
+        return { kmsKeyId: material.kmsSecretManagerKeyId, project: material };
+      }
+      // No key yet: fall through to first-use creation below, which invalidates the (miss-populated) cache entry.
+    }
+
     const project = await projectDAL.findById(projectId, trx);
     if (!project) {
       throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -982,6 +1042,9 @@ export const kmsServiceFactory = ({
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectKeyCreation(projectId)]);
         return $createProjectKmsKey(projectId, tx);
       });
+      // First-use key creation wrote kmsSecretManagerKeyId: drop the stale (keyId=null) cache entry the miss just
+      // wrote so the next read repopulates with the provisioned key.
+      await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
 
       return { kmsKeyId, project };
     }
@@ -1027,6 +1090,9 @@ export const kmsServiceFactory = ({
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsProjectDataKeyCreation(projectId)]);
           return $createProjectKmsDataKey(projectId, kmsKeyId, tx);
         });
+        // First-use data-key creation committed a new kmsSecretManagerEncryptedDataKey: drop the cache entry
+        // (which may still hold encryptedDataKey=null) so the next read repopulates with the new ciphertext.
+        await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
       }
 
       if (projectDataKey) {
@@ -1181,7 +1247,7 @@ export const kmsServiceFactory = ({
     }
 
     const dataKey = await $getProjectSecretManagerKmsDataKey(projectId);
-    return kmsDAL.transaction(async (tx) => {
+    const rotatedKms = await kmsDAL.transaction(async (tx) => {
       const project = await projectDAL.findById(projectId, tx);
       let kmsId;
       if (kms.type === KmsType.Internal) {
@@ -1211,6 +1277,10 @@ export const kmsServiceFactory = ({
       const newKms = await kmsDAL.findById(kmsId, tx);
       return KmsSanitizedSchema.parseAsync({ isExternal: !currentKms.isReserved, ...newKms });
     });
+
+    await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
+
+    return rotatedKms;
   };
 
   const getProjectKeyBackup = async (projectId: string) => {
@@ -1301,6 +1371,10 @@ export const kmsServiceFactory = ({
       );
       return kmsDAL.findByIdWithAssociatedKms(key.id, tx);
     });
+
+    // Backup restore re-pointed the project at a freshly generated KMS key + re-wrapped data key,
+    // so any cached material for this project is now stale.
+    await $invalidateProjectSecretManagerKmsMaterialCache(projectId);
 
     return {
       secretManagerKmsKey: newKms

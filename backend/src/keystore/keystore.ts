@@ -88,6 +88,8 @@ export const KeyStorePrefixes = {
   ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
 
+  KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
+
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
   MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,

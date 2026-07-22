@@ -967,6 +967,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore,
     envConfig
   });
 
