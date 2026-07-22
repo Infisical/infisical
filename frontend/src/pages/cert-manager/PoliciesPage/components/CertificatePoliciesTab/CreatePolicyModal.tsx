@@ -101,6 +101,7 @@ const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
 
 const SUBJECT_ATTRIBUTE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number], string> =
   {
+    required: "Require",
     optional: "Allow",
     prohibit: "Deny"
   };
@@ -328,6 +329,15 @@ export const CreatePolicyModal = ({
     const attributes: FormData["attributes"] = [];
     if (policyData.subject && Array.isArray(policyData.subject)) {
       policyData.subject.forEach((subj) => {
+        if (subj.required && Array.isArray(subj.required)) {
+          subj.required.forEach((requiredValue) => {
+            attributes.push({
+              type: subj.type as CertSubjectAttributeType,
+              include: CertSubjectAttributeInclude.REQUIRED,
+              value: [requiredValue]
+            });
+          });
+        }
         if (subj.allowed && Array.isArray(subj.allowed)) {
           subj.allowed.forEach((allowedValue) => {
             attributes.push({
@@ -609,18 +619,14 @@ export const CreatePolicyModal = ({
     const subjectRaw =
       data.attributes?.map((attr) => {
         const result: AttributeTransform = { type: attr.type };
-        if (
-          attr.include === CertSubjectAttributeInclude.OPTIONAL &&
-          attr.value &&
-          attr.value.length > 0
-        ) {
-          result.allowed = attr.value;
-        } else if (
-          attr.include === CertSubjectAttributeInclude.PROHIBIT &&
-          attr.value &&
-          attr.value.length > 0
-        ) {
-          result.denied = attr.value;
+        if (attr.value && attr.value.length > 0) {
+          if (attr.include === CertSubjectAttributeInclude.REQUIRED) {
+            result.required = attr.value;
+          } else if (attr.include === CertSubjectAttributeInclude.OPTIONAL) {
+            result.allowed = attr.value;
+          } else if (attr.include === CertSubjectAttributeInclude.PROHIBIT) {
+            result.denied = attr.value;
+          }
         }
         return result;
       }) || [];
@@ -638,12 +644,7 @@ export const CreatePolicyModal = ({
         return result;
       }) || [];
 
-    const preservedRequiredSubject = (policy?.subject ?? [])
-      .filter((s) => Array.isArray(s.required) && s.required.length > 0)
-      .map((s): AttributeTransform => ({ type: s.type, required: s.required }));
-    const subject = restrictSubject
-      ? consolidateByType([...subjectRaw, ...preservedRequiredSubject])
-      : null;
+    const subject = restrictSubject ? consolidateByType(subjectRaw) : null;
     const sans = restrictSans ? consolidateByType(sansRaw) : null;
 
     const keyUsages: KeyUsagesTransform | null = restrictKeyUsages
@@ -760,7 +761,7 @@ export const CreatePolicyModal = ({
       ...watchedAttributes,
       {
         type: SUBJECT_ATTRIBUTE_TYPE_OPTIONS[0],
-        include: SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS[0],
+        include: SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS[1],
         value: ["*"]
       }
     ]);

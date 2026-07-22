@@ -177,6 +177,7 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 
 export enum CertSubjectAttributeInclude {
+  REQUIRED = "required",
   OPTIONAL = "optional",
   PROHIBIT = "prohibit"
 }
