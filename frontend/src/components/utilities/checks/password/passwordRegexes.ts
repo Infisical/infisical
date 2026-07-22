@@ -11,15 +11,3 @@ export const repeatedCharRegex = /(.)\1\1\1|\s{4,}/;
 
 // This regex covers the escape sequences as a precaution
 export const escapeCharRegex = /[\n\t\r\\]/;
-
-// This regex covers some PII and/or low entropy data
-export const lowEntropyRegexes = [
-  // Email address
-  /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
-
-  // URL (incl. subdomains, paths, top-level domains & query params)
-  /(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?/,
-
-  // US social security number
-  /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/
-];

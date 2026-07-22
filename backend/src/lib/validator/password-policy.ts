@@ -73,18 +73,6 @@ export const PASSWORD_POLICY = {
       message: "No escape characters",
       validationMessage: "Password cannot contain escape characters",
       isPrimary: false
-    },
-    {
-      code: "lowEntropy",
-      patterns: [
-        String.raw`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`,
-        String.raw`(?:(?:https?|ftp):\/\/)?(?:\w+\.)?[a-zA-Z0-9.-]+\.(?:com|org|net|edu)(?:\/\S*)?(?:\?\S*)?`,
-        String.raw`\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b`
-      ],
-      shouldMatch: false,
-      message: "No email address, URL, or social security number",
-      validationMessage: "Password cannot contain an email address, URL, or social security number",
-      isPrimary: false
     }
   ]
 } as const satisfies TPasswordPolicyConfig;

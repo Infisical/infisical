@@ -2,7 +2,6 @@ import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 import {
   escapeCharRegex,
   letterCharRegex,
-  lowEntropyRegexes,
   numAndSpecialCharRegex,
   repeatedCharRegex
 } from "./passwordRegexes";
@@ -15,7 +14,6 @@ interface PasswordCheckProps {
   setPasswordErrorNoNumOrSpecialChar: (value: boolean) => void;
   setPasswordErrorRepeatedChar: (value: boolean) => void;
   setPasswordErrorEscapeChar: (value: boolean) => void;
-  setPasswordErrorLowEntropy: (value: boolean) => void;
   setPasswordErrorBreached: (value: boolean) => void;
 }
 
@@ -27,7 +25,6 @@ const passwordCheck = async ({
   setPasswordErrorNoNumOrSpecialChar,
   setPasswordErrorRepeatedChar,
   setPasswordErrorEscapeChar,
-  setPasswordErrorLowEntropy,
   setPasswordErrorBreached
 }: PasswordCheckProps) => {
   let errorCheck = false;
@@ -61,11 +58,6 @@ const passwordCheck = async ({
       name: "escapeChar",
       validator: (pwd: string) => !escapeCharRegex.test(pwd),
       setError: setPasswordErrorEscapeChar
-    },
-    {
-      name: "lowEntropy",
-      validator: (pwd: string) => !lowEntropyRegexes.some((regex) => regex.test(pwd)),
-      setError: setPasswordErrorLowEntropy
     }
   ];
 
