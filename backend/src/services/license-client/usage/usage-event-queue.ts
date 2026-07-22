@@ -7,7 +7,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TMeteredFeature } from "./usage-counters";
 import { TUsageMeteringServiceFactory } from "./usage-metering-service";
-import { TUsageReporter } from "./usage-reporter";
+import { TUsageReporter, UsageReportError } from "./usage-reporter";
 
 type TUsageEventQueueFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "start">;
@@ -53,15 +53,33 @@ export const usageEventQueueFactory = ({
         return;
       }
 
-      await usageReporter.reportSnapshots(orgId, [
-        {
-          dimension_key: dimensionKey,
-          value,
-          observed_at: observedAt.toISOString(),
-          idempotency_key: `${source}:${orgId}:${dimensionKey}:${observedAt.getTime()}`,
-          source
+      // Send the snapshot and let the license server decide whether the dimension is billable. A 422
+      // "not priced by any active product on this license" means the org's plan doesn't carry this
+      // dimension, so swallow it (no retry, don't record it as reported). Any other failure rethrows to
+      // the outer handler so the job retries.
+      try {
+        await usageReporter.reportSnapshots(orgId, [
+          {
+            dimension_key: dimensionKey,
+            value,
+            observed_at: observedAt.toISOString(),
+            idempotency_key: `${source}:${orgId}:${dimensionKey}:${observedAt.getTime()}`,
+            source
+          }
+        ]);
+      } catch (error) {
+        if (
+          error instanceof UsageReportError &&
+          error.status === 422 &&
+          error.serverMessage.includes("not priced by any active product on this license")
+        ) {
+          logger.info(
+            `usage-event-queue: dimension not priced on this license, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+          );
+          return;
         }
-      ]);
+        throw error;
+      }
 
       logger.info(
         `usage-event-queue: reported usage event [orgId=${orgId}] [dimensionKey=${dimensionKey}] [value=${value}]`

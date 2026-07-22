@@ -26,6 +26,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "sso.action",
   "db.pool.state",
   "cache.result",
+  "cache.if_none_match",
+  "cache.etag_miss_reason",
   "rate_limit.bucket",
   "provider",
   "destination",

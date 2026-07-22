@@ -145,6 +145,7 @@
                       "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/kemp-loadmaster",
                       "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
@@ -518,7 +519,8 @@
                           "documentation/platform/secret-rotation/mysql-credentials",
                           "documentation/platform/secret-rotation/oracledb-credentials",
                           "documentation/platform/secret-rotation/postgres-credentials",
-                          "documentation/platform/secret-rotation/redis-credentials"
+                          "documentation/platform/secret-rotation/redis-credentials",
+                          "documentation/platform/secret-rotation/snowflake-user-key-pair"
                         ]
                       },
                       {
@@ -953,6 +955,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
                           "documentation/platform/pki/applications/certificate-syncs/windows-server",
                           "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central"
@@ -2792,6 +2795,19 @@
                       "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/list",
                       "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/salesforce-oauth-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Snowflake User Key Pair",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/create",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/delete",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-by-id",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-by-name",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/list",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/update"
                     ]
                   },
                   {

@@ -11,6 +11,7 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCodeSigningActions,
@@ -23,7 +24,12 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { ecdsaRawRsToDer, mapSigningAlgorithmToPkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
+import {
+  ecdsaRawRsToDer,
+  mapSigningAlgorithmToPkcs11Mechanism,
+  Pkcs11Mechanism,
+  wrapRsaPkcs1DigestInfo
+} from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
@@ -148,6 +154,7 @@ type TSignerServiceFactoryDep = {
     "create" | "find" | "delete" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSignerServiceFactory = ReturnType<typeof signerServiceFactory>;
@@ -270,7 +277,8 @@ export const signerServiceFactory = ({
   approvalRequestGrantsDAL,
   membershipDAL,
   membershipRoleDAL,
-  hsmConnectorService
+  hsmConnectorService,
+  licenseService
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
@@ -360,6 +368,15 @@ export const signerServiceFactory = ({
       ProjectPermissionCodeSigningActions.Create,
       ProjectPermissionSub.CodeSigners
     );
+
+    // pkiCodeSigning is ignored when null (no restriction); only an explicit boolean gates the feature,
+    // blocking creation when it is explicitly false.
+    const plan = await licenseService.getPlan(dto.actorOrgId);
+    if (typeof plan.pkiCodeSigning === "boolean" && !plan.pkiCodeSigning) {
+      throw new BadRequestError({
+        message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
+      });
+    }
 
     const usingExistingCert = Boolean(dto.certificateId);
     const usingCa = Boolean(dto.caId);
@@ -1582,12 +1599,18 @@ export const signerServiceFactory = ({
       if (isHsmBacked) {
         // ECDSA signatures arrive as raw r||s; convert to ASN.1 DER for X.509 / JCE consumers.
         const mech = mapSigningAlgorithmToPkcs11Mechanism(dto.signingAlgorithm, dto.isDigest);
+        // Pre-hashed RSA (CKM_RSA_PKCS): rebuild the DigestInfo the HSM pads and signs. For every other
+        // mechanism the payload is passed through unchanged (raw message or raw digest).
+        const hsmData =
+          mech.mechanism === Pkcs11Mechanism.RsaPkcs
+            ? wrapRsaPkcs1DigestInfo(dto.signingAlgorithm, dataBuffer)
+            : dataBuffer;
         let raw = await hsmConnectorService.sign({
           connectorId: certificate.hsmConnectorId as string,
           projectId,
           keyLabel: certificate.hsmKeyLabel as string,
           mechanism: mech.mechanism,
-          data: dataBuffer,
+          data: hsmData,
           isDigest: dto.isDigest
         });
         if (mech.isEcdsa) raw = ecdsaRawRsToDer(raw);

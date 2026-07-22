@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import qs from "qs";
 import { z } from "zod";
 
 import { SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
@@ -25,6 +26,10 @@ import {
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import {
+  SecretMetadataSearchLogicalOperator,
+  SecretMetadataSearchOperator
+} from "@app/services/resource-metadata/resource-metadata-types";
 import {
   PersonalOverridesBehavior,
   SecretImportReferencesBehavior,
@@ -63,7 +68,104 @@ const parseSecretPathSearch = (search?: string) => {
   };
 };
 
+const SECRET_METADATA_SEARCH_MAX_FILTERS = 20;
+
+const SecretMetadataSearchQuerySchema = z.object({
+  operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).default(SecretMetadataSearchLogicalOperator.And),
+  filters: z
+    .object({
+      key: z.string().trim().min(1).max(255),
+      value: z.string().trim().max(1020),
+      operator: z.nativeEnum(SecretMetadataSearchOperator).default(SecretMetadataSearchOperator.Is)
+    })
+    .array()
+    .min(1)
+    .max(SECRET_METADATA_SEARCH_MAX_FILTERS)
+});
+
 export const registerDashboardRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/secrets-by-metadata",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "searchSecretsByMetadata",
+      description:
+        "Search a project's secrets by their metadata. Filters are supplied as nested querystring params (parsed with qs), e.g. `?projectId=<id>&operator=and&filters[0][key]=env&filters[0][value]=prod&filters[0][operator]=is`. Results are limited to secrets the requester can describe.",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z
+        .object({
+          projectId: z.string().trim().describe(DASHBOARD.SECRET_OVERVIEW_LIST.projectId),
+          operator: z.nativeEnum(SecretMetadataSearchLogicalOperator).optional(),
+          tags: z.string().trim().transform(decodeURIComponent).optional()
+        })
+        .describe(
+          "Metadata conditions are passed as nested `filters[<n>][key|value|operator]` params (qs syntax); `operator` is the top-level and/or combinator. `tags` is an optional comma-separated list of tag slugs that further narrows results to secrets carrying at least one of them."
+        ),
+      response: {
+        200: z.object({
+          secrets: z
+            .object({
+              secretId: z.string(),
+              secretKey: z.string(),
+              environment: z.string(),
+              secretPath: z.string(),
+              metadata: z
+                .object({
+                  key: z.string(),
+                  value: z.string().nullable()
+                })
+                .array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const rawQueryString = req.url.includes("?") ? req.url.slice(req.url.indexOf("?") + 1) : "";
+      const { filters, operator } = SecretMetadataSearchQuerySchema.parse(qs.parse(rawQueryString));
+      const { projectId } = req.query;
+      const tagSlugs = req.query.tags?.split(",").filter((tag) => Boolean(tag.trim())) ?? [];
+
+      const { secrets } = await server.services.resourceMetadata.searchSecretMetadata({
+        filters,
+        operator,
+        tagSlugs,
+        actor: req.permission,
+        projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.SEARCH_SECRETS_BY_METADATA,
+          metadata: {
+            operator,
+            filters: filters.map((filter) => ({ key: filter.key, value: filter.value, operator: filter.operator })),
+            tags: tagSlugs,
+            numberOfSecrets: secrets.length,
+            secrets: secrets.map((secret) => ({
+              id: secret.secretId,
+              secretKey: secret.secretKey,
+              environment: secret.environment,
+              secretPath: secret.secretPath
+            }))
+          }
+        }
+      });
+
+      return { secrets };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/secrets-overview",

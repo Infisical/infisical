@@ -7,6 +7,7 @@ export {
   useCreateBillingV2CheckoutSession,
   useCreateBillingV2PortalSession,
   usePreviewBillingV2Change,
+  useRefreshBillingV2Entitlements,
   useRemoveBillingV2Product,
   useResumeBillingV2Subscription,
   useStartBillingV2Trial

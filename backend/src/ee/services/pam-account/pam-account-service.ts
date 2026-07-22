@@ -4,6 +4,8 @@ import { packRules } from "@casl/ability/extra";
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -21,6 +23,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import { testConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
 import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import {
   checkAccountAccess,
@@ -40,6 +43,7 @@ import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-acces
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { PAM_CONNECTION_TEST_BUILDERS, TestConnectionMode } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
@@ -72,12 +76,17 @@ type TPamAccountServiceFactoryDep = {
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<
+    TGatewayPoolServiceFactory,
+    "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId"
+  >;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "getAccessStatusBatch" | "getFolderPolicyConfigured" | "cleanupAccountResources"
   >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings: unknown) => {
@@ -120,6 +129,8 @@ const assertPasswordMeetsRequirements = (credentials: unknown, templateSettings:
   }
 };
 
+const CONNECTION_TEST_TIMEOUT_MS = 15_000;
+
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
 export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => {
@@ -130,7 +141,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     membershipDAL,
     membershipRoleDAL,
     permissionService,
-    kmsService
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService,
+    licenseService
   } = deps;
 
   const getProjectCipher = async (projectId: string) =>
@@ -269,6 +283,52 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     };
   };
 
+  // throws to block create/update when the account can't reach/authenticate its target
+  const assertConnectionOk = async (
+    accountType: PamAccountType,
+    connectionDetails: Record<string, unknown>,
+    credentials: Record<string, unknown> | null,
+    gateway: {
+      gatewayId?: string | null;
+      gatewayPoolId?: string | null;
+      templateGatewayId?: string | null;
+      templateGatewayPoolId?: string | null;
+    }
+  ): Promise<void> => {
+    const buildRequest = PAM_CONNECTION_TEST_BUILDERS[accountType];
+    if (!buildRequest) return;
+
+    const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
+    const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: effectiveGatewayId,
+      gatewayPoolId: effectiveGatewayId ? null : (gateway.gatewayPoolId ?? gateway.templateGatewayPoolId)
+    });
+
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "A gateway must be attached to this account." });
+    }
+
+    const cd = connectionDetails as { host: string; port: number };
+    const request =
+      credentials === null || !isCredentialConfigured(accountType, credentials)
+        ? { mode: TestConnectionMode.Tcp }
+        : buildRequest(connectionDetails, credentials);
+
+    const result = await testConnectionWithGateway(
+      cd.host,
+      cd.port,
+      gatewayId,
+      gatewayV2Service,
+      request,
+      CONNECTION_TEST_TIMEOUT_MS
+    );
+
+    // a null result means the gateway couldn't be reached (offline / pre-protocol) — skip rather than block
+    if (result && !result.ok) {
+      throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
+    }
+  };
+
   const create = async ({
     projectId,
     accountType,
@@ -282,6 +342,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     gatewayPoolId,
     recordingConnectionId,
     settingsOverrides,
+    skipConnectionTest,
     ...ctx
   }: TCreatePamAccountDTO & TActorContext) => {
     const { permission } = await checkFolder(folderId, projectId, ctx);
@@ -289,6 +350,34 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ResourcePermissionPamResourceActions.CreateAccounts,
       ResourcePermissionSub.PamResource
     );
+
+    const plan = await licenseService.getPlan(ctx.actorOrgId);
+    if (typeof plan.pam === "boolean" && !plan.pam) {
+      throw new BadRequestError({
+        message: "PAM is not available on your current plan. Please upgrade to continue."
+      });
+    }
+
+    if (
+      (accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd) &&
+      typeof plan.enterprisePamAccount === "boolean" &&
+      !plan.enterprisePamAccount
+    ) {
+      throw new BadRequestError({
+        message: "Windows PAM accounts are not available on your current plan. Please upgrade to continue."
+      });
+    }
+
+    // maxPamAccounts is uncapped by default (null); only enforce a cap when the plan configures a numeric
+    // limit. Counted org-wide right before creation.
+    if (typeof plan.maxPamAccounts === "number") {
+      const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
+      if (currentPamAccountCount >= plan.maxPamAccounts) {
+        throw new BadRequestError({
+          message: "Failed to create PAM account due to plan limit reached. Upgrade plan to add more PAM accounts."
+        });
+      }
+    }
 
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {
@@ -324,6 +413,16 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const validatedConnectionDetails = validateConnectionDetails(accountType, connectionDetails);
     const validatedCredentials = validateCredentials(accountType, credentials);
     assertPasswordMeetsRequirements(validatedCredentials, template.settings);
+
+    // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
+    if (!skipConnectionTest) {
+      await assertConnectionOk(accountType, validatedConnectionDetails, validatedCredentials, {
+        gatewayId,
+        gatewayPoolId,
+        templateGatewayId: template.gatewayId,
+        templateGatewayPoolId: template.gatewayPoolId
+      });
+    }
 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
     const encryptedCredentials = await encrypt(projectId, validatedCredentials);
@@ -517,6 +616,28 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     }
     if ((routingChanged || principalChanged) && existing.rotationAccountId) {
       updateData.rotationAccountId = null;
+    }
+
+    // re-test whenever the connection could have changed
+    if (
+      connectionDetails !== undefined ||
+      credentials !== undefined ||
+      gatewayId !== undefined ||
+      gatewayPoolId !== undefined ||
+      templateId !== undefined
+    ) {
+      const effectiveConnectionDetails = connectionDetails
+        ? validateConnectionDetails(accountType, connectionDetails)
+        : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
+
+      // only test with credentials supplied in this request to prevent exfiltration
+      const testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
+      await assertConnectionOk(accountType, effectiveConnectionDetails, testCredentials, {
+        gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
+        gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,
+        templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
+        templateGatewayPoolId: template ? template.gatewayPoolId : existing.templateGatewayPoolId
+      });
     }
 
     try {

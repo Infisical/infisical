@@ -82,8 +82,10 @@ export const cadencePeriod = (cadence: BillingV2Cadence | null | undefined): str
   cadence === "annual" ? "year" : "month";
 
 // An annually-committed per_resource dimension: usage above `committed` is billed monthly on-demand.
+// Metered dimensions are usage-based (no buyer-selected quantity), so they are never "committed" even
+// if the server reports a committed value for them — this keeps commitment UI off usage-based pricing.
 export const dimAnnualCommitted = (dim: BillingV2EntitlementDim): boolean =>
-  dim.cadence === "annual" && dim.committed !== null;
+  dim.cadence === "annual" && !dim.metered && dim.committed !== null;
 
 // A ceiling to fill a usage bar against: an annual commitment or a finite limit.
 export const dimHasCeiling = (dim: BillingV2EntitlementDim): boolean =>

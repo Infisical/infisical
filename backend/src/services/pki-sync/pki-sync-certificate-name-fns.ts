@@ -41,6 +41,7 @@ const NAME_VALUE_DISALLOWED_CHARS: Partial<Record<PkiSync, RE2>> = {
   [PkiSync.AwsSecretsManager]: new RE2("[^a-zA-Z0-9_-]", "g"),
   [PkiSync.NetScaler]: new RE2("[^a-zA-Z0-9._-]", "g"),
   [PkiSync.F5BigIp]: new RE2("[^a-zA-Z0-9._-]", "g"),
+  [PkiSync.KempLoadMaster]: new RE2("[^a-zA-Z0-9._-]", "g"),
   [PkiSync.LinuxServer]: new RE2("[^a-zA-Z0-9._-]", "g"),
   [PkiSync.WindowsServer]: new RE2("[^a-zA-Z0-9._-]", "g")
 };

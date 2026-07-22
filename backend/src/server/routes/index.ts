@@ -470,6 +470,7 @@ import { reminderServiceFactory } from "@app/services/reminder/reminder-service"
 import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-recipient-dal";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { resourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { roleServiceFactory } from "@app/services/role/role-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -812,6 +813,10 @@ export const registerRoutes = async (
   // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
   const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
 
+  // Created before licenseService so the latter can emit the v2 user-seat meter from its
+  // updateSubscriptionOrgMemberCount chokepoint.
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+
   const licenseService = licenseServiceFactory({
     permissionService,
     orgDAL,
@@ -820,16 +825,16 @@ export const registerRoutes = async (
     projectDAL,
     envConfig,
     licenseClient,
-    licenseDualRead
+    licenseDualRead,
+    usageMeteringService
   });
 
-  // Usage metering: counts the 5 metered features and reports them to the License Server. Inert while
+  // Usage metering: counts the metered features and reports them to the License Server. Inert while
   // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
   const usageReporter = buildUsageReporter(envConfig);
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {
     usageSource = "cloud";
@@ -963,6 +968,13 @@ export const registerRoutes = async (
     projectDAL,
     hsmService,
     envConfig
+  });
+
+  const resourceMetadataService = resourceMetadataServiceFactory({
+    resourceMetadataDAL,
+    permissionService,
+    folderDAL,
+    kmsService
   });
 
   const externalKmsService = externalKmsServiceFactory({
@@ -1163,7 +1175,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     orgMembershipDAL,
     membershipRoleDAL,
-    membershipGroupDAL
+    membershipGroupDAL,
+    usageMeteringService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1192,7 +1205,8 @@ export const registerRoutes = async (
     membershipUserDAL,
     totpConfigDAL,
     webAuthnCredentialDAL,
-    mfaRecoveryCodeService
+    mfaRecoveryCodeService,
+    usageMeteringService
   });
 
   const totpService = totpServiceFactory({
@@ -1358,7 +1372,8 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     permissionService,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    usageMeteringService
   });
 
   const signupService = authSignupServiceFactory({
@@ -1402,7 +1417,8 @@ export const registerRoutes = async (
     tokenService,
     membershipIdentityDAL,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    usageMeteringService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -1702,7 +1718,8 @@ export const registerRoutes = async (
     projectDAL,
     membershipDAL,
     membershipRoleDAL,
-    keyStore
+    keyStore,
+    usageMeteringService
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
@@ -1719,7 +1736,8 @@ export const registerRoutes = async (
     userDAL,
     groupDAL,
     identityDAL,
-    permissionService
+    permissionService,
+    usageMeteringService
   });
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({
@@ -1911,9 +1929,11 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2DAL,
+    gatewayV2Service,
     gatewayPoolService,
     appConnectionDAL,
-    pamAccessRequestService
+    pamAccessRequestService,
+    licenseService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
@@ -3090,6 +3110,7 @@ export const registerRoutes = async (
     secretRotationV2DAL,
     reminderDAL,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretValidationRuleDAL,
     kmsService
   });
@@ -3221,7 +3242,8 @@ export const registerRoutes = async (
     gatewayPoolService,
     usageMeteringService,
     hsmConnectorService,
-    certificateAuthoritySecretDAL
+    certificateAuthoritySecretDAL,
+    licenseService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3630,7 +3652,8 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     membershipDAL,
     membershipRoleDAL,
-    hsmConnectorService
+    hsmConnectorService,
+    licenseService
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -3875,6 +3898,7 @@ export const registerRoutes = async (
     secretValidationRule: secretValidationRuleService,
     rateLimit: rateLimitService,
     folder: folderService,
+    resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
     projectFolderGrant: projectFolderGrantService,
     projectBot: projectBotService,

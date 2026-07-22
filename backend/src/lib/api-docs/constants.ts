@@ -429,6 +429,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
@@ -441,6 +443,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -3583,6 +3587,11 @@ export const SecretRotations = {
     },
     FIREWORKS_API_KEY: {
       serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      username:
+        "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
+      modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
     }
   },
   SECRETS_MAPPING: {
@@ -3670,6 +3679,10 @@ export const SecretRotations = {
     },
     FIREWORKS_API_KEY: {
       apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
+      publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
     }
   }
 };

@@ -1,6 +1,4 @@
-import http from "node:http";
-
-import { logger } from "@app/lib/logger";
+import { postGatewayRpc } from "./gateway-rpc";
 
 export type AdcsRpcEndpoint = "/v1/test" | "/v1/discover-ca" | "/v1/templates" | "/v1/enroll" | "/v1/revoke";
 
@@ -91,64 +89,30 @@ export const callAdcsEndpoint = async <T>(args: {
   endpoint: AdcsRpcEndpoint;
   body: AdcsRpcRequestBody;
 }): Promise<AdcsRpcResponse<T>> => {
-  const payload = JSON.stringify(args.body);
-  return new Promise<AdcsRpcResponse<T>>((resolve, reject) => {
-    const req = http.request(
-      {
-        host: "127.0.0.1",
-        port: args.port,
-        path: args.endpoint,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(payload).toString(),
-          Connection: "close"
-        },
-        timeout: ADCS_RPC_TIMEOUT_MS
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
-        res.on("end", () => {
-          const text = Buffer.concat(chunks).toString("utf8");
-          const status = res.statusCode ?? 0;
-          if (!text) {
-            resolve({ ok: false, status, errorMessage: `Empty response body from Gateway (status ${status})` });
-            return;
-          }
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(text);
-          } catch {
-            resolve({ ok: false, status, errorMessage: `Malformed response body from Gateway: ${text.slice(0, 256)}` });
-            return;
-          }
-          if (status >= 200 && status < 300) {
-            const { result } = parsed as { result?: T };
-            if (result === undefined) {
-              resolve({ ok: false, status, errorMessage: "Gateway response missing `result` field" });
-              return;
-            }
-            resolve({ ok: true, status, result });
-            return;
-          }
-          const errEnv = (parsed as { error?: { message?: string } }).error;
-          resolve({ ok: false, status, errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}` });
-        });
-        res.on("error", (err) => {
-          logger.warn({ err }, `ADCS RPC response stream error [port=${args.port}]`);
-          reject(err);
-        });
-      }
-    );
-    req.on("timeout", () => {
-      req.destroy(new Error(`ADCS RPC timed out after ${ADCS_RPC_TIMEOUT_MS}ms`));
-    });
-    req.on("error", (err) => {
-      logger.warn({ err }, `ADCS RPC request error [port=${args.port}]`);
-      reject(err);
-    });
-    req.write(payload);
-    req.end();
+  const { status, text } = await postGatewayRpc({
+    port: args.port,
+    path: args.endpoint,
+    payload: JSON.stringify(args.body),
+    timeoutMs: ADCS_RPC_TIMEOUT_MS,
+    label: "ADCS"
   });
+
+  if (!text) {
+    return { ok: false, status, errorMessage: `Empty response body from Gateway (status ${status})` };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, status, errorMessage: `Malformed response body from Gateway: ${text.slice(0, 256)}` };
+  }
+  if (status >= 200 && status < 300) {
+    const { result } = parsed as { result?: T };
+    if (result === undefined) {
+      return { ok: false, status, errorMessage: "Gateway response missing `result` field" };
+    }
+    return { ok: true, status, result };
+  }
+  const errEnv = (parsed as { error?: { message?: string } }).error;
+  return { ok: false, status, errorMessage: errEnv?.message ?? `Gateway returned HTTP ${status}` };
 };

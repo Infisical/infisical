@@ -2391,27 +2391,38 @@ export const secretServiceFactory = ({
       }
 
       if (policy) {
-        const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
-          policy,
-          secretPath,
-          environment,
-          projectId,
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
-          data: {
-            [SecretOperations.Update]: inputSecrets.map((el) => ({
-              tagIds: el.tagIds,
-              secretValue: el.secretValue,
-              secretComment: el.secretComment,
-              skipMultilineEncoding: el.skipMultilineEncoding,
-              secretKey: el.secretKey,
-              secretMetadata: el.secretMetadata
-            }))
+        try {
+          const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
+            policy,
+            secretPath,
+            environment,
+            projectId,
+            actor,
+            actorId,
+            actorOrgId,
+            actorAuthMethod,
+            updateMode: mode,
+            data: {
+              [SecretOperations.Update]: inputSecrets.map((el) => ({
+                tagIds: el.tagIds,
+                secretValue: el.secretValue,
+                secretComment: el.secretComment,
+                skipMultilineEncoding: el.skipMultilineEncoding,
+                secretKey: el.secretKey,
+                secretMetadata: el.secretMetadata
+              }))
+            }
+          });
+          return { type: SecretProtectionType.Approval as const, approval };
+        } catch (e) {
+          // If mode is ignore and an update where all secrets do not exist, this can cause the
+          // "empty commits" error. But since mode is to ignore, we swallow that error and return
+          // as it was a no-op operation.
+          if (mode === SecretUpdateMode.Ignore && e instanceof BadRequestError && e.message === "Empty commits") {
+            return { type: SecretProtectionType.Direct as const, secrets: [] };
           }
-        });
-        return { type: SecretProtectionType.Approval as const, approval };
+          throw e;
+        }
       }
       const secrets = await secretV2BridgeService.updateManySecret({
         secretPath,

@@ -161,6 +161,13 @@ import {
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
 import {
+  TSnowflakeUserKeyPairRotation,
+  TSnowflakeUserKeyPairRotationGeneratedCredentials,
+  TSnowflakeUserKeyPairRotationInput,
+  TSnowflakeUserKeyPairRotationListItem,
+  TSnowflakeUserKeyPairRotationWithConnection
+} from "./snowflake-user-key-pair";
+import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentials,
   TSupabaseApiKeyRotationInput,
@@ -207,7 +214,8 @@ export type TSecretRotationV2 =
   | TDatadogApplicationKeySecretRotation
   | TDatadogApiKeyRotation
   | TConvexAccessKeyRotation
-  | TFireworksApiKeyRotation;
+  | TFireworksApiKeyRotation
+  | TSnowflakeUserKeyPairRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -234,7 +242,8 @@ export type TSecretRotationV2WithConnection =
   | TDatadogApplicationKeySecretRotationWithConnection
   | TDatadogApiKeyRotationWithConnection
   | TConvexAccessKeyRotationWithConnection
-  | TFireworksApiKeyRotationWithConnection;
+  | TFireworksApiKeyRotationWithConnection
+  | TSnowflakeUserKeyPairRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -257,7 +266,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDatadogApplicationKeySecretRotationGeneratedCredentials
   | TDatadogApiKeyRotationGeneratedCredentials
   | TConvexAccessKeyRotationGeneratedCredentials
-  | TFireworksApiKeyRotationGeneratedCredentials;
+  | TFireworksApiKeyRotationGeneratedCredentials
+  | TSnowflakeUserKeyPairRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -284,7 +294,8 @@ export type TSecretRotationV2Input =
   | TDatadogApplicationKeySecretRotationInput
   | TDatadogApiKeyRotationInput
   | TConvexAccessKeyRotationInput
-  | TFireworksApiKeyRotationInput;
+  | TFireworksApiKeyRotationInput
+  | TSnowflakeUserKeyPairRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -311,7 +322,8 @@ export type TSecretRotationV2ListItem =
   | TDatadogApplicationKeySecretRotationListItem
   | TDatadogApiKeyRotationListItem
   | TConvexAccessKeyRotationListItem
-  | TFireworksApiKeyRotationListItem;
+  | TFireworksApiKeyRotationListItem
+  | TSnowflakeUserKeyPairRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

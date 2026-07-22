@@ -17,7 +17,11 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { CertPolicyState, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import {
+  CertPolicyState,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
   TCertificatePolicy,
@@ -265,30 +269,42 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
+  const normalizeUriForComparison = (value: string): string => {
+    const match = new RE2("^([a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*)([/?#].*)?$").exec(value);
+    if (!match) {
+      return value;
+    }
+    return `${match[1].toLowerCase()}${match[2] ?? ""}`;
+  };
+
   const validateValueAgainstConstraints = (
     value: string,
     allowedValues: string[],
-    fieldName: string
+    fieldName: string,
+    isUri = false
   ): { isValid: boolean; error?: string } => {
     if (!allowedValues || allowedValues.length === 0) {
       return { isValid: true };
     }
 
+    const normalize = (input: string): string => (isUri ? normalizeUriForComparison(input) : input.toLowerCase());
     const hasWildcards = allowedValues.some(isWildcardPattern);
+    const normalizedValue = normalize(value);
 
     for (const allowedValue of allowedValues) {
+      const normalizedAllowed = normalize(allowedValue);
       if (isWildcardPattern(allowedValue)) {
         try {
-          const regex = createWildcardRegex(allowedValue);
-          if (regex.test(value)) {
+          const regex = createWildcardRegex(normalizedAllowed);
+          if (regex.test(normalizedValue)) {
             return { isValid: true };
           }
         } catch (error) {
-          if (allowedValue === value) {
+          if (normalizedAllowed === normalizedValue) {
             return { isValid: true };
           }
         }
-      } else if (allowedValue === value) {
+      } else if (normalizedAllowed === normalizedValue) {
         return { isValid: true };
       }
     }
@@ -326,7 +342,7 @@ export const certificatePolicyServiceFactory = ({
     if (request.state) requestAttributes.set(CertSubjectAttributeType.STATE, request.state);
     if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
-    if (subjectPolicies && subjectPolicies.length > 0) {
+    if (subjectPolicies) {
       // Domain components are multi-valued and are validated separately below (like SANs).
       const singleValuedPolicies = subjectPolicies.filter(
         (attrPolicy) => attrPolicy.type !== CertSubjectAttributeType.DOMAIN_COMPONENT
@@ -390,11 +406,6 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`${attrType} is not allowed by template policy (not defined in template)`);
         }
       }
-    } else if (requestAttributes.size > 0) {
-      // No subject policies defined but request has subject attributes - deny all
-      for (const [attrType] of requestAttributes) {
-        errors.push(`${attrType} is not allowed by template policy (no subject policies defined)`);
-      }
     }
 
     const domainComponentPolicy = subjectPolicies?.find(
@@ -439,17 +450,16 @@ export const certificatePolicyServiceFactory = ({
           }
         }
       }
-    } else if (requestDomainComponents.length > 0) {
-      errors.push(
-        subjectPolicies && subjectPolicies.length > 0
-          ? `${dcFieldName} is not allowed by template policy (not defined in template)`
-          : `${dcFieldName} is not allowed by template policy (no subject policies defined)`
-      );
+    } else if (subjectPolicies && requestDomainComponents.length > 0) {
+      // A subject policy is defined but has no domain_component rule, so DCs aren't
+      // permitted. When no subject policy is defined at all, every subject attribute is allowed.
+      errors.push(`${dcFieldName} is not allowed by template policy (not defined in template)`);
     }
 
-    // Validate Subject Alternative Names
+    // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
+    // an empty array means nothing is allowed, so every request SAN below is rejected as uncovered.
     const sansPolicies = template.sans;
-    if (sansPolicies && sansPolicies.length > 0) {
+    if (sansPolicies) {
       const requestSansByType = new Map<string, string[]>();
 
       // Group request SANs by type
@@ -466,11 +476,18 @@ export const certificatePolicyServiceFactory = ({
       for (const sanPolicy of sansPolicies) {
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
+        const isUriSan = sanPolicy.type === CertSubjectAlternativeNameType.URI;
+
         // Check REQUIRED values - at least one SAN must match each required pattern
         if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
             const hasMatchingRequiredSan = requestSans.some((sanValue) => {
-              const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+              const validation = validateValueAgainstConstraints(
+                sanValue,
+                [requiredValue],
+                `${sanPolicy.type} SAN`,
+                isUriSan
+              );
               return validation.isValid;
             });
 
@@ -483,7 +500,12 @@ export const certificatePolicyServiceFactory = ({
         // Check DENIED values - no SAN should match denied patterns
         if (sanPolicy.denied && sanPolicy.denied.length > 0) {
           for (const sanValue of requestSans) {
-            const validation = validateValueAgainstConstraints(sanValue, sanPolicy.denied, `${sanPolicy.type} SAN`);
+            const validation = validateValueAgainstConstraints(
+              sanValue,
+              sanPolicy.denied,
+              `${sanPolicy.type} SAN`,
+              isUriSan
+            );
             if (validation.isValid) {
               errors.push(`${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`);
             }
@@ -496,13 +518,23 @@ export const certificatePolicyServiceFactory = ({
             let satisfiesRequired = false;
             if (sanPolicy.required && sanPolicy.required.length > 0) {
               satisfiesRequired = sanPolicy.required.some((requiredValue) => {
-                const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+                const validation = validateValueAgainstConstraints(
+                  sanValue,
+                  [requiredValue],
+                  `${sanPolicy.type} SAN`,
+                  isUriSan
+                );
                 return validation.isValid;
               });
             }
 
             if (!satisfiesRequired) {
-              const validation = validateValueAgainstConstraints(sanValue, sanPolicy.allowed, `${sanPolicy.type} SAN`);
+              const validation = validateValueAgainstConstraints(
+                sanValue,
+                sanPolicy.allowed,
+                `${sanPolicy.type} SAN`,
+                isUriSan
+              );
               if (!validation.isValid && validation.error) {
                 errors.push(validation.error);
               }
@@ -517,11 +549,6 @@ export const certificatePolicyServiceFactory = ({
         if (!hasPolicy) {
           errors.push(`${requestSanType} SAN is not allowed by template policy (not defined in template)`);
         }
-      }
-    } else if (request.subjectAlternativeNames && request.subjectAlternativeNames.length > 0) {
-      // No SAN policies defined but request has SANs - deny all
-      for (const san of request.subjectAlternativeNames) {
-        errors.push(`${san.type} SAN is not allowed by template policy (no SAN policies defined)`);
       }
     }
 
@@ -552,9 +579,8 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`Invalid key usages: ${invalidUsages.join(", ")}`);
         }
       }
-    } else if (request.keyUsages && request.keyUsages.length > 0) {
-      errors.push(`Key usages are not allowed by template policy (not defined in template)`);
     }
+    // No key usage policy defined means no key usage constraint (allow all)
 
     // Validate extended key usages
     const extendedKeyUsagePolicy = template.extendedKeyUsages;
@@ -592,34 +618,21 @@ export const certificatePolicyServiceFactory = ({
           errors.push(`Invalid extended key usages: ${invalidExtendedUsages.join(", ")}`);
         }
       }
-    } else if (request.extendedKeyUsages && request.extendedKeyUsages.length > 0) {
-      errors.push(`Extended key usages are not allowed by template policy (not defined in template)`);
     }
+    // No extended key usage policy defined means no EKU constraint (allow all)
 
-    // Validate algorithms with new structure
-    if (request.signatureAlgorithm) {
-      if (template.algorithms?.signature && template.algorithms.signature.length > 0) {
-        const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
-        if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
-          errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
-        }
-      } else if (!template.algorithms?.signature) {
-        errors.push(
-          `Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy (not defined in template)`
-        );
+    // An undefined algorithm policy means no algorithm constraint (allow all).
+    if (request.signatureAlgorithm && template.algorithms?.signature && template.algorithms.signature.length > 0) {
+      const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
+      if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
+        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by template policy`);
       }
     }
 
-    if (request.keyAlgorithm) {
-      if (template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
-        const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
-        if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
-          errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
-        }
-      } else if (!template.algorithms?.keyAlgorithm) {
-        errors.push(
-          `Key algorithm '${request.keyAlgorithm}' is not allowed by template policy (not defined in template)`
-        );
+    if (request.keyAlgorithm && template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
+      const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
+      if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
+        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by template policy`);
       }
     }
 
@@ -742,8 +755,8 @@ export const certificatePolicyServiceFactory = ({
 
     const consolidatedData = {
       ...data,
-      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
-      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+      subject: data.subject ? consolidateAttributeArray(data.subject) : data.subject,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : data.sans
     };
 
     if (consolidatedData.subject) {
@@ -817,8 +830,8 @@ export const certificatePolicyServiceFactory = ({
 
     const consolidatedData = {
       ...data,
-      subject: data.subject ? consolidateAttributeArray(data.subject) : undefined,
-      sans: data.sans ? consolidateAttributeArray(data.sans) : undefined
+      subject: data.subject ? consolidateAttributeArray(data.subject) : data.subject,
+      sans: data.sans ? consolidateAttributeArray(data.sans) : data.sans
     };
 
     if (consolidatedData.subject) {

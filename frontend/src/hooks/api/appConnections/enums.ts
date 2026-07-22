@@ -59,6 +59,7 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   Doppler = "doppler",
   NetScaler = "netscaler",
+  KempLoadMaster = "kemp-loadmaster",
   Anthropic = "anthropic",
   OVH = "ovh",
   Devin = "devin",

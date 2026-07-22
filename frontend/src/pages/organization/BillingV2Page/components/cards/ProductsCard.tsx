@@ -1,17 +1,28 @@
 import { ReactNode } from "react";
-import { Package } from "lucide-react";
+import { Package, RefreshCw } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2Entitlement, BillingV2Overview } from "@app/hooks/api";
+import { useOrganization } from "@app/context";
+import {
+  BillingV2CatalogProduct,
+  BillingV2Entitlement,
+  BillingV2Overview,
+  useRefreshBillingV2Entitlements
+} from "@app/hooks/api";
 
 import {
   byDisplayOrder,
@@ -20,7 +31,7 @@ import {
   productAnnualCommitted,
   tierLabel
 } from "../../billing-v2-format";
-import { deprecationSubline } from "../deprecation/deprecation-data";
+import { asPlanDeprecation, deprecationSubline } from "../deprecation/deprecation-data";
 import {
   ActiveBadge,
   CardEmpty,
@@ -38,7 +49,8 @@ type ActiveProductCardProps = {
 
 // Full-width card for an active product: identity and status, price, Manage action, usage meters.
 const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProductCardProps) => {
-  const deprecation = entitlement?.deprecation;
+  // Every deprecation is presented as a retiring plan for now (see asPlanDeprecation).
+  const deprecation = asPlanDeprecation(entitlement?.deprecation);
   const isProductDeprecated = deprecation?.kind === "product";
   const isPlanDeprecated = deprecation?.kind === "plan";
 
@@ -148,9 +160,9 @@ const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProd
       {sortedDims.length > 0 && (
         <div className="flex flex-col gap-2.5">
           {sortedDims.map((dim) => (
-            <DimensionMeter key={dim.key} dim={dim} hideLegend />
+            <DimensionMeter key={dim.key} dim={dim} color={prod.color} hideLegend />
           ))}
-          <DimensionRateLegend dims={sortedDims} />
+          <DimensionRateLegend dims={sortedDims} color={prod.color} />
         </div>
       )}
     </div>
@@ -227,6 +239,20 @@ export const ProductsCard = ({
   const active = visible.filter((prod) => overview.entitlements[prod.id]?.entitled);
   const available = visible.filter((prod) => !overview.entitlements[prod.id]?.entitled);
 
+  const { currentOrg } = useOrganization();
+  const refreshEntitlements = useRefreshBillingV2Entitlements();
+
+  // Pull the latest entitlements from the license server (busting the server cache) and refetch the
+  // overview so the freshly-resolved products land in the UI.
+  const handleRefresh = async () => {
+    try {
+      await refreshEntitlements.mutateAsync({ orgId: currentOrg.id });
+      createNotification({ type: "success", text: "Entitlements refreshed." });
+    } catch {
+      createNotification({ type: "error", text: "Failed to refresh entitlements." });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -234,7 +260,25 @@ export const ProductsCard = ({
           <Package className="size-4 text-accent" />
           Products
         </CardTitle>
-        <CardDescription>Everything you can run on your subscription.</CardDescription>
+        <CardDescription>Active products</CardDescription>
+        {!readOnly && (
+          <CardAction>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isDisabled={refreshEntitlements.isPending}
+                  onClick={handleRefresh}
+                >
+                  <RefreshCw />
+                  Refresh
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Plan changes may take a few minutes to take effect.</TooltipContent>
+            </Tooltip>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         {visible.length === 0 ? (
@@ -243,39 +287,47 @@ export const ProductsCard = ({
             description="Products will appear here once they're available."
           />
         ) : (
-          <div className="flex flex-col gap-4">
-            {active.map((prod) => (
-              <ActiveProductCard
-                key={prod.id}
-                prod={prod}
-                entitlement={overview.entitlements[prod.id]}
-                readOnly={readOnly}
-                onManage={onManage}
+          <>
+            {active.length === 0 && (
+              <CardEmpty
+                title="No active products"
+                description="Activate your first product to get started."
               />
-            ))}
-            {available.length > 0 && (
-              <>
-                <div className="flex items-center gap-3 pt-1">
-                  <span className="text-sm font-medium text-muted">Available to add</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                {/* Container-keyed columns: the collapsible sidebar changes the room, not the viewport. */}
-                <div className="@container">
-                  <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3">
-                    {available.map((prod) => (
-                      <AvailableProductTile
-                        key={prod.id}
-                        prod={prod}
-                        readOnly={readOnly}
-                        onManage={onManage}
-                        onContact={onContact}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </>
             )}
-          </div>
+            <div className="flex flex-col gap-4">
+              {active.map((prod) => (
+                <ActiveProductCard
+                  key={prod.id}
+                  prod={prod}
+                  entitlement={overview.entitlements[prod.id]}
+                  readOnly={readOnly}
+                  onManage={onManage}
+                />
+              ))}
+              {available.length > 0 && (
+                <>
+                  <div className="flex items-center gap-3 pt-2">
+                    <span className="text-sm font-medium text-muted">Available products</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {/* Container-keyed columns: the collapsible sidebar changes the room, not the viewport. */}
+                  <div className="@container">
+                    <div className="grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3">
+                      {available.map((prod) => (
+                        <AvailableProductTile
+                          key={prod.id}
+                          prod={prod}
+                          readOnly={readOnly}
+                          onManage={onManage}
+                          onContact={onContact}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

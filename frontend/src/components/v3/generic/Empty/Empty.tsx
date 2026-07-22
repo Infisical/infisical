@@ -2,17 +2,76 @@ import { cva, VariantProps } from "cva";
 
 import { cn } from "../../utils";
 
-function Empty({ className, ...props }: React.ComponentProps<"div">) {
+type EmptyFrameProps = {
+  // SVG-drawn dashed/solid frame — `stroke-dasharray` controls dash proportions
+  // in a way `border-style: dashed` can't. Opt-in and independent from the
+  // `className="border"` CSS-border convention; frame="none" consumers are
+  // byte-for-byte unchanged (no wrapper, no hover, no extra padding).
+  frame?: "none" | "dashed" | "solid";
+  // Stroke color via `currentColor` (e.g. `text-info` on drag-active)
+  frameClassName?: string;
+};
+
+const FRAME = { stroke: 2, dash: "4 2", radius: 6 } as const;
+
+function EmptyFrameSvg({ dashed, className }: { dashed: boolean; className?: string }) {
+  const inset = FRAME.stroke / 2;
+
   return (
+    <svg
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute inset-0 size-full text-border transition-colors duration-75",
+        className
+      )}
+    >
+      <rect
+        x={inset}
+        y={inset}
+        rx={FRAME.radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={FRAME.stroke}
+        strokeDasharray={dashed ? FRAME.dash : undefined}
+        style={{
+          width: `calc(100% - ${FRAME.stroke}px)`,
+          height: `calc(100% - ${FRAME.stroke}px)`
+        }}
+      />
+    </svg>
+  );
+}
+
+function Empty({
+  className,
+  frame = "none",
+  frameClassName,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & EmptyFrameProps) {
+  const hasFrame = frame !== "none";
+
+  const box = (
     <div
       data-slot="empty"
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md border-dashed border-border bg-container p-6 text-center text-balance text-foreground shadow-inner md:p-12",
+        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md bg-container p-6 text-center text-balance text-foreground shadow-inner md:p-12",
+        frame === "none" && "border-dashed border-border",
+        hasFrame && "relative transition-colors duration-200 hover:bg-container-hover",
         className
       )}
       {...props}
-    />
+    >
+      {hasFrame && <EmptyFrameSvg dashed={frame === "dashed"} className={frameClassName} />}
+      {children}
+    </div>
   );
+
+  // Only the SVG-framed variant gets outer breathing room — the plain CSS-border
+  // convention (className="border") keeps its existing flush layout untouched.
+  if (!hasFrame) return box;
+
+  return <div className="p-0.5">{box}</div>;
 }
 
 function EmptyHeader({ className, ...props }: React.ComponentProps<"div">) {

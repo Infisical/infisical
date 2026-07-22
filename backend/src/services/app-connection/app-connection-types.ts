@@ -263,6 +263,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TKempLoadMasterConnection,
+  TKempLoadMasterConnectionConfig,
+  TKempLoadMasterConnectionInput,
+  TValidateKempLoadMasterConnectionCredentialsSchema
+} from "./kemp-loadmaster";
+import {
   TLaravelForgeConnection,
   TLaravelForgeConnectionConfig,
   TLaravelForgeConnectionInput,
@@ -539,6 +545,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection
+  | TKempLoadMasterConnection
   | TAnthropicConnection
   | TOvhConnection
   | TDevinConnection
@@ -630,6 +637,7 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
+  | TKempLoadMasterConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
   | TDevinConnectionInput
@@ -753,6 +761,7 @@ export type TAppConnectionConfig =
   | TExternalInfisicalConnectionConfig
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
+  | TKempLoadMasterConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
   | TDevinConnectionConfig
@@ -835,6 +844,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
+  | TValidateKempLoadMasterConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
   | TValidateDevinConnectionCredentialsSchema

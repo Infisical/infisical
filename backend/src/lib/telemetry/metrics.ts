@@ -328,8 +328,14 @@ export enum SecretCacheAccessResult {
   MISS = "miss"
 }
 
+// What the server observed when an If-None-Match request did not 304 (cause is inferred downstream).
+export enum SecretEtagMissReason {
+  FIELD_ABSENT = "field_absent", // no stored ETag for this (actor, fingerprint, params) key
+  VALUE_DIFFERS = "value_differs" // a stored ETag exists but differs from the client's If-None-Match
+}
+
 export const secretCacheAccessCounter = infisicalCoreMeter.createCounter("infisical.secret.cache.access.count", {
-  description: "Secret service-layer cache accesses by outcome (304 not-modified / hit / miss)",
+  description: "Secret cache accesses, labeled by result, whether If-None-Match was sent, and why it missed the 304.",
   unit: "{access}"
 });
 
@@ -346,9 +352,15 @@ export const secretCacheOversizeSkipCounter = infisicalCoreMeter.createCounter(
   }
 );
 
-export const recordSecretCacheAccessMetric = (result: SecretCacheAccessResult) => {
+export const recordSecretCacheAccessMetric = (
+  result: SecretCacheAccessResult,
+  opts?: { hasIfNoneMatch?: boolean; etagMissReason?: SecretEtagMissReason }
+) => {
   if (!isTelemetryEnabled()) return;
-  secretCacheAccessCounter.add(1, { "cache.result": result });
+  const attributes: Record<string, string> = { "cache.result": result };
+  if (opts?.hasIfNoneMatch !== undefined) attributes["cache.if_none_match"] = opts.hasIfNoneMatch ? "true" : "false";
+  if (opts?.etagMissReason) attributes["cache.etag_miss_reason"] = opts.etagMissReason;
+  secretCacheAccessCounter.add(1, attributes);
 };
 
 export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: boolean }) => {

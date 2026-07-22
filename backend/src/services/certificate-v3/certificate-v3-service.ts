@@ -1993,6 +1993,11 @@ export const certificateV3ServiceFactory = ({
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
     }
 
+    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    if (preflightCa) {
+      assertCaInProfileProject(preflightCa, profile);
+    }
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest
@@ -2007,26 +2012,20 @@ export const certificateV3ServiceFactory = ({
     // ACM pre-flight validation runs before the approval branch so bad inputs (e.g., a TTL that
     // isn't ACM's fixed 198 days) are rejected at submit time rather than after the approver has
     // already approved a request that's guaranteed to fail downstream.
-    if (profile.caId) {
-      const preflightCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-      if (preflightCa) {
-        assertCaInProfileProject(preflightCa, profile);
-      }
-      if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
-        validateAcmIssuanceInputs({
-          csr: certificateOrder.csr,
-          keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
-          ttl: certificateOrder.validity?.ttl,
-          notBefore: certificateOrder.notBefore,
-          notAfter: certificateOrder.notAfter,
-          organization: certificateRequest.organization,
-          organizationalUnit: certificateRequest.organizationalUnit,
-          country: certificateRequest.country,
-          state: certificateRequest.state,
-          locality: certificateRequest.locality
-        });
-      }
+    if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
+      validateAcmIssuanceInputs({
+        csr: certificateOrder.csr,
+        keyAlgorithm: certificateOrder.keyAlgorithm,
+        altNames: certificateOrder.altNames,
+        ttl: certificateOrder.validity?.ttl,
+        notBefore: certificateOrder.notBefore,
+        notAfter: certificateOrder.notAfter,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
+      });
     }
 
     const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
