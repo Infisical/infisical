@@ -18,7 +18,9 @@ const buildDAL = () => {
     select: async () => [] as Array<{ channelId: string; targetId: string }>
   };
   const queryBuilder = () => chain;
-  const db = { replicaNode: () => queryBuilder } as never;
+  // The dedup read runs against the primary (see alert-history-dal.ts), so `db`
+  // itself must be callable; replicaNode is kept for completeness.
+  const db = Object.assign(queryBuilder, { replicaNode: () => queryBuilder }) as never;
 
   return { dal: alertHistoryDALFactory(db), whereCalls };
 };

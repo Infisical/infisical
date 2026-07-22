@@ -3,7 +3,11 @@ import { z } from "zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
-import { AlertPrincipalType } from "@app/services/alert/alert-types";
+import {
+  AlertPrincipalType,
+  MAX_CHANNELS_PER_ALERT,
+  MAX_RECIPIENTS_PER_CHANNEL
+} from "@app/services/alert/alert-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const ChannelRecipientSchema = z.object({
@@ -16,7 +20,7 @@ const CreateChannelInputSchema = z.object({
   channelType: z.nativeEnum(AlertChannelType),
   config: z.record(z.unknown()).default({}),
   enabled: z.boolean().optional(),
-  recipients: z.array(ChannelRecipientSchema).optional()
+  recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
 });
 
 const UpdateChannelInputSchema = z.object({
@@ -25,7 +29,7 @@ const UpdateChannelInputSchema = z.object({
   channelType: z.nativeEnum(AlertChannelType),
   config: z.record(z.unknown()).optional(),
   enabled: z.boolean().optional(),
-  recipients: z.array(ChannelRecipientSchema).optional()
+  recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
 });
 
 const AlertResponseSchema = z.object({
@@ -70,7 +74,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         condition: z.unknown().optional(),
         enabled: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
-        channels: z.array(CreateChannelInputSchema).min(1)
+        channels: z.array(CreateChannelInputSchema).min(1).max(MAX_CHANNELS_PER_ALERT)
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
@@ -151,7 +155,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         description: z.string().max(1000).nullable().optional(),
         condition: z.unknown().optional(),
         enabled: z.boolean().optional(),
-        channels: z.array(UpdateChannelInputSchema).min(1).optional()
+        channels: z.array(UpdateChannelInputSchema).min(1).max(MAX_CHANNELS_PER_ALERT).optional()
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },

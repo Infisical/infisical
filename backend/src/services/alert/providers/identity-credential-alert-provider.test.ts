@@ -45,7 +45,7 @@ const buildProvider = (opts?: {
     identityId?: string | null;
     alertBeforeInterval: string;
   }) => void;
-  abilityRules?: { action: string; subject: string }[];
+  abilityRules?: { action: string; subject: string; conditions?: Record<string, unknown> }[];
   inOrg?: boolean;
   inProject?: boolean;
   projectType?: string | null;
@@ -208,6 +208,53 @@ describe("identity credential alert provider", () => {
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Edit, orgId: "org-1", projectId: "proj-1", actor })
     ).rejects.toThrow();
+  });
+
+  test("assertPermission passes identityId into the subject for resource-bound project alerts", async () => {
+    // Custom role / additional privilege scoped to a single identity. The check must
+    // supply the identity id so CASL can match the conditioned rule; a bare subject
+    // would be rejected.
+    const provider = buildProvider({
+      abilityRules: [{ action: "edit", subject: "identity", conditions: { identityId: "ident-1" } }]
+    });
+    await expect(
+      provider.assertPermission({
+        action: AlertPermissionAction.Edit,
+        orgId: "org-1",
+        projectId: "proj-1",
+        resourceId: "ident-1",
+        actor
+      })
+    ).resolves.toBeUndefined();
+    // A different identity must not satisfy the identity-scoped rule.
+    await expect(
+      provider.assertPermission({
+        action: AlertPermissionAction.Edit,
+        orgId: "org-1",
+        projectId: "proj-1",
+        resourceId: "ident-2",
+        actor
+      })
+    ).rejects.toThrow();
+  });
+
+  test("assertPermission rejects a filter-based project alert when the actor only has a conditional identity grant", async () => {
+    // The actor can edit exactly one identity. A filter-based alert (no resourceId) fans
+    // out data for every matching identity, so a conditional grant must NOT authorize it
+    // even though the bare subject check would otherwise pass.
+    const provider = buildProvider({
+      abilityRules: [{ action: "edit", subject: "identity", conditions: { identityId: "ident-1" } }]
+    });
+    await expect(
+      provider.assertPermission({ action: AlertPermissionAction.Edit, orgId: "org-1", projectId: "proj-1", actor })
+    ).rejects.toThrow();
+  });
+
+  test("assertPermission allows a filter-based project alert with an unconditional project-wide identity grant", async () => {
+    const provider = buildProvider({ abilityRules: [{ action: "edit", subject: "identity" }] });
+    await expect(
+      provider.assertPermission({ action: AlertPermissionAction.Edit, orgId: "org-1", projectId: "proj-1", actor })
+    ).resolves.toBeUndefined();
   });
 
   test("assertResourceInScope no-ops when there is no resource (filter-based alert)", async () => {

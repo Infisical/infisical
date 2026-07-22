@@ -36,6 +36,9 @@ export type TAlertPermissionInput = {
 
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
 
+export const MAX_CHANNELS_PER_ALERT = 10;
+export const MAX_RECIPIENTS_PER_CHANNEL = 20;
+
 export type TAlertContext = {
   id: string;
   name: string;

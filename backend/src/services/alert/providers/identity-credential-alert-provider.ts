@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 import { z } from "zod";
 
@@ -7,7 +7,7 @@ import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/ser
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import {
@@ -199,10 +199,26 @@ export const identityCredentialAlertProviderFactory = ({
         actorOrgId: input.actor.actorOrgId,
         actionProjectType: ActionProjectType.Any
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        isRead ? ProjectPermissionIdentityActions.Read : ProjectPermissionIdentityActions.Edit,
-        ProjectPermissionSub.Identity
-      );
+      const action = isRead ? ProjectPermissionIdentityActions.Read : ProjectPermissionIdentityActions.Edit;
+
+      if (input.resourceId) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          action,
+          subject(ProjectPermissionSub.Identity, { identityId: input.resourceId })
+        );
+        return;
+      }
+
+      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Identity);
+      const hasProjectWideGrant = permission
+        .rulesFor(action, ProjectPermissionSub.Identity)
+        .some((rule) => !rule.inverted && !rule.conditions);
+      if (!hasProjectWideGrant) {
+        throw new ForbiddenRequestError({
+          message:
+            "Project-wide identity permission is required to manage an alert that is not bound to a specific identity"
+        });
+      }
       return;
     }
 

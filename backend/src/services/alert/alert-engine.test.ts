@@ -91,6 +91,11 @@ const buildEngine = (opts: {
 
   const sentMail: Array<{ recipients: string[] }> = [];
   const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
+  // Tracks the peak number of overlapping sendMail calls so a test can assert the
+  // run-wide delivery concurrency stays bounded. sendMail yields a macrotask before
+  // resolving so concurrent sends genuinely overlap.
+  let inFlightSends = 0;
+  let peakConcurrentSends = 0;
 
   const engine = alertEngineFactory({
     alertChannelDAL: {
@@ -126,14 +131,23 @@ const buildEngine = (opts: {
     kmsService: kmsServiceMock,
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
-        if (opts.failEmail) throw new Error("smtp down");
-        if (opts.failEmailFor && opt.recipients.includes(opts.failEmailFor)) throw new Error("mailbox unavailable");
-        sentMail.push({ recipients: opt.recipients });
+        inFlightSends += 1;
+        peakConcurrentSends = Math.max(peakConcurrentSends, inFlightSends);
+        try {
+          await new Promise((resolve) => {
+            setTimeout(resolve, 2);
+          });
+          if (opts.failEmail) throw new Error("smtp down");
+          if (opts.failEmailFor && opt.recipients.includes(opts.failEmailFor)) throw new Error("mailbox unavailable");
+          sentMail.push({ recipients: opt.recipients });
+        } finally {
+          inFlightSends -= 1;
+        }
       }
     }
   } as unknown as TAlertEngineDep);
 
-  return { engine, sentMail, historyWrites };
+  return { engine, sentMail, historyWrites, getPeakConcurrentSends: () => peakConcurrentSends };
 };
 
 describe("alert engine", () => {
@@ -301,6 +315,26 @@ describe("alert engine", () => {
 
     expect(sentMail).toHaveLength(0);
     expect(historyWrites).toHaveLength(0);
+  });
+
+  test("bounds concurrent deliveries across the whole run with one shared limiter, not per channel", async () => {
+    // 5 directed channels x 20 recipients = 100 sends. A per-channel limiter would allow
+    // up to 5 x 10 = 50 in flight; the shared run-wide limiter must keep the peak <= 10.
+    const channels = Array.from({ length: 5 }, (_, i) => ({
+      id: `c-email-${i}`,
+      channelType: "email",
+      encryptedConfig: encConfig({}),
+      enabled: true
+    }));
+    const recipients = Array.from({ length: 20 }, (_, i) => ({ userId: `u${i}`, email: `u${i}@example.com` }));
+    const { engine, sentMail, getPeakConcurrentSends } = buildEngine({ targets: [{ id: "t1" }], channels, recipients });
+
+    await engine.runAlert(makeAlert());
+
+    expect(sentMail).toHaveLength(100);
+    expect(getPeakConcurrentSends()).toBeLessThanOrEqual(10);
+    // Sanity: sends actually overlapped, so the assertion above is meaningful.
+    expect(getPeakConcurrentSends()).toBeGreaterThan(1);
   });
 
   test("writes no history when there are no enabled channels", async () => {

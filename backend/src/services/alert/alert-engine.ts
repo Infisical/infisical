@@ -15,7 +15,7 @@ import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, TAlertContext } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
-const RECIPIENT_SEND_CONCURRENCY = 10;
+const ALERT_DELIVERY_CONCURRENCY = 10;
 
 export type TAlertEngineDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId">;
@@ -115,6 +115,8 @@ export const alertEngineFactory = ({
 
     const deps: TAlertChannelDeps = { smtpService };
 
+    const sendLimit = pLimit(ALERT_DELIVERY_CONCURRENCY);
+
     const channelResults = await Promise.all(
       channelWork.map(async ({ channel, dueTargets }) => {
         const targetIds = dueTargets.map((target) => provider.targetId(target));
@@ -138,7 +140,6 @@ export const alertEngineFactory = ({
             if (recipients.length === 0) {
               return { ...base, success: false, error: "No recipients could be resolved for this channel" };
             }
-            const sendLimit = pLimit(RECIPIENT_SEND_CONCURRENCY);
             const results = await Promise.all(
               recipients.map((recipient) =>
                 sendLimit(() => definition.send({ channelId: channel.id, config, payload, recipient, deps }))
@@ -158,7 +159,7 @@ export const alertEngineFactory = ({
             return { ...base, success: true };
           }
 
-          const result = await definition.send({ channelId: channel.id, config, payload, deps });
+          const result = await sendLimit(() => definition.send({ channelId: channel.id, config, payload, deps }));
           return { ...base, ...result };
         } catch (err) {
           const error = err instanceof Error ? err.message : "Unknown error";

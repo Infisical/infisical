@@ -65,7 +65,7 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
       cutoffDate.setHours(cutoffDate.getHours() - withinHours);
       cutoffDate.setMinutes(cutoffDate.getMinutes() - DEDUP_DRIFT_BUFFER_MINUTES);
 
-      const rows = (await (tx || db.replicaNode())(`${TableName.AlertHistory} as hist`)
+      const rows = (await (tx || db)(`${TableName.AlertHistory} as hist`)
         .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
         .where("hist.alertId", alertId)
         .where("hist.triggeredAt", ">=", cutoffDate)
