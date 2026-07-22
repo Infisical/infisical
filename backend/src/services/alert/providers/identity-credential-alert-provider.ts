@@ -21,7 +21,7 @@ import {
 import { TExpiringUaClientSecret, TIdentityCredentialAlertDALFactory } from "./identity-credential-alert-dal";
 
 export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
-export const IDENTITY_CREDENTIAL_EXPIRY_EVENT = "identity.credential.expiry";
+export const IDENTITY_AUTHENTICATION_EXPIRY_EVENT = "identity.authentication.expiry";
 
 const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
 
@@ -145,14 +145,14 @@ export const identityCredentialAlertProviderFactory = ({
         ...(alertBefore ? { condition: alertBefore } : {}),
         viewUrl
       },
-      eventKey: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
+      eventKey: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
       eventLabel: "Expiration",
-      webhookType: "com.infisical.identity.credential.expiration",
-      resourceKind: "Identity Credential",
+      webhookType: "com.infisical.identity.authentication.expiration",
+      resourceKind: "Machine Identity Authentication",
       severity: severityFor(targets),
       summary: alertBefore
-        ? `${targets.length} identity credential(s) expiring within ${humanizeAlertBefore(alertBefore)}`
-        : `${targets.length} identity credential(s) expiring`,
+        ? `${targets.length} machine identity authentication(s) expiring within ${humanizeAlertBefore(alertBefore)}`
+        : `${targets.length} machine identity authentication(s) expiring`,
       items: targets.map((target) => ({
         id: `${target.credentialType}:${target.id}`,
         title: target.identityName,
@@ -189,6 +189,12 @@ export const identityCredentialAlertProviderFactory = ({
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
     const isRead = input.action === AlertPermissionAction.Read;
+    const isDelete = input.action === AlertPermissionAction.Delete;
+    const projectActions = (() => {
+      if (isRead) return [ProjectPermissionIdentityActions.Read];
+      if (isDelete) return [ProjectPermissionIdentityActions.Edit];
+      return [ProjectPermissionIdentityActions.Edit, ProjectPermissionIdentityActions.Read];
+    })();
 
     if (input.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -199,25 +205,25 @@ export const identityCredentialAlertProviderFactory = ({
         actorOrgId: input.actor.actorOrgId,
         actionProjectType: ActionProjectType.Any
       });
-      const action = isRead ? ProjectPermissionIdentityActions.Read : ProjectPermissionIdentityActions.Edit;
 
-      if (input.resourceId) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          action,
-          subject(ProjectPermissionSub.Identity, { identityId: input.resourceId })
-        );
-        return;
-      }
-
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Identity);
-      const hasProjectWideGrant = permission
-        .rulesFor(action, ProjectPermissionSub.Identity)
-        .some((rule) => !rule.inverted && !rule.conditions);
-      if (!hasProjectWideGrant) {
-        throw new ForbiddenRequestError({
-          message:
-            "Project-wide identity permission is required to manage an alert that is not bound to a specific identity"
-        });
+      for (const action of projectActions) {
+        if (input.resourceId) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            action,
+            subject(ProjectPermissionSub.Identity, { identityId: input.resourceId })
+          );
+        } else {
+          ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Identity);
+          const hasProjectWideGrant = permission
+            .rulesFor(action, ProjectPermissionSub.Identity)
+            .some((rule) => !rule.inverted && !rule.conditions);
+          if (!hasProjectWideGrant) {
+            throw new ForbiddenRequestError({
+              message:
+                "Project-wide identity permission is required to manage an alert that is not bound to a specific identity"
+            });
+          }
+        }
       }
       return;
     }
@@ -230,15 +236,19 @@ export const identityCredentialAlertProviderFactory = ({
       actorAuthMethod: input.actor.actorAuthMethod,
       actorOrgId: input.actor.actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      isRead ? OrgPermissionIdentityActions.Read : OrgPermissionIdentityActions.Edit,
-      OrgPermissionSubjects.Identity
-    );
+    const orgActions = (() => {
+      if (isRead) return [OrgPermissionIdentityActions.Read];
+      if (isDelete) return [OrgPermissionIdentityActions.Edit];
+      return [OrgPermissionIdentityActions.Edit, OrgPermissionIdentityActions.Read];
+    })();
+    for (const action of orgActions) {
+      ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Identity);
+    }
   };
 
   return {
     resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-    eventTypes: [IDENTITY_CREDENTIAL_EXPIRY_EVENT],
+    eventTypes: [IDENTITY_AUTHENTICATION_EXPIRY_EVENT],
     conditionSchema: IdentityCredentialConditionSchema,
     findDueTargets,
     buildViewUrl,

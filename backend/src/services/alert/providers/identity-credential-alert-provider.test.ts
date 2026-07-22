@@ -4,8 +4,8 @@ import { vi } from "vitest";
 import { AlertPermissionAction, TAlertContext } from "../alert-types";
 import { TExpiringUaClientSecret } from "./identity-credential-alert-dal";
 import {
+  IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
   IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-  IDENTITY_CREDENTIAL_EXPIRY_EVENT,
   identityCredentialAlertProviderFactory,
   TIdentityCredentialAlertProviderDep
 } from "./identity-credential-alert-provider";
@@ -32,7 +32,7 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
   orgId: "org-1",
   resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
   resourceId: null,
-  eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
+  eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
   condition: { alertBefore: "30d" },
   ...overrides
 });
@@ -98,7 +98,7 @@ describe("identity credential alert provider", () => {
     const targets = await provider.findDueTargets({
       orgId: "org-1",
       resourceId: "ident-1",
-      eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
+      eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
       condition: { alertBefore: "30d" }
     });
 
@@ -120,7 +120,7 @@ describe("identity credential alert provider", () => {
       orgId: "org-1",
       projectId: "proj-1",
       resourceId: null,
-      eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
+      eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
       condition: { alertBefore: "30d" }
     });
 
@@ -134,7 +134,7 @@ describe("identity credential alert provider", () => {
     const viewUrl = await provider.buildViewUrl(alertContext());
     const payload = provider.buildPayload(alertContext(), [target], viewUrl);
 
-    expect(payload.eventKey).toBe(IDENTITY_CREDENTIAL_EXPIRY_EVENT);
+    expect(payload.eventKey).toBe(IDENTITY_AUTHENTICATION_EXPIRY_EVENT);
     expect(payload.severity).toBe("critical"); // 3 days out
     expect(payload.alert.viewUrl).toBe(viewUrl);
 
@@ -213,9 +213,13 @@ describe("identity credential alert provider", () => {
   test("assertPermission passes identityId into the subject for resource-bound project alerts", async () => {
     // Custom role / additional privilege scoped to a single identity. The check must
     // supply the identity id so CASL can match the conditioned rule; a bare subject
-    // would be rejected.
+    // would be rejected. Edit-scoped alerts deliver credential metadata, so the role
+    // must hold read on the same identity in addition to edit.
     const provider = buildProvider({
-      abilityRules: [{ action: "edit", subject: "identity", conditions: { identityId: "ident-1" } }]
+      abilityRules: [
+        { action: "edit", subject: "identity", conditions: { identityId: "ident-1" } },
+        { action: "read", subject: "identity", conditions: { identityId: "ident-1" } }
+      ]
     });
     await expect(
       provider.assertPermission({
@@ -250,10 +254,64 @@ describe("identity credential alert provider", () => {
     ).rejects.toThrow();
   });
 
-  test("assertPermission allows a filter-based project alert with an unconditional project-wide identity grant", async () => {
+  test("assertPermission allows a filter-based project alert with unconditional project-wide identity edit + read", async () => {
+    const provider = buildProvider({
+      abilityRules: [
+        { action: "edit", subject: "identity" },
+        { action: "read", subject: "identity" }
+      ]
+    });
+    await expect(
+      provider.assertPermission({ action: AlertPermissionAction.Edit, orgId: "org-1", projectId: "proj-1", actor })
+    ).resolves.toBeUndefined();
+  });
+
+  test("assertPermission denies create/edit when identity edit is granted but read is missing (org scope)", async () => {
+    // The alert fans out identity credential metadata, which normally requires identity read.
+    // An edit-only role must not be able to stand up that data feed.
+    const provider = buildProvider({ abilityRules: [{ action: "edit", subject: "identity" }] });
+    await expect(
+      provider.assertPermission({ action: AlertPermissionAction.Create, orgId: "org-1", actor })
+    ).rejects.toThrow();
+    await expect(
+      provider.assertPermission({ action: AlertPermissionAction.Edit, orgId: "org-1", actor })
+    ).rejects.toThrow();
+  });
+
+  test("assertPermission denies a resource-bound create/edit when read on that identity is missing", async () => {
+    const provider = buildProvider({
+      abilityRules: [{ action: "edit", subject: "identity", conditions: { identityId: "ident-1" } }]
+    });
+    await expect(
+      provider.assertPermission({
+        action: AlertPermissionAction.Edit,
+        orgId: "org-1",
+        projectId: "proj-1",
+        resourceId: "ident-1",
+        actor
+      })
+    ).rejects.toThrow();
+  });
+
+  test("assertPermission denies a filter-based create/edit with project-wide edit but no read", async () => {
     const provider = buildProvider({ abilityRules: [{ action: "edit", subject: "identity" }] });
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Edit, orgId: "org-1", projectId: "proj-1", actor })
+    ).rejects.toThrow();
+  });
+
+  test("assertPermission allows delete with identity edit only (delete delivers no data)", async () => {
+    const provider = buildProvider({ abilityRules: [{ action: "edit", subject: "identity" }] });
+    await expect(
+      provider.assertPermission({ action: AlertPermissionAction.Delete, orgId: "org-1", actor })
+    ).resolves.toBeUndefined();
+    await expect(
+      provider.assertPermission({
+        action: AlertPermissionAction.Delete,
+        orgId: "org-1",
+        projectId: "proj-1",
+        actor
+      })
     ).resolves.toBeUndefined();
   });
 

@@ -98,7 +98,7 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
       name: "",
       description: "",
       resourceType: AlertResourceType.IdentityAuthentication,
-      eventType: AlertEventType.IdentityCredentialExpiry,
+      eventType: AlertEventType.IdentityAuthenticationExpiry,
       alertBeforeValue: 7,
       alertBeforeUnit: AlertTimeUnit.Days,
       dailyReminder: false,
@@ -114,7 +114,7 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
     description: alert.description ?? "",
     resourceType:
       (alert.resourceType as AlertResourceType) ?? AlertResourceType.IdentityAuthentication,
-    eventType: (alert.eventType as AlertEventType) ?? AlertEventType.IdentityCredentialExpiry,
+    eventType: (alert.eventType as AlertEventType) ?? AlertEventType.IdentityAuthenticationExpiry,
     alertBeforeValue: value,
     alertBeforeUnit: unit,
     dailyReminder: alert.condition?.dailyReminder ?? false,
@@ -205,8 +205,8 @@ export const AlertForm = ({
   const scopeDescription = isResourceScope
     ? "Watches this machine identity's authentications"
     : isProjectScope
-      ? "Watches every identity credential in this project"
-      : "Watches every identity credential in this organization";
+      ? "Watches every machine identity authentication in this project"
+      : "Watches every machine identity authentication in this organization";
 
   const onSubmit = async (data: TAlertForm) => {
     const alertBefore = `${data.alertBeforeValue}${data.alertBeforeUnit}`;
@@ -347,7 +347,7 @@ export const AlertForm = ({
                 <FixedField label="Event">
                   <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[value]}</Badge>
                   <span className="text-xs text-muted">
-                    Fires as the credential nears expiration
+                    Fires as the authentication nears expiration
                   </span>
                 </FixedField>
               )}

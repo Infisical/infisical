@@ -5,7 +5,7 @@ export enum AlertResourceType {
 }
 
 export enum AlertEventType {
-  IdentityCredentialExpiry = "identity.credential.expiry"
+  IdentityAuthenticationExpiry = "identity.authentication.expiry"
 }
 
 export enum AlertChannelType {
@@ -39,7 +39,7 @@ export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
-  [AlertEventType.IdentityCredentialExpiry]: "Expiration"
+  [AlertEventType.IdentityAuthenticationExpiry]: "Expiration"
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {

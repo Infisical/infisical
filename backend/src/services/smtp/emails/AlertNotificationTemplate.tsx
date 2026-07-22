@@ -109,10 +109,10 @@ export const AlertNotificationTemplate = ({
 export default AlertNotificationTemplate;
 
 AlertNotificationTemplate.PreviewProps = {
-  alertName: "prod-identity-credential-expiry",
+  alertName: "prod-identity-authentication-expiry",
   eventLabel: "Expiration",
-  resourceKind: "Identity Credential",
-  summary: "2 identity credential(s) expiring within 30d",
+  resourceKind: "Machine Identity Authentication",
+  summary: "2 machine identity authentication(s) expiring within 30 days",
   severity: "critical",
   viewUrl: "https://infisical.com/organizations/org-1/access-management?selectedTab=identities",
   siteUrl: "https://infisical.com",

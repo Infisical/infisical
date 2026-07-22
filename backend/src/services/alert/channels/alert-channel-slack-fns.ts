@@ -12,6 +12,9 @@ import { deliverWithRetry, isAxiosErrorRetryable } from "./alert-channel-retry-f
 
 const MAX_ITEMS_DISPLAYED = 2;
 
+const escapeSlackText = (value: string): string =>
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 const SEVERITY_COLOR: Record<TAlertSeverity, string> = {
   critical: "#da3633",
   error: "#da3633",
@@ -30,11 +33,12 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
   const itemBlocks: TSlackBlock[] = [];
   displayItems.forEach((item, index) => {
     const fields: Array<{ type: "mrkdwn"; text: string }> = [
-      { type: "mrkdwn", text: `*Name:*\n${item.title || "N/A"}` }
+      { type: "mrkdwn", text: `*Name:*\n${item.title ? escapeSlackText(item.title) : "N/A"}` }
     ];
-    if (item.identifier) fields.push({ type: "mrkdwn", text: `*Identifier:*\n\`${item.identifier}\`` });
+    if (item.identifier)
+      fields.push({ type: "mrkdwn", text: `*Identifier:*\n\`${escapeSlackText(item.identifier)}\`` });
     (item.fields ?? []).forEach((field) => {
-      fields.push({ type: "mrkdwn", text: `*${field.label}:*\n${field.value}` });
+      fields.push({ type: "mrkdwn", text: `*${escapeSlackText(field.label)}:*\n${escapeSlackText(field.value)}` });
     });
 
     itemBlocks.push({ type: "section", fields });
@@ -42,16 +46,16 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
   });
 
   const alertInfoFields: Array<{ type: "mrkdwn"; text: string }> = [
-    { type: "mrkdwn", text: `*Alert:*\n${payload.alert.name}` }
+    { type: "mrkdwn", text: `*Alert:*\n${escapeSlackText(payload.alert.name)}` }
   ];
   if (payload.alert.condition) {
-    alertInfoFields.push({ type: "mrkdwn", text: `*Alert Before:*\n${payload.alert.condition}` });
+    alertInfoFields.push({ type: "mrkdwn", text: `*Alert Before:*\n${escapeSlackText(payload.alert.condition)}` });
   }
 
   const attachmentBlocks: TSlackBlock[] = [
     { type: "section", fields: alertInfoFields },
     { type: "divider" },
-    { type: "section", text: { type: "mrkdwn", text: payload.summary } },
+    { type: "section", text: { type: "mrkdwn", text: escapeSlackText(payload.summary) } },
     ...itemBlocks
   ];
 
@@ -75,7 +79,7 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
   });
 
   return {
-    text: `${headerText} - ${payload.summary}`,
+    text: escapeSlackText(`${headerText} - ${payload.summary}`),
     blocks: [{ type: "header", text: { type: "plain_text", text: headerText, emoji: true } }],
     attachments: [{ color, blocks: attachmentBlocks }]
   };

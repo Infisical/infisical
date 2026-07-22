@@ -99,6 +99,24 @@ describe("buildSlackPayload", () => {
     const contextBlock = slack.attachments?.[0].blocks.find((b) => b.type === "context");
     expect(contextBlock).toBeDefined();
   });
+
+  test("escapes Slack control characters in resource-controlled values", () => {
+    const payload = samplePayload();
+    payload.alert.name = "<!channel> ping";
+    payload.items[0].title = "<https://evil.com|View in Infisical>";
+    payload.items[0].fields = [{ label: "Note", value: "a & b < c > d" }];
+
+    const slack = buildSlackPayload(payload);
+    // Everything mrkdwn-interpreted: the notification fallback + the attachment blocks.
+    const mrkdwn = JSON.stringify({ text: slack.text, attachments: slack.attachments });
+
+    expect(mrkdwn).not.toContain("<!channel>");
+    expect(mrkdwn).not.toContain("<https://evil.com|");
+    expect(mrkdwn).toContain("&lt;!channel&gt;");
+    expect(mrkdwn).toContain("a &amp; b &lt; c &gt; d");
+    // The plain_text header does not parse markup, so it keeps the raw value.
+    expect(slack.blocks[0].text?.text).toContain("<!channel> ping");
+  });
 });
 
 describe("buildPagerDutyEvent", () => {
