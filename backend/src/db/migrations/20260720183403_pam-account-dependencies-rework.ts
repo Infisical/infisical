@@ -45,9 +45,26 @@ export async function up(knex: Knex): Promise<void> {
   );
 
   await createOnUpdateTrigger(knex, TableName.PamAccountDependency);
+
+  // The discovery run summary reports dependency counts alongside account counts. The runs table already
+  // exists (created by the prior pam-discovery migration), so add the columns here, nullable, so a scan that
+  // did not run dependency discovery leaves them null and the summary can omit the dependencies clause.
+  if (!(await knex.schema.hasColumn(TableName.PamDiscoverySourceRun, "dependencyCount"))) {
+    await knex.schema.alterTable(TableName.PamDiscoverySourceRun, (t) => {
+      t.integer("dependencyCount");
+      t.integer("newDependencyCount");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (await knex.schema.hasColumn(TableName.PamDiscoverySourceRun, "dependencyCount")) {
+    await knex.schema.alterTable(TableName.PamDiscoverySourceRun, (t) => {
+      t.dropColumn("dependencyCount");
+      t.dropColumn("newDependencyCount");
+    });
+  }
+
   await dropOnUpdateTrigger(knex, TableName.PamAccountDependency);
   await knex.schema.dropTableIfExists(TableName.PamAccountDependency);
 
