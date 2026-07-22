@@ -1,18 +1,34 @@
 import { ReactNode } from "react";
 import { FolderOpen } from "lucide-react";
 
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import {
   PamAccountType,
+  PamFieldWidget,
   TAccessiblePamAccount,
   TPamFieldDescriptor,
   useGetPamAccountById,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
-const formatFieldValue = (value: unknown): ReactNode => {
+const formatFieldValue = (field: TPamFieldDescriptor, value: unknown): ReactNode => {
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
+  if (field.widget === PamFieldWidget.Textarea) {
+    return <Badge variant="success">Configured</Badge>;
+  }
   const str = String(value);
-  if (str.length > 48) return "Provided";
+  if (str.length > 48) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="block max-w-full cursor-default overflow-hidden font-mono text-ellipsis !whitespace-nowrap">
+            {str}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs font-mono break-all">{str}</TooltipContent>
+      </Tooltip>
+    );
+  }
   return <span className="font-mono">{str}</span>;
 };
 
@@ -20,7 +36,7 @@ const fieldRows = (fields: TPamFieldDescriptor[] | undefined, source: Record<str
   (fields ?? [])
     .filter((f) => !f.secret)
     .filter((f) => source[f.key] !== undefined && source[f.key] !== null && source[f.key] !== "")
-    .map((f) => ({ label: f.label, value: formatFieldValue(source[f.key]) }));
+    .map((f) => ({ label: f.label, value: formatFieldValue(f, source[f.key]) }));
 
 // Shared sidebar content for the account sheets on the access page: the same non-secret
 // connection/credential details show whether the user is launching or requesting access.

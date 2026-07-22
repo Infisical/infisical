@@ -6,6 +6,7 @@ import { Badge, TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   PamAccountType,
+  TAccessiblePamAccount,
   TPamFolderWithCount,
   useListPamAccountsAdmin,
   usePamAccountTypeMap
@@ -28,7 +29,7 @@ type Props = {
   filterActive: boolean;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onDeleteAccount: (target: DeleteTarget) => void;
-  onLaunchAccount: (accountId: string, accountType: PamAccountType) => void;
+  onLaunchAccount: (account: TAccessiblePamAccount) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
@@ -156,7 +157,21 @@ export const FolderAccountRows = ({
                         accountType
                       })
                     }
-                    onLaunch={() => onLaunchAccount(account.id, accountType)}
+                    onLaunch={() =>
+                      onLaunchAccount({
+                        id: account.id,
+                        name: account.name,
+                        description: account.description,
+                        folderId: account.folderId,
+                        folderName: account.folderName,
+                        templateId: account.templateId,
+                        templateName: account.templateName,
+                        accountType,
+                        canLaunch: true,
+                        createdAt: account.createdAt,
+                        updatedAt: account.updatedAt
+                      })
+                    }
                   />
                 </div>
               </TableCell>

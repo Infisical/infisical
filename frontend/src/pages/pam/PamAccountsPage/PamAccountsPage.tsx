@@ -40,9 +40,9 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { useOrganization } from "@app/context";
 import {
   PamAccountType,
+  TAccessiblePamAccount,
   useDeletePamAccount,
   useDeletePamFolder,
   useListPamAccountTemplates,
@@ -54,6 +54,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PamDocsUrls } from "../pam-docs-urls";
 import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
+import { LaunchSessionSheet } from "../PamAccessPage/components/LaunchSessionSheet";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
 import { CreateAccountSheet } from "./components/CreateAccountSheet";
 import { CreateFolderModal } from "./components/CreateFolderModal";
@@ -66,7 +67,6 @@ const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
   const { t } = useTranslation();
-  const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -88,6 +88,8 @@ export const PamAccountsPage = () => {
 
   const accountSheet = usePamSheetState("accountId");
   const folderSheet = usePamSheetState("folderId");
+
+  const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
 
   const query = searchInput.trim();
   // Active filters force-open every folder so matches surface; otherwise folders load lazily on open
@@ -303,12 +305,7 @@ export const PamAccountsPage = () => {
                   filterActive={filterActive}
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onDeleteAccount={(target) => handlePopUpOpen("deleteAccount", target)}
-                  onLaunchAccount={(accountId, accountType) => {
-                    window.open(
-                      `/organizations/${currentOrg.id}/pam/accounts/${accountType}/${accountId}/access`,
-                      "_blank"
-                    );
-                  }}
+                  onLaunchAccount={setLaunchAccount}
                   onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
                   onFolderAddAccount={() =>
                     handlePopUpOpen("createAccount", { folderId: folder.id })
@@ -389,6 +386,14 @@ export const PamAccountsPage = () => {
         onConfirm={handleDeleteFolder}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("deleteFolder");
+        }}
+      />
+
+      <LaunchSessionSheet
+        account={launchAccount}
+        isOpen={launchAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) setLaunchAccount(null);
         }}
       />
     </div>
