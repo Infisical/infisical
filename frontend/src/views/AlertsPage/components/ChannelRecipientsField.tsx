@@ -24,7 +24,7 @@ const userLabel = (user: {
   email?: string;
 }): string => {
   const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-  return name || user.username || user.email || "Unknown user";
+  return user.email || user.username || name || "Unknown user";
 };
 
 const formatOptionLabel = (option: RecipientOption) => (
