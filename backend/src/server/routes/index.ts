@@ -2475,7 +2475,8 @@ export const registerRoutes = async (
     orgDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
 
   const identityV2Service = identityV2ServiceFactory({
