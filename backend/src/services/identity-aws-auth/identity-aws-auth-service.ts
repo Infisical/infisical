@@ -496,7 +496,7 @@ export const identityAwsAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityAwsAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL)
+      (accessTokenTTL || identityAwsAuth.accessTokenTTL) > (accessTokenMaxTTL || identityAwsAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }

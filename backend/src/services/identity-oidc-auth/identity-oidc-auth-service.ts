@@ -751,7 +751,7 @@ export const identityOidcAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityOidcAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityOidcAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityOidcAuth.accessTokenMaxTTL)
+      (accessTokenTTL || identityOidcAuth.accessTokenTTL) > (accessTokenMaxTTL || identityOidcAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }

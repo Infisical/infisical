@@ -590,7 +590,7 @@ export const identityJwtAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityJwtAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityJwtAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || identityJwtAuth.accessTokenMaxTTL)
+      (accessTokenTTL || identityJwtAuth.accessTokenTTL) > (accessTokenMaxTTL || identityJwtAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }

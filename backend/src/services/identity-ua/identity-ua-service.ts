@@ -597,7 +597,7 @@ export const identityUaServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || uaIdentityAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL)
+      (accessTokenTTL || uaIdentityAuth.accessTokenTTL) > (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
