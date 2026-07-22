@@ -365,7 +365,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "GET",
-    url: "/:sourceId/discovered",
+    url: "/:sourceId/discovered-accounts",
     schema: {
       operationId: "listPamDiscoveredAccounts",
       description: "List staged accounts discovered by a PAM discovery source",
@@ -400,7 +400,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "POST",
-    url: "/:sourceId/discovered/import",
+    url: "/:sourceId/discovered-accounts/import",
     schema: {
       operationId: "importPamDiscoveredAccounts",
       description: "Import staged accounts into a folder",

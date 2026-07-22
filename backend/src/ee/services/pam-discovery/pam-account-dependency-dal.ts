@@ -7,6 +7,7 @@ import { ormify } from "@app/lib/knex";
 export type TPamAccountDependencyDALFactory = ReturnType<typeof pamAccountDependencyDALFactory>;
 
 type TUpsertDependency = {
+  projectId: string;
   fingerprint: string;
   machine: string;
   type: string;
@@ -31,10 +32,10 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   // so it distinguishes a newly-discovered dependency from one the scan merely re-saw (drives the run's new count).
   const upsertByIdentity = async (dep: TUpsertDependency, tx?: Knex): Promise<{ id: string; isNew: boolean }> => {
     const conn = tx || db;
-    const { fingerprint, machine, type, name, data, accountId, discoveredAccountId } = dep;
+    const { projectId, fingerprint, machine, type, name, data, accountId, discoveredAccountId } = dep;
     const [row] = await conn(TableName.PamAccountDependency)
-      .insert({ fingerprint, machine, type, name, data, accountId, discoveredAccountId })
-      .onConflict(["fingerprint", "machine", "type", "name"])
+      .insert({ projectId, fingerprint, machine, type, name, data, accountId, discoveredAccountId })
+      .onConflict(["projectId", "fingerprint", "machine", "type", "name"])
       .merge({
         data,
         accountId: conn.raw(`COALESCE(??."accountId", EXCLUDED."accountId")`, [TableName.PamAccountDependency]),
@@ -53,18 +54,27 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   // narrower source never drops another scan's dependencies.
   const deleteStaleForSource = async (
     {
+      projectId,
       accountIds,
       discoveredAccountIds,
       scannedMachines,
       keepIds
-    }: { accountIds: string[]; discoveredAccountIds: string[]; scannedMachines: string[]; keepIds: string[] },
+    }: {
+      projectId: string;
+      accountIds: string[];
+      discoveredAccountIds: string[];
+      scannedMachines: string[];
+      keepIds: string[];
+    },
     tx?: Knex
   ): Promise<void> => {
     if (!scannedMachines.length || (!accountIds.length && !discoveredAccountIds.length)) return;
 
     // Bind each list as a single array parameter (`= ANY(?)`) rather than one bind per element, so a large
     // domain can't blow past Postgres's 65,535 bind-parameter cap and fail the reconcile after upserts wrote.
+    // Scoped to this tenant's project so a scan never touches another org's rows sharing the same machine name.
     await (tx || db)(TableName.PamAccountDependency)
+      .where("projectId", projectId)
       .whereRaw(`"machine" = ANY(?::text[])`, [scannedMachines])
       .where((qb) => {
         if (accountIds.length) void qb.whereRaw(`"accountId" = ANY(?::uuid[])`, [accountIds]);

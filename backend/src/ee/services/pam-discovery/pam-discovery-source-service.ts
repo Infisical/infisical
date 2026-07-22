@@ -492,6 +492,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
               const accountId = match.importedAccountId;
               return depLimit(() =>
                 pamAccountDependencyDAL.upsertByIdentity({
+                  projectId: source.projectId,
                   fingerprint: dep.fingerprint,
                   machine: dep.machine,
                   type: dep.type,
@@ -511,6 +512,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         newDependencyCount = depResults.filter((r) => r.isNew).length;
 
         await pamAccountDependencyDAL.deleteStaleForSource({
+          projectId: source.projectId,
           accountIds: sourceAccounts.map((a) => a.importedAccountId).filter((v): v is string => Boolean(v)),
           discoveredAccountIds: sourceAccounts.map((a) => a.id),
           scannedMachines: scannedDependencyMachines,
@@ -687,7 +689,19 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           if (!discovered || discovered.discoverySourceId !== sourceId) {
             throw new NotFoundError({ message: "Discovered account not found" });
           }
-          if (discovered.importedAccountId) throw new BadRequestError({ message: "Already imported" });
+          if (discovered.importedAccountId) {
+            // Already imported. The account is created, marked, and its deps backfilled in three separate writes
+            // (create runs its own transaction, so they can't share one). Re-run the idempotent backfill here so
+            // a retry heals a prior import whose backfill didn't complete, flipping any still-staged deps onto
+            // the account instead of leaving them stranded behind this early return.
+            await pamAccountDependencyDAL.backfillImported(discovered.id, discovered.importedAccountId);
+            return {
+              discoveredAccountId: item.discoveredAccountId,
+              status: PamDiscoveryImportStatus.Imported,
+              accountId: discovered.importedAccountId,
+              name: item.name ?? discovered.name
+            };
+          }
 
           const details = decryptToObject(discovered.encryptedDetails, decryptor) as {
             connectionDetails: Record<string, unknown>;

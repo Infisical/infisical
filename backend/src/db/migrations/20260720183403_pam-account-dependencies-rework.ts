@@ -13,6 +13,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable(TableName.PamAccountDependency, (t) => {
     t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
 
+    // Tenant scope (the per-org internal PAM project, same as every other PAM table). Part of the upsert key so
+    // two orgs scanning the same host/directory can't collide on one global row.
+    t.string("projectId").notNullable();
+    t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+    t.index("projectId");
+
     // Run-as stable identity (domain:objectGUID / SID); the upsert key, stable across the
     // staged -> imported flip.
     t.string("fingerprint").notNullable();
@@ -36,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
 
     t.timestamps(true, true, true);
 
-    t.unique(["fingerprint", "machine", "type", "name"]);
+    t.unique(["projectId", "fingerprint", "machine", "type", "name"]);
   });
 
   // Exactly one of accountId / discoveredAccountId is set: staged -> discoveredAccountId, imported -> accountId.

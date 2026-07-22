@@ -11,6 +11,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const PamAccountDependenciesSchema = z.object({
   id: z.string().uuid(),
+  projectId: z.string(),
   fingerprint: z.string(),
   accountId: z.string().uuid().nullable().optional(),
   discoveredAccountId: z.string().uuid().nullable().optional(),

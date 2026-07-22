@@ -735,7 +735,7 @@ export const useImportPamDiscoveredAccounts = () => {
   return useMutation({
     mutationFn: async ({ sourceId, ...body }: TImportPamDiscoveredAccountsDTO) => {
       const { data } = await apiRequest.post<{ results: TImportPamDiscoveredAccountResult[] }>(
-        `/api/v1/pam/discovery-sources/${sourceId}/discovered/import`,
+        `/api/v1/pam/discovery-sources/${sourceId}/discovered-accounts/import`,
         body
       );
       return data.results;

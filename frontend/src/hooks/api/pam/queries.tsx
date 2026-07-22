@@ -577,7 +577,7 @@ export const useListPamDiscoveredAccounts = (
       const { data } = await apiRequest.get<{
         discoveredAccounts: TPamDiscoveredAccount[];
         totalCount: number;
-      }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered`, { params });
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered-accounts`, { params });
       return data;
     },
     enabled: Boolean(sourceId),

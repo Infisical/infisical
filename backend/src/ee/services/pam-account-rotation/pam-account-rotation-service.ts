@@ -15,8 +15,13 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { PamAccountType } from "../pam/pam-enums";
-import { checkAccountAccess, getResourceIdsWithActions, TActorContext } from "../pam/pam-permission";
+import { PamAccountType, PamProductRole } from "../pam/pam-enums";
+import {
+  checkAccountAccess,
+  getResourceIdsWithActions,
+  TActorContext,
+  verifyProductMembership
+} from "../pam/pam-permission";
 import { TPamAccountDALFactory, TPamAccountDetail } from "../pam-account/pam-account-dal";
 import { validateConnectionDetails, validateCredentials } from "../pam-account/pam-account-schemas";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
@@ -333,7 +338,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   // credential — the two collisions seen in practice.
   const getSharedIdentityReferences = async (
     account: TPamAccountDetail,
-    projectId: string
+    projectId: string,
+    ctx: TActorContext
   ): Promise<{ id: string; name: string; discoverySources: string[] }[]> => {
     if (!isRotatableAccountType(account.accountType)) return [];
 
@@ -349,7 +355,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     const siblings = account.discoveryFingerprint
       ? (await pamAccountDAL.find({ projectId, discoveryFingerprint: account.discoveryFingerprint }))
           .filter((sibling) => sibling.id !== account.id)
-          .map((sibling) => ({ id: sibling.id, name: sibling.name }))
+          .map((sibling) => ({ id: sibling.id, name: sibling.name, folderId: sibling.folderId }))
       : [];
 
     // A source whose credential is the account itself is fine (it updates in place); only a *different*
@@ -368,23 +374,53 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
               await decrypt(projectId, cred.encryptedConnectionDetails)
             );
             if (identityKey(cred.accountType, credConn, credCreds.username) !== key) return null;
-            return { accountId: cred.id, accountName: cred.name, sourceName: source.name };
+            return { accountId: cred.id, accountName: cred.name, folderId: cred.folderId, sourceName: source.name };
           } catch {
             return null;
           }
         })
       )
-    ).filter((m): m is { accountId: string; accountName: string; sourceName: string } => m !== null);
+    ).filter((m): m is { accountId: string; accountName: string; folderId: string; sourceName: string } => m !== null);
 
     // Merge into one list keyed by account, collecting the discovery sources each is a credential for.
-    const byAccount = new Map<string, { id: string; name: string; discoverySources: string[] }>();
-    siblings.forEach((s) => byAccount.set(s.id, { id: s.id, name: s.name, discoverySources: [] }));
+    const byAccount = new Map<
+      string,
+      { id: string; name: string; folderId?: string | null; discoverySources: string[] }
+    >();
+    siblings.forEach((s) => byAccount.set(s.id, { id: s.id, name: s.name, folderId: s.folderId, discoverySources: [] }));
     sourceMatches.forEach((m) => {
       const existing = byAccount.get(m.accountId);
       if (existing) existing.discoverySources.push(m.sourceName);
-      else byAccount.set(m.accountId, { id: m.accountId, name: m.accountName, discoverySources: [m.sourceName] });
+      else
+        byAccount.set(m.accountId, {
+          id: m.accountId,
+          name: m.accountName,
+          folderId: m.folderId,
+          discoverySources: [m.sourceName]
+        });
     });
-    return [...byAccount.values()];
+
+    // Only surface what the caller may already see: an account they can read, and discovery-source names only if
+    // they can view sources (PAM Admin) — otherwise this warning would leak names of resources behind folder or
+    // product authorization the caller doesn't hold.
+    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
+    const canViewSources = hasRole(PamProductRole.Admin);
+    const visible = await Promise.all(
+      [...byAccount.values()].map(async (ref) => {
+        const canRead = await checkAccount(
+          ref.id,
+          ref.folderId,
+          projectId,
+          ResourcePermissionPamResourceActions.ReadAccounts,
+          ctx
+        )
+          .then(() => true)
+          .catch(() => false);
+        if (!canRead) return null;
+        return { id: ref.id, name: ref.name, discoverySources: canViewSources ? ref.discoverySources : [] };
+      })
+    );
+    return visible.filter((v): v is { id: string; name: string; discoverySources: string[] } => v !== null);
   };
 
   const resolveRotator = async (
@@ -750,7 +786,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       lastRotationError = (decrypted as { message?: string }).message ?? null;
     }
 
-    const sharedIdentity = await getSharedIdentityReferences(account, projectId);
+    const sharedIdentity = await getSharedIdentityReferences(account, projectId, ctx);
 
     return {
       enabled: settings?.rotation?.enabled ?? false,
