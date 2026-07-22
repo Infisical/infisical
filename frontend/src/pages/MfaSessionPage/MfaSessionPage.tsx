@@ -81,13 +81,6 @@ export const MfaSessionPage = () => {
     }
   }, [sessionStatus?.status]);
 
-  // Handle status error (session not found or expired)
-  useEffect(() => {
-    if (isStatusError) {
-      setError("MFA session not found or expired. Please try again.");
-    }
-  }, [isStatusError]);
-
   const getExpectedCodeLength = () => {
     if (sessionStatus?.mfaMethod === MfaMethod.EMAIL) return 6;
     if (sessionStatus?.mfaMethod === MfaMethod.TOTP) return 6;
@@ -96,8 +89,21 @@ export const MfaSessionPage = () => {
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
-  const handleVerifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (isCodeComplete && !isLoading) {
+      handleVerifyMfa();
+    }
+  }, [isCodeComplete, isLoading]);
+
+  // Handle status error (session not found or expired)
+  useEffect(() => {
+    if (isStatusError) {
+      setError("MFA session not found or expired. Please try again.");
+    }
+  }, [isStatusError]);
+
+  const handleVerifyMfa = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
 
     if (!mfaCode.trim() || !isCodeComplete || !sessionStatus?.mfaMethod) return;
 
