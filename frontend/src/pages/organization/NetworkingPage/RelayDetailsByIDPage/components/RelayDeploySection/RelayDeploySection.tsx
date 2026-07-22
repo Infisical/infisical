@@ -47,7 +47,9 @@ export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) =>
       )}
 
       {authMethod.method === "aws" && (
-        <RelayDeployCommandContent relayId={relayId} relayName={relayName} authMethod="aws" />
+        <OrgPermissionCan I={OrgRelayPermissionActions.EditRelays} a={OrgPermissionSubjects.Relay}>
+          <RelayDeployCommandContent relayId={relayId} relayName={relayName} authMethod="aws" />
+        </OrgPermissionCan>
       )}
 
       {authMethod.method === "token" && !enrollment && (

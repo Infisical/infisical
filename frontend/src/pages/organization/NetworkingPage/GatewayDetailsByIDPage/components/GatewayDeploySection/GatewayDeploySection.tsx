@@ -48,7 +48,12 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
       )}
 
       {authMethod.method === "aws" && (
-        <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.EditGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+        </OrgPermissionCan>
       )}
 
       {authMethod.method === "token" && !enrollment && (
