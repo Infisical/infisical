@@ -247,7 +247,8 @@ export const alertChannelServiceFactory = ({
     return merged;
   };
 
-  const $countUsage = (channelId: string): Promise<number> => alertChannelMembershipDAL.countByChannelId(channelId);
+  const $countUsage = (channelId: string, tx?: Knex): Promise<number> =>
+    alertChannelMembershipDAL.countByChannelId(channelId, tx);
 
   const $buildDetail = (
     channel: {
@@ -467,26 +468,25 @@ export const alertChannelServiceFactory = ({
     }
 
     const cipher = await getAlertChannelCipher(kmsService, scope);
-    const finalConfig = await alertChannelDAL.transaction((tx) =>
-      updateChannelInTx(
+    return alertChannelDAL.transaction(async (tx) => {
+      const finalConfig = await updateChannelInTx(
         { channelId: channel.id, name: dto.name, config: dto.config, enabled: dto.enabled, recipients: dto.recipients },
         channel,
         cipher,
         tx
-      )
-    );
+      );
 
-    const [updated, recipients, usageCount] = await Promise.all([
-      alertChannelDAL.findById(channel.id),
-      alertChannelRecipientDAL.findByChannelId(channel.id),
-      $countUsage(channel.id)
-    ]);
-    return $buildDetail(
-      updated,
-      finalConfig,
-      recipients.map((r) => ({ principalType: r.principalType, principalId: r.principalId })),
-      usageCount
-    );
+      const updated = await alertChannelDAL.findById(channel.id, tx);
+      const recipients = await alertChannelRecipientDAL.findByChannelId(channel.id, tx);
+      const usageCount = await $countUsage(channel.id, tx);
+
+      return $buildDetail(
+        updated,
+        finalConfig,
+        recipients.map((r) => ({ principalType: r.principalType, principalId: r.principalId })),
+        usageCount
+      );
+    });
   };
 
   const deleteChannel = async (dto: TDeleteAlertChannelDTO): Promise<{ id: string }> => {

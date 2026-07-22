@@ -1,3 +1,5 @@
+import pLimit from "p-limit";
+
 import { OrgMembershipRole, OrgMembershipStatus, TAlerts } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -17,6 +19,8 @@ import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, TAlertContext } from "./ale
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const FAILURE_NOTIFICATION_MAX_ERROR_LENGTH = 200;
+
+const RECIPIENT_SEND_CONCURRENCY = 10;
 
 export type TAlertEngineDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId">;
@@ -172,9 +176,10 @@ export const alertEngineFactory = ({
             if (recipients.length === 0) {
               return { ...base, success: false, error: "No recipients could be resolved for this channel" };
             }
+            const sendLimit = pLimit(RECIPIENT_SEND_CONCURRENCY);
             const results = await Promise.all(
               recipients.map((recipient) =>
-                definition.send({ channelId: channel.id, config, payload, recipient, deps })
+                sendLimit(() => definition.send({ channelId: channel.id, config, payload, recipient, deps }))
               )
             );
             const failures = results.filter((result) => !result.success);
