@@ -217,7 +217,10 @@ describe("validateConnectionDetails (AWS IAM roleArn)", () => {
       "arn:aws:iam::123456789012:role/service-role/my-role",
       "arn:aws:iam::123456789012:role/team.dev/deploy@svc+build",
       "arn:aws-us-gov:iam::123456789012:role/gov-role",
-      "arn:aws-cn:iam::123456789012:role/cn-role"
+      "arn:aws-cn:iam::123456789012:role/cn-role",
+      // future-proofing: ISO partitions and any hyphenated partition AWS may add
+      "arn:aws-iso:iam::123456789012:role/iso-role",
+      "arn:aws-iso-b:iam::123456789012:role/iso-b-role"
     ];
     valid.forEach((roleArn) => {
       expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn })).not.toThrow();
@@ -237,7 +240,8 @@ describe("validateConnectionDetails (AWS IAM roleArn)", () => {
       "arn:aws:iam::123456789012:user/my-user", // user, not role
       "arn:aws:iam::12345:role/my-role", // account id not 12 digits
       "arn:aws:s3:::my-bucket", // wrong service
-      "arn:aws:iam::123456789012:role/" // empty role name
+      "arn:aws:iam::123456789012:role/", // empty role name
+      "arn:awsx:iam::123456789012:role/my-role" // partition must be aws or aws-<segment>, not an arbitrary suffix
     ];
     invalid.forEach((roleArn) => {
       expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn })).toThrow();

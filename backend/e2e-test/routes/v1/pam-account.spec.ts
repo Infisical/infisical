@@ -39,7 +39,8 @@ describe("PAM AWS IAM Account Router - roleArn validation", () => {
     "arn:aws:iam::123456789012:role/my-role",
     "arn:aws:iam::123456789012:role/service-role/my-role",
     "arn:aws-us-gov:iam::123456789012:role/gov-role",
-    "arn:aws-cn:iam::123456789012:role/cn-role"
+    "arn:aws-cn:iam::123456789012:role/cn-role",
+    "arn:aws-iso-b:iam::123456789012:role/iso-b-role"
   ])("accepts well-formed role ARN (passes format validation): %s", async (roleArn) => {
     const res = await createAwsIamAccount(roleArn);
     // The ARN format check passes; the request then fails downstream on the dummy
