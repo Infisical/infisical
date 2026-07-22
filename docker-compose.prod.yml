@@ -19,7 +19,7 @@ services:
     networks:
       - infisical
 
-  redis:
+    redis:
     image: redis
     container_name: infisical-dev-redis
     env_file: .env
@@ -30,6 +30,10 @@ services:
       - infisical
     volumes:
       - redis_data:/data
+    command: redis-server --bind 127.0.0.1 --port 6379
+    ports:
+      - 127.0.0.1:6379:6379
+
 
   db:
     container_name: infisical-db
