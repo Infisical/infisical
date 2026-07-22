@@ -562,7 +562,9 @@ export const certificateDALFactory = (db: TDbClient) => {
   // can defer to another signal (the stored-private-key check) rather than block on a stale label.
   const getRequestEnrollmentTypeByCertId = async (certId: string, tx?: Knex): Promise<string | null> => {
     try {
-      const row = (await (tx || db.replicaNode())(TableName.CertificateRequests)
+      // Read from primary (not the replica): this feeds a renewal eligibility guard, and a replica miss on a
+      // freshly-attached request row would turn into a null and let the guard defer, so consistency wins here.
+      const row = (await (tx || db)(TableName.CertificateRequests)
         .where(`${TableName.CertificateRequests}.certificateId`, certId)
         .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc")
         .select(`${TableName.CertificateRequests}.enrollmentType`)
