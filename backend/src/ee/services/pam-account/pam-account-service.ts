@@ -142,7 +142,6 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     membershipRoleDAL,
     permissionService,
     kmsService,
-    gatewayV2DAL,
     gatewayV2Service,
     gatewayPoolService,
     licenseService
@@ -309,19 +308,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
 
-    // gateways that predate connection testing don't advertise the capability; skip the test
-    const resolvedGateway = await gatewayV2DAL.findOne({ id: gatewayId });
-    const capabilities = resolvedGateway?.capabilities as { connectionTest?: boolean } | null | undefined;
-    if (!capabilities?.connectionTest) return;
-
     const cd = connectionDetails as { host: string; port: number };
     const request =
       credentials === null || !isCredentialConfigured(accountType, credentials)
         ? { mode: TestConnectionMode.Tcp }
         : buildRequest(connectionDetails, credentials);
 
+    let result;
     try {
-      await testConnectionWithGateway(
+      result = await testConnectionWithGateway(
         cd.host,
         cd.port,
         gatewayId,
@@ -329,10 +324,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         request,
         CONNECTION_TEST_TIMEOUT_MS
       );
-    } catch (err) {
-      throw new BadRequestError({
-        message: `Connection test failed: ${(err as Error).message || "unable to connect to the target"}`
-      });
+    } catch {
+      // gateway is unreachable or predates the connection-test protocol; don't block the write
+      return;
+    }
+
+    if (!result.ok) {
+      throw new BadRequestError({ message: `Connection test failed: ${result.errorMessage}` });
     }
   };
 
