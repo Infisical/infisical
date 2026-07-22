@@ -97,10 +97,16 @@ export const InitialStep = ({ isAdmin }: Props) => {
   const showDangerState = submitCount > 0;
 
   const redirectToSaml = (orgSlug: string) => {
-    const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
+    const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${encodeURIComponent(orgSlug)}${
       callbackPort ? `?callback_port=${encodeURIComponent(callbackPort)}` : ""
     }`;
     window.location.assign(redirectUrl);
+  };
+
+  const redirectToOidc = (orgSlug: string) => {
+    const query = new URLSearchParams({ orgSlug });
+    if (callbackPort) query.set("callbackPort", callbackPort);
+    window.location.assign(`/api/v1/sso/oidc/login?${query.toString()}`);
   };
 
   useEffect(() => {
@@ -138,6 +144,20 @@ export const InitialStep = ({ isAdmin }: Props) => {
           username: undefined
         }
       });
+      return;
+    }
+
+    if (config.defaultAuthOrgSlug) {
+      saveLastLogin({
+        method,
+        identifier: { type: "orgSlug", value: config.defaultAuthOrgSlug }
+      });
+
+      if (method === LoginMethod.SAML) {
+        redirectToSaml(config.defaultAuthOrgSlug);
+      } else {
+        redirectToOidc(config.defaultAuthOrgSlug);
+      }
       return;
     }
 
@@ -402,10 +422,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
                         </Button>
                       </AnimatedCollapse>
                       <AnimatedCollapse id="sso-login-options" isOpen={areSsoOptionsVisible}>
-                        <div
-                          ref={ssoLoginOptionsRef}
-                          className="flex w-full flex-col gap-2"
-                        >
+                        <div ref={ssoLoginOptionsRef} className="flex w-full flex-col gap-2">
                           {organizationLoginOptions.map((option) => (
                             <Fragment key={option.id}>{option.render(false, true)}</Fragment>
                           ))}
