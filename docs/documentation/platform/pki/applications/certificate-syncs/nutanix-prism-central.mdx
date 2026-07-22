@@ -107,13 +107,11 @@ Before setting up the sync, gather the following from your Nutanix environment:
 
 ## How It Works
 
-When a sync runs, Infisical calls the Nutanix Clustermgmt API v4 to replace the SSL certificate on the selected cluster:
+Infisical automatically keeps your Nutanix Prism Central cluster certificate in sync:
 
-1. Connects to Prism Central using the configured credentials (Basic Auth or API Key).
-2. Takes the certificate associated with the sync.
-3. Configures the certificate and private key onto the Nutanix cluster.
+- Replaces the cluster's SSL certificate and private key whenever the certificate changes in Infisical.
 
-After a few seconds, the Nutanix cluster will use the new certificate, no restart is required.
+The cluster begins using the new certificate within a few seconds, with no restart required.
 
 <Note>
   Each Nutanix Prism Central sync targets a single cluster. To update multiple clusters, create one sync per cluster.

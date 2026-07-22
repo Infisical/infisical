@@ -1,6 +1,4 @@
 /* eslint-disable no-continue, no-await-in-loop */
-import RE2 from "re2";
-
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -12,6 +10,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { getAzureADCSConnectionCredentials } from "../app-connection/azure-adcs/azure-adcs-connection-fns";
 import { TVenafiConnection } from "../app-connection/venafi/venafi-connection-types";
+import { splitPemChain } from "../certificate/certificate-fns";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { submitCsrToNativeAdcs } from "./ca-signing-config/adcs-native-signing-fns";
 import { submitCsrToAdcs } from "./ca-signing-config/adcs-signing-fns";
@@ -51,7 +50,6 @@ export type TCaAutoRenewalQueueFactory = ReturnType<typeof caAutoRenewalQueueFac
 
 const BATCH_SIZE = 100;
 const MAX_RENEWAL_MESSAGE_LENGTH = 1024;
-const PEM_CERT_REGEX = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g");
 
 export const caAutoRenewalQueueFactory = ({
   queueService,
@@ -146,13 +144,12 @@ export const caAutoRenewalQueueFactory = ({
       certificateId
     });
 
-    const pemCerts = PEM_CERT_REGEX.match(pemBundle);
-    if (!pemCerts || pemCerts.length === 0) {
+    const [certificate, ...chainCerts] = splitPemChain(pemBundle);
+    if (!certificate) {
       throw new Error("Failed to parse certificate from Venafi response");
     }
 
-    const certificate = pemCerts[0];
-    const certificateChain = pemCerts.slice(1).join("\n");
+    const certificateChain = chainCerts.join("\n");
 
     await internalCertificateAuthorityService.importCertToCa({
       isInternal: true,
