@@ -1,43 +1,31 @@
 import { useState } from "react";
-import {
-  faCopy,
-  faDoorClosed,
-  faEdit,
-  faEllipsisV,
-  faHeartPulse,
-  faInfoCircle,
-  faSearch,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import {
+  CopyIcon,
+  DoorClosedIcon,
+  HeartPulseIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Modal,
-  ModalContent,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -46,12 +34,35 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tabs,
   TabsList,
-  TabsTrigger
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -157,7 +168,7 @@ export const GatewayTab = withPermission(
           <CardDescription>
             {activeSubTab === "gateway-pools"
               ? "Pool gateways for high availability and automatic failover"
-              : "Create and configure gateways to access private network resources from Infisical"}
+              : "Create and manage network gateways from Infisical"}
           </CardDescription>
           <CardAction>
             {activeSubTab === "all-gateways" ? (
@@ -239,119 +250,124 @@ export const GatewayTab = withPermission(
           {activeSubTab === "gateway-pools" ? (
             <GatewayPoolsContent search={poolSearch} />
           ) : (
-            <TableContainer>
-              <Table>
-                <THead>
-                  <Tr>
-                    <Th className="w-1/3">Name</Th>
-                    {showPoolsTab && <Th>Pools</Th>}
-                    <Th>Connected</Th>
-                    <Th>
-                      Health Check
-                      <Tooltip
-                        asChild={false}
-                        className="normal-case"
-                        content="The last known healthcheck. Triggers every 3 minutes."
-                      >
-                        <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
-                      </Tooltip>
-                    </Th>
-                    <Th className="w-5" />
-                  </Tr>
-                </THead>
-                <TBody>
-                  {isGatewaysLoading && (
-                    <TableSkeleton
-                      innerKey="gateway-table"
-                      columns={showPoolsTab ? 5 : 4}
-                      key="gateway-table"
-                    />
-                  )}
-                  {filteredGateway?.map((el) => {
-                    const canNavigate = !el.isV1;
-                    return (
-                      <Tr
-                        key={el.id}
-                        className={
-                          canNavigate ? "cursor-pointer hover:bg-mineshaft-700" : undefined
-                        }
-                        onClick={
-                          canNavigate
-                            ? () =>
-                                navigate({
-                                  to: "/organizations/$orgId/networking/gateways/$gatewayId",
-                                  params: { orgId, gatewayId: el.id }
-                                })
-                            : undefined
-                        }
-                      >
-                        <Td>
-                          <div className="flex items-center gap-2">
-                            <span>{el.name}</span>
-                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                              Gateway v{el.isV1 ? "1" : "2"}
-                            </span>
-                          </div>
-                        </Td>
-                        {showPoolsTab && (
-                          <Td>
-                            {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {(gatewayPoolMap.get(el.id) ?? []).map((poolName) => (
-                                  <span
-                                    key={poolName}
-                                    className="rounded-sm bg-info/15 px-1.5 py-0.5 text-xs text-info"
-                                  >
-                                    {poolName}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-mineshaft-400">&mdash;</span>
-                            )}
-                          </Td>
-                        )}
-                        <Td>
-                          {!el.isV1 && el.connectedResourcesCount > 0 ? (
-                            <span className="text-mineshaft-200">
-                              {el.connectedResourcesCount} resource
-                              {el.connectedResourcesCount !== 1 ? "s" : ""}
-                            </span>
-                          ) : (
-                            <span className="text-mineshaft-400">—</span>
+            <>
+              {!isGatewaysLoading && !filteredGateway?.length ? (
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      {gateways?.length ? <SearchIcon /> : <DoorClosedIcon />}
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {gateways?.length
+                        ? "No gateways match your search"
+                        : "No gateways configured"}
+                    </EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-1/3">Name</TableHead>
+                      {showPoolsTab && <TableHead>Pools</TableHead>}
+                      <TableHead>Connected</TableHead>
+                      <TableHead>
+                        Health Check
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="ml-2 inline size-3.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            The last known health check. Triggers every 3 minutes.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableHead>
+                      <TableHead className="w-12" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isGatewaysLoading &&
+                      Array.from({ length: 3 }).map((_, row) => (
+                        <TableRow key={`gateway-skeleton-${row}`}>
+                          {Array.from({ length: showPoolsTab ? 5 : 4 }).map((__, cell) => (
+                            <TableCell key={`gateway-skeleton-${row}-${cell}`}>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    {filteredGateway?.map((el) => {
+                      const canNavigate = !el.isV1;
+                      return (
+                        <TableRow
+                          key={el.id}
+                          className={
+                            canNavigate ? "cursor-pointer hover:bg-mineshaft-700" : undefined
+                          }
+                          onClick={
+                            canNavigate
+                              ? () =>
+                                  navigate({
+                                    to: "/organizations/$orgId/networking/gateways/$gatewayId",
+                                    params: { orgId, gatewayId: el.id }
+                                  })
+                              : undefined
+                          }
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{el.name}</span>
+                              <Badge variant="neutral">Gateway v{el.isV1 ? "1" : "2"}</Badge>
+                            </div>
+                          </TableCell>
+                          {showPoolsTab && (
+                            <TableCell>
+                              {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {(gatewayPoolMap.get(el.id) ?? []).map((poolName) => (
+                                    <Badge key={poolName} variant="info">
+                                      {poolName}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-mineshaft-400">&mdash;</span>
+                              )}
+                            </TableCell>
                           )}
-                        </Td>
-                        <Td>
-                          <GatewayHealthStatus
-                            heartbeat={"heartbeat" in el ? el.heartbeat : null}
-                            heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
-                          />
-                        </Td>
-                        <Td className="w-5" onClick={(e) => e.stopPropagation()}>
-                          <Tooltip className="max-w-sm text-center" content="Options">
+                          <TableCell>
+                            {!el.isV1 && el.connectedResourcesCount > 0 ? (
+                              <span className="text-mineshaft-200">
+                                {el.connectedResourcesCount} resource
+                                {el.connectedResourcesCount !== 1 ? "s" : ""}
+                              </span>
+                            ) : (
+                              <span className="text-mineshaft-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <GatewayHealthStatus
+                              heartbeat={"heartbeat" in el ? el.heartbeat : null}
+                              heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
+                            />
+                          </TableCell>
+                          <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <IconButton
-                                  ariaLabel="Options"
-                                  colorSchema="secondary"
-                                  className="w-6"
-                                  variant="plain"
-                                >
-                                  <FontAwesomeIcon icon={faEllipsisV} />
+                                <IconButton aria-label="Gateway options" variant="ghost" size="sm">
+                                  <MoreHorizontalIcon />
                                 </IconButton>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  icon={<FontAwesomeIcon icon={faCopy} />}
                                   onClick={() => navigator.clipboard.writeText(el.id)}
                                 >
+                                  <CopyIcon />
                                   Copy ID
                                 </DropdownMenuItem>
                                 {!el.isV1 && (!!el.heartbeat || !!el.heartbeatTTL) && (
-                                  <DropdownMenuItem
-                                    icon={<FontAwesomeIcon icon={faHeartPulse} />}
-                                    onClick={() => handleTriggerHealthCheck(el.id)}
-                                  >
+                                  <DropdownMenuItem onClick={() => handleTriggerHealthCheck(el.id)}>
+                                    <HeartPulseIcon />
                                     Trigger Health Check
                                   </DropdownMenuItem>
                                 )}
@@ -363,9 +379,9 @@ export const GatewayTab = withPermission(
                                     {(isAllowed: boolean) => (
                                       <DropdownMenuItem
                                         isDisabled={!isAllowed}
-                                        icon={<FontAwesomeIcon icon={faEdit} />}
                                         onClick={() => handlePopUpOpen("editDetails", el)}
                                       >
+                                        <PencilIcon />
                                         Edit Details
                                       </DropdownMenuItem>
                                     )}
@@ -378,56 +394,67 @@ export const GatewayTab = withPermission(
                                   {(isAllowed: boolean) => (
                                     <DropdownMenuItem
                                       isDisabled={!isAllowed}
-                                      icon={<FontAwesomeIcon icon={faTrash} />}
-                                      className="text-red"
+                                      variant="danger"
                                       onClick={() => handlePopUpOpen("deleteGateway", el)}
                                     >
+                                      <TrashIcon />
                                       Delete Gateway
                                     </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          </Tooltip>
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                </TBody>
-              </Table>
-              <Modal
-                isOpen={popUp.editDetails.isOpen}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+              <Dialog
+                open={popUp.editDetails.isOpen}
                 onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
               >
-                <ModalContent title="Edit Gateway">
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Edit Gateway</DialogTitle>
+                  </DialogHeader>
                   <EditGatewayDetailsModal
                     gatewayDetails={popUp.editDetails.data}
                     onClose={() => handlePopUpToggle("editDetails")}
                   />
-                </ModalContent>
-              </Modal>
-              {!isGatewaysLoading && !filteredGateway?.length && (
-                <EmptyState
-                  title={
-                    gateways?.length
-                      ? "No Gateways match search..."
-                      : "No Gateways have been configured"
-                  }
-                  icon={gateways?.length ? faSearch : faDoorClosed}
-                />
-              )}
-              <DeleteActionModal
-                isOpen={popUp.deleteGateway.isOpen}
-                title={`Are you sure you want to delete gateway ${(popUp?.deleteGateway?.data as { name: string })?.name || ""}?`}
-                onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
-                deleteKey="confirm"
-                onDeleteApproved={() => handleDeleteGateway()}
-              />
+                </DialogContent>
+              </Dialog>
+              <AlertDialog
+                open={popUp.deleteGateway.isOpen}
+                onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
+              >
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Delete {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes the gateway from your organization.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="danger"
+                      isPending={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
+                      onClick={handleDeleteGateway}
+                    >
+                      Delete Gateway
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <GatewayDeployModal
                 isOpen={popUp.deployGateway.isOpen}
                 onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
               />
-            </TableContainer>
+            </>
           )}
         </CardContent>
         <CreateGatewayPoolModal

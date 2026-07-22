@@ -2,7 +2,19 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useCreateGatewayPool, useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -59,8 +71,8 @@ export const CreateGatewayPoolModal = ({ isOpen, onToggle }: Props) => {
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <Dialog
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
           setName("");
@@ -69,24 +81,34 @@ export const CreateGatewayPoolModal = ({ isOpen, onToggle }: Props) => {
         onToggle(open);
       }}
     >
-      <ModalContent title="Create Gateway Pool">
-        <FormControl label="Name" isRequired isError={Boolean(errors.name)} errorText={errors.name}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Gateway Pool</DialogTitle>
+          <DialogDescription>
+            Group gateways for high availability and automatic failover.
+          </DialogDescription>
+        </DialogHeader>
+        <Field data-invalid={Boolean(errors.name)}>
+          <FieldLabel htmlFor="gateway-pool-name">Name</FieldLabel>
           <Input
+            id="gateway-pool-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter gateway pool name"
             autoFocus
+            isError={Boolean(errors.name)}
           />
-        </FormControl>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline_bg" onClick={() => onToggle(false)} type="button">
+          <FieldError>{errors.name}</FieldError>
+        </Field>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onToggle(false)} type="button">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} isLoading={createPool.isPending}>
+          <Button variant="org" onClick={handleSubmit} isPending={createPool.isPending}>
             Create Pool
           </Button>
-        </div>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

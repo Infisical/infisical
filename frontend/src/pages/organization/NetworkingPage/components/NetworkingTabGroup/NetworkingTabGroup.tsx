@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
@@ -31,17 +31,17 @@ export const NetworkingTabGroup = () => {
 
   return (
     <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-      <TabList>
+      <TabsList variant={isSubOrganization ? "sub-org" : "org"}>
         {tabs.map(({ key, label }) => (
-          <Tab variant={isSubOrganization ? "namespace" : "org"} value={key} key={`tab-${key}`}>
+          <TabsTrigger value={key} key={`tab-${key}`}>
             {label}
-          </Tab>
+          </TabsTrigger>
         ))}
-      </TabList>
+      </TabsList>
       {tabs.map(({ key, component: Component }) => (
-        <TabPanel value={key} key={`tab-panel-${key}`}>
+        <TabsContent value={key} key={`tab-panel-${key}`}>
           <Component />
-        </TabPanel>
+        </TabsContent>
       ))}
     </Tabs>
   );

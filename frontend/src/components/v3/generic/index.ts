@@ -9,6 +9,7 @@ export * from "./Calendar";
 export * from "./Card";
 export * from "./Checkbox";
 export * from "./ColorPicker";
+export * from "./CodeBlock";
 export * from "./Command";
 export * from "./CopyButton";
 export * from "./DataGrid";

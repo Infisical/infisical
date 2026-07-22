@@ -4,8 +4,14 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { EmptyState } from "@app/components/v2";
-import { PageLoader } from "@app/components/v3";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader,
+  Separator
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -31,7 +37,14 @@ const Page = () => {
   }
 
   if (!gateway) {
-    return <EmptyState title="Gateway not found" />;
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon" />
+          <EmptyTitle>Gateway not found</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
   }
 
   return (
@@ -46,17 +59,17 @@ const Page = () => {
         Gateways
       </Link>
       <GatewayPageHeader gateway={gateway} orgId={orgId} />
-      <div className="flex flex-col gap-5 lg:flex-row">
-        <div className="flex w-full flex-col gap-y-5 lg:max-w-[24rem]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="w-full min-w-0 lg:col-start-2 lg:row-start-1">
           <GatewayDetailsCard gateway={gateway} />
         </div>
-        <div className="flex flex-1 flex-col gap-y-5">
+        <div className="flex min-w-0 flex-col gap-y-8 lg:col-start-1 lg:row-start-1">
           <GatewayDeploySection
             gatewayId={gatewayId}
             gatewayName={gateway.name}
             authMethod={gateway.authMethod}
-            isFirstTimeSetup={!gateway.heartbeat}
           />
+          <Separator />
           <GatewayConnectedResourcesSection gatewayId={gatewayId} />
         </div>
       </div>

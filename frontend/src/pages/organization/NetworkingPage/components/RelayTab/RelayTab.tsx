@@ -1,38 +1,28 @@
 import { useEffect, useState } from "react";
-import {
-  faCopy,
-  faDoorClosed,
-  faEllipsisV,
-  faInfoCircle,
-  faSearch,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
-import { PlusIcon, SearchIcon } from "lucide-react";
+import {
+  CopyIcon,
+  DoorClosedIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -41,9 +31,28 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput
+  InputGroupInput,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
@@ -62,8 +71,11 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
 
   if (!heartbeatDate) {
     return (
-      <Tooltip content="No heartbeat data available">
-        <span className="cursor-default text-yellow-400">Unregistered</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="warning">Unregistered</Badge>
+        </TooltipTrigger>
+        <TooltipContent>No heartbeat data available</TooltipContent>
       </Tooltip>
     );
   }
@@ -72,10 +84,13 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const isHealthy = heartbeatDate >= oneHourAgo;
 
   return (
-    <Tooltip content={`Last heartbeat: ${heartbeatDate.toLocaleString()}`}>
-      <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
-        {isHealthy ? "Healthy" : "Unreachable"}
-      </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant={isHealthy ? "success" : "danger"}>
+          {isHealthy ? "Healthy" : "Unreachable"}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>Last heartbeat: {heartbeatDate.toLocaleString()}</TooltipContent>
     </Tooltip>
   );
 };
@@ -135,9 +150,7 @@ export const RelayTab = withPermission(
             Relays
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment" />
           </CardTitle>
-          <CardDescription>
-            Create and configure relays to securely access private network resources from Infisical
-          </CardDescription>
+          <CardDescription>Create and manage network relays from Infisical</CardDescription>
           <CardAction>
             <Button variant="org" onClick={() => handlePopUpOpen("deployRelay")}>
               <PlusIcon />
@@ -156,32 +169,51 @@ export const RelayTab = withPermission(
               placeholder="Search relay..."
             />
           </InputGroup>
-          <TableContainer>
+          {!isRelaysLoading && !filteredRelays?.length ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  {relays?.length ? <SearchIcon /> : <DoorClosedIcon />}
+                </EmptyMedia>
+                <EmptyTitle>
+                  {relays?.length ? "No relays match your search" : "No relays configured"}
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          ) : (
             <Table>
-              <THead>
-                <Tr>
-                  <Th className="w-1/3">Name</Th>
-                  <Th>Host</Th>
-                  <Th>Created</Th>
-                  <Th>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/3">Name</TableHead>
+                  <TableHead>Host</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>
                     Health Check
-                    <Tooltip
-                      asChild={false}
-                      className="normal-case"
-                      content="The last known healthcheck. Triggers every 1 hour."
-                    >
-                      <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="ml-2 inline size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The last known health check. Triggers every hour.
+                      </TooltipContent>
                     </Tooltip>
-                  </Th>
-                  <Th className="w-5" />
-                </Tr>
-              </THead>
-              <TBody>
-                {isRelaysLoading && (
-                  <TableSkeleton innerKey="relay-table" columns={5} key="relay-table" />
-                )}
+                  </TableHead>
+                  <TableHead className="w-12" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isRelaysLoading &&
+                  Array.from({ length: 3 }).map((_, row) => (
+                    <TableRow key={`relay-skeleton-${row}`}>
+                      {Array.from({ length: 5 }).map((__, cell) => (
+                        <TableCell key={`relay-skeleton-${row}-${cell}`}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
                 {filteredRelays?.map((el) => (
-                  <Tr
+                  <TableRow
                     key={el.id}
                     className={el.orgId ? "cursor-pointer hover:bg-mineshaft-700" : ""}
                     onClick={() => {
@@ -193,88 +225,88 @@ export const RelayTab = withPermission(
                       }
                     }}
                   >
-                    <Td>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <span>{el.name}</span>
                         {!el.orgId && (
-                          <Tooltip content="This is a managed relay provided by Infisical">
-                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
-                              Managed
-                            </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="neutral">Managed</Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>This relay is managed by Infisical.</TooltipContent>
                           </Tooltip>
                         )}
                       </div>
-                    </Td>
-                    <Td>{el.host}</Td>
-                    <Td>{formatRelative(new Date(el.createdAt), new Date())}</Td>
-                    <Td>
+                    </TableCell>
+                    <TableCell>{el.host}</TableCell>
+                    <TableCell>{formatRelative(new Date(el.createdAt), new Date())}</TableCell>
+                    <TableCell>
                       <RelayHealthStatus heartbeat={el.heartbeat} />
-                    </Td>
-                    <Td className="w-5">
-                      <Tooltip className="max-w-sm text-center" content="Options">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              ariaLabel="Options"
-                              colorSchema="secondary"
-                              className="w-6"
-                              variant="plain"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              icon={<FontAwesomeIcon icon={faCopy} />}
-                              onClick={() => navigator.clipboard.writeText(el.id)}
-                            >
-                              Copy ID
-                            </DropdownMenuItem>
-                            <OrgPermissionCan
-                              I={OrgRelayPermissionActions.DeleteRelays}
-                              a={OrgPermissionSubjects.Relay}
-                            >
-                              {(isAllowed: boolean) => (
-                                <DropdownMenuItem
-                                  isDisabled={!isAllowed || !el.orgId}
-                                  icon={<FontAwesomeIcon icon={faTrash} />}
-                                  className="text-red"
-                                  onClick={() => handlePopUpOpen("deleteRelay", el)}
-                                >
-                                  Delete Relay
-                                </DropdownMenuItem>
-                              )}
-                            </OrgPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </Tooltip>
-                    </Td>
-                  </Tr>
+                    </TableCell>
+                    <TableCell className="w-12" onClick={(event) => event.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="Relay options" variant="ghost" size="sm">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(el.id)}>
+                            <CopyIcon />
+                            Copy ID
+                          </DropdownMenuItem>
+                          <OrgPermissionCan
+                            I={OrgRelayPermissionActions.DeleteRelays}
+                            a={OrgPermissionSubjects.Relay}
+                          >
+                            {(isAllowed: boolean) => (
+                              <DropdownMenuItem
+                                isDisabled={!isAllowed || !el.orgId}
+                                variant="danger"
+                                onClick={() => handlePopUpOpen("deleteRelay", el)}
+                              >
+                                <TrashIcon />
+                                Delete Relay
+                              </DropdownMenuItem>
+                            )}
+                          </OrgPermissionCan>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </TBody>
+              </TableBody>
             </Table>
-            {!isRelaysLoading && !filteredRelays?.length && (
-              <EmptyState
-                title={
-                  relays?.length ? "No Relays match search..." : "No Relays have been configured"
-                }
-                icon={relays?.length ? faSearch : faDoorClosed}
-              />
-            )}
-            <DeleteActionModal
-              isOpen={popUp.deleteRelay.isOpen}
-              title={`Are you sure you want to delete relay ${
-                (popUp?.deleteRelay?.data as { name: string })?.name || ""
-              }?`}
-              onChange={(isOpen) => handlePopUpToggle("deleteRelay", isOpen)}
-              deleteKey="confirm"
-              onDeleteApproved={() => handleDeleteRelay()}
-            />
-            <RelayDeployModal
-              isOpen={popUp.deployRelay.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("deployRelay", isOpen)}
-            />
-          </TableContainer>
+          )}
+          <AlertDialog
+            open={popUp.deleteRelay.isOpen}
+            onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Delete {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently removes the relay from your organization.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="danger"
+                  isPending={deleteRelayById.isPending}
+                  onClick={handleDeleteRelay}
+                >
+                  Delete Relay
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <RelayDeployModal
+            isOpen={popUp.deployRelay.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle("deployRelay", isOpen)}
+          />
         </CardContent>
       </Card>
     );

@@ -1,43 +1,45 @@
-import { useMemo } from "react";
-import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useEffect, useMemo, useState } from "react";
+import { ExternalLinkIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FormLabel,
-  IconButton,
-  Input,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3/generic/Badge";
+import { Badge, CodeBlock, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 
 type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
   relayId: string;
   relayName: string;
   authMethod: "token" | "aws";
-  enrollmentToken: string | null;
+  enrollmentToken?: string;
+  expiresAt?: string;
 };
 
-export const RelayDeployCommandDialog = ({
-  isOpen,
-  onOpenChange,
+const formatTimeRemaining = (expiresAt: string, now: number) => {
+  const remainingSeconds = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
+  if (remainingSeconds === 0) return "Expired";
+
+  const hours = Math.floor(remainingSeconds / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m remaining`;
+  return `${minutes}m ${seconds}s remaining`;
+};
+
+export const RelayDeployCommandContent = ({
   relayId,
   relayName,
   authMethod,
-  enrollmentToken
+  enrollmentToken,
+  expiresAt
 }: Props) => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!expiresAt) return undefined;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt]);
 
   const cliCommand = useMemo(() => {
     if (authMethod === "aws") {
@@ -54,99 +56,49 @@ export const RelayDeployCommandDialog = ({
   }, [relayName, relayId, enrollmentToken, authMethod, siteURL]);
 
   const startServiceCommand = "sudo systemctl start infisical-relay";
-
-  const copy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    createNotification({ type: "info", text: `${label} copied to clipboard` });
-  };
-
+  const expiryLabel = expiresAt ? formatTimeRemaining(expiresAt, now) : null;
   const badgeLabel = authMethod === "aws" ? "AWS Auth" : "Token Auth";
-  const helperText =
-    authMethod === "aws"
-      ? "The host must have AWS credentials whose principal matches your allowlist."
-      : "The enrollment token expires in 1 hour and can only be used once.";
+  const label = (title: string) => (
+    <span className="flex flex-wrap items-center gap-2">
+      <span>{title}</span>
+      <Badge variant="info">{badgeLabel}</Badge>
+      {expiryLabel && (
+        <Badge variant={expiryLabel === "Expired" ? "danger" : "neutral"}>{expiryLabel}</Badge>
+      )}
+    </span>
+  );
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title={`Deploy command for ${relayName}`}
-        subTitle="Run the following command on the machine where you want to deploy the relay."
-        bodyClassName="overflow-visible"
-      >
-        <div className="mb-4">
-          <div className="mb-0.5 flex items-center gap-2">
-            <FormLabel label="Auth Method" className="mb-0 text-foreground" />
-            <Badge variant="info">{badgeLabel}</Badge>
-          </div>
-          <p className="mt-1 text-xs text-mineshaft-400">{helperText}</p>
+    <div className="min-w-0 space-y-4">
+      <Tabs defaultValue="cli" className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList variant="filled">
+            <TabsTrigger value="cli">CLI</TabsTrigger>
+            <TabsTrigger value="systemd">System service</TabsTrigger>
+          </TabsList>
+          <a
+            href="https://infisical.com/docs/cli/overview"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-label underline underline-offset-4 hover:text-foreground"
+          >
+            Installation guide
+            <ExternalLinkIcon className="size-3" />
+          </a>
         </div>
-
-        <Tabs defaultValue="cli" className="mt-2">
-          <TabList>
-            <Tab value="cli">CLI</Tab>
-            <Tab value="systemd">CLI (systemd)</Tab>
-          </TabList>
-          <TabPanel value="cli">
-            <div className="flex gap-2">
-              <Input value={cliCommand} isDisabled />
-              <IconButton
-                ariaLabel="copy"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => copy(cliCommand, "Command")}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-          </TabPanel>
-          <TabPanel value="systemd">
-            <FormLabel label="Installation Command" />
-            <div className="flex gap-2">
-              <Input value={systemdInstallCommand} isDisabled />
-              <IconButton
-                ariaLabel="copy install"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => copy(systemdInstallCommand, "Installation command")}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-            <FormLabel label="Start the Relay Service" className="mt-4" />
-            <div className="flex gap-2">
-              <Input value={startServiceCommand} isDisabled />
-              <IconButton
-                ariaLabel="copy start"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => copy(startServiceCommand, "Start command")}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-          </TabPanel>
-        </Tabs>
-        <a
-          href="https://infisical.com/docs/cli/overview"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors hover:border-yellow-400 hover:text-yellow-400"
-        >
-          <span>Install the Infisical CLI</span>
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
-        </a>
-        <div className="mt-6 flex items-center">
-          <ModalClose asChild>
-            <Button className="mr-4" size="sm" colorSchema="secondary">
-              Done
-            </Button>
-          </ModalClose>
-        </div>
-      </ModalContent>
-    </Modal>
+        <TabsContent value="cli" className="min-w-0">
+          <CodeBlock value={cliCommand} label={label("Command")} />
+        </TabsContent>
+        <TabsContent value="systemd" className="min-w-0 space-y-4">
+          <CodeBlock value={systemdInstallCommand} label={label("Install service")} />
+          <CodeBlock value={startServiceCommand} label="Start service" />
+        </TabsContent>
+      </Tabs>
+      {authMethod === "aws" && (
+        <p className="text-xs text-muted">
+          Requires AWS credentials matching the configured allowlist.
+        </p>
+      )}
+    </div>
   );
 };

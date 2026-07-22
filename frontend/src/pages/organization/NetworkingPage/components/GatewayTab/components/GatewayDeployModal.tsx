@@ -5,7 +5,20 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalClose, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways";
@@ -33,11 +46,14 @@ const Content = ({ onClose }: { onClose: () => void }) => {
   const {
     control,
     handleSubmit,
+    watch,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { name: "" }
   });
+  const name = watch("name");
+  const isNameProvided = Boolean(name.trim());
 
   const onSubmit = async ({ name }: FormData) => {
     const existingNames = gateways?.map((g) => g.name) ?? [];
@@ -54,53 +70,60 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         params: { orgId, gatewayId: gateway.id }
       });
     } catch {
-      createNotification({ type: "error", text: "Failed to create gateway" });
+      // The shared mutation error handler displays the API error.
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form className="contents" onSubmit={handleSubmit(onSubmit)}>
       <Controller
         control={control}
         name="name"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Name"
-            tooltipText="The name for your gateway."
-            isError={Boolean(error)}
-            errorText={error?.message}
-          >
-            <Input {...field} placeholder="Enter gateway name..." />
-          </FormControl>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="gateway-name">Name</FieldLabel>
+            <Input
+              id="gateway-name"
+              {...field}
+              placeholder="Enter gateway name"
+              isError={Boolean(error)}
+              autoFocus
+            />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
-
-      <div className="mt-6 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          colorSchema="secondary"
-          type="submit"
-          isLoading={isPending || isSubmitting}
-        >
-          Create
-        </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
             Cancel
           </Button>
-        </ModalClose>
-      </div>
+        </DialogClose>
+        <Button
+          variant="org"
+          type="submit"
+          isPending={isPending || isSubmitting}
+          isDisabled={!isNameProvided}
+        >
+          Create Gateway
+        </Button>
+      </DialogFooter>
     </form>
   );
 };
 
 export const GatewayDeployModal = ({ isOpen, onOpenChange }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent className="max-w-md" title="Create Gateway" bodyClassName="overflow-visible">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Gateway</DialogTitle>
+          <DialogDescription>
+            Create a gateway to access private network resources.
+          </DialogDescription>
+        </DialogHeader>
         <Content onClose={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
