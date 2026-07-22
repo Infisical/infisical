@@ -71,7 +71,6 @@ const buildService = (opts?: {
           id: "alert-1",
           ...data,
           condition: data.condition ? (JSON.parse(data.condition as string) as unknown) : null,
-          filters: data.filters ? (JSON.parse(data.filters as string) as unknown) : null,
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -281,7 +280,6 @@ describe("alert service", () => {
     resourceId: null,
     eventType: "test.resource.expiration",
     condition: null,
-    filters: null,
     enabled: true,
     orgId: "org-1",
     createdAt: new Date(),

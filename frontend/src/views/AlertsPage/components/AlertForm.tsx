@@ -232,7 +232,6 @@ export const AlertForm = ({
           resourceId: resourceId ?? null,
           eventType: data.eventType,
           condition,
-          filters: null,
           enabled: data.enabled,
           projectId: projectId ?? null,
           channels

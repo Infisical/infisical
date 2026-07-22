@@ -36,7 +36,6 @@ const AlertResponseSchema = z.object({
   resourceId: z.string().nullable(),
   eventType: z.string(),
   condition: z.unknown().nullable(),
-  filters: z.unknown().nullable(),
   enabled: z.boolean(),
   orgId: z.string(),
   projectId: z.string().nullable(),
@@ -69,7 +68,6 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         resourceId: z.string().nullable().optional(),
         eventType: z.string().min(1),
         condition: z.unknown().optional(),
-        filters: z.unknown().optional(),
         enabled: z.boolean().optional(),
         projectId: z.string().nullable().optional(),
         channels: z.array(CreateChannelInputSchema).min(1)
@@ -152,7 +150,6 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         name: z.string().min(1).max(255).optional(),
         description: z.string().max(1000).nullable().optional(),
         condition: z.unknown().optional(),
-        filters: z.unknown().optional(),
         enabled: z.boolean().optional(),
         channels: z.array(UpdateChannelInputSchema).min(1).optional()
       }),

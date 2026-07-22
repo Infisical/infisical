@@ -34,7 +34,6 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
   resourceId: null,
   eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
   condition: { alertBefore: "30d" },
-  filters: null,
   ...overrides
 });
 
@@ -100,8 +99,7 @@ describe("identity credential alert provider", () => {
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
-      condition: { alertBefore: "30d" },
-      filters: null
+      condition: { alertBefore: "30d" }
     });
 
     expect(seenArgs?.alertBeforeInterval).toBe("30 days");
@@ -123,8 +121,7 @@ describe("identity credential alert provider", () => {
       projectId: "proj-1",
       resourceId: null,
       eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
-      condition: { alertBefore: "30d" },
-      filters: null
+      condition: { alertBefore: "30d" }
     });
 
     expect(seenArgs?.projectId).toBe("proj-1");

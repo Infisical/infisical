@@ -103,7 +103,6 @@ export const alertServiceFactory = ({
     resourceId: alert.resourceId ?? null,
     eventType: alert.eventType,
     condition: alert.condition ?? null,
-    filters: alert.filters ?? null,
     enabled: alert.enabled,
     orgId: alert.orgId,
     projectId: alert.projectId ?? null,
@@ -161,7 +160,6 @@ export const alertServiceFactory = ({
           eventType: dto.eventType,
           triggerType: AlertTriggerType.Scheduled,
           condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
-          filters: dto.filters != null ? JSON.stringify(dto.filters) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
           projectId: dto.projectId,
@@ -343,7 +341,6 @@ export const alertServiceFactory = ({
         ...(dto.condition !== undefined
           ? { condition: dto.condition != null ? JSON.stringify(dto.condition) : null }
           : {}),
-        ...(dto.filters !== undefined ? { filters: dto.filters != null ? JSON.stringify(dto.filters) : null } : {}),
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
       };
 

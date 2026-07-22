@@ -86,8 +86,7 @@ export const alertEngineFactory = ({
       projectId: alert.projectId,
       resourceId: alert.resourceId,
       eventType: alert.eventType,
-      condition: alert.condition,
-      filters: alert.filters
+      condition: alert.condition
     });
     if (targets.length === 0) return;
 
@@ -123,8 +122,7 @@ export const alertEngineFactory = ({
       resourceType: alert.resourceType,
       resourceId: alert.resourceId,
       eventType: alert.eventType,
-      condition: alert.condition,
-      filters: alert.filters
+      condition: alert.condition
     };
     const viewUrl = await provider.buildViewUrl(alertContext);
 

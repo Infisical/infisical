@@ -14,7 +14,6 @@ export async function up(knex: Knex): Promise<void> {
       t.string("eventType").notNullable();
       t.string("triggerType").notNullable();
       t.jsonb("condition").nullable();
-      t.jsonb("filters").nullable();
       t.boolean("enabled").notNullable().defaultTo(true);
       t.uuid("orgId").notNullable();
       t.string("projectId").nullable();

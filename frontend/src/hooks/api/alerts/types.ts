@@ -72,7 +72,6 @@ export type TAlert = {
   resourceId: string | null;
   eventType: string;
   condition: { alertBefore?: string; dailyReminder?: boolean } | null;
-  filters: unknown | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;
@@ -104,7 +103,6 @@ export type TCreateAlertDTO = {
   resourceId?: string | null;
   eventType: string;
   condition?: unknown;
-  filters?: unknown;
   enabled?: boolean;
   projectId?: string | null;
   channels: TAlertChannelInput[];
@@ -116,7 +114,6 @@ export type TUpdateAlertDTO = {
   name?: string;
   description?: string | null;
   condition?: unknown;
-  filters?: unknown;
   enabled?: boolean;
   channels?: TAlertChannelInput[];
 };

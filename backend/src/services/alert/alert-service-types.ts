@@ -9,7 +9,6 @@ export type TCreateAlertDTO = TGenericPermission & {
   resourceId?: string | null;
   eventType: string;
   condition?: unknown;
-  filters?: unknown;
   enabled?: boolean;
   projectId?: string | null;
   channels: TAlertChannelInput[];
@@ -20,7 +19,6 @@ export type TUpdateAlertDTO = TGenericPermission & {
   name?: string;
   description?: string | null;
   condition?: unknown;
-  filters?: unknown;
   enabled?: boolean;
   channels?: TAlertChannelInput[];
 };
@@ -44,7 +42,6 @@ export type TAlertResponse = {
   resourceId: string | null;
   eventType: string;
   condition: unknown;
-  filters: unknown;
   enabled: boolean;
   orgId: string;
   projectId: string | null;

@@ -45,7 +45,6 @@ export type TAlertContext = {
   resourceId?: string | null;
   eventType: string;
   condition: unknown;
-  filters: unknown;
 };
 
 export type TFindDueTargetsInput = {
@@ -54,7 +53,6 @@ export type TFindDueTargetsInput = {
   resourceId?: string | null;
   eventType: string;
   condition: unknown;
-  filters: unknown;
 };
 
 export interface IResourceAlertProvider<TTarget = unknown> {
