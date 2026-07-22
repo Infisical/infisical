@@ -151,6 +151,8 @@ export type TDynamicSecretProvider =
             policyDocument?: string;
             userGroups?: string;
             policyArns?: string;
+            sessionPolicyArns?: string;
+            sessionPolicyDocument?: string;
           }
         | {
             method: DynamicSecretAwsIamAuth.IRSA;
