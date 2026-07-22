@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -110,6 +110,7 @@ export const GcpKmsForm = ({
   const [isCredentialValid, setIsCredentialValid] = useState(false);
   const [credentialFiles, setCredentialFiles] = useState<File[]>([]);
   const [keys, setKeys] = useState<SelectOption[]>([]);
+  const keyLookupRequestId = useRef(0);
 
   const {
     control,
@@ -149,19 +150,26 @@ export const GcpKmsForm = ({
     useExternalKmsFetchGcpKeys(currentOrg?.id);
 
   const getCredentialFileJson = async (
-    files: FileList | undefined = getValues("credentialFile")
+    files: FileList | undefined = getValues("credentialFile"),
+    requestId?: number
   ): Promise<ExternalKmsGcpCredentialSchemaType | null> => {
+    const isCurrentRequest = () =>
+      requestId === undefined || requestId === keyLookupRequestId.current;
     const file = files?.[0];
     if (!file) {
-      setError("credentialFile", {
-        message: "Service account credential JSON is required."
-      });
+      if (isCurrentRequest()) {
+        setError("credentialFile", {
+          message: "Service account credential JSON is required."
+        });
+      }
       return null;
     }
     if (file.type !== "application/json") {
-      setError("credentialFile", {
-        message: "Only .json files are accepted."
-      });
+      if (isCurrentRequest()) {
+        setError("credentialFile", {
+          message: "Only .json files are accepted."
+        });
+      }
       return null;
     }
 
@@ -169,17 +177,21 @@ export const GcpKmsForm = ({
       const jsonContents = await file.text();
       const parsedJson = ExternalKmsGcpCredentialSchema.safeParse(JSON.parse(jsonContents));
       if (!parsedJson.success) {
+        if (isCurrentRequest()) {
+          setError("credentialFile", {
+            message: "Invalid service account credential JSON."
+          });
+        }
+        return null;
+      }
+      if (isCurrentRequest()) clearErrors("credentialFile");
+      return parsedJson.data;
+    } catch {
+      if (isCurrentRequest()) {
         setError("credentialFile", {
           message: "Invalid service account credential JSON."
         });
-        return null;
       }
-      clearErrors("credentialFile");
-      return parsedJson.data;
-    } catch {
-      setError("credentialFile", {
-        message: "Invalid service account credential JSON."
-      });
       return null;
     }
   };
@@ -188,13 +200,16 @@ export const GcpKmsForm = ({
     gcpRegion = getValues("gcpRegion")?.value,
     files = getValues("credentialFile")
   }: { gcpRegion?: string; files?: FileList } = {}) => {
+    keyLookupRequestId.current += 1;
+    const requestId = keyLookupRequestId.current;
     resetField("keyObject");
     setKeys([]);
     setIsCredentialValid(false);
 
     if (!gcpRegion) return;
 
-    const credentialJson = kms ? undefined : await getCredentialFileJson(files);
+    const credentialJson = kms ? undefined : await getCredentialFileJson(files, requestId);
+    if (requestId !== keyLookupRequestId.current) return;
     if (!kms && !credentialJson) return;
 
     try {
@@ -202,6 +217,8 @@ export const GcpKmsForm = ({
         gcpRegion,
         ...(kms ? { kmsId: kms.id } : { credential: credentialJson! })
       });
+      if (requestId !== keyLookupRequestId.current) return;
+
       setIsCredentialValid(true);
 
       const returnedKeys = response.keys.map((key) => {
@@ -222,6 +239,8 @@ export const GcpKmsForm = ({
         }
       }
     } catch {
+      if (requestId !== keyLookupRequestId.current) return;
+
       createNotification({
         text: "Failed to load GCP KMS keys",
         type: "error"
@@ -327,6 +346,10 @@ export const GcpKmsForm = ({
     if (kms && mode !== "credentials") {
       fetchGCPKeys({ gcpRegion: kms.externalKms.configuration.gcpRegion });
     }
+
+    return () => {
+      keyLookupRequestId.current += 1;
+    };
     // Fetch once when the selected KMS changes. Form callbacks intentionally stay out of this dependency list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kms?.id, mode]);
