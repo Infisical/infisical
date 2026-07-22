@@ -12,6 +12,7 @@ import { RdpLauncher } from "./RdpLauncher";
 import { SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
+import { WebBrowserContent } from "./WebBrowserContent";
 
 const TerminalContent = ({
   account,
@@ -140,6 +141,11 @@ const PageContent = () => {
               mfaSessionId={mfaSessionId}
               preselectedHost={preselectedHost}
             />
+          );
+        }
+        if (account.accountType === PamAccountType.Web) {
+          return (
+            <WebBrowserContent account={account} reason={reason} mfaSessionId={mfaSessionId} />
           );
         }
         return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
