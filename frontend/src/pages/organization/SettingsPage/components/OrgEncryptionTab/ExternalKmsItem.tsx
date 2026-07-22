@@ -1,5 +1,3 @@
-import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { KeyRound, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions/OrgPermissionCan";
@@ -35,6 +33,11 @@ type Props = {
 };
 
 export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) => {
+  const providerIcon =
+    kms.externalKms.provider === ExternalKmsProvider.Aws
+      ? "/images/integrations/Amazon Web Services.png"
+      : "/images/integrations/Google Cloud Platform.png";
+
   const handleEdit = (popUpName: "editExternalKmsDetails" | "editExternalKmsCredentials") => {
     if (subscription && !subscription.externalKms) {
       handlePopUpOpen("upgradePlan", {
@@ -54,12 +57,7 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
     <TableRow key={kms.id}>
       <TableCell>
         <div className="flex items-center gap-2">
-          {kms.externalKms.provider === ExternalKmsProvider.Aws && (
-            <FontAwesomeIcon icon={faAws} className="size-4 text-accent" />
-          )}
-          {kms.externalKms.provider === ExternalKmsProvider.Gcp && (
-            <FontAwesomeIcon icon={faGoogle} className="size-4 text-accent" />
-          )}
+          <img src={providerIcon} alt="" className="size-5 object-contain" />
           <span className="font-medium text-foreground">
             {kms.externalKms.provider.toUpperCase()}
           </span>

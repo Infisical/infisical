@@ -433,6 +433,7 @@ export const GcpKmsForm = ({
                   isError={Boolean(error)}
                   onChange={(option) => {
                     const region = option as SelectOption | null;
+                    resetField("keyObject");
                     field.onChange(region);
                     fetchGCPKeys({ gcpRegion: region?.value });
                   }}

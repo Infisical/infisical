@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   Button,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -24,13 +27,13 @@ type Props = {
 
 const EXTERNAL_KMS_LIST = [
   {
-    icon: faAws,
+    icon: "/images/integrations/Amazon Web Services.png",
     provider: ExternalKmsProvider.Aws,
     title: "AWS KMS",
     description: "Use an AWS KMS key to encrypt organization data."
   },
   {
-    icon: faGoogle,
+    icon: "/images/integrations/Google Cloud Platform.png",
     provider: ExternalKmsProvider.Gcp,
     title: "GCP KMS",
     description: "Use a Google Cloud KMS key to encrypt organization data."
@@ -70,30 +73,26 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
           <>
             <div className="grid gap-3 px-4">
               {EXTERNAL_KMS_LIST.map(({ icon, provider, title, description }) => (
-                <button
-                  type="button"
+                <Item
+                  asChild
+                  variant="outline"
                   key={provider}
-                  onClick={() => setSelectedProvider(provider)}
-                  className={`flex items-center gap-4 rounded-md border border-border bg-container p-4 text-left transition-colors outline-none hover:bg-container-hover focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                  className={`cursor-pointer hover:bg-container-hover ${
                     isSubOrganization
                       ? "hover:border-sub-org/70 focus-visible:border-sub-org"
                       : "hover:border-org/70 focus-visible:border-org"
                   }`}
                 >
-                  <span
-                    className={`flex size-10 shrink-0 items-center justify-center rounded-md border ${
-                      isSubOrganization
-                        ? "border-sub-org/20 bg-sub-org/10 text-sub-org"
-                        : "border-org/20 bg-org/10 text-org"
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={icon} className="size-4" />
-                  </span>
-                  <span className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-foreground">{title}</span>
-                    <span className="text-xs text-accent">{description}</span>
-                  </span>
-                </button>
+                  <button type="button" onClick={() => setSelectedProvider(provider)}>
+                    <ItemMedia variant="image">
+                      <img src={icon} alt="" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{title}</ItemTitle>
+                      <ItemDescription>{description}</ItemDescription>
+                    </ItemContent>
+                  </button>
+                </Item>
               ))}
             </div>
             <SheetFooter className="justify-end border-t">

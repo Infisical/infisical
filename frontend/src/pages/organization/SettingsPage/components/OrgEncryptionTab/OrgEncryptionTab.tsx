@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -23,6 +24,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  Input,
+  Label,
   Skeleton,
   Table,
   TableBody,
@@ -55,6 +58,7 @@ type RemoveExternalKmsData = {
 
 export const OrgEncryptionTab = withPermission(
   () => {
+    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { currentOrg, isSubOrganization } = useOrganization();
     const { subscription } = useSubscription();
     const orgId = currentOrg?.id || "";
@@ -71,9 +75,10 @@ export const OrgEncryptionTab = withPermission(
     const { mutateAsync: removeExternalKms, isPending: isRemovingExternalKms } =
       useRemoveExternalKms(currentOrg.id);
     const removeExternalKmsData = popUp.removeExternalKms.data as RemoveExternalKmsData | undefined;
+    const isDeleteConfirmed = deleteConfirmation === removeExternalKmsData?.name;
 
     const handleRemoveExternalKms = async () => {
-      if (!removeExternalKmsData) return;
+      if (!removeExternalKmsData || !isDeleteConfirmed) return;
 
       try {
         await removeExternalKms({
@@ -201,7 +206,10 @@ export const OrgEncryptionTab = withPermission(
         />
         <AlertDialog
           open={popUp.removeExternalKms.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("removeExternalKms", isOpen)}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setDeleteConfirmation("");
+            handlePopUpToggle("removeExternalKms", isOpen);
+          }}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -216,6 +224,17 @@ export const OrgEncryptionTab = withPermission(
                 undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="delete-external-kms-confirmation">
+                Type &quot;{removeExternalKmsData?.name}&quot; to confirm
+              </Label>
+              <Input
+                id="delete-external-kms-confirmation"
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                autoComplete="off"
+              />
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <Button
@@ -223,7 +242,7 @@ export const OrgEncryptionTab = withPermission(
                 size="sm"
                 onClick={handleRemoveExternalKms}
                 isPending={isRemovingExternalKms}
-                isDisabled={isRemovingExternalKms}
+                isDisabled={isRemovingExternalKms || !isDeleteConfirmed}
               >
                 Delete
               </Button>
