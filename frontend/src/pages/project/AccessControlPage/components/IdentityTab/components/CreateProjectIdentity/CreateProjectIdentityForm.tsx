@@ -39,7 +39,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import {
   formRolePermission2API,
-  RoleTemplates
+  RoleTemplates,
+  TFormSchema
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
 import { PolicyTemplateSelect } from "./PolicyTemplateSelect";
@@ -64,7 +65,10 @@ const UNIVERSAL_AUTH_DEFAULTS = {
 
 // Merge the permissions of the selected templates into a single form-permission
 // object (union of actions per subject), then hand off to formRolePermission2API.
-const buildTemplatePermissions = (projectType: ProjectType, templateIds: string[]) => {
+const buildTemplatePermissions = (
+  projectType: ProjectType,
+  templateIds: string[]
+): TFormSchema["permissions"] => {
   const templates = (RoleTemplates[projectType ?? ProjectType.SecretManager] ?? []).filter(
     (template) => templateIds.includes(template.id)
   );
@@ -81,7 +85,7 @@ const buildTemplatePermissions = (projectType: ProjectType, templateIds: string[
 
   return Object.fromEntries(
     Object.entries(merged).map(([subject, actions]) => [subject, [actions]])
-  );
+  ) as TFormSchema["permissions"];
 };
 
 type Props = {
@@ -191,7 +195,7 @@ export const CreateProjectIdentityForm = ({
             identityId,
             projectId,
             permissions: formRolePermission2API(
-              buildTemplatePermissions(projectType, data.templateIds) as never
+              buildTemplatePermissions(projectType, data.templateIds)
             ),
             type: { isTemporary: false as const }
           });
@@ -308,8 +312,8 @@ export const CreateProjectIdentityForm = ({
                   <FieldLabel>Machine Identity</FieldLabel>
                   <FieldContent>
                     <FilterableSelect
-                      value={value}
-                      onChange={onChange}
+                      value={value ?? null}
+                      onChange={(newValue) => onChange(newValue ?? undefined)}
                       isLoading={isAvailableLoading}
                       placeholder="Select machine identity..."
                       options={assignableIdentities}
