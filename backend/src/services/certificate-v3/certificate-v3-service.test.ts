@@ -1969,6 +1969,27 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("certificates issued from CSR (external private key) cannot be renewed");
     });
 
+    it("should reject renewal for a protocol-enrolled certificate", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(EnrollmentType.ACME);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(ForbiddenRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Certificate is not eligible for renewal: ACME certificates cannot be renewed");
+    });
+
     it("should reject renewal if certificate is already renewed", async () => {
       const alreadyRenewedCert = { ...mockOriginalCert, renewedByCertificateId: "cert-456" };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(alreadyRenewedCert);
