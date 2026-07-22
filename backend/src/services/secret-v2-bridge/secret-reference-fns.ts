@@ -21,22 +21,27 @@ const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REGEX.test(value);
 
 /**
- * Grabs and processes nested secret references from a string
+ * Grabs and processes secret references from a string.
  *
- * This function looks for patterns that match the interpolation syntax in the input string.
- * It filters out references that include nested paths, splits them into environment and
- * secret path parts, and then returns an array of objects with the environment and the
- * joined secret path.
+ * This function looks for patterns that match the interpolation syntax in the input string and
+ * classifies each one as either a local reference (a secret in the same folder) or a nested,
+ * cross-environment reference (`environment.folder.key`).
+ *
+ * A reference is treated as local when it contains no dot, or — when `localSecretKeys` is
+ * provided — when its exact value matches a known local secret name. The latter is what allows
+ * a secret whose name itself contains a dot (e.g. `Secret.Reference`) to be recognised as a
+ * local reference instead of being mis-parsed as `environment=Secret`. Callers that cannot
+ * resolve local names omit `localSecretKeys` and keep the dot-based classification.
  * @example
  * const value = "Hello ${dev.someFolder.OtherFolder.SECRET_NAME} and ${prod.anotherFolder.SECRET_NAME}";
- * const result = getAllNestedSecretReferences(value);
- * // result will be:
+ * const result = getAllSecretReferences(value);
+ * // result.nestedReferences will be:
  * // [
  * //   { environment: 'dev', secretPath: '/someFolder/OtherFolder' },
  * //   { environment: 'prod', secretPath: '/anotherFolder' }
  * // ]
  */
-export const getAllSecretReferences = (maybeSecretReference: string) => {
+export const getAllSecretReferences = (maybeSecretReference: string, localSecretKeys?: string[]) => {
   const references = [];
   let match;
 
@@ -46,8 +51,12 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
     references.push(match[1]);
   }
 
+  const localSecretKeySet = localSecretKeys ? new Set(localSecretKeys) : undefined;
+  const isLocalReference = (reference: string) =>
+    !reference.includes(".") || Boolean(localSecretKeySet?.has(reference));
+
   const nestedReferences = references
-    .filter((el) => el.includes("."))
+    .filter((el) => !isLocalReference(el))
     .map((el) => {
       const parts = el.split(".");
       // Cross-project reference: @project-slug.env.path.SECRET
@@ -67,7 +76,7 @@ export const getAllSecretReferences = (maybeSecretReference: string) => {
         secretKey: secretPathList[secretPathList.length - 1]
       };
     });
-  const localReferences = references.filter((el) => !el.includes("."));
+  const localReferences = references.filter((el) => isLocalReference(el));
   return { nestedReferences, localReferences };
 };
 
@@ -383,9 +392,23 @@ export const expandSecretReferencesFactory = ({
             referencedSecretEnvironmentSlug = crossProjEnv;
             referencedProjectSlug = crossProjSlug;
           } else {
-            const secretReferenceEnvironment = entities[0];
-            const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
-            const secretReferenceKey = entities[entities.length - 1];
+            // A reference containing a dot is normally treated as a cross-environment
+            // reference (`environment.folder.key`). Secret names can themselves contain
+            // dots, so prefer a local secret with this exact name when one exists in the
+            // current environment and path before falling back to that interpretation.
+            const localSecretReferenceKey = interpolationKey.trim();
+            // eslint-disable-next-line no-await-in-loop
+            await fetchSecret(environment, secretPath, localSecretReferenceKey);
+            const localFolderCacheKey = getCacheUniqueKey(environment, secretPath);
+            const isLocalSecretReference =
+              Boolean(secretCache[localFolderCacheKey]) &&
+              Object.prototype.hasOwnProperty.call(secretCache[localFolderCacheKey], localSecretReferenceKey);
+
+            const secretReferenceEnvironment = isLocalSecretReference ? environment : entities[0];
+            const secretReferencePath = isLocalSecretReference
+              ? secretPath
+              : path.join("/", ...entities.slice(1, entities.length - 1));
+            const secretReferenceKey = isLocalSecretReference ? localSecretReferenceKey : entities[entities.length - 1];
 
             // eslint-disable-next-line no-await-in-loop
             const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);

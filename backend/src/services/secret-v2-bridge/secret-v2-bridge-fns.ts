@@ -765,7 +765,9 @@ export const fnUpdateSecretLinkedReferences = async ({
     const originalValue = decryptor({ cipherTextBlob: secretToUpdate.encryptedValue }).toString();
     let newValue = originalValue;
 
-    const { localReferences, nestedReferences } = getAllSecretReferences(originalValue);
+    // Pass the renamed key as a known local secret name so a reference like ${A.B} is treated as
+    // a local reference to a dotted-name secret rather than a cross-environment reference.
+    const { localReferences, nestedReferences } = getAllSecretReferences(originalValue, [oldSecretKey]);
 
     // checkk if this secret references the renamed secret at all (either locally or nested)
     const hasLocalRef = localReferences.includes(oldSecretKey);
