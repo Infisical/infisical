@@ -73,6 +73,8 @@ export const InitialStep = ({ isAdmin }: Props) => {
   const [areMoreLoginOptionsVisible, setAreMoreLoginOptionsVisible] = useState(false);
   const [areSsoOptionsVisible, setAreSsoOptionsVisible] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
+  const additionalLoginOptionsRef = useRef<HTMLDivElement>(null);
+  const ssoLoginOptionsRef = useRef<HTMLDivElement>(null);
   const { data: serverDetails } = useFetchServerStatus();
 
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
@@ -110,6 +112,18 @@ export const InitialStep = ({ isAdmin }: Props) => {
       redirectToSaml(serverDetails.samlDefaultOrgSlug);
     }
   }, [serverDetails?.samlDefaultOrgSlug]);
+
+  useEffect(() => {
+    if (areMoreLoginOptionsVisible) {
+      additionalLoginOptionsRef.current?.querySelector<HTMLElement>("button, a")?.focus();
+    }
+  }, [areMoreLoginOptionsVisible]);
+
+  useEffect(() => {
+    if (areSsoOptionsVisible) {
+      ssoLoginOptionsRef.current?.querySelector<HTMLElement>("button, a")?.focus();
+    }
+  }, [areSsoOptionsVisible]);
 
   const handleOrganizationLogin = (
     method: LoginMethod.LDAP | LoginMethod.OIDC | LoginMethod.SAML
@@ -353,7 +367,10 @@ export const InitialStep = ({ isAdmin }: Props) => {
                     id="additional-login-options"
                     isOpen={areMoreLoginOptionsVisible}
                   >
-                    <div className="flex w-full flex-col gap-2 pt-2">
+                    <div
+                      ref={additionalLoginOptionsRef}
+                      className="flex w-full flex-col gap-2 pt-2"
+                    >
                       {additionalLoginOptions.map((option) => (
                         <Fragment key={option.id}>{option.render(false, true)}</Fragment>
                       ))}
@@ -385,7 +402,10 @@ export const InitialStep = ({ isAdmin }: Props) => {
                         </Button>
                       </AnimatedCollapse>
                       <AnimatedCollapse id="sso-login-options" isOpen={areSsoOptionsVisible}>
-                        <div className="flex w-full flex-col gap-2">
+                        <div
+                          ref={ssoLoginOptionsRef}
+                          className="flex w-full flex-col gap-2"
+                        >
                           {organizationLoginOptions.map((option) => (
                             <Fragment key={option.id}>{option.render(false, true)}</Fragment>
                           ))}

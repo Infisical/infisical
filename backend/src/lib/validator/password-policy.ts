@@ -24,6 +24,7 @@ export const PASSWORD_POLICY = {
     {
       code: "minimumLength",
       patterns: [String.raw`^[\s\S]{14,}$`],
+      flags: "u",
       shouldMatch: true,
       message: "At least 14 characters",
       validationMessage: "Password must contain at least 14 characters",
@@ -32,6 +33,7 @@ export const PASSWORD_POLICY = {
     {
       code: "maximumLength",
       patterns: [String.raw`^[\s\S]{0,100}$`],
+      flags: "u",
       shouldMatch: true,
       message: "At most 100 characters",
       validationMessage: "Password must contain at most 100 characters",

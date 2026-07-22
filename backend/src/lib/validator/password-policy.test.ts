@@ -40,6 +40,24 @@ describe("PasswordPolicySchema", () => {
     expect(PasswordPolicySchema.safeParse("StrongPassword😀😀😀7").success).toBe(true);
   });
 
+  test("counts astral Unicode characters as single password characters", () => {
+    const fewerThanFourteenCodePoints = "😀😃😄😁😆😅1a";
+    const fewerThanOneHundredCodePoints = `${"😀😃".repeat(24)}😀Aa7`;
+
+    expect(Array.from(fewerThanFourteenCodePoints)).toHaveLength(8);
+    expect(fewerThanFourteenCodePoints).toHaveLength(14);
+    expect(PasswordPolicySchema.safeParse(fewerThanFourteenCodePoints).success).toBe(false);
+
+    expect(Array.from(fewerThanOneHundredCodePoints)).toHaveLength(52);
+    expect(fewerThanOneHundredCodePoints.length).toBeGreaterThan(100);
+    expect(PasswordPolicySchema.safeParse(fewerThanOneHundredCodePoints).success).toBe(true);
+  });
+
+  test("exports Unicode-aware length requirements", () => {
+    expect(PASSWORD_POLICY.requirements[0].flags).toBe("u");
+    expect(PASSWORD_POLICY.requirements[1].flags).toBe("u");
+  });
+
   test("preserves the public validation error copy", () => {
     const result = PasswordPolicySchema.safeParse("Short-7");
 
