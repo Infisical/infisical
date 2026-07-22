@@ -17,7 +17,11 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { CertPolicyState, CertSubjectAttributeType } from "../certificate-common/certificate-constants";
+import {
+  CertPolicyState,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType
+} from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
   TCertificatePolicy,
@@ -265,20 +269,30 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
+  const normalizeUriForComparison = (value: string): string => {
+    const match = new RE2("^([a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*)([/?#].*)?$").exec(value);
+    if (!match) {
+      return value;
+    }
+    return `${match[1].toLowerCase()}${match[2] ?? ""}`;
+  };
+
   const validateValueAgainstConstraints = (
     value: string,
     allowedValues: string[],
-    fieldName: string
+    fieldName: string,
+    isUri = false
   ): { isValid: boolean; error?: string } => {
     if (!allowedValues || allowedValues.length === 0) {
       return { isValid: true };
     }
 
+    const normalize = (input: string): string => (isUri ? normalizeUriForComparison(input) : input.toLowerCase());
     const hasWildcards = allowedValues.some(isWildcardPattern);
-    const normalizedValue = value.toLowerCase();
+    const normalizedValue = normalize(value);
 
     for (const allowedValue of allowedValues) {
-      const normalizedAllowed = allowedValue.toLowerCase();
+      const normalizedAllowed = normalize(allowedValue);
       if (isWildcardPattern(allowedValue)) {
         try {
           const regex = createWildcardRegex(normalizedAllowed);
@@ -462,11 +476,18 @@ export const certificatePolicyServiceFactory = ({
       for (const sanPolicy of sansPolicies) {
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
+        const isUriSan = sanPolicy.type === CertSubjectAlternativeNameType.URI;
+
         // Check REQUIRED values - at least one SAN must match each required pattern
         if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
             const hasMatchingRequiredSan = requestSans.some((sanValue) => {
-              const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+              const validation = validateValueAgainstConstraints(
+                sanValue,
+                [requiredValue],
+                `${sanPolicy.type} SAN`,
+                isUriSan
+              );
               return validation.isValid;
             });
 
@@ -479,7 +500,12 @@ export const certificatePolicyServiceFactory = ({
         // Check DENIED values - no SAN should match denied patterns
         if (sanPolicy.denied && sanPolicy.denied.length > 0) {
           for (const sanValue of requestSans) {
-            const validation = validateValueAgainstConstraints(sanValue, sanPolicy.denied, `${sanPolicy.type} SAN`);
+            const validation = validateValueAgainstConstraints(
+              sanValue,
+              sanPolicy.denied,
+              `${sanPolicy.type} SAN`,
+              isUriSan
+            );
             if (validation.isValid) {
               errors.push(`${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`);
             }
@@ -492,13 +518,23 @@ export const certificatePolicyServiceFactory = ({
             let satisfiesRequired = false;
             if (sanPolicy.required && sanPolicy.required.length > 0) {
               satisfiesRequired = sanPolicy.required.some((requiredValue) => {
-                const validation = validateValueAgainstConstraints(sanValue, [requiredValue], `${sanPolicy.type} SAN`);
+                const validation = validateValueAgainstConstraints(
+                  sanValue,
+                  [requiredValue],
+                  `${sanPolicy.type} SAN`,
+                  isUriSan
+                );
                 return validation.isValid;
               });
             }
 
             if (!satisfiesRequired) {
-              const validation = validateValueAgainstConstraints(sanValue, sanPolicy.allowed, `${sanPolicy.type} SAN`);
+              const validation = validateValueAgainstConstraints(
+                sanValue,
+                sanPolicy.allowed,
+                `${sanPolicy.type} SAN`,
+                isUriSan
+              );
               if (!validation.isValid && validation.error) {
                 errors.push(validation.error);
               }
