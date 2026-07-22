@@ -275,20 +275,22 @@ export const certificatePolicyServiceFactory = ({
     }
 
     const hasWildcards = allowedValues.some(isWildcardPattern);
+    const normalizedValue = value.toLowerCase();
 
     for (const allowedValue of allowedValues) {
+      const normalizedAllowed = allowedValue.toLowerCase();
       if (isWildcardPattern(allowedValue)) {
         try {
-          const regex = createWildcardRegex(allowedValue);
-          if (regex.test(value)) {
+          const regex = createWildcardRegex(normalizedAllowed);
+          if (regex.test(normalizedValue)) {
             return { isValid: true };
           }
         } catch (error) {
-          if (allowedValue === value) {
+          if (normalizedAllowed === normalizedValue) {
             return { isValid: true };
           }
         }
-      } else if (allowedValue === value) {
+      } else if (normalizedAllowed === normalizedValue) {
         return { isValid: true };
       }
     }

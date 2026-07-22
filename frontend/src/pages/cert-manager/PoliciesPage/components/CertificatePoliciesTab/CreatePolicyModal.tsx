@@ -638,7 +638,12 @@ export const CreatePolicyModal = ({
         return result;
       }) || [];
 
-    const subject = restrictSubject ? consolidateByType(subjectRaw) : null;
+    const preservedRequiredSubject = (policy?.subject ?? [])
+      .filter((s) => Array.isArray(s.required) && s.required.length > 0)
+      .map((s): AttributeTransform => ({ type: s.type, required: s.required }));
+    const subject = restrictSubject
+      ? consolidateByType([...subjectRaw, ...preservedRequiredSubject])
+      : null;
     const sans = restrictSans ? consolidateByType(sansRaw) : null;
 
     const keyUsages: KeyUsagesTransform | null = restrictKeyUsages
