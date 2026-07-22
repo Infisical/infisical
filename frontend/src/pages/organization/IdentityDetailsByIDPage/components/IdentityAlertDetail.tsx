@@ -4,6 +4,7 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import {
+  Badge,
   Button,
   Detail,
   DetailLabel,
@@ -16,7 +17,14 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { AlertResourceType, TAlert, useDeleteAlert, useListAlerts } from "@app/hooks/api/alerts";
+import {
+  ALERT_EVENT_TYPE_LABELS,
+  AlertEventType,
+  AlertResourceType,
+  TAlert,
+  useDeleteAlert,
+  useListAlerts
+} from "@app/hooks/api/alerts";
 import { AddAlertModal } from "@app/views/AlertsPage/components/AddAlertModal";
 
 type Props = {
@@ -24,13 +32,19 @@ type Props = {
   identityName: string;
 };
 
-// "Alert" subsection of the identity Details card. Shows the single alert bound to this identity
-// (name, event, channel icons) and opens the drawer in edit mode when clicked. When none exists it
-// offers a create action pre-bound to the identity. Uniqueness (one alert per resource + event) is
-// enforced by the backend, so at most one alert is ever returned here.
+const TIME_UNIT_WORD: Record<string, string> = { d: "day", w: "week", m: "month", y: "year" };
+
+const formatCondition = (alertBefore?: string): string => {
+  const match = alertBefore?.match(/^(\d+)([dwmy])$/);
+  if (!match) return "";
+  const amount = parseInt(match[1], 10);
+  const word = TIME_UNIT_WORD[match[2]] ?? match[2];
+  return `alert ${amount} ${word}${amount === 1 ? "" : "s"} before`;
+};
+
 export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
   const { data: alerts = [] } = useListAlerts({
-    resourceType: AlertResourceType.IdentityCredential,
+    resourceType: AlertResourceType.IdentityAuthentication,
     resourceId: identityId
   });
 
@@ -39,6 +53,13 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
   const deleteAlert = useDeleteAlert();
 
   const existingAlert = alerts[0] as TAlert | undefined;
+
+  const eventLabel = existingAlert
+    ? (ALERT_EVENT_TYPE_LABELS[existingAlert.eventType as AlertEventType] ??
+      existingAlert.eventType)
+    : "";
+  const conditionLabel = formatCondition(existingAlert?.condition?.alertBefore);
+  const summary = [eventLabel, conditionLabel].filter(Boolean).join(" · ");
 
   const handleDeleteAlert = async () => {
     if (!existingAlert) return;
@@ -57,15 +78,11 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {
       <DetailLabel>Alert</DetailLabel>
       <DetailValue>
         {existingAlert ? (
-          <div className="flex w-full items-center gap-2 rounded-md border border-border p-3">
-            <span
-              className={`size-2 shrink-0 rounded-full ${existingAlert.enabled ? "bg-success" : "bg-muted"}`}
-              title={existingAlert.enabled ? "Enabled" : "Disabled"}
-              aria-hidden
-            />
-            <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-              {existingAlert.name}
-            </span>
+          <div className="flex w-full items-center gap-2">
+            <Badge variant={existingAlert.enabled ? "success" : "neutral"}>
+              {existingAlert.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+            <span className="min-w-0 flex-1 truncate text-xs text-muted">{summary}</span>
             <OrgPermissionCan
               I={OrgPermissionIdentityActions.Edit}
               a={OrgPermissionSubjects.Identity}

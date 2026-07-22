@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-// Resource types an alert can attach to. Only identity credentials are supported for now.
 export enum AlertResourceType {
-  IdentityCredential = "identity.credential"
+  IdentityAuthentication = "identity.authentication"
 }
 
-// Events an alert can fire on. Only expiration is supported for now.
 export enum AlertEventType {
   IdentityCredentialExpiry = "identity.credential.expiry"
 }
@@ -37,7 +35,7 @@ export const ALERT_TIME_UNIT_LABELS: Record<AlertTimeUnit, string> = {
 };
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
-  [AlertResourceType.IdentityCredential]: "Identity Credential"
+  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {

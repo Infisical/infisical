@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleHelpIcon, FingerprintIcon, KeyRoundIcon, LockIcon } from "lucide-react";
+import { CircleHelpIcon, FingerprintIcon, KeyRoundIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -51,8 +51,6 @@ import { ChannelsField } from "./ChannelsField";
 type Props = {
   projectId?: string;
   scopeName?: string;
-  // When set, the alert is bound to a single resource (e.g. one machine identity) rather than
-  // watching every credential in the scope. resourceName is used only for display.
   resourceId?: string;
   resourceName?: string;
   alert?: TAlert;
@@ -66,18 +64,10 @@ const SectionHeader = ({ step, title }: { step: number; title: string }) => (
   </p>
 );
 
-// Resource type, event, and scope are fixed for this alert type, so they render as read-only cards
-// rather than single-option dropdowns.
 const FixedField = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="flex flex-col gap-1.5">
     <FieldLabel>{label}</FieldLabel>
-    <Card className="flex-row items-center justify-between gap-3">
-      <div className="flex items-center gap-3">{children}</div>
-      <span className="flex items-center gap-1 text-xs text-muted">
-        <LockIcon className="size-3" />
-        Fixed
-      </span>
-    </Card>
+    <Card className="flex-row items-center gap-3">{children}</Card>
   </div>
 );
 
@@ -107,7 +97,7 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
     return {
       name: "",
       description: "",
-      resourceType: AlertResourceType.IdentityCredential,
+      resourceType: AlertResourceType.IdentityAuthentication,
       eventType: AlertEventType.IdentityCredentialExpiry,
       alertBeforeValue: 7,
       alertBeforeUnit: AlertTimeUnit.Days,
@@ -122,7 +112,8 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
   return {
     name: alert.name,
     description: alert.description ?? "",
-    resourceType: (alert.resourceType as AlertResourceType) ?? AlertResourceType.IdentityCredential,
+    resourceType:
+      (alert.resourceType as AlertResourceType) ?? AlertResourceType.IdentityAuthentication,
     eventType: (alert.eventType as AlertEventType) ?? AlertEventType.IdentityCredentialExpiry,
     alertBeforeValue: value,
     alertBeforeUnit: unit,
@@ -206,13 +197,13 @@ export const AlertForm = ({
       : "text-org";
   // eslint-disable-next-line no-nested-ternary
   const scopeTitle = isResourceScope
-    ? `Machine Identity · ${resourceName ?? "this identity"}`
+    ? `${resourceName ?? "this identity"}`
     : isProjectScope
       ? `Project · ${scopeName ?? "this project"}`
-      : "Organization-wide";
+      : "Organization";
   // eslint-disable-next-line no-nested-ternary
   const scopeDescription = isResourceScope
-    ? "Watches this machine identity's credentials"
+    ? "Watches this machine identity's authentications"
     : isProjectScope
       ? "Watches every identity credential in this project"
       : "Watches every identity credential in this organization";
@@ -304,36 +295,48 @@ export const AlertForm = ({
             <Controller
               control={control}
               name="resourceType"
-              render={({ field: { value, onChange } }) => (
-                <Field>
-                  <FieldLabel>Resource type</FieldLabel>
-                  <FieldContent>
-                    <Select value={value} onValueChange={onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {Object.values(AlertResourceType).map((resourceType) => (
-                          <SelectItem key={resourceType} value={resourceType}>
-                            <span className="flex items-center gap-2">
-                              <KeyRoundIcon className="size-4 text-muted" />
-                              <span className="font-medium">
-                                {ALERT_RESOURCE_TYPE_LABELS[resourceType]}
+              render={({ field: { value, onChange } }) =>
+                isResourceScope ? (
+                  <FixedField label="Resource type">
+                    <KeyRoundIcon className="size-5 text-muted" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-foreground">
+                        {ALERT_RESOURCE_TYPE_LABELS[value]}
+                      </span>
+                      <span className="font-mono text-xs text-muted">{value}</span>
+                    </div>
+                  </FixedField>
+                ) : (
+                  <Field>
+                    <FieldLabel>Resource type</FieldLabel>
+                    <FieldContent>
+                      <Select value={value} onValueChange={onChange}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {Object.values(AlertResourceType).map((resourceType) => (
+                            <SelectItem key={resourceType} value={resourceType}>
+                              <span className="flex items-center gap-2">
+                                <KeyRoundIcon className="size-4 text-muted" />
+                                <span className="font-medium">
+                                  {ALERT_RESOURCE_TYPE_LABELS[resourceType]}
+                                </span>
+                                <span className="font-mono text-xs text-muted">{resourceType}</span>
                               </span>
-                              <span className="font-mono text-xs text-muted">{resourceType}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                )
+              }
             />
 
             <FixedField label="Scope">
               <ScopeIcon className={`size-5 ${scopeColor}`} />
-              <div className="flex flex-col">
+              <div className="flex items-center gap-2">
                 <span className="text-sm text-foreground">{scopeTitle}</span>
                 <span className="text-xs text-muted">{scopeDescription}</span>
               </div>
@@ -342,37 +345,20 @@ export const AlertForm = ({
             <Controller
               control={control}
               name="eventType"
-              render={({ field: { value, onChange } }) => (
-                <Field>
-                  <FieldLabel>Event</FieldLabel>
-                  <FieldContent>
-                    <Select value={value} onValueChange={onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {Object.values(AlertEventType).map((eventType) => (
-                          <SelectItem key={eventType} value={eventType}>
-                            <span className="flex items-center gap-2">
-                              <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[eventType]}</Badge>
-                              <span className="text-muted">
-                                Fires as the credential nears expiration
-                              </span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
+              render={({ field: { value } }) => (
+                <FixedField label="Event">
+                  <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[value]}</Badge>
+                  <span className="text-xs text-muted">
+                    Fires as the credential nears expiration
+                  </span>
+                </FixedField>
               )}
             />
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel>Condition</FieldLabel>
+              <FieldLabel>Alert before</FieldLabel>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-foreground">Alert before</span>
                   <Input
                     id="alert-alert-before"
                     type="number"

@@ -33,12 +33,12 @@ describe("alert dal", () => {
   test("findEnabledByResourceType excludes alerts in soft-deleted projects", async () => {
     const { dal, calls } = buildDAL();
 
-    await dal.findEnabledByResourceType("identity.credential");
+    await dal.findEnabledByResourceType("identity.authentication");
 
     expect(calls.leftJoin.some((args) => args[0] === TableName.Project)).toBe(true);
     expect(calls.whereNull).toContainEqual(`${TableName.Project}.deleteAfter`);
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
-    expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "identity.credential"]);
+    expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "identity.authentication"]);
     // the cron sweep must only pick up scheduled alerts, never event-driven ones
     expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "scheduled"]);
   });

@@ -4,8 +4,8 @@ import { vi } from "vitest";
 import { AlertPermissionAction, TAlertContext } from "../alert-types";
 import { TExpiringUaClientSecret } from "./identity-credential-alert-dal";
 import {
+  IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
   IDENTITY_CREDENTIAL_EXPIRY_EVENT,
-  IDENTITY_CREDENTIAL_RESOURCE_TYPE,
   identityCredentialAlertProviderFactory,
   TIdentityCredentialAlertProviderDep
 } from "./identity-credential-alert-provider";
@@ -30,7 +30,7 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
   id: "alert-1",
   name: "ua-expiry",
   orgId: "org-1",
-  resourceType: IDENTITY_CREDENTIAL_RESOURCE_TYPE,
+  resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
   resourceId: null,
   eventType: IDENTITY_CREDENTIAL_EXPIRY_EVENT,
   condition: { alertBefore: "30d" },

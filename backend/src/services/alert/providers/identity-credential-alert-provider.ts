@@ -20,7 +20,7 @@ import {
 } from "../alert-types";
 import { TExpiringUaClientSecret, TIdentityCredentialAlertDALFactory } from "./identity-credential-alert-dal";
 
-export const IDENTITY_CREDENTIAL_RESOURCE_TYPE = "identity.credential";
+export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
 export const IDENTITY_CREDENTIAL_EXPIRY_EVENT = "identity.credential.expiry";
 
 const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
@@ -221,7 +221,7 @@ export const identityCredentialAlertProviderFactory = ({
   };
 
   return {
-    resourceType: IDENTITY_CREDENTIAL_RESOURCE_TYPE,
+    resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
     eventTypes: [IDENTITY_CREDENTIAL_EXPIRY_EVENT],
     conditionSchema: IdentityCredentialConditionSchema,
     findDueTargets,
