@@ -44,7 +44,7 @@ export const UpgradePlanModal = ({
       return "https://infisical.com/talk-to-us";
     }
 
-    return "/organization/billing" as const;
+    return `/organizations/${currentOrg?.id}/billing` as const;
   };
 
   const link = getLink();
