@@ -1,3 +1,5 @@
+import ConnectionString from "mongodb-connection-string-url";
+
 import { PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
@@ -32,7 +34,7 @@ export type TestConnectionRequest =
       mode: TestConnectionMode.MongoDB;
       username: string;
       password?: string;
-      database: string;
+      authSource: string;
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
@@ -105,6 +107,7 @@ export const buildGatewayConnectionTest = async (
     }
     case PamAccountType.MongoDB: {
       const cd = connectionDetails as {
+        connectionString: string;
         database: string;
         sslEnabled?: boolean;
         sslRejectUnauthorized?: boolean;
@@ -112,6 +115,7 @@ export const buildGatewayConnectionTest = async (
       };
       const c = creds as { username: string; password?: string } | null;
       if (!c) return tcp(host, port);
+      const authSource = new ConnectionString(cd.connectionString).searchParams.get("authSource") || cd.database;
       return {
         host,
         port,
@@ -119,7 +123,7 @@ export const buildGatewayConnectionTest = async (
           mode: TestConnectionMode.MongoDB,
           username: c.username,
           password: c.password,
-          database: cd.database,
+          authSource,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
           sslCertificate: cd.sslCertificate

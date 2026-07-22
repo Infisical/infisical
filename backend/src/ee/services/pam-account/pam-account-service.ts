@@ -644,7 +644,10 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
 
       // only test with credentials supplied in this request to prevent exfiltration
-      const testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
+      let testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
+      if (!testCredentials && CLOUD_CONNECTION_VALIDATORS[accountType]) {
+        testCredentials = validateCredentials(accountType, await decrypt(projectId, existing.encryptedCredentials));
+      }
       await assertConnectionOk(
         accountType,
         effectiveConnectionDetails,
