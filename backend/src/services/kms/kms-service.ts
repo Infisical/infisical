@@ -14,6 +14,7 @@ import {
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { isBase64 } from "@app/lib/base64";
 import { TEnvConfig } from "@app/lib/config/env";
 import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
@@ -61,6 +62,29 @@ import {
   TVerifyMacDTO,
   TVerifyWithKmsDTO
 } from "./kms-types";
+
+/**
+ * Detects the encoding of an encryption key and returns the decoded Buffer.
+ * Supports hex (64 chars), base64 (~44 chars with padding), and utf8/raw.
+ * AES-256-GCM requires exactly 32 bytes (256 bits).
+ */
+export const decodeEncryptionKey = (key: string): Buffer => {
+  // Hex detection: exactly 64 characters (32 bytes in hex) and only hex digits
+  const isHex = key.length === 64 && /^[0-9a-fA-F]+$/.test(key);
+  if (isHex) {
+    return Buffer.from(key, "hex");
+  }
+
+  // Base64 detection: valid base64 that decodes to exactly 32 bytes
+  // Standard base64 encoding of 32 bytes is 44 chars (with padding: 44, without: 43)
+  if (isBase64(key) && Buffer.from(key, "base64").length === 32) {
+    return Buffer.from(key, "base64");
+  }
+
+  // Legacy/UTF-8: treat as raw bytes (for backwards compatibility)
+  // This handles the legacy ENCRYPTION_KEY format (32-char UTF-8 string = 32 bytes)
+  return Buffer.from(key, "utf8");
+};
 
 type TKmsServiceFactoryDep = {
   kmsDAL: TKmsKeyDALFactory;
@@ -1064,14 +1088,14 @@ export const kmsServiceFactory = ({
   const $getBasicEncryptionKey = () => {
     const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
 
-    const isBase64 = !envConfig.ENCRYPTION_KEY;
     if (!encryptionKey)
       throw new BadRequestError({
         message:
           "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
       });
 
-    const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
+    // Use smart encoding detection to support hex, base64, and utf8 encoded keys
+    const encryptionKeyBuffer = decodeEncryptionKey(encryptionKey);
 
     return encryptionKeyBuffer;
   };
