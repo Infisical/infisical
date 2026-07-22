@@ -22,7 +22,11 @@ export const VersionBadge = () => {
   const newerVersion = config.latestAvailableVersion;
 
   if (!newerVersion) {
-    return null;
+    return (
+      <span className="mt-1 mr-2 hidden items-center gap-x-1.5 text-xs text-muted transition-colors hover:text-accent md:inline-flex">
+        v{version}
+      </span>
+    );
   }
 
   return (
