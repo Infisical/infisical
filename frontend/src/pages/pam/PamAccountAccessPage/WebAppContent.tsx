@@ -22,6 +22,7 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
   const wsRef = useRef<WebSocket | null>(null);
   const lastMoveRef = useRef(0);
   const [status, setStatus] = useState<"connecting" | "connected" | "ended">("connecting");
+  const [reconnectNonce, setReconnectNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +61,14 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
       }
     };
 
+    let keepAlive: ReturnType<typeof setInterval> | null = null;
+    const clearKeepAlive = () => {
+      if (keepAlive) {
+        clearInterval(keepAlive);
+        keepAlive = null;
+      }
+    };
+
     const connect = async () => {
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
@@ -76,11 +85,32 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
         ws.binaryType = "arraybuffer";
         wsRef.current = ws;
 
+        ws.onopen = () => {
+          // A static page produces no client->server traffic, so keep the socket
+          // warm: this resets the server idle timer and the reverse proxy read
+          // timeout. The gateway ignores any non-mouse message.
+          keepAlive = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(new TextEncoder().encode('{"t":"ka"}\n'));
+            }
+          }, 20000);
+        };
         ws.onmessage = (event) => {
           if (event.data instanceof ArrayBuffer) onBinary(event.data);
         };
-        ws.onclose = () => {
-          if (!cancelled) setStatus("ended");
+        ws.onerror = () => {
+          // eslint-disable-next-line no-console
+          console.warn("web-app: WebSocket error");
+        };
+        ws.onclose = (event) => {
+          clearKeepAlive();
+          if (!cancelled) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `web-app: WebSocket closed (code=${event.code} reason=${event.reason || "n/a"})`
+            );
+            setStatus("ended");
+          }
         };
       } catch {
         if (!cancelled) setStatus("ended");
@@ -99,10 +129,11 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
     return () => {
       cancelled = true;
       clearTimeout(startTimer);
+      clearKeepAlive();
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [account.id, reason, mfaSessionId]);
+  }, [account.id, reason, mfaSessionId, reconnectNonce]);
 
   // --- input: forward mouse events to the gateway-side browser ---
   const sendInput = (msg: Record<string, unknown>) => {
@@ -148,9 +179,14 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
     if (c) sendInput({ t: "m", e: "wheel", x: c.x, y: c.y, dx: e.deltaX, dy: e.deltaY });
   };
 
+  const handleReconnect = () => {
+    setStatus("connecting");
+    setReconnectNonce((n) => n + 1);
+  };
+
   return (
     <div className="flex h-screen w-screen flex-col bg-black">
-      <div className="flex flex-1 items-center justify-center overflow-hidden">
+      <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         <canvas
           ref={canvasRef}
           className="max-h-full max-w-full"
@@ -160,6 +196,18 @@ export const WebAppContent = ({ account, reason, mfaSessionId }: Props) => {
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         />
+        {status === "ended" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
+            <p className="text-sm text-muted">Session disconnected.</p>
+            <button
+              type="button"
+              onClick={handleReconnect}
+              className="rounded-md border border-border bg-card px-4 py-1.5 text-sm text-mineshaft-100 transition-colors hover:border-primary hover:text-primary"
+            >
+              Reconnect
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2 border-t border-border bg-card px-3 py-1.5 text-xs text-muted">
         <span
