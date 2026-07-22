@@ -20,6 +20,8 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
+      operationId: "listSecretValidationRules",
+      description: "List secret validation rules for a project",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -49,6 +51,8 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "createSecretValidationRule",
+      description: "Create a secret validation rule for a project",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -116,6 +120,8 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "updateSecretValidationRule",
+      description: "Update a secret validation rule",
       params: z.object({
         projectId: z.string().trim(),
         ruleId: z.string().uuid()
@@ -191,6 +197,8 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
+      operationId: "deleteSecretValidationRule",
+      description: "Delete a secret validation rule",
       params: z.object({
         projectId: z.string().trim(),
         ruleId: z.string().uuid()
