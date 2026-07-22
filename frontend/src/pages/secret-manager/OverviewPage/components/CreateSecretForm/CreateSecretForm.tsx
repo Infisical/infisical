@@ -89,12 +89,12 @@ type TFormSchema = z.infer<typeof formSchema>;
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
-// Parse pasted content as .env lines, dropping pairs without a real value so base64 padding
-// lines ("abc==") in a pasted PEM/private key don't register as KEY=VALUE pairs.
+// Parse pasted content as .env lines. Pastes containing a PEM block (certificate/key chains)
+// are excluded entirely: their base64 padding lines ("abc==") would otherwise register as
+// KEY=VALUE pairs, and such a paste is a single secret value, not a bulk paste. Entries with
+// empty values are kept since they are valid secrets in the import flows.
 const getParsedEnvPairs = (content: string): TParsedEnv =>
-  Object.fromEntries(
-    Object.entries(parseDotEnv(content)).filter(([, v]) => v.value && v.value !== "=")
-  );
+  content.includes("-----BEGIN") ? {} : parseDotEnv(content);
 
 type Props = {
   secretPath?: string;

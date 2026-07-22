@@ -3489,7 +3489,7 @@ const OverviewPageContent = () => {
             isBatchMode={isBatchModeActive}
             onSecretCreated={checkSecretsActivation}
             onUploadSecrets={(env) => {
-              if (env) setImportParsedSecrets(env);
+              setImportParsedSecrets(env ?? null);
               handlePopUpClose("addSecretsInAllEnvs");
               handlePopUpOpen("importSecrets");
             }}
