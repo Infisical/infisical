@@ -23,13 +23,12 @@ export const useUpdateAlert = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TAlert, unknown, TUpdateAlertDTO>({
-    mutationFn: async ({ alertId, projectId, ...body }) => {
+    mutationFn: async ({ alertId, ...body }) => {
       const { data } = await apiRequest.patch<{ alert: TAlert }>(`/api/v1/alerts/${alertId}`, body);
       return data.alert;
     },
-    onSuccess: (_, { alertId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
-      queryClient.invalidateQueries({ queryKey: alertKeys.byId(alertId) });
     }
   });
 };
@@ -44,9 +43,8 @@ export const useDeleteAlert = () => {
       );
       return data.alert;
     },
-    onSuccess: (_, { alertId }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alertKeys.all });
-      queryClient.invalidateQueries({ queryKey: alertKeys.byId(alertId) });
     }
   });
 };

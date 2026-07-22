@@ -58,7 +58,6 @@ export type TAlertChannelEmbedded = {
   id: string;
   name: string;
   channelType: AlertChannelType;
-  directed: boolean;
   enabled: boolean;
   config: Record<string, unknown>;
   recipients: TAlertChannelRecipient[];
@@ -84,7 +83,6 @@ export type TListAlertsDTO = {
   resourceType: string;
   projectId?: string;
   resourceId?: string;
-  enabled?: boolean;
 };
 
 export type TAlertChannelInput = {
@@ -110,7 +108,6 @@ export type TCreateAlertDTO = {
 
 export type TUpdateAlertDTO = {
   alertId: string;
-  projectId?: string | null;
   name?: string;
   description?: string | null;
   condition?: unknown;

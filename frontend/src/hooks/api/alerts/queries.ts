@@ -6,8 +6,7 @@ import { TAlert, TListAlertsDTO } from "./types";
 
 export const alertKeys = {
   all: ["alerts"] as const,
-  list: (filters: TListAlertsDTO) => [...alertKeys.all, "list", filters] as const,
-  byId: (alertId: string) => [...alertKeys.all, alertId] as const
+  list: (filters: TListAlertsDTO) => [...alertKeys.all, "list", filters] as const
 };
 
 const fetchAlerts = async (filters: TListAlertsDTO) => {

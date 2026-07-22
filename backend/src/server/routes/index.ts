@@ -1053,9 +1053,6 @@ export const registerRoutes = async (
   const alertChannelService = alertChannelServiceFactory({
     alertChannelDAL,
     alertChannelRecipientDAL,
-    alertChannelMembershipDAL,
-    kmsService,
-    permissionService,
     orgDAL,
     projectDAL,
     groupDAL
@@ -4108,7 +4105,6 @@ export const registerRoutes = async (
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
     alert: alertService,
-    alertChannel: alertChannelService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

@@ -1,17 +1,15 @@
-import { createMongoAbility } from "@casl/ability";
+import { Knex } from "knex";
 
 import { alertChannelServiceFactory, TAlertChannelServiceFactoryDep } from "./alert-channel-service";
 import { AlertChannelType } from "./alert-channel-types";
 import { AlertPrincipalType } from "./alert-types";
 
 // Identity cipher: encryptedConfig is just JSON bytes of the config.
-const kmsServiceMock = {
-  createCipherPairWithDataKey: async () => ({
-    encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
-    decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
-  })
-};
+const encryptor = ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText });
+const decryptor = ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob;
+const cipher = { encryptor, decryptor } as never;
 const encConfig = (config: unknown) => Buffer.from(JSON.stringify(config));
+const tx = {} as Knex;
 
 type TRow = {
   id: string;
@@ -26,28 +24,14 @@ type TRow = {
   updatedAt: Date;
 };
 
-const actor = {
-  actor: "user" as never,
-  actorId: "user-1",
-  actorAuthMethod: null as never,
-  actorOrgId: "org-1"
-};
-
-const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
+const buildService = (opts?: { seed?: TRow[] }) => {
   const store = new Map<string, TRow>();
   (opts?.seed ?? []).forEach((r) => store.set(r.id, r));
   const recipients = new Map<string, Array<{ channelId: string; principalType: string; principalId: string }>>();
-  const memberships = new Map<string, number>(); // channelId -> usage count
   let counter = 0;
-
-  const ability = () =>
-    createMongoAbility(
-      opts?.allow === false ? [] : [{ action: ["read", "create", "edit", "delete"], subject: "settings" }]
-    );
 
   const service = alertChannelServiceFactory({
     alertChannelDAL: {
-      transaction: async (cb: (tx: unknown) => unknown) => cb({}),
       create: async (data: Record<string, unknown>) => {
         counter += 1;
         const row = {
@@ -62,8 +46,6 @@ const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
         store.set(row.id, row);
         return row;
       },
-      findActiveById: async (id: string) => store.get(id),
-      findById: async (id: string) => store.get(id),
       updateById: async (id: string, data: Record<string, unknown>) => {
         store.set(id, { ...(store.get(id) as TRow), ...data, updatedAt: new Date() });
         return store.get(id);
@@ -71,15 +53,7 @@ const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
       deleteById: async (id: string) => {
         store.delete(id);
         return { id };
-      },
-      findByNameInScope: async (name: string, scope: { orgId: string; projectId?: string | null }) =>
-        [...store.values()].find(
-          (r) => r.name === name && r.orgId === scope.orgId && (r.projectId ?? null) === (scope.projectId ?? null)
-        ),
-      findWithUsageByScope: async (scope: { orgId: string; projectId?: string | null }) =>
-        [...store.values()]
-          .filter((r) => r.orgId === scope.orgId && (r.projectId ?? null) === (scope.projectId ?? null))
-          .map((r) => ({ ...r, usageCount: memberships.get(r.id) ?? 0 }))
+      }
     },
     alertChannelRecipientDAL: {
       insertMany: async (data: Array<{ channelId: string; principalType: string; principalId: string }>) => {
@@ -92,14 +66,6 @@ const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
         recipients.delete(channelId);
         return 0;
       }
-    },
-    alertChannelMembershipDAL: {
-      countByChannelId: async (channelId: string) => memberships.get(channelId) ?? 0
-    },
-    kmsService: kmsServiceMock,
-    permissionService: {
-      getOrgPermission: async () => ({ permission: ability() }),
-      getProjectPermission: async () => ({ permission: ability() })
     },
     orgDAL: {
       findMembership: async (filter: { $in?: { actorUserId?: string[] } }) =>
@@ -120,7 +86,7 @@ const buildService = (opts?: { seed?: TRow[]; allow?: boolean }) => {
     groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) }
   } as unknown as TAlertChannelServiceFactoryDep);
 
-  return { service, store, recipients, memberships };
+  return { service, store, recipients };
 };
 
 const seedRow = (
@@ -137,186 +103,137 @@ const seedRow = (
 });
 
 describe("alert channel service", () => {
-  test("creates a webhook channel, stores config, and reports zero usage", async () => {
-    const { service, store } = buildService();
-    const channel = await service.createChannel({
-      name: "Ops webhook",
-      channelType: AlertChannelType.WEBHOOK,
-      config: { url: "https://example.com/hook", signingSecret: "s3cr3t" },
-      ...actor
-    });
+  test("creates a webhook channel, stores config, and redacts secrets in the detail view", async () => {
+    const { service } = buildService();
+    const channel = await service.createChannelInTx(
+      {
+        name: "Ops webhook",
+        channelType: AlertChannelType.WEBHOOK,
+        config: { url: "https://example.com/hook", signingSecret: "s3cr3t" },
+        orgId: "org-1"
+      },
+      encryptor as never,
+      tx
+    );
 
-    expect(channel.name).toBe("Ops webhook");
-    expect(channel.usageCount).toBe(0);
+    const [detail] = await service.getDetailsForChannels([channel], { decryptor: decryptor as never });
+    expect(detail.name).toBe("Ops webhook");
     // Secret is redacted on the way out.
-    expect(channel.config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
-    expect(store.get(channel.id)).toBeDefined();
+    expect(detail.config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
+    expect(detail.recipients).toEqual([]);
   });
 
   test("requires recipients for a directed (email) channel and rejects them for others", async () => {
     const { service } = buildService();
     await expect(
-      service.createChannel({ name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, ...actor })
+      service.createChannelInTx(
+        { name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, orgId: "org-1" },
+        encryptor as never,
+        tx
+      )
     ).rejects.toThrow("require at least one recipient");
 
     await expect(
-      service.createChannel({
-        name: "Ops webhook",
-        channelType: AlertChannelType.WEBHOOK,
-        config: { url: "https://example.com/hook" },
-        recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
-        ...actor
-      })
+      service.createChannelInTx(
+        {
+          name: "Ops webhook",
+          channelType: AlertChannelType.WEBHOOK,
+          config: { url: "https://example.com/hook" },
+          recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
+          orgId: "org-1"
+        },
+        encryptor as never,
+        tx
+      )
     ).rejects.toThrow("do not take recipients");
   });
 
   test("creates a directed email channel with recipients", async () => {
     const { service, recipients } = buildService();
-    const channel = await service.createChannel({
-      name: "Team email",
-      channelType: AlertChannelType.EMAIL,
-      config: {},
-      recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
-      ...actor
-    });
-    expect(channel.directed).toBe(true);
-    expect(channel.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
+    const channel = await service.createChannelInTx(
+      {
+        name: "Team email",
+        channelType: AlertChannelType.EMAIL,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
+        orgId: "org-1"
+      },
+      encryptor as never,
+      tx
+    );
+    const [detail] = await service.getDetailsForChannels([channel], { decryptor: decryptor as never });
+    expect(detail.directed).toBe(true);
+    expect(detail.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
     expect(recipients.get(channel.id)).toHaveLength(1);
   });
 
-  test("rejects a duplicate channel name in the same scope", async () => {
-    const { service } = buildService({
-      seed: [
-        seedRow({
-          id: "ch-x",
-          name: "dupe",
-          channelType: AlertChannelType.WEBHOOK,
-          encryptedConfig: encConfig({ url: "https://example.com" })
-        })
-      ]
-    });
-    await expect(
-      service.createChannel({
-        name: "dupe",
-        channelType: AlertChannelType.WEBHOOK,
-        config: { url: "https://example.com/hook" },
-        ...actor
-      })
-    ).rejects.toThrow(/already exists/);
-  });
-
   test("keeps an omitted secret on update", async () => {
-    const { service } = buildService({
-      seed: [
-        seedRow({
-          id: "ch-1",
-          channelType: AlertChannelType.WEBHOOK,
-          encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
-        })
-      ]
+    const { service } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.WEBHOOK,
+      encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
     });
 
     // Config sent without signingSecret -> keep the existing one.
-    const updated = await service.updateChannel({
-      channelId: "ch-1",
-      config: { url: "https://example.com/hook" },
-      ...actor
-    });
-    expect(updated.config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
+    const finalConfig = await service.updateChannelInTx(
+      { channelId: "ch-1", config: { url: "https://example.com/hook" } },
+      channel as never,
+      cipher,
+      tx
+    );
+    expect(finalConfig).toEqual({ url: "https://example.com/hook", signingSecret: "s3cr3t" });
   });
 
-  test("clears an optional secret when explicitly emptied on update (fixes #2)", async () => {
-    const { service, store } = buildService({
-      seed: [
-        seedRow({
-          id: "ch-1",
-          channelType: AlertChannelType.WEBHOOK,
-          encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
-        })
-      ]
+  test("clears an optional secret when explicitly emptied on update", async () => {
+    const { service, store } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.WEBHOOK,
+      encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
     });
 
-    const updated = await service.updateChannel({
-      channelId: "ch-1",
-      config: { url: "https://example.com/hook", signingSecret: "" },
-      ...actor
-    });
+    const finalConfig = await service.updateChannelInTx(
+      { channelId: "ch-1", config: { url: "https://example.com/hook", signingSecret: "" } },
+      channel as never,
+      cipher,
+      tx
+    );
 
-    expect(updated.config).toEqual({ url: "https://example.com/hook", hasSigningSecret: false });
+    expect(finalConfig).toEqual({ url: "https://example.com/hook" });
     // And it is actually gone from the stored ciphertext, not just hidden.
     const stored = JSON.parse(store.get("ch-1")!.encryptedConfig.toString()) as Record<string, unknown>;
     expect(stored).not.toHaveProperty("signingSecret");
   });
 
   test("sets a new secret when a value is provided on update", async () => {
-    const { service, store } = buildService({
-      seed: [
-        seedRow({
-          id: "ch-1",
-          channelType: AlertChannelType.WEBHOOK,
-          encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "old" })
-        })
-      ]
+    const { service, store } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.WEBHOOK,
+      encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "old" })
     });
 
-    await service.updateChannel({
-      channelId: "ch-1",
-      config: { url: "https://example.com/hook", signingSecret: "new" },
-      ...actor
-    });
+    await service.updateChannelInTx(
+      { channelId: "ch-1", config: { url: "https://example.com/hook", signingSecret: "new" } },
+      channel as never,
+      cipher,
+      tx
+    );
     const stored = JSON.parse(store.get("ch-1")!.encryptedConfig.toString()) as Record<string, unknown>;
     expect(stored.signingSecret).toBe("new");
   });
 
   test("rejects clearing a required secret (Slack webhook URL)", async () => {
-    const { service } = buildService({
-      seed: [
-        seedRow({
-          id: "ch-1",
-          channelType: AlertChannelType.SLACK,
-          encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/T/B/xxx" })
-        })
-      ]
+    const { service } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.SLACK,
+      encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/T/B/xxx" })
     });
 
-    await expect(service.updateChannel({ channelId: "ch-1", config: { webhookUrl: "" }, ...actor })).rejects.toThrow(
-      /Invalid slack channel config/
-    );
-  });
-
-  test("denies channel management without the settings permission", async () => {
-    const { service } = buildService({ allow: false });
     await expect(
-      service.createChannel({
-        name: "nope",
-        channelType: AlertChannelType.WEBHOOK,
-        config: { url: "https://example.com/hook" },
-        ...actor
-      })
-    ).rejects.toThrow();
-  });
-
-  test("lists channels with their usage counts", async () => {
-    const { service, memberships } = buildService({
-      seed: [
-        seedRow({
-          id: "ch-1",
-          name: "a",
-          channelType: AlertChannelType.WEBHOOK,
-          encryptedConfig: encConfig({ url: "https://example.com/1" })
-        }),
-        seedRow({
-          id: "ch-2",
-          name: "b",
-          channelType: AlertChannelType.WEBHOOK,
-          encryptedConfig: encConfig({ url: "https://example.com/2" })
-        })
-      ]
-    });
-    memberships.set("ch-1", 3);
-
-    const channels = await service.listChannels({ ...actor });
-    expect(channels.find((c) => c.id === "ch-1")?.usageCount).toBe(3);
-    expect(channels.find((c) => c.id === "ch-2")?.usageCount).toBe(0);
+      service.updateChannelInTx({ channelId: "ch-1", config: { webhookUrl: "" } }, channel as never, cipher, tx)
+    ).rejects.toThrow(/Invalid slack channel config/);
   });
 });

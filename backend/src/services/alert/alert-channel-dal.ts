@@ -7,74 +7,10 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TAlertChannelDALFactory = ReturnType<typeof alertChannelDALFactory>;
 
-export type TAlertChannelWithUsage = TAlertChannels & { usageCount: number };
-export type TAlertChannelWithAlertId = TAlertChannels & { alertId: string };
+type TAlertChannelWithAlertId = TAlertChannels & { alertId: string };
 
 export const alertChannelDALFactory = (db: TDbClient) => {
   const alertChannelOrm = ormify(db, TableName.AlertChannel);
-
-  const scopeFilter = (query: Knex.QueryBuilder, orgId: string, projectId?: string | null): void => {
-    void query.where(`${TableName.AlertChannel}.orgId`, orgId);
-    if (projectId) void query.where(`${TableName.AlertChannel}.projectId`, projectId);
-    else void query.whereNull(`${TableName.AlertChannel}.projectId`);
-  };
-
-  const findWithUsageByScope = async (
-    { orgId, projectId }: { orgId: string; projectId?: string | null },
-    tx?: Knex
-  ): Promise<TAlertChannelWithUsage[]> => {
-    try {
-      const query = (tx || db.replicaNode())(TableName.AlertChannel)
-        .leftJoin(
-          TableName.AlertChannelMembership,
-          `${TableName.AlertChannel}.id`,
-          `${TableName.AlertChannelMembership}.channelId`
-        )
-        .leftJoin(TableName.Project, `${TableName.AlertChannel}.projectId`, `${TableName.Project}.id`)
-        .whereNull(`${TableName.Project}.deleteAfter`);
-      scopeFilter(query, orgId, projectId);
-
-      const rows = await query
-        .groupBy(`${TableName.AlertChannel}.id`)
-        .select(selectAllTableCols(TableName.AlertChannel))
-        .select(db.raw(`count(??.??)::int as "usageCount"`, [TableName.AlertChannelMembership, "id"]))
-        .orderBy(`${TableName.AlertChannel}.createdAt`, "asc");
-
-      return rows as unknown as TAlertChannelWithUsage[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindWithUsageByScope" });
-    }
-  };
-
-  const findActiveById = async (id: string, tx?: Knex): Promise<TAlertChannels | undefined> => {
-    try {
-      const channel = await (tx || db.replicaNode())(TableName.AlertChannel)
-        .leftJoin(TableName.Project, `${TableName.AlertChannel}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.AlertChannel}.id`, id)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .select(selectAllTableCols(TableName.AlertChannel))
-        .first();
-
-      return channel as TAlertChannels | undefined;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindActiveById" });
-    }
-  };
-
-  const findByNameInScope = async (
-    name: string,
-    { orgId, projectId }: { orgId: string; projectId?: string | null },
-    tx?: Knex
-  ): Promise<TAlertChannels | undefined> => {
-    try {
-      const query = (tx || db.replicaNode())(TableName.AlertChannel).where(`${TableName.AlertChannel}.name`, name);
-      scopeFilter(query, orgId, projectId);
-      const channel = await query.select(selectAllTableCols(TableName.AlertChannel)).first();
-      return channel as TAlertChannels | undefined;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByNameInScope" });
-    }
-  };
 
   const findByAlertId = async (
     alertId: string,
@@ -125,9 +61,6 @@ export const alertChannelDALFactory = (db: TDbClient) => {
 
   return {
     ...alertChannelOrm,
-    findWithUsageByScope,
-    findActiveById,
-    findByNameInScope,
     findByAlertId,
     findByAlertIds
   };

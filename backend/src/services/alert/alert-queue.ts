@@ -15,8 +15,6 @@ type TAlertQueueServiceFactoryDep = {
   alertEngine: Pick<TAlertEngine, "runAlert">;
 };
 
-export type TAlertQueueServiceFactory = ReturnType<typeof alertQueueServiceFactory>;
-
 const ALERT_DISPATCH_CONCURRENCY = 5;
 
 export const alertQueueServiceFactory = ({
@@ -76,5 +74,5 @@ export const alertQueueServiceFactory = ({
     });
   };
 
-  return { init, enqueueDueAlerts };
+  return { init };
 };

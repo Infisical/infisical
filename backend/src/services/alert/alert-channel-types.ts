@@ -98,8 +98,3 @@ export const PagerDutyChannelConfigSchema = z.object({
     .string()
     .refine((val) => pagerDutyIntegrationKeyRegex.test(val), "Integration key must be a 32-character hex string")
 });
-
-export type TEmailChannelConfig = z.infer<typeof EmailChannelConfigSchema>;
-export type TWebhookChannelConfig = z.infer<typeof WebhookChannelConfigSchema>;
-export type TSlackChannelConfig = z.infer<typeof SlackChannelConfigSchema>;
-export type TPagerDutyChannelConfig = z.infer<typeof PagerDutyChannelConfigSchema>;

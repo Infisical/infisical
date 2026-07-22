@@ -216,7 +216,6 @@ export const AlertForm = ({
       if (isEditing && alert) {
         await updateAlert.mutateAsync({
           alertId: alert.id,
-          projectId: alert.projectId,
           name: data.name,
           description: data.description || null,
           enabled: data.enabled,

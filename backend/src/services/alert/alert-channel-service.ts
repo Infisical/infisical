@@ -1,38 +1,21 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { ActionProjectType, OrganizationActionScope, TAlertChannels } from "@app/db/schemas";
+import { TAlertChannels } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TGenericPermission } from "@app/lib/types";
-import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import {
   decryptChannelConfig,
   encryptChannelConfig,
-  getAlertChannelCipher,
   TAlertDecryptor,
   TAlertEncryptor
 } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
-import { TAlertChannelMembershipDALFactory } from "./alert-channel-membership-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
-import {
-  TAlertChannelDetail,
-  TAlertChannelEmbedded,
-  TChannelRecipientInput,
-  TCreateAlertChannelDTO,
-  TDeleteAlertChannelDTO,
-  TGetAlertChannelDTO,
-  TListAlertChannelsDTO,
-  TUpdateAlertChannelDTO
-} from "./alert-channel-service-types";
+import { TAlertChannelEmbedded, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
 import { AlertPrincipalType } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
@@ -40,9 +23,6 @@ import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 export type TAlertChannelServiceFactoryDep = {
   alertChannelDAL: TAlertChannelDALFactory;
   alertChannelRecipientDAL: TAlertChannelRecipientDALFactory;
-  alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "countByChannelId">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   groupDAL: Pick<TGroupDALFactory, "find">;
@@ -73,19 +53,9 @@ export type TUpdateChannelInTxInput = {
 
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
 
-const ORG_TO_PROJECT_ACTION: Record<OrgPermissionActions, ProjectPermissionActions> = {
-  [OrgPermissionActions.Read]: ProjectPermissionActions.Read,
-  [OrgPermissionActions.Create]: ProjectPermissionActions.Create,
-  [OrgPermissionActions.Edit]: ProjectPermissionActions.Edit,
-  [OrgPermissionActions.Delete]: ProjectPermissionActions.Delete
-};
-
 export const alertChannelServiceFactory = ({
   alertChannelDAL,
   alertChannelRecipientDAL,
-  alertChannelMembershipDAL,
-  kmsService,
-  permissionService,
   orgDAL,
   projectDAL,
   groupDAL
@@ -94,36 +64,6 @@ export const alertChannelServiceFactory = ({
     const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
     if (!definition) throw new BadRequestError({ message: `Unknown channel type '${channelType}'` });
     return definition;
-  };
-
-  const $assertPermission = async (
-    action: OrgPermissionActions,
-    orgId: string,
-    projectId: string | null | undefined,
-    actor: TGenericPermission
-  ) => {
-    if (projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.actor,
-        actorId: actor.actorId,
-        projectId,
-        actorAuthMethod: actor.actorAuthMethod,
-        actorOrgId: actor.actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(ORG_TO_PROJECT_ACTION[action], ProjectPermissionSub.Settings);
-      return;
-    }
-
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.actor,
-      actorId: actor.actorId,
-      orgId,
-      actorAuthMethod: actor.actorAuthMethod,
-      actorOrgId: actor.actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Settings);
   };
 
   // Confirms every recipient principal (user/group) actually belongs to the channel's scope so an
@@ -247,52 +187,6 @@ export const alertChannelServiceFactory = ({
     return merged;
   };
 
-  const $countUsage = (channelId: string, tx?: Knex): Promise<number> =>
-    alertChannelMembershipDAL.countByChannelId(channelId, tx);
-
-  const $buildDetail = (
-    channel: {
-      id: string;
-      name: string;
-      channelType: string;
-      enabled: boolean;
-      orgId: string;
-      projectId?: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    },
-    config: Record<string, unknown>,
-    recipients: { principalType: string; principalId: string }[],
-    usageCount: number
-  ): TAlertChannelDetail => {
-    const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
-    return {
-      id: channel.id,
-      name: channel.name,
-      channelType: channel.channelType,
-      directed: Boolean(definition?.directed),
-      config: $redactConfig(channel.channelType, config),
-      enabled: channel.enabled,
-      recipients,
-      usageCount,
-      orgId: channel.orgId,
-      projectId: channel.projectId ?? null,
-      createdAt: channel.createdAt,
-      updatedAt: channel.updatedAt
-    };
-  };
-
-  const $assertNameAvailable = async (
-    name: string,
-    scope: { orgId: string; projectId?: string | null },
-    excludeId?: string
-  ) => {
-    const existing = await alertChannelDAL.findByNameInScope(name, scope);
-    if (existing && existing.id !== excludeId) {
-      throw new BadRequestError({ message: `A channel named '${name}' already exists in this scope` });
-    }
-  };
-
   const createChannelInTx = async (
     input: TCreateChannelInTxInput,
     encryptor: TAlertEncryptor,
@@ -411,167 +305,7 @@ export const alertChannelServiceFactory = ({
     });
   };
 
-  // ----- Standalone channel endpoints (reusable model) -----
-
-  const createChannel = async (dto: TCreateAlertChannelDTO): Promise<TAlertChannelDetail> => {
-    const actor: TGenericPermission = {
-      actor: dto.actor,
-      actorId: dto.actorId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId
-    };
-    await $assertPermission(OrgPermissionActions.Create, dto.actorOrgId, dto.projectId, actor);
-    await $assertNameAvailable(dto.name, { orgId: dto.actorOrgId, projectId: dto.projectId });
-
-    const { encryptor } = await getAlertChannelCipher(kmsService, {
-      orgId: dto.actorOrgId,
-      projectId: dto.projectId ?? null
-    });
-
-    const recipients = dto.recipients ?? [];
-    const channel = await alertChannelDAL.transaction((tx) =>
-      createChannelInTx(
-        {
-          name: dto.name,
-          channelType: dto.channelType,
-          config: dto.config,
-          enabled: dto.enabled,
-          recipients,
-          orgId: dto.actorOrgId,
-          projectId: dto.projectId ?? null,
-          createdByUserId: dto.actorId
-        },
-        encryptor,
-        tx
-      )
-    );
-
-    return $buildDetail(channel, dto.config, recipients, 0);
-  };
-
-  const updateChannel = async (dto: TUpdateAlertChannelDTO): Promise<TAlertChannelDetail> => {
-    const actor: TGenericPermission = {
-      actor: dto.actor,
-      actorId: dto.actorId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId
-    };
-
-    const channel = await alertChannelDAL.findActiveById(dto.channelId);
-    if (!channel) throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' not found` });
-
-    await $assertPermission(OrgPermissionActions.Edit, channel.orgId, channel.projectId, actor);
-
-    const scope = { orgId: channel.orgId, projectId: channel.projectId };
-    if (dto.name !== undefined && dto.name !== channel.name) {
-      await $assertNameAvailable(dto.name, scope, channel.id);
-    }
-
-    const cipher = await getAlertChannelCipher(kmsService, scope);
-    return alertChannelDAL.transaction(async (tx) => {
-      const finalConfig = await updateChannelInTx(
-        { channelId: channel.id, name: dto.name, config: dto.config, enabled: dto.enabled, recipients: dto.recipients },
-        channel,
-        cipher,
-        tx
-      );
-
-      const updated = await alertChannelDAL.findById(channel.id, tx);
-      const recipients = await alertChannelRecipientDAL.findByChannelId(channel.id, tx);
-      const usageCount = await $countUsage(channel.id, tx);
-
-      return $buildDetail(
-        updated,
-        finalConfig,
-        recipients.map((r) => ({ principalType: r.principalType, principalId: r.principalId })),
-        usageCount
-      );
-    });
-  };
-
-  const deleteChannel = async (dto: TDeleteAlertChannelDTO): Promise<{ id: string }> => {
-    const actor: TGenericPermission = {
-      actor: dto.actor,
-      actorId: dto.actorId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId
-    };
-    const channel = await alertChannelDAL.findActiveById(dto.channelId);
-    if (!channel) throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' not found` });
-
-    await $assertPermission(OrgPermissionActions.Delete, channel.orgId, channel.projectId, actor);
-
-    // Membership rows CASCADE-delete, detaching the channel from every alert that referenced it.
-    await alertChannelDAL.deleteById(channel.id);
-    return { id: channel.id };
-  };
-
-  const getChannelById = async (dto: TGetAlertChannelDTO): Promise<TAlertChannelDetail> => {
-    const actor: TGenericPermission = {
-      actor: dto.actor,
-      actorId: dto.actorId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId
-    };
-    const channel = await alertChannelDAL.findActiveById(dto.channelId);
-    if (!channel) throw new NotFoundError({ message: `Channel with ID '${dto.channelId}' not found` });
-
-    await $assertPermission(OrgPermissionActions.Read, channel.orgId, channel.projectId, actor);
-
-    const { decryptor } = await getAlertChannelCipher(kmsService, {
-      orgId: channel.orgId,
-      projectId: channel.projectId
-    });
-    const config = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
-    const [recipients, usageCount] = await Promise.all([
-      alertChannelRecipientDAL.findByChannelId(channel.id),
-      $countUsage(channel.id)
-    ]);
-    return $buildDetail(
-      channel,
-      config,
-      recipients.map((r) => ({ principalType: r.principalType, principalId: r.principalId })),
-      usageCount
-    );
-  };
-
-  const listChannels = async (dto: TListAlertChannelsDTO): Promise<TAlertChannelDetail[]> => {
-    const actor: TGenericPermission = {
-      actor: dto.actor,
-      actorId: dto.actorId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId
-    };
-    await $assertPermission(OrgPermissionActions.Read, dto.actorOrgId, dto.projectId, actor);
-
-    const scope = { orgId: dto.actorOrgId, projectId: dto.projectId ?? null };
-    const channels = await alertChannelDAL.findWithUsageByScope(scope);
-    if (channels.length === 0) return [];
-
-    const [recipients, { decryptor }] = await Promise.all([
-      alertChannelRecipientDAL.findByChannelIds(channels.map((c) => c.id)),
-      getAlertChannelCipher(kmsService, scope)
-    ]);
-
-    const recipientsByChannel = new Map<string, { principalType: string; principalId: string }[]>();
-    recipients.forEach((r) => {
-      const list = recipientsByChannel.get(r.channelId) ?? [];
-      list.push({ principalType: r.principalType, principalId: r.principalId });
-      recipientsByChannel.set(r.channelId, list);
-    });
-
-    return channels.map((channel) => {
-      const config = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
-      return $buildDetail(channel, config, recipientsByChannel.get(channel.id) ?? [], channel.usageCount);
-    });
-  };
-
   return {
-    createChannel,
-    updateChannel,
-    deleteChannel,
-    getChannelById,
-    listChannels,
     createChannelInTx,
     updateChannelInTx,
     deleteChannelInTx,
