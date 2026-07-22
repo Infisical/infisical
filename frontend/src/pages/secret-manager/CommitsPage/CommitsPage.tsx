@@ -4,7 +4,6 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import {
@@ -73,14 +72,7 @@ export const CommitsPage = () => {
           title="Commits"
           description="Track, inspect, and restore your secrets and folders with confidence. View the complete history of changes made to your environment, examine specific modifications at each commit point, and preview the exact impact before rolling back to previous states."
         />
-        <NoticeBannerV2 title="Secret Snapshots Update" className="mb-2">
-          <p className="my-1 text-sm text-mineshaft-300">
-            Secret Snapshots have been officially renamed to Commits. Going forward, all secret
-            changes will be tracked as Commits. If you made changes before this update, you can
-            still access your older Secret Snapshots by temporarily re-enabling the legacy feature
-            in your project settings.
-          </p>
-        </NoticeBannerV2>
+
         <ProjectPermissionCan
           renderGuardBanner
           I={ProjectPermissionCommitsActions.Read}
