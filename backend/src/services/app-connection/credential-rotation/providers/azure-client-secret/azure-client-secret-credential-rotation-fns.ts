@@ -336,7 +336,11 @@ export const revokeAzureClientSecret = async (
 export const azureClientSecretRotationProviderFactory: TCredentialRotationProviderFactory<
   TAzureClientSecretStrategyConfig,
   TAzureClientSecretGeneratedCredential
-> = (connection) => {
+> = (
+  connection,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _services
+) => {
   const validateConnectionMethod: TCredentialRotationValidateMethod = (method) => {
     if (method !== AzureKeyVaultConnectionMethod.ClientSecret) {
       throw new BadRequestError({

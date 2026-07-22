@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+
 import { TAppConnectionCredentialRotations } from "../../../db/schemas/app-connection-credential-rotations";
 import { TAppConnectionRaw } from "../app-connection-types";
 import { CreateAppConnectionCredentialRotationSchema } from "./app-connection-credential-rotation-schemas";
@@ -77,12 +80,20 @@ export type TCredentialRotationRevokeCredential<
   C extends TAppConnectionCredentialRotationGeneratedCredential
 > = (inactiveCredential: C, strategyConfig: S, credentials: TAppConnectionCredentialCredentials) => Promise<void>;
 
+export type TCredentialRotationProviderServices = {
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+};
+
 // Factory type — takes connection context, returns typed operations.
 // Mirrors TRotationFactory in secret-rotation-v2.
 export type TCredentialRotationProviderFactory<
   S extends TAppConnectionCredentialRotationStrategyConfig = TAppConnectionCredentialRotationStrategyConfig,
   C extends TAppConnectionCredentialRotationGeneratedCredential = TAppConnectionCredentialRotationGeneratedCredential
-> = (connection: TAppConnectionRaw) => {
+> = (
+  connection: TAppConnectionRaw,
+  services: TCredentialRotationProviderServices
+) => {
   validateConnectionMethod: TCredentialRotationValidateMethod;
   issueInitialCredentials: TCredentialRotationIssueInitialCredentials<S, C>;
   createCredential: TCredentialRotationCreateCredential<S, C>;
