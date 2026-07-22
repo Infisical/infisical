@@ -131,8 +131,7 @@ const deleteOrgIdentityMembership = async (identityId: string) => {
   // The real removal paths (membershipIdentityService.deleteMembership,
   // identityV1.deleteIdentity sub-org branch) bump the identity's revocation
   // version so cached "allow" verdicts are rechecked once against Postgres. This
-  // helper mutates the row directly, so mirror that bump here — otherwise the
-  // cache-gated membership check keeps serving the stale allow until the TTL.
+  // helper mutates the row directly, so mirror that bump here.
   await testRedis.incr(KeyStorePrefixes.IdentityRevocationVersion(identityId));
 };
 
