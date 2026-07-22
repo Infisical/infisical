@@ -129,7 +129,7 @@ func (s *Service) ensureProjectDataKey(ctx context.Context, projectID string) (d
 			return nil, fmt.Errorf("decrypting KMS key: %w", err)
 		}
 	} else {
-		kmsKeyMaterial, err = s.decryptInternalKmsKey(ctx, project.KmsSecretManagerKeyID.V)
+		kmsKeyMaterial, err = s.decryptInternalKmsKey(ctx, tx, project.KmsSecretManagerKeyID.V)
 		if err != nil {
 			return nil, err
 		}
