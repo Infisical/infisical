@@ -15,6 +15,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -45,7 +46,8 @@ const getIntegrationSecretsV2 = async (
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">,
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">,
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">,
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">,
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">
 ) => {
   const content: Record<string, boolean> = {};
   if (dto.depth > MAX_SYNC_SECRET_DEPTH) {
@@ -80,6 +82,7 @@ const getIntegrationSecretsV2 = async (
     projectFolderGrantDAL,
     actorOrgId: dto.actorOrgId,
     orgDAL,
+    crossProjectSecretSharingService,
     kmsService
   });
 
@@ -298,6 +301,7 @@ export const deleteIntegrationSecrets = async ({
   kmsService,
   projectFolderGrantDAL,
   orgDAL,
+  crossProjectSecretSharingService,
   actorOrgId
 }: {
   integration: Omit<TIntegrations, "envId"> & {
@@ -319,6 +323,7 @@ export const deleteIntegrationSecrets = async ({
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
   actorOrgId: string;
 }) => {
   const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integration.projectId);
@@ -361,7 +366,8 @@ export const deleteIntegrationSecrets = async ({
         secretImportDAL,
         kmsService,
         projectFolderGrantDAL,
-        orgDAL
+        orgDAL,
+        crossProjectSecretSharingService
       )
     : await getIntegrationSecretsV1(
         {

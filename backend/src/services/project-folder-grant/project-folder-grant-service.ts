@@ -14,7 +14,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TProjectFolderGrantDALFactory } from "./project-folder-grant-dal";
-import { isCrossProjectEnabled } from "./project-folder-grant-fns";
+import { TCrossProjectSecretSharingServiceFactory } from "./project-folder-grant-fns";
 import {
   TCreateProjectFolderGrantDTO,
   TDeleteProjectFolderGrantDTO,
@@ -34,6 +34,7 @@ type TProjectFolderGrantServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
 };
 
 export const projectFolderGrantServiceFactory = ({
@@ -42,7 +43,8 @@ export const projectFolderGrantServiceFactory = ({
   projectDAL,
   orgDAL,
   permissionService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  crossProjectSecretSharingService
 }: TProjectFolderGrantServiceFactoryDep) => {
   const createGrant = async ({
     actorId,
@@ -54,7 +56,7 @@ export const projectFolderGrantServiceFactory = ({
     secretPath,
     targetProjectId
   }: TCreateProjectFolderGrantDTO) => {
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
@@ -112,7 +114,7 @@ export const projectFolderGrantServiceFactory = ({
     grantId,
     sourceProjectId
   }: TDeleteProjectFolderGrantDTO) => {
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
@@ -155,7 +157,7 @@ export const projectFolderGrantServiceFactory = ({
     actorOrgId,
     sourceProjectId
   }: TListProjectFolderGrantsDTO) => {
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
       return [];
     }
 
@@ -191,7 +193,7 @@ export const projectFolderGrantServiceFactory = ({
     actorOrgId,
     targetProjectId
   }: TListProjectFolderGrantsForTargetDTO) => {
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
       return [];
     }
 

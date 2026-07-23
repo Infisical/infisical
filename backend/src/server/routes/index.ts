@@ -471,6 +471,7 @@ import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal"
 import { projectEnvQueueFactory } from "@app/services/project-env/project-env-queue";
 import { projectEnvServiceFactory } from "@app/services/project-env/project-env-service";
 import { projectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
+import { crossProjectSecretSharingServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { projectFolderGrantServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-service";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { projectKeyServiceFactory } from "@app/services/project-key/project-key-service";
@@ -839,6 +840,8 @@ export const registerRoutes = async (
     licenseClient,
     usageMeteringService
   });
+
+  const crossProjectSecretSharingService = crossProjectSecretSharingServiceFactory({ licenseService });
 
   // Usage metering: counts the metered features and reports them to the License Server. Inert while
   // LICENSE_SERVER_V2_MODE is off; active in read-compare and on (emitter no-ops / worker no-ops without a reporter).
@@ -2139,7 +2142,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     telemetryService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    crossProjectSecretSharingService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -2183,7 +2187,8 @@ export const registerRoutes = async (
     telemetryService,
     projectEventsService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    crossProjectSecretSharingService
   });
 
   const projectService = projectServiceFactory({
@@ -2270,6 +2275,7 @@ export const registerRoutes = async (
   });
   const secretImportService = secretImportServiceFactory({
     licenseService,
+    crossProjectSecretSharingService,
     projectBotService,
     projectFolderGrantDAL,
     orgDAL,
@@ -2289,7 +2295,8 @@ export const registerRoutes = async (
     projectDAL,
     orgDAL,
     permissionService,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    crossProjectSecretSharingService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -2320,7 +2327,8 @@ export const registerRoutes = async (
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    crossProjectSecretSharingService
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -2381,7 +2389,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     orgDAL,
-    projectFolderGrantDAL
+    projectFolderGrantDAL,
+    crossProjectSecretSharingService
   });
 
   const folderService = secretFolderServiceFactory({
@@ -2477,7 +2486,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    crossProjectSecretSharingService
   });
 
   const integrationService = integrationServiceFactory({
@@ -2493,7 +2503,8 @@ export const registerRoutes = async (
     secretDAL,
     kmsService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    crossProjectSecretSharingService
   });
 
   const accessTokenQueue = accessTokenQueueServiceFactory({
@@ -3996,6 +4007,7 @@ export const registerRoutes = async (
     resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
     projectFolderGrant: projectFolderGrantService,
+    crossProjectSecretSharingService,
     projectBot: projectBotService,
     integration: integrationService,
     integrationAuth: integrationAuthService,
