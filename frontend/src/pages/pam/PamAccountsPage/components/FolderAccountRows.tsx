@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { ChevronRight, Folder, FolderOpen } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, Rocket } from "lucide-react";
 
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { Badge, TableCell, TableRow } from "@app/components/v3";
+import { Badge, IconButton, TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   PamAccountType,
@@ -18,8 +18,6 @@ import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatf
 import { AccountActionsMenu } from "./AccountActionsMenu";
 import { FolderActionsMenu } from "./FolderActionsMenu";
 
-type DeleteTarget = { accountId: string; accountName: string; accountType: PamAccountType };
-
 type Props = {
   folder: TPamFolderWithCount;
   isOpen: boolean;
@@ -28,8 +26,8 @@ type Props = {
   templateId: string;
   filterActive: boolean;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
-  onDeleteAccount: (target: DeleteTarget) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
+  onDeleteAccount: (accountId: string, accountName: string, accountType: PamAccountType) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
@@ -44,8 +42,8 @@ export const FolderAccountRows = ({
   templateId,
   filterActive,
   onOpenAccount,
-  onDeleteAccount,
   onLaunchAccount,
+  onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
   onFolderDelete,
@@ -129,12 +127,22 @@ export const FolderAccountRows = ({
         !isLoading &&
         accountsToShow.map((account) => {
           const accountType = account.accountType as PamAccountType;
+          const launchableAccount = {
+            id: account.id,
+            name: account.name,
+            description: account.description,
+            folderId: account.folderId,
+            folderName: account.folderName,
+            templateId: account.templateId,
+            templateName: account.templateName,
+            accountType,
+            canLaunch: account.isAccessible,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt
+          };
+
           return (
-            <TableRow
-              key={account.id}
-              className="cursor-pointer"
-              onClick={() => onOpenAccount(account.id)}
-            >
+            <TableRow key={account.id}>
               <TableCell>
                 <div className="flex items-center gap-2.5 pl-[26px]">
                   <AccountPlatformIcon accountType={accountType} size={20} />
@@ -146,33 +154,27 @@ export const FolderAccountRows = ({
                 </div>
               </TableCell>
               <TableCell className="w-20">
-                <div className="flex items-center justify-end gap-1">
-                  <AccountActionsMenu
-                    accountId={account.id}
-                    onOpenTab={(tab) => onOpenAccount(account.id, tab)}
-                    onDelete={() =>
-                      onDeleteAccount({
-                        accountId: account.id,
-                        accountName: account.name,
-                        accountType
-                      })
-                    }
-                    onLaunch={() =>
-                      onLaunchAccount({
-                        id: account.id,
-                        name: account.name,
-                        description: account.description,
-                        folderId: account.folderId,
-                        folderName: account.folderName,
-                        templateId: account.templateId,
-                        templateName: account.templateName,
-                        accountType,
-                        canLaunch: true,
-                        createdAt: account.createdAt,
-                        updatedAt: account.updatedAt
-                      })
-                    }
-                  />
+                <div className="flex items-center justify-end">
+                  <div className="flex items-center gap-0.5">
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      aria-label="Launch session"
+                      className="text-muted hover:text-foreground"
+                      isDisabled={!account.isAccessible}
+                      onClick={() => onLaunchAccount(launchableAccount)}
+                    >
+                      <Rocket className="size-4" />
+                    </IconButton>
+                    <AccountActionsMenu
+                      accountId={account.id}
+                      accountType={accountType}
+                      isAccessible={account.isAccessible}
+                      onLaunch={() => onLaunchAccount(launchableAccount)}
+                      onOpenTab={(tab) => onOpenAccount(account.id, tab)}
+                      onDelete={() => onDeleteAccount(account.id, account.name, accountType)}
+                    />
+                  </div>
                 </div>
               </TableCell>
             </TableRow>
