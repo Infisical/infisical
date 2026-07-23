@@ -42,7 +42,10 @@ import {
   getMemberAssignPrivilegesConditions
 } from "@app/lib/fn/permission";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
-import { GeneralPermissionPolicies } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
+import {
+  GeneralPermissionPolicies,
+  PermissionScope
+} from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
 import {
   formRolePermission2API,
@@ -438,6 +441,7 @@ export const MembershipProjectAdditionalPrivilegeModifySection = ({
                       return (
                         <GeneralPermissionPolicies
                           subject={permissionSubject}
+                          subjectScope={PermissionScope.Project}
                           actions={filteredActions}
                           title={PROJECT_PERMISSION_OBJECT[permissionSubject].title}
                           description={PROJECT_PERMISSION_OBJECT[permissionSubject].description}
