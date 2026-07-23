@@ -33,6 +33,7 @@ import promptSync from "prompt-sync";
 import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
+import { inMemoryKeyStore } from "@app/keystore/memory";
 import { getConfig, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
@@ -157,6 +158,7 @@ const main = async () => {
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore: inMemoryKeyStore(),
     envConfig
   });
   // Loads the decrypted root key into the service's in-memory buffer; the
