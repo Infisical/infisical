@@ -20,6 +20,7 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { CERT_NOT_BEFORE_BACKDATE_MS } from "../gateway-v2/gateway-v2-constants";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -347,7 +348,7 @@ export const gatewayServiceFactory = ({
 
     const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
     const gatewayKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-    const certIssuedAt = new Date();
+    const certIssuedAt = new Date(Date.now() - CERT_NOT_BEFORE_BACKDATE_MS);
     // then need to periodically init
     const certExpireAt = new Date(new Date().setMonth(new Date().getMonth() + 1));
 
