@@ -109,7 +109,7 @@ const extractOrgId = () => {
 export const initLogger = () => {
   const targets: pino.TransportMultiOptions["targets"][number][] = [
     {
-      level: "info",
+      level: "debug",
       target: "pino/file",
       options: {
         destination: 1,

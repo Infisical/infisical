@@ -588,6 +588,28 @@ export const ACCOUNT_TYPE_CONFIGS = {
         tooltip: "A client secret for the service principal. Stored encrypted and never returned in read responses."
       }
     }
+  },
+
+  [PamAccountType.Web]: {
+    name: "Web App",
+    icon: "Web.png",
+    connectionDetails: z.object({
+      targetUrl: z
+        .string()
+        .trim()
+        .min(1)
+        .max(2048)
+        .url("Must be a valid URL, e.g. http://internal-app.local")
+    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
+    ui: {
+      targetUrl: {
+        label: "Target URL",
+        tooltip:
+          "The internal web app to open in the isolated browser session, e.g. http://intranet.corp.local. Reached through the gateway; never exposed to the user's machine directly."
+      }
+    }
   }
 } as const satisfies Partial<
   Record<
@@ -646,6 +668,14 @@ export const sanitizeCredentials = (accountType: PamAccountType, data: unknown) 
 
 export type TGatewayTarget = { host: string; port?: number };
 
+// For Web sessions the gateway does not dial the app directly — it drives a
+// co-located headless Chromium over the Chrome DevTools Protocol, and Chromium
+// reaches the internal app. So the gateway "target" is the CDP endpoint next to
+// the gateway. Prototype: a fixed local port; in production this is a managed
+// per-session browser sidecar address.
+export const WEB_SESSION_CDP_HOST = "127.0.0.1";
+export const WEB_SESSION_CDP_PORT = 9222;
+
 export const extractGatewayTarget = async (
   accountType: PamAccountType,
   rawConnectionDetails: Record<string, unknown>
@@ -703,6 +733,9 @@ export const extractGatewayTarget = async (
       throw new Error("AWS IAM accounts do not use gateway routing");
     case PamAccountType.AzureCli:
       return { host: "management.azure.com", port: 443 };
+    case PamAccountType.Web:
+      // The gateway connects to the co-located Chromium's CDP port, not the app.
+      return { host: WEB_SESSION_CDP_HOST, port: WEB_SESSION_CDP_PORT };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
@@ -748,6 +781,18 @@ export const buildSessionGatewayConnectionDetails = (
     return {
       host: selectedHost || hosts[0],
       port: rdpPort
+    };
+  }
+
+  if (accountType === PamAccountType.Web) {
+    const { targetUrl } = validated as { targetUrl: string };
+
+    // The gateway dials the co-located Chromium (host/port), then drives it to
+    // navigate to targetUrl. targetUrl is passed through for the CDP handler.
+    return {
+      host: WEB_SESSION_CDP_HOST,
+      port: WEB_SESSION_CDP_PORT,
+      targetUrl
     };
   }
 

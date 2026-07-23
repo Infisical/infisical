@@ -134,6 +134,14 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
       recordingEnabled: true,
       recordingStorageBackend: PamRecordingStorageBackend.Postgres
     }
+  },
+  {
+    name: "web",
+    type: PamAccountType.Web,
+    settings: {
+      recordingEnabled: true,
+      recordingStorageBackend: PamRecordingStorageBackend.Postgres
+    }
   }
 ];
 
