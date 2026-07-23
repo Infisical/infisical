@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { isAwsIamRoleArn } from "@app/lib/validator";
 
 import { GcpServiceAccountAuthMethod, PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
@@ -534,15 +535,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .trim()
         .min(1)
         .max(2048)
-        // Matches every valid IAM role ARN without enumerating specifics that can grow:
-        //  - partition: `aws` plus optional hyphenated segments (aws, aws-cn, aws-us-gov, aws-iso*, future)
-        //  - service is always `iam`, region is always empty, account id is 12 digits
-        //  - resource is `role/` + path/name, whose characters AWS defines as printable ASCII
-        //    (0x21 to 0x7F); using that full range keeps unusual-but-valid role paths from being rejected
-        .regex(
-          new RE2(/^arn:aws(-[a-z]+)*:iam::\d{12}:role\/[\x21-\x7F]+$/),
-          "Must be a valid IAM role ARN (e.g. arn:aws:iam::123456789012:role/my-role)"
-        )
+        .refine(isAwsIamRoleArn, "Must be a valid IAM role ARN (e.g. arn:aws:iam::123456789012:role/my-role)")
     }),
     credentials: z.object({}),
     sanitizedCredentials: z.object({}),

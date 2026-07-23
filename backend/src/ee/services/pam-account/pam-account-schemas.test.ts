@@ -210,23 +210,17 @@ describe("isCredentialConfigured", () => {
   });
 });
 
+// Exhaustive ARN accept/reject cases live in lib/validator/validate-aws-arn.test.ts. These assert the
+// schema is actually wired to that validator and applies its own trimming.
 describe("validateConnectionDetails (AWS IAM roleArn)", () => {
-  test("accepts valid role ARNs across partitions and paths", () => {
-    const valid = [
-      "arn:aws:iam::123456789012:role/my-role",
-      "arn:aws:iam::123456789012:role/service-role/my-role",
-      "arn:aws:iam::123456789012:role/team.dev/deploy@svc+build",
-      "arn:aws-us-gov:iam::123456789012:role/gov-role",
-      "arn:aws-cn:iam::123456789012:role/cn-role",
-      // future-proofing: ISO partitions and any hyphenated partition AWS may add
-      "arn:aws-iso:iam::123456789012:role/iso-role",
-      "arn:aws-iso-b:iam::123456789012:role/iso-b-role",
-      // IAM role paths allow the full printable-ASCII range, not just role-name characters
-      "arn:aws:iam::123456789012:role/odd!path$/role_name"
-    ];
-    valid.forEach((roleArn) => {
-      expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn })).not.toThrow();
-    });
+  test("accepts a valid role ARN", () => {
+    expect(() =>
+      validateConnectionDetails(PamAccountType.AwsIam, { roleArn: "arn:aws:iam::123456789012:role/my-role" })
+    ).not.toThrow();
+  });
+
+  test("rejects a malformed role ARN", () => {
+    expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn: "not-an-arn" })).toThrow();
   });
 
   test("trims surrounding whitespace before validating", () => {
@@ -234,21 +228,6 @@ describe("validateConnectionDetails (AWS IAM roleArn)", () => {
       roleArn: "  arn:aws:iam::123456789012:role/my-role  "
     });
     expect(result).toEqual({ roleArn: "arn:aws:iam::123456789012:role/my-role" });
-  });
-
-  test("rejects malformed ARNs", () => {
-    const invalid = [
-      "not-an-arn",
-      "arn:aws:iam::123456789012:user/my-user", // user, not role
-      "arn:aws:iam::12345:role/my-role", // account id not 12 digits
-      "arn:aws:s3:::my-bucket", // wrong service
-      "arn:aws:iam::123456789012:role/", // empty role name
-      "arn:awsx:iam::123456789012:role/my-role", // partition must be aws or aws-<segment>, not an arbitrary suffix
-      "arn:aws:iam::123456789012:role/has space" // resource may not contain spaces / control chars
-    ];
-    invalid.forEach((roleArn) => {
-      expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn })).toThrow();
-    });
   });
 });
 
