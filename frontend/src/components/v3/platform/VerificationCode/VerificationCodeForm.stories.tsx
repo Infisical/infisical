@@ -5,6 +5,7 @@ import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 
 import { CardContent } from "../../generic/Card";
 import { VerificationCodeForm, VerificationCodeHeader } from "./VerificationCodeForm";
+import { VerificationCodeResend } from "./VerificationCodeResend";
 
 const meta = {
   title: "Authentication/VerificationCodeForm",
@@ -31,7 +32,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const VerificationExample = ({ fields = 6, error }: { fields?: number; error?: string }) => {
+const VerificationExample = ({
+  fields = 6,
+  error,
+  resendState = "ready"
+}: {
+  fields?: number;
+  error?: string;
+  resendState?: "ready" | "resending" | "delayed";
+}) => {
   const [value, setValue] = useState("");
 
   return (
@@ -50,7 +59,13 @@ const VerificationExample = ({ fields = 6, error }: { fields?: number; error?: s
           onSubmit={() => undefined}
           error={error}
         >
-          <p className="text-sm text-label">Don&apos;t see the code? Resend</p>
+          {fields === 6 && (
+            <VerificationCodeResend
+              isResending={resendState === "resending"}
+              remainingSeconds={resendState === "delayed" ? 20 : 0}
+              onResend={() => undefined}
+            />
+          )}
         </VerificationCodeForm>
       </CardContent>
     </AuthPagePanel>
@@ -63,6 +78,14 @@ export const EmailCode: Story = {
 
 export const InvalidCode: Story = {
   render: () => <VerificationExample error="That code is invalid. Try again." />
+};
+
+export const Resending: Story = {
+  render: () => <VerificationExample resendState="resending" />
+};
+
+export const ResendDelayed: Story = {
+  render: () => <VerificationExample resendState="delayed" />
 };
 
 export const RecoveryCode: Story = {

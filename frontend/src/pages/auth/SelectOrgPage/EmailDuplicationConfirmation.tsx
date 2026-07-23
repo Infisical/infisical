@@ -40,7 +40,7 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
 
   return (
     <>
-      <AuthPageLayout showFooter={false} contentClassName="max-w-2xl">
+      <AuthPageLayout variant="focused" showFooter={false} contentClassName="max-w-2xl">
         <Helmet>
           <title>{t("common.head-title", { title: t("login.title") })}</title>
           <link rel="icon" href="/infisical.ico" />

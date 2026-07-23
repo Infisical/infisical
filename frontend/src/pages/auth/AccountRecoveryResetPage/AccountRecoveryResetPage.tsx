@@ -61,7 +61,7 @@ export const AccountRecoveryResetPage = () => {
   };
 
   return (
-    <AuthPageLayout contentClassName="max-w-2xl">
+    <AuthPageLayout variant="focused" contentClassName="max-w-2xl">
       {step === Steps.ConfirmEmail && (
         <ConfirmEmailStep
           onComplete={(verifyToken, userEncryptionVersion, hasEmailAuth) => {

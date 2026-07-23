@@ -23,7 +23,7 @@ export const SignUpPage = () => {
   };
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

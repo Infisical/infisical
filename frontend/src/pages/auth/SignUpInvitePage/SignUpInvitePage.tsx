@@ -14,7 +14,7 @@ export const SignupInvitePage = () => {
 
   if (error) {
     return (
-      <AuthPageLayout>
+      <AuthPageLayout variant="focused">
         <Helmet>
           <title>Invalid Invitation</title>
           <link rel="icon" href="/infisical.ico" />

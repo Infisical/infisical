@@ -5,7 +5,7 @@ import { cn } from "../../utils";
 
 const codeInputStyle = {
   inputStyle: {
-    fontFamily: "var(--font-mono)",
+    fontFamily: "var(--font-jetbrains-mono)",
     margin: "0",
     MozAppearance: "textfield",
     width: "100%",

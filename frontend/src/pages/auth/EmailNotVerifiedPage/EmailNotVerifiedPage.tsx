@@ -7,7 +7,7 @@ import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@ap
 
 export const EmailNotVerifiedPage = () => {
   return (
-    <AuthPageLayout>
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>Email Not Verified</title>
         <link rel="icon" href="/infisical.ico" />

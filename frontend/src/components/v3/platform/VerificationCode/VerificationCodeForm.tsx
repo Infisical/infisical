@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 import { AnimatedCollapse } from "../../generic/AnimatedCollapse";
 import { Button } from "../../generic/Button";
@@ -70,6 +70,19 @@ export const VerificationCodeForm = ({
   value
 }: VerificationCodeFormProps) => {
   const isComplete = value.trim().length === fields;
+  const hasError = Boolean(error);
+  const [hasChangedSinceError, setHasChangedSinceError] = useState(false);
+
+  useEffect(() => {
+    if (hasError && !isPending) {
+      setHasChangedSinceError(false);
+    }
+  }, [hasError, isPending]);
+
+  const handleChange = (nextValue: string) => {
+    if (hasError) setHasChangedSinceError(true);
+    onChange(nextValue);
+  };
 
   return (
     <form
@@ -85,9 +98,9 @@ export const VerificationCodeForm = ({
           key={`${name}-${fields}`}
           name={name}
           fields={fields}
-          onChange={onChange}
+          onChange={handleChange}
           value={value}
-          isError={Boolean(error)}
+          isError={hasError && !hasChangedSinceError}
         />
         {error && <FieldError>{error}</FieldError>}
       </div>

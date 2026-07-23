@@ -106,7 +106,7 @@ export const PasswordSetupPage = () => {
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout variant="focused">
       <form className="w-full" onSubmit={handleSubmit(handleSetPassword)}>
         <AuthPagePanel>
           <CardHeader className="mb-6 gap-2">

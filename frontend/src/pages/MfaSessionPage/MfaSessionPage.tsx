@@ -22,7 +22,7 @@ import {
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
 const MfaAuthPage = ({ children }: { children: ReactNode }) => (
-  <AuthPageLayout showFooter={false}>
+  <AuthPageLayout variant="focused" showFooter={false}>
     <AuthPagePanel>{children}</AuthPagePanel>
   </AuthPageLayout>
 );

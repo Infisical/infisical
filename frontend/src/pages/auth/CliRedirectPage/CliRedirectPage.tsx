@@ -37,7 +37,7 @@ export const CliRedirectPage = () => {
   };
 
   return (
-    <AuthPageLayout contentClassName="max-w-xl">
+    <AuthPageLayout variant="focused" contentClassName="max-w-xl">
       <Helmet>
         <title>Infisical CLI | Login Successful!</title>
         <link rel="icon" href="/infisical.ico" />

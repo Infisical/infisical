@@ -11,14 +11,18 @@ import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Button,
   CardContent,
+  useClientResendDelay,
   VerificationCodeForm,
-  VerificationCodeHeader
+  VerificationCodeHeader,
+  VerificationCodeResend
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
+
+const CLIENT_RESEND_DELAY_SECONDS = 20;
 
 export const SignupSsoPage = () => {
   const { t } = useTranslation();
@@ -38,7 +42,9 @@ export const SignupSsoPage = () => {
     isEmailVerified?: boolean;
   };
 
-  const { mutateAsync: sendEmailVerificationCode } = useSendEmailVerificationCode();
+  const { mutateAsync: sendEmailVerificationCode, isPending: isResending } =
+    useSendEmailVerificationCode();
+  const resendDelay = useClientResendDelay(CLIENT_RESEND_DELAY_SECONDS);
 
   useEffect(() => {
     SecurityClient.setSignupToken(token);
@@ -77,6 +83,7 @@ export const SignupSsoPage = () => {
   const handleResendCode = async () => {
     try {
       await sendEmailVerificationCode(token);
+      resendDelay.restartDelay();
       createNotification({
         text: "Successfully resent code",
         type: "success"
@@ -91,6 +98,7 @@ export const SignupSsoPage = () => {
 
   return (
     <AuthPageLayout
+      variant="focused"
       headerAction={
         <Button asChild variant="outline" size="sm">
           <Link to="/login">Log In</Link>
@@ -123,17 +131,12 @@ export const SignupSsoPage = () => {
                   : undefined
               }
             >
-              <div className="flex items-center gap-1.5 text-sm">
-                <span className="text-label">Don&apos;t see the code?</span>
-                <button
-                  className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project disabled:cursor-not-allowed disabled:text-label/60 disabled:no-underline"
-                  disabled={completeAccountSignup.isPending}
-                  onClick={handleResendCode}
-                  type="button"
-                >
-                  Resend
-                </button>
-              </div>
+              <VerificationCodeResend
+                isDisabled={completeAccountSignup.isPending}
+                isResending={isResending}
+                remainingSeconds={resendDelay.remainingSeconds}
+                onResend={handleResendCode}
+              />
             </VerificationCodeForm>
           </CardContent>
         </AuthPagePanel>

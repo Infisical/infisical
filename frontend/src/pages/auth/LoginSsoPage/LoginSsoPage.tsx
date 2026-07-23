@@ -74,7 +74,7 @@ export const LoginSsoPage = ({ type }: Props) => {
   const loginPath = isAdminLogin ? "/login/admin" : "/login";
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>{t("common.head-title", { title: `${type} Login` })}</title>
         <link rel="icon" href="/infisical.ico" />

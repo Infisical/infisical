@@ -10,7 +10,8 @@ import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
+import { ContentLoader, Input, Spinner } from "@app/components/v2";
+import { VerificationCodeHeader } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useToggle } from "@app/hooks";
@@ -53,12 +54,12 @@ const OrgRow = ({
       className={`group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 px-4 shadow-md transition-colors ${bgClass}`}
     >
       <div className="flex flex-col items-start">
-        <p className="truncate">{name}</p>
+        <p className="truncate font-alliance">{name}</p>
         {(label || joinedAt) && (
           <p className="text-xs text-mineshaft-400">
             {label}
             {label && joinedAt && " · "}
-            {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d yyyy")}</>}
+            {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d, yyyy")}</>}
           </p>
         )}
       </div>
@@ -387,13 +388,14 @@ export const SelectOrgPage = () => {
             }
           }}
           method={requiredMfaMethod as MfaMethod}
+          onChangeAccount={handleLogout}
         />
       </>
     );
   }
 
   return (
-    <AuthPageLayout showFooter={false}>
+    <AuthPageLayout variant="focused" showFooter={false}>
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -402,24 +404,22 @@ export const SelectOrgPage = () => {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
       <AuthPagePanel>
-        <div className="mb-8 space-y-2">
-          <h1 className="font-alliance text-2xl font-normal text-foreground">
-            Choose your organization
-          </h1>
-          <div className="space-y-1">
-            <p className="text-sm text-label">
-              You&apos;re currently logged in as <strong>{user.username}</strong>
-            </p>
-            <p className="text-sm text-label">
-              Not you?{" "}
-              <Button variant="link" onClick={handleLogout} className="font-medium">
-                Change account
-              </Button>
-            </p>
-          </div>
-        </div>
+        <VerificationCodeHeader
+          title="Choose your organization as"
+          recipient={user.username}
+          action={
+            <button
+              aria-label={`Sign out ${user.username}`}
+              className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+              onClick={handleLogout}
+              type="button"
+            >
+              Sign out
+            </button>
+          }
+        />
 
-        <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
+        <div className="rounded-xl border-2 border-mineshaft-500 shadow-lg">
           {totalOrgCount >= 5 && (
             <div className="border-b border-mineshaft-600 px-4 py-3">
               <Input

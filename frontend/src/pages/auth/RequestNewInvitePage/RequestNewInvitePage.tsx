@@ -15,7 +15,7 @@ export const RequestNewInvitePage = () => {
   const isAlreadyMember = reason === "already_member";
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>{isAlreadyMember ? "Already a Member" : "Request a New Invite"}</title>
         <link rel="icon" href="/infisical.ico" />

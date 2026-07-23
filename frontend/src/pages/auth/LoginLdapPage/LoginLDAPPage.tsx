@@ -73,7 +73,7 @@ export const LoginLdapPage = () => {
   };
 
   return (
-    <AuthPageLayout>
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />

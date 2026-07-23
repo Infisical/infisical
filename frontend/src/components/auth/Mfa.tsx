@@ -11,8 +11,10 @@ import { Tooltip } from "@app/components/v2";
 import {
   Button,
   CardContent,
+  useClientResendDelay,
   VerificationCodeForm,
-  VerificationCodeHeader
+  VerificationCodeHeader,
+  VerificationCodeResend
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
@@ -32,17 +34,22 @@ import { AuthPageLayout } from "./AuthPageLayout";
 import { AuthPagePanel } from "./AuthPagePanel";
 
 const MAX_MFA_ATTEMPTS = 5;
+const CLIENT_RESEND_DELAY_SECONDS = 20;
 
 type Props = {
   successCallback: () => void | Promise<void>;
   closeMfa?: () => void;
   email: string;
   method: MfaMethod;
+  onChangeAccount?: () => void | Promise<void>;
 };
 
-export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
+export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount }: Props) => {
   const [mfaCode, setMfaCode] = useState("");
   const [showRecoveryCodeInput, setShowRecoveryCodeInput] = useState(false);
+  const resendDelay = useClientResendDelay(
+    method === MfaMethod.EMAIL ? CLIENT_RESEND_DELAY_SECONDS : 0
+  );
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -188,6 +195,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
     try {
       setIsLoadingResend(true);
       await sendMfaToken.mutateAsync({ email });
+      resendDelay.restartDelay();
       setIsLoadingResend(false);
     } catch (err) {
       console.error(err);
@@ -275,7 +283,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
 
   if (newRecoveryCodes) {
     return (
-      <AuthPageLayout showFooter={false}>
+      <AuthPageLayout variant="focused" showFooter={false}>
         <div className="mx-auto flex w-full max-w-md flex-col gap-4">
           <RecoveryCodesStep
             recoveryCodes={newRecoveryCodes}
@@ -298,7 +306,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
 
   if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
     return (
-      <AuthPageLayout showFooter={false} contentClassName="max-w-xl">
+      <AuthPageLayout variant="focused" showFooter={false} contentClassName="max-w-xl">
         <MfaEnrollment
           method={method}
           onComplete={async () => {
@@ -327,17 +335,82 @@ export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
     headerDescription = "Use your registered passkey to continue.";
   }
 
+  const recoveryActions = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      {showRecoveryCodeInput ? (
+        <Tooltip
+          position="bottom"
+          content={
+            <div className="max-w-xs text-center text-xs">
+              {isInfisicalCloud() ? (
+                <>
+                  <div className="mb-2">Account Recovery Required</div>
+                  <div className="mb-2 text-gray-300">
+                    Contact support with valid proof of account ownership to initiate recovery
+                  </div>
+                  <div className="mt-1">support@infisical.com</div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-2">Account Recovery Required</div>
+                  <div className="text-gray-300">
+                    Contact your instance administrator with valid proof of account ownership to
+                    initiate recovery
+                  </div>
+                </>
+              )}
+            </div>
+          }
+        >
+          <span className="cursor-help text-label transition-colors duration-200 hover:text-foreground">
+            Lost your recovery codes?
+          </span>
+        </Tooltip>
+      ) : (
+        method === MfaMethod.EMAIL && (
+          <VerificationCodeResend
+            isResending={isLoadingResend}
+            remainingSeconds={resendDelay.remainingSeconds}
+            onResend={handleResendMfaCode}
+          />
+        )
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setShowRecoveryCodeInput(!showRecoveryCodeInput);
+          setMfaCode("");
+        }}
+        className="ml-auto cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+      >
+        {getRecoveryToggleLabel()}
+      </button>
+    </div>
+  );
+
   return (
-    <AuthPageLayout showFooter={false}>
+    <AuthPageLayout variant="focused" showFooter={false}>
       <AuthPagePanel>
         <VerificationCodeHeader
           title={headerTitle}
           recipient={headerRecipient}
           description={headerDescription}
+          action={
+            onChangeAccount ? (
+              <button
+                aria-label={`Sign out ${email}`}
+                className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+                onClick={onChangeAccount}
+                type="button"
+              >
+                Sign out
+              </button>
+            ) : undefined
+          }
         />
         <CardContent>
           {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
-            <>
+            <div className="flex flex-col gap-5">
               {typeof triesLeft === "number" && (
                 <Error
                   text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
@@ -353,7 +426,8 @@ export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
               >
                 Authenticate with passkey
               </Button>
-            </>
+              {recoveryActions}
+            </div>
           ) : (
             <VerificationCodeForm
               key={showRecoveryCodeInput ? "recovery" : method}
@@ -371,66 +445,8 @@ export const Mfa = ({ successCallback, closeMfa, email, method }: Props) => {
                   : undefined
               }
             >
-              {method === MfaMethod.EMAIL && !showRecoveryCodeInput && (
-                <div className="flex items-center gap-1.5 text-sm">
-                  <span className="text-label">{t("signup.step2-resend-alert")}</span>
-                  <button
-                    className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project disabled:cursor-not-allowed disabled:text-label/60 disabled:no-underline"
-                    disabled={isLoadingResend}
-                    onClick={handleResendMfaCode}
-                    type="button"
-                  >
-                    {isLoadingResend
-                      ? t("signup.step2-resend-progress")
-                      : t("signup.step2-resend-submit")}
-                  </button>
-                </div>
-              )}
+              {recoveryActions}
             </VerificationCodeForm>
-          )}
-          {(method === MfaMethod.EMAIL ||
-            method === MfaMethod.TOTP ||
-            method === MfaMethod.WEBAUTHN) && (
-            <div className="mt-6 flex flex-col items-start gap-4 text-sm">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowRecoveryCodeInput(!showRecoveryCodeInput);
-                  setMfaCode("");
-                }}
-                className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
-              >
-                {getRecoveryToggleLabel()}
-              </button>
-              <Tooltip
-                position="bottom"
-                content={
-                  <div className="max-w-xs text-center text-xs">
-                    {isInfisicalCloud() ? (
-                      <>
-                        <div className="mb-2">Account Recovery Required</div>
-                        <div className="mb-2 text-gray-300">
-                          Contact support with valid proof of account ownership to initiate recovery
-                        </div>
-                        <div className="mt-1">support@infisical.com</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="mb-2">Account Recovery Required</div>
-                        <div className="text-gray-300">
-                          Contact your instance administrator with valid proof of account ownership
-                          to initiate recovery
-                        </div>
-                      </>
-                    )}
-                  </div>
-                }
-              >
-                <span className="cursor-help text-label transition-colors duration-200 hover:text-foreground">
-                  Lost your recovery codes?
-                </span>
-              </Tooltip>
-            </div>
           )}
         </CardContent>
       </AuthPagePanel>

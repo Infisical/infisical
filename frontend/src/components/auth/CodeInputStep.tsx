@@ -6,7 +6,8 @@ import {
   Button,
   CardContent,
   VerificationCodeForm,
-  VerificationCodeHeader
+  VerificationCodeHeader,
+  VerificationCodeResend
 } from "@app/components/v3";
 import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "@app/hooks/api";
 
@@ -52,7 +53,6 @@ export default function CodeInputStep({
 
   const remainingCooldown = Math.max(0, Math.ceil((resendCooldownEndTime - Date.now()) / 1000));
 
-  const isCooldownActive = resendCooldownEndTime > Date.now();
   const handleVerify = async () => {
     const { token } = await verifyCode({ email, code });
     SecurityClient.setSignupToken(token);
@@ -73,13 +73,6 @@ export default function CodeInputStep({
     }
   };
 
-  let resendLabel = String(t("signup.step2-resend-submit"));
-  if (isResending) {
-    resendLabel = String(t("signup.step2-resend-progress"));
-  } else if (remainingCooldown > 0) {
-    resendLabel = `${t("signup.step2-resend-submit")} (${remainingCooldown}s)`;
-  }
-
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
@@ -89,7 +82,7 @@ export default function CodeInputStep({
           action={
             <button
               aria-label={`Change email address from ${email}`}
-              className="shrink-0 text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+              className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
               onClick={onChangeEmail}
               type="button"
             >
@@ -107,17 +100,11 @@ export default function CodeInputStep({
             isPending={isVerifying}
             error={isCodeError ? t("signup.step2-code-error") : undefined}
           >
-            <div className="flex items-center gap-1.5 text-sm">
-              <span className="text-label">{t("signup.step2-resend-alert")}</span>
-              <button
-                className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project disabled:cursor-not-allowed disabled:text-label/60 disabled:no-underline"
-                disabled={isResending || isCooldownActive}
-                onClick={handleResend}
-                type="button"
-              >
-                {resendLabel}
-              </button>
-            </div>
+            <VerificationCodeResend
+              isResending={isResending}
+              remainingSeconds={remainingCooldown}
+              onResend={handleResend}
+            />
             {import.meta.env.DEV && (
               <Button variant="ghost" size="sm" isFullWidth onClick={onComplete}>
                 Preview next step (development only)
