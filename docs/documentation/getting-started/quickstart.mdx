@@ -1,0 +1,172 @@
+---
+title: "Get Started in 5 Minutes"
+sidebarTitle: "5-Minute Quickstart"
+description: "Go from zero to retrieving your first secret with Infisical Cloud and the CLI."
+---
+
+This guide walks you through the complete flow: create an account, store a secret, and retrieve it in your app. By the end, you'll have Infisical injecting environment variables into a running process.
+
+If you'd rather run Infisical on your own infrastructure, start with the [Self-Hosted Quickstart](/documentation/getting-started/self-hosted-quickstart) instead.
+
+## Prerequisites
+
+- A terminal (macOS, Linux, or WSL on Windows)
+- An application that reads environment variables (any language/framework)
+
+## Step 1: Create your Infisical Cloud account
+
+Go to [app.infisical.com](https://app.infisical.com) and sign up. You can use email, Google, GitHub, GitLab, or SAML SSO.
+
+After signing up, Infisical creates your first **organization** automatically. An organization is the top-level container that holds your projects, team members, and billing.
+
+## Step 2: Create a project and add a secret
+
+1. From the organization dashboard, click **Add New Project** and select **Secret Manager**.
+2. Give it a name (e.g. `my-app`) and click **Create Project**.
+3. You'll land in the **Secrets** dashboard. You're in the **Development** environment by default — Infisical ships with **Development**, **Staging**, and **Production** environments out of the box.
+4. Click **Add Secret**. Enter a key and value:
+   - **Key:** `GREETING`
+   - **Value:** `Hello from Infisical!`
+5. The secret saves automatically.
+
+You now have one secret stored in your project's Development environment.
+
+<Tip>
+  Migrating from an existing `.env` file? You can bulk-import in two ways:
+  - **From the dashboard:** click the **Actions** dropdown and select **Import from .env** to upload your file.
+  - **From the CLI** (after Step 4): `infisical secrets set --file=".env" --env=dev`. Supports `.env` and YAML formats; `#` and `//` comments are ignored.
+</Tip>
+
+## Step 3: Install the Infisical CLI
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    brew install infisical/get-cli/infisical
+    ```
+  </Tab>
+  <Tab title="Debian/Ubuntu">
+    ```bash
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+    sudo apt-get update && sudo apt-get install -y infisical
+    ```
+  </Tab>
+  <Tab title="RedHat/CentOS/Amazon Linux">
+    ```bash
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
+    sudo yum install infisical
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```bash
+    scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+    scoop install infisical
+    ```
+  </Tab>
+  <Tab title="Alpine">
+    ```bash
+    apk add --no-cache bash sudo wget
+    wget -qO- 'https://artifacts-cli.infisical.com/setup.apk.sh' | sudo sh
+    apk update && sudo apk add infisical
+    ```
+  </Tab>
+  <Tab title="Arch Linux">
+    ```bash
+    yay -S infisical-bin
+    ```
+  </Tab>
+</Tabs>
+
+Verify the installation:
+
+```bash
+infisical --version
+```
+
+## Step 4: Log in and link your project
+
+```bash
+# Authenticate with Infisical Cloud (opens your browser)
+infisical login
+
+# Navigate to your project directory
+cd /path/to/your/project
+
+# Link this directory to your Infisical project (select it from the list)
+infisical init
+```
+
+The `init` command creates a `.infisical.json` file in your project root. This file only contains a project ID reference (stored as `workspaceId`) — no secrets — so it's safe to commit to version control.
+
+<Tip>
+  Want different environments per git branch? Add a `gitBranchToEnvironmentMapping` block to `.infisical.json` and the CLI will pick the environment to fetch from automatically based on your current branch:
+
+  ```json .infisical.json
+  {
+    "workspaceId": "63ee5410a45f7a1ed39ba118",
+    "gitBranchToEnvironmentMapping": {
+      "main": "prod",
+      "staging": "staging",
+      "develop": "dev"
+    }
+  }
+  ```
+</Tip>
+
+## Step 5: Retrieve your secret
+
+There are three ways to use your secrets. Pick whichever fits your workflow.
+
+### Option A: Inject into a running process
+
+The most common approach. `infisical run` fetches your secrets and passes them as environment variables to whatever command follows `--`:
+
+```bash
+infisical run --env=dev -- printenv GREETING
+# Output: Hello from Infisical!
+```
+
+Replace `printenv GREETING` with your real start command:
+
+```bash
+infisical run --env=dev -- npm run dev
+infisical run --env=dev -- python app.py
+infisical run --env=dev -- go run main.go
+```
+
+Your application reads `process.env.GREETING` (or the equivalent in your language) exactly as it would with a `.env` file — no code changes needed.
+
+### Option B: Export to a file
+
+Generate a `.env` file from your Infisical secrets:
+
+```bash
+infisical export --env=dev --format=dotenv > .env
+```
+
+Other supported formats: `yaml`, `json`, `csv`, `dotenv-export`.
+
+### Option C: List secrets in the terminal
+
+Inspect what's stored without running an app:
+
+```bash
+infisical secrets --env=dev
+```
+
+## What's next
+
+You've stored a secret and retrieved it. Here's where to go from here:
+
+- **Add your team:** Invite members from the organization settings page. They install the CLI, run `infisical login` and `infisical init`, and instantly have access to the same secrets — no `.env` files changing hands.
+- **Use environments:** Your project already has Development, Staging, and Production environments. Switch between them with the `--env` flag (`dev`, `staging`, `prod`).
+- **Set up CI/CD and production:** For non-interactive environments, create a [Machine Identity](/documentation/platform/identities/machine-identities) instead of using personal login. Machine identities use client credentials that can be scoped to specific projects and environments. Once you have an identity token, set `INFISICAL_TOKEN` in the environment and every CLI command will use it — no `infisical login` required:
+
+    ```bash
+    export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
+      --client-id="<id>" --client-secret="<secret>" --plain --silent)
+    infisical run --env=prod -- your-start-command
+    ```
+- **Use an SDK instead of the CLI:** Infisical has native SDKs for [Node.js, Python, Go, Java, .NET, Ruby, PHP, Rust, and C++](/sdks/overview). SDKs fetch secrets at runtime from your application code.
+- **Explore integrations:** Sync secrets to [AWS Parameter Store, Vercel, GitHub Actions, Kubernetes, and more](/integrations/secret-syncs).
+- **Self-host:** To run Infisical on your own infrastructure, follow the [Self-Hosted Quickstart](/documentation/getting-started/self-hosted-quickstart) for a local setup, or the [self-hosting overview](/self-hosting/overview) for deployment options.

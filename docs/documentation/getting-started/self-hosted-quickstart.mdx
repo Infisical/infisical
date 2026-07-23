@@ -1,0 +1,117 @@
+---
+title: "Quickstart with Self-Hosted Infisical"
+sidebarTitle: "Self-Hosted Quickstart"
+description: "Run Infisical locally with Docker Compose, bootstrap an admin account, and retrieve your first secret from the CLI."
+---
+
+This guide gets a self-hosted Infisical instance running on your machine and walks you through retrieving your first secret from it. By the end, you'll have Infisical injecting environment variables into a process — with no reliance on Infisical Cloud.
+
+If you're trying Infisical for the first time and don't need to self-host, use the [Cloud quickstart](/documentation/getting-started/quickstart) instead.
+
+## Prerequisites
+
+- [Docker Engine](https://docs.docker.com/engine/install/) (20.10+) and [Docker Compose](https://docs.docker.com/compose/install/) (v2+)
+- A terminal (macOS, Linux, or WSL on Windows)
+
+## Step 1: Start Infisical locally
+
+Download the production Docker Compose file and the default environment variables, then start the stack:
+
+```bash
+curl -o docker-compose.prod.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.prod.yml
+curl -o .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+
+docker compose -f docker-compose.prod.yml up -d
+```
+
+This starts three containers: the Infisical backend (exposed on port 80), PostgreSQL, and Redis.
+
+<Warning>
+  If you have run this stack before, old database volumes may still exist with different credentials than your current `.env`. Run `docker compose -f docker-compose.prod.yml down -v` first to wipe them — otherwise the database will reject connections with an authentication error.
+</Warning>
+
+<Warning>
+  The downloaded `.env` file contains credentials that control the security of your deployment. Do not commit it, and tighten its permissions:
+
+  ```bash
+  chmod 600 .env
+  ```
+</Warning>
+
+Confirm the backend is responding:
+
+```bash
+curl -s http://localhost:80/api/status | head -c 100
+```
+
+For the full set of configuration options and production-grade deployments, see the [Docker Compose guide](/self-hosting/deployment-options/docker-compose).
+
+## Step 2: Bootstrap the instance
+
+Fresh Infisical instances have no users, organizations, or identities. Instead of creating the first admin through the UI, use the `infisical bootstrap` command — it creates the admin user, an organization, and an **instance admin machine identity** in a single call, and returns a JWT token you can use for further automation:
+
+```bash
+infisical bootstrap \
+  --domain="http://localhost:80" \
+  --email="admin@example.com" \
+  --password="your-secure-password" \
+  --organization="my-org" \
+  --ignore-if-bootstrapped
+```
+
+The response is a JSON object containing the new user, organization, and identity — including an `identity.credentials.token` field. For a full breakdown of the response and alternative bootstrap methods (API, Helm), see [Programmatic Provisioning](/self-hosting/guides/automated-bootstrapping).
+
+<Tip>
+  Don't have the CLI yet? Install it with `brew install infisical/get-cli/infisical` (macOS) or see Step 3 of the [Cloud quickstart](/documentation/getting-started/quickstart#step-3-install-the-infisical-cli) for other platforms.
+</Tip>
+
+## Step 3: Create a project and add a secret
+
+Open [http://localhost:80](http://localhost:80) in your browser and log in with the admin credentials you bootstrapped.
+
+1. From the organization dashboard, click **Add New Project** and select **Secret Manager**.
+2. Give it a name (e.g. `my-app`) and click **Create Project**.
+3. You'll land in the **Secrets** dashboard in the **Development** environment.
+4. Click **Add Secret**. Enter:
+   - **Key:** `GREETING`
+   - **Value:** `Hello from self-hosted Infisical!`
+5. The secret saves automatically.
+
+<Tip>
+  Want to skip the UI entirely? The [End-to-End Automation guide](/self-hosting/guides/end-to-end-automation) shows how to script project creation and secret import using the bootstrap token.
+</Tip>
+
+## Step 4: Point the CLI at your self-hosted instance
+
+By default, the CLI talks to Infisical Cloud. Set the domain to your local instance, then log in as the admin user:
+
+```bash
+infisical login --domain="http://localhost:80"
+```
+
+Link your project directory:
+
+```bash
+cd /path/to/your/project
+infisical init
+```
+
+`init` writes a `.infisical.json` file containing the project ID (stored as `workspaceId`) — no secrets, safe to commit.
+
+## Step 5: Retrieve your secret
+
+Run any command with `infisical run` and your secrets are injected as environment variables:
+
+```bash
+infisical run --env=dev -- printenv GREETING
+# Output: Hello from self-hosted Infisical!
+```
+
+Replace `printenv GREETING` with your real start command — `npm run dev`, `python app.py`, `go run main.go`, and so on. Your app reads `process.env.GREETING` (or the language equivalent) exactly as it would with a `.env` file.
+
+## What's next
+
+- **Automate the whole flow:** See the [End-to-End Automation guide](/self-hosting/guides/end-to-end-automation) for a scripted path from empty instance to running app.
+- **Production-grade deployment:** The steps above are a local proof of concept. For high-availability setups, review the [Kubernetes Helm guide](/self-hosting/deployment-options/kubernetes-helm) and the [reference architectures](/self-hosting/reference-architectures/on-prem-k8s-ha).
+- **Secure your instance:** See [Production Hardening](/self-hosting/guides/production-hardening) before exposing the instance beyond your local machine.
+- **Use an SDK instead of the CLI:** Infisical has native SDKs for [Node.js, Python, Go, Java, .NET, Ruby, PHP, Rust, and C++](/sdks/overview).
