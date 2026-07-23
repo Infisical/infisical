@@ -549,7 +549,20 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return result;
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotationConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: result.accountType,
+            orgId: req.permission.orgId,
+            enabled: Boolean(result.rotationAccountId)
+          }
+        })
+        .catch(() => {});
+
+      return { rotationAccountId: result.rotationAccountId };
     }
   });
 
@@ -596,6 +609,19 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       if (result.rotationStatus !== ROTATION_STATUS.Success) {
         throw new BadRequestError({ message: result.message ?? "Rotation failed" });
       }
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: result.accountType,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
+
       return { rotationStatus: result.rotationStatus };
     }
   });

@@ -423,6 +423,7 @@ export const pamSessionServiceFactory = ({
       accountName: session.accountName,
       accountType: session.accountType,
       actorEmail: session.actorEmail,
+      accessMethod: session.accessMethod ?? PamAccessMethod.Cli,
       sessionStarted
     };
   };
@@ -436,10 +437,18 @@ export const pamSessionServiceFactory = ({
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
 
+    // Only report duration for sessions that actually reached Active; otherwise createdAt would
+    // fold "Starting" wait time into the reported session length and skew duration metrics.
+    const endTime = updatedSession?.endedAt ?? new Date();
+    const durationMs = session.startedAt ? Math.max(0, endTime.getTime() - session.startedAt.getTime()) : undefined;
+
     return {
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,
+      accountType: session.accountType,
+      actorEmail: session.actorEmail,
+      durationMs,
       alreadyEnded: !updatedSession
     };
   };
@@ -632,7 +641,8 @@ export const pamSessionServiceFactory = ({
         accountType: account.accountType as PamAccountType,
         accountName: account.name,
         metadata,
-        sessionDurationMs
+        sessionDurationMs,
+        accessMethod
       };
     }
 
@@ -736,6 +746,7 @@ export const pamSessionServiceFactory = ({
       accountName: account.name,
       metadata,
       sessionDurationMs,
+      accessMethod: PamAccessMethod.Cli,
       relayHost: certs.relayHost,
       relayClientCertificate: certs.relay.clientCertificate,
       relayClientPrivateKey: certs.relay.clientPrivateKey,
