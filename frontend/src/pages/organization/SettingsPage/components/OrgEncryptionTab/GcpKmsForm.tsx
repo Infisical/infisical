@@ -1,10 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  DialogFooter,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FileDropzone,
+  FilterableSelect,
+  Input,
+  SheetFooter
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   useAddExternalKms,
@@ -25,9 +37,13 @@ type Props = {
   onCancel: () => void;
   kms?: Kms;
   mode?: "full" | "credentials" | "details";
+  layout?: "dialog" | "sheet";
+  secondaryActionLabel?: string;
 };
 
-const GCP_REGIONS = [
+type SelectOption = { label: string; value: string };
+
+const GCP_REGIONS: SelectOption[] = [
   { label: "Johannesburg", value: "africa-south1" },
   { label: "Taiwan", value: "asia-east1" },
   { label: "Hong Kong", value: "asia-east2" },
@@ -70,16 +86,31 @@ const GCP_REGIONS = [
   { label: "Las Vegas", value: "us-west4" }
 ];
 
-const formatOptionLabel = ({ value, label }: { value: string; label: string }) => (
-  <div className="flex w-full flex-row items-center justify-between">
+const formatOptionLabel = ({ value, label }: SelectOption) => (
+  <div className="flex w-full flex-row items-center justify-between gap-2">
     <span>{label}</span>
     <Badge variant="neutral">{value}</Badge>
   </div>
 );
 
-export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props) => {
-  const [isCredentialValid, setIsCredentialValid] = useState<boolean>(false);
-  const [keys, setKeys] = useState<{ value: string; label: string }[]>([]);
+const filesToFileList = (files: File[]) => {
+  const dataTransfer = new DataTransfer();
+  files.forEach((file) => dataTransfer.items.add(file));
+  return dataTransfer.files;
+};
+
+export const GcpKmsForm = ({
+  onCompleted,
+  onCancel,
+  kms,
+  mode = "full",
+  layout = "dialog",
+  secondaryActionLabel = "Cancel"
+}: Props) => {
+  const [isCredentialValid, setIsCredentialValid] = useState(false);
+  const [credentialFiles, setCredentialFiles] = useState<File[]>([]);
+  const [keys, setKeys] = useState<SelectOption[]>([]);
+  const keyLookupRequestId = useRef(0);
 
   const {
     control,
@@ -89,7 +120,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
     getValues,
     resetField,
     setValue,
-    formState: { isSubmitting, isDirty, isValid }
+    formState: { isSubmitting, isDirty }
   } = useForm<AddExternalKmsGcpFormSchemaType>({
     resolver: zodResolver(AddExternalKmsGcpFormSchema),
     defaultValues: {
@@ -99,8 +130,8 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
       gcpRegion: kms
         ? {
             label:
-              GCP_REGIONS.find((r) => r.value === kms.externalKms.configuration.gcpRegion)?.label ??
-              "",
+              GCP_REGIONS.find((region) => region.value === kms.externalKms.configuration.gcpRegion)
+                ?.label ?? "",
             value: kms.externalKms.configuration.gcpRegion
           }
         : undefined,
@@ -108,7 +139,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
     }
   });
 
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { mutateAsync: addGcpExternalKms } = useAddExternalKms(currentOrg.id);
   const { mutateAsync: updateGcpExternalKms } = useUpdateExternalKms(
     currentOrg.id,
@@ -118,93 +149,222 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
   const { mutateAsync: fetchGcpKeys, isPending: isFetchGcpKeysLoading } =
     useExternalKmsFetchGcpKeys(currentOrg?.id);
 
-  // transforms the credential file into a JSON object
-  async function getCredentialFileJson(): Promise<ExternalKmsGcpCredentialSchemaType | null> {
-    const files = getValues("credentialFile");
-    if (!files || !files.length) {
+  const getCredentialFileJson = async (
+    files: FileList | undefined = getValues("credentialFile"),
+    requestId?: number,
+    shouldValidateMissingFile = true
+  ): Promise<ExternalKmsGcpCredentialSchemaType | null> => {
+    const isCurrentRequest = () =>
+      requestId === undefined || requestId === keyLookupRequestId.current;
+    const file = files?.[0];
+    if (!file) {
+      if (isCurrentRequest() && shouldValidateMissingFile) {
+        setError("credentialFile", {
+          message: "Service account credential JSON is required."
+        });
+      } else if (isCurrentRequest()) {
+        clearErrors("credentialFile");
+      }
       return null;
     }
-    const file = files[0];
     if (file.type !== "application/json") {
-      setError("credentialFile", {
-        message: "Only .json files are accepted."
-      });
+      if (isCurrentRequest()) {
+        setError("credentialFile", {
+          message: "Only .json files are accepted."
+        });
+      }
       return null;
     }
-    const jsonContents = await file.text();
-    const parsedJson = ExternalKmsGcpCredentialSchema.safeParse(JSON.parse(jsonContents));
-    if (!parsedJson.success) {
-      setError("credentialFile", {
-        message: "Invalid Service Account credential JSON."
-      });
-      return null;
-    }
-    clearErrors("credentialFile");
-    return parsedJson.data;
-  }
 
-  // handles the form submission
+    try {
+      const jsonContents = await file.text();
+      const parsedJson = ExternalKmsGcpCredentialSchema.safeParse(JSON.parse(jsonContents));
+      if (!parsedJson.success) {
+        if (isCurrentRequest()) {
+          setError("credentialFile", {
+            message: "Invalid service account credential JSON."
+          });
+        }
+        return null;
+      }
+      if (isCurrentRequest()) clearErrors("credentialFile");
+      return parsedJson.data;
+    } catch {
+      if (isCurrentRequest()) {
+        setError("credentialFile", {
+          message: "Invalid service account credential JSON."
+        });
+      }
+      return null;
+    }
+  };
+
+  const fetchGCPKeys = async ({
+    gcpRegion = getValues("gcpRegion")?.value,
+    files = getValues("credentialFile"),
+    shouldValidateMissingCredential = true,
+    shouldSelectExistingKey = false
+  }: {
+    gcpRegion?: string;
+    files?: FileList;
+    shouldValidateMissingCredential?: boolean;
+    shouldSelectExistingKey?: boolean;
+  } = {}) => {
+    keyLookupRequestId.current += 1;
+    const requestId = keyLookupRequestId.current;
+    resetField("keyObject");
+    setKeys([]);
+    setIsCredentialValid(false);
+
+    if (!gcpRegion) return;
+
+    const shouldUseCredentialFile = Boolean(files?.length);
+    const credentialJson =
+      !kms || shouldUseCredentialFile
+        ? await getCredentialFileJson(files, requestId, shouldValidateMissingCredential)
+        : undefined;
+    if (requestId !== keyLookupRequestId.current) return;
+    if (!kms && !credentialJson) return;
+    if (shouldUseCredentialFile && !credentialJson) return;
+
+    try {
+      const response = await fetchGcpKeys({
+        gcpRegion,
+        ...(credentialJson ? { credential: credentialJson } : { kmsId: kms!.id })
+      });
+      if (requestId !== keyLookupRequestId.current) return;
+
+      setIsCredentialValid(true);
+
+      const returnedKeys = response.keys.map((key) => {
+        const parts = key.split("/");
+        return {
+          value: key,
+          label: `${parts[5]}/${parts[7]}`
+        };
+      });
+
+      setKeys(returnedKeys);
+      if (kms && shouldSelectExistingKey) {
+        const existingKey = returnedKeys.find(
+          (key) => key.value === kms.externalKms.configuration.keyName
+        );
+        if (existingKey) {
+          setValue("keyObject", existingKey, { shouldDirty: false, shouldValidate: true });
+        }
+      }
+    } catch {
+      if (requestId !== keyLookupRequestId.current) return;
+
+      createNotification({
+        text: "Failed to load GCP KMS keys",
+        type: "error"
+      });
+    }
+  };
+
   const handleGcpKmsFormSubmit = async (data: AddExternalKmsGcpFormSchemaType) => {
     const { name, description, formType, gcpRegion: gcpRegionObject, keyObject } = data;
 
     try {
-      if (kms) {
-        if (formType === "updateGcpKms") {
-          const gcpRegion = gcpRegionObject?.value;
-          if (!gcpRegion) {
-            setError("gcpRegion", {
-              message: "Please select a GCP region."
-            });
-            return;
-          }
-
-          if (keyObject && !keys.find((k) => k.value === keyObject.value)) {
-            setError("keyObject", {
-              message: "Please select a valid key."
-            });
-            resetField("keyObject");
-            return;
-          }
-
+      if (kms && formType === "updateGcpKms") {
+        if (mode === "details") {
           await updateGcpExternalKms({
             kmsId: kms.id,
             name,
-            description,
+            description
+          });
+
+          createNotification({
+            text: "GCP external KMS details updated",
+            type: "success"
+          });
+          onCompleted();
+          return;
+        }
+
+        if (mode === "credentials") {
+          const gcpRegion = gcpRegionObject?.value;
+          if (!gcpRegion) {
+            setError("gcpRegion", { message: "Select a GCP region." });
+            return;
+          }
+          if (!keys.find((key) => key.value === keyObject?.value)) {
+            resetField("keyObject");
+            setError("keyObject", { message: "Select a valid key for the selected region." });
+            return;
+          }
+
+          const files = getValues("credentialFile");
+          const credentialJson = files?.length ? await getCredentialFileJson(files) : undefined;
+          if (files?.length && !credentialJson) return;
+
+          await updateGcpExternalKms({
+            kmsId: kms.id,
             configuration: {
               type: ExternalKmsProvider.Gcp,
               inputs: {
                 gcpRegion,
-                keyName: keyObject?.value ?? kms.externalKms.configuration.keyName
+                keyName: keyObject?.value,
+                ...(credentialJson ? { credential: credentialJson } : {})
               }
             }
           });
 
           createNotification({
-            text: "Successfully updated GCP External KMS Details",
+            text: "GCP external KMS configuration updated",
             type: "success"
           });
+          onCompleted();
+          return;
         }
-      } else if (formType === "newGcpKms") {
+
         const gcpRegion = gcpRegionObject?.value;
         if (!gcpRegion) {
           setError("gcpRegion", {
-            message: "Please select a GCP region."
+            message: "Select a GCP region."
           });
           return;
         }
 
-        if (!keys.find((k) => k.value === keyObject?.value)) {
-          setError("keyObject", {
-            message: "Please select a valid key."
-          });
+        if (keyObject && !keys.find((key) => key.value === keyObject.value)) {
           resetField("keyObject");
+          setError("keyObject", {
+            message: "Select a valid key for the selected region."
+          });
+          return;
+        }
+
+        await updateGcpExternalKms({
+          kmsId: kms.id,
+          name,
+          description
+        });
+
+        createNotification({
+          text: "GCP external KMS details updated",
+          type: "success"
+        });
+      } else if (!kms && formType === "newGcpKms") {
+        const gcpRegion = gcpRegionObject?.value;
+        if (!gcpRegion) {
+          setError("gcpRegion", {
+            message: "Select a GCP region."
+          });
+          return;
+        }
+
+        if (!keys.find((key) => key.value === keyObject?.value)) {
+          resetField("keyObject");
+          setError("keyObject", {
+            message: "Select a valid key for the selected region."
+          });
           return;
         }
 
         const credentialJson = await getCredentialFileJson();
-        if (!credentialJson) {
-          return;
-        }
+        if (!credentialJson) return;
+
         await addGcpExternalKms({
           name,
           description,
@@ -219,185 +379,217 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
         });
 
         createNotification({
-          text: "Successfully added GCP External KMS",
+          text: "GCP external KMS created",
           type: "success"
         });
       }
 
       onCompleted();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchGCPKeys = async () => {
-    // @ts-expect-error - issue with the way react-select renders the placeholder. We need to set the value to null explicitly otherwise it will not re-render
-    setValue("keyObject", null);
-    setKeys([]);
-
-    const credentialJson = kms ? undefined : await getCredentialFileJson();
-    if (!kms && !credentialJson) {
-      return;
-    }
-    const gcpRegionObject = getValues("gcpRegion");
-    const gcpRegion = gcpRegionObject?.value;
-    if (!gcpRegion) {
-      setError("gcpRegion", {
-        message: "Please select a GCP region to fetch GCP Keys."
+    } catch {
+      createNotification({
+        text: kms ? "Failed to update GCP external KMS" : "Failed to create GCP external KMS",
+        type: "error"
       });
-      return;
-    }
-    const res = await fetchGcpKeys({
-      gcpRegion,
-      ...(kms ? { kmsId: kms.id } : { credential: credentialJson! })
-    });
-    setIsCredentialValid(!!res.keys);
-    const returnedKeys = res.keys.map((key) => {
-      const parts = key.split("/");
-      const keyLabel = `${parts[5]}/${parts[7]}`;
-      return {
-        value: key,
-        label: keyLabel
-      };
-    });
-
-    setKeys(returnedKeys);
-    if (kms) {
-      const existingKey = returnedKeys.find(
-        (k) => k.value === kms.externalKms.configuration.keyName
-      );
-      if (existingKey) {
-        setValue("keyObject", existingKey);
-      }
     }
   };
 
   const getPlaceholderText = () => {
-    if (isFetchGcpKeysLoading) {
-      return "Loading keys in this region...";
-    }
-    if (!isCredentialValid) {
-      return "Upload a valid credential file";
-    }
-    if (keys.length) {
-      return "Select a key";
-    }
-
-    return "No valid keys found in this region";
+    if (isFetchGcpKeysLoading) return "Loading keys in this region...";
+    if (!isCredentialValid)
+      return kms ? "Select a region to load keys" : "Upload a valid credential file";
+    if (keys.length) return "Select a key";
+    return "No keys found in this region";
   };
 
   useEffect(() => {
-    if (kms && !isCredentialValid) {
-      fetchGCPKeys();
+    if (kms && mode !== "details") {
+      fetchGCPKeys({
+        gcpRegion: kms.externalKms.configuration.gcpRegion,
+        shouldSelectExistingKey: true
+      });
     }
-  }, [kms]);
+
+    return () => {
+      keyLookupRequestId.current += 1;
+    };
+    // Fetch once when the selected KMS changes. Form callbacks intentionally stay out of this dependency list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kms?.id, mode]);
+
+  const credentialFileField = (
+    <Controller
+      control={control}
+      name="credentialFile"
+      render={({ field: { onChange }, fieldState: { error } }) => (
+        <Field data-invalid={Boolean(error)}>
+          <FieldLabel>Service Account Credential JSON</FieldLabel>
+          <FileDropzone
+            accept=".json,application/json"
+            description=".json service account credential, up to 8 KB"
+            files={credentialFiles}
+            accentClassName={isSubOrganization ? "text-sub-org" : "text-org"}
+            activeFrameClassName={isSubOrganization ? "text-sub-org" : "text-org"}
+            activeEmptyClassName={isSubOrganization ? "bg-sub-org/10" : "bg-org/10"}
+            onFilesSelect={(selectedFiles) => {
+              const nextFiles = selectedFiles.slice(0, 1);
+              const fileList = filesToFileList(nextFiles);
+              setCredentialFiles(nextFiles);
+              onChange(fileList);
+              fetchGCPKeys({ files: fileList });
+            }}
+            onFileRemove={() => {
+              const fileList = filesToFileList([]);
+              keyLookupRequestId.current += 1;
+              setCredentialFiles([]);
+              resetField("credentialFile");
+              clearErrors("credentialFile");
+              if (kms) {
+                fetchGCPKeys({
+                  files: fileList,
+                  shouldValidateMissingCredential: false,
+                  shouldSelectExistingKey: true
+                });
+              } else {
+                resetField("keyObject");
+                setKeys([]);
+                setIsCredentialValid(false);
+              }
+            }}
+          />
+          <FieldDescription>
+            Used only to discover and access KMS keys in the selected project.
+          </FieldDescription>
+          <FieldError>{error?.message}</FieldError>
+        </Field>
+      )}
+    />
+  );
+
+  let submitLabel = "Add KMS";
+  if (kms) submitLabel = "Save Changes";
+  if (mode === "credentials") submitLabel = "Update Credentials";
+
+  const formActions = (
+    <>
+      <Button type="button" variant="ghost" onClick={onCancel}>
+        {secondaryActionLabel}
+      </Button>
+      <Button
+        type="submit"
+        variant={isSubOrganization ? "sub-org" : "org"}
+        isPending={isSubmitting}
+        isDisabled={isSubmitting || Boolean(kms && !isDirty)}
+      >
+        {submitLabel}
+      </Button>
+    </>
+  );
 
   return (
-    <form onSubmit={handleSubmit(handleGcpKmsFormSubmit)} autoComplete="off">
-      {(mode === "full" || mode === "details") && (
-        <>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
-                <Input placeholder="" {...field} />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="description"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
-                <Input placeholder="" {...field} />
-              </FormControl>
-            )}
-          />
-          <Controller
-            control={control}
-            name="gcpRegion"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="GCP Region" errorText={error?.message} isError={Boolean(error)}>
-                <FilterableSelect
-                  className="w-full"
-                  placeholder="Select a GCP region"
-                  name="gcpRegion"
-                  options={GCP_REGIONS}
-                  value={field.value}
-                  onChange={(e) => {
-                    resetField("keyObject");
-                    field.onChange(e);
-                    fetchGCPKeys();
-                  }}
-                  formatOptionLabel={formatOptionLabel}
-                />
-              </FormControl>
-            )}
-          />
-          {!kms && (
+    <form
+      onSubmit={handleSubmit(handleGcpKmsFormSubmit)}
+      autoComplete="off"
+      className={layout === "sheet" ? "flex min-h-0 flex-1 flex-col" : "flex flex-col gap-4"}
+    >
+      <FieldGroup
+        className={layout === "sheet" ? "flex-1 overflow-y-auto px-4 pt-4 pb-12" : undefined}
+      >
+        {(mode === "full" || mode === "details") && (
+          <>
             <Controller
               control={control}
-              name="credentialFile"
-              render={({ field: { value, onChange, ref, ...rest }, fieldState: { error } }) => (
-                <FormControl
-                  label="Service Account Credential JSON"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gcp-kms-alias">Alias</FieldLabel>
                   <Input
-                    {...rest}
-                    ref={ref}
-                    type="file"
-                    accept=".json"
-                    placeholder=""
-                    value={value?.filename}
-                    onChange={(e) => {
-                      onChange(e.target.files);
-                      fetchGCPKeys();
-                    }}
+                    {...field}
+                    id="gcp-kms-alias"
+                    value={field.value ?? ""}
+                    isError={Boolean(error)}
+                    placeholder="production-kms"
                   />
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-          )}
-          <Controller
-            control={control}
-            name="keyObject"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="GCP Key Name" errorText={error?.message} isError={Boolean(error)}>
-                <FilterableSelect
-                  className="w-full"
-                  placeholder={getPlaceholderText()}
-                  isDisabled={!isCredentialValid || !keys.length}
-                  name="key"
-                  options={keys}
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-            )}
-          />
-        </>
+            <Controller
+              control={control}
+              name="description"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gcp-kms-description">Description</FieldLabel>
+                  <Input
+                    {...field}
+                    id="gcp-kms-description"
+                    value={field.value ?? ""}
+                    isError={Boolean(error)}
+                    placeholder="KMS for production organization data"
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </>
+        )}
+        {(mode === "full" || mode === "credentials") && (
+          <>
+            <Controller
+              control={control}
+              name="gcpRegion"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gcp-kms-region">GCP Region</FieldLabel>
+                  <FilterableSelect<SelectOption>
+                    inputId="gcp-kms-region"
+                    placeholder="Select a GCP region"
+                    options={GCP_REGIONS}
+                    value={field.value}
+                    isError={Boolean(error)}
+                    onChange={(option) => {
+                      const region = option as SelectOption | null;
+                      resetField("keyObject");
+                      field.onChange(region);
+                      fetchGCPKeys({
+                        gcpRegion: region?.value,
+                        shouldValidateMissingCredential: false
+                      });
+                    }}
+                    formatOptionLabel={formatOptionLabel}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+            {credentialFileField}
+            <Controller
+              control={control}
+              name="keyObject"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gcp-kms-key">GCP Key</FieldLabel>
+                  <FilterableSelect<SelectOption>
+                    inputId="gcp-kms-key"
+                    placeholder={getPlaceholderText()}
+                    isDisabled={!isCredentialValid || !keys.length}
+                    isLoading={isFetchGcpKeysLoading}
+                    options={keys}
+                    value={field.value ?? null}
+                    isError={Boolean(error)}
+                    onChange={field.onChange}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
+              )}
+            />
+          </>
+        )}
+      </FieldGroup>
+      {layout === "sheet" ? (
+        <SheetFooter className="justify-end border-t">{formActions}</SheetFooter>
+      ) : (
+        <DialogFooter>{formActions}</DialogFooter>
       )}
-      {kms && mode === "credentials" && (
-        <span className="text-xs text-mineshaft-300">
-          To change your GCP credentials, create a new external KMS and assign it to project you
-          want to use it with.
-        </span>
-      )}
-      <div className="mt-6 flex items-center space-x-4">
-        <Button
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={!isDirty || !isValid || mode === "credentials"}
-        >
-          Save
-        </Button>
-        <Button variant="outline_bg" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
     </form>
   );
 };

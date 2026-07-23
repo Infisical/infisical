@@ -1,4 +1,11 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Skeleton
+} from "@app/components/v3";
 import { useGetExternalKmsById } from "@app/hooks/api";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
@@ -13,15 +20,24 @@ type Props = {
 };
 
 export const EditExternalKmsDetailsModal = ({ isOpen, onOpenChange, kmsId, provider }: Props) => {
-  const { data: kms } = useGetExternalKmsById({ kmsId, provider });
+  const { data: kms, isPending } = useGetExternalKmsById({ kmsId, provider });
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Edit KMS Details"
-        subTitle="Update the name and description for this KMS."
-        bodyClassName="overflow-visible"
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit KMS Details</DialogTitle>
+          <DialogDescription>
+            Update the alias and provider configuration for this external KMS.
+          </DialogDescription>
+        </DialogHeader>
+        {isPending && (
+          <div className="flex flex-col gap-4">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+          </div>
+        )}
         {kms?.externalKms?.provider === ExternalKmsProvider.Aws && (
           <AwsKmsForm
             kms={kms}
@@ -38,7 +54,7 @@ export const EditExternalKmsDetailsModal = ({ isOpen, onOpenChange, kmsId, provi
             onCompleted={() => onOpenChange(false)}
           />
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
