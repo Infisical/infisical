@@ -1,4 +1,6 @@
 import { useCallback, useMemo } from "react";
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -11,6 +13,7 @@ import {
   createResourcePermissionQueryHook,
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
   PamAccessStatus,
@@ -159,6 +162,20 @@ export const usePamAccountActions = (accountId: string, enabled = true) => {
   return { can, isLoading };
 };
 
+// Builds a `can` checker from packed permission rules already embedded in a list item, so list rows
+// don't each fire a per-account /permissions request (see useListPamAccountsAdmin).
+export const usePamAccountActionsFromPermissions = (
+  permissions?: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"]
+) => {
+  const can = useMemo(() => {
+    const rules = unpackRules<RawRuleOf<MongoAbility<PamFolderPermissionSet>>>(permissions ?? []);
+    const permission = createMongoAbility<PamFolderPermissionSet>(rules, { conditionsMatcher });
+    return (action: PamResourcePermissionActions) =>
+      permission.can(action, PamResourcePermissionSub.PamResource);
+  }, [permissions]);
+  return { can };
+};
+
 // Accessible Accounts (user-facing)
 type TListAccessiblePamAccountsResponse = {
   accounts: TAccessiblePamAccount[];
@@ -246,6 +263,7 @@ export type TAdminAccountListItem = {
   requireReason: boolean;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
+  permissions: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"];
   createdAt: string;
   updatedAt: string;
 };

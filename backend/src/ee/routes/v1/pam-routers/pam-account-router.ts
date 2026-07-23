@@ -59,7 +59,8 @@ const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
-  grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted")
+  grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+  permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")
 });
 
 const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>

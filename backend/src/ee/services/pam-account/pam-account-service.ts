@@ -28,6 +28,7 @@ import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enum
 import {
   checkAccountAccess,
   checkFolderPermission,
+  getAccountPermissionRulesMap,
   getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
@@ -208,9 +209,17 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
 
-    const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
+    const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
       deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
-      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
+      // Resolve every account's effective permissions in one membership fetch
+      getAccountPermissionRulesMap(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
+        ctx
+      )
     ]);
 
     return accounts.map((a) => {
@@ -239,6 +248,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+        permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
       };

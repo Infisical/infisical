@@ -4,7 +4,7 @@ import {
   PamResourcePermissionActions,
   TAccessiblePamAccount,
   TAdminAccountListItem,
-  usePamAccountActions
+  usePamAccountActionsFromPermissions
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
@@ -29,7 +29,8 @@ export const FolderAccountRow = ({
   onRequestAccess,
   onDeleteAccount
 }: Props) => {
-  const { can } = usePamAccountActions(account.id, true);
+  // Permissions come embedded in the list item, so no per-account request is made here.
+  const { can } = usePamAccountActionsFromPermissions(account.permissions);
   const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
 
   const accountType = account.accountType as PamAccountType;
@@ -75,13 +76,13 @@ export const FolderAccountRow = ({
       indented
       accessibilityBadge={
         <AccountAccessibilityBadgeWithPermission
-          accountId={account.id}
+          canEdit={can(PamResourcePermissionActions.EditAccounts)}
           issues={account.accessibilityIssues}
         />
       }
       actions={
         <AccountActionsMenu
-          accountId={account.id}
+          can={can}
           accountType={accountType}
           isAccessible={account.isAccessible}
           requiresApproval={requiresApproval}
