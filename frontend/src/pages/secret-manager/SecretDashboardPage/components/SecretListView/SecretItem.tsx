@@ -604,7 +604,7 @@ export const SecretItem = memo(
                     className="w-0 overflow-hidden p-0 group-hover:w-5"
                     onClick={copyTokenToClipboard}
                   >
-                    <Tooltip content="Copy secret">
+                    <Tooltip content="Copy Value">
                       <FontAwesomeSymbol
                         className="h-3.5 w-3"
                         symbolName={
