@@ -357,6 +357,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
               `${TableName.Environment}.deleteAfter`
             );
           })
+          .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+          .whereNull(`${TableName.Project}.deleteAfter`)
 
           .select(selectAllTableCols(TableName.AccessApprovalRequest))
           .select(
@@ -653,6 +655,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.Environment}.deleteAfter`
         );
       })
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.AccessApprovalRequest))
       .select(
         tx.ref("approverUserId").withSchema(TableName.AccessApprovalPolicyApprover),
@@ -890,6 +894,8 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(
           TableName.AdditionalPrivilege,
           `${TableName.AccessApprovalRequest}.privilegeId`,
