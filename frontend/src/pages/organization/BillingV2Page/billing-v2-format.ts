@@ -191,8 +191,10 @@ export const commitSavingsNudge = (
 
 // Capitalize a plan tier ("pro" -> "Pro") for the badge beside a product's name.
 // hardcoded legacy for now
-export const tierLabel = (tier: string): string =>
-  (tier.charAt(0).toUpperCase() + tier.slice(1)).replace("Legacy_", "");
+export const tierLabel = (tier: string): string => {
+  const stripped = tier.replace("Legacy_", "");
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+};
 
 // Cadence as an adjective ("annual"/"monthly"), empty for an unknown cadence. Distinct from
 // cadenceWord, which returns the period noun ("year"/"month").

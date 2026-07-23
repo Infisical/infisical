@@ -55,7 +55,9 @@ const ActiveProductCard = ({
   // available commitment. Clicking opens the set-commitment flow.
   const commitNudge = readOnly ? null : commitSavingsNudge(entitlement);
   // Every deprecation is presented as a retiring plan for now (see asPlanDeprecation).
-  const deprecation = asPlanDeprecation(entitlement?.deprecation);
+  const deprecation = !entitlement?.planTier?.includes("enterprise")
+    ? asPlanDeprecation(entitlement?.deprecation)
+    : null;
   const isProductDeprecated = deprecation?.kind === "product";
   const isPlanDeprecated = deprecation?.kind === "plan";
 
