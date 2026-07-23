@@ -47,8 +47,6 @@ import {
   useDeletePamAccount,
   useDeletePamFolder,
   useGetPamAccessCapabilities,
-  useListAccessiblePamFolders,
-  useListPamAccountTemplates,
   useListPamAccountTypes,
   useListPamFoldersAdmin
 } from "@app/hooks/api/pam";
@@ -57,8 +55,6 @@ import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PamDocsUrls } from "../pam-docs-urls";
-import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
-import { FolderAccountGroup } from "../PamAccessPage/components/FolderAccountGroup";
 import { LaunchSessionSheet } from "../PamAccessPage/components/LaunchSessionSheet";
 import { RequestAccessSheet } from "../PamAccessPage/components/RequestAccessSheet";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
@@ -75,36 +71,24 @@ export const PamAccountsPage = () => {
   const { t } = useTranslation();
   const [searchInput, setSearchInput] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
 
-  // Check user capabilities to determine admin vs regular user view
-  const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPamAccessCapabilities();
-  const isAdmin = Boolean(capabilities?.isProductAdmin || capabilities?.isResourceAdmin);
+  // Every role sees the same folder/account structure; permissions only disable actions on a row,
+  // never hide it. Capabilities just drive the create affordances and the empty-state copy.
+  const { data: capabilities } = useGetPamAccessCapabilities();
 
-  // Admin users see all folders; regular users see only accessible folders
-  // Only enable the relevant hook once capabilities are loaded to avoid duplicate/failing requests
-  const capabilitiesLoaded = !isLoadingCapabilities && capabilities !== undefined;
-  const { data: adminFolders = [], isLoading: isLoadingAdminFolders } = useListPamFoldersAdmin(
-    undefined,
-    { enabled: capabilitiesLoaded && isAdmin }
-  );
-  const { data: userFolders = [], isLoading: isLoadingUserFolders } = useListAccessiblePamFolders({
-    enabled: capabilitiesLoaded && !isAdmin
+  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403).
+  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFoldersAdmin();
+
+  // Folders where the user can create accounts — gates the "Add Account" affordance.
+  const { data: creatableFolders = [] } = useListPamFoldersAdmin({
+    filterByAction: PamResourcePermissionActions.CreateAccounts
   });
-  const isLoadingFolders =
-    isLoadingCapabilities || (isAdmin ? isLoadingAdminFolders : isLoadingUserFolders);
+  const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
 
-  // Fetch folders where user can create accounts (for "Add Account" button visibility)
-  const { data: creatableFolders = [] } = useListPamFoldersAdmin(
-    { filterByAction: PamResourcePermissionActions.CreateAccounts },
-    { enabled: capabilitiesLoaded && isAdmin }
-  );
-
-  // Admin: filter by templates; Users: filter by account types
-  const { data: templates = [] } = useListPamAccountTemplates();
+  // Both admin and regular users filter by account type for a consistent view
   const { data: accountTypes = [] } = useListPamAccountTypes();
 
   const deleteAccount = useDeletePamAccount();
@@ -127,13 +111,8 @@ export const PamAccountsPage = () => {
 
   const query = searchInput.trim();
   // Active filters force-open every folder so matches surface; otherwise folders load lazily on open
-  // Admin uses template filter; regular users use account type filter
-  const filterActive = isAdmin
-    ? Boolean(query || selectedTemplateId)
-    : Boolean(query || selectedAccountType);
-  const hasActiveFilters = isAdmin
-    ? Boolean(query || selectedFolderId || selectedTemplateId)
-    : Boolean(query || selectedFolderId || selectedAccountType);
+  const filterActive = Boolean(query || selectedAccountType);
+  const hasActiveFilters = Boolean(query || selectedFolderId || selectedAccountType);
 
   const toggleFolder = useCallback((folderId: string) => {
     setExpandedFolders((prev) => {
@@ -151,31 +130,20 @@ export const PamAccountsPage = () => {
   // Reset result counts when filters change so folder groups recompute counts for new filter
   useEffect(() => {
     setResultCounts({});
-  }, [query, selectedTemplateId, selectedAccountType]);
+  }, [query, selectedAccountType]);
 
-  // Compute visible folders separately for admin and user views (for proper typing)
-  const visibleAdminFolders = selectedFolderId
-    ? adminFolders.filter((folder) => folder.id === selectedFolderId)
-    : adminFolders;
-
-  // For regular users, only show folders that have accounts they can access
-  const nonEmptyUserFolders = userFolders.filter((folder) => folder.accountCount > 0);
-  const visibleUserFolders = selectedFolderId
-    ? nonEmptyUserFolders.filter((folder) => folder.id === selectedFolderId)
-    : nonEmptyUserFolders;
-
-  // For folder dropdown, use the appropriate list
-  const folderDropdownOptions = isAdmin ? adminFolders : nonEmptyUserFolders;
+  const visibleFolders = selectedFolderId
+    ? folders.filter((folder) => folder.id === selectedFolderId)
+    : folders;
+  const folderDropdownOptions = folders;
 
   const isFolderOpen = (folderId: string) =>
     filterActive || folderId === selectedFolderId || expandedFolders.has(folderId);
 
-  const visibleFolderCount = isAdmin ? visibleAdminFolders.length : visibleUserFolders.length;
-  const visibleFolders = isAdmin ? visibleAdminFolders : visibleUserFolders;
   const filterSettled = visibleFolders.every((f) => resultCounts[f.id] !== undefined);
   const filterHasMatches = visibleFolders.some((f) => (resultCounts[f.id] ?? 0) > 0);
   const showNoMatches = filterActive && filterSettled && !filterHasMatches;
-  const showEmpty = !isLoadingFolders && (visibleFolderCount === 0 || showNoMatches);
+  const showEmpty = !isLoadingFolders && (visibleFolders.length === 0 || showNoMatches);
 
   // Compute empty state messages to avoid nested ternaries
   let emptyTitle: string;
@@ -183,7 +151,7 @@ export const PamAccountsPage = () => {
   if (hasActiveFilters) {
     emptyTitle = "No accounts match your filters";
     emptyDescription = "Try adjusting your search or filters.";
-  } else if (isAdmin) {
+  } else if (canManage) {
     emptyTitle = "No accounts yet";
     emptyDescription =
       "Create your first account to get started. You'll need at least one account template.";
@@ -244,7 +212,7 @@ export const PamAccountsPage = () => {
           <CardDescription>
             Launch sessions for accounts you have access to, or manage account settings.
           </CardDescription>
-          {isAdmin && (creatableFolders.length > 0 || capabilities?.isProductAdmin) && (
+          {canManage && (
             <CardAction>
               <ButtonGroup>
                 {creatableFolders.length > 0 && (
@@ -316,51 +284,28 @@ export const PamAccountsPage = () => {
             </SelectContent>
           </Select>
 
-          {isAdmin ? (
-            <Select
-              value={selectedTemplateId}
-              onValueChange={(val) => setSelectedTemplateId(val === "all" ? "" : val)}
-            >
-              <SelectTrigger>
-                {!selectedTemplateId && <Layers className="mr-1.5 size-4 text-muted" />}
-                <SelectValue placeholder="All templates" />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                <SelectItem value="all">All templates</SelectItem>
-                {templates.map((tpl) => (
-                  <SelectItem key={tpl.id} value={tpl.id}>
-                    <span className="flex items-center gap-1.5">
-                      <AccountPlatformIcon accountType={tpl.type} size={16} />
-                      {tpl.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Select
-              value={selectedAccountType}
-              onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
-            >
-              <SelectTrigger>
-                {!selectedAccountType && <Layers className="mr-1.5 size-4 text-muted" />}
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent position="popper" align="end" sideOffset={4}>
-                <SelectItem value="all">All types</SelectItem>
-                {accountTypes.map((meta) => (
-                  <SelectItem key={meta.type} value={meta.type}>
-                    <img
-                      src={`/images/integrations/${meta.icon}`}
-                      alt={meta.name}
-                      className="mr-1.5 inline-block size-4 rounded-sm"
-                    />
-                    {meta.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select
+            value={selectedAccountType}
+            onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
+          >
+            <SelectTrigger>
+              {!selectedAccountType && <Layers className="mr-1.5 size-4 text-muted" />}
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent position="popper" align="end" sideOffset={4}>
+              <SelectItem value="all">All types</SelectItem>
+              {accountTypes.map((meta) => (
+                <SelectItem key={meta.type} value={meta.type}>
+                  <img
+                    src={`/images/integrations/${meta.icon}`}
+                    alt={meta.name}
+                    className="mr-1.5 inline-block size-4 rounded-sm"
+                  />
+                  {meta.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
 
         {isLoadingFolders && (
@@ -393,125 +338,105 @@ export const PamAccountsPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isAdmin
-                ? visibleAdminFolders.map((folder) => (
-                    <FolderAccountRows
-                      key={folder.id}
-                      folder={folder}
-                      isOpen={isFolderOpen(folder.id)}
-                      onToggle={() => toggleFolder(folder.id)}
-                      search={searchInput}
-                      templateId={selectedTemplateId}
-                      filterActive={filterActive}
-                      onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
-                      onLaunchAccount={setLaunchAccount}
-                      onRequestAccess={setRequestAccount}
-                      onDeleteAccount={(accountId, accountName, accountType) =>
-                        handlePopUpOpen("deleteAccount", { accountId, accountName, accountType })
-                      }
-                      onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
-                      onFolderAddAccount={() =>
-                        handlePopUpOpen("createAccount", { folderId: folder.id })
-                      }
-                      onFolderDelete={() =>
-                        handlePopUpOpen("deleteFolder", {
-                          folderId: folder.id,
-                          folderName: folder.name,
-                          accountCount: folder.accountCount
-                        })
-                      }
-                      onResultCount={handleResultCount}
-                    />
-                  ))
-                : visibleUserFolders.map((folder) => (
-                    <FolderAccountGroup
-                      key={folder.id}
-                      folder={folder}
-                      isOpen={isFolderOpen(folder.id)}
-                      onToggle={() => toggleFolder(folder.id)}
-                      search={searchInput}
-                      accountType={selectedAccountType}
-                      filterActive={filterActive}
-                      onLaunch={setLaunchAccount}
-                      onRequestAccess={setRequestAccount}
-                      onResultCount={handleResultCount}
-                    />
-                  ))}
+              {visibleFolders.map((folder) => (
+                <FolderAccountRows
+                  key={folder.id}
+                  folder={folder}
+                  isOpen={isFolderOpen(folder.id)}
+                  onToggle={() => toggleFolder(folder.id)}
+                  search={searchInput}
+                  accountType={selectedAccountType}
+                  filterActive={filterActive}
+                  onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
+                  onLaunchAccount={setLaunchAccount}
+                  onRequestAccess={setRequestAccount}
+                  onDeleteAccount={(accountId, accountName, accountType) =>
+                    handlePopUpOpen("deleteAccount", { accountId, accountName, accountType })
+                  }
+                  onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
+                  onFolderAddAccount={() =>
+                    handlePopUpOpen("createAccount", { folderId: folder.id })
+                  }
+                  onFolderDelete={() =>
+                    handlePopUpOpen("deleteFolder", {
+                      folderId: folder.id,
+                      folderName: folder.name,
+                      accountCount: folder.accountCount
+                    })
+                  }
+                  onResultCount={handleResultCount}
+                />
+              ))}
             </TableBody>
           </Table>
         )}
       </Card>
 
-      {/* Admin-only modals and sheets */}
-      {isAdmin && (
-        <>
-          <CreateAccountSheet
-            isOpen={popUp.createAccount.isOpen}
-            defaultFolderId={
-              (popUp.createAccount.data as { folderId?: string } | undefined)?.folderId
-            }
-            onOpenChange={(open) => {
-              if (!open) handlePopUpClose("createAccount");
-            }}
-            onCreated={(accountId) => accountSheet.openSheet(accountId)}
-          />
+      {/* Modals and sheets are rendered for every role; their contents are permission-gated
+          internally, and the actions that open them are disabled when the user lacks access. */}
+      <CreateAccountSheet
+        isOpen={popUp.createAccount.isOpen}
+        defaultFolderId={(popUp.createAccount.data as { folderId?: string } | undefined)?.folderId}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("createAccount");
+        }}
+        onCreated={(accountId) => accountSheet.openSheet(accountId)}
+      />
 
-          <CreateFolderModal
-            isOpen={popUp.createFolder.isOpen}
-            onOpenChange={(open) => {
-              if (!open) handlePopUpClose("createFolder");
-            }}
-          />
+      <CreateFolderModal
+        isOpen={popUp.createFolder.isOpen}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("createFolder");
+        }}
+      />
 
-          <AccountDetailSheet
-            isOpen={accountSheet.isOpen}
-            accountId={accountSheet.selectedId}
-            onOpenChange={(open) => {
-              if (!open) accountSheet.closeSheet();
-            }}
-          />
+      <AccountDetailSheet
+        isOpen={accountSheet.isOpen}
+        accountId={accountSheet.selectedId}
+        onOpenChange={(open) => {
+          if (!open) accountSheet.closeSheet();
+        }}
+      />
 
-          <FolderDetailSheet
-            isOpen={folderSheet.isOpen}
-            folder={adminFolders.find((f) => f.id === folderSheet.selectedId)}
-            activeTab={folderSheet.tab}
-            onTabChange={folderSheet.setTab}
-            onOpenChange={(open) => {
-              if (!open) folderSheet.closeSheet();
-            }}
-          />
+      <FolderDetailSheet
+        isOpen={folderSheet.isOpen}
+        folder={folders.find((f) => f.id === folderSheet.selectedId)}
+        activeTab={folderSheet.tab}
+        onTabChange={folderSheet.setTab}
+        onOpenChange={(open) => {
+          if (!open) folderSheet.closeSheet();
+        }}
+      />
 
-          <DeleteAccountModal
-            isOpen={popUp.deleteAccount.isOpen}
-            accountName={
-              (popUp.deleteAccount.data as { accountName: string } | undefined)?.accountName ?? ""
-            }
-            accountType={
-              (popUp.deleteAccount.data as { accountType: PamAccountType } | undefined)?.accountType
-            }
-            isLoading={deleteAccount.isPending}
-            onConfirm={handleDelete}
-            onOpenChange={(open) => {
-              if (!open) handlePopUpClose("deleteAccount");
-            }}
-          />
+      <DeleteAccountModal
+        isOpen={popUp.deleteAccount.isOpen}
+        accountName={
+          (popUp.deleteAccount.data as { accountName: string } | undefined)?.accountName ?? ""
+        }
+        accountType={
+          (popUp.deleteAccount.data as { accountType: PamAccountType } | undefined)?.accountType
+        }
+        isLoading={deleteAccount.isPending}
+        onConfirm={handleDelete}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("deleteAccount");
+        }}
+      />
 
-          <DeleteFolderModal
-            isOpen={popUp.deleteFolder.isOpen}
-            folderName={
-              (popUp.deleteFolder.data as { folderName: string } | undefined)?.folderName ?? ""
-            }
-            accountCount={
-              (popUp.deleteFolder.data as { accountCount: number } | undefined)?.accountCount
-            }
-            isLoading={deleteFolder.isPending}
-            onConfirm={handleDeleteFolder}
-            onOpenChange={(open) => {
-              if (!open) handlePopUpClose("deleteFolder");
-            }}
-          />
-        </>
-      )}
+      <DeleteFolderModal
+        isOpen={popUp.deleteFolder.isOpen}
+        folderName={
+          (popUp.deleteFolder.data as { folderName: string } | undefined)?.folderName ?? ""
+        }
+        accountCount={
+          (popUp.deleteFolder.data as { accountCount: number } | undefined)?.accountCount
+        }
+        isLoading={deleteFolder.isPending}
+        onConfirm={handleDeleteFolder}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("deleteFolder");
+        }}
+      />
 
       {/* Shared components */}
       <LaunchSessionSheet

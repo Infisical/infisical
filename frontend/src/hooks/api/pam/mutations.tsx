@@ -773,7 +773,9 @@ export const useCreatePamAccessRequest = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
-      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+      // Refresh every account list variant (accessible + admin-list) so the row's access status
+      // and its icon flip to pending as soon as the request is submitted.
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
@@ -804,7 +806,7 @@ export const useReviewPamAccessRequest = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
-      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };
@@ -818,7 +820,7 @@ export const useRevokePamAccessRequest = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
-      queryClient.invalidateQueries({ queryKey: [...pamKeys.account(), "accessible"] });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };

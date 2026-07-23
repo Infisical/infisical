@@ -1,4 +1,4 @@
-import { KeyRound, MoreHorizontal, Rocket, Trash2 } from "lucide-react";
+import { Clock, KeyRound, MoreHorizontal, Rocket, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -92,7 +92,7 @@ export const AccountActionsMenu = ({
                 <TooltipTrigger asChild>
                   <div>
                     <DropdownMenuItem isDisabled={isPending} onClick={onRequestAccess}>
-                      <KeyRound className="size-4" />
+                      {isPending ? <Clock className="size-4" /> : <KeyRound className="size-4" />}
                       {isPending ? "Request Pending" : "Request Access"}
                     </DropdownMenuItem>
                   </div>

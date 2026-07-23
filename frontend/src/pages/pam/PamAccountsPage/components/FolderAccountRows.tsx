@@ -1,22 +1,17 @@
 import { useEffect, useMemo } from "react";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 
-import { HighlightText } from "@app/components/v2/HighlightText";
-import { Badge, TableCell, TableRow } from "@app/components/v3";
+import { TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
-  PamAccessStatus,
   PamAccountType,
   TAccessiblePamAccount,
   TPamFolderWithCount,
-  useListPamAccountsAdmin,
-  usePamAccountTypeMap
+  useListPamAccountsAdmin
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityBadgeWithPermission";
-import { AccountRowActions } from "./AccountRowActions";
+import { FolderAccountRow } from "./FolderAccountRow";
 import { FolderActionsMenu } from "./FolderActionsMenu";
 
 type Props = {
@@ -24,7 +19,7 @@ type Props = {
   isOpen: boolean;
   onToggle: () => void;
   search: string;
-  templateId: string;
+  accountType: string;
   filterActive: boolean;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
@@ -41,7 +36,7 @@ export const FolderAccountRows = ({
   isOpen,
   onToggle,
   search,
-  templateId,
+  accountType,
   filterActive,
   onOpenAccount,
   onLaunchAccount,
@@ -52,7 +47,6 @@ export const FolderAccountRows = ({
   onFolderDelete,
   onResultCount
 }: Props) => {
-  const { map } = usePamAccountTypeMap();
   // Only fetch this folder's accounts once it's open (lazy load per folder)
   const { data, isLoading } = useListPamAccountsAdmin({ folderId: folder.id }, { enabled: isOpen });
   const accounts = data ?? [];
@@ -60,15 +54,15 @@ export const FolderAccountRows = ({
   const q = search.trim().toLowerCase();
   const hasQuery = q.length > 0;
 
-  // Client-side filtering keeps search/template instant once a folder's accounts are loaded
+  // Client-side filtering keeps search/type instant once a folder's accounts are loaded
   const accountsToShow = useMemo(() => {
     let list = accounts;
-    if (templateId) list = list.filter((a) => a.templateId === templateId);
+    if (accountType) list = list.filter((a) => a.accountType === accountType);
     if (hasQuery) {
       list = list.filter((a) => `${a.name} ${a.description ?? ""}`.toLowerCase().includes(q));
     }
     return list;
-  }, [accounts, templateId, q, hasQuery]);
+  }, [accounts, accountType, q, hasQuery]);
 
   useEffect(() => {
     if (isOpen && !isLoading) onResultCount(folder.id, accountsToShow.length);
@@ -128,63 +122,17 @@ export const FolderAccountRows = ({
 
       {isOpen &&
         !isLoading &&
-        accountsToShow.map((account) => {
-          const accountType = account.accountType as PamAccountType;
-          const { requiresApproval, accessStatus } = account;
-          const isGranted = accessStatus === PamAccessStatus.Granted;
-          const needsApproval = requiresApproval && !isGranted;
-
-          const launchableAccount: TAccessiblePamAccount = {
-            id: account.id,
-            name: account.name,
-            description: account.description,
-            folderId: account.folderId,
-            folderName: account.folderName ?? "",
-            templateId: account.templateId,
-            templateName: account.templateName,
-            accountType,
-            canLaunch: account.isAccessible && !needsApproval,
-            requiresApproval,
-            requireReason: account.requireReason,
-            accessStatus,
-            grantExpiresAt: account.grantExpiresAt,
-            createdAt: account.createdAt,
-            updatedAt: account.updatedAt
-          };
-
-          return (
-            <TableRow key={account.id}>
-              <TableCell>
-                <div className="flex items-center gap-2.5 pl-[26px]">
-                  <AccountPlatformIcon accountType={accountType} size={20} />
-                  <span className="font-medium text-foreground">
-                    <HighlightText text={account.name} highlight={search} />
-                  </span>
-                  <Badge variant="neutral">{map[accountType]?.name ?? account.accountType}</Badge>
-                  <AccountAccessibilityBadgeWithPermission
-                    accountId={account.id}
-                    issues={account.accessibilityIssues}
-                  />
-                </div>
-              </TableCell>
-              <TableCell className="w-20">
-                <div className="flex items-center justify-end">
-                  <AccountRowActions
-                    accountId={account.id}
-                    accountType={accountType}
-                    isAccessible={account.isAccessible}
-                    requiresApproval={requiresApproval}
-                    accessStatus={accessStatus}
-                    onLaunch={() => onLaunchAccount(launchableAccount)}
-                    onRequestAccess={() => onRequestAccess(launchableAccount)}
-                    onOpenTab={(tab) => onOpenAccount(account.id, tab)}
-                    onDelete={() => onDeleteAccount(account.id, account.name, accountType)}
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        accountsToShow.map((account) => (
+          <FolderAccountRow
+            key={account.id}
+            account={account}
+            search={search}
+            onOpenAccount={onOpenAccount}
+            onLaunchAccount={onLaunchAccount}
+            onRequestAccess={onRequestAccess}
+            onDeleteAccount={onDeleteAccount}
+          />
+        ))}
     </>
   );
 };

@@ -228,7 +228,7 @@ type TAdminListAccountsParams = {
   search?: string;
 };
 
-type TAdminAccountListItem = {
+export type TAdminAccountListItem = {
   id: string;
   name: string;
   description: string | null;
