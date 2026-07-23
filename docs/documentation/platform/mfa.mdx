@@ -6,6 +6,16 @@ description: "Learn how to secure your Infisical account with MFA."
 
 MFA requires users to provide multiple forms of identification to access their account.
 
+<Info>
+  Letting individual users opt in to Email 2FA or Mobile Authenticator 2FA on their own account is free on both
+  Infisical Cloud and Infisical Self-hosted (Community Edition). **Org-wide MFA enforcement** — requiring every
+  member of the organization to have MFA enabled — is a paid feature, unlocked on Infisical Cloud's **Pro** tier
+  or via an enterprise license on self-hosted instances. Entra ID / Azure AD MFA (below) is configured through
+  Conditional Access policies on top of SAML SSO, which is itself a paid feature on Infisical Cloud's **Pro**
+  tier or via an enterprise license on self-hosted instances — see the [SSO overview](/documentation/platform/sso/overview)
+  for details.
+</Info>
+
 ## Email 2FA
 
 If 2-factor authentication is enabled in the Personal settings page, email will be used for MFA by default.
