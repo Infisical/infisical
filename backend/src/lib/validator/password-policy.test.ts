@@ -27,12 +27,7 @@ describe("PasswordPolicySchema", () => {
     expect(PasswordPolicySchema.safeParse(password).success).toBe(false);
   });
 
-  test.each([
-    "plan.organize7Beta",
-    "user7@example.com",
-    "https://example.com/Secure7",
-    "123-45-6789Strong"
-  ])(
+  test.each(["plan.organize7Beta", "user7@example.com", "https://example.com/Secure7", "123-45-6789Strong"])(
     "allows a strong password regardless of email-, URL-, or identifier-like content: %s",
     (password) => {
       expect(PasswordPolicySchema.safeParse(password).success).toBe(true);
