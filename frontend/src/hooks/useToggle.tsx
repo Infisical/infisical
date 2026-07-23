@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 type VoidFn = () => void;
 
@@ -27,12 +27,16 @@ export const useToggle = (initialState = false): UseToggleReturn => {
     setValue((prev) => (typeof isOpen === "boolean" ? isOpen : !prev));
   }, []);
 
+import { useCallback, useRef, useState } from "react";
+
+// ...
+
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const timedToggle = useCallback((timeout = 2000) => {
     setValue((prev) => !prev);
-
-    const timeoutRef = setTimeout(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
       setValue(false);
-      clearTimeout(timeoutRef);
     }, timeout);
   }, []);
 
