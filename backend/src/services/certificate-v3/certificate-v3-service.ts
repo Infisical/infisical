@@ -129,7 +129,7 @@ import {
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
+    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find" | "getRequestEnrollmentTypeByCertId"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -2354,13 +2354,13 @@ export const certificateV3ServiceFactory = ({
         if (!profile) {
           throw new NotFoundError({ message: "Certificate profile not found" });
         }
+      }
 
-        if (profile.enrollmentType !== EnrollmentType.API) {
-          throw new ForbiddenRequestError({
-            message:
-              "Certificate is not eligible for renewal: Only certificates issued from an API enrollment profile can be renewed through this endpoint"
-          });
-        }
+      const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(originalCert.id, tx);
+      if (enrollmentType && enrollmentType !== EnrollmentType.API) {
+        throw new ForbiddenRequestError({
+          message: `Certificate is not eligible for renewal: ${enrollmentType.toUpperCase()} certificates cannot be renewed`
+        });
       }
 
       const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
@@ -2956,9 +2956,10 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.API) {
+    const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certificate.id);
+    if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
+        message: `Certificate is not eligible for auto-renewal: ${enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
       });
     }
 
@@ -3087,12 +3088,6 @@ export const certificateV3ServiceFactory = ({
     const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    if (profile.enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
-      });
     }
 
     await certificateDAL.transaction(async (tx) => {
