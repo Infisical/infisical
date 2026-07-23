@@ -19,13 +19,22 @@ export const AzureEntraIdConnectionClientSecretInputCredentialsSchema = z.object
     .min(1, "Client ID required")
     .max(50, "Client ID must be at most 50 characters long"),
   clientSecret: z.string().trim().min(1, "Client Secret required"),
-  tenantId: z.string().uuid().trim().min(1, "Tenant ID required")
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  clientSecretKeyId: z
+    .string()
+    .uuid()
+    .trim()
+    .optional()
+    .describe(
+      "The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked."
+    )
 });
 
 export const AzureEntraIdConnectionClientSecretOutputCredentialsSchema = z.object({
   clientId: z.string(),
   clientSecret: z.string(),
   tenantId: z.string(),
+  clientSecretKeyId: z.string().optional(),
   accessToken: z.string(),
   expiresAt: z.number()
 });
@@ -42,7 +51,9 @@ export const ValidateAzureEntraIdConnectionCredentialsSchema = z.discriminatedUn
 ]);
 
 export const CreateAzureEntraIdConnectionSchema = ValidateAzureEntraIdConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureEntraId)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.AzureEntraId, {
+    supportsCredentialRotation: true
+  })
 );
 
 export const UpdateAzureEntraIdConnectionSchema = z
@@ -51,7 +62,11 @@ export const UpdateAzureEntraIdConnectionSchema = z
       AppConnections.UPDATE(AppConnection.AzureEntraId).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureEntraId));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureEntraId, {
+      supportsCredentialRotation: true
+    })
+  );
 
 const BaseAzureEntraIdConnectionSchema = BaseAppConnectionSchema.extend({
   app: z.literal(AppConnection.AzureEntraId)

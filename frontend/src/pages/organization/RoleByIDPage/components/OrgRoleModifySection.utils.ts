@@ -619,7 +619,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Delete Identities",
         description: "Delete machine identities"
       },
-      { value: OrgPermissionIdentityActions.GrantPrivileges, label: "Grant Privileges" },
+      {
+        value: OrgPermissionIdentityActions.GrantPrivileges,
+        label: "Grant Privileges",
+        description: "Assign roles and additional privileges to machine identities"
+      },
       {
         value: OrgPermissionIdentityActions.RevokeAuth,
         label: "Revoke Auth",
@@ -666,7 +670,11 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
         label: "Delete Groups",
         description: "Delete groups"
       },
-      { value: OrgPermissionGroupActions.GrantPrivileges, label: "Grant Privileges" },
+      {
+        value: OrgPermissionGroupActions.GrantPrivileges,
+        label: "Grant Privileges",
+        description: "Assign roles and additional privileges to groups"
+      },
       {
         value: OrgPermissionGroupActions.AddMembers,
         label: "Add Members",

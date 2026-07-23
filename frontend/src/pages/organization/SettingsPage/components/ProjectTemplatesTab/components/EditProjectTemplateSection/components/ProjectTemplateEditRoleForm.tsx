@@ -14,6 +14,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { AddPoliciesButton } from "@app/pages/project/RoleDetailsBySlugPage/components/AddPoliciesButton";
 import {
   GeneralPermissionPolicies,
+  PermissionScope,
   TPermissionAction
 } from "@app/pages/project/RoleDetailsBySlugPage/components/GeneralPermissionPolicies";
 import { PermissionEmptyState } from "@app/pages/project/RoleDetailsBySlugPage/components/PermissionEmptyState";
@@ -204,6 +205,7 @@ export const ProjectTemplateEditRoleForm = ({
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[]).map((subject) => (
                 <GeneralPermissionPolicies
                   subject={subject}
+                  subjectScope={PermissionScope.Project}
                   actions={PROJECT_PERMISSION_OBJECT[subject].actions as TPermissionAction[]}
                   title={PROJECT_PERMISSION_OBJECT[subject].title}
                   description={PROJECT_PERMISSION_OBJECT[subject].description}

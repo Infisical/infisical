@@ -43,7 +43,8 @@ import {
   cadencePeriod,
   cadenceWord,
   cadenceWordShort,
-  dimAnnualCommitted,
+  dimCommitManageable,
+  dimCommitted,
   fmtMoney,
   isMeteredCadence,
   pluralizeUnit,
@@ -161,6 +162,8 @@ type PlanCardProps = {
   // This product's one-per-product trial is already used up (any outcome), so no trial CTA.
   trialUsed: boolean;
   canChangeCommitment: boolean;
+  // Whether a commitment already exists, so the CTA reads "Change" vs "Set" commitment.
+  hasCommitment: boolean;
   onActivate: (planTier: string) => void;
   onStartTrial: (planTier: string) => void;
   onChangeCommitment: () => void;
@@ -174,6 +177,7 @@ const PlanCard = ({
   entitled,
   trialUsed,
   canChangeCommitment,
+  hasCommitment,
   onActivate,
   onStartTrial,
   onChangeCommitment,
@@ -200,7 +204,7 @@ const PlanCard = ({
         className="mt-auto self-start"
         onClick={onChangeCommitment}
       >
-        Change commitment
+        {hasCommitment ? "Change commitment" : "Set commitment"}
         <EditIcon />
       </Button>
     );
@@ -343,7 +347,9 @@ type ProductSheetProps = {
   prod?: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   hasActiveSubscription: boolean;
-  billingEmail?: string;
+  // Optionally open the sheet straight into a sub-view (e.g. "commitment" from the commit-and-save
+  // nudge) instead of the default plans view.
+  initialView?: SheetView;
   returnPath: string;
   renewsOn: string | null;
   // This product's one-per-product trial is already used up (backend-computed from trial history).
@@ -360,7 +366,7 @@ export const ProductSheet = ({
   prod,
   entitlement,
   hasActiveSubscription,
-  billingEmail,
+  initialView,
   returnPath,
   renewsOn,
   trialUsed,
@@ -368,7 +374,7 @@ export const ProductSheet = ({
   onRemove,
   onContact
 }: ProductSheetProps) => {
-  const [view, setView] = useState<SheetView>("plans");
+  const [view, setView] = useState<SheetView>(initialView ?? "plans");
   // The plan tier chosen for the activate view.
   const [activatePlan, setActivatePlan] = useState<string | null>(null);
   // The plan tier awaiting trial confirmation (drives the confirm dialog).
@@ -387,9 +393,19 @@ export const ProductSheet = ({
   // A trialing product is canceled (trial → free), not removed like a paid product line.
   const isTrialing = Boolean(entitlement?.isTrialing);
   const selfServePlan = prod.plans.find((plan) => plan.selfServe && !plan.salesLed);
-  // The active product's plan-card price renders in its billing cadence; a new one defaults to monthly.
-  const displayCadence: BillingV2Cadence = entitlement?.cadence === "annual" ? "annual" : "monthly";
-  const canChangeCommitment = (entitlement?.dimensions ?? []).some(dimAnnualCommitted);
+  // The active product's plan-card price renders in its billing cadence. A new product defaults to
+  // yearly, EXCEPT when a self-serve trial is on offer: a trial is monthly/usage-based, so show monthly
+  // there. PlanPricing still falls back to monthly for a monthly-only plan.
+  const trialAvailable =
+    !entitled && !trialUsed && prod.plans.some((plan) => plan.selfServe && plan.trialable);
+  const displayCadence: BillingV2Cadence =
+    entitlement?.cadence ?? (trialAvailable ? "monthly" : "annual");
+  // Offer the commitment flow when the org already has a commitment (to change it) OR its pinned plan
+  // version lets it commit a dimension it hasn't set yet (start from zero, e.g. a monthly subscriber
+  // committing annually). Uses the SAME predicate the commitment view filters on (dimCommitManageable),
+  // so the action never opens onto an empty sheet. hasCommitment only drives the CTA label.
+  const hasCommitment = (entitlement?.dimensions ?? []).some(dimCommitted);
+  const showChangeCommitment = (entitlement?.dimensions ?? []).some(dimCommitManageable);
 
   // Render plan cards in the catalog's displayOrder (already sorted server-side). A deprecated plan is
   // closed to new customers, so hide it unless the org is already entitled (e.g. currently on it).
@@ -468,7 +484,6 @@ export const ProductSheet = ({
               prod={prod}
               plan={activatePlanObj}
               hasActiveSubscription={hasActiveSubscription}
-              billingEmail={billingEmail}
               returnPath={returnPath}
               renewsOn={renewsOn}
               onBack={() => setView("plans")}
@@ -515,7 +530,8 @@ export const ProductSheet = ({
                       entitled={entitled}
                       trialUsed={trialUsed}
                       isCurrent={entitled && plan.tier === currentTier}
-                      canChangeCommitment={canChangeCommitment}
+                      canChangeCommitment={showChangeCommitment}
+                      hasCommitment={hasCommitment}
                       onActivate={openActivate}
                       onStartTrial={setTrialConfirmTier}
                       onChangeCommitment={() => setView("commitment")}

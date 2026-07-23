@@ -14,7 +14,8 @@ export const GcpSyncDestinationSchema = BaseSecretSyncSchema().merge(
         locationId: z
           .string()
           .optional()
-          .transform((val) => val || undefined)
+          .transform((val) => val || undefined),
+        userReplicaLocationIds: z.string().array().optional().default([])
       }),
       z.object({
         scope: z.literal(GcpSyncScope.Region),

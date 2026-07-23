@@ -1,54 +1,56 @@
-import { useEffect } from "react";
+import { RefObject, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "@tanstack/react-router";
+import { ChevronLeft, Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  FormControl,
-  Input,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldTitle,
+  FilterableSelect,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetClose,
+  SheetFooter,
   Switch
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext";
 import {
   useGetMicrosoftTeamsIntegrations,
   useGetMicrosoftTeamsIntegrationTeams,
   useGetWorkspaceWorkflowIntegrationConfig,
   useUpdateProjectWorkflowIntegrationConfig
 } from "@app/hooks/api";
-import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+import {
+  MicrosoftTeamsIntegrationTeam,
+  WorkflowIntegrationPlatform
+} from "@app/hooks/api/workflowIntegrations/types";
+
+const channelsSchema = z.object({
+  teamId: z.string(),
+  channelIds: z.string().array()
+});
 
 const formSchema = z
   .object({
-    microsoftTeamsIntegrationId: z.string(),
+    microsoftTeamsIntegrationId: z.string().min(1, "Select a Microsoft Teams integration"),
     isSecretRequestNotificationEnabled: z.boolean(),
     isAccessRequestNotificationEnabled: z.boolean(),
-    secretRequestChannels: z
-      .object({
-        teamId: z.string(),
-        channelIds: z.string().array()
-      })
-      .optional(),
-    accessRequestChannels: z
-      .object({
-        teamId: z.string(),
-        channelIds: z.string().array()
-      })
-      .optional()
+    secretRequestChannels: channelsSchema.optional(),
+    accessRequestChannels: channelsSchema.optional()
   })
   .superRefine((data, ctx) => {
     if (data.isSecretRequestNotificationEnabled) {
@@ -90,22 +92,30 @@ const formSchema = z
 
 type TMicrosoftTeamsConfigForm = z.infer<typeof formSchema>;
 
-type Props = {
-  onClose: () => void;
+type TChannelOption = {
+  channelId: string;
+  channelName: string;
 };
 
-export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
+type Props = {
+  onClose: () => void;
+  onBack?: () => void;
+  menuContainer: RefObject<HTMLDivElement | null>;
+};
+
+export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }: Props) => {
   const { currentProject } = useProject();
   const { data: microsoftTeamsConfig } = useGetWorkspaceWorkflowIntegrationConfig({
     projectId: currentProject?.id ?? "",
     integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
   });
-  const { data: microsoftTeamsIntegrations } = useGetMicrosoftTeamsIntegrations(
-    currentProject?.orgId
-  );
+  const { data: microsoftTeamsIntegrations, isPending: isMicrosoftTeamsIntegrationsLoading } =
+    useGetMicrosoftTeamsIntegrations(currentProject?.orgId);
 
   const { mutateAsync: updateProjectMicrosoftTeamsConfig } =
     useUpdateProjectWorkflowIntegrationConfig();
+
+  const hasMicrosoftTeamsIntegrations = !!microsoftTeamsIntegrations?.length;
 
   const {
     control,
@@ -116,6 +126,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
   } = useForm<TMicrosoftTeamsConfigForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      microsoftTeamsIntegrationId: "",
       isAccessRequestNotificationEnabled: false,
       isSecretRequestNotificationEnabled: false,
       accessRequestChannels: {
@@ -150,7 +161,7 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
 
     createNotification({
       type: "success",
-      text: "Successfully created microsoft teams integration"
+      text: "Saved Microsoft Teams integration settings"
     });
 
     onClose();
@@ -167,34 +178,20 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
   const {
     data: microsoftTeamsIntegrationTeams,
     isPending: isLoadingMicrosoftTeamsIntegrationTeams
-  } = useGetMicrosoftTeamsIntegrationTeams(selectedMicrosoftTeamsIntegrationId);
+  } = useGetMicrosoftTeamsIntegrationTeams(selectedMicrosoftTeamsIntegrationId || undefined);
 
-  const sortedMicrosoftTeamsIntegrationTeams = microsoftTeamsIntegrationTeams?.sort((a, b) =>
-    a.teamName.toLowerCase().localeCompare(b.teamName.toLowerCase())
-  );
+  const sortedTeams = microsoftTeamsIntegrationTeams
+    ?.slice()
+    .sort((a, b) => a.teamName.toLowerCase().localeCompare(b.teamName.toLowerCase()));
 
-  const selectableAccessRequestChannelIds = sortedMicrosoftTeamsIntegrationTeams
-    ?.filter((team) => team.teamId === selectedAccessRequestTeamId)
-    .map((team) => team.channels)
-    .flat();
-  const selectableSecretRequestChannelIds = sortedMicrosoftTeamsIntegrationTeams
-    ?.filter((team) => team.teamId === selectedSecretRequestTeamId)
-    .map((team) => team.channels)
-    .flat();
-
-  const channelIdToName = [
-    ...(selectableAccessRequestChannelIds || []),
-    ...(selectableSecretRequestChannelIds || [])
-  ].reduce(
-    (acc, channel) => {
-      acc[channel.channelId] = channel.channelName;
-      return acc;
-    },
-    {} as Record<string, string>
-  );
+  const getTeamChannels = (teamId?: string): TChannelOption[] =>
+    sortedTeams?.find((team) => team.teamId === teamId)?.channels ?? [];
 
   useEffect(() => {
-    if (microsoftTeamsConfig) {
+    if (
+      microsoftTeamsConfig &&
+      microsoftTeamsConfig.integration === WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+    ) {
       setValue("microsoftTeamsIntegrationId", microsoftTeamsConfig.integrationId);
       setValue(
         "isSecretRequestNotificationEnabled",
@@ -205,345 +202,246 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
         microsoftTeamsConfig.isAccessRequestNotificationEnabled
       );
 
-      if (microsoftTeamsConfig.integration === WorkflowIntegrationPlatform.MICROSOFT_TEAMS) {
-        if (microsoftTeamsConfig.secretRequestChannels) {
-          if (Object.entries(microsoftTeamsConfig.accessRequestChannels).length) {
-            setValue("accessRequestChannels", microsoftTeamsConfig.accessRequestChannels);
-          }
-          if (Object.entries(microsoftTeamsConfig.secretRequestChannels).length) {
-            setValue("secretRequestChannels", microsoftTeamsConfig.secretRequestChannels);
-          }
-        }
+      if (
+        microsoftTeamsConfig.accessRequestChannels &&
+        Object.entries(microsoftTeamsConfig.accessRequestChannels).length
+      ) {
+        setValue("accessRequestChannels", microsoftTeamsConfig.accessRequestChannels);
+      }
+      if (
+        microsoftTeamsConfig.secretRequestChannels &&
+        Object.entries(microsoftTeamsConfig.secretRequestChannels).length
+      ) {
+        setValue("secretRequestChannels", microsoftTeamsConfig.secretRequestChannels);
       }
     }
   }, [microsoftTeamsConfig]);
 
-  return (
-    <form onSubmit={handleSubmit(handleIntegrationSave)}>
-      <div className="flex w-full flex-col justify-start">
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-          {(isAllowed) => (
-            <Controller
-              control={control}
-              name="microsoftTeamsIntegrationId"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Microsoft Teams Integration"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Select
-                    {...field}
-                    isDisabled={!isAllowed}
-                    placeholder="None"
-                    onValueChange={(v) => {
-                      onChange(v);
+  const renderEventChannelFields = (
+    fieldPrefix: "secretRequestChannels" | "accessRequestChannels"
+  ) => {
+    const selectedTeamId =
+      fieldPrefix === "secretRequestChannels"
+        ? selectedSecretRequestTeamId
+        : selectedAccessRequestTeamId;
+    const teamChannels = getTeamChannels(selectedTeamId);
 
-                      setValue("isAccessRequestNotificationEnabled", false);
-                      setValue("isSecretRequestNotificationEnabled", false);
-                      setValue("accessRequestChannels", {
-                        teamId: "",
-                        channelIds: []
-                      });
-                      setValue("secretRequestChannels", {
-                        teamId: "",
-                        channelIds: []
-                      });
-                    }}
+    return (
+      <>
+        <Controller
+          control={control}
+          name={`${fieldPrefix}.teamId`}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel htmlFor={`${fieldPrefix}-team`}>Microsoft Teams team</FieldLabel>
+              <FilterableSelect<MicrosoftTeamsIntegrationTeam>
+                inputId={`${fieldPrefix}-team`}
+                options={sortedTeams}
+                value={sortedTeams?.find((team) => team.teamId === value) ?? null}
+                onChange={(selected) => {
+                  onChange((selected as MicrosoftTeamsIntegrationTeam | null)?.teamId ?? "");
+                  // Channels belong to a team; clear stale selections when the team changes.
+                  setValue(`${fieldPrefix}.channelIds`, [], { shouldDirty: true });
+                }}
+                getOptionValue={(option) => option.teamId}
+                getOptionLabel={(option) => option.teamName}
+                placeholder={
+                  isLoadingMicrosoftTeamsIntegrationTeams ? "Loading..." : "Select a team..."
+                }
+                isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
+                isError={Boolean(error)}
+                menuPortalTarget={menuContainer.current}
+                menuPosition="fixed"
+                menuPlacement="bottom"
+              />
+              <FieldError>{error?.message}</FieldError>
+            </Field>
+          )}
+        />
+        <Controller
+          control={control}
+          name={`${fieldPrefix}.channelIds`}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel htmlFor={`${fieldPrefix}-channels`}>Microsoft Teams channels</FieldLabel>
+              <FilterableSelect
+                isMulti
+                inputId={`${fieldPrefix}-channels`}
+                options={teamChannels}
+                value={teamChannels.filter((channel) => value?.includes(channel.channelId))}
+                onChange={(selected) =>
+                  onChange(
+                    (selected as readonly TChannelOption[]).map((channel) => channel.channelId)
+                  )
+                }
+                getOptionValue={(option) => option.channelId}
+                getOptionLabel={(option) => option.channelName}
+                placeholder={selectedTeamId ? "Select channels..." : "Select a team first"}
+                isDisabled={!selectedTeamId}
+                isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
+                isError={Boolean(error)}
+                menuPortalTarget={menuContainer.current}
+                menuPosition="fixed"
+                menuPlacement="bottom"
+                closeMenuOnSelect={false}
+                hideSelectedOptions={false}
+              />
+              <FieldError>{error?.message}</FieldError>
+            </Field>
+          )}
+        />
+      </>
+    );
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit(handleIntegrationSave)}
+      className="flex min-h-0 flex-1 flex-col"
+      autoComplete="off"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4">
+        {!isMicrosoftTeamsIntegrationsLoading && !hasMicrosoftTeamsIntegrations ? (
+          <Alert>
+            <Info />
+            <AlertTitle>No Microsoft Teams integrations connected</AlertTitle>
+            <AlertDescription>
+              <p>
+                Connect a Microsoft Teams tenant to your organization before configuring project
+                notifications.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-2">
+                <Link
+                  to="/organizations/$orgId/integrations"
+                  params={{ orgId: currentProject.orgId }}
+                  search={{ selectedTab: "workflow-integrations" }}
+                >
+                  Go to organization integrations
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Controller
+            control={control}
+            name="microsoftTeamsIntegrationId"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="microsoft-teams-integration">
+                  Microsoft Teams integration
+                </FieldLabel>
+                <Select
+                  value={value}
+                  onValueChange={(newValue) => {
+                    onChange(newValue);
+
+                    setValue("isAccessRequestNotificationEnabled", false);
+                    setValue("isSecretRequestNotificationEnabled", false);
+                    setValue("accessRequestChannels", {
+                      teamId: "",
+                      channelIds: []
+                    });
+                    setValue("secretRequestChannels", {
+                      teamId: "",
+                      channelIds: []
+                    });
+                  }}
+                >
+                  <SelectTrigger
+                    id="microsoft-teams-integration"
                     className="w-full"
-                    defaultValue={microsoftTeamsConfig?.integrationId}
+                    aria-invalid={Boolean(error)}
                   >
+                    <SelectValue
+                      placeholder={
+                        isMicrosoftTeamsIntegrationsLoading ? "Loading..." : "Select an integration"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
                     {microsoftTeamsIntegrations?.map((microsoftTeamsIntegration) => (
                       <SelectItem
                         value={microsoftTeamsIntegration.id}
-                        key={`microsoft-teams-integration-${microsoftTeamsIntegration.id}`}
+                        key={microsoftTeamsIntegration.id}
                       >
                         {microsoftTeamsIntegration.slug}
                       </SelectItem>
                     ))}
-                  </Select>
-                </FormControl>
+                  </SelectContent>
+                </Select>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+        )}
+        {!!selectedMicrosoftTeamsIntegrationId && (
+          <>
+            <Controller
+              control={control}
+              name="isSecretRequestNotificationEnabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="items-center!">
+                  <FieldContent>
+                    <FieldTitle>Secret approval requests</FieldTitle>
+                    <FieldDescription>
+                      Send a notification when a secret approval request is opened.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    variant="project"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Secret approval request notifications"
+                  />
+                </Field>
               )}
             />
-          )}
-        </ProjectPermissionCan>
+            {secretRequestNotificationsEnabled && renderEventChannelFields("secretRequestChannels")}
+            <Controller
+              control={control}
+              name="isAccessRequestNotificationEnabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="items-center!">
+                  <FieldContent>
+                    <FieldTitle>Access requests</FieldTitle>
+                    <FieldDescription>
+                      Send a notification when an access request is opened.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    variant="project"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Access request notifications"
+                  />
+                </Field>
+              )}
+            />
+            {accessRequestNotificationsEnabled && renderEventChannelFields("accessRequestChannels")}
+          </>
+        )}
       </div>
-      {selectedMicrosoftTeamsIntegrationId && (
-        <>
-          <h2 className="mb-2 flex-1 text-sm text-mineshaft-400">Configure Events</h2>
-          <Controller
-            control={control}
-            name="isSecretRequestNotificationEnabled"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="mt-3 mb-2"
-                >
-                  <Switch
-                    id="secret-approval-notification"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Secret Approval Requests</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-          {secretRequestNotificationsEnabled && (
-            <>
-              <Controller
-                control={control}
-                name="secretRequestChannels.teamId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Secret Approval Requests Notifications Team"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Select
-                      {...field}
-                      placeholder={
-                        isLoadingMicrosoftTeamsIntegrationTeams ? "Loading..." : "Select a team..."
-                      }
-                      className="w-full"
-                      onValueChange={(value) => onChange(value)}
-                      isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
-                    >
-                      {!isLoadingMicrosoftTeamsIntegrationTeams &&
-                        sortedMicrosoftTeamsIntegrationTeams?.map((team) => (
-                          <SelectItem
-                            key={`secret-requests-microsoft-teams-team-${team.teamId}`}
-                            value={team.teamId}
-                          >
-                            {team.teamName}
-                          </SelectItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              <Controller
-                control={control}
-                name="secretRequestChannels.channelIds"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Microsoft Teams channels"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className={
-                          isLoadingMicrosoftTeamsIntegrationTeams || !selectedSecretRequestTeamId
-                            ? "opacity-50"
-                            : ""
-                        }
-                        asChild
-                        disabled={
-                          isLoadingMicrosoftTeamsIntegrationTeams || !selectedSecretRequestTeamId
-                        }
-                      >
-                        {selectedSecretRequestTeamId ? (
-                          <Input
-                            isReadOnly
-                            value={
-                              isLoadingMicrosoftTeamsIntegrationTeams
-                                ? "Loading..."
-                                : value
-                                    ?.filter(Boolean)
-                                    .map((entry) => channelIdToName[entry])
-                                    .join(", ")
-                            }
-                            className="text-left"
-                          />
-                        ) : (
-                          <Input
-                            isReadOnly
-                            value="Select a team..."
-                            className="py-2 text-left text-sm"
-                          />
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        style={{
-                          width: "var(--radix-dropdown-menu-trigger-width)",
-                          maxHeight: "350px",
-                          overflowY: "auto"
-                        }}
-                        side="bottom"
-                        align="start"
-                      >
-                        {selectableSecretRequestChannelIds?.map((channel) => {
-                          const isChecked = value?.includes(channel.channelId);
-                          return (
-                            <DropdownMenuItem
-                              onClick={(evt) => {
-                                evt.preventDefault();
-                                onChange(
-                                  isChecked
-                                    ? value?.filter((el: string) => el !== channel.channelId)
-                                    : [...(value || []), channel.channelId]
-                                );
-                              }}
-                              key={`secret-requests-microsoft-teams-channel-${channel.channelId}`}
-                              iconPos="right"
-                              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                            >
-                              {channel.channelName}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <Controller
-            control={control}
-            name="isAccessRequestNotificationEnabled"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message} className="mb-2">
-                  <Switch
-                    id="access-request-notification"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Access Requests</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-          {accessRequestNotificationsEnabled && (
-            <>
-              <Controller
-                control={control}
-                name="accessRequestChannels.teamId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Access Requests Notifications Team"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Select
-                      {...field}
-                      placeholder={
-                        isLoadingMicrosoftTeamsIntegrationTeams ? "Loading..." : "Select a team..."
-                      }
-                      className="w-full"
-                      onValueChange={(value) => onChange(value)}
-                      isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
-                    >
-                      {!isLoadingMicrosoftTeamsIntegrationTeams &&
-                        sortedMicrosoftTeamsIntegrationTeams?.map((team) => (
-                          <SelectItem
-                            key={`access-requests-microsoft-teams-team-${team.teamId}`}
-                            value={team.teamId}
-                          >
-                            {team.teamName}
-                          </SelectItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="accessRequestChannels.channelIds"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Microsoft Teams channels"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className={
-                          isLoadingMicrosoftTeamsIntegrationTeams || !selectedAccessRequestTeamId
-                            ? "opacity-50"
-                            : ""
-                        }
-                        asChild
-                        disabled={
-                          isLoadingMicrosoftTeamsIntegrationTeams || !selectedAccessRequestTeamId
-                        }
-                      >
-                        {selectedAccessRequestTeamId ? (
-                          <Input
-                            isReadOnly
-                            value={
-                              isLoadingMicrosoftTeamsIntegrationTeams
-                                ? "Loading..."
-                                : value
-                                    ?.filter(Boolean)
-                                    .map((entry) => channelIdToName[entry])
-                                    .join(", ")
-                            }
-                            className="text-left"
-                          />
-                        ) : (
-                          <Input
-                            isReadOnly
-                            value="Select a team..."
-                            className="py-2 text-left text-sm"
-                          />
-                        )}
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        style={{
-                          width: "var(--radix-dropdown-menu-trigger-width)",
-                          maxHeight: "350px",
-                          overflowY: "auto"
-                        }}
-                        side="bottom"
-                        align="start"
-                      >
-                        {selectableAccessRequestChannelIds?.map((channel) => {
-                          const isChecked = value?.includes(channel.channelId);
-                          return (
-                            <DropdownMenuItem
-                              onClick={(evt) => {
-                                evt.preventDefault();
-                                onChange(
-                                  isChecked
-                                    ? value?.filter((el: string) => el !== channel.channelId)
-                                    : [...(value || []), channel.channelId]
-                                );
-                              }}
-                              key={`access-requests-slack-channel-${channel.channelId}`}
-                              iconPos="right"
-                              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-                            >
-                              {channel.channelName}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-          <Button
-            colorSchema="secondary"
-            className="mt-4"
-            type="submit"
-            disabled={!isDirty}
-            isDisabled={!isDirty}
-            isLoading={isSubmitting}
-          >
-            Save
+      <SheetFooter className="justify-end border-t">
+        {onBack && (
+          <Button type="button" variant="ghost" className="mr-auto" onClick={onBack}>
+            <ChevronLeft />
+            Back
           </Button>
-        </>
-      )}
+        )}
+        <SheetClose asChild>
+          <Button type="button" variant="ghost">
+            Cancel
+          </Button>
+        </SheetClose>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={isSubmitting}
+          isDisabled={!isDirty || isSubmitting || !hasMicrosoftTeamsIntegrations}
+        >
+          Save
+        </Button>
+      </SheetFooter>
     </form>
   );
 };
