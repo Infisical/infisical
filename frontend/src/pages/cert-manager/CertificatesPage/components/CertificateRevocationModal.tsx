@@ -111,7 +111,7 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
             >
               Revoke
             </Button>
-            <Button colorSchema="secondary" variant="plain">
+            <Button colorSchema="secondary" variant="plain" onClick={() => handlePopUpToggle("revokeCertificate", false)}>
               Cancel
             </Button>
           </div>
