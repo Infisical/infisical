@@ -206,9 +206,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-        {renderView()}
-      </form>
+      {section === SignupSection.VerifyCode ? (
+        <div className="w-full">{renderView()}</div>
+      ) : (
+        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
+          {renderView()}
+        </form>
+      )}
     </AuthPageLayout>
   );
 };

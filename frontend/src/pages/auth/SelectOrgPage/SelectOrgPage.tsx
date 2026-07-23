@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
+import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
 import { ChevronRight, LogIn, Search } from "lucide-react";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
@@ -367,16 +369,16 @@ export const SelectOrgPage = () => {
     );
   }
 
-  return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("login.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("login.og-title") ?? ""} />
-        <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
-      {shouldShowMfa ? (
+  if (shouldShowMfa) {
+    return (
+      <>
+        <Helmet>
+          <title>{t("common.head-title", { title: t("login.title") })}</title>
+          <link rel="icon" href="/infisical.ico" />
+          <meta property="og:image" content="/images/message.png" />
+          <meta property="og:title" content={t("login.og-title") ?? ""} />
+          <meta name="og:description" content={t("login.og-description") ?? ""} />
+        </Helmet>
         <Mfa
           email={user.email as string}
           successCallback={() => {
@@ -386,72 +388,74 @@ export const SelectOrgPage = () => {
           }}
           method={requiredMfaMethod as MfaMethod}
         />
-      ) : (
-        <div className="mx-auto mt-20 w-full max-w-md pb-28">
-          <Link to="/">
-            <div className="mb-4 flex justify-center">
-              <img
-                src="/images/gradientLogo.svg"
-                style={{ height: "90px", width: "120px" }}
-                alt="Infisical logo"
-              />
-            </div>
-          </Link>
-          <div className="mb-8 space-y-2">
-            <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
-              Choose your organization
-            </h1>
-            <div className="space-y-1">
-              <p className="text-md text-center text-gray-500">
-                You&apos;re currently logged in as <strong>{user.username}</strong>
-              </p>
-              <p className="text-md text-center text-gray-500">
-                Not you?{" "}
-                <Button variant="link" onClick={handleLogout} className="font-medium">
-                  Change account
-                </Button>
-              </p>
-            </div>
-          </div>
+      </>
+    );
+  }
 
-          <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
-            {totalOrgCount >= 5 && (
-              <div className="border-b border-mineshaft-600 px-4 py-3">
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={
-                    selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
-                  }
-                  leftIcon={<Search className="size-4" />}
-                  className="h-10"
-                />
-              </div>
-            )}
-
-            {selectedRootOrg && (
-              <div className="border-b border-mineshaft-600 px-4 py-2">
-                <nav className="flex items-center gap-1.5 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRootOrg(null);
-                      setSearchTerm("");
-                    }}
-                    className="text-mineshaft-400 transition-colors hover:text-gray-200"
-                  >
-                    All organizations
-                  </button>
-                  <span className="text-white">›</span>
-                  <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
-                </nav>
-              </div>
-            )}
-
-            <div className="max-h-96 thin-scrollbar overflow-y-auto p-2">{renderListContent()}</div>
+  return (
+    <AuthPageLayout showFooter={false}>
+      <Helmet>
+        <title>{t("common.head-title", { title: t("login.title") })}</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <meta property="og:title" content={t("login.og-title") ?? ""} />
+        <meta name="og:description" content={t("login.og-description") ?? ""} />
+      </Helmet>
+      <AuthPagePanel>
+        <div className="mb-8 space-y-2">
+          <h1 className="font-alliance text-2xl font-normal text-foreground">
+            Choose your organization
+          </h1>
+          <div className="space-y-1">
+            <p className="text-sm text-label">
+              You&apos;re currently logged in as <strong>{user.username}</strong>
+            </p>
+            <p className="text-sm text-label">
+              Not you?{" "}
+              <Button variant="link" onClick={handleLogout} className="font-medium">
+                Change account
+              </Button>
+            </p>
           </div>
         </div>
-      )}
-    </div>
+
+        <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
+          {totalOrgCount >= 5 && (
+            <div className="border-b border-mineshaft-600 px-4 py-3">
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={
+                  selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
+                }
+                leftIcon={<Search className="size-4" />}
+                className="h-10"
+              />
+            </div>
+          )}
+
+          {selectedRootOrg && (
+            <div className="border-b border-mineshaft-600 px-4 py-2">
+              <nav className="flex items-center gap-1.5 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRootOrg(null);
+                    setSearchTerm("");
+                  }}
+                  className="text-mineshaft-400 transition-colors hover:text-gray-200"
+                >
+                  All organizations
+                </button>
+                <span className="text-white">›</span>
+                <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
+              </nav>
+            </div>
+          )}
+
+          <div className="max-h-96 thin-scrollbar overflow-y-auto p-2">{renderListContent()}</div>
+        </div>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };
