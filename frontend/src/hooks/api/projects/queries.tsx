@@ -153,7 +153,7 @@ export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
     queryKey: projectKeys.searchProject(dto),
     queryFn: async () => {
       const { data } = await apiRequest.post<{
-        projects: (Project & { isMember: boolean })[];
+        projects: (Project & { isMember: boolean; isDirectMember: boolean })[];
         totalCount: number;
       }>("/api/v1/projects/search", dto);
 

@@ -799,37 +799,51 @@ const AllProjectsForType = ({
                 </TableCell>
                 <TableCell className="w-0 pr-3 text-right">
                   {(() => {
+                    const joinedBadge = (
+                      <Badge variant="info">
+                        <CheckIcon />
+                        Joined
+                      </Badge>
+                    );
+                    const adminAccessButton = (label: string) => (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleAccessProject(
+                            workspace.type,
+                            workspace.id,
+                            workspace.environments,
+                            workspace.orgId
+                          );
+                        }}
+                        isDisabled={
+                          orgAdminAccessProject.variables?.projectId === workspace.id &&
+                          orgAdminAccessProject.isPending
+                        }
+                      >
+                        {label}
+                      </Button>
+                    );
+
+                    if (workspace.isDirectMember) {
+                      return joinedBadge;
+                    }
                     if (workspace.isMember) {
+                      if (!canAccessAllProjects) {
+                        return joinedBadge;
+                      }
                       return (
-                        <Badge variant="info">
-                          <CheckIcon />
-                          Joined
-                        </Badge>
+                        <div className="flex items-center justify-end gap-2">
+                          {joinedBadge}
+                          {adminAccessButton("Grant Admin")}
+                        </div>
                       );
                     }
                     if (canAccessAllProjects) {
-                      return (
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            handleAccessProject(
-                              workspace.type,
-                              workspace.id,
-                              workspace.environments,
-                              workspace.orgId
-                            );
-                          }}
-                          isDisabled={
-                            orgAdminAccessProject.variables?.projectId === workspace.id &&
-                            orgAdminAccessProject.isPending
-                          }
-                        >
-                          Join as Admin
-                        </Button>
-                      );
+                      return adminAccessButton("Join as Admin");
                     }
                     const requestedAt = pendingAccessRequestByProjectId?.get(workspace.id);
                     if (requestedAt) {

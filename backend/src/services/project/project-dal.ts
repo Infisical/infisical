@@ -819,8 +819,19 @@ export const projectDALFactory = (db: TDbClient) => {
       })
       .select("scopeProjectId");
 
+    const directMembershipSubQuery = db(TableName.Membership)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where(
+        dto.actor === ActorType.IDENTITY
+          ? `${TableName.Membership}.actorIdentityId`
+          : `${TableName.Membership}.actorUserId`,
+        dto.actorId
+      )
+      .select("scopeProjectId");
+
     // Get the SQL strings for the subqueries
     const membershipSQL = membershipSubQuery.toQuery();
+    const directMembershipSQL = directMembershipSubQuery.toQuery();
 
     const query = db
       .replicaNode()(TableName.Project)
@@ -828,7 +839,7 @@ export const projectDALFactory = (db: TDbClient) => {
       .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.Project))
       .select(db.raw("COUNT(*) OVER() AS count"))
-      .select<(TProjects & { isMember: boolean; count: number })[]>(
+      .select<(TProjects & { isMember: boolean; isDirectMember: boolean; count: number })[]>(
         db.raw(
           `
                   CASE
@@ -837,6 +848,17 @@ export const projectDALFactory = (db: TDbClient) => {
                   END as "isMember"
                 `,
           [db.raw(membershipSQL)]
+        )
+      )
+      .select(
+        db.raw(
+          `
+                  CASE
+                    WHEN ${TableName.Project}.id IN (?) THEN TRUE
+                    ELSE FALSE
+                  END as "isDirectMember"
+                `,
+          [db.raw(directMembershipSQL)]
         )
       )
       .limit(limit)
