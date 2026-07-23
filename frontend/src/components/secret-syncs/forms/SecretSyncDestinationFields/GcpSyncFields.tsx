@@ -1,10 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
-import { Info } from "lucide-react";
+import { Info, TriangleAlert } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Field,
   FieldContent,
@@ -39,7 +42,7 @@ const formatOptionLabel = ({ displayName, locationId }: TGcpLocation) => (
 );
 
 export const GcpSyncFields = () => {
-  const { control, setValue } = useFormContext<
+  const { control, setValue, formState } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.GCPSecretManager }
   >();
 
@@ -51,6 +54,21 @@ export const GcpSyncFields = () => {
     name: "destinationConfig.userReplicaLocationIds",
     control
   });
+
+  // Replica regions are immutable on GCP once the secret is created. When editing an existing
+  // Global-scope sync that already committed replica regions, lock the field (values come from
+  // the saved record, populated only in the edit form).
+  const defaultConfig = formState.defaultValues?.destinationConfig;
+  const committedReplicaLocationIds = useMemo(() => {
+    if (defaultConfig?.scope !== GcpSyncScope.Global) return [];
+    return (
+      (defaultConfig as { userReplicaLocationIds?: (string | undefined)[] })
+        .userReplicaLocationIds ?? []
+    ).filter((id): id is string => Boolean(id));
+  }, [defaultConfig]);
+  const isGlobalScope = selectedScope === GcpSyncScope.Global;
+  const isCommittedGlobalSync = committedReplicaLocationIds.length > 0;
+  const lockReplicaRegions = isCommittedGlobalSync && isGlobalScope;
 
   const { data: projects, isPending } = useGcpConnectionListProjects(connectionId, {
     enabled: Boolean(connectionId)
@@ -74,6 +92,20 @@ export const GcpSyncFields = () => {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (isCommittedGlobalSync && isGlobalScope && !userReplicaLocationIds?.length) {
+      setValue("destinationConfig.userReplicaLocationIds", committedReplicaLocationIds, {
+        shouldDirty: false
+      });
+    }
+  }, [
+    isCommittedGlobalSync,
+    isGlobalScope,
+    userReplicaLocationIds,
+    committedReplicaLocationIds,
+    setValue
+  ]);
 
   return (
     <FieldGroup>
@@ -227,8 +259,8 @@ export const GcpSyncFields = () => {
                 <FilterableSelect
                   isMulti
                   isLoading={areLocationsPending && Boolean(projectId)}
-                  isDisabled={!projectId}
-                  isClearable
+                  isDisabled={!projectId || lockReplicaRegions}
+                  isClearable={!lockReplicaRegions}
                   value={
                     locations?.filter((option) => (value || []).includes(option.locationId)) ?? []
                   }
@@ -240,6 +272,21 @@ export const GcpSyncFields = () => {
                   getOptionValue={(option) => option.locationId}
                   formatOptionLabel={formatOptionLabel}
                 />
+
+                {(value?.length ?? 0) > 0 && (
+                  <Alert variant="warning">
+                    <TriangleAlert />
+                    <AlertTitle>Replica regions can&apos;t be changed after creation</AlertTitle>
+                    <AlertDescription>
+                      <p>
+                        Replica regions are fixed when the sync is created and cannot be changed
+                        later, since GCP does not support it. It is still possible to change the
+                        scope to <span className="font-medium">Region</span> and specify a region
+                        for the secret.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <FieldError errors={[error]} />
               </FieldContent>
             </Field>
