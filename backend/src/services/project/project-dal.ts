@@ -848,9 +848,7 @@ export const projectDALFactory = (db: TDbClient) => {
                   END as "isMember"
                 `,
           [db.raw(membershipSQL)]
-        )
-      )
-      .select(
+        ),
         db.raw(
           `
                   CASE
