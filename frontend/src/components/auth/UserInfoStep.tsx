@@ -29,8 +29,8 @@ import { useServerConfig } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { initProjectHelper } from "@app/helpers/project";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
-import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
+import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 

@@ -4,7 +4,6 @@ import { AnimatedCollapse } from "../../generic/AnimatedCollapse";
 import { Button } from "../../generic/Button";
 import { CardDescription, CardHeader, CardTitle } from "../../generic/Card";
 import { FieldError } from "../../generic/Field";
-
 import { VerificationCodeInput } from "./VerificationCodeInput";
 
 type VerificationCodeHeaderProps = {
