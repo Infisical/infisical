@@ -88,9 +88,9 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
   return (
     <form
       onSubmit={handleSubmit(handlePasswordReset)}
-      className="mx-auto flex w-full max-w-md flex-col items-center justify-center"
+      className="mx-auto flex w-full max-w-md flex-col items-center justify-center gap-y-4"
     >
-      <h1 className="mb-2 bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
+      <h1 className="bg-gradient-to-b from-white to-bunker-200 bg-clip-text text-center text-xl font-medium text-transparent">
         Enter new password
       </h1>
       <p className="w-max justify-center text-center text-sm text-gray-400">
