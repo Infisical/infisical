@@ -53,7 +53,10 @@ export const AccountActionsMenu = ({
 
   const isGranted = accessStatus === PamAccessStatus.Granted;
   const isPending = accessStatus === PamAccessStatus.Pending;
-  const needsApproval = requiresApproval && !isGranted && canLaunch;
+  // Only offer request access for accounts that can actually launch once granted; an account that
+  // isn't ready (missing credentials/gateway/recording/approval config) should surface the disabled
+  // launch state instead, matching the accessible-account flow.
+  const needsApproval = requiresApproval && !isGranted && canLaunch && isAccessible;
 
   // Launch requires: account is provisioned AND user has permission AND (no approval needed OR already granted)
   const canLaunchNow = isAccessible && canLaunch && (!requiresApproval || isGranted);

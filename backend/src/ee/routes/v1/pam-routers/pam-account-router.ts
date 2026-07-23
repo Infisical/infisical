@@ -57,6 +57,7 @@ const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
     .describe("Reasons the account cannot launch a session, if any"),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
+  requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted")
 });

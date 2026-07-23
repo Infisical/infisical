@@ -243,6 +243,7 @@ type TAdminAccountListItem = {
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
   requiresApproval: boolean;
+  requireReason: boolean;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
   createdAt: string;

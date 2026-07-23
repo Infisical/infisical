@@ -215,7 +215,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval } = resolveAccessControls(a.templatePolicies);
+      const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
@@ -236,6 +236,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
         requiresApproval,
+        requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
         createdAt: a.createdAt,

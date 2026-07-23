@@ -145,6 +145,7 @@ export const FolderAccountRows = ({
             accountType,
             canLaunch: account.isAccessible && !needsApproval,
             requiresApproval,
+            requireReason: account.requireReason,
             accessStatus,
             grantExpiresAt: account.grantExpiresAt,
             createdAt: account.createdAt,
