@@ -8,7 +8,8 @@ import {
   isCredentialConfigured,
   PamAccountAccessibilityIssue,
   PamAccountTypeMetadataSchema,
-  PamFieldDescriptorSchema
+  PamFieldDescriptorSchema,
+  validateConnectionDetails
 } from "./pam-account-schemas";
 
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
@@ -206,6 +207,27 @@ describe("isCredentialConfigured", () => {
     expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "public-key" })).toBe(false);
 
     expect(isCredentialConfigured(PamAccountType.SSH, { authMethod: "certificate" })).toBe(true);
+  });
+});
+
+// Exhaustive ARN accept/reject cases live in lib/validator/validate-aws-arn.test.ts. These assert the
+// schema is actually wired to that validator and applies its own trimming.
+describe("validateConnectionDetails (AWS IAM roleArn)", () => {
+  test("accepts a valid role ARN", () => {
+    expect(() =>
+      validateConnectionDetails(PamAccountType.AwsIam, { roleArn: "arn:aws:iam::123456789012:role/my-role" })
+    ).not.toThrow();
+  });
+
+  test("rejects a malformed role ARN", () => {
+    expect(() => validateConnectionDetails(PamAccountType.AwsIam, { roleArn: "not-an-arn" })).toThrow();
+  });
+
+  test("trims surrounding whitespace before validating", () => {
+    const result = validateConnectionDetails(PamAccountType.AwsIam, {
+      roleArn: "  arn:aws:iam::123456789012:role/my-role  "
+    });
+    expect(result).toEqual({ roleArn: "arn:aws:iam::123456789012:role/my-role" });
   });
 });
 

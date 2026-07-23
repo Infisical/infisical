@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { isAwsIamRoleArn } from "@app/lib/validator";
 
 import { GcpServiceAccountAuthMethod, PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
@@ -529,7 +530,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Amazon Web Services.png",
     requiresGateway: false,
     connectionDetails: z.object({
-      roleArn: z.string().trim().min(1).max(2048)
+      roleArn: z
+        .string()
+        .trim()
+        .min(1)
+        .max(2048)
+        .refine(isAwsIamRoleArn, "Must be a valid IAM role ARN (e.g. arn:aws:iam::123456789012:role/my-role)")
     }),
     credentials: z.object({}),
     sanitizedCredentials: z.object({}),
