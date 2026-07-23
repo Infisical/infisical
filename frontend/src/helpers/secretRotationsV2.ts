@@ -85,6 +85,16 @@ export const SECRET_ROTATION_MAP: Record<
     image: "OpenRouter.png",
     size: 50
   },
+  [SecretRotation.LiteLLMApiKey]: {
+    name: "LiteLLM API Key",
+    image: "LiteLLM.png",
+    size: 50
+  },
+  [SecretRotation.OpenAIServiceAccount]: {
+    name: "OpenAI Service Account",
+    image: "OpenAI.png",
+    size: 50
+  },
   [SecretRotation.HpIloLocalAccount]: {
     name: "HP iLO Local Account",
     image: "SSH.png",
@@ -105,9 +115,24 @@ export const SECRET_ROTATION_MAP: Record<
     image: "DatadogWhite.png",
     size: 50
   },
+  [SecretRotation.DatadogApiKey]: {
+    name: "Datadog API Key",
+    image: "DatadogWhite.png",
+    size: 50
+  },
   [SecretRotation.ConvexAccessKey]: {
     name: "Convex Access Key",
     image: "Convex.png",
+    size: 50
+  },
+  [SecretRotation.FireworksApiKey]: {
+    name: "Fireworks Secret",
+    image: "Fireworks.png",
+    size: 50
+  },
+  [SecretRotation.SnowflakeUserKeyPair]: {
+    name: "Snowflake User Key Pair",
+    image: "Snowflake.png",
     size: 50
   }
 };
@@ -129,11 +154,16 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.DbtServiceToken]: AppConnection.Dbt,
   [SecretRotation.WindowsLocalAccount]: AppConnection.SMB,
   [SecretRotation.OpenRouterApiKey]: AppConnection.OpenRouter,
+  [SecretRotation.LiteLLMApiKey]: AppConnection.LiteLLM,
+  [SecretRotation.OpenAIServiceAccount]: AppConnection.OpenAI,
   [SecretRotation.HpIloLocalAccount]: AppConnection.SSH,
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
   [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog,
-  [SecretRotation.ConvexAccessKey]: AppConnection.Convex
+  [SecretRotation.DatadogApiKey]: AppConnection.Datadog,
+  [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
+  [SecretRotation.FireworksApiKey]: AppConnection.Fireworks,
+  [SecretRotation.SnowflakeUserKeyPair]: AppConnection.Snowflake
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -154,11 +184,16 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.DbtServiceToken]: true,
   [SecretRotation.WindowsLocalAccount]: false,
   [SecretRotation.OpenRouterApiKey]: true,
+  [SecretRotation.LiteLLMApiKey]: true,
+  [SecretRotation.OpenAIServiceAccount]: true,
   [SecretRotation.HpIloLocalAccount]: false,
   [SecretRotation.SupabaseApiKey]: true,
   [SecretRotation.SalesforceOauthCredentials]: true,
   [SecretRotation.DatadogApplicationKeySecret]: true,
-  [SecretRotation.ConvexAccessKey]: true
+  [SecretRotation.DatadogApiKey]: true,
+  [SecretRotation.ConvexAccessKey]: true,
+  [SecretRotation.FireworksApiKey]: true,
+  [SecretRotation.SnowflakeUserKeyPair]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

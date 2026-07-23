@@ -69,6 +69,7 @@ export type TServerConfig = {
   isCrossProjectSecretSharingEnabled?: boolean;
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
+  createdAt?: string;
   trustSamlEmails?: boolean;
   trustLdapEmails?: boolean;
   trustOidcEmails?: boolean;

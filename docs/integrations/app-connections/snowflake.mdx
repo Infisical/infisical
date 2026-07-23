@@ -18,7 +18,7 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
 
 <Steps>
     <Step title="Open Snowsight User Settings">
-        In [Snowsight](https://app.snowflake.com/), open the side bar menu and select **User & Roles** under **Governance & Security**.
+        In [Snowsight](https://app.snowflake.com/), open the side bar menu and select **Users & roles** under **Governance & Security**.
 
         ![Snowflake User Profile](/images/app-connections/snowflake/step-1.png)
     </Step>
@@ -29,34 +29,8 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
         ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-2.png)
     </Step>
 
-    <Step title="Configure user details and role">
-        Provide a **Username** and assign a role. The role must have permission to create and manage secrets in the target database. The snippet below grants the minimum required privileges (alternatively, assign the **ACCOUNTADMIN** role).
-
-        ![Configure User](/images/app-connections/snowflake/step-3.png)
-
-        If you decide to go with a custom role, you just need to run the following snippet. To do this, select the **Projects** tab and click on **Workspaces** to open the query editor.
-
-
-        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
-
-        ```SQL
-        -- Grant INFISICAL user access to SECRET_SYNC_TEST
-        CREATE ROLE IF NOT EXISTS INFISICAL_ROLE;
-        GRANT ROLE INFISICAL_ROLE TO USER INFISICAL; -- Change INFISICAL to be your user
-
-        GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
-        GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
-        GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
-        GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
-        ```
-
-        <Note>
-            If you select a custom role, note that **secret ownership is enforced per object**. Existing secrets in the target schema remain owned by their creator unless you transfer ownership. Infisical must use a role that **owns every secret it manages** (required for `CREATE OR REPLACE SECRET` and `DROP SECRET`). If the schema already has secrets, run the `GRANT OWNERSHIP ON ALL SECRETS ...` statement; always keep the `GRANT OWNERSHIP ON FUTURE SECRETS ...` statement.
-        </Note>
-    </Step>
-
     <Step title="Create a network policy">
-        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user.
+        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user. To create one, hover over **Projects**, click on **Workspaces**, and create a network policy. The snippet below creates one that allows access from any IP.
 
 
         ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
@@ -74,8 +48,64 @@ Infisical supports connecting to Snowflake using a **Username** and a **Programm
             Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
         </Warning>
     </Step>
+
+    <Step title="Configure user details and role">
+        Provide a **Username** and assign a role. Then grant the role the privileges required for how you intend to use the connection.
+
+        ![Configure User](/images/app-connections/snowflake/step-3.png)
+
+        To run the grant statements below, select the **Projects** tab and click on **Workspaces** to open the query editor.
+
+        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+
+        <Tabs>
+            <Tab title="Secret Syncs">
+                The role must have permission to create and manage secrets in the target database. The following snippet grants the minimum privileges required for operations on specific tables and schemas.
+
+                ```SQL
+                -- Grant INFISICAL user access to SECRET_SYNC_TEST
+                CREATE ROLE IF NOT EXISTS INFISICAL_ROLE;
+                GRANT ROLE INFISICAL_ROLE TO USER INFISICAL; -- Change INFISICAL to be your user
+
+                GRANT ALL PRIVILEGES ON DATABASE SECRET_SYNC_TEST TO ROLE INFISICAL_ROLE;
+                GRANT ALL PRIVILEGES ON SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE;
+                GRANT OWNERSHIP ON ALL SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
+                GRANT OWNERSHIP ON FUTURE SECRETS IN SCHEMA SECRET_SYNC_TEST.PUBLIC TO ROLE INFISICAL_ROLE REVOKE CURRENT GRANTS; -- Transfers ownership
+                ```
+
+                <Note>
+                    If you select a custom role, note that **secret ownership is enforced per object**. Existing secrets in the target schema remain owned by their creator unless you transfer ownership. Infisical must use a role that **owns every secret it manages** (required for `CREATE OR REPLACE SECRET` and `DROP SECRET`). If the schema already has secrets, run the `GRANT OWNERSHIP ON ALL SECRETS ...` statement; always keep the `GRANT OWNERSHIP ON FUTURE SECRETS ...` statement.
+                </Note>
+            </Tab>
+            <Tab title="Secret Rotations">
+                For [Snowflake User Key Pair rotation](/documentation/platform/secret-rotation/snowflake-user-key-pair), the connection's role must be able to alter the target user whose key pair will be rotated. Grant a role that can manage the user and assign it to your connection user:
+
+                ```SQL
+                -- create a role Infisical will use to manage the target user
+                CREATE ROLE IF NOT EXISTS INFISICAL_ROTATION_ROLE;
+
+                -- allow the role to alter the target user's RSA public key
+                GRANT OWNERSHIP ON USER MY_TARGET_USER TO ROLE INFISICAL_ROTATION_ROLE;
+
+                -- (optional) allow the role to create the target user if it does not exist yet
+                GRANT CREATE USER ON ACCOUNT TO ROLE INFISICAL_ROTATION_ROLE;
+
+                -- assign the role to the user backing your Snowflake Connection
+                GRANT ROLE INFISICAL_ROTATION_ROLE TO USER MY_CONNECTION_USER;
+                ```
+
+                If the target user already exists, the connection's role only needs privileges to **alter** it (e.g. `OWNERSHIP` on the user). If the user does **not** exist yet, the role additionally requires the `CREATE USER` privilege on the account.
+
+                <Tip>
+                    To learn more about managing users and privileges in Snowflake, see their [access control documentation](https://docs.snowflake.com/en/user-guide/security-access-control-overview).
+                </Tip>
+            </Tab>
+        </Tabs>
+    </Step>
+
+
     <Step title="Generate a Programmatic Access Token">
-        Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
+        Hover over **Governance & Security** and click on **Users & roles**. Select the user you want to use in Infisical. Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name (e.g. `infisical`) and configure its expiration and role restrictions according to your security policy.
 
         ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
         ![Fill up PAT info](/images/app-connections/snowflake/step-6.png)

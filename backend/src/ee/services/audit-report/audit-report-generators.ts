@@ -1,9 +1,11 @@
 import picomatch from "picomatch";
 import { z } from "zod";
 
+import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
+import { getConfig } from "@app/lib/config/env";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TReminderDALFactory } from "@app/services/reminder/reminder-dal";
@@ -27,6 +29,7 @@ export type TAuditReportGeneratorDALs = {
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "findByProjectAndDateRange" | "findByProject">;
   reminderDAL: Pick<TReminderDALFactory, "findByProjectAndDateRange">;
   auditLogDAL: Pick<TAuditLogDALFactory, "find">;
+  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "find">;
   secretValidationRuleDAL: Pick<TSecretValidationRuleDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -385,7 +388,7 @@ const secretAccessLogReport: TReportDefinition = {
   inputsSchema: SecretAccessLogInputsSchema,
   run: async ({ projectId, orgId, dal }, rawInputs) => {
     const { fromDate, toDate } = SecretAccessLogInputsSchema.parse(rawInputs ?? {});
-    const logs = await dal.auditLogDAL.find({
+    const findArgs = {
       orgId,
       projectId,
       eventType: SECRET_ACCESS_EVENT_TYPES,
@@ -393,7 +396,13 @@ const secretAccessLogReport: TReportDefinition = {
       endDate: toDate.toISOString(),
       offset: 0,
       limit: MAX_AUDIT_REPORT_ROWS + 1
-    });
+    };
+
+    const appCfg = getConfig();
+    const clickhouseAuditLogDAL = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED ? dal.clickhouseAuditLogDAL : undefined;
+    const logs = clickhouseAuditLogDAL
+      ? await clickhouseAuditLogDAL.find(findArgs)
+      : await dal.auditLogDAL.find(findArgs);
     const { items, truncated } = applyRowCap(logs);
 
     return {

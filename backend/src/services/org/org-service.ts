@@ -7,6 +7,7 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  ProjectType,
   TableName,
   TOidcConfigs,
   TSamlConfigs
@@ -16,6 +17,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import {
   OrgPermissionActions,
   OrgPermissionGroupActions,
@@ -36,6 +38,8 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -126,6 +130,7 @@ type TOrgServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -161,7 +166,8 @@ export const orgServiceFactory = ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
-  certificatePolicyDAL
+  certificatePolicyDAL,
+  usageMeteringService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -201,10 +207,17 @@ export const orgServiceFactory = ({
     }
 
     const data = hasSubOrg && subOrg ? subOrg : org;
-    if (!data.userTokenExpiration) {
-      return { ...data, userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME };
-    }
-    return data;
+
+    const pamProjects = await projectDAL.find(
+      { orgId: data.id, type: ProjectType.PAM },
+      { sort: [["createdAt", "desc"]], limit: 1 }
+    );
+
+    return {
+      ...data,
+      userTokenExpiration: data.userTokenExpiration || appCfg.JWT_REFRESH_LIFETIME,
+      pamProjectId: pamProjects[0]?.id ?? null
+    };
   };
 
   /*
@@ -704,12 +717,24 @@ export const orgServiceFactory = ({
         tx
       );
 
+      await bootstrapPamProject(
+        {
+          orgId: org.id,
+          adminUserIds: userId ? [userId] : []
+        },
+        { projectDAL, membershipDAL, membershipRoleDAL },
+        tx
+      );
+
       return org;
     };
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+
+    // The PAM bootstrap above seeds the creator as a project member, which changes the pam_identities meter.
+    usageMeteringService.emit(organization.id, PamIdentities.key);
 
     return organization;
   };
@@ -1184,6 +1209,9 @@ export const orgServiceFactory = ({
       approvalPolicyDAL
     });
 
+    // Removing an org member cascades their project + group memberships, changing the identity meters.
+    usageMeteringService.emit(orgId, SecretIdentities.key);
+    usageMeteringService.emit(orgId, PamIdentities.key);
     return deletedMembership;
   };
 
@@ -1223,6 +1251,9 @@ export const orgServiceFactory = ({
       approvalPolicyDAL
     });
 
+    // Removing org members cascades their project + group memberships, changing the identity meters.
+    usageMeteringService.emit(orgId, SecretIdentities.key);
+    usageMeteringService.emit(orgId, PamIdentities.key);
     return deletedMemberships;
   };
 

@@ -75,6 +75,8 @@ Infisical supports three methods for connecting to Azure Key Vault: OAuth, Clien
       Set the API permissions of your Azure service principal to include `user_impersonation` for the Key Vault API.
       ![Azure key vault](/images/app-connections/azure/keyvault-azure-permissions.png)
 
+      <Note>If you want to configure automatic client secret rotation for this App Connection, you also need to grant either `Application.ReadWrite.OwnedBy` or `Application.ReadWrite.All` permissions.</Note>
+
     </Step>
   </Steps>
 </Accordion>

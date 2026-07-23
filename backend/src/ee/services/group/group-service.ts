@@ -17,6 +17,8 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -90,6 +92,7 @@ type TGroupServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -109,7 +112,8 @@ export const groupServiceFactory = ({
   licenseService,
   oidcConfigDAL,
   membershipGroupDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  usageMeteringService
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -603,10 +607,16 @@ export const groupServiceFactory = ({
         groupMembershipId: groupMembership.id,
         actorOrgId
       });
+      // Removing the group drops its members from any project it was on.
+      usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+      usageMeteringService.emit(actorOrgId, PamIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorOrgId });
+    // Deleting the group drops its members from any project it was on.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -950,6 +960,9 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
+    // The user may now be in a secret-manager or PAM project through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1031,6 +1044,9 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL
     });
 
+    // The identity may now be in a secret-manager or PAM project through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1123,6 +1139,9 @@ export const groupServiceFactory = ({
       identityIds: []
     });
 
+    // The user may have left a secret-manager or PAM project it only reached through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1209,6 +1228,9 @@ export const groupServiceFactory = ({
       identityIds: [identityId]
     });
 
+    // The identity may have left a secret-manager or PAM project it only reached through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

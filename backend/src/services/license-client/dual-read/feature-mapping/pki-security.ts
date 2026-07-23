@@ -27,9 +27,9 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     extractV1: (p) => p.pkiPqc
   },
   {
-    v2Key: "pki_legacy_templates",
-    v1Field: "pkiLegacyTemplates",
-    extractV1: (p) => p.pkiLegacyTemplates
+    v2Key: "pki_code_signing",
+    v1Field: "pkiCodeSigning",
+    extractV1: (p) => p.pkiCodeSigning
   },
   {
     v2Key: "ssh_host_groups",
@@ -75,6 +75,11 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     v2Key: "honey_tokens",
     v1Field: "honeyTokens",
     extractV1: (p) => p.honeyTokens
+  },
+  {
+    v2Key: "secrets_brokering",
+    v1Field: "secretsBrokering",
+    extractV1: (p) => p.secretsBrokering
   },
   {
     v2Key: "custom_rate_limits",

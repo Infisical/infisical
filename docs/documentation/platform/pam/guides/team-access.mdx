@@ -1,0 +1,71 @@
+---
+title: "Grant Team Access to a Database"
+sidebarTitle: "Team Database Access"
+description: "Set up secure PostgreSQL access for your team."
+---
+
+This guide walks through giving your team secure access to a production PostgreSQL database.
+
+## Prerequisites
+
+- Product Admin access
+- A PostgreSQL database reachable from your [Gateway](/documentation/platform/gateways/gateway-deployment)
+- Database credentials (username and password)
+
+## Steps
+
+<Steps>
+  <Step title="Create a Folder">
+    Create a [folder](/documentation/platform/pam/folders/overview) for the [accounts](/documentation/platform/pam/accounts/overview) your team needs to access.
+
+    1. Go to **Privileged Access Management → Accounts**
+    2. Click **Create Folder**
+    3. Name it based on who needs access (e.g., `backend-team`, `checkout-service`)
+    4. Click **Create**
+  </Step>
+  <Step title="(Optional) Create a Custom Template">
+    The default `postgres` [template](/documentation/platform/pam/templates/overview) works for most cases. If you need stricter rules:
+
+    1. Go to **Account Templates** and click **Create Template**
+    2. Select **PostgreSQL** as the type and configure your access policy
+    3. Click **Create**
+  </Step>
+  <Step title="Add the Database Account">
+    1. Click **Add Account**
+    2. Select your folder and template
+    3. Fill in your database connection details and credentials
+    4. Click **Create**
+  </Step>
+  <Step title="Grant Your Team Access">
+    1. Open your folder
+    2. Go to the **Permissions** tab
+    3. Click **Assign Access**
+    4. Select your team and set the role to **Connector**
+    5. Click **Add**
+
+    <Tip>
+    To let someone manage the folder day-to-day, grant them **Admin** instead of Connector.
+    </Tip>
+  </Step>
+  <Step title="Connect">
+    Your team can now connect from **My Access** — either in the browser or using the CLI proxy.
+
+    1. Go to **Privileged Access Management → My Access**
+    2. Find the account and click **Launch**
+  </Step>
+</Steps>
+
+## Adding More Databases
+
+To add another database, open the folder and click **Add Account**. Your team will automatically have access since they already have folder permissions.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SSH Certificate Auth" icon="key" href="/documentation/platform/pam/guides/ssh-certificate-auth">
+    Set up secure SSH access with certificates.
+  </Card>
+  <Card title="Sessions" icon="display" href="/documentation/platform/pam/sessions/overview">
+    View and manage team sessions.
+  </Card>
+</CardGroup>

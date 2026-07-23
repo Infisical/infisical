@@ -72,7 +72,7 @@
   --color-product-pki: #ed8c34;
   --color-product-kms: #34edbf;
   --color-product-ss: #b056f0;
-  --color-product-pam: #ed3453;
+  --color-product-pam: #ff3568;
   --color-admin: #c0c0c8;
   --color-neutral: #adaeb0;
   --color-border: #2b2c30;
@@ -100,6 +100,7 @@
   --color-import: #457d91;
   --color-secret-rotation: #4c6081;
   --color-override: #694c81;
+  --color-proxied-service: #7d4ca9;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;

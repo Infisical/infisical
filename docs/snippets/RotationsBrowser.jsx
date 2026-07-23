@@ -4,7 +4,7 @@ export const RotationsBrowser = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS"];
+  const categories = ["All", "Databases", "Identity & Auth", "Cloud Providers",  "Networking & DNS", "Data Analytics", "Monitoring", "SaaS", "AI & LLM"];
 
   const rotations = [
     {
@@ -161,6 +161,15 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Fireworks API Key",
+      slug: "fireworks-api-key",
+      path: "/documentation/platform/secret-rotation/fireworks-api-key",
+      description:
+        "Learn how to automatically rotate Fireworks AI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Supabase API Key",
       slug: "supabase-api-key",
       path: "/documentation/platform/secret-rotation/supabase-api-key",
@@ -186,7 +195,41 @@ export const RotationsBrowser = () => {
         "Learn how to automatically rotate Datadog application keys.",
       category: "Monitoring",
       rotationType: "Dual-Phase",
-    }
+    },
+    {
+      name: "Datadog API Key",
+      slug: "datadog-api-key",
+      path: "/documentation/platform/secret-rotation/datadog-api-key",
+      description: "Learn how to automatically rotate Datadog API keys.",
+      category: "Monitoring",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "LiteLLM API Key",
+      slug: "litellm-api-key",
+      path: "/documentation/platform/secret-rotation/litellm-api-key",
+      description: "Learn how to automatically rotate LiteLLM API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "OpenAI API Key",
+      slug: "openai-api-key",
+      path: "/documentation/platform/secret-rotation/openai-service-account",
+      description:
+        "Learn how to automatically rotate OpenAI API keys.",
+      category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Snowflake User Key Pair",
+      slug: "snowflake-user-key-pair",
+      path: "/documentation/platform/secret-rotation/snowflake-user-key-pair",
+      description:
+        "Learn how to automatically rotate Snowflake user key pairs.",
+      category: "Databases",
+      rotationType: "Dual-Phase",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

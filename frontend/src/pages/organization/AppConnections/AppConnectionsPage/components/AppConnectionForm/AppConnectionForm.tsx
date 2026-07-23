@@ -15,6 +15,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DiscriminativePick } from "@app/types";
 
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
+import { AdcsConnectionForm } from "./AdcsConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
 import { AppConnectionFormProvider } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
@@ -44,6 +45,7 @@ import { DNSMadeEasyConnectionForm } from "./DNSMadeEasyConnectionForm";
 import { DopplerConnectionForm } from "./DopplerConnectionForm";
 import { ExternalInfisicalConnectionForm } from "./ExternalInfisicalConnectionForm";
 import { F5BigIpConnectionForm } from "./F5BigIpConnectionForm";
+import { FireworksConnectionForm } from "./FireworksConnectionForm";
 import { FlyioConnectionForm } from "./FlyioConnectionForm";
 import { GcpConnectionForm } from "./GcpConnectionForm";
 import { GitHubConnectionForm } from "./GitHubConnectionForm";
@@ -54,18 +56,22 @@ import { HasuraCloudConnectionForm } from "./HasuraCloudConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
+import { LiteLLMConnectionForm } from "./LiteLLMConnectionForm";
 import { MongoDBConnectionForm } from "./MongoDBConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
 import { NetScalerConnectionForm } from "./NetScalerConnectionForm";
 import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
+import { NutanixPrismCentralConnectionForm } from "./NutanixPrismCentralConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OctopusDeployConnectionForm } from "./OctopusDeployConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OnaConnectionForm } from "./OnaConnectionForm";
+import { OpenAIConnectionForm } from "./OpenAIConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
@@ -74,6 +80,7 @@ import { QoveryConnectionForm } from "./QoveryConnectionForm";
 import { RailwayConnectionForm } from "./RailwayConnectionForm";
 import { RedisConnectionForm } from "./RedisConnectionForm";
 import { RenderConnectionForm } from "./RenderConnectionForm";
+import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
@@ -87,6 +94,7 @@ import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
 import { WindmillConnectionForm } from "./WindmillConnectionForm";
+import { WinRMConnectionForm } from "./WinRMConnectionForm";
 import { ZabbixConnectionForm } from "./ZabbixConnectionForm";
 
 type AppConnectionFormData = DiscriminativePick<
@@ -201,6 +209,10 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <AzureAppConfigurationConnectionForm onSubmit={onSubmit} projectId={projectId} />;
       case AppConnection.AzureADCS:
         return <AzureADCSConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ADCS:
+        return <AdcsConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.WinRM:
+        return <WinRMConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Humanitec:
@@ -293,8 +305,14 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.OpenAI:
+        return <OpenAIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.LiteLLM:
+        return <LiteLLMConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Fireworks:
+        return <FireworksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
@@ -313,6 +331,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.KempLoadMaster:
+        return <KempLoadMasterConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OVH:
         return <OVHConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Ona:
@@ -333,6 +353,10 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Rundeck:
+        return <RundeckConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.NutanixPrismCentral:
+        return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       default:
         throw new Error(`Unhandled App ${app}`);
     }
@@ -434,6 +458,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         );
       case AppConnection.AzureADCS:
         return <AzureADCSConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      case AppConnection.ADCS:
+        return <AdcsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
+      case AppConnection.WinRM:
+        return <WinRMConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
       case AppConnection.Databricks:
         return <DatabricksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Humanitec:
@@ -548,8 +576,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <SmbConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OpenRouter:
         return <OpenRouterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.OpenAI:
+        return <OpenAIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Anthropic:
         return <AnthropicConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.LiteLLM:
+        return <LiteLLMConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Fireworks:
+        return <FireworksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Devin:
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
@@ -564,6 +598,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.KempLoadMaster:
+        return <KempLoadMasterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OVH:
         return <OVHConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Ona:
@@ -584,6 +620,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Rundeck:
+        return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.NutanixPrismCentral:
+        return (
+          <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
+        );
       case AppConnection.Venafi:
         return <VenafiConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.VenafiTpp:

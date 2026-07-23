@@ -9,7 +9,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.AzureAppConfiguration]: "Azure App Configuration",
   [AppConnection.AzureClientSecrets]: "Azure Client Secrets",
   [AppConnection.AzureDevOps]: "Azure DevOps",
-  [AppConnection.AzureADCS]: "Azure ADCS",
+  [AppConnection.AzureADCS]: "Azure ADCS (Web Enrollment)",
+  [AppConnection.ADCS]: "Microsoft ADCS",
   [AppConnection.AzureDNS]: "Azure DNS",
   [AppConnection.Databricks]: "Databricks",
   [AppConnection.Humanitec]: "Humanitec",
@@ -50,8 +51,10 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.OctopusDeploy]: "Octopus Deploy",
   [AppConnection.SSH]: "SSH",
   [AppConnection.Dbt]: "DBT",
-  [AppConnection.SMB]: "SMB",
+  [AppConnection.SMB]: "Windows (SMB)",
+  [AppConnection.WinRM]: "Windows (WinRM)",
   [AppConnection.OpenRouter]: "OpenRouter",
+  [AppConnection.OpenAI]: "OpenAI",
   [AppConnection.CircleCI]: "CircleCI",
   [AppConnection.AzureEntraId]: "Azure Entra ID",
   [AppConnection.Venafi]: "Venafi TLS Protect Cloud",
@@ -59,6 +62,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
   [AppConnection.Anthropic]: "Anthropic",
   [AppConnection.OVH]: "OVH",
   [AppConnection.Devin]: "Devin",
@@ -71,9 +75,13 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.F5BigIp]: "F5 BIG-IP",
   [AppConnection.GoDaddy]: "GoDaddy",
   [AppConnection.Convex]: "Convex",
+  [AppConnection.Rundeck]: "Rundeck",
   [AppConnection.HasuraCloud]: "Hasura Cloud",
   [AppConnection.Qovery]: "Qovery",
-  [AppConnection.Cloud66]: "Cloud 66"
+  [AppConnection.Cloud66]: "Cloud 66",
+  [AppConnection.LiteLLM]: "LiteLLM",
+  [AppConnection.Fireworks]: "Fireworks",
+  [AppConnection.NutanixPrismCentral]: "Nutanix Prism Central"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -86,6 +94,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.AzureClientSecrets]: AppConnectionPlanType.Regular,
   [AppConnection.AzureDevOps]: AppConnectionPlanType.Regular,
   [AppConnection.AzureADCS]: AppConnectionPlanType.Regular,
+  [AppConnection.ADCS]: AppConnectionPlanType.Regular,
   [AppConnection.AzureDNS]: AppConnectionPlanType.Regular,
   [AppConnection.Databricks]: AppConnectionPlanType.Regular,
   [AppConnection.Humanitec]: AppConnectionPlanType.Regular,
@@ -127,7 +136,9 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.SSH]: AppConnectionPlanType.Regular,
   [AppConnection.Dbt]: AppConnectionPlanType.Regular,
   [AppConnection.SMB]: AppConnectionPlanType.Regular,
+  [AppConnection.WinRM]: AppConnectionPlanType.Regular,
   [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
+  [AppConnection.OpenAI]: AppConnectionPlanType.Regular,
   [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
   [AppConnection.AzureEntraId]: AppConnectionPlanType.Regular,
   [AppConnection.Venafi]: AppConnectionPlanType.Regular,
@@ -135,6 +146,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.KempLoadMaster]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
   [AppConnection.OVH]: AppConnectionPlanType.Regular,
   [AppConnection.Devin]: AppConnectionPlanType.Regular,
@@ -147,7 +159,11 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.F5BigIp]: AppConnectionPlanType.Regular,
   [AppConnection.GoDaddy]: AppConnectionPlanType.Regular,
   [AppConnection.Convex]: AppConnectionPlanType.Regular,
+  [AppConnection.Rundeck]: AppConnectionPlanType.Regular,
   [AppConnection.HasuraCloud]: AppConnectionPlanType.Regular,
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
-  [AppConnection.Cloud66]: AppConnectionPlanType.Regular
+  [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
+  [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
+  [AppConnection.Fireworks]: AppConnectionPlanType.Regular,
+  [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular
 };

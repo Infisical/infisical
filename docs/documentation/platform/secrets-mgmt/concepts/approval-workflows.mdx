@@ -1,6 +1,6 @@
 ---
-title: "Approval workflows"
-sidebarTitle: "Approval workflows"
+title: "Approval Workflows"
+sidebarTitle: "Approval Workflows"
 description: "Understand how approval workflows protect sensitive environments and why they matter."
 ---
 
@@ -54,8 +54,16 @@ Approvers are notified through email, [Slack](/documentation/platform/workflow-i
 
 After a change request is merged, the updated secrets are automatically synced to connected applications — for example, through the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes) — removing the manual propagation step.
 
-## Learn more
+## Next Steps
 
-- [Set up approval workflows](/documentation/platform/pr-workflows) — Step-by-step guide to creating and using change policies
-- [Access requests](/documentation/platform/access-controls/access-requests) — Request-based access to environments and paths
-- [Scoping secrets](/documentation/platform/secrets-mgmt/concepts/access-control) — How access to secrets is controlled in Infisical
+<CardGroup cols={2}>
+  <Card title="Set Up Approval Workflows" icon="code-pull-request" href="/documentation/platform/pr-workflows">
+    Create and use change policies step by step.
+  </Card>
+  <Card title="Access Requests" icon="hand" href="/documentation/platform/access-controls/access-requests">
+    Grant request-based access to environments and paths.
+  </Card>
+  <Card title="Access Control" icon="shield-halved" href="/documentation/platform/secrets-mgmt/concepts/access-control">
+    Learn how access to secrets is controlled in Infisical.
+  </Card>
+</CardGroup>

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { TSessionEvent } from "../types";
 import {
   decryptOneChunk,
   detectChunkGaps,
@@ -10,15 +11,15 @@ import {
   PAM_PLAYBACK_MAX_CHUNKS,
   PAM_PLAYBACK_MAX_TOTAL_EVENTS
 } from "./decrypt";
-import { TBrokenChunkMarker, TPamPlaybackBundle } from "./types";
+import { TBrokenChunkMarker, TPamSessionPlayback } from "./types";
 
 export const pamPlaybackKeys = {
   all: ["pam", "playback"] as const,
-  bundle: (sessionId: string) => [...pamPlaybackKeys.all, "bundle", sessionId] as const
+  playback: (sessionId: string) => [...pamPlaybackKeys.all, sessionId] as const
 };
 
-const fetchBundle = async (sessionId: string): Promise<TPamPlaybackBundle> => {
-  const { data } = await apiRequest.get<TPamPlaybackBundle>(
+const fetchPlayback = async (sessionId: string): Promise<TPamSessionPlayback> => {
+  const { data } = await apiRequest.get<TPamSessionPlayback>(
     `/api/v1/pam/sessions/${sessionId}/playback`
   );
   return data;
@@ -26,15 +27,11 @@ const fetchBundle = async (sessionId: string): Promise<TPamPlaybackBundle> => {
 
 const PLAYBACK_POLL_INTERVAL_MS = 5000;
 
-export const useGetPamSessionPlaybackBundle = (
-  sessionId: string,
-  enabled = true,
-  isActive = false
-) =>
+export const useGetPamSessionPlayback = (sessionId: string, enabled = true, isActive = false) =>
   useQuery({
-    queryKey: pamPlaybackKeys.bundle(sessionId),
+    queryKey: pamPlaybackKeys.playback(sessionId),
     enabled: Boolean(sessionId) && enabled,
-    queryFn: () => fetchBundle(sessionId),
+    queryFn: () => fetchPlayback(sessionId),
     staleTime: 0,
     gcTime: 0,
     refetchInterval: isActive
@@ -44,14 +41,13 @@ export const useGetPamSessionPlaybackBundle = (
 
 export type DecryptedChunkRecord = {
   chunkIndex: number;
-  events: unknown[];
+  events: (TSessionEvent | TBrokenChunkMarker)[];
 };
 
 export type PlaybackDecryptState = {
-  legacy: boolean;
   loading: boolean;
   error?: string;
-  events: unknown[];
+  events: (TSessionEvent | TBrokenChunkMarker)[];
   brokenChunks: TBrokenChunkMarker[];
   missingChunks: number[];
   totalChunks: number;
@@ -67,10 +63,9 @@ export const useDecryptedSessionLogs = (
   enabled = true,
   isActive = false
 ): PlaybackDecryptState => {
-  const bundleQuery = useGetPamSessionPlaybackBundle(sessionId, enabled, isActive);
-  const bundle = bundleQuery.data;
+  const playbackQuery = useGetPamSessionPlayback(sessionId, enabled, isActive);
+  const playback = playbackQuery.data;
   const [state, setState] = useState<Omit<PlaybackDecryptState, "sessionComplete">>({
-    legacy: false,
     loading: true,
     events: [],
     brokenChunks: [],
@@ -99,42 +94,14 @@ export const useDecryptedSessionLogs = (
   }
 
   useEffect(() => {
-    if (!enabled || !bundle) return undefined;
+    if (!enabled || !playback) return undefined;
     let cancelled = false;
 
     const run = async () => {
-      // Legacy path: backend has not been upgraded for this session, so we have no session key
-      // Fall back to the existing /logs endpoint via the consumer
-      if (bundle.legacy) {
-        if (!cancelled) {
-          setState({
-            legacy: true,
-            loading: false,
-            events: [],
-            brokenChunks: [],
-            missingChunks: [],
-            totalChunks: 0,
-            totalDurationMs: 0
-          });
-        }
-        return;
-      }
-
-      if (!bundle.sessionKey) {
-        if (!cancelled) {
-          setState((s) => ({
-            ...s,
-            loading: false,
-            error: "Missing session key in playback bundle"
-          }));
-        }
-        return;
-      }
-
       // Cache session key across poll cycles
       if (!sessionKeyRef.current) {
         try {
-          sessionKeyRef.current = await importSessionKeyFromBase64(bundle.sessionKey);
+          sessionKeyRef.current = await importSessionKeyFromBase64(playback.sessionKey);
         } catch (err) {
           if (!cancelled) {
             setState((s) => ({
@@ -148,8 +115,8 @@ export const useDecryptedSessionLogs = (
       }
       const sessionKey = sessionKeyRef.current;
 
-      const projectId = bundle.projectId ?? "";
-      const sortedChunks = [...bundle.chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
+      const { projectId } = playback;
+      const sortedChunks = [...playback.chunks].sort((a, b) => a.chunkIndex - b.chunkIndex);
       const totalDurationMs = sortedChunks.reduce((max, c) => Math.max(max, c.endElapsedMs), 0);
 
       if (sortedChunks.length > PAM_PLAYBACK_MAX_CHUNKS) {
@@ -214,7 +181,7 @@ export const useDecryptedSessionLogs = (
 
         if (cancelled) return;
 
-        if (bundle.sessionComplete) {
+        if (playback.sessionComplete) {
           for (let mi = 0; mi < missingChunks.length; mi += 1) {
             const idx = missingChunks[mi];
             if (!accChunkEventsRef.current.has(idx)) {
@@ -235,9 +202,8 @@ export const useDecryptedSessionLogs = (
           .flatMap((key) => accChunkEventsRef.current.get(key) ?? []);
 
         setState({
-          legacy: false,
-          loading: isActive && !bundle.sessionComplete,
-          events: orderedEvents,
+          loading: isActive && !playback.sessionComplete,
+          events: orderedEvents as (TSessionEvent | TBrokenChunkMarker)[],
           brokenChunks: [...accBrokenRef.current],
           missingChunks,
           totalChunks: sortedChunks.length,
@@ -246,7 +212,7 @@ export const useDecryptedSessionLogs = (
       } else {
         // Full path: decrypt all chunks with gap markers (completed sessions)
         const missingSet = new Set(missingChunks);
-        const events: unknown[] = [];
+        const events: (TSessionEvent | TBrokenChunkMarker)[] = [];
         const brokenChunks: PlaybackDecryptState["brokenChunks"] = [];
         let chunkIdx = 0;
 
@@ -282,7 +248,7 @@ export const useDecryptedSessionLogs = (
             });
             chunkIdx += 1;
             if (r.ok) {
-              events.push(...r.events);
+              events.push(...(r.events as TSessionEvent[]));
               if (events.length > PAM_PLAYBACK_MAX_TOTAL_EVENTS) {
                 brokenChunks.push({
                   __brokenChunk: true,
@@ -305,7 +271,6 @@ export const useDecryptedSessionLogs = (
           }
 
           setState({
-            legacy: false,
             loading: true,
             events: [...events],
             brokenChunks: [...brokenChunks],
@@ -318,7 +283,6 @@ export const useDecryptedSessionLogs = (
         if (cancelled) return;
 
         setState({
-          legacy: false,
           loading: false,
           events,
           brokenChunks,
@@ -338,10 +302,10 @@ export const useDecryptedSessionLogs = (
     return () => {
       cancelled = true;
     };
-  }, [bundle, enabled, sessionId, fallbackUrlBuilder, isActive]);
+  }, [playback, enabled, sessionId, fallbackUrlBuilder, isActive]);
 
   return {
     ...state,
-    sessionComplete: bundle?.sessionComplete ?? false
+    sessionComplete: playback?.sessionComplete ?? false
   };
 };

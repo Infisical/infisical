@@ -37,6 +37,7 @@ import { OvhSyncDestinationCol } from "./OvhSyncDestinationCol";
 import { QoverySyncDestinationCol } from "./QoverySyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
+import { RundeckSyncDestinationCol } from "./RundeckSyncDestinationCol";
 import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
@@ -109,6 +110,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <ChecklySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Supabase:
       return <SupabaseSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Rundeck:
+      return <RundeckSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.DigitalOceanAppPlatform:
       return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Netlify:

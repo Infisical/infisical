@@ -107,8 +107,13 @@ export const SecretDetailSidebar = ({
 
   const { mutateAsync: redactSecretValue } = useRedactSecretValue();
 
+  // A personal override is always readable by its owner, so its fetch must not depend on the shared
+  // value's `secretValueHidden` (true when the user lacks read access to the shared secret).
   const canFetchSecretValue =
-    Boolean(originalSecret) && !originalSecret.secretValueHidden && !originalSecret.isEmpty;
+    Boolean(originalSecret) &&
+    (originalSecret?.idOverride
+      ? !originalSecret.isOverrideEmpty
+      : !originalSecret.secretValueHidden && !originalSecret.isEmpty);
 
   const fetchSecretValueParams = {
     environment,
@@ -162,10 +167,8 @@ export const SecretDetailSidebar = ({
   const getOverrideDefaultValue = () => {
     if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
 
-    if (secret.secretValueHidden) {
-      return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
-    }
-
+    // The personal override is always readable by its owner; it is not gated on the shared value's
+    // `secretValueHidden`.
     if (isErrorFetchingSecretValue) return "Error loading secret value...";
 
     return secret.valueOverride || "";

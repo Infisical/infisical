@@ -17,13 +17,12 @@ export {
   ProjectPermissionKmipActions,
   ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
-  ProjectPermissionPamInsightsActions,
-  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "./types";
