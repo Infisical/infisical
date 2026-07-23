@@ -36,9 +36,15 @@ Infisical currently only supports two methods for connecting to Azure, which are
 
       #### Azure App Configuration permissions
     
-      Set the API permissions of the Azure application to include the following Azure App Configuration permissions: `KeyValue.Delete`, `KeyValue.Read`, and `KeyValue.Write`.
-      ![Azure app config](../../images/integrations/azure-app-configuration/app-api-permissions.png)
+      Set the API permissions of the Azure application to include the following permissions:
+        - Microsoft Graph
+          - `Application.ReadWrite.All`
+          - `Application.ReadWrite.OwnedBy`
+          - `Application.ReadWrite.All` (Delegated)
+          - `Directory.ReadWrite.All` (Delegated)
+          - `User.Read` (Delegated)
 
+      ![Azure client secrets](/images/integrations/azure-client-secrets/app-api-permissions.png)
 
     </Step>
     <Step title="Add your application credentials to Infisical">
@@ -72,9 +78,17 @@ Infisical currently only supports two methods for connecting to Azure, which are
 
       #### Azure App Configuration permissions
     
-      Set the API permissions of your Azure service principal to include the following Azure App Configuration permissions: `KeyValue.Delete`, `KeyValue.Read`, and `KeyValue.Write`.
-      
-      ![Azure app config](../../images/integrations/azure-app-configuration/app-api-permissions.png)
+      Set the API permissions of the Azure application to include the following permissions:
+        - Microsoft Graph
+          - `Application.ReadWrite.All`
+          - `Application.ReadWrite.OwnedBy`
+          - `Application.ReadWrite.All` (Delegated)
+          - `Directory.ReadWrite.All` (Delegated)
+          - `User.Read` (Delegated)
+
+      ![Azure client secrets](/images/integrations/azure-client-secrets/app-api-permissions.png)
+
+      <Note>If you want to configure automatic client secret rotation for this App Connection, you also need to grant either `Application.ReadWrite.OwnedBy` or `Application.ReadWrite.All` permissions.</Note>
     </Step>
   </Steps>
 </Accordion>
