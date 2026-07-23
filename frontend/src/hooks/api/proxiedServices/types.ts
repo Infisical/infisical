@@ -28,6 +28,7 @@ export type TProxiedServiceBase = {
   folderId: string;
   createdAt: string;
   updatedAt: string;
+  lastUsedAt?: string | null;
 };
 
 export type TProxiedService = TProxiedServiceBase & {

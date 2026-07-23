@@ -7,6 +7,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrgServiceActor, TDynamicSecretWithMetadata } from "@app/lib/types";
@@ -31,6 +32,7 @@ import {
   TProxiedServiceCredentialInput,
   TProxiedServiceDashboardCountDTO,
   TProxiedServiceDashboardListDTO,
+  TReportProxiedServiceUsageDTO,
   TUpdateProxiedServiceDTO
 } from "./proxied-service-types";
 
@@ -48,7 +50,10 @@ type TProxiedServiceServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
 };
+
+const USAGE_REPORT_DEBOUNCE_SECONDS = 60;
 
 const toCredentialRow = (serviceId: string, credential: TProxiedServiceCredentialInput) => ({
   serviceId,
@@ -78,7 +83,8 @@ export const proxiedServiceServiceFactory = ({
   permissionService,
   licenseService,
   dynamicSecretDAL,
-  projectDAL
+  projectDAL,
+  keyStore
 }: TProxiedServiceServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
     const plan = await licenseService.getPlan(orgId);
@@ -650,6 +656,41 @@ export const proxiedServiceServiceFactory = ({
     }));
   };
 
+  const reportUsage = async ({ serviceId }: TReportProxiedServiceUsageDTO, actor: OrgServiceActor) => {
+    await $checkLicense(actor.orgId);
+    const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
+    if (!service) {
+      throw new NotFoundError({ message: `Proxied service with ID "${serviceId}" not found` });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId: service.projectId
+    });
+    const resolvedSecretPath = await $resolveSecretPath(service.projectId, service.folderId);
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionProxiedServiceActions.ReportUsage,
+      subject(ProjectPermissionSub.ProxiedServices, {
+        environment: service.environmentSlug,
+        secretPath: resolvedSecretPath
+      })
+    );
+
+    // Only the report that claims the key writes; the rest within the window are dropped.
+    const claimed = await keyStore.setItemWithExpiryNX(
+      KeyStorePrefixes.ProxiedServiceUsageDebounce(serviceId),
+      USAGE_REPORT_DEBOUNCE_SECONDS,
+      "1"
+    );
+    if (claimed) {
+      await proxiedServiceDAL.stampLastUsed(serviceId);
+    }
+  };
+
   return {
     create,
     list,
@@ -657,6 +698,7 @@ export const proxiedServiceServiceFactory = ({
     getByName,
     updateById,
     deleteById,
+    reportUsage,
     getDashboardProxiedServiceCount,
     getDashboardProxiedServices
   };

@@ -250,7 +250,8 @@ export const SanitizedProxiedServiceBaseSchema = ProxiedServicesSchema.pick({
   isEnabled: true,
   folderId: true,
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  lastUsedAt: true
 });
 
 export const ProxiedServiceWithCredentialsSchema = SanitizedProxiedServiceBaseSchema.extend({

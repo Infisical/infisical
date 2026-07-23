@@ -2994,7 +2994,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     dynamicSecretDAL,
-    projectDAL
+    projectDAL,
+    keyStore
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({

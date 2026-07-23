@@ -14,7 +14,8 @@ export const ProxiedServicesSchema = z.object({
   isEnabled: z.boolean().default(true),
   folderId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  lastUsedAt: z.date().nullable().optional()
 });
 
 export type TProxiedServices = z.infer<typeof ProxiedServicesSchema>;
