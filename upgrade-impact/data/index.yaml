@@ -88,6 +88,9 @@ versions:
   - version: v0.161.11
     releasedAt: 2026-07-02T19:28:16-03:00
     file: releases/v0.161.11.yaml
+  - version: v0.161.12
+    releasedAt: 2026-07-03T11:21:08-03:00
+    file: releases/v0.161.12.yaml
   - version: v0.161.13
     releasedAt: 2026-07-06T14:50:57+05:30
     file: releases/v0.161.13.yaml
