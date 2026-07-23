@@ -81,6 +81,12 @@ export const MfaSessionPage = () => {
     }
   }, [sessionStatus?.status]);
 
+  useEffect(() => {
+    if (isCodeComplete && !isLoading) {
+      handleVerifyMfa();
+    }
+  }, [isCodeComplete]);
+
   // Handle status error (session not found or expired)
   useEffect(() => {
     if (isStatusError) {
@@ -96,8 +102,8 @@ export const MfaSessionPage = () => {
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
-  const handleVerifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleVerifyMfa = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
 
     if (!mfaCode.trim() || !isCodeComplete || !sessionStatus?.mfaMethod) return;
 

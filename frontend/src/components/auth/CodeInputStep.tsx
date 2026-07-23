@@ -91,6 +91,12 @@ export default function CodeInputStep({
     onComplete();
   };
 
+  useEffect(() => {
+    if (code.length === 6 && !isVerifying) {
+      handleVerify();
+    }
+  }, [code]);
+
   const handleResend = async () => {
     try {
       const { cooldownSeconds } = await resendEmail({ email });
