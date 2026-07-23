@@ -10,8 +10,9 @@ describe("isAwsIamRoleArn", () => {
     "arn:aws-cn:iam::123456789012:role/cn-role",
     "arn:aws-iso:iam::123456789012:role/iso-role",
     "arn:aws-iso-b:iam::123456789012:role/iso-b-role",
-    // IAM role paths allow the full printable-ASCII range, not just role-name characters
+    // resource is matched permissively (any non-whitespace) so unusual-but-valid role paths/names pass
     "arn:aws:iam::123456789012:role/odd!path$/role_name",
+    "arn:aws:iam::123456789012:role/team#svc|role~name",
     "arn:aws:iam::123456789012:role/aws-service-role/elasticbeanstalk.amazonaws.com/AWSServiceRoleForElasticBeanstalk"
   ])("accepts valid role ARN: %s", (arn) => {
     expect(isAwsIamRoleArn(arn)).toBe(true);
