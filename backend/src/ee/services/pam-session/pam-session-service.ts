@@ -437,15 +437,17 @@ export const pamSessionServiceFactory = ({
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
 
-    const startTime = session.startedAt ?? session.createdAt;
+    // Only report duration for sessions that actually reached Active; otherwise createdAt would
+    // fold "Starting" wait time into the reported session length and skew duration metrics.
     const endTime = updatedSession?.endedAt ?? new Date();
-    const durationMs = startTime ? Math.max(0, endTime.getTime() - startTime.getTime()) : undefined;
+    const durationMs = session.startedAt ? Math.max(0, endTime.getTime() - session.startedAt.getTime()) : undefined;
 
     return {
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,
       accountType: session.accountType,
+      actorEmail: session.actorEmail,
       durationMs,
       alreadyEnded: !updatedSession
     };

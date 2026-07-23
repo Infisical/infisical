@@ -204,7 +204,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, accountId, accountName, accountType, durationMs, alreadyEnded } =
+      const { projectId, accountId, accountName, accountType, actorEmail, durationMs, alreadyEnded } =
         await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.permission.id);
 
       if (!alreadyEnded) {
@@ -225,7 +225,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.PamSessionEnded,
-            distinctId: getTelemetryDistinctId(req),
+            distinctId: actorEmail || getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
             properties: {
               accountType,
