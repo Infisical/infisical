@@ -452,16 +452,20 @@ export const fnTriggerWebhook = async ({
   }
   const { environmentName } = event.payload;
 
-  const webhooksTriggered = await Promise.allSettled(
-    toBeTriggeredHooks.map((hook) => {
+  const webhookRequests = toBeTriggeredHooks
+    .map((hook) => {
       const formattedEvent = {
         type: event.type,
         payload: { ...event.payload, type: hook.type, projectName, environmentName }
       } as TWebhookPayloads;
       const payload = getWebhookPayload(formattedEvent);
-      if (!payload) return;
-      return triggerWebhookRequest(hook, secretManagerDecryptor, payload);
+      if (!payload) return null;
+      return { hook, promise: triggerWebhookRequest(hook, secretManagerDecryptor, payload) };
     })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  const webhooksTriggered = await Promise.allSettled(
+    webhookRequests.map((req) => req.promise)
   );
 
   const eventPayloads: WebhookTriggeredEvent["metadata"][] = [];
@@ -469,7 +473,7 @@ export const fnTriggerWebhook = async ({
   const failedWebhooks: { id: string; error: string }[] = [];
 
   webhooksTriggered.forEach((result, i) => {
-    const hook = toBeTriggeredHooks[i];
+    const hook = webhookRequests[i].hook;
     const eventMetadata = {
       webhookId: hook.id,
       type: event.type,
