@@ -1,6 +1,8 @@
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -21,6 +23,7 @@ import { AzureDevOpsConnectionMethod } from "../azure-devops/azure-devops-enums"
 import { AzureDnsConnectionMethod } from "../azure-dns/azure-dns-connection-enums";
 import { AzureEntraIdConnectionMethod } from "../azure-entra-id/azure-entra-id-connection-enums";
 import { AzureKeyVaultConnectionMethod } from "../azure-key-vault/azure-key-vault-connection-enums";
+import { LdapConnectionMethod } from "../ldap/ldap-connection-enums";
 import { TAppConnectionCredentialRotationDALFactory } from "./app-connection-credential-rotation-dal";
 import {
   AppConnectionCredentialRotationStatus,
@@ -41,6 +44,7 @@ import {
   TAppConnectionCredentialRotationStrategyConfig,
   TCreateAppConnectionCredentialRotationDTO,
   TCredentialRotationProviderFactory,
+  TCredentialRotationProviderServices,
   TTriggerAppConnectionCredentialRotationDTO,
   TUpdateAppConnectionCredentialRotationDTO
 } from "./app-connection-credential-rotation-types";
@@ -48,6 +52,7 @@ import {
   AzureClientSecretCredentialRotationCredentialsSchema,
   azureClientSecretRotationProviderFactory
 } from "./providers/azure-client-secret";
+import { LdapCredentialRotationCredentialsSchema, ldapCredentialRotationProviderFactory } from "./providers/ldap";
 
 const MAX_GENERATED_CREDENTIALS_LENGTH = 2;
 
@@ -83,6 +88,12 @@ const STRATEGY_MAP: Record<
       app: AppConnection.AzureEntraId,
       method: AzureEntraIdConnectionMethod.ClientSecret
     }
+  ],
+  [AppConnectionCredentialRotationStrategy.LdapPassword]: [
+    {
+      app: AppConnection.LDAP,
+      method: LdapConnectionMethod.SimpleBind
+    }
   ]
 };
 
@@ -90,7 +101,8 @@ const CREDENTIAL_ROTATION_CREDENTIALS_SCHEMA_MAP: Record<
   AppConnectionCredentialRotationStrategy,
   z.ZodSchema<TAppConnectionCredentialCredentials>
 > = {
-  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: AzureClientSecretCredentialRotationCredentialsSchema
+  [AppConnectionCredentialRotationStrategy.AzureClientSecret]: AzureClientSecretCredentialRotationCredentialsSchema,
+  [AppConnectionCredentialRotationStrategy.LdapPassword]: LdapCredentialRotationCredentialsSchema
 };
 
 const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
@@ -98,7 +110,9 @@ const CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP: Record<
   TCredentialRotationProviderFactory
 > = {
   [AppConnectionCredentialRotationStrategy.AzureClientSecret]:
-    azureClientSecretRotationProviderFactory as TCredentialRotationProviderFactory
+    azureClientSecretRotationProviderFactory as TCredentialRotationProviderFactory,
+  [AppConnectionCredentialRotationStrategy.LdapPassword]:
+    ldapCredentialRotationProviderFactory as TCredentialRotationProviderFactory
 };
 
 export type TAppConnectionCredentialRotationServiceFactoryDep = {
@@ -107,6 +121,8 @@ export type TAppConnectionCredentialRotationServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   queueService: TQueueServiceFactory;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export type TAppConnectionCredentialRotationServiceFactory = ReturnType<
@@ -118,8 +134,11 @@ export const appConnectionCredentialRotationServiceFactory = ({
   appConnectionDAL,
   kmsService,
   keyStore,
-  queueService
+  queueService,
+  gatewayV2Service,
+  gatewayPoolService
 }: TAppConnectionCredentialRotationServiceFactoryDep) => {
+  const providerServices: TCredentialRotationProviderServices = { gatewayV2Service, gatewayPoolService };
   /**
    * Decrypt connection credentials.
    */
@@ -177,7 +196,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       });
     }
 
-    const provider = CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy](connection);
+    const provider = CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy](connection, providerServices);
 
     provider.validateConnectionMethod(connection.method);
 
@@ -442,8 +461,10 @@ export const appConnectionCredentialRotationServiceFactory = ({
           kmsService
         });
 
-        const provider =
-          CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy as AppConnectionCredentialRotationStrategy](connection);
+        const provider = CREDENTIAL_ROTATION_PROVIDER_FACTORY_MAP[strategy as AppConnectionCredentialRotationStrategy](
+          connection,
+          providerServices
+        );
 
         // Two-credential rotation: create-first, revoke-after.
         // This ordering ensures that if create fails, we still have 2 valid secrets.

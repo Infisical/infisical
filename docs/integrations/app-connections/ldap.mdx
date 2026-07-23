@@ -96,3 +96,18 @@ Depending on how you intend to use your LDAP connection, there may be additional
         ```
     </Tab>
 </Tabs>
+
+## Automatic Credential Rotation
+
+Infisical can automatically rotate the binding password of your LDAP connection on a recurring schedule. This is a **single-phase** rotation, meaning only one password exists at any given time. When a rotation occurs, the old password is replaced immediately.
+
+<Warning>
+    Any external systems using the same binding credentials will lose access once a rotation completes. Make sure only Infisical relies on the rotated credentials.
+</Warning>
+
+When creating or editing your LDAP connection, toggle on the **Automatic Credential Rotation** switch and configure the rotation schedule.
+
+![LDAP Automatic Credential Rotation](/images/app-connections/ldap/credential-rotation.png)
+
+- **Rotation Interval** - How many days between each rotation.
+- **Rotate At** - The local time of day at which the rotation will be triggered.

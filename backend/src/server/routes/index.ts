@@ -2919,7 +2919,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     keyStore,
     kmsService,
-    queueService
+    queueService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const appConnectionService = appConnectionServiceFactory({
