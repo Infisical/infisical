@@ -509,8 +509,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     // A delegated local account can't be logged in as to verify, so validate via the admin rotator instead.
     const verifyVia = isDelegated && accountType === PamAccountType.Windows ? auth : undefined;
 
-    // Recovery from an interrupted rotation: probe the candidate then the current credential, acting only on a
-    // definitive answer so a transient failure never discards a possibly-live credential.
+    // Recovery from an interrupted rotation. A live pending credential means a prior rotation actually succeeded
+    // before it could be recorded, so promote it (both self and delegated). Past that, the two paths diverge.
     if (account.encryptedPendingCredentials) {
       const pending = await decryptSqlCredentials(projectId, accountType, account.encryptedPendingCredentials);
       // Verify uses the rotator's gateway, not the target's: a delegated target often has no gateway of its own
@@ -540,30 +540,44 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         return null;
       }
 
-      // Pending did not authenticate. A successful current-credential probe proves the target is reachable,
-      // telling a dead pending from a transport blip; without that proof we defer rather than discard pending.
-      const currentPassword = targetCredentials.password;
-      let currentWorks = false;
-      if (currentPassword) {
-        try {
-          currentWorks = await probe(currentPassword);
-        } catch {
+      if (isDelegated) {
+        // The rotator resets the target unconditionally, so a stale pending (or a stored credential that no longer
+        // matches the target) never blocks rotation: discard the dead pending and re-rotate below, which heals the
+        // drift. The self-rotation deferral does not apply, because the rotator, not the target credential, is the
+        // way in. A genuinely unreachable target surfaces as an error when the rotator's own apply fails.
+        await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: null });
+      } else {
+        // Self-rotation can only change the password by authenticating as the account itself, so if neither the
+        // pending nor the current credential works it cannot proceed. A successful current-credential probe also
+        // proves the target is reachable, telling a dead pending from a transport blip.
+        const currentPassword = targetCredentials.password;
+        let currentWorks = false;
+        if (currentPassword) {
+          try {
+            currentWorks = await probe(currentPassword);
+          } catch {
+            throw new BadRequestError({
+              message: "Could not reach the target to verify its credentials; rotation deferred and will retry"
+            });
+          }
+        }
+        if (pendingThrew && !currentWorks) {
+          // Pending was inconclusive (transport) and the current credential didn't prove reachability: can't tell a
+          // dead pending from an unreachable target, so defer rather than risk discarding a live pending.
           throw new BadRequestError({
-            message: `Could not verify ${pendingThrew ? "pending" : "current"} credential; rotation deferred`
+            message: "Could not reach the target to verify its credentials; rotation deferred and will retry"
           });
         }
+        if (!currentWorks && currentPassword) {
+          // Both credentials are definitively rejected. A self-rotating account has no other way to authenticate,
+          // so it cannot rotate until its stored password is corrected.
+          throw new BadRequestError({
+            message:
+              "This account's stored password no longer works on the target, and it rotates its own password, so it cannot authenticate to rotate. Update the stored password to the account's current one, or assign a delegated rotation account, then try again."
+          });
+        }
+        await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: null });
       }
-      if (pendingThrew && !currentWorks) {
-        // Pending was inconclusive and the current credential didn't prove reachability: can't distinguish a
-        // dead pending from an unreachable target, so defer rather than risk discarding a live pending.
-        throw new BadRequestError({ message: "Could not verify pending credential; rotation deferred" });
-      }
-      if (!currentWorks && currentPassword) {
-        // Pending definitively failed and the current credential also failed: neither authenticates, defer. A
-        // delegated target (no stored current password) instead falls through, since its rotator re-sets below.
-        throw new BadRequestError({ message: "Could not verify account credentials; rotation deferred" });
-      }
-      await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: null });
     }
 
     const requirements = getPasswordRequirements(account.templateSettings);
