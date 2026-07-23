@@ -50,12 +50,15 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   accountType: z.string()
 });
 
-// The admin list surfaces accessibility so unusable accounts can be flagged in the UI
+// The admin list surfaces accessibility and approval status so the UI can show appropriate actions
 const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
   accessibilityIssues: z
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
-    .describe("Reasons the account cannot launch a session, if any")
+    .describe("Reasons the account cannot launch a session, if any"),
+  requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
+  accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
+  grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted")
 });
 
 const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>

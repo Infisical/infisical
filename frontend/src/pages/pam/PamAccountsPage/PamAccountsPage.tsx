@@ -405,6 +405,7 @@ export const PamAccountsPage = () => {
                       filterActive={filterActive}
                       onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                       onLaunchAccount={setLaunchAccount}
+                      onRequestAccess={setRequestAccount}
                       onDeleteAccount={(accountId, accountName, accountType) =>
                         handlePopUpOpen("deleteAccount", { accountId, accountName, accountType })
                       }
@@ -521,16 +522,13 @@ export const PamAccountsPage = () => {
         }}
       />
 
-      {/* User-only components */}
-      {!isAdmin && (
-        <RequestAccessSheet
-          account={requestAccount}
-          isOpen={!!requestAccount}
-          onOpenChange={(open) => {
-            if (!open) setRequestAccount(null);
-          }}
-        />
-      )}
+      <RequestAccessSheet
+        account={requestAccount}
+        isOpen={!!requestAccount}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccount(null);
+        }}
+      />
     </div>
   );
 };

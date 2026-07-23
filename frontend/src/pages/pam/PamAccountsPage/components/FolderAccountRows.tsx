@@ -5,6 +5,7 @@ import { HighlightText } from "@app/components/v2/HighlightText";
 import { Badge, TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
+  PamAccessStatus,
   PamAccountType,
   TAccessiblePamAccount,
   TPamFolderWithCount,
@@ -27,6 +28,7 @@ type Props = {
   filterActive: boolean;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
+  onRequestAccess: (account: TAccessiblePamAccount) => void;
   onDeleteAccount: (accountId: string, accountName: string, accountType: PamAccountType) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
@@ -43,6 +45,7 @@ export const FolderAccountRows = ({
   filterActive,
   onOpenAccount,
   onLaunchAccount,
+  onRequestAccess,
   onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
@@ -127,16 +130,23 @@ export const FolderAccountRows = ({
         !isLoading &&
         accountsToShow.map((account) => {
           const accountType = account.accountType as PamAccountType;
-          const launchableAccount = {
+          const { requiresApproval, accessStatus } = account;
+          const isGranted = accessStatus === PamAccessStatus.Granted;
+          const needsApproval = requiresApproval && !isGranted;
+
+          const launchableAccount: TAccessiblePamAccount = {
             id: account.id,
             name: account.name,
             description: account.description,
             folderId: account.folderId,
-            folderName: account.folderName,
+            folderName: account.folderName ?? "",
             templateId: account.templateId,
             templateName: account.templateName,
             accountType,
-            canLaunch: account.isAccessible,
+            canLaunch: account.isAccessible && !needsApproval,
+            requiresApproval,
+            accessStatus,
+            grantExpiresAt: account.grantExpiresAt,
             createdAt: account.createdAt,
             updatedAt: account.updatedAt
           };
@@ -162,7 +172,10 @@ export const FolderAccountRows = ({
                     accountId={account.id}
                     accountType={accountType}
                     isAccessible={account.isAccessible}
+                    requiresApproval={requiresApproval}
+                    accessStatus={accessStatus}
                     onLaunch={() => onLaunchAccount(launchableAccount)}
+                    onRequestAccess={() => onRequestAccess(launchableAccount)}
                     onOpenTab={(tab) => onOpenAccount(account.id, tab)}
                     onDelete={() => onDeleteAccount(account.id, account.name, accountType)}
                   />

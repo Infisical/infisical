@@ -1,4 +1,4 @@
-import { MoreHorizontal, Rocket, Trash2 } from "lucide-react";
+import { KeyRound, MoreHorizontal, Rocket, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 } from "@app/components/v3";
 import {
   isRotatablePamAccountType,
+  PamAccessStatus,
   PamAccountType,
   PamResourcePermissionActions,
   usePamAccountActions
@@ -25,7 +26,10 @@ type Props = {
   accountId: string;
   accountType: PamAccountType;
   isAccessible: boolean;
+  requiresApproval: boolean;
+  accessStatus: PamAccessStatus;
   onLaunch: () => void;
+  onRequestAccess: () => void;
   onOpenTab: (tab: PamSheetTab) => void;
   onDelete: () => void;
 };
@@ -34,7 +38,10 @@ export const AccountActionsMenu = ({
   accountId,
   accountType,
   isAccessible,
+  requiresApproval,
+  accessStatus,
   onLaunch,
+  onRequestAccess,
   onOpenTab,
   onDelete
 }: Props) => {
@@ -44,11 +51,21 @@ export const AccountActionsMenu = ({
   const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
   const isRotatable = isRotatablePamAccountType(accountType);
 
-  // Launch requires both: account is provisioned AND user has permission
-  const isLaunchDisabled = !isAccessible || !canLaunch;
-  const launchDisabledReason = !canLaunch
-    ? "You don't have permission to launch sessions"
-    : "This account is not ready to launch";
+  const isGranted = accessStatus === PamAccessStatus.Granted;
+  const isPending = accessStatus === PamAccessStatus.Pending;
+  const needsApproval = requiresApproval && !isGranted && canLaunch;
+
+  // Launch requires: account is provisioned AND user has permission AND (no approval needed OR already granted)
+  const canLaunchNow = isAccessible && canLaunch && (!requiresApproval || isGranted);
+
+  let launchDisabledReason = "";
+  if (!canLaunch) {
+    launchDisabledReason = "You don't have permission to launch sessions";
+  } else if (!isAccessible) {
+    launchDisabledReason = "This account is not ready to launch";
+  } else {
+    launchDisabledReason = "Approval required";
+  }
 
   return (
     <DropdownMenu>
@@ -67,19 +84,35 @@ export const AccountActionsMenu = ({
         {isLoading && <DropdownMenuItem isDisabled>Loading&hellip;</DropdownMenuItem>}
         {!isLoading && (
           <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <DropdownMenuItem isDisabled={isLaunchDisabled} onClick={onLaunch}>
-                    <Rocket className="size-4" />
-                    Launch Session
-                  </DropdownMenuItem>
-                </div>
-              </TooltipTrigger>
-              {isLaunchDisabled && (
-                <TooltipContent side="left">{launchDisabledReason}</TooltipContent>
-              )}
-            </Tooltip>
+            {needsApproval ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <DropdownMenuItem isDisabled={isPending} onClick={onRequestAccess}>
+                      <KeyRound className="size-4" />
+                      {isPending ? "Request Pending" : "Request Access"}
+                    </DropdownMenuItem>
+                  </div>
+                </TooltipTrigger>
+                {isPending && (
+                  <TooltipContent side="left">Your request is awaiting approval</TooltipContent>
+                )}
+              </Tooltip>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <DropdownMenuItem isDisabled={!canLaunchNow} onClick={onLaunch}>
+                      <Rocket className="size-4" />
+                      Launch Session
+                    </DropdownMenuItem>
+                  </div>
+                </TooltipTrigger>
+                {!canLaunchNow && (
+                  <TooltipContent side="left">{launchDisabledReason}</TooltipContent>
+                )}
+              </Tooltip>
+            )}
             <DropdownMenuSeparator />
             {PAM_ACCOUNT_TABS.filter(
               (tab) => tab.value !== PamSheetTab.Rotation || isRotatable

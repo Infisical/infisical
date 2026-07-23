@@ -200,15 +200,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       search
     });
 
+    const accountsRequiringApproval = accounts.filter(
+      (a) => resolveAccessControls(a.templatePolicies).requiresApproval
+    );
+    const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
     const folderIdsRequiringApproval = [
-      ...new Set(
-        accounts
-          .filter((a) => resolveAccessControls(a.templatePolicies).requiresApproval && a.folderId)
-          .map((a) => a.folderId!)
-      )
+      ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
-    const foldersWithApprovalPolicy =
-      await deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval);
+
+    const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
+    ]);
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
@@ -216,6 +219,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
+      const statusEntry = accessStatusMap.get(a.id);
       return {
         id: a.id,
         name: a.name,
@@ -231,6 +235,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         recordingConnectionId: a.recordingConnectionId,
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
+        requiresApproval,
+        accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+        grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
       };

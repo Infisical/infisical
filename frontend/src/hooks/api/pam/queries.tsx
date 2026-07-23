@@ -242,6 +242,9 @@ type TAdminAccountListItem = {
   recordingConnectionId: string | null;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  requiresApproval: boolean;
+  accessStatus: PamAccessStatus;
+  grantExpiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
