@@ -838,7 +838,14 @@ const AllProjectsForType = ({
                       return (
                         <div className="flex items-center justify-end gap-2">
                           {joinedBadge}
-                          {adminAccessButton("Grant Admin")}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {adminAccessButton("Become Admin")}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              You have access through a group. Become a direct admin.
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       );
                     }

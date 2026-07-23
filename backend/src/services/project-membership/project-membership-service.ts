@@ -445,8 +445,7 @@ export const projectMembershipServiceFactory = ({
       );
       if (groupMembership) {
         throw new BadRequestError({
-          message:
-            "You have access to this project through a group rather than a direct membership, so there is no membership to leave."
+          message: "You have access to this project through a group rather than a direct membership."
         });
       }
       throw new BadRequestError({ message: "You are not a member of this project" });
