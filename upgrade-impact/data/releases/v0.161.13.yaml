@@ -10,7 +10,8 @@ requiresDbMigration: true
 breakingChanges: []
 dbSchemaChanges:
   - title: Certificate authority HSM fields
-    description: Infisical adds nullable HSM-related columns to
+    description: Infisical adds a NOT NULL `keySource` column (default
+      'infisical') and three nullable HSM-related columns to
       certificate_authority_secret, makes encryptedPrivateKey nullable, and
       enforces a new key source check constraint.
     action: No manual action required; Infisical runs this migration during startup.
