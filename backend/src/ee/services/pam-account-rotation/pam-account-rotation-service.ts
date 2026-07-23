@@ -184,9 +184,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     gatewayPoolId?: string | null;
   };
 
-  // postRotate: push the new password into every service / scheduled task / IIS app pool that runs as the
-  // account, connecting to each dependency's machine as the (delegated admin) rotator. Best-effort: a per-
-  // dependency failure is recorded on the row and never fails the account rotation.
+  // postRotate: push the new password into every dependency, connecting as the rotator. Best-effort: a
+  // per-dependency failure is recorded on the row and never fails the account rotation.
   const syncDependenciesAfterRotation = async ({
     accountId,
     projectId,
@@ -307,9 +306,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     throw new BadRequestError({ message: `Rotation account is no longer ${detail} this account` });
   };
 
-  // A stable key for the directory/host identity an account authenticates as, so two PAM objects that resolve to
-  // the same underlying credential can be detected. Domain accounts key on domain (a DC is just a replica), local
-  // Windows on host, SQL on host+port; all on the bare account name. Returns null when the type isn't rotatable.
+  // Stable key for the identity an account authenticates as, to detect two PAM objects on the same credential:
+  // domain accounts on domain, local Windows on host, SQL on host+port, all on the bare name. Null if not rotatable.
   const identityKey = (accountType: PamAccountType, conn: Record<string, unknown>, username: string): string | null => {
     const user = bareUsername(username);
     if (accountType === PamAccountType.WindowsAd) {
@@ -331,11 +329,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return null;
   };
 
-  // Other managed accounts that authenticate as this same identity, so the UI can warn that rotating this account
-  // changes their shared password too (they hold their own copy and won't be updated automatically). Each is
-  // annotated with any discovery sources that use it as their credential, since that is the concrete blast
-  // radius. Covers the same AD object (identical discovery fingerprint) and accounts referenced as a discovery
-  // credential — the two collisions seen in practice.
+  // Other managed accounts on this same identity (same AD object, or a discovery-source credential), so the UI
+  // can warn that rotating changes their shared password too. Each is annotated with the sources that use it.
   const getSharedIdentityReferences = async (
     account: TPamAccountDetail,
     projectId: string,
@@ -387,7 +382,9 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       string,
       { id: string; name: string; folderId?: string | null; discoverySources: string[] }
     >();
-    siblings.forEach((s) => byAccount.set(s.id, { id: s.id, name: s.name, folderId: s.folderId, discoverySources: [] }));
+    siblings.forEach((s) =>
+      byAccount.set(s.id, { id: s.id, name: s.name, folderId: s.folderId, discoverySources: [] })
+    );
     sourceMatches.forEach((m) => {
       const existing = byAccount.get(m.accountId);
       if (existing) existing.discoverySources.push(m.sourceName);
@@ -400,9 +397,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         });
     });
 
-    // Only surface what the caller may already see: an account they can read, and discovery-source names only if
-    // they can view sources (PAM Admin) — otherwise this warning would leak names of resources behind folder or
-    // product authorization the caller doesn't hold.
+    // Only surface what the caller may already see: accounts they can read, and source names only for a PAM
+    // Admin, so the warning can't leak resources behind folder or product authorization they don't hold.
     const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
     const canViewSources = hasRole(PamProductRole.Admin);
     const visible = await Promise.all(
@@ -516,9 +512,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     // definitive answer so a transient failure never discards a possibly-live credential.
     if (account.encryptedPendingCredentials) {
       const pending = await decryptSqlCredentials(projectId, accountType, account.encryptedPendingCredentials);
-      // Verify connects to the target/DC through the gateway that can reach it — the rotator's, not the target
-      // account's. A delegated target often carries no gateway of its own (its rotator/source holds it); for a
-      // self-rotating account the two are the same, so this is always correct.
+      // Verify uses the rotator's gateway, not the target's: a delegated target often has no gateway of its own
+      // (self-rotation makes them the same).
       const gatewayTarget = {
         accountType,
         connectionDetails,
@@ -544,12 +539,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         return null;
       }
 
-      // Pending did not authenticate. Probe the current credential too: besides detecting an interrupted
-      // rotation, a *successful* current probe proves the target is reachable, which tells a dead pending apart
-      // from a transient failure. This matters because self-rotation verify throws on a wrong password exactly
-      // as it does on a transport blip, so a stale pending (e.g. left by an apply that failed its policy check)
-      // would otherwise defer every future rotation forever. Without proof of reachability we still defer, so a
-      // real blip never discards a possibly-live pending.
+      // Pending did not authenticate. A successful current-credential probe proves the target is reachable,
+      // telling a dead pending from a transport blip; without that proof we defer rather than discard pending.
       const currentPassword = targetCredentials.password;
       let currentWorks = false;
       if (currentPassword) {
@@ -581,9 +572,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     // Stage before applying, so an apply interrupted mid-change leaves a credential the recovery probe can promote.
     await pamAccountDAL.updateById(account.id, { encryptedPendingCredentials: encryptedPending });
 
-    // Do NOT discard pending on an apply error: a WinRM/gateway apply can succeed on the host after the client
-    // deadline fires, and for a self-rotating account pending is the only copy of the now-live password. The
-    // recovery probe resolves genuine-failure vs ambiguous-success on the next run.
+    // Do NOT discard pending on an apply error: an apply can succeed on the host after the client deadline, and
+    // for self-rotation pending is the only copy of the now-live password. The recovery probe resolves it next run.
     await handler.applyPasswordChange(
       {
         accountType,
@@ -605,8 +595,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           connectionDetails,
           auth: { username: targetUsername, password: newPassword },
           verifyVia,
-          // Reach the target through the rotator's gateway (the one that just applied the change), not the target
-          // account's — a delegated target often has no gateway of its own.
+          // Reach the target through the rotator's gateway (the one that just applied the change), not the
+          // target's; a delegated target often has no gateway of its own.
           gatewayId: rotatorGatewayId,
           gatewayPoolId: rotatorGatewayPoolId
         },
@@ -619,9 +609,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           err instanceof Error ? err.message : String(err)
         }]`
       );
-      // Applied, but verification couldn't complete after retries (transient gateway/network error). The new
-      // password is already staged as pending; keep it so the recovery probe promotes it on the next run. A
-      // one-off tunnel blip must never leave the account failed with a live-but-unrecorded password.
+      // Applied, but verification couldn't complete (transient gateway error). The new password stays pending so
+      // the recovery probe promotes it next run; a tunnel blip must not leave a live-but-unrecorded password.
       throw new BadRequestError({
         message:
           "Password was changed on the target but verification could not complete due to a transient network error; it will be reconciled on the next rotation attempt"
@@ -652,8 +641,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     };
   };
 
-  // Set-LocalUser / Set-ADAccountPassword throw a bare InvalidPasswordException with no reason when the new
-  // password violates the host's policy, and Windows never says which rule failed. Append the one thing we do
+  // Windows throws a bare InvalidPasswordException with no reason on a policy violation. Append the one thing we
   // know (the configured format length) plus what to try, so the opaque error becomes actionable.
   const augmentWindowsPolicyError = (account: TPamAccountDetail, message: string): string => {
     if (!isWindowsRotatableType(account.accountType) || !message.includes("InvalidPasswordException")) {
@@ -666,9 +654,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     return `${message}\nNote: the host rejected the new password against its local password policy (minimum length, complexity, or history).${lengthHint}`;
   };
 
-  // Advance nextRotationAt to a capped retry, but only when the account is schedulable: a ready account's early
-  // failure still can't be re-selected on every cron tick, and a not-ready account is never given a due-date it
-  // cannot act on.
+  // Advance nextRotationAt to a capped retry, but only when the account is schedulable: keeps a ready account's
+  // failure off every cron tick without handing a not-ready account a due-date it can't act on.
   const recordRotationFailure = async (account: TPamAccountDetail, err: unknown) => {
     const projectId = account.projectId as string;
     const rotation = getRotationConfig(account.templateSettings);
@@ -854,10 +841,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           await decrypt(projectId, rotator.encryptedConnectionDetails)
         );
         assertRotatorSameResource(account.accountType as PamAccountType, rotatorConn, targetConn);
-        // A delegated rotator that resolves to the SAME directory identity as the target is a footgun: rotating
-        // changes the shared principal's password, immediately invalidating the rotator's own stored credential
-        // (and any other PAM copy of it). Require a genuinely different identity; to rotate itself, an account is
-        // set as its own rotation account, which authenticates with the freshly-set password instead.
+        // A delegated rotator resolving to the SAME identity as the target is a footgun: rotating would invalidate
+        // the rotator's own stored credential. Require a different identity; self-rotation is a separate path.
         const rotatorCredentials = await decryptSqlCredentials(
           projectId,
           account.accountType,

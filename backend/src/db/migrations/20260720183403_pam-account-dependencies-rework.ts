@@ -3,10 +3,8 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
-// Reworks the orphaned pre-revamp pam_account_dependencies table (which pointed at the legacy
-// pam_resources table) into a dependency table keyed off the revamp account model: a dependency is
-// anchored to its run-as identity (fingerprint) and points at either the staged discovered account
-// (discoveredAccountId, while its account is only staged) or the imported managed account (accountId).
+// Reworks the orphaned pre-revamp pam_account_dependencies table onto the revamp account model: each dependency
+// is anchored to its run-as identity (fingerprint) and points at the staged discovered or imported account.
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.PamAccountDependency);
 
@@ -52,9 +50,8 @@ export async function up(knex: Knex): Promise<void> {
 
   await createOnUpdateTrigger(knex, TableName.PamAccountDependency);
 
-  // The discovery run summary reports dependency counts alongside account counts. The runs table already
-  // exists (created by the prior pam-discovery migration), so add the columns here, nullable, so a scan that
-  // did not run dependency discovery leaves them null and the summary can omit the dependencies clause.
+  // Dependency counts on the existing runs table, nullable so a scan that ran no dependency discovery leaves
+  // them null and the summary omits the dependencies clause.
   if (!(await knex.schema.hasColumn(TableName.PamDiscoverySourceRun, "dependencyCount"))) {
     await knex.schema.alterTable(TableName.PamDiscoverySourceRun, (t) => {
       t.integer("dependencyCount");

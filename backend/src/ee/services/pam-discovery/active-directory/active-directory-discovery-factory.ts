@@ -221,11 +221,8 @@ export const parseRunAs = (runAs: string): { domain: string | null; account: str
 // Retained for the account-name extraction; the fingerprint resolver below adds the domain check.
 export const extractSamAccountName = (runAs: string): string | null => parseRunAs(runAs)?.account ?? null;
 
-// Anchor a dependency's run-as to a domain account's stable identity (domain:objectGUID), matching the
-// fingerprint minted for discovered domain accounts. Returns null for built-ins and any run-as that doesn't
-// resolve to an enumerated domain user (local/unknown accounts are not tracked as dependencies). A qualified
-// run-as must name the scanned domain, so a same-named local or trusted-domain account (e.g. WEB01\svc-sql)
-// is never mis-anchored to the domain account.
+// Anchor a run-as to a domain account's stable identity (domain:objectGUID), null for built-ins and non-domain
+// users; a qualified run-as must name the scanned domain so a same-named local account isn't mis-anchored.
 export const resolveRunAsFingerprint = (
   runAs: string,
   domain: string,
@@ -238,9 +235,8 @@ export const resolveRunAsFingerprint = (
   if (!parsed) return null;
   const account = parsed.account.toLowerCase();
   if (BUILTIN_RUNAS.has(account)) return null;
-  // A trailing '$' marks a gMSA / sMSA / machine account, whose password AD manages automatically. There is
-  // nothing for rotation to set, so it is never a dependency's run-as (domain enumeration also excludes these
-  // via objectCategory=person; this makes the rule explicit and also covers the local-account branch below).
+  // A trailing '$' marks a gMSA / sMSA / machine account whose password AD manages automatically, so there is
+  // nothing for rotation to set; never a dependency's run-as.
   if (account.endsWith("$")) return null;
 
   if (parsed.domain !== null) {

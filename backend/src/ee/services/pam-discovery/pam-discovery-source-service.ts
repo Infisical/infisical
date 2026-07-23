@@ -469,9 +469,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         )
       );
 
-      // Persist dependencies found during the per-machine sweep, anchoring each to its run-as account by
-      // fingerprint: point at the staged discovered account, or its imported managed account once imported.
-      // null = dependency discovery did not run this scan, so the summary omits the dependencies clause.
+      // Persist dependencies from the sweep, anchoring each to its run-as account by fingerprint. null =
+      // dependency discovery did not run this scan, so the summary omits the dependencies clause.
       let dependencyCount: number | null = null;
       let newDependencyCount: number | null = null;
       if (scannedDependencyMachines.length) {
@@ -690,10 +689,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
             throw new NotFoundError({ message: "Discovered account not found" });
           }
           if (discovered.importedAccountId) {
-            // Already imported. The account is created, marked, and its deps backfilled in three separate writes
-            // (create runs its own transaction, so they can't share one). Re-run the idempotent backfill here so
-            // a retry heals a prior import whose backfill didn't complete, flipping any still-staged deps onto
-            // the account instead of leaving them stranded behind this early return.
+            // Already imported. Re-run the idempotent backfill so a retry heals a prior import whose backfill
+            // didn't complete (the three writes aren't one transaction), rather than stranding still-staged deps.
             await pamAccountDependencyDAL.backfillImported(discovered.id, discovered.importedAccountId);
             return {
               discoveredAccountId: item.discoveredAccountId,

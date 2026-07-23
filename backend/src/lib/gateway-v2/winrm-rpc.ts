@@ -38,10 +38,8 @@ export type WinRmRpcSuccess<T> = { ok: true; status: number; result: T };
 export type WinRmRpcFailure = { ok: false; status: number; errorMessage: string };
 export type WinRmRpcResponse<T> = WinRmRpcSuccess<T> | WinRmRpcFailure;
 
-// A WinRM session sets up NTLM and runs one or more PowerShell commands per file,
-// each of which can take a few seconds on a loaded host, so allow a generous ceiling.
-// This must exceed the gateway's own connection deadline (op 120s + 15s flush margin) so a
-// gateway-side timeout surfaces as its structured error rather than an opaque client timeout.
+// Must exceed the gateway's own connection deadline (op 120s + 15s flush margin) so a gateway-side timeout
+// surfaces as its structured error rather than an opaque client timeout.
 export const WINRM_RPC_TIMEOUT_MS = 150_000;
 
 const MAX_WINRM_RPC_RESPONSE_BYTES = 1024 * 1024;

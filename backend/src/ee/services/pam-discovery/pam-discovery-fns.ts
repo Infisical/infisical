@@ -73,9 +73,8 @@ export const executeWithGateway = async <T>(
   });
 };
 
-// Resolve hostnames to IPs through the DC's DNS in one gateway session. Used at rotation-sync time so a
-// dependency's machine is targeted by a fresh IP (a scan-time snapshot can go stale via DHCP). Never throws;
-// unresolved hosts are simply absent from the map.
+// Resolve hostnames to IPs via the DC's DNS at rotation-sync time, so a machine is targeted by a fresh IP
+// (a scan-time snapshot can go stale via DHCP). Never throws; unresolved hosts are absent from the map.
 export const resolveHostsViaDcDns = async (
   hostnames: string[],
   dcAddress: string,
@@ -100,10 +99,8 @@ export const resolveHostsViaDcDns = async (
 
 const LDAP_BIND_CHECK_TIMEOUT_MS = 15 * 1000;
 
-// Confirms directory credentials by performing an LDAP simple bind through the gateway. Used to verify a
-// rotated domain account's new password: an LDAP bind needs only the credential, unlike a WinRM logon that
-// most service accounts lack. Returns true (bound) / false (definitive auth rejection); THROWS on a transport
-// error (TLS/tunnel/timeout) so a transient blip is retried rather than misread as a wrong password.
+// Verify a rotated domain account's password via an LDAP simple bind (needs only the credential, unlike a WinRM
+// logon most service accounts lack). Returns bound/rejected; THROWS on a transport error so a blip is retried.
 export const ldapBindCheckViaGateway = async (
   {
     dcAddress,
@@ -184,9 +181,8 @@ export type TWinRmGatewayCredentials = {
   caCertificate?: string;
 };
 
-// runs one WinRM operation on the gateway inside the customer network. Node can't perform WinRM message
-// sealing, so the gateway (Go/masterzen) owns the WinRM client; the backend only names a vetted operation
-// and its params. Targets internal hosts by design, so it uses the gateway host validator (not the SSRF block).
+// Runs one WinRM operation on the gateway: Node can't do WinRM message sealing, so the gateway owns the client
+// and the backend only names a vetted operation. Targets internal hosts, so it uses the gateway host validator.
 export const winrmRpcWithGateway = async <T>({
   targetHost,
   targetPort,

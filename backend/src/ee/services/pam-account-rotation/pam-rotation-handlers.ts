@@ -48,9 +48,8 @@ type TTestCredentialInput = {
 export type TPamRotationHandler = {
   validateTarget: (input: { accountType: TRotatableType; authMethod?: string }) => void;
   applyPasswordChange: (input: TApplyPasswordChangeInput, deps: TPamRotationGatewayDeps) => Promise<void>;
-  // Returns whether the credential authenticates (true/false is a definitive answer). THROWS only when
-  // verification can't complete after retries (a transient transport error) — callers treat that as
-  // inconclusive and defer, never as a wrong password.
+  // Returns whether the credential authenticates. THROWS only when verification can't complete (transient
+  // transport error); callers treat a throw as inconclusive and defer, never as a wrong password.
   testCredential: (input: TTestCredentialInput, deps: TPamRotationGatewayDeps) => Promise<boolean>;
 };
 
@@ -265,9 +264,8 @@ const windowsRotationHandler: TPamRotationHandler = {
     const targetHost = winrmRotationTargetHost(accountType, connectionDetails);
     const targetPort = winrmPortFromConn(connectionDetails);
 
-    // Delegated local rotation: the target account usually can't WinRM in, so the rotator (admin) validates the
-    // credential on the box instead of us trying to log in as the account. A wrong password comes back as
-    // valid=false (definitive); a transport error throws and is retried.
+    // Delegated local rotation: the target usually can't WinRM in, so the rotator validates the credential on
+    // the box. A wrong password comes back valid=false (definitive); a transport error throws and is retried.
     if (verifyVia) {
       return withGatewayRetry(async () => {
         const { valid } = await winrmRpcWithGateway<{ valid: boolean }>({

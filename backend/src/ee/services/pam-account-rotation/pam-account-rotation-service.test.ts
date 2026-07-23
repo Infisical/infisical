@@ -157,9 +157,8 @@ describe("rotateScheduledAccount recovery probe", () => {
   });
 
   test("discards a pending credential whose probe throws once the current credential proves reachability", async () => {
-    // Self-rotation verify throws on a wrong password just as on a transport blip. A stale pending (left by an
-    // apply that failed its policy check) must not defer forever: a working current credential proves the target
-    // is reachable, so the pending is a real rejection and can be discarded.
+    // Verify throws on a wrong password just as on a transport blip, so a working current credential proves
+    // reachability: the pending throw is then a real rejection and can be discarded, not deferred forever.
     const { service, applyPasswordChange, updateById } = buildService((password) => {
       if (password === PENDING_PASSWORD) throw new Error("winrm auth rejected");
       return true;

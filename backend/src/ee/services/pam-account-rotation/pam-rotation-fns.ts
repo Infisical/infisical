@@ -8,10 +8,8 @@ const sleep = (ms: number) =>
     setTimeout(resolve, ms);
   });
 
-// Rotation talks to the target through a freshly-opened gateway tunnel: to verify a new password, or to push it
-// into a dependency (service / task / IIS pool). A transient tunnel/TLS/auth blip is NOT a real failure, so the
-// probe throws on those and we retry. A definitive result short-circuits: verify returns true/false, a dependency
-// sync returns true on success. If every attempt throws, the last error propagates so the caller records it.
+// Rotation talks to the target through a gateway tunnel; a transient tunnel/TLS/auth blip is not a real failure,
+// so the probe throws on those and we retry, short-circuiting on a definitive result. Last error propagates.
 export const GATEWAY_RETRY_ATTEMPTS = 3;
 
 export const withGatewayRetry = async (

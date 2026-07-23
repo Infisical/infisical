@@ -486,9 +486,8 @@ export const useRemovePamProductIdentityMember = () => {
   });
 };
 
-// Product user/group add & removal must go through the PAM endpoints so the PAM-specific audit
-// events fire and approver assignments / folder memberships are handled (the generic workspace
-// routes emit project-scoped events and skip that).
+// Product user/group changes go through the PAM endpoints so PAM audit events fire and approver assignments /
+// folder memberships are handled (the generic workspace routes skip that).
 export const useAddPamProductUserMember = () => {
   const queryClient = useQueryClient();
   return useMutation({

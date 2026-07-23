@@ -20,16 +20,8 @@ type TUpsertDependency = {
 export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamAccountDependency);
 
-  // Upsert a discovered dependency keyed by its stable identity, returning the row id. Atomic (single
-  // INSERT ... ON CONFLICT) so overlapping scans of the same machine can't race on the unique index. Discovery
-  // owns fingerprint / machine / type / name / data and the account linkage; on conflict only those are merged,
-  // so rotation-owned columns (rotationStatus, lastRotatedAt, encryptedLastRotationMessage) are never touched.
-  //
-  // Imported wins: a row already linked to a managed account (accountId set) is never demoted back to a staged
-  // link, so a second discovery source scanning the same machine can't silently break rotation sync for an
-  // account another source imported.
-  // `xmax = 0` is true only for the freshly-inserted tuple; on an ON CONFLICT update xmax is the updating txid,
-  // so it distinguishes a newly-discovered dependency from one the scan merely re-saw (drives the run's new count).
+  // Atomic upsert keyed by stable identity. On conflict only discovery-owned columns merge and an imported row
+  // is never demoted to staged; `xmax = 0` flags a fresh insert vs a re-seen row (drives the run's new count).
   const upsertByIdentity = async (dep: TUpsertDependency, tx?: Knex): Promise<{ id: string; isNew: boolean }> => {
     const conn = tx || db;
     const { projectId, fingerprint, machine, type, name, data, accountId, discoveredAccountId } = dep;
@@ -49,9 +41,8 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
     return { id: inserted.id, isNew: Boolean(inserted.inserted) };
   };
 
-  // Prune dependencies the current scan no longer found. Scoped to this source's accounts (staged or their
-  // imported counterparts) and to the machines the scan actually re-checked, so an unreachable machine or a
-  // narrower source never drops another scan's dependencies.
+  // Prune dependencies the current scan no longer found, scoped to this source's accounts and the machines it
+  // actually re-checked so an unreachable machine or narrower source can't drop another scan's dependencies.
   const deleteStaleForSource = async (
     {
       projectId,
@@ -70,9 +61,8 @@ export const pamAccountDependencyDALFactory = (db: TDbClient) => {
   ): Promise<void> => {
     if (!scannedMachines.length || (!accountIds.length && !discoveredAccountIds.length)) return;
 
-    // Bind each list as a single array parameter (`= ANY(?)`) rather than one bind per element, so a large
-    // domain can't blow past Postgres's 65,535 bind-parameter cap and fail the reconcile after upserts wrote.
-    // Scoped to this tenant's project so a scan never touches another org's rows sharing the same machine name.
+    // `= ANY(?)` binds each list as one param (a large domain would blow past Postgres's 65,535 bind cap);
+    // scoped to this project so a scan never touches another tenant's rows on a same-named machine.
     await (tx || db)(TableName.PamAccountDependency)
       .where("projectId", projectId)
       .whereRaw(`"machine" = ANY(?::text[])`, [scannedMachines])
