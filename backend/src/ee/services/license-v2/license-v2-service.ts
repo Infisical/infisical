@@ -836,8 +836,7 @@ export const licenseV2ServiceFactory = ({
     cadence,
     quantities,
     email,
-    returnPath,
-    prorationDate
+    returnPath
   }: TBuyBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
 
@@ -860,8 +859,7 @@ export const licenseV2ServiceFactory = ({
       quantities: resolved.quantities,
       declaredUsage: resolved.declaredUsage,
       email,
-      returnUrl: buildReturnUrl(orgId, returnPath),
-      prorationDate
+      returnUrl: buildReturnUrl(orgId, returnPath)
     });
 
     if (result.outcome === "subscription_updated") {
@@ -943,14 +941,13 @@ export const licenseV2ServiceFactory = ({
     };
   };
 
-  const changeCommitments = async ({ orgId, actor, changes, prorationDate }: TChangeBillingV2CommitmentDTO) => {
+  const changeCommitments = async ({ orgId, actor, changes }: TChangeBillingV2CommitmentDTO) => {
     await ensureManageBilling(orgId, actor);
     if (!changes.length) {
       throw new BadRequestError({ message: "Provide at least one commitment change" });
     }
     const result = await licenseClient.changeCommitments(orgId, {
-      dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity })),
-      prorationDate
+      dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
     await licenseClient.invalidateEntitlements(orgId);
     return { subscriptionId: result.subscriptionId };

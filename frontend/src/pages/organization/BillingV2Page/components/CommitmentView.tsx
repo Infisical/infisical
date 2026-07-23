@@ -18,7 +18,7 @@ import {
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { dimCommittable, fmtMoney } from "../billing-v2-format";
+import { dimCommitManageable, fmtMoney } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
 import { CommitmentTerms } from "./CommitmentTerms";
 import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
@@ -36,14 +36,16 @@ type Props = {
 // committed quantity per dimension; the preview endpoint (commitmentChanges) prices the change and the
 // apply endpoint commits it. Usage above the commitment is billed monthly on-demand.
 export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onDone }: Props) => {
-  // Commit-eligible dimensions come from the subscription read's per-dimension commitAvailable (this
-  // customer's pinned plan version), NOT the catalog, so a later catalog price never lights up commit
-  // for a grandfathered customer. An eligible dimension with committed === null starts from zero (e.g.
-  // a monthly subscriber committing annually). committed is normalized to a number so the stepper and
-  // cost math handle the not-yet-committed case.
+  // Dimensions this sheet manages: commit-eligible per the subscription read's per-dimension
+  // commitAvailable (this customer's pinned plan version, NOT the catalog, so a later catalog price
+  // never lights up commit for a grandfathered customer), OR already carrying a commitment even if it
+  // is no longer commit-eligible, so an existing commitment is always inspectable. This is the same
+  // predicate that gates the "Change commitment" action, so the sheet is never empty when opened. An
+  // eligible dimension with committed === null starts from zero (e.g. a monthly subscriber committing
+  // annually); committed is normalized to a number so the stepper and cost math handle that case.
   const committable = useMemo(
     () =>
-      (entitlement.dimensions ?? []).filter(dimCommittable).map((dim) => ({
+      (entitlement.dimensions ?? []).filter(dimCommitManageable).map((dim) => ({
         key: dim.key,
         label: dim.label,
         noun: dim.noun,
@@ -146,9 +148,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     try {
       await applyCommitment.mutateAsync({
         orgId,
-        changes,
-        // Echo the previewed proration instant so the applied charge matches what was shown.
-        prorationDate: preview.data?.prorationDate ?? undefined
+        changes
       });
       createNotification({
         type: "success",

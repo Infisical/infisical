@@ -271,8 +271,8 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  // Start / change annual commitments across dimensions, all-or-nothing. prorationDate (echoed from a
-  // prior preview) applies to dimensions that already have a commit item.
+  // Start / change annual commitments across dimensions, all-or-nothing. The license server prices at
+  // its current time; no client-supplied proration instant is forwarded.
   changeCommitments: async (orgId: string, payload: TChangeCommitmentsPayload): Promise<TCheckoutResult> => {
     const url = new URL(orgScoped(orgId, "/subscription/commitments"), serverUrl);
     const res = await fetch(url, {

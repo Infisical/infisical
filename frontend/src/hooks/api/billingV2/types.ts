@@ -204,7 +204,7 @@ export type TCreateBillingV2PortalSessionDTO = {
 
 // Buy/add one product. The server self-selects append vs Checkout. quantities are buyer-entered
 // per-dimension values; the server fills any non-entered per_resource dim. Commitment is a separate
-// step (useChangeBillingV2Commitment). prorationDate is echoed from a prior preview.
+// step (useChangeBillingV2Commitment).
 export type TBuyBillingV2ProductDTO = {
   orgId: string;
   productId: string;
@@ -212,7 +212,6 @@ export type TBuyBillingV2ProductDTO = {
   cadence?: BillingV2Cadence;
   quantities?: Record<string, number>;
   returnPath?: string;
-  prorationDate?: number;
 };
 
 export type TAddBillingV2PaymentMethodDTO = {
@@ -229,8 +228,7 @@ export type BillingV2PreviewLine = {
 // prorationAmount is this change's cost (signed: positive is charged now, negative a credit).
 // additionalCharges are earlier mid-cycle changes still unbilled that an invoice-now apply settles in
 // the same charge; totalDueNow (= prorationAmount + additionalCharges) is what actually hits the card
-// and is the figure to show as "charged now". prorationDate is echoed into the apply so the applied
-// charge matches the preview.
+// and is the figure to show as "charged now".
 export type BillingV2Preview = {
   currency: string;
   prorationAmount: number;
@@ -238,7 +236,6 @@ export type BillingV2Preview = {
   totalDueNow: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
-  prorationDate?: number | null;
   lines: BillingV2PreviewLine[];
 };
 
@@ -271,12 +268,11 @@ export type TRemoveBillingV2ProductDTO = {
 };
 
 // Start / change annual commitments across dimensions in one atomic call. An increase is charged now;
-// a decrease is rejected server-side unless the dimension's window is open. prorationDate is echoed
-// from a prior preview.
+// a decrease is rejected server-side unless the dimension's window is open. The change always prices
+// at the current server time.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   changes: BillingV2CommitmentChange[];
-  prorationDate?: number;
 };
 
 export type TStartBillingV2TrialDTO = {

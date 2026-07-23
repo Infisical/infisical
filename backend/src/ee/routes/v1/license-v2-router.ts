@@ -376,8 +376,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         plan: z.string().trim().optional(),
         cadence: z.enum(["monthly", "annual"]).optional(),
         quantities: BillingV2QuantitiesSchema.optional(),
-        returnPath: ReturnPathSchema,
-        prorationDate: z.number().optional()
+        returnPath: ReturnPathSchema
       }),
       response: {
         200: z.object({
@@ -400,8 +399,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         cadence: req.body.cadence,
         quantities: req.body.quantities,
         email,
-        returnPath: req.body.returnPath,
-        prorationDate: req.body.prorationDate
+        returnPath: req.body.returnPath
       });
     }
   });
@@ -439,8 +437,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20),
-        prorationDate: z.number().optional()
+        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20)
       }),
       response: {
         200: BillingV2MutationResultSchema
@@ -451,8 +448,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       return server.services.licenseV2.changeCommitments({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
-        changes: req.body.changes,
-        prorationDate: req.body.prorationDate
+        changes: req.body.changes
       });
     }
   });

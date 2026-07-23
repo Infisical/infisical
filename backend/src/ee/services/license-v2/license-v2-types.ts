@@ -222,8 +222,6 @@ export type TBuyBillingV2ProductDTO = {
   quantities?: Record<string, number>;
   email?: string;
   returnPath?: string;
-  // Echoed from a prior preview so the applied charge matches the previewed one.
-  prorationDate?: number;
 };
 
 export type TAddBillingV2PaymentMethodDTO = {
@@ -275,13 +273,12 @@ export type TRemoveBillingV2ProductDTO = {
 };
 
 // Start / change annual commitments across dimensions in one atomic call. Increase is charged now; a
-// decrease is rejected by the server unless the dimension's decrease window is open. prorationDate is
-// echoed from a prior preview for dimensions that already have a commit item.
+// decrease is rejected by the server unless the dimension's decrease window is open. The change always
+// prices at the current server time; a client-supplied proration instant is never accepted.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;
   changes: BillingV2CommitmentChange[];
-  prorationDate?: number;
 };
 
 export type TStartBillingV2TrialDTO = {

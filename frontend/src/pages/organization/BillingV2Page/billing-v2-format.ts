@@ -147,8 +147,13 @@ export const productAnnualCommitted = (entitlement?: BillingV2Entitlement): numb
 export const dimCommittable = (dim: BillingV2EntitlementDim): boolean =>
   dim.commitAvailable && !dim.metered;
 
-export const canStartCommitment = (entitlement?: BillingV2Entitlement): boolean =>
-  (entitlement?.dimensions ?? []).some((dim) => dimCommittable(dim) && dim.committed === null);
+// A dimension the commitment sheet should manage: one the customer is currently eligible to commit
+// (dimCommittable), OR one that already carries a commitment (dimCommitted) even if it is no longer
+// commit-eligible (e.g. a grandfathered dimension, or an older license server that omits
+// commitAvailable and so defaults it to false). This is the single predicate the "Change commitment"
+// action AND the commitment view share, so the action never opens onto an empty sheet.
+export const dimCommitManageable = (dim: BillingV2EntitlementDim): boolean =>
+  dimCommittable(dim) || dimCommitted(dim);
 
 export type BillingV2CommitNudge = {
   label: string;

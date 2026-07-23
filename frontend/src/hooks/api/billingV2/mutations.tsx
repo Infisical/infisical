@@ -47,12 +47,11 @@ export const useBuyBillingV2Product = () => {
       plan,
       cadence,
       quantities,
-      returnPath,
-      prorationDate
+      returnPath
     }: TBuyBillingV2ProductDTO) => {
       const { data } = await apiRequest.post<BillingV2CheckoutResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/products`,
-        { productId, plan, cadence, quantities, returnPath, prorationDate }
+        { productId, plan, cadence, quantities, returnPath }
       );
 
       return data;
@@ -107,10 +106,10 @@ export const usePreviewBillingV2Change = () => {
 export const useChangeBillingV2Commitment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, changes, prorationDate }: TChangeBillingV2CommitmentDTO) => {
+    mutationFn: async ({ orgId, changes }: TChangeBillingV2CommitmentDTO) => {
       const { data } = await apiRequest.put<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
-        { changes, prorationDate }
+        { changes }
       );
 
       return data;

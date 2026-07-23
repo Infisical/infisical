@@ -382,7 +382,6 @@ export type TBuyProductPayload = {
   // Absolute return URL; its origin must be in the license server's CUSTOMER_PORTAL_ORIGINS allowlist
   // (the multi-region fix).
   returnUrl?: string;
-  prorationDate?: number;
 };
 
 export type TCreatePortalPayload = {
@@ -391,10 +390,9 @@ export type TCreatePortalPayload = {
 };
 
 // Start / change annual commitments across dimensions (PUT /subscription/commitments), all-or-nothing.
-// prorationDate is echoed from a prior preview for dimensions that already have a commit item.
+// The license server prices at its current time; the app never forwards a client-supplied instant.
 export type TChangeCommitmentsPayload = {
   dimensions: TCommitmentChange[];
-  prorationDate?: number;
 };
 
 export type TStartTrialPayload = {

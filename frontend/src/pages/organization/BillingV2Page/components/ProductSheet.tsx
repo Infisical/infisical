@@ -43,7 +43,7 @@ import {
   cadencePeriod,
   cadenceWord,
   cadenceWordShort,
-  canStartCommitment,
+  dimCommitManageable,
   dimCommitted,
   fmtMoney,
   isMeteredCadence,
@@ -402,9 +402,10 @@ export const ProductSheet = ({
     entitlement?.cadence ?? (trialAvailable ? "monthly" : "annual");
   // Offer the commitment flow when the org already has a commitment (to change it) OR its pinned plan
   // version lets it commit a dimension it hasn't set yet (start from zero, e.g. a monthly subscriber
-  // committing annually). Eligibility is the subscription read's per-dimension commitAvailable.
+  // committing annually). Uses the SAME predicate the commitment view filters on (dimCommitManageable),
+  // so the action never opens onto an empty sheet. hasCommitment only drives the CTA label.
   const hasCommitment = (entitlement?.dimensions ?? []).some(dimCommitted);
-  const canChangeCommitment = hasCommitment || canStartCommitment(entitlement);
+  const showChangeCommitment = (entitlement?.dimensions ?? []).some(dimCommitManageable);
 
   // Render plan cards in the catalog's displayOrder (already sorted server-side). A deprecated plan is
   // closed to new customers, so hide it unless the org is already entitled (e.g. currently on it).
@@ -529,7 +530,7 @@ export const ProductSheet = ({
                       entitled={entitled}
                       trialUsed={trialUsed}
                       isCurrent={entitled && plan.tier === currentTier}
-                      canChangeCommitment={canChangeCommitment}
+                      canChangeCommitment={showChangeCommitment}
                       hasCommitment={hasCommitment}
                       onActivate={openActivate}
                       onStartTrial={setTrialConfirmTier}

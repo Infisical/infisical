@@ -191,8 +191,6 @@ export const ActivateView = ({
         plan: plan.tier,
         cadence,
         quantities: quantitiesForCadence,
-        // The preview echoes the proration instant so the applied charge matches what was shown.
-        prorationDate: preview.data?.prorationDate ?? undefined,
         returnPath
       });
       if (result.outcome === "subscription_updated") {
