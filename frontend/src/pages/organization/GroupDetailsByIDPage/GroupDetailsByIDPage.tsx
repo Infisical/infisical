@@ -132,7 +132,8 @@ const Page = () => {
                             groupId,
                             name: data.group.name,
                             slug: data.group.slug,
-                            role: data.group.roleId || data.group.role
+                            role: data.group.role,
+                            customRoleSlug: data.group.customRoleSlug
                           });
                         }}
                       >
