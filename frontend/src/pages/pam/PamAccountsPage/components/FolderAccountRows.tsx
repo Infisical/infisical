@@ -13,8 +13,8 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { AccountAccessibilityBadge } from "../../components/AccountAccessibilityBadge";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
+import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityBadgeWithPermission";
 import { AccountRowActions } from "./AccountRowActions";
 import { FolderActionsMenu } from "./FolderActionsMenu";
 
@@ -150,7 +150,10 @@ export const FolderAccountRows = ({
                     <HighlightText text={account.name} highlight={search} />
                   </span>
                   <Badge variant="neutral">{map[accountType]?.name ?? account.accountType}</Badge>
-                  <AccountAccessibilityBadge issues={account.accessibilityIssues} />
+                  <AccountAccessibilityBadgeWithPermission
+                    accountId={account.id}
+                    issues={account.accessibilityIssues}
+                  />
                 </div>
               </TableCell>
               <TableCell className="w-20">
