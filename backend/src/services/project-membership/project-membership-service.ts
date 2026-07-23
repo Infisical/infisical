@@ -439,6 +439,15 @@ export const projectMembershipServiceFactory = ({
 
     const actorMembership = projectMembers.find((member) => member.userId === actorId);
     if (!actorMembership) {
+      const [groupMembership] = await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(
+        [actorId],
+        project.id
+      );
+      if (groupMembership) {
+        throw new BadRequestError({
+          message: "You have access to this project through a group rather than a direct membership."
+        });
+      }
       throw new BadRequestError({ message: "You are not a member of this project" });
     }
 

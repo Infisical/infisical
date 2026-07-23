@@ -1175,7 +1175,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          projects: SanitizedProjectSchema.extend({ isMember: z.boolean() }).array(),
+          projects: SanitizedProjectSchema.extend({ isMember: z.boolean(), isDirectMember: z.boolean() }).array(),
           totalCount: z.number()
         })
       }

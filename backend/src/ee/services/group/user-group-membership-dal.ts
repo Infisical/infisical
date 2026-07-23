@@ -57,9 +57,14 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
 
   /**
    * Given a set of [userIds], returns the subset that have access to project [projectId]
-   * through a (non-pending) group membership, i.e. they belong to a group that is itself
-   * a member of the project. Used to validate approvers/bypassers who are project members
-   * via a group rather than directly.
+   * through a group membership, i.e. they belong to a group that is itself
+   * a member of the project.
+   *
+   * Note: this intentionally does NOT filter on `isPending`. The permission engine
+   * (`permission-dal.getPermission`) grants project access purely by group membership
+   * without considering `isPending`, and the flag is no longer cleared for accepted
+   * users (the un-pend transition was removed with the signup-flow simplification).
+   * Filtering it here would diverge from what actually grants access.
    */
   const findUserGroupMembershipsInProjectByUserIds = async (userIds: string[], projectId: string, tx?: Knex) => {
     try {
@@ -69,7 +74,6 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
         .join(TableName.Membership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Membership}.actorGroupId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
-        .where(`${TableName.UserGroupMembership}.isPending`, false)
         .whereIn(`${TableName.UserGroupMembership}.userId`, userIds)
         .distinct(`${TableName.UserGroupMembership}.userId`)
         .pluck(`${TableName.UserGroupMembership}.userId`);
