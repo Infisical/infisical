@@ -242,6 +242,38 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findGroupMembershipsByGroupIdsInOrg = async (groupIds: string[], orgId: string, tx?: Knex) => {
+    try {
+      const queryDb = tx || db.replicaNode();
+
+      const groupIdsVisibleInOrg = queryDb(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .select(`${TableName.Membership}.actorGroupId`);
+
+      const docs = await queryDb(TableName.UserGroupMembership)
+        .join(TableName.Groups, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.Membership, `${TableName.UserGroupMembership}.userId`, `${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
+        .whereIn(`${TableName.UserGroupMembership}.groupId`, groupIds)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .whereIn(`${TableName.UserGroupMembership}.groupId`, groupIdsVisibleInOrg)
+        .select(
+          db.ref("id").withSchema(TableName.UserGroupMembership),
+          db.ref("groupId").withSchema(TableName.UserGroupMembership),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("id").withSchema(TableName.Membership).as("orgMembershipId"),
+          db.ref("firstName").withSchema(TableName.Users).as("firstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("lastName")
+        );
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find group memberships by group ids in org" });
+    }
+  };
+
   return {
     ...userGroupMembershipOrm,
     filterProjectsByUserMembership,
@@ -250,6 +282,7 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
     findGroupMembersNotInProject,
     deletePendingUserGroupMembershipsByUserIds,
     findGroupMembershipsByUserIdInOrg,
-    findGroupMembershipsByGroupIdInOrg
+    findGroupMembershipsByGroupIdInOrg,
+    findGroupMembershipsByGroupIdsInOrg
   };
 };
