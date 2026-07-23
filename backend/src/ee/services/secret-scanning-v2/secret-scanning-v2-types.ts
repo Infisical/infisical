@@ -154,8 +154,12 @@ export type TQueueSecretScanningSendNotification = {
 );
 
 export type TCloneRepository = {
-  cloneUrl: string;
+  remoteUrl: string;
   repoPath: string;
+  auth?: {
+    username: string;
+    password: string;
+  };
 };
 
 export type TSecretScanningFactoryListRawResources<T extends TSecretScanningDataSourceWithConnection> = (

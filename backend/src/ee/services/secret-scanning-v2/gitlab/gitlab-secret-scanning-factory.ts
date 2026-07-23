@@ -263,8 +263,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     const validatedHostname = new URL(instanceUrl).host;
 
     await cloneRepository({
-      cloneUrl: `https://${user.username}:${connection.credentials.accessToken}@${validatedHostname}/${resourceName}.git`,
-      repoPath
+      remoteUrl: `https://${validatedHostname}/${resourceName}.git`,
+      repoPath,
+      auth: {
+        username: user.username,
+        password: connection.credentials.accessToken
+      }
     });
 
     return repoPath;
