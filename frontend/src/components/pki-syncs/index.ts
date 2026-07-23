@@ -6,4 +6,3 @@ export { PkiSyncImportStatusBadge } from "./PkiSyncImportStatusBadge";
 export { PkiSyncRemoveCertificatesModal } from "./PkiSyncRemoveCertificatesModal";
 export { PkiSyncRemoveStatusBadge } from "./PkiSyncRemoveStatusBadge";
 export { PkiSyncStatusBadge } from "./PkiSyncStatusBadge";
-export { PkiSyncTable } from "./PkiSyncTable";

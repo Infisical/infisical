@@ -1,8 +1,18 @@
 import { Control, Controller } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Plus, Trash2 } from "lucide-react";
 
-import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "./certificateUtils";
@@ -30,17 +40,14 @@ export const SubjectAltNamesField = ({
       name={namePrefix}
       shouldUnregister={shouldUnregister}
       render={({ field: { onChange, value } }) => {
-        const currentValues = value || [];
+        const currentValues: SubjectAltName[] = value || [];
         return (
-          <FormControl
-            label="Subject Alternative Names (SANs)"
-            errorText={error}
-            isError={Boolean(error)}
-          >
+          <Field className="mb-4">
+            <FieldLabel>Subject Alternative Names (SANs)</FieldLabel>
             <div className="space-y-2">
-              {currentValues.map((san: SubjectAltName, index: number) => (
+              {currentValues.map((san, index) => (
                 // eslint-disable-next-line react/no-array-index-key
-                <div key={`subject-alt-name-${index}`} className="flex items-center gap-2">
+                <div key={`subject-alt-name-${index}`} className="flex items-start gap-2">
                   <Select
                     value={san.type}
                     onValueChange={(newType) => {
@@ -51,13 +58,17 @@ export const SubjectAltNamesField = ({
                       };
                       onChange(newValue);
                     }}
-                    className="w-24"
                   >
-                    {allowedSanTypes.map((sanType) => (
-                      <SelectItem key={sanType} value={sanType}>
-                        {sanTypeLabels[sanType]}
-                      </SelectItem>
-                    ))}
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {allowedSanTypes.map((sanType) => (
+                        <SelectItem key={sanType} value={sanType}>
+                          {sanTypeLabels[sanType]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                   <Input
                     value={san.value}
@@ -69,24 +80,20 @@ export const SubjectAltNamesField = ({
                     placeholder={getSanPlaceholder(san.type)}
                     className="flex-1"
                   />
-                  <IconButton
-                    ariaLabel="Remove SAN"
-                    variant="plain"
+                  <Button
+                    type="button"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      const newValue = currentValues.filter((_: any, i: number) => i !== index);
-                      onChange(newValue);
-                    }}
+                    onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
                   >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </IconButton>
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
               ))}
               <Button
                 type="button"
-                variant="outline_bg"
-                size="xs"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   const defaultType =
                     allowedSanTypes.length > 0
@@ -94,12 +101,12 @@ export const SubjectAltNamesField = ({
                       : CertSubjectAlternativeNameType.DNS_NAME;
                   onChange([...currentValues, { type: defaultType, value: "" }]);
                 }}
-                className="w-full"
               >
-                Add SAN
+                <Plus className="size-4" /> Add SAN
               </Button>
             </div>
-          </FormControl>
+            <FieldError>{error}</FieldError>
+          </Field>
         );
       }}
     />

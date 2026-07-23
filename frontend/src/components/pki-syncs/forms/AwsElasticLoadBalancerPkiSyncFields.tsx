@@ -1,7 +1,21 @@
 import { useEffect, useRef } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Info, Loader2Icon } from "lucide-react";
 
-import { Checkbox, FormControl, FormLabel, Select, SelectItem, Spinner } from "@app/components/v2";
+import {
+  Checkbox,
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import {
   PkiSync,
@@ -17,13 +31,13 @@ type TAwsElasticLoadBalancerForm = TPkiSyncForm & { destination: PkiSync.AwsElas
 
 const ListenersLoadingState = () => (
   <div className="flex items-center justify-center py-4">
-    <Spinner size="sm" />
-    <span className="ml-2 text-sm text-mineshaft-400">Loading listeners...</span>
+    <Loader2Icon className="size-4 animate-spin text-muted" />
+    <span className="ml-2 text-sm text-muted">Loading listeners...</span>
   </div>
 );
 
 const NoListenersState = () => (
-  <div className="rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 text-center text-sm text-mineshaft-400">
+  <div className="rounded-md border border-border bg-background p-4 text-center text-sm text-muted">
     No HTTPS/TLS listeners found for this load balancer.
   </div>
 );
@@ -35,23 +49,23 @@ type ListenerItemProps = {
 };
 
 const ListenerItem = ({ listener, isSelected, onToggle }: ListenerItemProps) => (
-  <div
-    key={listener.listenerArn}
-    className="flex items-center justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-3"
-  >
+  <div className="flex items-center justify-between rounded-md border border-border bg-container p-3">
     <div className="flex items-center gap-3">
       <Checkbox
         id={`listener-${listener.listenerArn}`}
+        variant="project"
         isChecked={isSelected}
         onCheckedChange={(checked) => onToggle(listener, checked === true)}
       />
       <div>
-        <FormLabel
-          label={`Port ${listener.port} (${listener.protocol})`}
-          className="mb-0 cursor-pointer text-sm font-medium text-mineshaft-100"
-        />
+        <FieldLabel
+          htmlFor={`listener-${listener.listenerArn}`}
+          className="mb-0 cursor-pointer text-sm font-medium text-foreground"
+        >
+          Port {listener.port} ({listener.protocol})
+        </FieldLabel>
         {listener.sslPolicy && (
-          <p className="text-xs text-mineshaft-400">SSL Policy: {listener.sslPolicy}</p>
+          <p className="text-xs text-muted">SSL Policy: {listener.sslPolicy}</p>
         )}
       </div>
     </div>
@@ -165,7 +179,7 @@ export const AwsElasticLoadBalancerPkiSyncFields = () => {
     }
 
     return (
-      <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="space-y-3 rounded-md border border-border bg-background p-4">
         {listeners.map((listener) => {
           const isSelected = selectedListenerArns.has(listener.listenerArn);
 
@@ -196,29 +210,38 @@ export const AwsElasticLoadBalancerPkiSyncFields = () => {
         name="destinationConfig.region"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="AWS Region"
-            tooltipText="Select the AWS region where your Elastic Load Balancers are located."
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              AWS Region
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Select the AWS region where your Elastic Load Balancers are located.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <Select
-              value={field.value}
+              value={field.value ?? ""}
               onValueChange={(value) => {
                 field.onChange(value);
               }}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select an AWS region"
-              isDisabled={!connectionId}
+              disabled={!connectionId}
             >
-              {AWS_REGIONS.map(({ name, slug }) => (
-                <SelectItem value={slug} key={slug}>
-                  {name}
-                </SelectItem>
-              ))}
+              <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                <SelectValue placeholder="Select an AWS region" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {AWS_REGIONS.map(({ name, slug }) => (
+                  <SelectItem value={slug} key={slug}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
 
@@ -226,37 +249,46 @@ export const AwsElasticLoadBalancerPkiSyncFields = () => {
         name="destinationConfig.loadBalancerArn"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Load Balancer"
-            tooltipText="Select the Application or Network Load Balancer to deploy certificates to."
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              Load Balancer
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Select the Application or Network Load Balancer to deploy certificates to.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             {isLoadingLoadBalancers ? (
               <div className="flex items-center justify-center py-4">
-                <Spinner size="sm" />
-                <span className="ml-2 text-sm text-mineshaft-400">Loading load balancers...</span>
+                <Loader2Icon className="size-4 animate-spin text-muted" />
+                <span className="ml-2 text-sm text-muted">Loading load balancers...</span>
               </div>
             ) : (
               <Select
-                value={field.value}
+                value={field.value ?? ""}
                 onValueChange={(value) => {
                   field.onChange(value);
                   replace([]);
                 }}
-                className="w-full border border-mineshaft-500"
-                position="popper"
-                placeholder="Select a load balancer"
-                isDisabled={!connectionId || !region}
+                disabled={!connectionId || !region}
               >
-                {loadBalancers?.map((lb) => (
-                  <SelectItem value={lb.loadBalancerArn} key={lb.loadBalancerArn}>
-                    {lb.loadBalancerName}
-                  </SelectItem>
-                ))}
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue placeholder="Select a load balancer" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {loadBalancers?.map((lb) => (
+                    <SelectItem value={lb.loadBalancerArn} key={lb.loadBalancerArn}>
+                      {lb.loadBalancerName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             )}
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
 
@@ -265,14 +297,22 @@ export const AwsElasticLoadBalancerPkiSyncFields = () => {
           name="destinationConfig.listeners"
           control={control}
           render={({ fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="HTTPS/TLS Listeners"
-              tooltipText="Select which listeners should receive the certificate. You can set a default certificate from the certificates table after creating the sync."
-            >
+            <Field className="mb-4">
+              <FieldLabel>
+                HTTPS/TLS Listeners
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    Select which listeners should receive the certificate. You can set a default
+                    certificate from the certificates table after creating the sync.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               {renderListenersContent()}
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
       )}

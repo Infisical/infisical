@@ -12,6 +12,7 @@ import {
   PencilIcon,
   PlayIcon,
   PlusIcon,
+  Settings2Icon,
   Trash2Icon
 } from "lucide-react";
 
@@ -617,17 +618,22 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                             }
                           >
                             {hasMethods ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {methods.map((m) => (
-                                  <Badge key={m} variant="neutral">
-                                    {m}
-                                  </Badge>
-                                ))}
-                              </div>
+                              <>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {methods.map((m) => (
+                                    <Badge key={m} variant="neutral">
+                                      {m}
+                                    </Badge>
+                                  ))}
+                                </div>
+                                <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                              </>
                             ) : (
-                              <span className="text-xs text-accent">Configure</span>
+                              <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-xs font-medium text-accent transition-colors group-hover:border-mineshaft-500 group-hover:text-foreground">
+                                <Settings2Icon className="size-3.5" />
+                                Configure
+                              </span>
                             )}
-                            <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
                           </button>
                         ) : hasMethods ? (
                           <div className="flex flex-wrap gap-1.5">

@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  faCertificate,
-  faClockRotateLeft,
-  faEdit,
-  faEllipsisV,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { EllipsisIcon, HistoryIcon, PencilIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
@@ -14,25 +7,34 @@ import {
   CertificateDisplayName,
   getCertificateDisplayName
 } from "@app/components/utilities/certificateDisplayUtils";
+import { DeleteActionModal } from "@app/components/v2";
 import {
-  DeleteActionModal,
+  Badge,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CopyButton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
   Pagination,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge, CopyButton } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   useClearDefaultCertificate,
   useListPkiSyncCertificates,
@@ -54,7 +56,7 @@ const getSyncStatusVariant = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "success";
   if (status === CertificateSyncStatus.Failed) return "danger";
   if (status === CertificateSyncStatus.Running) return "neutral";
-  return "project";
+  return "info";
 };
 
 const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
@@ -65,16 +67,19 @@ const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
   return "Unknown";
 };
 
-const getCertificateStatusVariant = (isExpired: boolean, isRevoked: boolean) => {
-  if (isRevoked) return "danger";
-  if (isExpired) return "danger";
-  return "success";
-};
+const getCertificateStatusVariant = (isExpired: boolean, isRevoked: boolean) =>
+  isRevoked || isExpired ? "danger" : "success";
 
 const getCertificateStatusText = (isExpired: boolean, isRevoked: boolean) => {
   if (isRevoked) return "Revoked";
   if (isExpired) return "Expired";
   return "Active";
+};
+
+const truncateSerialNumber = (serial?: string | null) => {
+  if (!serial || serial === "Unknown") return "Unknown";
+  if (serial.length <= 8) return serial;
+  return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
 };
 
 export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
@@ -97,7 +102,6 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
   const setCertificateAsDefault = useSetCertificateAsDefault();
   const clearDefaultCertificate = useClearDefaultCertificate();
 
-  // Check if this sync type supports per-certificate default setting
   const supportsDefaultCertificate = pkiSync.destination === PkiSync.AwsElasticLoadBalancer;
 
   const { canEdit } = usePkiSyncPermissions(pkiSync);
@@ -174,47 +178,52 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
     }
   };
 
-  const totalPages = Math.ceil(totalCount / pageSize);
-
   return (
-    <div>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="text-lg font-medium text-mineshaft-100">Certificates</h3>
-          <IconButton
-            variant="plain"
-            colorSchema="secondary"
-            isDisabled={!canEdit}
-            ariaLabel="Edit certificates"
-            onClick={() => setIsManageModalOpen(true)}
-          >
-            <FontAwesomeIcon icon={faEdit} />
-          </IconButton>
-        </div>
-
-        <div>
-          <div className="space-y-4">
-            <TableContainer>
+    <>
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle>Certificates</CardTitle>
+          <CardAction>
+            <IconButton
+              variant="ghost"
+              size="xs"
+              aria-label="Manage certificates"
+              isDisabled={!canEdit}
+              onClick={() => setIsManageModalOpen(true)}
+            >
+              <PencilIcon />
+            </IconButton>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {syncCertificates.length === 0 ? (
+            <Empty className="border py-8">
+              <EmptyMedia variant="icon">
+                <ScrollTextIcon />
+              </EmptyMedia>
+              <EmptyTitle>No certificates are part of this certificate sync</EmptyTitle>
+            </Empty>
+          ) : (
+            <>
               <Table>
-                <THead>
-                  <Tr>
-                    <Th className="w-3/16">SAN / CN</Th>
-                    <Th className="w-1/8">Certificate Status</Th>
-                    <Th className="w-1/8">Serial Number</Th>
-                    <Th className="w-3/16">External ID</Th>
-                    <Th className="w-1/8">Sync Status</Th>
-                    <Th className="w-1/8">Expires At</Th>
-                    <Th className="w-1/8" />
-                  </Tr>
-                </THead>
-                <TBody>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SAN / CN</TableHead>
+                    <TableHead>Certificate Status</TableHead>
+                    <TableHead>Serial Number</TableHead>
+                    <TableHead>External ID</TableHead>
+                    <TableHead>Sync Status</TableHead>
+                    <TableHead>Expires At</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {syncCertificates.map((syncCert) => {
                     const isExpired = syncCert.certificateNotAfter
                       ? new Date(syncCert.certificateNotAfter) < new Date()
                       : false;
                     const isRevoked = syncCert.certificateStatus === "revoked";
 
-                    // Calculate auto-renewal timeline
                     const hasAutoRenewal = Boolean(
                       syncCert.certificateRenewBeforeDays &&
                         syncCert.certificateRenewBeforeDays > 0 &&
@@ -248,8 +257,8 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                     const isDefaultCertificate = syncCert.syncMetadata?.isDefault === true;
 
                     return (
-                      <Tr key={syncCert.id}>
-                        <Td className="max-w-0">
+                      <TableRow key={syncCert.id}>
+                        <TableCell isTruncatable>
                           <div className="flex items-center gap-2">
                             <CertificateDisplayName
                               cert={{
@@ -263,35 +272,32 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               <Badge variant="neutral">Default</Badge>
                             )}
                           </div>
-                        </Td>
-                        <Td>
+                        </TableCell>
+                        <TableCell>
                           <Badge variant={getCertificateStatusVariant(isExpired, isRevoked)}>
                             {getCertificateStatusText(isExpired, isRevoked)}
                           </Badge>
-                        </Td>
-                        <Td className="max-w-0">
+                        </TableCell>
+                        <TableCell isTruncatable>
                           <div
                             className="truncate text-xs"
                             title={syncCert.certificateSerialNumber || "Unknown"}
                           >
-                            {(() => {
-                              const serial = syncCert.certificateSerialNumber;
-                              if (!serial || serial === "Unknown") return "Unknown";
-                              if (serial.length <= 8) return serial;
-                              return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
-                            })()}
+                            {truncateSerialNumber(syncCert.certificateSerialNumber)}
                           </div>
-                        </Td>
-                        <Td className="max-w-0">
+                        </TableCell>
+                        <TableCell isTruncatable>
                           {syncCert.externalIdentifier ? (
                             <div className="flex items-center gap-1">
-                              <Tooltip
-                                content={syncCert.externalIdentifier}
-                                className="max-w-none whitespace-nowrap"
-                              >
-                                <span className="truncate text-xs text-bunker-300">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="truncate text-xs text-muted">
+                                    {syncCert.externalIdentifier}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-none whitespace-nowrap">
                                   {syncCert.externalIdentifier}
-                                </span>
+                                </TooltipContent>
                               </Tooltip>
                               <CopyButton
                                 value={syncCert.externalIdentifier}
@@ -299,101 +305,101 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               />
                             </div>
                           ) : (
-                            <span className="text-xs text-bunker-400">-</span>
+                            <span className="text-xs text-muted">-</span>
                           )}
-                        </Td>
-                        <Td>
+                        </TableCell>
+                        <TableCell>
                           {syncCert.lastSyncMessage &&
                           syncCert.syncStatus === CertificateSyncStatus.Failed ? (
-                            <Tooltip content={syncCert.lastSyncMessage}>
-                              <Badge variant="danger">Failed</Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block">
+                                  <Badge variant="danger">Failed</Badge>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{syncCert.lastSyncMessage}</TooltipContent>
                             </Tooltip>
                           ) : (
                             <Badge variant={getSyncStatusVariant(syncCert.syncStatus)}>
                               {getSyncStatusText(syncCert.syncStatus)}
                             </Badge>
                           )}
-                        </Td>
-                        <Td>
-                          <span
-                            className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
-                          >
+                        </TableCell>
+                        <TableCell>
+                          <span className={isExpired ? "text-danger" : "text-muted"}>
                             {syncCert.certificateNotAfter
                               ? new Date(syncCert.certificateNotAfter).toLocaleDateString()
                               : "Unknown"}
                           </span>
-                        </Td>
-                        <Td className="flex items-center justify-end gap-2 pr-4">
-                          {hasAutoRenewal && daysUntilRenewal !== null && (
-                            <Tooltip content={`Auto-renews in ${daysUntilRenewal}d`}>
-                              <div className="text-primary-500">
-                                <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
-                              </div>
-                            </Tooltip>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                size="xs"
-                                variant="plain"
-                                colorSchema="secondary"
-                                ariaLabel="Certificate actions"
-                                isDisabled={!canEdit}
-                              >
-                                <FontAwesomeIcon icon={faEllipsisV} />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {supportsDefaultCertificate && !isDefaultCertificate && (
-                                <DropdownMenuItem
-                                  onClick={() => handleSetAsDefault(syncCert.certificateId)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            {hasAutoRenewal && daysUntilRenewal !== null && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block text-accent">
+                                    <HistoryIcon className="size-3.5" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>Auto-renews in {daysUntilRenewal}d</TooltipContent>
+                              </Tooltip>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <IconButton
+                                  size="xs"
+                                  variant="ghost"
+                                  aria-label="Certificate actions"
+                                  isDisabled={!canEdit}
                                 >
-                                  Set as Default
+                                  <EllipsisIcon />
+                                </IconButton>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {supportsDefaultCertificate && !isDefaultCertificate && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleSetAsDefault(syncCert.certificateId)}
+                                  >
+                                    Set as Default
+                                  </DropdownMenuItem>
+                                )}
+                                {supportsDefaultCertificate && isDefaultCertificate && (
+                                  <DropdownMenuItem onClick={handleClearDefault}>
+                                    Unset Default
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  onClick={() =>
+                                    handleDeleteClick(syncCert.certificateId, originalDisplayName)
+                                  }
+                                >
+                                  <Trash2Icon />
+                                  Remove from Sync
                                 </DropdownMenuItem>
-                              )}
-                              {supportsDefaultCertificate && isDefaultCertificate && (
-                                <DropdownMenuItem onClick={handleClearDefault}>
-                                  Unset Default
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  handleDeleteClick(syncCert.certificateId, originalDisplayName)
-                                }
-                                icon={<FontAwesomeIcon icon={faTrash} className="text-red-500" />}
-                              >
-                                <span className="text-red-500">Remove from Sync</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </Td>
-                      </Tr>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </TBody>
+                </TableBody>
               </Table>
-              {syncCertificates.length === 0 && (
-                <EmptyState
-                  title="No certificates are part of this certificate sync"
-                  icon={faCertificate}
-                />
-              )}
-            </TableContainer>
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center">
+              {totalCount > pageSize && (
                 <Pagination
+                  className="mt-4"
                   count={totalCount}
                   page={currentPage}
                   perPage={pageSize}
                   onChangePage={(page: number) => setCurrentPage(page)}
                   onChangePerPage={() => {}}
                 />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <CertificateManagementModal
         pkiSync={pkiSync}
@@ -420,6 +426,6 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
         }}
         buttonText="Remove Certificate"
       />
-    </div>
+    </>
   );
 };

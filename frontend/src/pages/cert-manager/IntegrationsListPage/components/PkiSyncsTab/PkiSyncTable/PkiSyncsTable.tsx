@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  faArrowDown,
-  faArrowUp,
   faCheck,
   faCheckCircle,
   faFilter,
@@ -9,7 +7,7 @@ import {
   faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { SearchIcon } from "lucide-react";
+import { ChevronDownIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -202,11 +200,15 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: PkiSyncsOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
-
-  const getColSortIcon = (col: PkiSyncsOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const renderSortIcon = (col: PkiSyncsOrderBy) => (
+    <ChevronDownIcon
+      className={twMerge(
+        orderDirection === OrderByDirection.DESC && orderBy === col && "rotate-180",
+        orderBy !== col && "opacity-30",
+        "transition-transform"
+      )}
+    />
+  );
 
   const isTableFiltered = Boolean(filters.destinations.length || filters.status.length);
 
@@ -352,47 +354,26 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
         <TableHeader>
           <TableRow>
             <TableHead className="w-2" />
-            <TableHead className="w-1/2">
-              <div className="flex items-center">
-                Name
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className={getClassName(PkiSyncsOrderBy.Name)}
-                  aria-label="sort"
-                  onClick={() => handleSort(PkiSyncsOrderBy.Name)}
-                >
-                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Name)} />
-                </IconButton>
-              </div>
+            <TableHead
+              className="w-1/2 cursor-pointer"
+              onClick={() => handleSort(PkiSyncsOrderBy.Name)}
+            >
+              Name
+              {renderSortIcon(PkiSyncsOrderBy.Name)}
             </TableHead>
-            <TableHead className="w-1/4">
-              <div className="flex items-center">
-                Destination
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className={getClassName(PkiSyncsOrderBy.Destination)}
-                  aria-label="sort"
-                  onClick={() => handleSort(PkiSyncsOrderBy.Destination)}
-                >
-                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Destination)} />
-                </IconButton>
-              </div>
+            <TableHead
+              className="w-1/4 cursor-pointer"
+              onClick={() => handleSort(PkiSyncsOrderBy.Destination)}
+            >
+              Destination
+              {renderSortIcon(PkiSyncsOrderBy.Destination)}
             </TableHead>
-            <TableHead className="w-1/4 min-w-42">
-              <div className="flex items-center">
-                Status
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className={getClassName(PkiSyncsOrderBy.Status)}
-                  aria-label="sort"
-                  onClick={() => handleSort(PkiSyncsOrderBy.Status)}
-                >
-                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Status)} />
-                </IconButton>
-              </div>
+            <TableHead
+              className="w-1/4 min-w-42 cursor-pointer"
+              onClick={() => handleSort(PkiSyncsOrderBy.Status)}
+            >
+              Status
+              {renderSortIcon(PkiSyncsOrderBy.Status)}
             </TableHead>
             <TableHead className="w-5" />
           </TableRow>

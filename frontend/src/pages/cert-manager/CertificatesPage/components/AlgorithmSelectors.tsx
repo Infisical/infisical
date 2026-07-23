@@ -1,7 +1,17 @@
+import { ReactNode } from "react";
 import { Control, Controller } from "react-hook-form";
 
-import { FormControl, Select, SelectItem } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
@@ -9,6 +19,59 @@ type AlgorithmOption = {
   value: string;
   label: string;
 };
+
+const NONE_VALUE = "__none__";
+
+type AlgorithmSelectProps = {
+  control: Control<any>;
+  name: string;
+  label: string;
+  options: AlgorithmOption[];
+  error?: string;
+  shouldUnregister?: boolean;
+  isRequired: boolean;
+  nonePlaceholder?: string;
+  selectPlaceholder: string;
+  renderOptions: (options: AlgorithmOption[]) => ReactNode;
+};
+
+const AlgorithmSelect = ({
+  control,
+  name,
+  label,
+  options,
+  error,
+  shouldUnregister,
+  isRequired,
+  nonePlaceholder,
+  selectPlaceholder,
+  renderOptions
+}: AlgorithmSelectProps) => (
+  <Controller
+    control={control}
+    name={name}
+    shouldUnregister={shouldUnregister}
+    render={({ field: { onChange, value } }) => (
+      <Field>
+        <FieldLabel>
+          {label} {isRequired && <span className="text-danger">*</span>}
+        </FieldLabel>
+        <Select
+          value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
+          onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
+        >
+          <SelectTrigger className="w-full" isError={Boolean(error)}>
+            <SelectValue
+              placeholder={options.length > 0 ? selectPlaceholder : "No algorithms available"}
+            />
+          </SelectTrigger>
+          <SelectContent position="popper">{renderOptions(options)}</SelectContent>
+        </Select>
+        <FieldError>{error}</FieldError>
+      </Field>
+    )}
+  />
+);
 
 type AlgorithmSelectorsProps = {
   control: Control<any>;
@@ -24,8 +87,6 @@ type AlgorithmSelectorsProps = {
   hideSignatureAlgorithm?: boolean;
 };
 
-const NONE_VALUE = "__none__";
-
 export const AlgorithmSelectors = ({
   control,
   availableSignatureAlgorithms,
@@ -40,101 +101,53 @@ export const AlgorithmSelectors = ({
   hideSignatureAlgorithm = false
 }: AlgorithmSelectorsProps) => {
   const { subscription } = useSubscription();
+
+  const renderOptions = (options: AlgorithmOption[]): ReactNode => (
+    <>
+      {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
+      {options.map((algorithm) => {
+        const isGated = isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc;
+        return (
+          <SelectItem key={algorithm.value} value={algorithm.value} disabled={isGated}>
+            <span className="flex items-center gap-2">
+              {algorithm.label}
+              {isGated && <Badge variant="info">Enterprise</Badge>}
+            </span>
+          </SelectItem>
+        );
+      })}
+    </>
+  );
+
   return (
     <div className={hideSignatureAlgorithm ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
       {!hideSignatureAlgorithm && (
-        <div>
-          <Controller
-            control={control}
-            name={signatureFieldName}
-            shouldUnregister={shouldUnregister}
-            render={({ field: { onChange, value, ...field } }) => (
-              <FormControl
-                label="Signature Algorithm"
-                errorText={signatureError}
-                isError={Boolean(signatureError)}
-                isRequired={isRequired}
-              >
-                <Select
-                  defaultValue=""
-                  {...field}
-                  value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
-                  onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
-                  className="w-full"
-                  placeholder={
-                    availableSignatureAlgorithms.length > 0
-                      ? "Select signature algorithm"
-                      : "No algorithms available"
-                  }
-                  position="popper"
-                >
-                  {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
-                  {availableSignatureAlgorithms.map((algorithm) => (
-                    <SelectItem
-                      key={algorithm.value}
-                      value={algorithm.value}
-                      isDisabled={isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc}
-                    >
-                      <div className="flex items-center gap-2">
-                        {algorithm.label}
-                        {isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc && (
-                          <Badge variant="info">Enterprise</Badge>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-        </div>
+        <AlgorithmSelect
+          control={control}
+          name={signatureFieldName}
+          label="Signature Algorithm"
+          options={availableSignatureAlgorithms}
+          error={signatureError}
+          shouldUnregister={shouldUnregister}
+          isRequired={isRequired}
+          nonePlaceholder={nonePlaceholder}
+          selectPlaceholder="Select signature algorithm"
+          renderOptions={renderOptions}
+        />
       )}
 
-      <div>
-        <Controller
-          control={control}
-          name={keyFieldName}
-          shouldUnregister={shouldUnregister}
-          render={({ field: { onChange, value, ...field } }) => (
-            <FormControl
-              label="Key Algorithm"
-              errorText={keyError}
-              isError={Boolean(keyError)}
-              isRequired={isRequired}
-            >
-              <Select
-                defaultValue=""
-                {...field}
-                value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
-                onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
-                className="w-full"
-                placeholder={
-                  availableKeyAlgorithms.length > 0
-                    ? "Select key algorithm"
-                    : "No algorithms available"
-                }
-                position="popper"
-              >
-                {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
-                {availableKeyAlgorithms.map((algorithm) => (
-                  <SelectItem
-                    key={algorithm.value}
-                    value={algorithm.value}
-                    isDisabled={isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc}
-                  >
-                    <div className="flex items-center gap-2">
-                      {algorithm.label}
-                      {isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc && (
-                        <Badge variant="info">Enterprise</Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        />
-      </div>
+      <AlgorithmSelect
+        control={control}
+        name={keyFieldName}
+        label="Key Algorithm"
+        options={availableKeyAlgorithms}
+        error={keyError}
+        shouldUnregister={shouldUnregister}
+        isRequired={isRequired}
+        nonePlaceholder={nonePlaceholder}
+        selectPlaceholder="Select key algorithm"
+        renderOptions={renderOptions}
+      />
     </div>
   );
 };

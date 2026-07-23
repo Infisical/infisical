@@ -1,9 +1,24 @@
 import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Info } from "lucide-react";
 
-import { FormControl, Input, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+  Input,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 import { F5BigIpProfileType } from "@app/hooks/api/pkiSyncs/types/f5-big-ip-sync";
 
@@ -45,41 +60,65 @@ export const F5BigIpPkiSyncFields = () => {
         name="destinationConfig.partition"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Partition"
-            isOptional
-            tooltipText="The F5 partition where certificates will be stored. Defaults to Common."
-          >
-            <Input value={value ?? ""} onChange={onChange} placeholder="Common" />
-          </FormControl>
+          <Field className="mb-4">
+            <FieldLabel>
+              Partition <span className="text-muted">(optional)</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The F5 partition where certificates will be stored. Defaults to Common.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Input
+              value={value ?? ""}
+              onChange={onChange}
+              placeholder="Common"
+              isError={Boolean(error)}
+            />
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
       <Controller
         name="destinationConfig.profileType"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Profile Binding"
-            tooltipText="Attach each synced certificate to a Client SSL or Server SSL profile so the BIG-IP starts using it right away. F5 only allows one certificate per algorithm type (RSA, ECDSA, DSA) per profile, so use separate profiles if you have multiple certificates of the same type. Choose None to just upload certificates without attaching them."
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              Profile Binding
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Attach each synced certificate to a Client SSL or Server SSL profile so the BIG-IP
+                  starts using it right away. F5 only allows one certificate per algorithm type
+                  (RSA, ECDSA, DSA) per profile, so use separate profiles if you have multiple
+                  certificates of the same type. Choose None to just upload certificates without
+                  attaching them.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <Select
               value={value ?? F5BigIpProfileType.None}
               onValueChange={(v) => onChange(v as F5BigIpProfileType)}
-              className="w-full border border-mineshaft-500"
-              dropdownContainerClassName="max-w-none"
-              position="popper"
             >
-              {PROFILE_TYPE_OPTIONS.map((option) => (
-                <SelectItem value={option.value} key={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              <SelectTrigger className="w-full" isError={Boolean(error)}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {PROFILE_TYPE_OPTIONS.map((option) => (
+                  <SelectItem value={option.value} key={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
       {requiresProfile && (
@@ -88,16 +127,21 @@ export const F5BigIpPkiSyncFields = () => {
             name="destinationConfig.profileName"
             control={control}
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label={
-                  profileType === F5BigIpProfileType.ServerSsl
+              <Field className="mb-4">
+                <FieldLabel>
+                  {profileType === F5BigIpProfileType.ServerSsl
                     ? "Server SSL Profile Name"
-                    : "Client SSL Profile Name"
-                }
-                tooltipText="The name of the SSL profile inside the partition. Infisical will add each synced certificate to it."
-              >
+                    : "Client SSL Profile Name"}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The name of the SSL profile inside the partition. Infisical will add each
+                      synced certificate to it.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
                 <Input
                   value={value ?? ""}
                   onChange={onChange}
@@ -106,33 +150,44 @@ export const F5BigIpPkiSyncFields = () => {
                       ? "e.g. backend-ssl"
                       : "e.g. clientssl-prod"
                   }
+                  isError={Boolean(error)}
                 />
-              </FormControl>
+                <FieldError errors={[error]} />
+              </Field>
             )}
           />
           <Controller
             name="destinationConfig.createProfileIfMissing"
             control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                  id="f5-create-profile-if-missing"
-                  thumbClassName="bg-mineshaft-800"
-                  isChecked={value ?? false}
-                  onCheckedChange={onChange}
-                >
-                  <p>
-                    Create profile if missing{" "}
-                    <Tooltip
-                      className="max-w-md"
-                      content="Create the SSL profile on the BIG-IP if it doesn't exist yet. Off by default, since production profiles are usually managed by F5 administrators."
+            render={({ field: { value, onChange } }) => (
+              <Field className="mb-4">
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <Label
+                      htmlFor="f5-create-profile-if-missing"
+                      className="flex items-center gap-1.5"
                     >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                    </Tooltip>
-                  </p>
-                </Switch>
-              </FormControl>
+                      Create profile if missing
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          Create the SSL profile on the BIG-IP if it doesn&apos;t exist yet. Off by
+                          default, since production profiles are usually managed by F5
+                          administrators.
+                        </TooltipContent>
+                      </Tooltip>
+                    </Label>
+                  </FieldContent>
+                  <Switch
+                    id="f5-create-profile-if-missing"
+                    variant="project"
+                    checked={value ?? false}
+                    onCheckedChange={onChange}
+                  />
+                </Field>
+              </Field>
             )}
           />
           {createProfileIfMissing && (
@@ -140,13 +195,18 @@ export const F5BigIpPkiSyncFields = () => {
               name="destinationConfig.parentProfile"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Parent Profile"
-                  isOptional
-                  tooltipText={`The existing F5 profile we'll copy settings from when creating the new one. Defaults to /Common/${profileType === F5BigIpProfileType.ServerSsl ? "serverssl" : "clientssl"}. Enter just a name (looked up in /Common) or a full path like /MyPartition/my-parent.`}
-                >
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Parent Profile <span className="text-muted">(optional)</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        {`The existing F5 profile we'll copy settings from when creating the new one. Defaults to /Common/${profileType === F5BigIpProfileType.ServerSsl ? "serverssl" : "clientssl"}. Enter just a name (looked up in /Common) or a full path like /MyPartition/my-parent.`}
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <Input
                     value={value ?? ""}
                     onChange={onChange}
@@ -155,8 +215,10 @@ export const F5BigIpPkiSyncFields = () => {
                         ? "/Common/serverssl"
                         : "/Common/clientssl"
                     }
+                    isError={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
           )}
