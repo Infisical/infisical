@@ -21,7 +21,10 @@ import {
   InputGroupAddon,
   InputGroupInput,
   RadioGroup,
-  RadioGroupItem
+  RadioGroupItem,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { Button } from "@app/components/v3/generic/Button";
 import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
@@ -47,6 +50,7 @@ import { useOrganization } from "@app/context";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
+  PamResourcePermissionActions,
   useCreatePamAccount,
   useGetPamAccessCapabilities,
   useListPamAccountTemplates,
@@ -122,7 +126,9 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
   const selectedTemplateId = watch("templateId");
 
   const { data: accountTypes = [] } = useListPamAccountTypes();
-  const { data: folders = [] } = useListPamFoldersAdmin();
+  const { data: folders = [] } = useListPamFoldersAdmin({
+    filterByAction: PamResourcePermissionActions.CreateAccounts
+  });
   const { data: templates = [] } = useListPamAccountTemplates();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
@@ -303,12 +309,26 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                               </SelectItem>
                             ))}
                             {folders.length > 0 && <SelectSeparator />}
-                            <SelectItem value={CREATE_FOLDER_VALUE}>
-                              <span className="flex items-center gap-1.5 text-muted">
-                                <Plus className="size-4" />
-                                Create folder
-                              </span>
-                            </SelectItem>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <SelectItem
+                                    value={CREATE_FOLDER_VALUE}
+                                    disabled={!isProductAdmin}
+                                  >
+                                    <span className="flex items-center gap-1.5 text-muted">
+                                      <Plus className="size-4" />
+                                      Create folder
+                                    </span>
+                                  </SelectItem>
+                                </div>
+                              </TooltipTrigger>
+                              {!isProductAdmin && (
+                                <TooltipContent side="left">
+                                  Only product admins can create folders
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
                           </SelectContent>
                         </Select>
                       </FieldContent>

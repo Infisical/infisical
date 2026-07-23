@@ -42,6 +42,7 @@ import {
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   PamAccountType,
+  PamResourcePermissionActions,
   TAccessiblePamAccount,
   useDeletePamAccount,
   useDeletePamFolder,
@@ -95,6 +96,12 @@ export const PamAccountsPage = () => {
   });
   const isLoadingFolders =
     isLoadingCapabilities || (isAdmin ? isLoadingAdminFolders : isLoadingUserFolders);
+
+  // Fetch folders where user can create accounts (for "Add Account" button visibility)
+  const { data: creatableFolders = [] } = useListPamFoldersAdmin(
+    { filterByAction: PamResourcePermissionActions.CreateAccounts },
+    { enabled: capabilitiesLoaded && isAdmin }
+  );
 
   // Admin: filter by templates; Users: filter by account types
   const { data: templates = [] } = useListPamAccountTemplates();
@@ -237,39 +244,43 @@ export const PamAccountsPage = () => {
           <CardDescription>
             Launch sessions for accounts you have access to, or manage account settings.
           </CardDescription>
-          {isAdmin && (
+          {isAdmin && (creatableFolders.length > 0 || capabilities?.isProductAdmin) && (
             <CardAction>
               <ButtonGroup>
-                <Button
-                  variant="pam"
-                  className="rounded-r-none"
-                  onClick={() => handlePopUpOpen("createAccount")}
-                >
-                  <Plus />
-                  Add Account
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton
-                      variant="pam"
-                      aria-label="More create options"
-                      className="border-l-transparent"
-                    >
-                      <ChevronDown />
-                    </IconButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    sideOffset={4}
-                    onClick={(e) => e.stopPropagation()}
+                {creatableFolders.length > 0 && (
+                  <Button
+                    variant="pam"
+                    className={capabilities?.isProductAdmin ? "rounded-r-none" : ""}
+                    onClick={() => handlePopUpOpen("createAccount")}
                   >
-                    <DropdownMenuLabel>New</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
-                      <FolderPlus />
-                      Add Folder
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <Plus />
+                    Add Account
+                  </Button>
+                )}
+                {capabilities?.isProductAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        variant="pam"
+                        aria-label="More create options"
+                        className={creatableFolders.length > 0 ? "border-l-transparent" : ""}
+                      >
+                        <ChevronDown />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      sideOffset={4}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel>New</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
+                        <FolderPlus />
+                        Add Folder
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </ButtonGroup>
             </CardAction>
           )}

@@ -76,7 +76,8 @@ export const pamKeys = {
     [...pamKeys.template(), "list", params] as const,
   getTemplate: (templateId: string) => [...pamKeys.template(), "get", templateId] as const,
   folder: () => [...pamKeys.all, "folder"] as const,
-  listFolders: (params?: { search?: string }) => [...pamKeys.folder(), "list", params] as const,
+  listFolders: (params?: { search?: string; filterByAction?: string }) =>
+    [...pamKeys.folder(), "list", params] as const,
   adminListAccounts: (params?: { folderId?: string; templateId?: string; search?: string }) =>
     [...pamKeys.account(), "admin-list", params] as const,
   accountMembers: (accountId: string) => [...pamKeys.all, "account-members", accountId] as const,
@@ -264,7 +265,7 @@ export const useListPamAccountsAdmin = (
 };
 
 export const useListPamFoldersAdmin = (
-  params?: { search?: string },
+  params?: { search?: string; filterByAction?: string },
   options?: { enabled?: boolean }
 ) => {
   return useQuery({
