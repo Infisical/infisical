@@ -21,7 +21,9 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
-  TGetSecretValueDTO
+  TGetSecretValueDTO,
+  TSearchSecretsByMetadataDTO,
+  TSearchSecretsByMetadataResponse
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
@@ -68,6 +70,8 @@ export const dashboardKeys = {
       "quick-search",
       params
     ] as const,
+  searchSecretsByMetadata: ({ projectId, ...params }: TSearchSecretsByMetadataDTO) =>
+    [...dashboardKeys.all(), "secrets-by-metadata", projectId, params] as const,
   getAccessibleSecrets: ({
     projectId,
     secretPath,
@@ -80,9 +84,16 @@ export const dashboardKeys = {
       { projectId, secretPath, environment, filterByAction }
     ] as const,
   getSecretValuesRoot: () => [...dashboardKeys.all(), "secrets-values"] as const,
-  getSecretValue: ({ environment, secretPath, secretKey, isOverride }: TGetSecretValueDTO) =>
+  getSecretValue: ({
+    projectId,
+    environment,
+    secretPath,
+    secretKey,
+    isOverride
+  }: TGetSecretValueDTO) =>
     [
       ...dashboardKeys.getSecretValuesRoot(),
+      projectId,
       environment,
       secretPath,
       secretKey,
@@ -200,6 +211,7 @@ export const useGetProjectSecretsOverview = (
     includeDynamicSecrets,
     includeSecretRotations,
     includeHoneyTokens,
+    includeProxiedServices,
     environments
   }: TGetDashboardProjectSecretsOverviewDTO,
   options?: Omit<
@@ -233,6 +245,7 @@ export const useGetProjectSecretsOverview = (
       includeDynamicSecrets,
       includeSecretRotations,
       includeHoneyTokens,
+      includeProxiedServices,
       environments
     }),
     queryFn: async () => {
@@ -251,6 +264,7 @@ export const useGetProjectSecretsOverview = (
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
+        includeProxiedServices,
         environments
       });
 
@@ -273,6 +287,9 @@ export const useGetProjectSecretsOverview = (
       const uniqueSecretImports = select.imports ? unique(select.imports, (i) => i.id) : [];
       const uniqueSecretRotations = secretRotations ? unique(secretRotations, (i) => i.name) : [];
       const uniqueHoneyTokens = honeyTokens ? unique(honeyTokens, (i) => i.name) : [];
+      const uniqueProxiedServices = select.proxiedServices
+        ? unique(select.proxiedServices, (i) => i.name)
+        : [];
 
       return {
         ...select,
@@ -289,7 +306,8 @@ export const useGetProjectSecretsOverview = (
         totalUniqueFoldersInPage: uniqueFolders.length,
         totalUniqueSecretImportsInPage: uniqueSecretImports.length,
         totalUniqueSecretRotationsInPage: uniqueSecretRotations.length,
-        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length
+        totalUniqueHoneyTokensInPage: uniqueHoneyTokens.length,
+        totalUniqueProxiedServicesInPage: uniqueProxiedServices.length
       };
     }, []),
     placeholderData: (previousData) => previousData
@@ -312,6 +330,7 @@ export const useGetProjectSecretsDetails = (
     includeDynamicSecrets,
     includeSecretRotations,
     includeHoneyTokens,
+    includeProxiedServices,
     tags
   }: TGetDashboardProjectSecretsDetailsDTO,
   options?: Omit<
@@ -351,6 +370,7 @@ export const useGetProjectSecretsDetails = (
       includeDynamicSecrets,
       includeSecretRotations,
       includeHoneyTokens,
+      includeProxiedServices,
       tags
     }),
     queryFn: async () => {
@@ -369,6 +389,7 @@ export const useGetProjectSecretsDetails = (
         includeDynamicSecrets,
         includeSecretRotations,
         includeHoneyTokens,
+        includeProxiedServices,
         tags
       });
 
@@ -499,6 +520,57 @@ export const useGetProjectSecretsQuickSearch = (
         secretRotations: groupedRotations
       };
     }, []),
+    placeholderData: (previousData) => previousData
+  });
+};
+
+export const fetchSearchSecretsByMetadata = async ({
+  projectId,
+  operator,
+  filters,
+  tags
+}: TSearchSecretsByMetadataDTO) => {
+  // /secrets-by-metadata parses nested `filters[<n>][key|value|operator]` params (qs syntax) from the
+  // raw querystring, so build it explicitly rather than relying on axios' default array serialization.
+  const params = new URLSearchParams();
+  params.append("projectId", projectId);
+  params.append("operator", operator);
+  filters.forEach((filter, index) => {
+    params.append(`filters[${index}][key]`, filter.key);
+    params.append(`filters[${index}][value]`, filter.value);
+    params.append(`filters[${index}][operator]`, filter.operator);
+  });
+
+  // tags are sent as a comma-separated list of enabled slugs (same convention as the deep-search endpoint).
+  const enabledTags = Object.entries(tags)
+    .filter(([, enabled]) => enabled)
+    .map(([slug]) => slug);
+  if (enabledTags.length) params.append("tags", enabledTags.join(","));
+
+  const { data } = await apiRequest.get<TSearchSecretsByMetadataResponse>(
+    `/api/v1/dashboard/secrets-by-metadata?${params.toString()}`
+  );
+
+  return data;
+};
+
+export const useSearchSecretsByMetadata = (
+  { projectId, operator, filters, tags }: TSearchSecretsByMetadataDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TSearchSecretsByMetadataResponse,
+      unknown,
+      TSearchSecretsByMetadataResponse,
+      ReturnType<typeof dashboardKeys.searchSecretsByMetadata>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    ...options,
+    enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
+    queryKey: dashboardKeys.searchSecretsByMetadata({ projectId, operator, filters, tags }),
+    queryFn: () => fetchSearchSecretsByMetadata({ projectId, operator, filters, tags }),
     placeholderData: (previousData) => previousData
   });
 };

@@ -132,8 +132,7 @@ export const auditLogQueueServiceFactory = async ({
     await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(entry) });
     auditLogEnqueuedCounter.add(1, {
       "audit_log.event_type": entry.event?.type ?? "unknown",
-      "audit_log.actor_type": entry.actor?.type ?? "unknown",
-      "infisical.organization.id": entry.orgId
+      "audit_log.actor_type": entry.actor?.type ?? "unknown"
     });
   };
 
@@ -158,16 +157,6 @@ export const auditLogQueueServiceFactory = async ({
       });
     }
   };
-
-  // Compatibility shim: legacy per-log AuditLog jobs enqueued by old pods (before the
-  // stream rollout) get re-routed into the unified stream so a rolling deploy doesn't
-  // strand them with no consumer. Unlike the request path we re-throw on stream-add
-  // failure so BullMQ retries the job instead of dropping it.
-  // TODO: remove next release once the legacy QueueName.AuditLog queue has drained.
-  queueService.start(QueueName.AuditLog, async (job) => {
-    if (!job.data) return;
-    await appendToIngestStream(job.data);
-  });
 
   const insertBatch = async (logs: TAuditLogs[]) => {
     if (isClickHouseBatchEnabled) {
@@ -212,16 +201,6 @@ export const auditLogQueueServiceFactory = async ({
       }
     }
 
-    // A pre-rollout pod (before this stream format shipped) wrote the already-mapped
-    // audit-log row to the ingest stream, not the resolved DTO. Those legacy entries are
-    // flat (`actor`/`eventType` are strings, there is no nested `event` object)
-    type TLegacyAuditLogStreamEntry = Omit<TAuditLogs, "createdAt" | "expiresAt" | "updatedAt"> & {
-      createdAt: string;
-      expiresAt: string;
-    };
-    const isCurrentShape = (raw: Record<string, unknown>): boolean =>
-      typeof raw.event === "object" && raw.event !== null;
-
     // Map a stream entry into a persistable audit log. org/plan/TTL/projectName were all
     // resolved at push time (see buildStreamEntry), so this is a pure shape transform with no DB
     // lookups. Entries that predate push-time resolution (in-flight during a rolling deploy) lack
@@ -230,25 +209,6 @@ export const auditLogQueueServiceFactory = async ({
       if (typeof raw !== "object" || raw === null) {
         logger.error("audit-log-queue: Skipping non-object audit log stream entry");
         return null;
-      }
-
-      // Legacy flat entry: it is already in the persisted shape (mapped + normalized by the
-      // old pod), so only the timestamps need re-hydrating from their JSON ISO strings.
-      if (!isCurrentShape(raw as Record<string, unknown>)) {
-        const legacy = raw as TLegacyAuditLogStreamEntry;
-        if (!legacy.orgId || !legacy.expiresAt) {
-          logger.error(
-            `audit-log-queue: Skipping legacy entry missing resolved metadata [eventType=${legacy.eventType}] [orgId=${legacy.orgId}]`
-          );
-          return null;
-        }
-        const legacyCreatedAt = new Date(legacy.createdAt);
-        return {
-          ...legacy,
-          expiresAt: new Date(legacy.expiresAt),
-          createdAt: legacyCreatedAt,
-          updatedAt: legacyCreatedAt
-        };
       }
 
       const entry = raw as TAuditLogStreamEntry;

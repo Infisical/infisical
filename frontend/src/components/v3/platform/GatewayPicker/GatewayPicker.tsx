@@ -1,7 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { GlobeIcon, Layers3Icon, ServerIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { GlobeIcon, Layers3Icon, type LucideIcon, ServerIcon } from "lucide-react";
 
-import { useSubscription } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
+import {
+  OrgGatewayPermissionActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
@@ -29,6 +34,8 @@ type Props = {
   isRequired?: boolean;
   placeholder?: string;
   isError?: boolean;
+  noGatewayLabel?: string;
+  noGatewayIcon?: LucideIcon;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -44,9 +51,13 @@ export const GatewayPicker = ({
   className,
   isRequired,
   placeholder,
-  isError
+  isError,
+  noGatewayLabel = "Internet Gateway",
+  noGatewayIcon: NoGatewayIcon = GlobeIcon
 }: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
   const showPools = subscription?.gatewayPool;
 
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
@@ -78,6 +89,13 @@ export const GatewayPicker = ({
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
+  const poolCount = pools?.length ?? 0;
+  const hasAnyGateways = v2Gateways.length > 0 || poolCount > 0;
+  const canCreateGateway = permission.can(
+    OrgGatewayPermissionActions.CreateGateways,
+    OrgPermissionSubjects.Gateway
+  );
+
   return (
     <Select value={selectValue} onValueChange={handleChange} disabled={isDisabled || isLoading}>
       <SelectTrigger className={className ?? "w-full"} isError={isError}>
@@ -87,8 +105,8 @@ export const GatewayPicker = ({
         {!isRequired && (
           <SelectItem value="internet">
             <span className="flex items-center gap-2">
-              <GlobeIcon className="size-3.5 text-muted" />
-              Internet Gateway
+              <NoGatewayIcon className="size-3.5 text-muted" />
+              {noGatewayLabel}
             </span>
           </SelectItem>
         )}
@@ -141,7 +159,7 @@ export const GatewayPicker = ({
                   <ServerIcon className="size-3.5 shrink-0 text-muted" />
                   <span className="truncate">{gw.name}</span>
                   <span
-                    className={`shrink-0 text-xs ${isOnline(gw) ? "text-green-500" : "text-red-400"}`}
+                    className={`shrink-0 text-xs ${isOnline(gw) ? "text-success" : "text-danger"}`}
                   >
                     {isOnline(gw) ? "Online" : "Offline"}
                   </span>
@@ -149,6 +167,27 @@ export const GatewayPicker = ({
               </SelectItem>
             ))}
           </>
+        )}
+
+        {isRequired && !hasAnyGateways && (
+          <div className="px-2 py-4 text-center text-sm text-muted">
+            {canCreateGateway ? (
+              <>
+                No gateways configured.{" "}
+                <Link
+                  to="/organizations/$orgId/networking"
+                  params={{ orgId: currentOrg.id }}
+                  target="_blank"
+                  className="text-foreground underline underline-offset-2 hover:text-primary"
+                >
+                  Set one up
+                </Link>{" "}
+                to continue.
+              </>
+            ) : (
+              "No gateways configured. Ask your organization admin to set one up."
+            )}
+          </div>
         )}
       </SelectContent>
     </Select>

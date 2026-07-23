@@ -86,6 +86,9 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           errorMessage: error.message,
           route: req.routeOptions?.url,
           method: req.method,
+          orgId: req.auth?.orgId,
+          realIp: req.realIp,
+          actor: req.auth?.actor,
           details: (error as { details?: unknown }).details
         },
         `client error: ${error.name}`
@@ -173,8 +176,6 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         "http.route": route ?? "unknown",
         "error.type": classifyError(error)
       };
-      if (orgId) coreAttrs["infisical.organization.id"] = orgId;
-      if (projectDetails?.id) coreAttrs["infisical.project.id"] = projectDetails.id;
       coreHttpErrorCounter.add(1, coreAttrs);
     }
 

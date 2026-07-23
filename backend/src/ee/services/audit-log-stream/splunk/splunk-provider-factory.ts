@@ -3,9 +3,9 @@ import { RawAxiosRequestHeaders } from "axios";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
+import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -33,7 +33,7 @@ async function createSplunkUrl(hostname: string) {
     throw new BadRequestError({ message: `Invalid Splunk hostname provided: ${(error as Error).message}` });
   }
 
-  await blockLocalAndPrivateIpAddresses(`https://${parsedHostname}`);
+  await blockAuditLogStreamInternalIps(`https://${parsedHostname}`);
 
   return `https://${parsedHostname}:8088/services/collector/event`;
 }

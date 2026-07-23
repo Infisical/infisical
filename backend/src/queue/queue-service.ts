@@ -12,9 +12,7 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
-import { PamDiscoverySourceRunTrigger } from "@app/ee/services/pam-discovery/pam-discovery-enums";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
@@ -75,7 +73,6 @@ export const JOB_SCHEDULER_PREFIX = "jsv1";
 
 export enum QueueName {
   SecretReminder = "secret-reminder",
-  AuditLog = "audit-log",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune",
   PkiAlertV2Event = "pki-alert-v2-event",
@@ -98,21 +95,24 @@ export enum QueueName {
   AppConnectionSecretSync = "app-connection-secret-sync",
   SecretRotationV2 = "secret-rotation-v2",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
+  PamCredentialRotation = "pam-credential-rotation",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   FolderTreeCheckpoint = "folder-tree-checkpoint",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2 = "secret-scanning-v2",
   UserNotification = "user-notification",
+  AuditReportGeneration = "audit-report-generation",
   PamSessionExpiration = "pam-session-expiration",
-  PamSessionAiSummary = "pam-session-ai-summary",
+  PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
   AuditLogStreamOutbox = "audit-log-stream-outbox",
-  PamDiscoveryScan = "pam-discovery-scan",
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
+  ProjectEnvHardDelete = "project-env-hard-delete",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event"
@@ -120,7 +120,6 @@ export enum QueueName {
 
 export enum QueueJobs {
   SecretReminder = "secret-reminder-job",
-  AuditLog = "audit-log-job",
   // TODO(akhilmhdh): This will get removed later. For now this is kept to stop the repeatable queue
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
@@ -155,6 +154,8 @@ export enum QueueJobs {
   SecretRotationV2QueueRotations = "secret-rotation-v2-queue-rotations",
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
+  PamCredentialRotationQueueRotations = "pam-credential-rotation-queue-rotations",
+  PamCredentialRotationRotate = "pam-credential-rotation-rotate",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
@@ -168,11 +169,11 @@ export enum QueueJobs {
   DailyReminders = "daily-reminders",
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
+  GenerateAuditReport = "generate-audit-report-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
-  PamAccountRotation = "pam-account-rotation",
   PamSessionExpiration = "pam-session-expiration",
-  PamSessionAiSummary = "pam-session-ai-summary-job",
+  PamDiscoverySourceScan = "pam-discovery-source-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
@@ -181,16 +182,16 @@ export enum QueueJobs {
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch-job",
   AuditLogStreamFlush = "audit-log-stream-flush",
-  PamDiscoverySourceRunScan = "pam-discovery-run-scan",
-  PamDiscoveryScheduledScan = "pam-discovery-scheduled-scan",
   CaDailyAutoRenewal = "ca-daily-auto-renewal",
   CaVenafiInstall = "ca-venafi-install-job",
   CaAdcsInstall = "ca-adcs-install-job",
+  CaNativeAdcsInstall = "ca-native-adcs-install-job",
   CertificateCleanup = "certificate-cleanup-job",
   DailySecretSyncRetry = "daily-secret-sync-retry-job",
   DigiCertOrderPolling = "digicert-order-polling-job",
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
+  ProjectEnvHardDelete = "project-env-hard-delete-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job"
@@ -203,8 +204,7 @@ export enum JobState {
   Failed = "failed"
 }
 
-export type TQueueOptions = {
-  jobId: string;
+type BaseQueueOptions = {
   removeOnComplete?: boolean | { count: number } | { age: number };
   removeOnFail?: boolean | { count: number } | { age: number };
   attempts?: number;
@@ -224,6 +224,26 @@ export type TQueueOptions = {
   };
 };
 
+type DeduplicationOptions = {
+  id: string;
+  keepLastIfActive?: boolean;
+  replace?: boolean;
+  extend?: boolean;
+  ttl?: number;
+};
+
+export type TQueueOptions = BaseQueueOptions &
+  (
+    | {
+        jobId: string;
+        deduplication?: undefined;
+      }
+    | {
+        jobId?: undefined;
+        deduplication: DeduplicationOptions;
+      }
+  );
+
 export type TQueueJobTypes = {
   [QueueName.SecretReminder]: {
     payload: {
@@ -233,10 +253,6 @@ export type TQueueJobTypes = {
       note: string | undefined | null;
     };
     name: QueueJobs.SecretReminder;
-  };
-  [QueueName.AuditLog]: {
-    name: QueueJobs.AuditLog;
-    payload: TCreateAuditLogDTO;
   };
   [QueueName.PkiAlertV2Event]: {
     name: QueueJobs.PkiAlertV2ProcessEvent;
@@ -394,6 +410,14 @@ export type TQueueJobTypes = {
     name: QueueJobs.SecretRotationV2RotateSecrets;
     payload: TSecretRotationRotateSecretsJobPayload;
   };
+  [QueueName.PamCredentialRotation]: {
+    name: QueueJobs.PamCredentialRotationQueueRotations;
+    payload: undefined;
+  };
+  [QueueName.PamCredentialRotationRotate]: {
+    name: QueueJobs.PamCredentialRotationRotate;
+    payload: { accountId: string };
+  };
   [QueueName.InvalidateCache]: {
     name: QueueJobs.InvalidateCache;
     payload: {
@@ -454,13 +478,17 @@ export type TQueueJobTypes = {
     name: QueueJobs.UserNotification;
     payload: { notifications: TCreateUserNotificationDTO[] };
   };
+  [QueueName.AuditReportGeneration]: {
+    name: QueueJobs.GenerateAuditReport;
+    payload: { auditReportId: string };
+  };
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
     payload: { sessionId: string };
   };
-  [QueueName.PamSessionAiSummary]: {
-    name: QueueJobs.PamSessionAiSummary;
-    payload: { sessionId: string; projectId: string };
+  [QueueName.PamDiscoveryScan]: {
+    name: QueueJobs.PamDiscoverySourceScan;
+    payload: { sourceId: string; triggeredBy: string };
   };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
@@ -496,15 +524,6 @@ export type TQueueJobTypes = {
     name: QueueJobs.AuditLogStreamFlush;
     payload: TAuditLogStreamFlushJobData;
   };
-  [QueueName.PamDiscoveryScan]:
-    | {
-        name: QueueJobs.PamDiscoverySourceRunScan;
-        payload: { discoverySourceId: string; triggeredBy: PamDiscoverySourceRunTrigger };
-      }
-    | {
-        name: QueueJobs.PamDiscoveryScheduledScan;
-        payload: undefined;
-      };
   [QueueName.CaAutoRenewal]:
     | {
         name: QueueJobs.CaDailyAutoRenewal;
@@ -517,10 +536,18 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.CaAdcsInstall;
         payload: { caId: string; maxPathLength?: number };
+      }
+    | {
+        name: QueueJobs.CaNativeAdcsInstall;
+        payload: { caId: string; maxPathLength?: number };
       };
   [QueueName.ProjectHardDelete]: {
     name: QueueJobs.ProjectHardDelete;
     payload: { projectId: string };
+  };
+  [QueueName.ProjectEnvHardDelete]: {
+    name: QueueJobs.ProjectEnvHardDelete;
+    payload: { envId: string; projectId: string };
   };
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;
@@ -532,7 +559,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
-    payload: { orgId: string; featureKey: string };
+    payload: { orgId: string; dimensionKey: string };
   };
 };
 
@@ -676,6 +703,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "queue-internal-recovery",
       "queue-internal-reconciliation",
       "secret-rotation",
+      // Legacy per-log audit queue, replaced by the unified Redis ingest stream. The compatibility
+      // shim that re-routed its jobs has been removed; obliterate any residue left in Redis.
+      "audit-log",
       // Queues replaced by cronJobFactory (src/lib/cron/cron-job.ts)
       "daily-resource-cleanup",
       "frequent-resource-cleanup",
@@ -685,6 +715,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       "certificate-cleanup",
       "pki-sync-cleanup",
       "pam-account-rotation",
+      "pam-session-ai-summary",
       "daily-pki-alert-v2-processing",
       "daily-expiring-pki-item-alert",
       "telemtry-self-hosted-stats", // note: typo from original enum value
@@ -710,7 +741,6 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     const staleSchedulersInActiveQueues: Array<{ queueName: string; schedulerId: string }> = [
       { queueName: "pki-subscriber", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-subscriber` },
       { queueName: "pki-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pki-discovery-scheduled-scan` },
-      { queueName: "pam-discovery-scan", schedulerId: `${JOB_SCHEDULER_PREFIX}:pam-discovery-scheduled-scan` },
       { queueName: "secret-rotation-v2", schedulerId: `${JOB_SCHEDULER_PREFIX}:secret-rotation-v2-cron` },
       {
         queueName: "app-connection-credential-rotation",

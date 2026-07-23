@@ -16,7 +16,6 @@ import {
   ShieldBanIcon,
   TimerIcon
 } from "lucide-react";
-import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import {
@@ -97,6 +96,7 @@ import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
 import { RequestAccessModal } from "./components/RequestAccessModal";
 import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
+import { formatAccessDuration, parseAccessDurationMs } from "./AccessApprovalRequest.utils";
 
 type FilterMenuProps = {
   className?: string;
@@ -670,7 +670,6 @@ export const AccessApprovalRequest = ({
 
                   return (
                     <TableRow
-                      className="h-12"
                       key={request.id}
                       tabIndex={0}
                       onClick={() => handleSelectRequest(request)}
@@ -683,9 +682,10 @@ export const AccessApprovalRequest = ({
                           <Badge variant="info">
                             <TimerIcon />
                             <span className="whitespace-nowrap">
-                              {request.temporaryRange
-                                ? ms(ms(request.temporaryRange), { long: true })
-                                : "Temporary"}
+                              {(() => {
+                                const rangeMs = parseAccessDurationMs(request.temporaryRange);
+                                return rangeMs ? formatAccessDuration(rangeMs) : "Temporary";
+                              })()}
                             </span>
                           </Badge>
                         ) : (

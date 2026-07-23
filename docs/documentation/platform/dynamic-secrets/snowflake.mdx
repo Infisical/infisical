@@ -9,25 +9,71 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
 
 ## Snowflake Prerequisites
 
-<Note>
-  Infisical requires a Snowflake user in your account with the USERADMIN role.
-  This user will act as a service account for Infisical and facilitate the
-  creation of new users as needed.
-</Note>
 
 <Steps>
-  <Step title="Navigate to Snowflake's User Dashboard and press the '+ User' button">
+  <Step title="Open user settings">
+   Select the **Governance & Security** tab and click on **Users & roles**.
     ![Snowflake User
-    Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-users-page.png)
+    Dashboard](/images/app-connections/snowflake/step-1.png)
   </Step>
-  <Step title="Create a Snowflake user with the USERADMIN role for Infisical">
-    <Warning>
-      Be sure to uncheck "Force user to change password on first time login"
-    </Warning>
+
+
+  <Step title="Create a new User">
+  In the top right, click **Create user**
+    ![Snowflake User
+Dashboard](/images/platform/dynamic-secrets/snowflake/dynamic-secret-create-user-button.png)
+  </Step>
+
+  <Step title="Configure user details">
+  Create a Snowflake user with the USERADMIN role for Infisical
     ![Snowflake Create Service
     User](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-create-service-user.png)
+
+
+    <Note>
+    Infisical requires a Snowflake user in your account with the USERADMIN role.
+    This user will act as a service account for Infisical and facilitate the
+    creation of new users as needed.
+    </Note>
   </Step>
-  <Step title="Click on the Account Menu in the bottom left and take note of your Account and Organization identifiers">
+
+    <Step title="Create a network policy">
+        Programmatic Access Tokens require an attached network policy that defines the IPs allowed to authenticate as this user. Select the **Projects** tab and click on **Workspaces** to open the query editor, then paste the following snippet.
+
+        ![Go into workspace](/images/app-connections/snowflake/step-4-workspace.png)
+
+
+        ```SQL
+        CREATE NETWORK POLICY PREVIOUSLY_CREATED_USER
+            ALLOWED_IP_LIST = ('0.0.0.0/0')
+            COMMENT = 'Allow access from any IP';
+        
+        ALTER USER INFISICAL set NETWORK_POLICY = 'PREVIOUSLY_CREATED_USER';
+        ```
+
+        <Warning>
+            Be careful with the IPs you allow in your network policy. Using `0.0.0.0/0` allows access from **any IP address**, which can be dangerous in production. Prefer restricting the list to only the IP ranges that should be allowed to authenticate (for example, your corporate NAT(s) and/or Infisical's outbound IPs if you have them).
+        </Warning>
+    </Step>
+
+  <Step title="Generate a Programmatic Access Token">
+    Select the **Governance & Security** tab and click on **Users & roles**. Then select the user you created in the previous step.
+
+    ![Select User](/images/platform/dynamic-secrets/snowflake/select-user-for-pat.png)
+
+    Open the **Programmatic access tokens** tab and click **Generate new token**. Give the token a descriptive name and configure its expiration. Set the role restriction to **USERADMIN**.
+    ![Generate Programmatic Access Token](/images/app-connections/snowflake/step-5.png)
+    ![Add Programmatic Access Token name](/images/app-connections/snowflake/step-6.png)
+  </Step>
+
+    <Step title="Copy the Token">
+        Copy the generated token. Snowflake only displays it once, so store it somewhere secure for the next step.
+
+        ![Copy Programmatic Access Token](/images/app-connections/snowflake/step-7.png)
+    </Step>
+
+  <Step title="Save the Account and Organization identifiers">
+    Click on the Account Menu in the bottom left and take note of your Account and Organization identifiers
     ![Snowflake Account And Organization
     Identifiers](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-identifiers.png)
   </Step>
@@ -67,11 +113,11 @@ Infisical's Snowflake dynamic secrets allow you to generate Snowflake user crede
         </ParamField>
 
         <ParamField path="User" type="string" required>
-            Username of the Infisical Service User
+            Username of the Infisical service user
         </ParamField>
 
-        <ParamField path="Password" type="string" required>
-            Password of the Infisical Service User
+        <ParamField path="Programmatic Access Token" type="string" required>
+            Programmatic Access Token (PAT) of the Infisical service user used to authenticate with Snowflake
         </ParamField>
 
         ![Dynamic Secret Setup Modal](/images/platform/dynamic-secrets/snowflake/dynamic-secret-snowflake-setup-modal.png)

@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { BsMicrosoftTeams } from "react-icons/bs";
-import { faSlack } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AnimatePresence, motion } from "framer-motion";
+import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
 
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
 import { MicrosoftTeamsIntegrationForm } from "./MicrosoftTeamsIntegrationForm";
@@ -15,14 +21,9 @@ type Props = {
   onToggle: (isOpen: boolean) => void;
 };
 
-enum WizardSteps {
-  SelectPlatform = "select-platform",
-  PlatformInputs = "platform-inputs"
-}
-
 const PLATFORM_LIST = [
   {
-    icon: <FontAwesomeIcon icon={faSlack} size="lg" />,
+    icon: <BsSlack className="text-lg" />,
     platform: WorkflowIntegrationPlatform.SLACK,
     title: "Slack"
   },
@@ -33,83 +34,77 @@ const PLATFORM_LIST = [
   }
 ];
 
-export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
-  const [wizardStep, setWizardStep] = useState(WizardSteps.SelectPlatform);
-  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+const PLATFORM_TITLES: Record<WorkflowIntegrationPlatform, string> = {
+  [WorkflowIntegrationPlatform.SLACK]: "Slack",
+  [WorkflowIntegrationPlatform.MICROSOFT_TEAMS]: "Microsoft Teams"
+};
 
-  const handleFormReset = (state: boolean = false) => {
+export const AddWorkflowIntegrationForm = ({ isOpen, onToggle }: Props) => {
+  const [selectedPlatform, setSelectedPlatform] = useState<WorkflowIntegrationPlatform | null>(
+    null
+  );
+
+  const handleOpenChange = (state: boolean) => {
     onToggle(state);
-    setWizardStep(WizardSteps.SelectPlatform);
-    setSelectedPlatform(null);
+    if (!state) {
+      setSelectedPlatform(null);
+    }
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
-      <ModalContent
-        title={`Add a ${selectedPlatform?.replace("-", " ").replace(/\b\w/g, (char) => char.toUpperCase()) ?? "workflow"} integration`}
-        className="my-4"
-      >
-        <AnimatePresence mode="wait">
-          {wizardStep === WizardSteps.SelectPlatform && (
-            <motion.div
-              key="select-type-step"
-              transition={{ duration: 0.1 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: -30 }}
-            >
-              <div className="mb-4 text-mineshaft-300">Select a platform</div>
-              <div className="flex items-center space-x-4">
-                {PLATFORM_LIST.map(({ icon, platform, title }) => (
-                  <div
-                    key={platform}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      setSelectedPlatform(platform);
-                      setWizardStep(WizardSteps.PlatformInputs);
-                    }}
-                    onKeyDown={(evt) => {
-                      if (evt.key === "Enter") {
-                        setSelectedPlatform(platform);
-                        setWizardStep(WizardSteps.PlatformInputs);
-                      }
-                    }}
-                  >
-                    <div>{icon}</div>
-                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-          {wizardStep === WizardSteps.PlatformInputs &&
-            selectedPlatform === WorkflowIntegrationPlatform.SLACK && (
-              <motion.div
-                key="slack-platform"
-                transition={{ duration: 0.1 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: -30 }}
-              >
-                <SlackIntegrationForm onClose={() => onToggle(false)} />
-              </motion.div>
-            )}
-          {wizardStep === WizardSteps.PlatformInputs &&
-            selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
-              <motion.div
-                key="microsoft-teams-platform"
-                transition={{ duration: 0.1 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: -30 }}
-              >
-                <MicrosoftTeamsIntegrationForm onClose={() => onToggle(false)} />
-              </motion.div>
-            )}
-        </AnimatePresence>
-      </ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {selectedPlatform
+              ? `Connect ${PLATFORM_TITLES[selectedPlatform]}`
+              : "Add Workflow Integration"}
+          </DialogTitle>
+          <DialogDescription>
+            {selectedPlatform
+              ? `Connect a ${PLATFORM_TITLES[selectedPlatform]} ${
+                  selectedPlatform === WorkflowIntegrationPlatform.SLACK ? "workspace" : "tenant"
+                } for your organization's notification and approval workflows.`
+              : "Select a platform to connect for notification and approval workflows."}
+          </DialogDescription>
+        </DialogHeader>
+        {!selectedPlatform && (
+          <>
+            <div className="flex items-center gap-4">
+              {PLATFORM_LIST.map(({ icon, platform, title }) => (
+                <button
+                  type="button"
+                  key={platform}
+                  onClick={() => setSelectedPlatform(platform)}
+                  className="flex h-28 w-36 flex-col items-center justify-center gap-3 rounded-md border border-border bg-container transition-colors hover:border-org/70 hover:bg-org/10"
+                >
+                  {icon}
+                  <span className="text-sm">{title}</span>
+                </button>
+              ))}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="ghost">
+                  Cancel
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </>
+        )}
+        {selectedPlatform === WorkflowIntegrationPlatform.SLACK && (
+          <SlackIntegrationForm
+            onClose={() => handleOpenChange(false)}
+            onBack={() => setSelectedPlatform(null)}
+          />
+        )}
+        {selectedPlatform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+          <MicrosoftTeamsIntegrationForm
+            onClose={() => handleOpenChange(false)}
+            onBack={() => setSelectedPlatform(null)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };

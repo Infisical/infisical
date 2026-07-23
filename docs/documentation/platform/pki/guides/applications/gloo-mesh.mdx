@@ -30,7 +30,7 @@ When you deploy a `Certificate` CRD in your workload cluster, `cert-manager` use
 Infisical verifies the request against your certificate policies and returns the signed certificate.
 From there, Istio's control plane will automatically use this intermediate CA to sign leaf certificates for workloads in the service mesh, enabling secure mTLS communication across your entire Gloo Mesh infrastructure.
 
-Follow the [Kubernetes cert-manager guide](/documentation/platform/pki/guides/applications/k8s-cert-manager) for detailed instructions on how to set up the Infisical and cert-manager for your Istio intermediate CA certificates in Gloo Mesh clusters.
+Follow the [Kubernetes cert-manager guide](/documentation/platform/pki/guides/applications/k8s-cert-manager-acme) for detailed instructions on how to set up the Infisical and cert-manager for your Istio intermediate CA certificates in Gloo Mesh clusters.
 
 For Gloo Mesh-specific configuration, ensure that:
 

@@ -1,0 +1,119 @@
+---
+title: "OpenAI Connection"
+description: "Learn how to configure an OpenAI connection for Infisical."
+---
+
+Infisical supports connecting to OpenAI using an **Admin API Key**. This connection is used to create and rotate OpenAI project service accounts via [Secret Rotation](/documentation/platform/secret-rotation/openai-service-account).
+
+## Prerequisites
+
+You need an OpenAI **Admin API key** created by an **Organization Owner**. Admin API keys are organization-scoped and can manage organization resources such as users, projects, and API keys. A regular project API key (for example, one starting with `sk-`) does not have these permissions and will fail validation.
+
+## Create an OpenAI Admin API Key
+
+<Steps>
+    <Step title="Open your account menu">
+        In the [OpenAI dashboard](https://platform.openai.com/), click your account in the bottom-left corner to open the menu.
+
+        ![OpenAI Account Menu](/images/app-connections/openai/step-1.png)
+    </Step>
+    <Step title="Open Organization settings">
+        Select **Organization settings** from the menu.
+
+        ![OpenAI Organization Settings](/images/app-connections/openai/step-2.png)
+    </Step>
+    <Step title="Navigate to Admin keys">
+        In the organization settings, open the **Admin keys** tab.
+
+        ![OpenAI Admin Keys Tab](/images/app-connections/openai/step-3.png)
+    </Step>
+    <Step title="Create a new Admin key">
+        Click **Create new Admin key** on the top right corner.
+
+        ![Create New Admin Key](/images/app-connections/openai/step-4.png)
+    </Step>
+    <Step title="Name and create the key">
+        Give the key a descriptive name (e.g. `infisical-key`), set the permissions as needed, and click **Create admin key**.
+
+        ![Name and Create Admin Key](/images/app-connections/openai/step-5.png)
+    </Step>
+    <Step title="Copy the Admin API key">
+        Copy the generated Admin API key and store it securely. It will only be shown once.
+
+        ![Copy Admin API Key](/images/app-connections/openai/step-6.png)
+    </Step>
+</Steps>
+
+<Tip>
+    Create a dedicated Admin API key for Infisical rather than reusing an existing one. This makes it easy to rotate or revoke access independently.
+</Tip>
+
+## Create OpenAI Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, go to **Integrations** → **App Connections** tab in your project.
+
+                ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
+            </Step>
+            <Step title="Select OpenAI Connection">
+                Click **Add Connection** and choose **OpenAI** from the list of available connections.
+
+                ![Select OpenAI Connection](/images/app-connections/openai/step-7.png)
+            </Step>
+            <Step title="Fill out Connection Form">
+                Complete the form with:
+                - A **name** for the connection 
+                - An optional **description**
+                - Your **Admin API Key** (from the steps above)
+
+                ![OpenAI Connection Form](/images/app-connections/openai/step-8.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking **Connect to OpenAI**, Infisical validates the key against the OpenAI API. Your **OpenAI Connection** is then ready to use for [OpenAI Service Account Secret Rotation](/documentation/platform/secret-rotation/openai-service-account).
+
+                ![OpenAI Connection Created](/images/app-connections/openai/step-9.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        Create an OpenAI connection via the [Create OpenAI Connection](/api-reference/endpoints/app-connections/openai/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+          --url https://app.infisical.com/api/v1/app-connections/openai \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "name": "my-openai-connection",
+            "method": "api-key",
+            "credentials": {
+              "apiKey": "<YOUR-ADMIN-API-KEY>"
+            }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+            "name": "my-openai-connection",
+            "description": null,
+            "version": 1,
+            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+            "createdAt": "2025-04-23T19:46:34.831Z",
+            "updatedAt": "2025-04-23T19:46:34.831Z",
+            "isPlatformManagedCredentials": false,
+            "app": "openai",
+            "method": "api-key",
+            "credentials": {}
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

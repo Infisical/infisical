@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
-import { DatabaseError } from "@app/lib/errors";
+import { DatabaseError, NotFoundError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
@@ -166,6 +166,9 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         db.ref("appConnectionId").withSchema(TableName.ExternalCertificateAuthority).as("externalAppConnectionId")
       )
       .first();
+
+    // a missing row would otherwise surface as a cryptic schema parse error, so fail with a clean 404
+    if (!result) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     const data = {
       ...CertificateAuthoritiesSchema.parse(result),
@@ -362,11 +365,33 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Internal CAs (those with an internal_certificate_authorities row) across all of the org's projects,
+  // excluding soft-deleted projects. Used to enforce the plan's maxInternalCas at creation time; external
+  // CAs are intentionally not counted.
+  const countInternalCasByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .join(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count Internal CAs By Org ID - Certificate Authority" });
+    }
+  };
+
   return {
     ...caOrm,
     findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa,
-    findByNameAndProjectIdWithAssociatedCa
+    findByNameAndProjectIdWithAssociatedCa,
+    countInternalCasByOrgId
   };
 };

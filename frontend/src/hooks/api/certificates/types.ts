@@ -13,6 +13,7 @@ export type TCertificateSubject = {
   country?: string;
   state?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TCertificateFingerprints = {
@@ -134,6 +135,7 @@ export type TUnifiedCertificateIssuanceDTO = {
     country?: string | null;
     state?: string | null;
     locality?: string | null;
+    domainComponents?: string[];
     keyUsages?: string[];
     extendedKeyUsages?: string[];
     altNames?: Array<{
@@ -146,7 +148,7 @@ export type TUnifiedCertificateIssuanceDTO = {
       type: string;
       value: string;
     }>;
-    ttl: string;
+    ttl?: string;
     notBefore?: string;
     notAfter?: string;
   };
@@ -190,6 +192,7 @@ export type TCertificateRequestDetails = {
   country: string | null;
   state: string | null;
   locality: string | null;
+  domainComponents: string[] | null;
   basicConstraints: {
     isCA: boolean;
     pathLength?: number;

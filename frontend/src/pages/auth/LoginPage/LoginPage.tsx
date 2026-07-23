@@ -39,7 +39,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
       <AuthPageHeader>
-        <Button asChild>
+        <Button asChild variant="project">
           <Link to="/signup">Sign Up</Link>
         </Button>
       </AuthPageHeader>

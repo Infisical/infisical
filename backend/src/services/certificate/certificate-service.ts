@@ -26,8 +26,9 @@ import { caSupportsCapability } from "@app/services/certificate-authority/certif
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { MaxActiveCerts } from "@app/services/license-client";
+import { ActiveCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -107,6 +108,7 @@ type TCertificateServiceFactoryDep = {
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  hsmConnectorService: Pick<THsmConnectorServiceFactory, "sign">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -132,7 +134,8 @@ export const certificateServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationDAL,
   licenseService,
-  usageMeteringService
+  usageMeteringService,
+  hsmConnectorService
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
@@ -221,7 +224,8 @@ export const certificateServiceFactory = ({
         organizationalUnit: cert.subjectOrganizationalUnit || undefined,
         country: cert.subjectCountry || undefined,
         state: cert.subjectState || undefined,
-        locality: cert.subjectLocality || undefined
+        locality: cert.subjectLocality || undefined,
+        domainComponents: cert.subjectDomainComponents ? cert.subjectDomainComponents.split(",") : undefined
       };
 
       // Build fingerprints from columns
@@ -409,7 +413,7 @@ export const certificateServiceFactory = ({
       pkiSyncQueue
     });
 
-    usageMeteringService.emitForProject(cert.projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(cert.projectId, ActiveCerts.key);
 
     return {
       deletedCert
@@ -536,7 +540,8 @@ export const certificateServiceFactory = ({
       ca.externalCa?.type === CaType.AWS_PCA ||
       ca.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA ||
       ca.externalCa?.type === CaType.DIGICERT ||
-      ca.externalCa?.type === CaType.GODADDY
+      ca.externalCa?.type === CaType.GODADDY ||
+      ca.externalCa?.type === CaType.ADCS
     ) {
       await certificateAuthorityService.revokeCertificate({
         caId: ca.id,
@@ -557,7 +562,7 @@ export const certificateServiceFactory = ({
       }
     );
 
-    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -576,7 +581,8 @@ export const certificateServiceFactory = ({
         certificateAuthoritySecretDAL,
         projectDAL,
         certificateDAL,
-        kmsService
+        kmsService,
+        hsmConnectorService
       });
     }
 
@@ -953,7 +959,7 @@ export const certificateServiceFactory = ({
       }
     });
 
-    usageMeteringService.emitForProject(projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(projectId, ActiveCerts.key);
 
     return {
       certificate: certificatePem,

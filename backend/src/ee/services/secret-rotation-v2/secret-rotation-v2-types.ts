@@ -45,6 +45,13 @@ import {
   TDatabricksServicePrincipalSecretRotationWithConnection
 } from "./databricks-service-principal-secret";
 import {
+  TDatadogApiKeyRotation,
+  TDatadogApiKeyRotationGeneratedCredentials,
+  TDatadogApiKeyRotationInput,
+  TDatadogApiKeyRotationListItem,
+  TDatadogApiKeyRotationWithConnection
+} from "./datadog-api-key";
+import {
   TDatadogApplicationKeySecretRotation,
   TDatadogApplicationKeySecretRotationGeneratedCredentials,
   TDatadogApplicationKeySecretRotationInput,
@@ -59,6 +66,13 @@ import {
   TDbtServiceTokenRotationWithConnection
 } from "./dbt-service-token/dbt-service-token-rotation-types";
 import {
+  TFireworksApiKeyRotation,
+  TFireworksApiKeyRotationGeneratedCredentials,
+  TFireworksApiKeyRotationInput,
+  TFireworksApiKeyRotationListItem,
+  TFireworksApiKeyRotationWithConnection
+} from "./fireworks-api-key";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput,
@@ -72,6 +86,13 @@ import {
   TLdapPasswordRotationListItem,
   TLdapPasswordRotationWithConnection
 } from "./ldap-password";
+import {
+  TLiteLLMApiKeyRotation,
+  TLiteLLMApiKeyRotationGeneratedCredentials,
+  TLiteLLMApiKeyRotationInput,
+  TLiteLLMApiKeyRotationListItem,
+  TLiteLLMApiKeyRotationWithConnection
+} from "./litellm-api-key";
 import {
   TMongoDBCredentialsRotation,
   TMongoDBCredentialsRotationInput,
@@ -105,6 +126,13 @@ import {
   TOpenRouterApiKeyRotationWithConnection
 } from "./open-router-api-key";
 import {
+  TOpenAIServiceAccountRotation,
+  TOpenAIServiceAccountRotationGeneratedCredentials,
+  TOpenAIServiceAccountRotationInput,
+  TOpenAIServiceAccountRotationListItem,
+  TOpenAIServiceAccountRotationWithConnection
+} from "./openai-service-account";
+import {
   TOracleDBCredentialsRotation,
   TOracleDBCredentialsRotationInput,
   TOracleDBCredentialsRotationListItem,
@@ -132,6 +160,13 @@ import {
 } from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation } from "./secret-rotation-v2-enums";
+import {
+  TSnowflakeUserKeyPairRotation,
+  TSnowflakeUserKeyPairRotationGeneratedCredentials,
+  TSnowflakeUserKeyPairRotationInput,
+  TSnowflakeUserKeyPairRotationListItem,
+  TSnowflakeUserKeyPairRotationWithConnection
+} from "./snowflake-user-key-pair";
 import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentials,
@@ -171,11 +206,16 @@ export type TSecretRotationV2 =
   | TDbtServiceTokenRotation
   | TWindowsLocalAccountRotation
   | TOpenRouterApiKeyRotation
+  | TLiteLLMApiKeyRotation
+  | TOpenAIServiceAccountRotation
   | THpIloRotation
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
-  | TConvexAccessKeyRotation;
+  | TDatadogApiKeyRotation
+  | TConvexAccessKeyRotation
+  | TFireworksApiKeyRotation
+  | TSnowflakeUserKeyPairRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -194,11 +234,16 @@ export type TSecretRotationV2WithConnection =
   | TDbtServiceTokenRotationWithConnection
   | TWindowsLocalAccountRotationWithConnection
   | TOpenRouterApiKeyRotationWithConnection
+  | TLiteLLMApiKeyRotationWithConnection
+  | TOpenAIServiceAccountRotationWithConnection
   | THpIloRotationWithConnection
   | TSupabaseApiKeyRotationWithConnection
   | TSalesforceOauthCredentialsRotationWithConnection
   | TDatadogApplicationKeySecretRotationWithConnection
-  | TConvexAccessKeyRotationWithConnection;
+  | TDatadogApiKeyRotationWithConnection
+  | TConvexAccessKeyRotationWithConnection
+  | TFireworksApiKeyRotationWithConnection
+  | TSnowflakeUserKeyPairRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -213,11 +258,16 @@ export type TSecretRotationV2GeneratedCredentials =
   | TDbtServiceTokenRotationGeneratedCredentials
   | TWindowsLocalAccountRotationGeneratedCredentials
   | TOpenRouterApiKeyRotationGeneratedCredentials
+  | TLiteLLMApiKeyRotationGeneratedCredentials
+  | TOpenAIServiceAccountRotationGeneratedCredentials
   | THpIloRotationGeneratedCredentials
   | TSupabaseApiKeyRotationGeneratedCredentials
   | TSalesforceOauthCredentialsRotationGeneratedCredentials
   | TDatadogApplicationKeySecretRotationGeneratedCredentials
-  | TConvexAccessKeyRotationGeneratedCredentials;
+  | TDatadogApiKeyRotationGeneratedCredentials
+  | TConvexAccessKeyRotationGeneratedCredentials
+  | TFireworksApiKeyRotationGeneratedCredentials
+  | TSnowflakeUserKeyPairRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -236,11 +286,16 @@ export type TSecretRotationV2Input =
   | TDbtServiceTokenRotationInput
   | TWindowsLocalAccountRotationInput
   | TOpenRouterApiKeyRotationInput
+  | TLiteLLMApiKeyRotationInput
+  | TOpenAIServiceAccountRotationInput
   | THpIloRotationInput
   | TSupabaseApiKeyRotationInput
   | TSalesforceOauthCredentialsRotationInput
   | TDatadogApplicationKeySecretRotationInput
-  | TConvexAccessKeyRotationInput;
+  | TDatadogApiKeyRotationInput
+  | TConvexAccessKeyRotationInput
+  | TFireworksApiKeyRotationInput
+  | TSnowflakeUserKeyPairRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -259,11 +314,16 @@ export type TSecretRotationV2ListItem =
   | TDbtServiceTokenRotationListItem
   | TWindowsLocalAccountRotationListItem
   | TOpenRouterApiKeyRotationListItem
+  | TLiteLLMApiKeyRotationListItem
+  | TOpenAIServiceAccountRotationListItem
   | THpIloRotationListItem
   | TSupabaseApiKeyRotationListItem
   | TSalesforceOauthCredentialsRotationListItem
   | TDatadogApplicationKeySecretRotationListItem
-  | TConvexAccessKeyRotationListItem;
+  | TDatadogApiKeyRotationListItem
+  | TConvexAccessKeyRotationListItem
+  | TFireworksApiKeyRotationListItem
+  | TSnowflakeUserKeyPairRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

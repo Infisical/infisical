@@ -49,6 +49,7 @@ import {
 } from "@app/services/secret-sync/windmill";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TAppConnection } from "../app-connection/app-connection-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -101,6 +102,12 @@ import {
 } from "./checkly/checkly-sync-types";
 import { TCircleCISync, TCircleCISyncInput, TCircleCISyncListItem, TCircleCISyncWithCredentials } from "./circleci";
 import {
+  TCloud66Sync,
+  TCloud66SyncInput,
+  TCloud66SyncListItem,
+  TCloud66SyncWithCredentials
+} from "./cloud66/cloud66-sync-types";
+import {
   TCloudflarePagesSync,
   TCloudflarePagesSyncInput,
   TCloudflarePagesSyncListItem,
@@ -127,6 +134,12 @@ import {
 import { TFlyioSync, TFlyioSyncInput, TFlyioSyncListItem, TFlyioSyncWithCredentials } from "./flyio/flyio-sync-types";
 import { TGcpSync, TGcpSyncInput, TGcpSyncListItem, TGcpSyncWithCredentials } from "./gcp";
 import { TGitLabSync, TGitLabSyncInput, TGitLabSyncListItem, TGitLabSyncWithCredentials } from "./gitlab";
+import {
+  THasuraCloudSync,
+  THasuraCloudSyncInput,
+  THasuraCloudSyncListItem,
+  THasuraCloudSyncWithCredentials
+} from "./hasura-cloud/hasura-cloud-sync-types";
 import {
   THCVaultSync,
   THCVaultSyncInput,
@@ -161,6 +174,7 @@ import {
 } from "./octopus-deploy";
 import { TOnaSync, TOnaSyncInput, TOnaSyncListItem, TOnaSyncWithCredentials } from "./ona";
 import { TOvhSync, TOvhSyncInput, TOvhSyncListItem, TOvhSyncWithCredentials } from "./ovh";
+import { TQoverySync, TQoverySyncInput, TQoverySyncListItem, TQoverySyncWithCredentials } from "./qovery";
 import {
   TRailwaySync,
   TRailwaySyncInput,
@@ -173,6 +187,12 @@ import {
   TRenderSyncListItem,
   TRenderSyncWithCredentials
 } from "./render/render-sync-types";
+import {
+  TRundeckSync,
+  TRundeckSyncInput,
+  TRundeckSyncListItem,
+  TRundeckSyncWithCredentials
+} from "./rundeck/rundeck-sync-types";
 import {
   TSnowflakeSync,
   TSnowflakeSyncInput,
@@ -221,6 +241,7 @@ export type TSecretSync =
   | TTerraformCloudSync
   | TCamundaSync
   | TVercelSync
+  | TQoverySync
   | TLaravelForgeSync
   | TWindmillSync
   | THCVaultSync
@@ -238,6 +259,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
@@ -249,7 +271,9 @@ export type TSecretSync =
   | TDevinSync
   | TOnaSync
   | TTravisCISync
-  | TSnowflakeSync;
+  | TSnowflakeSync
+  | THasuraCloudSync
+  | TCloud66Sync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -265,6 +289,7 @@ export type TSecretSyncWithCredentials =
   | TTerraformCloudSyncWithCredentials
   | TCamundaSyncWithCredentials
   | TVercelSyncWithCredentials
+  | TQoverySyncWithCredentials
   | TWindmillSyncWithCredentials
   | THCVaultSyncWithCredentials
   | TTeamCitySyncWithCredentials
@@ -281,6 +306,7 @@ export type TSecretSyncWithCredentials =
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
   | TSupabaseSyncWithCredentials
+  | TRundeckSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TNorthflankSyncWithCredentials
@@ -294,7 +320,9 @@ export type TSecretSyncWithCredentials =
   | TDevinSyncWithCredentials
   | TOnaSyncWithCredentials
   | TTravisCISyncWithCredentials
-  | TSnowflakeSyncWithCredentials;
+  | TSnowflakeSyncWithCredentials
+  | THasuraCloudSyncWithCredentials
+  | TCloud66SyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -310,6 +338,7 @@ export type TSecretSyncInput =
   | TTerraformCloudSyncInput
   | TCamundaSyncInput
   | TVercelSyncInput
+  | TQoverySyncInput
   | TWindmillSyncInput
   | THCVaultSyncInput
   | TTeamCitySyncInput
@@ -326,6 +355,7 @@ export type TSecretSyncInput =
   | TRailwaySyncInput
   | TChecklySyncInput
   | TSupabaseSyncInput
+  | TRundeckSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TNorthflankSyncInput
@@ -339,7 +369,9 @@ export type TSecretSyncInput =
   | TDevinSyncInput
   | TOnaSyncInput
   | TTravisCISyncInput
-  | TSnowflakeSyncInput;
+  | TSnowflakeSyncInput
+  | THasuraCloudSyncInput
+  | TCloud66SyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -355,6 +387,7 @@ export type TSecretSyncListItem =
   | TTerraformCloudSyncListItem
   | TCamundaSyncListItem
   | TVercelSyncListItem
+  | TQoverySyncListItem
   | TLaravelForgeSyncListItem
   | TWindmillSyncListItem
   | THCVaultSyncListItem
@@ -372,6 +405,7 @@ export type TSecretSyncListItem =
   | TRailwaySyncListItem
   | TChecklySyncListItem
   | TSupabaseSyncListItem
+  | TRundeckSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
   | TNorthflankSyncListItem
@@ -384,7 +418,9 @@ export type TSecretSyncListItem =
   | TDevinSyncListItem
   | TOnaSyncListItem
   | TTravisCISyncListItem
-  | TSnowflakeSyncListItem;
+  | TSnowflakeSyncListItem
+  | THasuraCloudSyncListItem
+  | TCloud66SyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;
@@ -438,6 +474,7 @@ export type TDeleteSecretSyncDTO = {
 export type TCheckDuplicateDestinationDTO = {
   destination: SecretSync;
   destinationConfig: Record<string, unknown>;
+  connectionId?: string | null;
   excludeSyncId?: string;
   projectId: string;
 };
@@ -534,10 +571,16 @@ export type TSecretMap = Record<
   }
 >;
 
-export type DestinationDuplicateCheckFn = (
-  existingConfig: Record<string, unknown>,
-  newConfig: Record<string, unknown>
-) => boolean;
+export type DuplicateCheckSyncFields = {
+  connectionId: string | null;
+  destinationConfig: Record<string, unknown>;
+};
+
+export type DestinationDuplicateCheckFn = (opts: {
+  existingSync: DuplicateCheckSyncFields;
+  newSync: DuplicateCheckSyncFields;
+  decryptConnection: (connectionId: string) => Promise<TAppConnection>;
+}) => Promise<boolean>;
 
 export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;

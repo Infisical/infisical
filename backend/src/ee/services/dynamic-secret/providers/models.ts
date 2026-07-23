@@ -270,44 +270,83 @@ export const DynamicSecretAwsIamSchema = z.preprocess(
     }
     return val;
   },
-  z.discriminatedUnion("method", [
-    z.object({
-      method: z.literal(AwsIamAuthType.AccessKey),
-      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
-      accessKey: z.string().trim().min(1),
-      secretAccessKey: z.string().trim().min(1),
-      region: z.string().trim().min(1),
-      awsPath: z.string().trim().optional(),
-      permissionBoundaryPolicyArn: z.string().trim().optional(),
-      policyDocument: z.string().trim().optional(),
-      userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataNonEncryptionSchema.optional()
-    }),
-    z.object({
-      method: z.literal(AwsIamAuthType.AssumeRole),
-      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
-      roleArn: z.string().trim().min(1, "Role ARN required"),
-      region: z.string().trim().min(1),
-      awsPath: z.string().trim().optional(),
-      permissionBoundaryPolicyArn: z.string().trim().optional(),
-      policyDocument: z.string().trim().optional(),
-      userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataNonEncryptionSchema.optional()
-    }),
-    z.object({
-      method: z.literal(AwsIamAuthType.IRSA),
-      credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
-      region: z.string().trim().min(1),
-      awsPath: z.string().trim().optional(),
-      permissionBoundaryPolicyArn: z.string().trim().optional(),
-      policyDocument: z.string().trim().optional(),
-      userGroups: z.string().trim().optional(),
-      policyArns: z.string().trim().optional(),
-      tags: ResourceMetadataNonEncryptionSchema.optional()
+  z
+    .discriminatedUnion("method", [
+      z.object({
+        method: z.literal(AwsIamAuthType.AccessKey),
+        credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
+        accessKey: z.string().trim().min(1),
+        secretAccessKey: z.string().trim().min(1),
+        region: z.string().trim().min(1),
+        awsPath: z.string().trim().optional(),
+        permissionBoundaryPolicyArn: z.string().trim().optional(),
+        policyDocument: z.string().trim().optional(),
+        userGroups: z.string().trim().optional(),
+        policyArns: z.string().trim().optional(),
+        tags: ResourceMetadataNonEncryptionSchema.optional()
+      }),
+      z.object({
+        method: z.literal(AwsIamAuthType.AssumeRole),
+        credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
+        roleArn: z.string().trim().min(1, "Role ARN required"),
+        region: z.string().trim().min(1),
+        awsPath: z.string().trim().optional(),
+        permissionBoundaryPolicyArn: z.string().trim().optional(),
+        policyDocument: z.string().trim().optional(),
+        userGroups: z.string().trim().optional(),
+        policyArns: z.string().trim().optional(),
+        sessionPolicyArns: z.string().trim().optional(),
+        sessionPolicyDocument: z.string().trim().optional(),
+        tags: ResourceMetadataNonEncryptionSchema.optional()
+      }),
+      z.object({
+        method: z.literal(AwsIamAuthType.IRSA),
+        credentialType: z.nativeEnum(AwsIamCredentialType).default(AwsIamCredentialType.IamUser),
+        region: z.string().trim().min(1),
+        awsPath: z.string().trim().optional(),
+        permissionBoundaryPolicyArn: z.string().trim().optional(),
+        policyDocument: z.string().trim().optional(),
+        userGroups: z.string().trim().optional(),
+        policyArns: z.string().trim().optional(),
+        tags: ResourceMetadataNonEncryptionSchema.optional()
+      })
+    ])
+    .superRefine((data, ctx) => {
+      const reject = (path: string, message: string) =>
+        ctx.addIssue({ path: [path], code: z.ZodIssueCode.custom, message });
+      const countCsvArns = (value: string) => value.split(",").filter((arn) => arn.trim()).length;
+
+      if (data.credentialType === AwsIamCredentialType.TemporaryCredentials) {
+        // session policy fields exist only on the AssumeRole member (STS AssumeRole alone supports them; GetSessionToken,
+        // used by access key / IRSA, has no Policy/PolicyArns params), so this guard also narrows the type for TS
+        if (data.method === AwsIamAuthType.AssumeRole) {
+          if (data.sessionPolicyArns && countCsvArns(data.sessionPolicyArns) > 10) {
+            reject("sessionPolicyArns", "AWS allows at most 10 managed policy ARNs as session policies");
+          }
+          // session policies count the full plaintext against the 2,048 character limit
+          if (data.sessionPolicyDocument && data.sessionPolicyDocument.length > 2048) {
+            reject("sessionPolicyDocument", "AWS limits inline session policies to 2,048 characters of plaintext");
+          }
+        }
+        return;
+      }
+
+      // IAM User credential type: session policies have no meaning because no STS session is created
+      if (data.method === AwsIamAuthType.AssumeRole) {
+        if (data.sessionPolicyArns) {
+          reject(
+            "sessionPolicyArns",
+            "Session policy ARNs only apply to the Temporary Credentials credential type. Use Policy ARNs to grant permissions to created IAM users."
+          );
+        }
+        if (data.sessionPolicyDocument) {
+          reject(
+            "sessionPolicyDocument",
+            "A session policy document only applies to the Temporary Credentials credential type. Use a policy document to grant permissions to created IAM users."
+          );
+        }
+      }
     })
-  ])
 );
 
 export const DynamicSecretMongoAtlasSchema = z.object({
@@ -790,7 +829,8 @@ export enum DynamicSecretProviders {
   Couchbase = "couchbase",
   Milvus = "milvus",
   Ssh = "ssh",
-  IbmApiConnect = "ibm-api-connect"
+  IbmApiConnect = "ibm-api-connect",
+  Tailscale = "tailscale"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -805,6 +845,133 @@ export const DynamicSecretIbmApiConnectSchema = z.object({
   gatewayId: z.string().nullable().optional(),
   gatewayPoolId: z.string().nullable().optional()
 });
+
+export enum TailscaleKeyAuthType {
+  AuthKeys = "auth_keys",
+  OAuthKeys = "oauth_keys",
+  FederatedKeys = "federated_keys"
+}
+
+export enum TailscaleAuthMethod {
+  ApiKey = "api_key",
+  OAuth = "oauth"
+}
+
+// OAuth/federated credentials issued with these scopes could create or modify other credentials,
+// which would let a lease escalate its own privileges. Block them at both the schema and provider level.
+export const TAILSCALE_BLOCKED_SCOPES = new Set([
+  "auth_keys",
+  "oauth_keys",
+  "federated_keys",
+  "api_access_tokens",
+  "all"
+]);
+
+const DynamicSecretTailscaleAuthSchema = z.discriminatedUnion("method", [
+  z.object({
+    method: z.literal(TailscaleAuthMethod.ApiKey),
+    apiKey: z.string().trim().min(1).describe("Tailscale API access token used to create and revoke keys.")
+  }),
+  z.object({
+    method: z.literal(TailscaleAuthMethod.OAuth),
+    clientId: z.string().trim().min(1).describe("Tailscale OAuth client ID."),
+    clientSecret: z.string().trim().min(1).describe("Tailscale OAuth client secret.")
+  })
+]);
+
+export const DynamicSecretTailscaleSchema = z
+  .discriminatedUnion("authType", [
+    z.object({
+      authType: z.literal(TailscaleKeyAuthType.AuthKeys),
+      auth: DynamicSecretTailscaleAuthSchema,
+      tailnet: z
+        .string()
+        .trim()
+        .min(1)
+        .default("-")
+        .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+      description: z.string().trim().max(50).optional().describe("Description applied to the created key."),
+      tags: z
+        .array(z.string().trim().min(1))
+        .default([])
+        .describe("ACL tags to attach to devices (e.g. tag:ci). Required when authenticating with an OAuth token."),
+      reusable: z.boolean().default(false).describe("Whether the auth key can register multiple devices."),
+      preauthorized: z.boolean().default(false).describe("Whether devices registered with the key are pre-authorized.")
+    }),
+    z.object({
+      authType: z.literal(TailscaleKeyAuthType.OAuthKeys),
+      auth: DynamicSecretTailscaleAuthSchema,
+      tailnet: z
+        .string()
+        .trim()
+        .min(1)
+        .default("-")
+        .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+      description: z.string().trim().max(50).optional().describe("Description applied to the created OAuth client."),
+      tags: z
+        .array(z.string().trim().min(1))
+        .default([])
+        .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
+      scopes: z.array(z.string().trim().min(1)).min(1).describe("OAuth scopes granted to the client.")
+    }),
+    z.object({
+      authType: z.literal(TailscaleKeyAuthType.FederatedKeys),
+      auth: DynamicSecretTailscaleAuthSchema,
+      tailnet: z
+        .string()
+        .trim()
+        .min(1)
+        .default("-")
+        .describe("Tailnet identifier. Use '-' for the token owner's default tailnet."),
+      description: z
+        .string()
+        .trim()
+        .max(50)
+        .optional()
+        .describe("Description applied to the created federated identity."),
+      tags: z
+        .array(z.string().trim().min(1))
+        .default([])
+        .describe("ACL tags to attach (e.g. tag:ci). Required if scopes include devices:core or auth_keys."),
+      scopes: z
+        .array(z.string().trim().min(1))
+        .min(1)
+        .describe("OAuth scopes granted to tokens issued via this federated identity."),
+      issuer: z.string().trim().min(1).describe("HTTPS URL of the OIDC issuer trusted for token exchange."),
+      subject: z.string().trim().min(1).describe("Pattern matched against the sub claim of the OIDC identity token."),
+      audience: z
+        .string()
+        .trim()
+        .optional()
+        .describe("Audience for the OIDC token exchange. Tailscale auto-generates one if omitted.")
+    })
+  ])
+  .superRefine((data, ctx) => {
+    // Tailscale requires ACL tags on tailnet-owned auth keys, which are the ones created via OAuth.
+    // Auth keys created with a user's API access token are user-owned and may omit tags.
+    if (
+      (data.authType === TailscaleKeyAuthType.OAuthKeys || data.authType === TailscaleKeyAuthType.FederatedKeys) &&
+      data.tags.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tags"],
+        message: "Tags are required when the key type is OAuth or Federated Identity"
+      });
+    }
+
+    // Block scopes that would let a lease escalate its own privileges (e.g. mint new auth/OAuth keys).
+    if (
+      (data.authType === TailscaleKeyAuthType.OAuthKeys || data.authType === TailscaleKeyAuthType.FederatedKeys) &&
+      data.scopes.some((scope) => TAILSCALE_BLOCKED_SCOPES.has(scope))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scopes"],
+        message: "OAuth credentials cannot be used to create or modify other credentials"
+      });
+    }
+  });
 
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
@@ -847,7 +1014,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(DynamicSecretProviders.IbmApiConnect),
     inputs: DynamicSecretIbmApiConnectSchema
-  })
+  }),
+  z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

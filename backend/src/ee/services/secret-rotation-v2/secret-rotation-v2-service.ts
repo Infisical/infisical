@@ -17,7 +17,9 @@ import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotati
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { convexAccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/convex-access-key/convex-access-key-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
+import { datadogApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-api-key/datadog-api-key-rotation-fns";
 import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
+import { fireworksApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/fireworks-api-key/fireworks-api-key-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { salesforceOauthCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials/salesforce-oauth-credentials-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
@@ -60,11 +62,13 @@ import {
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { sqlCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials";
+import { snowflakeUserKeyPairRotationFactory } from "@app/ee/services/secret-rotation-v2/snowflake-user-key-pair/snowflake-user-key-pair-rotation-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { recordSecretRotationOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -104,9 +108,11 @@ import { dbtServiceTokenRotationFactory } from "./dbt-service-token/dbt-service-
 import { hpIloRotationFactory } from "./hp-ilo-rotation/hp-ilo-rotation-fns";
 import { HpIloRotationMethod } from "./hp-ilo-rotation/hp-ilo-rotation-schemas";
 import { THpIloRotation, THpIloRotationGeneratedCredentials } from "./hp-ilo-rotation/hp-ilo-rotation-types";
+import { litellmApiKeyRotationFactory } from "./litellm-api-key/litellm-api-key-rotation-fns";
 import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { openRouterApiKeyRotationFactory } from "./open-router-api-key/open-router-api-key-rotation-fns";
+import { openAIServiceAccountRotationFactory } from "./openai-service-account/openai-service-account-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { supabaseApiKeyRotationFactory } from "./supabase-api-key/supabase-api-key-rotation-fns";
@@ -198,13 +204,18 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.DbtServiceToken]: dbtServiceTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.WindowsLocalAccount]: windowsLocalAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OpenRouterApiKey]: openRouterApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.LiteLLMApiKey]: litellmApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.OpenAIServiceAccount]: openAIServiceAccountRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.HpIloLocalAccount]: hpIloRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SupabaseApiKey]: supabaseApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SalesforceOauthCredentials]:
     salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DatadogApplicationKeySecret]:
     datadogApplicationKeySecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.DatadogApiKey]: datadogApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.SnowflakeUserKeyPair]: snowflakeUserKeyPairRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -1124,6 +1135,19 @@ export const secretRotationV2ServiceFactory = ({
       }
 
       if (conflictingDestinationSecrets.length && overwriteDestination) {
+        // Require secret-level delete permission.
+        conflictingDestinationSecrets.forEach((conflictingSecret) => {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionSecretActions.Delete,
+            subject(ProjectPermissionSub.Secrets, {
+              environment: destinationEnvironment,
+              secretPath: destinationSecretPath,
+              secretName: conflictingSecret.key,
+              secretTags: conflictingSecret.tags?.map((el) => el.slug)
+            })
+          );
+        });
+
         await secretV2BridgeDAL.deleteMany(
           conflictingDestinationSecrets.map((s) => ({ key: s.key, type: SecretType.Shared })),
           destinationFolder.id,
@@ -1442,9 +1466,13 @@ export const secretRotationV2ServiceFactory = ({
         excludeReplication: true
       });
 
+      recordSecretRotationOutcomeMetric({ type, outcome: "success" });
+
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
+
+      recordSecretRotationOutcomeMetric({ type, outcome: "failure" });
 
       if (isManualRotation) {
         await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);

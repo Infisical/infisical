@@ -78,7 +78,8 @@ export const AwsStartCommandDialog = ({ isOpen, onOpenChange, gatewayId, gateway
         </div>
         <FormControl
           label="Relay"
-          tooltipText="The relay this gateway should connect through. Auto Select picks one server-side at connect time."
+          tooltipText="The relay this gateway should connect through. Auto Select picks a healthy relay and switches to another if it becomes unreachable."
+          tooltipClassName="max-w-md"
         >
           <FilterableSelect
             value={relay}

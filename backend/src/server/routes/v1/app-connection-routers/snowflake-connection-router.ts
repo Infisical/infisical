@@ -82,4 +82,31 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
       return { schemas };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/users`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listSnowflakeUsers",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          users: z.object({ name: z.string() }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const users = await server.services.appConnection.snowflake.listUsers(connectionId, req.permission);
+
+      return { users };
+    }
+  });
 };

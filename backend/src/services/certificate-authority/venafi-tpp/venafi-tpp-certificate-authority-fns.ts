@@ -23,6 +23,7 @@ import {
 } from "@app/services/app-connection/venafi-tpp/venafi-tpp-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -41,7 +42,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   TCreateVenafiTppCertificateAuthorityDTO,
@@ -276,19 +277,18 @@ const retrieveCertificateFromTpp = async ({
 
   const decodedData = Buffer.from(data.CertificateData, "base64").toString("utf8");
 
-  const certBlocks = decodedData.match(new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g"));
+  const [leafCert, ...chainBlocks] = splitPemChain(decodedData);
 
-  if (!certBlocks || certBlocks.length === 0) {
+  if (!leafCert) {
     throw new BadRequestError({ message: "Failed to parse certificate data from Venafi TPP response" });
   }
 
-  const leafCert = certBlocks[0];
-  const chainCerts = certBlocks.length > 1 ? certBlocks.slice(1).join("\n") : "";
+  const chainCerts = chainBlocks.join("\n");
 
   logger.info(
     {
       certificateDN,
-      chainCertCount: certBlocks.length - 1
+      chainCertCount: chainBlocks.length
     },
     "Venafi TPP: Certificate retrieved successfully"
   );
@@ -671,13 +671,16 @@ export const VenafiTppCertificateAuthorityFns = ({
       const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
       skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-      const dnParts: string[] = [`CN=${commonName}`];
-      if (organization) dnParts.push(`O=${organization}`);
-      if (organizationalUnit) dnParts.push(`OU=${organizationalUnit}`);
-      if (locality) dnParts.push(`L=${locality}`);
-      if (state) dnParts.push(`ST=${state}`);
-      if (country) dnParts.push(`C=${country}`);
-      const subjectDN = dnParts.join(", ");
+      // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
+      // special characters in the attributes cannot inject additional RDNs.
+      const subjectDN = createDistinguishedName({
+        commonName,
+        organization,
+        ou: organizationalUnit,
+        locality,
+        province: state,
+        country
+      });
 
       const sanExtensions: x509.SubjectAlternativeNameExtension[] = [];
       if (altNames.length > 0) {
@@ -721,14 +724,12 @@ export const VenafiTppCertificateAuthorityFns = ({
 
       if (requestResponse.CertificateData) {
         const decodedData = Buffer.from(requestResponse.CertificateData, "base64").toString("utf8");
-        const certBlocks = decodedData.match(
-          new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g")
-        );
+        const [leafCert, ...chainBlocks] = splitPemChain(decodedData);
 
-        if (certBlocks && certBlocks.length > 0) {
+        if (leafCert) {
           certificateResult = {
-            certificate: certBlocks[0],
-            chain: certBlocks.length > 1 ? certBlocks.slice(1).join("\n") : ""
+            certificate: leafCert,
+            chain: chainBlocks.join("\n")
           };
         }
       }

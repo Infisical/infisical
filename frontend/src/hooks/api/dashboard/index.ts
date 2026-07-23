@@ -4,5 +4,6 @@ export {
   useGetFoldersMoveEligibility,
   useGetProjectSecretsDetails,
   useGetProjectSecretsOverview,
-  useGetProjectSecretsQuickSearch
+  useGetProjectSecretsQuickSearch,
+  useSearchSecretsByMetadata
 } from "./queries";

@@ -28,6 +28,8 @@ export type TCertificateProfileDefaults = {
   country?: string;
   state?: string;
   locality?: string;
+  subjectAltNames?: { type: string; value: string }[];
+  domainComponents?: string[];
 };
 
 export type TCertificateProfile = {

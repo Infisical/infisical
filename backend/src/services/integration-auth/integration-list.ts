@@ -102,7 +102,7 @@ export enum IntegrationUrls {
   CAMUNDA_API_URL = "https://api.cloud.camunda.io",
   DEVIN_API_URL = "https://api.devin.ai",
   DIGICERT_SERVICES_API_URL = "https://www.digicert.com/services/v2",
-  DIGICERT_SERVICES_API_URL_EU = "https://api-eu.digicert.com/services/v2",
+  DIGICERT_SERVICES_API_URL_EU = "https://certcentral.digicert.eu/services/v2",
 
   GODADDY_API_URL = "https://api.godaddy.com",
 
@@ -363,7 +363,7 @@ export const getIntegrationOptions = async () => {
       name: "Codefresh",
       slug: "codefresh",
       image: "Codefresh.png",
-      isAvailable: true,
+      isAvailable: false,
       type: "pat",
       clientId: "",
       docsLink: ""

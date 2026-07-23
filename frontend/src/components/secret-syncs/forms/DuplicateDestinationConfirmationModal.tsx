@@ -47,14 +47,18 @@ export const DuplicateDestinationConfirmationModal = ({
             </span>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {duplicateProjectId && (
-          <p className="text-xs text-mineshaft-400">
-            Duplicate found in project ID:{" "}
-            <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
-              {duplicateProjectId}
-            </code>
-          </p>
-        )}
+        <p className="text-xs text-mineshaft-400">
+          {duplicateProjectId ? (
+            <>
+              Duplicate found in project ID:{" "}
+              <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5 text-mineshaft-200">
+                {duplicateProjectId}
+              </code>
+            </>
+          ) : (
+            "Duplicate found in another project in your organization."
+          )}
+        </p>
         {!isDisabled && <p className="text-sm">Are you sure you want to continue?</p>}
         <AlertDialogFooter>
           <AlertDialogCancel isDisabled={isLoading}>

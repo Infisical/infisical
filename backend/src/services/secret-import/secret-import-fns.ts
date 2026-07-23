@@ -3,6 +3,11 @@ import RE2 from "re2";
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { groupBy, unique } from "@app/lib/fn";
 
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { KmsDataKey } from "../kms/kms-types";
+import { TOrgDALFactory } from "../org/org-dal";
+import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -27,6 +32,10 @@ type TSecretImportSecrets = {
 type TSecretImportSecretsV2 = {
   secretPath: string;
   environment: string;
+  accessScope: {
+    environment: string;
+    secretPath: string;
+  };
   environmentInfo: {
     id: string;
     slug: string;
@@ -35,6 +44,7 @@ type TSecretImportSecretsV2 = {
   id: string;
   folderId: string | undefined;
   importFolderId: string;
+  crossProjectImport: boolean;
   secrets: (TSecretsV2 & {
     secretTags: {
       slug: string;
@@ -239,17 +249,24 @@ export const fnSecretsV2FromImports = async ({
   decryptor,
   expandSecretReferences,
   hasSecretAccess,
+  importAccessScopeByFolderId,
   viewSecretValue,
   userId,
-  personalOverridesBehavior
+  personalOverridesBehavior,
+  projectId,
+  projectFolderGrantDAL,
+  kmsService,
+  actorOrgId,
+  orgDAL
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
-    importEnv: { id: string; slug: string; name: string };
+    importEnv: { id: string; slug: string; name: string; projectId?: string };
   })[];
   folderDAL: Pick<TSecretFolderDALFactory, "findByManySecretPath">;
   viewSecretValue: boolean;
   secretDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds">;
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   decryptor: (value?: Buffer | null) => string;
   expandSecretReferences?: (inputSecret: {
     value?: string;
@@ -259,10 +276,24 @@ export const fnSecretsV2FromImports = async ({
     secretKey: string;
   }) => Promise<string | undefined>;
   hasSecretAccess: (environment: string, secretPath: string, secretName: string, secretTagSlugs: string[]) => boolean;
+  importAccessScopeByFolderId?: Map<string, { environment: string; secretPath: string }>;
   userId?: string;
   personalOverridesBehavior?: PersonalOverridesBehavior;
+  projectId?: string;
+  projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  actorOrgId: string;
 }) => {
   const cyclicDetector = new Set();
+  // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
+  const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
+  const getProjectDecryptor = async (sourceProjectId: string) => {
+    const { decryptor: sourceDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: sourceProjectId
+    });
+    return (value?: Buffer | null) => (value ? sourceDecryptor({ cipherTextBlob: value }).toString() : "");
+  };
   const stack: {
     secretImports: typeof rootSecretImports;
     depth: number;
@@ -270,6 +301,7 @@ export const fnSecretsV2FromImports = async ({
       secretValueHidden: boolean;
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
     })[];
+    inheritedSecretPath?: string;
   }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
 
   const processedImports: TSecretImportSecretsV2[] = [];
@@ -280,7 +312,7 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
-    const { secretImports, depth, parentImportedSecrets } = stack.pop()!;
+    const { secretImports, depth, parentImportedSecrets, inheritedSecretPath } = stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
     const sanitizedImports = secretImports.filter(
@@ -361,19 +393,73 @@ export const fnSecretsV2FromImports = async ({
     processedBatchImports.forEach(({ importPath, importEnv }) => {
       cyclicDetector.add(getImportUniqKey(importEnv.slug, importPath));
     });
+
+    // Batch-check ProjectFolderGrants for cross-project imports in this batch.
+    // Reserved (replication) imports are excluded: their secrets are already
+    // stored locally and encrypted with the target project's key.
+    const grantedFolderIds = new Set<string>();
+    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL);
+    if (projectId && projectFolderGrantDAL && crossProjectAllowed) {
+      const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
+      for (const { importPath, importEnv, isReserved } of processedBatchImports) {
+        if (!isReserved && importEnv.projectId && importEnv.projectId !== projectId) {
+          const sourceFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
+          if (sourceFolder?.id) {
+            crossProjectItems.push({ sourceFolderId: sourceFolder.id, sourceProjectId: importEnv.projectId });
+          }
+        }
+      }
+
+      if (crossProjectItems.length > 0) {
+        const grants = await projectFolderGrantDAL.find({
+          $in: { sourceFolderId: crossProjectItems.map((c) => c.sourceFolderId) },
+          targetProjectId: projectId
+        });
+        grants.forEach((g) => grantedFolderIds.add(g.sourceFolderId));
+
+        const projectIdsNeeded = new Set(
+          crossProjectItems.filter((c) => grantedFolderIds.has(c.sourceFolderId)).map((c) => c.sourceProjectId)
+        );
+        for (const sourceProjectId of projectIdsNeeded) {
+          if (!projectDecryptors.has(sourceProjectId)) {
+            projectDecryptors.set(sourceProjectId, await getProjectDecryptor(sourceProjectId));
+          }
+        }
+      }
+    }
+
     // now we need to check recursively deeper imports made inside other imports
     // we go level wise meaning we take all imports of a tree level and then go deeper ones level by level
     const deeperImports = await secretImportDAL.findByFolderIds(importedFolderIds);
     const deeperImportsGroupByFolderId = groupBy(deeperImports, (i) => i.folderId);
 
     const isFirstIteration = !processedImports.length;
-    processedBatchImports.forEach(({ importPath, importEnv, id, folderId }, i) => {
+    processedBatchImports.forEach(({ importPath, importEnv, id, folderId, isReserved }, i) => {
       const sourceImportFolder = importedFolderGroupBySourceImport[`${importEnv.id}-${importPath}`]?.[0];
+
+      const isCrossProject =
+        !isReserved && Boolean(projectId && importEnv.projectId && importEnv.projectId !== projectId);
+      const accessScope =
+        isCrossProject && importAccessScopeByFolderId?.get(folderId)
+          ? importAccessScopeByFolderId.get(folderId)!
+          : { environment: importEnv.slug, secretPath: importPath };
+
+      // Skip cross-project imports that have no corresponding ProjectFolderGrant
+      if (isCrossProject && !grantedFolderIds.has(sourceImportFolder?.id || "")) {
+        return;
+      }
+
+      // For cross-project imports, use the source project's decryptor when available
+      const activeDecryptor =
+        isCrossProject && importEnv.projectId && projectDecryptors.has(importEnv.projectId)
+          ? projectDecryptors.get(importEnv.projectId)!
+          : decryptor;
+
       const secretsWithDuplicate = (importedSecretsGroupByFolderId?.[importedFolders?.[i]?.id as string] || [])
         .filter((item) =>
           hasSecretAccess(
-            importEnv.slug,
-            importPath,
+            accessScope.environment,
+            accessScope.secretPath,
             item.key,
             item.tags.map((el) => el.slug)
           )
@@ -383,35 +469,44 @@ export const fnSecretsV2FromImports = async ({
           secretKey: item.key,
           secretMetadata: item.secretMetadata.map((metadata) => ({
             key: metadata.key,
-            value: metadata.encryptedValue ? decryptor(metadata.encryptedValue) : metadata.value || "",
+            value: metadata.encryptedValue ? activeDecryptor(metadata.encryptedValue) : metadata.value || "",
             isEncrypted: Boolean(metadata.encryptedValue)
           })),
-          secretValue: viewSecretValue ? decryptor(item.encryptedValue) : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
+          secretValue: viewSecretValue ? activeDecryptor(item.encryptedValue) : INFISICAL_SECRET_VALUE_HIDDEN_MASK,
           secretValueHidden: !viewSecretValue,
           secretTags: item.tags,
-          secretComment: decryptor(item.encryptedComment),
+          secretComment: activeDecryptor(item.encryptedComment),
           environment: importEnv.slug,
+          secretPath: importAccessScopeByFolderId?.get(folderId)?.secretPath ?? inheritedSecretPath ?? "",
           workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
           _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
         }));
 
-      if (deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
-        stack.push({
-          secretImports: deeperImportsGroupByFolderId[sourceImportFolder?.id || ""],
-          depth: depth + 1,
-          parentImportedSecrets: secretsWithDuplicate
-        });
+      if (!isCrossProject && deeperImportsGroupByFolderId?.[sourceImportFolder?.id || ""]) {
+        const deeperImportsForFolder = deeperImportsGroupByFolderId[sourceImportFolder?.id || ""];
+
+        if (deeperImportsForFolder.length > 0) {
+          const resolvedSecretPath = importAccessScopeByFolderId?.get(folderId)?.secretPath ?? inheritedSecretPath;
+          stack.push({
+            secretImports: deeperImportsForFolder,
+            depth: depth + 1,
+            parentImportedSecrets: secretsWithDuplicate,
+            inheritedSecretPath: resolvedSecretPath
+          });
+        }
       }
 
       if (isFirstIteration) {
         processedImports.push({
           secretPath: importPath,
           environment: importEnv.slug,
+          accessScope,
           environmentInfo: importEnv,
           folderId: importedFolders?.[i]?.id,
           id,
           importFolderId: folderId,
-          secrets: secretsWithDuplicate
+          secrets: secretsWithDuplicate,
+          crossProjectImport: isCrossProject
         });
       } else {
         parentImportedSecrets.push(...secretsWithDuplicate);

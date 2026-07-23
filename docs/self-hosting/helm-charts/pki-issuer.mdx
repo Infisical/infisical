@@ -1,0 +1,98 @@
+---
+title: "PKI Issuer (cert-manager)"
+sidebarTitle: "PKI Issuer"
+description: "Deploy the Infisical PKI Issuer for cert-manager on Kubernetes using the official Helm chart."
+---
+
+The Infisical PKI Issuer is a [cert-manager](https://cert-manager.io/) external issuer that enables automated X.509 certificate issuance and renewal through Infisical PKI. It supports both namespace-scoped (`Issuer`) and cluster-scoped (`ClusterIssuer`) resources.
+
+For more information on Infisical PKI, see the [PKI documentation](/documentation/platform/pki).
+
+## Installation
+
+<Steps>
+  <Step title="Install cert-manager (if not already installed)">
+    ```bash
+    helm repo add jetstack https://charts.jetstack.io
+    helm repo update
+
+    helm install cert-manager jetstack/cert-manager \
+      --namespace cert-manager \
+      --create-namespace \
+      --set crds.enabled=true
+    ```
+  </Step>
+
+  <Step title="Install the Infisical PKI Issuer">
+    ```bash
+    helm install infisical-pki-issuer \
+      oci://helm.oci.cloudsmith.io/infisical/helm-charts/infisical-pki-issuer \
+      --namespace infisical-pki \
+      --create-namespace
+    ```
+  </Step>
+
+  <Step title="Verify the deployment">
+    ```bash
+    kubectl get pods -n infisical-pki
+    ```
+  </Step>
+</Steps>
+
+## Uninstall
+
+```bash
+helm uninstall infisical-pki-issuer --namespace infisical-pki
+```
+
+## Configuration Reference
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `controllerManager.replicas` | `1` | Number of controller replicas. |
+| `controllerManager.manager.image.repository` | `docker.io/infisical/pki-issuer` | Container image. |
+| `controllerManager.manager.image.tag` | `latest` | Image tag. |
+| `controllerManager.manager.resources.requests.cpu` | `10m` | CPU request. |
+| `controllerManager.manager.resources.requests.memory` | `64Mi` | Memory request. |
+| `controllerManager.manager.resources.limits.cpu` | `500m` | CPU limit. |
+| `controllerManager.manager.resources.limits.memory` | `128Mi` | Memory limit. |
+| `controllerManager.serviceAccount.annotations` | `{}` | Service account annotations. |
+
+## Default Helm Values
+
+```yaml
+controllerManager:
+  manager:
+    args:
+    - --metrics-bind-address=:8443
+    - --leader-elect
+    - --health-probe-bind-address=:8081
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    image:
+      repository: docker.io/infisical/pki-issuer
+      tag: latest
+    resources:
+      limits:
+        cpu: 500m
+        memory: 128Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
+  podSecurityContext:
+    runAsNonRoot: true
+  replicas: 1
+  serviceAccount:
+    annotations: {}
+controllerMetrics:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  type: ClusterIP
+kubernetesClusterDomain: cluster.local
+```

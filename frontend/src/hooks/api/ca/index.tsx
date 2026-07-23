@@ -1,3 +1,5 @@
+export type { CaIssuanceCapabilities } from "./capabilities";
+export { getCaIssuanceCapabilities } from "./capabilities";
 export {
   AcmeDnsProvider,
   CaRenewalStatus,
@@ -17,6 +19,7 @@ export {
   useGenerateCaCertificate,
   useImportCaCertificate,
   useInstallCaCertificateAdcs,
+  useInstallCaCertificateAdcsNative,
   useInstallCaCertificateVenafi,
   useOrderCertificateWithProfile,
   useRenewCa,
@@ -27,6 +30,7 @@ export {
 } from "./mutations";
 export type { TCaAutoRenewalConfig, TCaSigningConfig } from "./queries";
 export {
+  useGetAdcsTemplates,
   useGetAzureAdcsTemplates,
   useGetCa,
   useGetCaAutoRenewal,

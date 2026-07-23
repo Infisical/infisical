@@ -2,6 +2,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
+import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -22,6 +23,8 @@ export type DashboardProjectSecretsOverviewResponse = {
   totalSecretRotationCount?: number;
   honeyTokens?: TDashboardHoneyToken[];
   totalHoneyTokenCount?: number;
+  proxiedServices?: TDashboardProxiedService[];
+  totalProxiedServiceCount?: number;
   totalCount: number;
   totalUniqueSecretsInPage: number;
   totalUniqueDynamicSecretsInPage: number;
@@ -49,12 +52,14 @@ export type DashboardProjectSecretsDetailsResponse = {
     secrets: (SecretV3Raw | null)[];
   })[];
   honeyTokens?: TDashboardHoneyToken[];
+  proxiedServices?: TDashboardProxiedService[];
   totalImportCount?: number;
   totalFolderCount?: number;
   totalDynamicSecretCount?: number;
   totalSecretCount?: number;
   totalSecretRotationCount?: number;
   totalHoneyTokenCount?: number;
+  totalProxiedServiceCount?: number;
   totalCount: number;
   importedBy?: ProjectSecretsImportedBy[];
   usedBySecretSyncs?: UsedBySecretSyncs[];
@@ -62,6 +67,7 @@ export type DashboardProjectSecretsDetailsResponse = {
 
 export type ProjectSecretsImportedBy = {
   environment: { name: string; slug: string };
+  project?: { name: string; slug: string; id: string };
   folders: {
     name: string;
     secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
@@ -82,6 +88,7 @@ export type DashboardProjectSecretsOverview = Omit<
     secrets: (SecretV3RawSanitized | null)[];
   })[];
   honeyTokens?: TDashboardHoneyToken[];
+  proxiedServices?: TDashboardProxiedService[];
 };
 
 export type DashboardProjectSecretsDetails = Omit<
@@ -93,6 +100,7 @@ export type DashboardProjectSecretsDetails = Omit<
     secrets: (SecretV3RawSanitized | null)[];
   })[];
   honeyTokens?: TDashboardHoneyToken[];
+  proxiedServices?: TDashboardProxiedService[];
 };
 
 export enum DashboardSecretsOrderBy {
@@ -114,6 +122,7 @@ export type TGetDashboardProjectSecretsOverviewDTO = {
   includeImports?: boolean;
   includeSecretRotations?: boolean;
   includeHoneyTokens?: boolean;
+  includeProxiedServices?: boolean;
   environments: string[];
 };
 
@@ -146,6 +155,42 @@ export type TGetDashboardProjectSecretsQuickSearchDTO = {
   tags: Record<string, boolean>;
   search: string;
   environments: string[];
+};
+
+// per-condition match operator; only exact-match ("is") is supported today (mirrors the backend)
+export enum SecretMetadataSearchOperator {
+  Is = "is"
+}
+
+// combinator applied across all conditions
+export enum SecretMetadataSearchLogicalOperator {
+  And = "and",
+  Or = "or"
+}
+
+export type TSecretMetadataSearchFilter = {
+  key: string;
+  value: string;
+  operator: SecretMetadataSearchOperator;
+};
+
+export type TSearchSecretsByMetadataDTO = {
+  projectId: string;
+  operator: SecretMetadataSearchLogicalOperator;
+  filters: TSecretMetadataSearchFilter[];
+  tags: Record<string, boolean>;
+};
+
+export type TMetadataMatchedSecret = {
+  secretId: string;
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  metadata: { key: string; value: string | null }[];
+};
+
+export type TSearchSecretsByMetadataResponse = {
+  secrets: TMetadataMatchedSecret[];
 };
 
 export type TGetDashboardProjectSecretsByKeys = {

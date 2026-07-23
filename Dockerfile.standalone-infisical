@@ -52,7 +52,7 @@ RUN useradd --system --uid 1001 --gid nodejs non-root-user
 
 COPY --from=frontend-builder --chown=non-root-user:nodejs /app/dist ./
 
-USER non-root-user
+USER 1001
 
 ##
 ## BACKEND
@@ -196,7 +196,7 @@ RUN apt-get update && apt-get install -y \
     libgnutls30t64=3.8.9-3+deb13u4 \
     libc6=2.41-12+deb13u3 \
     libc-bin=2.41-12+deb13u3 \
-    libssl3t64=3.5.6-1~deb13u1 \
+    libssl3t64=3.5.6-1~deb13u2 \
     dpkg=1.22.22 \
     libcap2 \
     libnghttp2-14=1.64.0-1.1+deb13u1 \
@@ -298,6 +298,7 @@ ENV TELEMETRY_ENABLED true
 EXPOSE 8080
 EXPOSE 443
 
-USER non-root-user
+# Use numeric UID so Kubernetes can verify the image runs as non-root
+USER 1001
 
 CMD ["./standalone-entrypoint.sh"]

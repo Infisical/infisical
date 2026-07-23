@@ -141,6 +141,13 @@ export const useGetUserProjects = ({
     ...options
   });
 
+export const useGetUserProjectsByType = (type: ProjectType) =>
+  useQuery({
+    queryKey: [...projectKeys.getAllUserProjects(), type],
+    queryFn: () => fetchUserWorkspaces(false, type),
+    select: (projects) => projects.slice(0, 100)
+  });
+
 export const useSearchProjects = ({ options, ...dto }: TSearchProjectsDTO) =>
   useQuery({
     queryKey: projectKeys.searchProject(dto),
