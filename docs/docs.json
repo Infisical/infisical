@@ -1112,7 +1112,8 @@
                       "documentation/platform/pam/product-reference/credential-rotation/overview",
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
                   {
@@ -1121,6 +1122,12 @@
                       "documentation/platform/pam/discovery/overview",
                       "documentation/platform/pam/discovery/active-directory",
                       "documentation/platform/pam/discovery/unix"
+                    ]
+                  },
+                  {
+                    "group": "Dependencies",
+                    "pages": [
+                      "documentation/platform/pam/dependencies/overview"
                     ]
                   },
                   {

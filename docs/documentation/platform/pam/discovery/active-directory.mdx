@@ -18,9 +18,9 @@ All scan traffic (LDAP, DNS, and WinRM) is tunneled through an Infisical [Gatewa
 Behind the scenes, an Active Directory scan connects entirely through the Gateway:
 
 1. **Domain accounts** are enumerated by querying the domain controller over LDAP (or LDAPS) using the credential account's connection settings.
-2. **Windows servers** are located in the same LDAP query when local account discovery is enabled.
+2. **Windows servers** are located in the same LDAP query when local account discovery or dependency discovery is enabled.
 3. Each server's hostname is resolved to an IP through the **domain controller's DNS**, so the Gateway can reach it.
-4. Each reachable server is queried over **WinRM** to list its local users.
+4. Each reachable server is queried over **WinRM** to list its local users (local account discovery) and the services, scheduled tasks, and IIS application pools running as a discovered account (dependency discovery).
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ Before creating an Active Directory discovery source, make sure you have:
 - The **Product Admin** role. See [Access Control](/documentation/platform/pam/concepts/access-control).
 
 <Note>
-To discover local Windows accounts, the credential account must include a **password**, WinRM must be enabled on your servers, and your domain controller's DNS must resolve each server's hostname so the Gateway can reach it.
+To discover local Windows accounts or account dependencies, the credential account must include a **password**, WinRM must be enabled on your servers, and your domain controller's DNS must resolve each server's hostname so the Gateway can reach it.
 </Note>
 
 ## Creating a Source
@@ -48,19 +48,26 @@ To discover local Windows accounts, the credential account must include a **pass
     | **Gateway** | The [Gateway](/documentation/platform/gateways/overview) or Gateway pool that scan traffic tunnels through |
     | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
   </Step>
-  <Step title="Configure local account discovery">
-    Leave **Discover local accounts** on to enumerate local users on your Windows servers over WinRM, or turn it off to discover domain accounts only. See [Local Account Discovery](#local-account-discovery) for the WinRM options.
+  <Step title="Choose what to discover on your servers">
+    Two options control what discovery does beyond enumerating domain accounts, and each can be turned on independently:
+
+    | Option | Default | What it does |
+    |--------|---------|--------------|
+    | **Discover local accounts** | On | Enumerates local users on your Windows servers over WinRM |
+    | **Discover account dependencies** | Off | Detects the services, scheduled tasks, and IIS application pools that run as a discovered account (see [Dependencies](/documentation/platform/pam/dependencies/overview)) |
+
+    When either is on, discovery locates your Windows servers and connects to them over WinRM. See [Server WinRM Options](#server-winrm-options) for the connection settings.
   </Step>
   <Step title="Save">
     Click **Create**. The source appears in the Discovery table.
   </Step>
 </Steps>
 
-## Local Account Discovery
+## Server WinRM Options
 
-When **Discover local accounts** is enabled, discovery locates domain-joined Windows servers, resolves each one through the domain controller's DNS, and queries it over WinRM to enumerate local users. These become **Windows** (local) staged accounts.
+When **Discover local accounts** or **Discover account dependencies** is enabled, discovery locates domain-joined Windows servers, resolves each one through the domain controller's DNS, and connects to it over WinRM. Local account discovery enumerates the server's local users (staged as **Windows** accounts); dependency discovery enumerates the [dependencies](/documentation/platform/pam/dependencies/overview) that run as a discovered account.
 
-The following WinRM options are available:
+Both use the same WinRM connection options:
 
 | Field | Description |
 |-------|-------------|
@@ -94,6 +101,10 @@ Once imported, the accounts become regular PAM accounts in the chosen folder and
 Imported accounts arrive without a credential because discovery finds accounts with a username but no password. Open each imported account and add a credential before connecting.
 </Warning>
 
+<Note>
+  Enabling **Discover account dependencies** also connects to each Windows server over WinRM and records the services, scheduled tasks, and IIS application pools that run as a discovered account. These are stored as [dependencies](/documentation/platform/pam/dependencies/overview) so they stay in sync when the account's password rotates. It is off by default and independent of **Discover local accounts**.
+</Note>
+
 ## Next Steps
 
 <CardGroup cols={2}>
@@ -102,5 +113,8 @@ Imported accounts arrive without a credential because discovery finds accounts w
   </Card>
   <Card title="Windows AD Accounts" icon="windows" href="/documentation/platform/pam/accounts/windows-ad">
     Learn about the account type used to authenticate scans.
+  </Card>
+  <Card title="Account Dependencies" icon="diagram-project" href="/documentation/platform/pam/dependencies/overview">
+    Keep dependent services working across rotations.
   </Card>
 </CardGroup>
