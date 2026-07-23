@@ -92,11 +92,16 @@ export const SecretTagForm = ({
   const watchedTags = watch("tags");
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
+  const isInitialRenderRef = useRef(true);
+
   useEffect(() => {
     if (!isBatchMode) return () => {};
 
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      return () => {};
     }
 
     debounceTimer.current = setTimeout(() => {
@@ -104,9 +109,7 @@ export const SecretTagForm = ({
     }, 500);
 
     return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [isBatchMode, watchedTags, onTagsChange]);
 
