@@ -69,9 +69,9 @@ export const usageEventQueueFactory = ({
         ]);
       } catch (error) {
         if (error instanceof UsageReportError) {
-          if (error.status === 404) {
+          if (error.status === 404 && error.serverMessage.includes("license not found")) {
             logger.info(
-              `usage-event-queue: dimension not found, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+              `usage-event-queue: license not found, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
             );
             return;
           }
