@@ -515,10 +515,15 @@ export const fnSecretsV2FromImports = async ({
   }
   /* eslint-enable */
   if (expandSecretReferences) {
+    // With IncludeAll, a shared secret and its personal override share the same key but are distinct
+    // secrets (the same way direct secrets are returned), so they must both survive de-duplication.
+    // Other behaviors resolve to a single effective value per key, so de-duplicate by key alone.
+    const includeAll = personalOverridesBehavior === PersonalOverridesBehavior.IncludeAll;
+    const getDedupeKey = (i: { key: string; type: string }) => (includeAll ? `${i.key}:${i.type}` : i.key);
     await Promise.allSettled(
       processedImports.map((processedImport) => {
         // eslint-disable-next-line
-        processedImport.secrets = unique(processedImport.secrets, (i) => i.key);
+        processedImport.secrets = unique(processedImport.secrets, getDedupeKey);
         return Promise.allSettled(
           processedImport.secrets.map(async (decryptedSecret, index) => {
             if (decryptedSecret.secretValueHidden) return;
