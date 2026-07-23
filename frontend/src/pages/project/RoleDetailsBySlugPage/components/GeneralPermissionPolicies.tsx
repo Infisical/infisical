@@ -29,8 +29,6 @@ import {
 } from "@app/components/v3";
 import {
   OrgPermissionSubjects,
-  ProjectPermissionGroupActions,
-  ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context";
@@ -91,18 +89,24 @@ const ActionsMultiSelect = ({
 
   const rule = permissionRule as Record<string, boolean> | undefined;
   const secretsRead = Boolean(rule?.read);
-  const memberGrantPrivileges = Boolean(rule?.[ProjectPermissionMemberActions.GrantPrivileges]);
-  const identityGrantPrivileges = Boolean(rule?.[ProjectPermissionIdentityActions.GrantPrivileges]);
-  const groupsGrantPrivileges = Boolean(rule?.[ProjectPermissionGroupActions.GrantPrivileges]);
+  const grantPrivilegesSelected = Boolean(rule?.[ProjectPermissionMemberActions.GrantPrivileges]);
 
   const legacyActionsState = useMemo(
     () => ({
       secretsRead,
-      memberGrantPrivileges,
-      identityGrantPrivileges,
-      groupsGrantPrivileges
+      grantPrivilegesSelected
     }),
-    [secretsRead, memberGrantPrivileges, identityGrantPrivileges, groupsGrantPrivileges]
+    [secretsRead, grantPrivilegesSelected]
+  );
+
+  // The legacy "grant-privileges" action is superseded by "assign-role" /
+  // "assign-additional-privileges" only on project-level member/identity/group
+  // subjects, which expose those replacement actions. Org-level identity/group
+  // subjects share the same string identifiers but have no replacement and still
+  // rely on "grant-privileges", so it must remain selectable there.
+  const hasGrantPrivilegesReplacement = useMemo(
+    () => actions.some(({ value }) => value === ProjectPermissionMemberActions.AssignRole),
+    [actions]
   );
 
   const visibleActions = useMemo(
@@ -115,29 +119,18 @@ const ActionsMultiSelect = ({
           return legacyActionsState.secretsRead;
         }
 
-        // Hide legacy "grant-privileges" actions unless already selected
+        // Hide the legacy "grant-privileges" action unless already selected, but
+        // only when a replacement action exists (i.e. project subjects).
         if (
-          subject === ProjectPermissionSub.Member &&
-          value === ProjectPermissionMemberActions.GrantPrivileges
+          value === ProjectPermissionMemberActions.GrantPrivileges &&
+          hasGrantPrivilegesReplacement
         ) {
-          return legacyActionsState.memberGrantPrivileges;
-        }
-        if (
-          subject === ProjectPermissionSub.Identity &&
-          value === ProjectPermissionIdentityActions.GrantPrivileges
-        ) {
-          return legacyActionsState.identityGrantPrivileges;
-        }
-        if (
-          subject === ProjectPermissionSub.Groups &&
-          value === ProjectPermissionGroupActions.GrantPrivileges
-        ) {
-          return legacyActionsState.groupsGrantPrivileges;
+          return legacyActionsState.grantPrivilegesSelected;
         }
 
         return true;
       }),
-    [actions, subject, legacyActionsState]
+    [actions, subject, legacyActionsState, hasGrantPrivilegesReplacement]
   );
 
   const actionOptions = useMemo(
