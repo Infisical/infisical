@@ -305,9 +305,11 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
+  const isPamScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/pam/`);
   const isProjectScope =
-    location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
-    location.pathname !== `/organizations/${currentOrg.id}/projects`;
+    isPamScope ||
+    (location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`) &&
+      location.pathname !== `/organizations/${currentOrg.id}/projects`);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -318,7 +320,8 @@ export const Navbar = () => {
 
       await logout.mutateAsync();
       if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?domain=${org.slug}`);
+        // orgSlug, not domain: the domain param is a verified email-domain lookup and 403s on a slug
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
       } else {
         window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
       }
@@ -341,7 +344,8 @@ export const Navbar = () => {
       className={twMerge(
         "z-10 flex min-h-12 items-center border-b border-border bg-gradient-to-br to-transparent",
         isServerAdminPanel && "from-admin/5",
-        !isServerAdminPanel && isProjectScope && "from-project/5",
+        !isServerAdminPanel && isPamScope && "from-product-pam/5",
+        !isServerAdminPanel && isProjectScope && !isPamScope && "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}

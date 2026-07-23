@@ -5,12 +5,20 @@ export enum MfaSessionStatus {
   ACTIVE = "ACTIVE"
 }
 
+export const MfaStepUpResource = {
+  MfaManagement: "mfa-management",
+  MfaActivation: "mfa-activation"
+} as const;
+
+export type TMfaStepUpResource = (typeof MfaStepUpResource)[keyof typeof MfaStepUpResource];
+
 export type TMfaSession = {
   sessionId: string;
   userId: string;
   resourceId: string; // Generic - can be accountId, documentId, etc.
   status: MfaSessionStatus;
   mfaMethod: MfaMethod;
+  initiatingTokenVersionId?: string;
 };
 
 export type TCreateMfaSessionDTO = {
@@ -22,6 +30,7 @@ export type TCreateMfaSessionDTO = {
 export type TVerifyMfaSessionDTO = {
   mfaSessionId: string;
   userId: string;
+  tokenVersionId: string;
   mfaToken: string;
   mfaMethod: MfaMethod;
 };
@@ -29,4 +38,12 @@ export type TVerifyMfaSessionDTO = {
 export type TGetMfaSessionStatusDTO = {
   mfaSessionId: string;
   userId: string;
+  tokenVersionId: string;
+};
+
+export type TIsMfaSessionActiveDTO = {
+  mfaSessionId: string;
+  userId: string;
+  resourceId: string;
+  tokenVersionId: string;
 };

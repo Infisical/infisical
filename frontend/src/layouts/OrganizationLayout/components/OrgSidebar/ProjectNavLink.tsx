@@ -2,8 +2,15 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Badge, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@app/components/v3";
+import {
+  Badge,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebarScope
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
@@ -20,9 +27,13 @@ export const ProjectNavLink = ({
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { pathname, search: locationSearch } = useLocation();
+  const sidebarScope = useSidebarScope();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
-  const basePath = `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
+  const isPam = currentProject.type === ProjectType.PAM;
+  const basePath = isPam
+    ? `/organizations/${currentOrg.id}/pam`
+    : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}`;
   const fullPath = `${basePath}/${item.pathSuffix}`;
 
   const activeMatchResult = (() => {
@@ -47,7 +58,7 @@ export const ProjectNavLink = ({
       <SidebarMenuItem>
         <SidebarMenuButton
           size="lg"
-          scope="project"
+          scope={sidebarScope}
           isActive={isActive}
           tooltip={item.label}
           onClick={() => onSubmenuOpen(item.submenu!)}
@@ -55,7 +66,7 @@ export const ProjectNavLink = ({
           <item.icon className="size-4" />
           <span>{item.label}</span>
           {Boolean(item.badgeCount) && (
-            <Badge variant="warning" isSquare className="ml-auto">
+            <Badge variant={item.badgeVariant ?? "warning"} isSquare className="ml-auto">
               {item.badgeCount}
             </Badge>
           )}
@@ -67,10 +78,20 @@ export const ProjectNavLink = ({
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton size="lg" scope="project" asChild isActive={isActive} tooltip={item.label}>
+      <SidebarMenuButton
+        size="lg"
+        scope={sidebarScope}
+        asChild
+        isActive={isActive}
+        tooltip={item.label}
+      >
         <Link
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          to={`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any}
+          to={
+            isPam
+              ? (`/organizations/$orgId/pam/${item.pathSuffix}` as any)
+              : (`/organizations/$orgId/projects/${typePath}/$projectId/${item.pathSuffix}` as any)
+          }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,7 +100,7 @@ export const ProjectNavLink = ({
           <item.icon className="size-4" />
           <span>{item.label}</span>
           {Boolean(item.badgeCount) && (
-            <Badge variant="warning" isSquare className="ml-auto">
+            <Badge variant={item.badgeVariant ?? "warning"} isSquare className="ml-auto">
               {item.badgeCount}
             </Badge>
           )}

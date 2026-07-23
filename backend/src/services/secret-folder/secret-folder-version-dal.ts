@@ -19,6 +19,10 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .where({ parentId: folderId, isReserved: false })
         .join<TSecretFolderVersions>(
           (tx || db)(TableName.SecretFolderVersion)
+            .whereIn(
+              "folderId",
+              (qb) => void qb.select("id").from(TableName.SecretFolder).where({ parentId: folderId, isReserved: false })
+            )
             .groupBy("envId", "folderId")
             .max("version")
             .select("folderId")
@@ -45,6 +49,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
         .join(
           (tx || db.replicaNode())(TableName.SecretFolderVersion)
+            .whereIn("folderId", folderIds)
             .groupBy("folderId")
             .max("version")
             .select("folderId")
@@ -106,6 +111,7 @@ export const secretFolderVersionDALFactory = (db: TDbClient) => {
       .whereIn(`${TableName.SecretFolderVersion}.folderId`, folderIds)
       .join(
         knexInstance(TableName.SecretFolderVersion)
+          .whereIn("folderId", folderIds)
           .groupBy("folderId")
           .max("version")
           .select("folderId")

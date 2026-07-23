@@ -12,6 +12,7 @@ import {
   FieldGroup,
   FieldLabel,
   Input,
+  Switch,
   Tabs,
   TabsContent,
   TabsList,
@@ -48,6 +49,7 @@ const buildSchema = (maxAccessTokenTTL: number) =>
       allowedCommonNames: z.string().optional(),
       allowedSubjectAltNames: z.string().optional(),
       caCertificate: z.string().min(1),
+      verifyClientCertificateChain: z.boolean().default(false),
       accessTokenTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token TTL"),
       accessTokenMaxTTL: accessTokenTtlSchema(maxAccessTokenTTL, "Access Token Max TTL"),
       accessTokenNumUsesLimit: z.string(),
@@ -106,6 +108,7 @@ export const IdentityTlsCertAuthForm = ({
     resolver,
     defaultValues: {
       caCertificate: "",
+      verifyClientCertificateChain: false,
       accessTokenTTL: "2592000",
       accessTokenMaxTTL: "2592000",
       accessTokenNumUsesLimit: "",
@@ -119,6 +122,7 @@ export const IdentityTlsCertAuthForm = ({
         caCertificate: data.caCertificate,
         allowedCommonNames: data.allowedCommonNames || undefined,
         allowedSubjectAltNames: data.allowedSubjectAltNames?.join("\n") || undefined,
+        verifyClientCertificateChain: data.verifyClientCertificateChain ?? false,
         accessTokenTTL: String(data.accessTokenTTL),
         accessTokenMaxTTL: String(data.accessTokenMaxTTL),
         accessTokenNumUsesLimit: data.accessTokenNumUsesLimit
@@ -129,6 +133,7 @@ export const IdentityTlsCertAuthForm = ({
     } else {
       reset({
         caCertificate: "",
+        verifyClientCertificateChain: false,
         accessTokenTTL: "2592000",
         accessTokenMaxTTL: "2592000",
         accessTokenNumUsesLimit: "",
@@ -145,6 +150,7 @@ export const IdentityTlsCertAuthForm = ({
     caCertificate,
     allowedCommonNames,
     allowedSubjectAltNames,
+    verifyClientCertificateChain,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -167,6 +173,7 @@ export const IdentityTlsCertAuthForm = ({
         allowedSubjectAltNames: allowedSubjectAltNamesList.length
           ? allowedSubjectAltNamesList
           : null,
+        verifyClientCertificateChain,
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -182,6 +189,7 @@ export const IdentityTlsCertAuthForm = ({
         allowedSubjectAltNames: allowedSubjectAltNamesList.length
           ? allowedSubjectAltNamesList
           : undefined,
+        verifyClientCertificateChain,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
         accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit || "0"),
@@ -300,6 +308,39 @@ export const IdentityTlsCertAuthForm = ({
         </TabsContent>
         <TabsContent value={IdentityFormTab.Advanced}>
           <FieldGroup>
+            <Controller
+              control={control}
+              name="verifyClientCertificateChain"
+              render={({ field }) => (
+                <Field>
+                  <div className="flex items-center justify-between gap-3">
+                    <FieldLabel
+                      htmlFor="verifyClientCertificateChain"
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      Verify Client Certificate Chain
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          When disabled, the CA certificate must be the direct issuer of the
+                          client&apos;s leaf certificate. When enabled, the CA certificate is
+                          treated as a trust anchor and the client-presented chain (leaf plus
+                          intermediates) is validated up to it, supporting issuers that rotate
+                          beneath a stable root such as SPIRE X.509-SVIDs.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <Switch
+                      id="verifyClientCertificateChain"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </div>
+                </Field>
+              )}
+            />
             <TrustedIpsField
               control={control}
               name="accessTokenTrustedIps"

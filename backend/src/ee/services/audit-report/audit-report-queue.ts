@@ -35,6 +35,7 @@ export const auditReportQueueServiceFactory = ({
   secretRotationV2DAL,
   reminderDAL,
   auditLogDAL,
+  clickhouseAuditLogDAL,
   secretValidationRuleDAL,
   kmsService
 }: TAuditReportQueueServiceFactoryDep) => {
@@ -44,6 +45,7 @@ export const auditReportQueueServiceFactory = ({
     secretRotationV2DAL,
     reminderDAL,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretValidationRuleDAL,
     kmsService
   };

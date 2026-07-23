@@ -1,15 +1,10 @@
 ---
 title: "Secrets Management"
 sidebarTitle: "Overview"
-description: "Learn how to securely store, access, and manage sensitive application secrets."
+description: "Store, manage, and deliver secrets like API keys and database credentials across every environment, from local development to production."
 ---
 
-Infisical provides a flexible platform for managing secrets such as API keys, database credentials, and application configuration across every stage of the development lifecycle — from local development to production. It enables teams to eliminate hardcoded secrets, enforce fine-grained access controls, deliver secrets across their infrastructure, and adopt secure workflows like secret rotation and dynamic secrets.
-
-The short video below provides a guided overview of Infisical's secrets management capabilities and key concepts, helping you build the right mental model before diving into the rest of the documentation.
-
-<br />
-
+Infisical Secrets Management centralizes secrets such as API keys, database credentials, and application configuration. Teams eliminate hardcoded secrets, scope access by environment and path, and deliver secrets to applications and infrastructure through the CLI, SDKs, agents, Kubernetes, and CI/CD.
 
 <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
   <iframe
@@ -21,12 +16,48 @@ The short video below provides a guided overview of Infisical's secrets manageme
   ></iframe>
 </div>
 
-<br />
+## Get Started
 
-Infisical's core secrets management capabilities include:
+<Card title="Deliver Your First Secret" icon="rocket" href="/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret">
+  New to Infisical? Store a secret and deliver it to an application in under 10 minutes.
+</Card>
 
-- Secret Stores: Secure, versioned storage scoped by [project](/documentation/platform/secrets-mgmt/project), [environment](/documentation/platform/secrets-mgmt/project#project-environments), and [path](/documentation/platform/folder).
-- [Access Control](/documentation/platform/access-controls/overview): Fine-grained, identity-aware permissions for users and machines
-- [Secret Delivery](/documentation/platform/secrets-mgmt/concepts/secrets-delivery): Access secrets via [CLI](/cli/overview), [SDKs](/sdks/overview) (Go, Node.js, Python, etc.), [HTTP API](/api-reference/overview/introduction), [agents](/integrations/platforms/infisical-agent), [Kubernetes Operator](/integrations/platforms/kubernetes/overview), [External Secrets Operator (ESO)](https://external-secrets.io/latest/provider/infisical), and more.
-- Lifecycle Automation: Automate [secret rotation](/documentation/platform/secrets-mgmt/concepts/secrets-rotation), generate [dynamic secrets](/documentation/platform/secrets-mgmt/concepts/dynamic-secrets), and enforce [approval-based workflows](/documentation/platform/pr-workflows).
-- [Secrets Syncs](/integrations/secret-syncs/overview): Push secrets to external services like [GitHub](/integrations/secret-syncs/github), [GitLab](/integrations/secret-syncs/gitlab), [AWS Secrets Manager](/integrations/secret-syncs/aws-secrets-manager), [Vercel](/integrations/secret-syncs/vercel), and more.
+## Learn More
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/documentation/platform/secrets-mgmt/concepts/secrets-mgmt">
+    Understand how projects, environments, folders, and secrets fit together.
+  </Card>
+  <Card title="Guides" icon="map" href="/documentation/guides/local-development">
+    End-to-end workflows, from local development to production.
+  </Card>
+  <Card title="Access Control" icon="shield-halved" href="/documentation/platform/secrets-mgmt/concepts/access-control">
+    Scope secrets by environment and path, and control who can access them.
+  </Card>
+  <Card title="Secrets Delivery" icon="truck-fast" href="/documentation/platform/secrets-mgmt/concepts/secrets-delivery">
+    Pick the right method to get secrets into your applications and infrastructure.
+  </Card>
+</CardGroup>
+
+## Go Further
+
+<CardGroup cols={2}>
+  <Card title="Secret Rotation" icon="rotate" href="/documentation/platform/secrets-mgmt/concepts/secrets-rotation">
+    Replace database and cloud credentials automatically on a schedule.
+  </Card>
+  <Card title="Dynamic Secrets" icon="bolt" href="/documentation/platform/secrets-mgmt/concepts/dynamic-secrets">
+    Generate short-lived credentials on demand that expire after use.
+  </Card>
+  <Card title="Secret Syncs" icon="arrow-right-arrow-left" href="/integrations/secret-syncs/overview">
+    Push secrets to GitHub, AWS, Vercel, and other external platforms.
+  </Card>
+  <Card title="Honey Tokens" icon="jar" href="/documentation/platform/honey-tokens/overview">
+    Plant decoy credentials that alert you the moment an attacker uses them.
+  </Card>
+  <Card title="Approval Workflows" icon="code-pull-request" href="/documentation/platform/secrets-mgmt/concepts/approval-workflows">
+    Require review before changes reach sensitive environments.
+  </Card>
+  <Card title="Point-in-Time Recovery" icon="clock-rotate-left" href="/documentation/platform/pit-recovery">
+    Roll back a secret or an entire environment to any previous state.
+  </Card>
+</CardGroup>

@@ -1,0 +1,43 @@
+---
+title: "Microsoft ADCS Connection"
+description: "Learn how to configure a Microsoft ADCS Connection for Infisical certificate management."
+---
+
+Connect Infisical to Microsoft Active Directory Certificate Services (AD CS) through an Infisical [Gateway](/documentation/platform/gateways/overview). The Gateway runs inside your network and communicates with the CA directly, so your AD CS server never needs to be exposed to the internet.
+
+## Prerequisites
+
+- A Microsoft Active Directory Certificate Services (AD CS) server (Enterprise CA)
+- An Infisical [Gateway](/documentation/platform/gateways/overview) deployed inside the network that can reach the AD CS server
+- A domain account with Enroll permission on the certificate templates you plan to use (and Manage CA / Certificate Manager rights if you want to revoke certificates)
+- Network reachability from the Gateway to the AD CS server on:
+  - **TCP 135** (RPC endpoint mapper) and the server's **dynamic RPC port range** (default `49152-65535`) for MS-WCCE/MS-CSRA over DCOM
+  - **TCP 445** (SMB) only if you rely on automatic CA-name discovery (reads the CA name over the Remote Registry service)
+
+## Connection Setup
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    In Certificate Manager, navigate to the **App Connections** tab on the **Settings** page.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Microsoft ADCS Connection** option from the connection options modal.
+  </Step>
+  <Step title="Configure Connection Details">
+    - **Name**: Friendly name for this connection (for example, `production-adcs`)
+    - **CA Host**: The network address the Gateway uses to reach your AD CS server. This can be a fully qualified domain name (for example, `ca01.corp.example.com`), a short hostname, or an IP address, as long as the Gateway can resolve and connect to it. Because the Gateway runs inside your network, this is almost always a private, internal address (a private DNS name or private IP) rather than a public one. Enter the address only: do not include a scheme (`https://`), port, or path, since AD CS is reached over DCOM (MS-WCCE).
+    - **Username**: Domain account in the form `DOMAIN\username` or `username@domain.com`
+    - **Password**: Password for the domain account
+    - **Gateway**: The Gateway that can reach the AD CS server
+
+    A Gateway is required. The control plane cannot reach AD CS over DCOM directly, so every operation is relayed through the Gateway.
+  </Step>
+  <Step title="Connection Created">
+    Your **Microsoft ADCS Connection** is now available for use.
+  </Step>
+</Steps>
+
+<Note>
+  A fully qualified domain name is recommended over an IP address. It keeps the connection stable if the server's IP changes and avoids the certificate hostname mismatches an IP can introduce. An IP address works as long as the Gateway can reach the server over it.
+</Note>

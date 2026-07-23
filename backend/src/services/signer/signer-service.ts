@@ -11,6 +11,7 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCodeSigningActions,
@@ -23,7 +24,12 @@ import {
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { ecdsaRawRsToDer, mapSigningAlgorithmToPkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
+import {
+  ecdsaRawRsToDer,
+  mapSigningAlgorithmToPkcs11Mechanism,
+  Pkcs11Mechanism,
+  wrapRsaPkcs1DigestInfo
+} from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
@@ -67,6 +73,7 @@ import {
 } from "./signer-issuance-fns";
 import { TSignerIssuanceServiceFactory } from "./signer-issuance-service";
 import {
+  SignerExternalCaConfigSchema,
   TCreateSignerDTO,
   TDeleteSignerDTO,
   TDisableSignerDTO,
@@ -78,6 +85,7 @@ import {
   TListSigningOperationsDTO,
   TReissueCertificateDTO,
   TSignDataDTO,
+  TSignerExternalCaConfig,
   TUpdateSignerDTO
 } from "./signer-types";
 import { TSigningOperationDALFactory } from "./signing-operation-dal";
@@ -85,14 +93,19 @@ import { TSigningOperationDALFactory } from "./signing-operation-dal";
 const MAX_DATA_BYTES = 128;
 const DEFAULT_CERTIFICATE_TTL_DAYS = 365;
 
-const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([CaType.AWS_PCA, CaType.AZURE_AD_CS, CaType.DIGICERT]);
+const CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES = new Set<CaType>([
+  CaType.AWS_PCA,
+  CaType.AZURE_AD_CS,
+  CaType.ADCS,
+  CaType.DIGICERT
+]);
 
 const assertCaTypeSupportsCodeSigning = (caType: CaType): void => {
   if (caType === CaType.INTERNAL) return;
   if (!CODE_SIGNING_SUPPORTED_EXTERNAL_CA_TYPES.has(caType)) {
     throw new BadRequestError({
       message:
-        "Code signing is only supported on Internal CAs, AWS Private CA, Azure AD CS, and DigiCert. Pick a different certificate authority."
+        "Code signing is only supported on Internal CAs, AWS Private CA, Azure AD CS, ADCS, and DigiCert. Pick a different certificate authority."
     });
   }
 };
@@ -141,6 +154,7 @@ type TSignerServiceFactoryDep = {
     "create" | "find" | "delete" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TSignerServiceFactory = ReturnType<typeof signerServiceFactory>;
@@ -263,7 +277,8 @@ export const signerServiceFactory = ({
   approvalRequestGrantsDAL,
   membershipDAL,
   membershipRoleDAL,
-  hsmConnectorService
+  hsmConnectorService,
+  licenseService
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
@@ -354,6 +369,15 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
+    // pkiCodeSigning is ignored when null (no restriction); only an explicit boolean gates the feature,
+    // blocking creation when it is explicitly false.
+    const plan = await licenseService.getPlan(dto.actorOrgId);
+    if (typeof plan.pkiCodeSigning === "boolean" && !plan.pkiCodeSigning) {
+      throw new BadRequestError({
+        message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
+      });
+    }
+
     const usingExistingCert = Boolean(dto.certificateId);
     const usingCa = Boolean(dto.caId);
     if (usingExistingCert === usingCa) {
@@ -436,10 +460,30 @@ export const signerServiceFactory = ({
 
     const isExternalCa = resolvedCaType !== null && resolvedCaType !== CaType.INTERNAL;
 
-    if (resolvedCaType === CaType.AZURE_AD_CS && dto.certificate?.keySource === CertKeySource.Hsm) {
+    const adcsTemplate =
+      createExternalConfig?.caType === CaType.ADCS ? createExternalConfig.template?.trim() || undefined : undefined;
+    if (adcsTemplate && resolvedCaType !== CaType.ADCS) {
       throw new BadRequestError({
         message:
-          "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical-managed."
+          "A certificate template can only be set for signers backed by an Active Directory Certificate Service CA."
+      });
+    }
+    if (resolvedCaType === CaType.ADCS && !adcsTemplate) {
+      throw new BadRequestError({
+        message: "A certificate template is required for signers backed by an Active Directory Certificate Service CA."
+      });
+    }
+    const externalCaConfig: TSignerExternalCaConfig | null = adcsTemplate
+      ? { caType: CaType.ADCS, template: adcsTemplate }
+      : null;
+
+    if (
+      (resolvedCaType === CaType.AZURE_AD_CS || resolvedCaType === CaType.ADCS) &&
+      dto.certificate?.keySource === CertKeySource.Hsm
+    ) {
+      throw new BadRequestError({
+        message:
+          "HSM-backed signers are not supported with AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical-managed."
       });
     }
 
@@ -494,7 +538,8 @@ export const signerServiceFactory = ({
             keyAlgorithm,
             status: initialStatus,
             approvalPolicyId: policy.id,
-            certificateFailureReason: null
+            certificateFailureReason: null,
+            externalCaConfig
           },
           tx
         );
@@ -1201,6 +1246,30 @@ export const signerServiceFactory = ({
       await digicertFns.assertCodeSigningOrderReusable(ca.id, explicitReissueOrderId);
     }
 
+    const providedAdcsTemplate =
+      reissueExternalConfig?.caType === CaType.ADCS ? reissueExternalConfig.template?.trim() || undefined : undefined;
+    if (providedAdcsTemplate && reissueCaType !== CaType.ADCS) {
+      throw new BadRequestError({
+        message:
+          "A certificate template can only be set for signers backed by an Active Directory Certificate Service CA."
+      });
+    }
+    const existingConfig = SignerExternalCaConfigSchema.safeParse(signer.externalCaConfig);
+    const existingAdcsTemplate =
+      existingConfig.success && existingConfig.data.caType === CaType.ADCS ? existingConfig.data.template : undefined;
+    let nextExternalCaConfig: TSignerExternalCaConfig | null = null;
+    if (reissueCaType === CaType.ADCS) {
+      // Keep the signer's existing template when the request doesn't supply a new one.
+      const template = providedAdcsTemplate ?? existingAdcsTemplate;
+      if (!template) {
+        throw new BadRequestError({
+          message:
+            "A certificate template is required for signers backed by an Active Directory Certificate Service CA."
+        });
+      }
+      nextExternalCaConfig = { caType: CaType.ADCS, template };
+    }
+
     let nextCommonName = signer.commonName;
     let effectiveTtl = signer.certificateTtlDays ?? DEFAULT_CERTIFICATE_TTL_DAYS;
     if (!explicitReissueOrderId) {
@@ -1242,10 +1311,10 @@ export const signerServiceFactory = ({
           : null)
     });
 
-    if (reissueCaType === CaType.AZURE_AD_CS && target.isHsm) {
+    if ((reissueCaType === CaType.AZURE_AD_CS || reissueCaType === CaType.ADCS) && target.isHsm) {
       throw new BadRequestError({
         message:
-          "HSM-backed signers are not supported with Azure AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical."
+          "HSM-backed signers are not supported with AD CS yet. Use AWS Private CA, an Internal CA, or switch the signer's key source to Infisical."
       });
     }
 
@@ -1261,7 +1330,8 @@ export const signerServiceFactory = ({
       caId: dto.caId,
       commonName: nextCommonName,
       certificateTtlDays: effectiveTtl,
-      keyAlgorithm: target.keyAlgorithm
+      keyAlgorithm: target.keyAlgorithm,
+      externalCaConfig: nextExternalCaConfig
     });
 
     const reissueCtx: TReissueExecutionContext = {
@@ -1529,12 +1599,18 @@ export const signerServiceFactory = ({
       if (isHsmBacked) {
         // ECDSA signatures arrive as raw r||s; convert to ASN.1 DER for X.509 / JCE consumers.
         const mech = mapSigningAlgorithmToPkcs11Mechanism(dto.signingAlgorithm, dto.isDigest);
+        // Pre-hashed RSA (CKM_RSA_PKCS): rebuild the DigestInfo the HSM pads and signs. For every other
+        // mechanism the payload is passed through unchanged (raw message or raw digest).
+        const hsmData =
+          mech.mechanism === Pkcs11Mechanism.RsaPkcs
+            ? wrapRsaPkcs1DigestInfo(dto.signingAlgorithm, dataBuffer)
+            : dataBuffer;
         let raw = await hsmConnectorService.sign({
           connectorId: certificate.hsmConnectorId as string,
           projectId,
           keyLabel: certificate.hsmKeyLabel as string,
           mechanism: mech.mechanism,
-          data: dataBuffer,
+          data: hsmData,
           isDigest: dto.isDigest
         });
         if (mech.isEcdsa) raw = ecdsaRawRsToDer(raw);

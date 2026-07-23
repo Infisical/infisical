@@ -52,16 +52,16 @@ describe("compareEntitlements", () => {
   test("v1 null cap normalized to UNLIMITED matches a v2 unlimited representation", () => {
     const mappings: TFeatureMapping[] = [
       {
-        v2Key: "max_identities",
+        v2Key: "identities",
         v1Field: "identityLimit",
         extractV1: (p) => p.identityLimit,
         normalize: unlimitedWhenNull
       }
     ];
     const plan = makePlan({ identityLimit: null });
-    const entitlements = makeEntitlements({ max_identities: { value: UNLIMITED } });
+    const entitlements = makeEntitlements({ identities: { value: UNLIMITED } });
 
-    const diff = findByKey(compareEntitlements(plan, entitlements, mappings), "max_identities");
+    const diff = findByKey(compareEntitlements(plan, entitlements, mappings), "identities");
     expect(diff.kind).toBe(DualReadDiffKind.Match);
     expect(diff.v1Value).toBe(UNLIMITED);
     expect(diff.v2Value).toBe(UNLIMITED);
@@ -85,11 +85,11 @@ describe("compareEntitlements", () => {
   });
 
   test("a mapping with no v1 extractor reports V1Absent", () => {
-    const mappings: TFeatureMapping[] = [{ v2Key: "max_internal_cas", v1Field: null, extractV1: null }];
+    const mappings: TFeatureMapping[] = [{ v2Key: "internal_cas", v1Field: null, extractV1: null }];
     const plan = makePlan({});
-    const entitlements = makeEntitlements({ max_internal_cas: { value: 5 } });
+    const entitlements = makeEntitlements({ internal_cas: { value: 5 } });
 
-    const diff = findByKey(compareEntitlements(plan, entitlements, mappings), "max_internal_cas");
+    const diff = findByKey(compareEntitlements(plan, entitlements, mappings), "internal_cas");
     expect(diff.kind).toBe(DualReadDiffKind.V1Absent);
     expect(diff.v1Value).toBeNull();
     expect(diff.v2Value).toBe(5);
@@ -98,16 +98,16 @@ describe("compareEntitlements", () => {
   test("v1 UNLIMITED versus a v2 finite number downgrades to Indeterminate", () => {
     const mappings: TFeatureMapping[] = [
       {
-        v2Key: "max_identities",
+        v2Key: "identities",
         v1Field: "identityLimit",
         extractV1: (p) => p.identityLimit,
         normalize: unlimitedWhenNull
       }
     ];
     const plan = makePlan({ identityLimit: null });
-    const entitlements = makeEntitlements({ max_identities: { value: 100 } });
+    const entitlements = makeEntitlements({ identities: { value: 100 } });
 
-    const diff = findByKey(compareEntitlements(plan, entitlements, mappings), "max_identities");
+    const diff = findByKey(compareEntitlements(plan, entitlements, mappings), "identities");
     expect(diff.kind).toBe(DualReadDiffKind.Indeterminate);
     expect(diff.v1Value).toBe(UNLIMITED);
     expect(diff.v2Value).toBe(100);

@@ -24,11 +24,11 @@ export function QueryToolbar({
   onCancel
 }: Props) {
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-mineshaft-600 bg-bunker-800 px-3 py-1.5">
+    <div className="flex shrink-0 items-center justify-between border-b border-border bg-background px-3 py-1.5">
       <div className="flex items-center gap-3">
         {isRunning ? (
           <Button size="xs" variant="outline" onClick={onCancel} className="gap-1.5">
-            <SquareIcon className="size-3 text-red-400" />
+            <SquareIcon className="size-3 text-danger" />
             Cancel
           </Button>
         ) : (
@@ -64,7 +64,7 @@ export function QueryToolbar({
         )}
       </div>
       {isInTransaction && (
-        <span className="rounded bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-400">
+        <span className="rounded bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">
           Transaction open
         </span>
       )}

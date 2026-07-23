@@ -15,11 +15,16 @@ export enum SecretRotation {
   DbtServiceToken = "dbt-service-token",
   WindowsLocalAccount = "windows-local-account",
   OpenRouterApiKey = "open-router-api-key",
+  LiteLLMApiKey = "litellm-api-key",
+  OpenAIServiceAccount = "openai-service-account",
   HpIloLocalAccount = "hp-ilo-local-account",
   SupabaseApiKey = "supabase-api-key",
   SalesforceOauthCredentials = "salesforce-oauth-credentials",
   DatadogApplicationKeySecret = "datadog-application-key-secret",
-  ConvexAccessKey = "convex-access-key"
+  DatadogApiKey = "datadog-api-key",
+  ConvexAccessKey = "convex-access-key",
+  FireworksApiKey = "fireworks-api-key",
+  SnowflakeUserKeyPair = "snowflake-user-key-pair"
 }
 
 export enum SecretRotationStatus {

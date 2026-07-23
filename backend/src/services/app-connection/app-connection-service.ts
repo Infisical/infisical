@@ -46,6 +46,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
 import { onePassConnectionService } from "./1password/1password-connection-service";
+import { ValidateADCSConnectionCredentialsSchema } from "./adcs/adcs-connection-schemas";
+import { adcsConnectionService } from "./adcs/adcs-connection-service";
 import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
@@ -108,6 +110,8 @@ import { dopplerConnectionService } from "./doppler/doppler-connection-service";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
+import { ValidateFireworksConnectionCredentialsSchema } from "./fireworks";
+import { fireworksConnectionService } from "./fireworks/fireworks-connection-service";
 import { ValidateFlyioConnectionCredentialsSchema } from "./flyio";
 import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
@@ -119,15 +123,21 @@ import { githubRadarConnectionService } from "./github-radar/github-radar-connec
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
+import { ValidateHasuraCloudConnectionCredentialsSchema } from "./hasura-cloud";
+import { hasuraCloudConnectionService } from "./hasura-cloud/hasura-cloud-connection-service";
 import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
 import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
+import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmaster-connection-service";
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
+import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
+import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
 import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
@@ -136,6 +146,10 @@ import { netlifyConnectionService } from "./netlify/netlify-connection-service";
 import { ValidateNetScalerConnectionCredentialsSchema } from "./netscaler";
 import { ValidateNorthflankConnectionCredentialsSchema } from "./northflank";
 import { northflankConnectionService } from "./northflank/northflank-connection-service";
+import {
+  nutanixPrismCentralConnectionService,
+  ValidateNutanixPrismCentralConnectionCredentialsSchema
+} from "./nutanix-prism-central";
 import { ValidateOctopusDeployConnectionCredentialsSchema } from "./octopus-deploy";
 import { octopusDeployConnectionService } from "./octopus-deploy/octopus-deploy-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
@@ -143,6 +157,8 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateOnaConnectionCredentialsSchema } from "./ona";
 import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
+import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
+import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
@@ -152,6 +168,8 @@ import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
+import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
@@ -175,6 +193,7 @@ import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
 import { windmillConnectionService } from "./windmill/windmill-connection-service";
+import { ValidateWinRMConnectionCredentialsSchema } from "./winrm/winrm-connection-schemas";
 import { ValidateZabbixConnectionCredentialsSchema } from "./zabbix";
 import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
 
@@ -209,6 +228,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.AzureAppConfiguration]: ValidateAzureAppConfigurationConnectionCredentialsSchema,
   [AppConnection.AzureDevOps]: ValidateAzureDevOpsConnectionCredentialsSchema,
   [AppConnection.AzureADCS]: ValidateAzureADCSConnectionCredentialsSchema,
+  [AppConnection.ADCS]: ValidateADCSConnectionCredentialsSchema,
+  [AppConnection.WinRM]: ValidateWinRMConnectionCredentialsSchema,
   [AppConnection.Databricks]: ValidateDatabricksConnectionCredentialsSchema,
   [AppConnection.Humanitec]: ValidateHumanitecConnectionCredentialsSchema,
   [AppConnection.TerraformCloud]: ValidateTerraformCloudConnectionCredentialsSchema,
@@ -227,6 +248,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.OracleDB]: ValidateOracleDBConnectionCredentialsSchema,
   [AppConnection.OnePass]: ValidateOnePassConnectionCredentialsSchema,
   [AppConnection.Heroku]: ValidateHerokuConnectionCredentialsSchema,
+  [AppConnection.HasuraCloud]: ValidateHasuraCloudConnectionCredentialsSchema,
   [AppConnection.Render]: ValidateRenderConnectionCredentialsSchema,
   [AppConnection.LaravelForge]: ValidateLaravelForgeConnectionCredentialsSchema,
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
@@ -245,6 +267,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.OpenRouter]: ValidateOpenRouterConnectionCredentialsSchema,
+  [AppConnection.OpenAI]: ValidateOpenAIConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
   [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema,
@@ -260,6 +283,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
   [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
+  [AppConnection.KempLoadMaster]: ValidateKempLoadMasterConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
   [AppConnection.OVH]: ValidateOvhConnectionCredentialsSchema,
   [AppConnection.Devin]: ValidateDevinConnectionCredentialsSchema,
@@ -272,7 +296,11 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Datadog]: ValidateDatadogConnectionCredentialsSchema,
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
-  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema
+  [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
+  [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
+  [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
+  [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
+  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1322,6 +1350,7 @@ export const appConnectionServiceFactory = ({
     gcp: gcpConnectionService(connectAppConnectionById),
     databricks: databricksConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     aws: awsConnectionService(connectAppConnectionById),
+    kempLoadMaster: kempLoadMasterConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     humanitec: humanitecConnectionService(connectAppConnectionById),
     terraformCloud: terraformCloudConnectionService(connectAppConnectionById),
     camunda: camundaConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
@@ -1346,19 +1375,23 @@ export const appConnectionServiceFactory = ({
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
+    adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
+    hasuraCloud: hasuraCloudConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
+    rundeck: rundeckConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),
     externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     datadog: datadogConnectionService(connectAppConnectionById),
+    openai: openaiConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
@@ -1368,6 +1401,13 @@ export const appConnectionServiceFactory = ({
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),
-    snowflake: snowflakeConnectionService(connectAppConnectionById)
+    snowflake: snowflakeConnectionService(connectAppConnectionById),
+    litellm: liteLLMConnectionService(connectAppConnectionById),
+    fireworks: fireworksConnectionService(connectAppConnectionById),
+    nutanixPrismCentral: nutanixPrismCentralConnectionService(
+      connectAppConnectionById,
+      gatewayV2Service,
+      gatewayPoolService
+    )
   };
 };

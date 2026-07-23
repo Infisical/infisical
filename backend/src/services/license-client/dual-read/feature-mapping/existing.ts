@@ -1,19 +1,13 @@
-import {
-  AuditRetentionDays,
-  MaxActiveCerts,
-  MaxIdentities,
-  MaxInternalCas,
-  MaxPamResources,
-  SsoEnforcement
-} from "../../features";
-import { TFeatureMapping, unlimitedWhenNull } from "../dual-read-types";
+import { ActiveCerts, AuditRetentionDays, IdentitiesMeter, InternalCas, SsoEnforcement } from "../../features";
+import { TFeatureMapping } from "../dual-read-types";
 
 export const existingDescriptorMappings: TFeatureMapping[] = [
   {
-    v2Key: MaxIdentities.key,
-    v1Field: "identityLimit",
-    extractV1: (p) => p.identityLimit,
-    normalize: unlimitedWhenNull
+    // v2's `identities` is a usage meter (reported count); the identity cap is a separate v2 feature
+    // (max_identity_limit) mapped in limits.ts, so the meter itself maps to no v1 field.
+    v2Key: IdentitiesMeter.key,
+    v1Field: null,
+    extractV1: null
   },
   {
     v2Key: AuditRetentionDays.key,
@@ -28,17 +22,14 @@ export const existingDescriptorMappings: TFeatureMapping[] = [
     extractV1: null
   },
   {
-    v2Key: MaxInternalCas.key,
+    // v2's `internal_cas` is a usage meter; the internal-CA cap is a separate v2 feature
+    // (max_internal_cas) mapped in limits.ts, so the meter itself maps to no v1 field.
+    v2Key: InternalCas.key,
     v1Field: null,
     extractV1: null
   },
   {
-    v2Key: MaxActiveCerts.key,
-    v1Field: null,
-    extractV1: null
-  },
-  {
-    v2Key: MaxPamResources.key,
+    v2Key: ActiveCerts.key,
     v1Field: null,
     extractV1: null
   }

@@ -229,6 +229,21 @@ export const secretSyncDALFactory = (
     }
   };
 
+  // Total secret syncs across all of the org's projects (excluding soft-deleted projects), used to
+  // enforce the plan's secretSyncLimit at creation time.
+  const countByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.SecretSync)
+        .join(TableName.Project, `${TableName.SecretSync}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count By Org ID - Secret Sync" });
+    }
+  };
+
   const findByDestinationAndOrgId = async (destination: string, orgId: string, tx?: Knex) => {
     try {
       const response = await (tx || db.replicaNode())(TableName.SecretSync)
@@ -251,6 +266,7 @@ export const secretSyncDALFactory = (
     create,
     updateById,
     updateAndReturnIds,
+    countByOrgId,
     findByDestinationAndOrgId
   };
 };

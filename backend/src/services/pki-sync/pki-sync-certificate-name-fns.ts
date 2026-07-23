@@ -40,7 +40,10 @@ const NAME_VALUE_DISALLOWED_CHARS: Partial<Record<PkiSync, RE2>> = {
   [PkiSync.AwsElasticLoadBalancer]: new RE2("[^a-zA-Z0-9 _-]", "g"),
   [PkiSync.AwsSecretsManager]: new RE2("[^a-zA-Z0-9_-]", "g"),
   [PkiSync.NetScaler]: new RE2("[^a-zA-Z0-9._-]", "g"),
-  [PkiSync.F5BigIp]: new RE2("[^a-zA-Z0-9._-]", "g")
+  [PkiSync.F5BigIp]: new RE2("[^a-zA-Z0-9._-]", "g"),
+  [PkiSync.KempLoadMaster]: new RE2("[^a-zA-Z0-9._-]", "g"),
+  [PkiSync.LinuxServer]: new RE2("[^a-zA-Z0-9._-]", "g"),
+  [PkiSync.WindowsServer]: new RE2("[^a-zA-Z0-9._-]", "g")
 };
 
 export const sanitizeCertificateNameValue = (value: string, destination?: PkiSync): string => {
@@ -55,6 +58,12 @@ export const SHORT_UUID_NAME_REGEX_FRAGMENT = "[0-9A-Za-z]{22}";
 
 export const certificateNameSchemaHasFreeTextPlaceholder = (schema?: string): boolean =>
   Boolean(schema && (schema.includes("{{commonName}}") || schema.includes("{{applicationName}}")));
+
+const ANY_PLACEHOLDER_REGEX = new RE2(
+  "\\{\\{(certificateId|shortCertificateId|profileId|applicationId|applicationName|commonName)\\}\\}"
+);
+export const certificateNameSchemaAllowsMultipleCertificates = (schema?: string): boolean =>
+  Boolean(schema && ANY_PLACEHOLDER_REGEX.test(schema));
 
 const PLACEHOLDER_OR_CHAR_REGEX = new RE2(
   "\\{\\{(certificateId|shortCertificateId|profileId|applicationId|applicationName|commonName)\\}\\}|[\\s\\S]",

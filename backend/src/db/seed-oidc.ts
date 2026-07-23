@@ -169,7 +169,6 @@ const main = async () => {
           isAccepted: true,
           isEmailVerified: true,
           isMfaEnabled: false,
-          mfaMethods: null,
           devices: null
         })
         .returning("*");

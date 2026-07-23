@@ -1,0 +1,34 @@
+version: v0.161.14
+releasedAt: 2026-07-06T13:25:36-03:00
+sourceTag: v0.161.14
+previousTag: v0.161.13
+impactLevel: low
+summary: Adds a startup database migration for PKI signer external CA
+  configuration. No operator changes are required unless startup fails during
+  migration.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: PKI signer external CA config
+    description: Adds a nullable externalCaConfig JSONB column to pkiSigners for
+      external CA signer settings.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260703091544_add-pki-signer-external-ca-config.ts
+        path: backend/src/db/migrations/20260703091544_add-pki-signer-external-ca-config.ts
+        description: Adds externalCaConfig column to pkiSigners
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-07-06T17:10:40.387Z
+  sourceRange:
+    from: v0.161.13
+    to: v0.161.14

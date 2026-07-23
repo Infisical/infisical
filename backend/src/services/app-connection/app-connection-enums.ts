@@ -9,6 +9,7 @@ export enum AppConnection {
   AzureClientSecrets = "azure-client-secrets",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
+  ADCS = "adcs",
   AzureDNS = "azure-dns",
   Humanitec = "humanitec",
   TerraformCloud = "terraform-cloud",
@@ -49,7 +50,9 @@ export enum AppConnection {
   SSH = "ssh",
   Dbt = "dbt",
   SMB = "smb",
+  WinRM = "winrm",
   OpenRouter = "open-router",
+  OpenAI = "openai",
   CircleCI = "circleci",
   AzureEntraId = "azure-entra-id",
   Venafi = "venafi",
@@ -69,8 +72,14 @@ export enum AppConnection {
   F5BigIp = "f5-big-ip",
   GoDaddy = "godaddy",
   Convex = "convex",
+  Rundeck = "rundeck",
+  HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
-  Cloud66 = "cloud-66"
+  Cloud66 = "cloud-66",
+  LiteLLM = "litellm",
+  Fireworks = "fireworks",
+  KempLoadMaster = "kemp-loadmaster",
+  NutanixPrismCentral = "nutanix-prism-central"
 }
 
 export enum AWSRegion {

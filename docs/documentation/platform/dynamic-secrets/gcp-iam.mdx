@@ -73,6 +73,14 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
         ![Service Account Page](/images/app-connections/gcp/service-account-overview.png)
     </Step>
     <Step title="Create Service Account">
+        Create a new service account with an ID that follows this requirement:
+
+        Your service account ID must end with the first two sections of your Infisical organization ID.
+
+        Example:
+        - Infisical organization ID: `df92581a-0fe9-42b5-b526-0a1e88ec8085`
+        - Required service account ID suffix: `df92581a-0fe9`
+
         ![Create Service Account](/images/app-connections/gcp/create-service-account.png)
     </Step>
     <Step title="Configure Service Account Permissions">
@@ -121,7 +129,7 @@ The Infisical GCP IAM dynamic secret allows you to generate GCP service account 
     		Maximum time-to-live for a generated secret
     	</ParamField>
     	<ParamField path="Service Account Email" type="string" required>
-       		The email tied to the service account created in earlier steps.
+       		The email tied to the service account created in earlier steps. The service account ID (the part of the email before `@`) must end with the first two sections of your Infisical organization ID, e.g. `my-service-account-df92581a-0fe9@my-project.iam.gserviceaccount.com` for organization ID `df92581a-0fe9-42b5-b526-0a1e88ec8085`.
     	</ParamField>
     	<ParamField path="Token Scopes" type="string[]" default="https://www.googleapis.com/auth/iam, https://www.googleapis.com/auth/cloud-platform">
        		The OAuth scopes granted to the generated access token. Defaults to `https://www.googleapis.com/auth/iam` and `https://www.googleapis.com/auth/cloud-platform` scopes. You can add additional scopes such as `https://www.googleapis.com/auth/drive`.

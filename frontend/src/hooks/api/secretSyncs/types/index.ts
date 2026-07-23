@@ -24,6 +24,7 @@ import { TFlyioSync } from "./flyio-sync";
 import { TGcpSync } from "./gcp-sync";
 import { TGitHubSync } from "./github-sync";
 import { TGitLabSync } from "./gitlab-sync";
+import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
@@ -37,6 +38,7 @@ import { TOvhSync } from "./ovh-sync";
 import { TQoverySync } from "./qovery-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
+import { TRundeckSync } from "./rundeck-sync";
 import { TSnowflakeSync } from "./snowflake-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
@@ -85,6 +87,7 @@ export type TSecretSync =
   | TRailwaySync
   | TChecklySync
   | TSupabaseSync
+  | TRundeckSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TNorthflankSync
@@ -101,6 +104,7 @@ export type TSecretSync =
   | TTravisCISync
   | TSnowflakeSync
   | TTriggerDevSync
+  | THasuraCloudSync
   | TQoverySync
   | TCloud66Sync;
 

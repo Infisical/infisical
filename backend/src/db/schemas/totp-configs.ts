@@ -13,7 +13,7 @@ export const TotpConfigsSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   isVerified: z.boolean().default(false),
-  encryptedRecoveryCodes: zodBuffer,
+  encryptedRecoveryCodes: zodBuffer.nullable().optional(),
   encryptedSecret: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()

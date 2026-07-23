@@ -6,20 +6,25 @@ import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { ConvexAccessKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/convex-access-key";
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DatadogApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-api-key";
 import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
+import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
+import { LiteLLMApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
 import { MongoDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
 import { OpenRouterApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/open-router-api-key";
+import { OpenAIServiceAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/openai-service-account";
 import { OracleDBCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/oracledb-credentials";
 import { PostgresCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/postgres-credentials";
 import { RedisCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/redis-credentials";
 import { SalesforceOauthCredentialsRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
+import { SnowflakeUserKeyPairRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/snowflake-user-key-pair";
 import { SupabaseApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/supabase-api-key";
 import { UnixLinuxLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
@@ -45,11 +50,16 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DbtServiceTokenRotationListItemSchema,
   WindowsLocalAccountRotationListItemSchema,
   OpenRouterApiKeyRotationListItemSchema,
+  LiteLLMApiKeyRotationListItemSchema,
+  OpenAIServiceAccountRotationListItemSchema,
   HpIloRotationListItemSchema,
   SupabaseApiKeyRotationListItemSchema,
   SalesforceOauthCredentialsRotationListItemSchema,
   DatadogApplicationKeySecretRotationListItemSchema,
-  ConvexAccessKeyRotationListItemSchema
+  DatadogApiKeyRotationListItemSchema,
+  ConvexAccessKeyRotationListItemSchema,
+  FireworksApiKeyRotationListItemSchema,
+  SnowflakeUserKeyPairRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

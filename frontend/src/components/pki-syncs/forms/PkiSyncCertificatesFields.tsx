@@ -181,6 +181,7 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
       <CertificateManagementModal
         isOpen={isSelectionModalOpen}
         onClose={() => setIsSelectionModalOpen(false)}
+        destination={watch("destination")}
         applicationId={applicationId}
         selectedCertificateIds={certificateIds}
         onCertificateSelectionChange={(newCertificateIds) => {

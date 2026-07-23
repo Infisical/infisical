@@ -749,7 +749,6 @@ tables:
       - id
       - projectId
       - accountId
-      - resourceType
       - resourceName
       - accountName
       - userId
@@ -1319,7 +1318,6 @@ tables:
       - lastName
       - isAccepted
       - isMfaEnabled
-      - mfaMethods
       - devices
       - createdAt
       - updatedAt

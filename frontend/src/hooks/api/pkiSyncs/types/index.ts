@@ -1,4 +1,4 @@
-import { PkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 
 import { TAwsCertificateManagerPkiSync } from "./aws-certificate-manager-sync";
 import { TAwsElasticLoadBalancerPkiSync } from "./aws-elastic-load-balancer-sync";
@@ -7,13 +7,18 @@ import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
+import { TKempLoadMasterPkiSync } from "./kemp-loadmaster-sync";
+import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
+import { TNutanixPrismCentralPkiSync } from "./nutanix-prism-central-sync";
+import { TWindowsServerPkiSync } from "./windows-server-sync";
 
 export type TPkiSyncOption = {
   name: string;
   destination: PkiSync;
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
+  maxCertificates?: number;
   enterprise?: boolean;
   defaultCertificateNameSchema?: string;
   forbiddenCharacters?: string;
@@ -30,7 +35,11 @@ export type TPkiSync =
   | TChefPkiSync
   | TCloudflareCustomCertificatePkiSync
   | TNetScalerPkiSync
-  | TF5BigIpPkiSync;
+  | TF5BigIpPkiSync
+  | TKempLoadMasterPkiSync
+  | TLinuxServerPkiSync
+  | TWindowsServerPkiSync
+  | TNutanixPrismCentralPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
@@ -50,12 +59,19 @@ type TCreatePkiSyncDTOBase = {
     preserveItemOnRenewal?: boolean;
     updateExistingCertificates?: boolean;
     preserveSecretOnRenewal?: boolean;
+    includeRootCa?: boolean;
+    caCertificateNameSchema?: string;
+    exportFormat?: PkiSyncExportFormat;
+    includePrivateKey?: boolean;
     fieldMappings?: {
       certificate: string;
       privateKey: string;
       certificateChain: string;
       caCertificate: string;
     };
+  };
+  credentials?: {
+    exportPassword?: string;
   };
   isAutoSyncEnabled: boolean;
   subscriberId?: string | null;
@@ -78,11 +94,15 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     }>;
     zoneId?: string;
     vserverName?: string;
+    virtualServiceId?: string;
     partition?: string;
     profileType?: string;
     profileName?: string;
     createProfileIfMissing?: boolean;
     parentProfile?: string;
+    clusterId?: string;
+    clusterName?: string;
+    destinationPath?: string;
   };
 };
 
@@ -123,4 +143,8 @@ export * from "./chef-sync";
 export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
+export * from "./kemp-loadmaster-sync";
+export * from "./linux-server-sync";
 export * from "./netscaler-sync";
+export * from "./nutanix-prism-central-sync";
+export * from "./windows-server-sync";

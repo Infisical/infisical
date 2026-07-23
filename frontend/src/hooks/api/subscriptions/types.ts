@@ -2,6 +2,7 @@ export enum SubscriptionPlanTypes {
   Starter = "starter",
   Pro = "pro",
   ProAnnual = "pro-annual",
+  Advanced = "advanced",
   Team = "team",
   TeamAnnual = "team-annual",
   Enterprise = "enterprise",
@@ -59,6 +60,7 @@ export type SubscriptionPlan = {
   instanceUserManagement: boolean;
   gateway: boolean;
   gatewayPool: boolean;
+  pamSlackNotifications: boolean;
   externalKms: boolean;
   pkiEst: boolean;
   pkiAcme: boolean;
@@ -81,4 +83,7 @@ export type SubscriptionPlan = {
   emailDomainVerification: boolean;
   honeyTokens: boolean;
   honeyTokenLimit: number;
+  secretsBrokering: boolean;
+  pam?: boolean | null;
+  certManager?: boolean | null;
 };

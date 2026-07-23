@@ -50,6 +50,7 @@ import {
   WindmillConnectionMethod,
   ZabbixConnectionMethod
 } from "@app/hooks/api/appConnections/types";
+import { AdcsConnectionMethod } from "@app/hooks/api/appConnections/types/adcs-connection";
 import { AnthropicConnectionMethod } from "@app/hooks/api/appConnections/types/anthropic-connection";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 import { AzureEntraIdConnectionMethod } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
@@ -66,18 +67,25 @@ import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types
 import { DopplerConnectionMethod } from "@app/hooks/api/appConnections/types/doppler-connection";
 import { ExternalInfisicalConnectionMethod } from "@app/hooks/api/appConnections/types/external-infisical-connection";
 import { F5BigIpConnectionMethod } from "@app/hooks/api/appConnections/types/f5-big-ip-connection";
+import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/fireworks-connection";
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
+import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
+import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
+import { NutanixPrismCentralConnectionMethod } from "@app/hooks/api/appConnections/types/nutanix-prism-central-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
+import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
@@ -87,6 +95,7 @@ import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/tr
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
+import { WinRMConnectionMethod } from "@app/hooks/api/appConnections/types/winrm-connection";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const APP_CONNECTION_MAP: Record<
@@ -152,10 +161,16 @@ export const APP_CONNECTION_MAP: Record<
     description: "Pipeline and project access for Azure DevOps."
   },
   [AppConnection.AzureADCS]: {
-    name: "Azure ADCS",
+    name: "Azure ADCS (Web Enrollment)",
     image: "Microsoft Azure.png",
     category: "CERTIFICATES",
-    description: "Issue certificates via Active Directory Certificate Services."
+    description: "Issue certificates via Active Directory Certificate Services web enrollment."
+  },
+  [AppConnection.ADCS]: {
+    name: "Microsoft ADCS",
+    image: "Windows.png",
+    category: "CERTIFICATES",
+    description: "Issue certificates via Active Directory Certificate Services over the Gateway."
   },
   [AppConnection.AzureDNS]: {
     name: "Azure DNS",
@@ -400,17 +415,29 @@ export const APP_CONNECTION_MAP: Record<
     description: "Account and job access for dbt."
   },
   [AppConnection.SMB]: {
-    name: "SMB",
+    name: "Windows (SMB)",
     image: "SMB.png",
     size: 50,
     category: "STORAGE",
     description: "Connect to an SMB/CIFS file share."
+  },
+  [AppConnection.WinRM]: {
+    name: "Windows (WinRM)",
+    image: "Windows.png",
+    category: "INFRASTRUCTURE",
+    description: "Connect to a Windows host over WinRM via the Gateway."
   },
   [AppConnection.OpenRouter]: {
     name: "OpenRouter",
     image: "OpenRouter.png",
     category: "AI",
     description: "Route requests across LLM providers."
+  },
+  [AppConnection.OpenAI]: {
+    name: "OpenAI",
+    image: "OpenAI.png",
+    category: "AI",
+    description: "Manage OpenAI API access."
   },
   [AppConnection.CircleCI]: {
     name: "CircleCI",
@@ -460,11 +487,35 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage a Citrix NetScaler appliance."
   },
+  [AppConnection.KempLoadMaster]: {
+    name: "Kemp LoadMaster",
+    image: "Kemp LoadMaster.png",
+    category: "NETWORKING",
+    description: "Manage a Progress Kemp LoadMaster load balancer."
+  },
   [AppConnection.Anthropic]: {
     name: "Anthropic",
     image: "Anthropic.png",
     category: "AI",
     description: "Manage Anthropic API access."
+  },
+  [AppConnection.LiteLLM]: {
+    name: "LiteLLM",
+    image: "LiteLLM.png",
+    category: "AI",
+    description: "Manage LiteLLM API access."
+  },
+  [AppConnection.Fireworks]: {
+    name: "Fireworks",
+    image: "Fireworks.png",
+    category: "AI",
+    description: "Manage Fireworks API access."
+  },
+  [AppConnection.HasuraCloud]: {
+    name: "Hasura Cloud",
+    image: "Hasura.svg",
+    category: "PLATFORM",
+    description: "GraphQL API and data access for Hasura Cloud."
   },
   [AppConnection.OVH]: {
     name: "OVH Cloud",
@@ -545,6 +596,18 @@ export const APP_CONNECTION_MAP: Record<
     image: "TriggerDev.png",
     category: "INFRASTRUCTURE",
     description: "Trigger.dev access."
+  },
+  [AppConnection.Rundeck]: {
+    name: "Rundeck",
+    image: "Rundeck.svg",
+    category: "INFRASTRUCTURE",
+    description: "Job and project access for Rundeck."
+  },
+  [AppConnection.NutanixPrismCentral]: {
+    name: "Nutanix Prism Central",
+    image: "Nutanix.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage a Nutanix Prism Central instance."
   }
 };
 
@@ -600,6 +663,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case CircleCIConnectionMethod.ApiToken:
     case TravisCIConnectionMethod.ApiToken:
     case DopplerConnectionMethod.ApiToken:
+    case RundeckConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
@@ -608,6 +672,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
+    case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
@@ -620,6 +685,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case FlyioConnectionMethod.AccessToken:
     case NetlifyConnectionMethod.AccessToken:
     case ConvexConnectionMethod.PersonalAccessToken:
+    case HasuraCloudConnectionMethod.AccessToken:
     case QoveryConnectionMethod.AccessToken:
     case Cloud66ConnectionMethod.AccessToken:
       return { name: "Personal Access Token", icon: faKey };
@@ -642,11 +708,15 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
     case OpenRouterConnectionMethod.ApiKey:
+    case OpenAIConnectionMethod.ApiKey:
     case AnthropicConnectionMethod.ApiKey:
+    case LiteLLMConnectionMethod.ApiKey:
+    case FireworksConnectionMethod.ApiKey:
     case DevinConnectionMethod.ApiKey:
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
@@ -664,22 +734,28 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
-    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+    case DatadogConnectionMethod.Token:
+      return { name: "Service Access Token", icon: faKey };
     case SshConnectionMethod.Password:
       return { name: "Password", icon: faLock };
     case SshConnectionMethod.SshKey:
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
+    case WinRMConnectionMethod.UsernamePassword:
+      return { name: "Username & Password", icon: faLock };
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
-      return { name: "Basic Auth", icon: faLock };
-    case OVHConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+    case KempLoadMasterConnectionMethod.BasicAuth:
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case NutanixPrismCentralConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
+    case OVHConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

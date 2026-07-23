@@ -13,9 +13,6 @@ import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
 import { TLicenseServiceFactory } from "../license/license-service";
-import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
-import { TPamDomainDALFactory } from "../pam-domain/pam-domain-dal";
-import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
@@ -41,9 +38,6 @@ type TGatewayPoolServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
-  pamDomainDAL: Pick<TPamDomainDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
-  pamResourceDAL: Pick<TPamResourceDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
-  pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
 };
@@ -59,9 +53,6 @@ export const gatewayPoolServiceFactory = ({
   licenseService,
   identityKubernetesAuthDAL,
   pkiDiscoveryConfigDAL,
-  pamDomainDAL,
-  pamResourceDAL,
-  pamDiscoverySourceDAL,
   appConnectionDAL,
   dynamicSecretDAL
 }: TGatewayPoolServiceFactoryDep) => {
@@ -118,15 +109,7 @@ export const gatewayPoolServiceFactory = ({
     if (pools.length === 0) return [];
 
     // Add more DAL counts here as pool support expands to other consumers
-    const [
-      k8sAuthCounts,
-      pkiDiscoveryCounts,
-      pamDomainCounts,
-      pamResourceCounts,
-      pamDiscoverySourceCounts,
-      appConnectionCounts,
-      dynamicSecretCounts
-    ] = await Promise.all([
+    const [k8sAuthCounts, pkiDiscoveryCounts, appConnectionCounts, dynamicSecretCounts] = await Promise.all([
       Promise.all(
         pools.map((pool) =>
           identityKubernetesAuthDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
@@ -135,17 +118,6 @@ export const gatewayPoolServiceFactory = ({
       Promise.all(
         pools.map((pool) =>
           pkiDiscoveryConfigDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
-        )
-      ),
-      Promise.all(
-        pools.map((pool) => pamDomainDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count })))
-      ),
-      Promise.all(
-        pools.map((pool) => pamResourceDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count })))
-      ),
-      Promise.all(
-        pools.map((pool) =>
-          pamDiscoverySourceDAL.countByGatewayPoolId(pool.id).then((count) => ({ id: pool.id, count }))
         )
       ),
       Promise.all(
@@ -160,9 +132,6 @@ export const gatewayPoolServiceFactory = ({
     for (const { id, count } of [
       ...k8sAuthCounts,
       ...pkiDiscoveryCounts,
-      ...pamDomainCounts,
-      ...pamResourceCounts,
-      ...pamDiscoverySourceCounts,
       ...appConnectionCounts,
       ...dynamicSecretCounts
     ]) {
@@ -383,20 +352,9 @@ export const gatewayPoolServiceFactory = ({
     }
 
     // Add more DAL calls here as pool support expands to other consumers
-    const [
-      kubernetesAuths,
-      pkiDiscoveryConfigs,
-      pamDomains,
-      pamResources,
-      pamDiscoverySources,
-      appConnections,
-      dynamicSecrets
-    ] = await Promise.all([
+    const [kubernetesAuths, pkiDiscoveryConfigs, appConnections, dynamicSecrets] = await Promise.all([
       identityKubernetesAuthDAL.findByGatewayPoolId(poolId),
       pkiDiscoveryConfigDAL.findByGatewayPoolId(poolId),
-      pamDomainDAL.findByGatewayPoolId(poolId),
-      pamResourceDAL.findByGatewayPoolId(poolId),
-      pamDiscoverySourceDAL.findByGatewayPoolId(poolId),
       appConnectionDAL.findByGatewayPoolId(poolId),
       dynamicSecretDAL.findByGatewayPoolId(poolId)
     ]);
@@ -404,9 +362,6 @@ export const gatewayPoolServiceFactory = ({
     return {
       kubernetesAuths,
       pkiDiscoveryConfigs,
-      pamDomains,
-      pamResources,
-      pamDiscoverySources,
       appConnections,
       dynamicSecrets
     };
@@ -414,32 +369,13 @@ export const gatewayPoolServiceFactory = ({
 
   const getConnectedResourcesCount = async (poolId: string): Promise<number> => {
     // Add more DAL counts here as pool support expands to other consumers
-    const [
-      k8sAuthCount,
-      pkiDiscoveryCount,
-      pamDomainCount,
-      pamResourceCount,
-      pamDiscoverySourceCount,
-      appConnectionCount,
-      dynamicSecretCount
-    ] = await Promise.all([
+    const [k8sAuthCount, pkiDiscoveryCount, appConnectionCount, dynamicSecretCount] = await Promise.all([
       identityKubernetesAuthDAL.countByGatewayPoolId(poolId),
       pkiDiscoveryConfigDAL.countByGatewayPoolId(poolId),
-      pamDomainDAL.countByGatewayPoolId(poolId),
-      pamResourceDAL.countByGatewayPoolId(poolId),
-      pamDiscoverySourceDAL.countByGatewayPoolId(poolId),
       appConnectionDAL.countByGatewayPoolId(poolId),
       dynamicSecretDAL.countByGatewayPoolId(poolId)
     ]);
-    return (
-      k8sAuthCount +
-      pkiDiscoveryCount +
-      pamDomainCount +
-      pamResourceCount +
-      pamDiscoverySourceCount +
-      appConnectionCount +
-      dynamicSecretCount
-    );
+    return k8sAuthCount + pkiDiscoveryCount + appConnectionCount + dynamicSecretCount;
   };
 
   return {

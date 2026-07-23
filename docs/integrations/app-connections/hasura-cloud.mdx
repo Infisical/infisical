@@ -1,0 +1,113 @@
+---
+title: "Hasura Cloud Connection"
+description: "Learn how to configure a Hasura Cloud Connection for Infisical."
+---
+
+Infisical supports connecting to Hasura Cloud using a [Personal Access Token](https://hasura.io/docs/2.0/hasura-cloud/account-settings/#access-tokens) to manage your project's environment variables.
+
+## Create a Hasura Cloud Personal Access Token
+
+<Steps>
+  <Step title="Open your Hasura Cloud account settings">
+    Log in to [Hasura Cloud](https://cloud.hasura.io), then click **My Account** in the bottom-left corner of the Projects page.
+
+    ![Hasura Cloud My Account](/images/app-connections/hasura-cloud/step-1-my-account.png)
+  </Step>
+  <Step title="Navigate to Access Tokens">
+    In Account Settings, open the **Access Tokens** tab.
+
+    ![Hasura Cloud Access Tokens](/images/app-connections/hasura-cloud/step-2-access-tokens.png)
+  </Step>
+  <Step title="Create a new access token">
+    Click **New Access Token**.
+
+    ![New Hasura Cloud Access Token](/images/app-connections/hasura-cloud/step-3.png)
+  </Step>
+  <Step title="Generate the token">
+    Enter a descriptive name for the token, then click **Generate**.
+
+    ![Generate Hasura Cloud Token](/images/app-connections/hasura-cloud/step-4.png)
+  </Step>
+  <Step title="Save the token">
+    Click **Copy** and store the token securely for the next steps. The token is revealed only once and cannot be retrieved again.
+
+    ![Copy Hasura Cloud Token](/images/app-connections/hasura-cloud/step-5.png)
+  </Step>
+</Steps>
+
+## Create a Hasura Cloud Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+
+        ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
+      </Step>
+      <Step title="Select Hasura Cloud Connection">
+        Click **+ Add Connection** and choose **Hasura Cloud Connection** from the list of integrations.
+
+        ![Select Hasura Cloud Connection](/images/app-connections/hasura-cloud/step-6.png)
+      </Step>
+      <Step title="Fill out the Hasura Cloud Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - The **Method** (Personal Access Token)
+        - The Personal Access Token from the previous step
+
+        Then click **Connect to Hasura Cloud**.
+
+        ![Hasura Cloud Connection Modal](/images/app-connections/hasura-cloud/step-7.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Hasura Cloud Connection** will be successfully created and ready to use with your Infisical project.
+
+        ![Hasura Cloud Connection Created](/images/app-connections/hasura-cloud/step-8.png)
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="API">
+    To create a Hasura Cloud Connection via API, send a request to the [Create Hasura Cloud Connection](/api-reference/endpoints/app-connections/hasura-cloud/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/hasura-cloud \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-hasura-cloud-connection",
+                "method": "access-token",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "accessToken": "[PERSONAL ACCESS TOKEN]"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+          "name": "my-hasura-cloud-connection",
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2025-04-23T19:46:34.831Z",
+          "updatedAt": "2025-04-23T19:46:34.831Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+          "app": "hasura-cloud",
+          "method": "access-token",
+          "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

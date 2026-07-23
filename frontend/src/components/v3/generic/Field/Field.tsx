@@ -108,7 +108,8 @@ const fieldLabelVariants = cva(
           "has-[[data-state=checked]]:border-project/30 has-[[data-state=checked]]:bg-project/5!",
         org: "has-[[data-state=checked]]:border-org/30 has-[[data-state=checked]]:bg-org/5!",
         "sub-org":
-          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!"
+          "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!",
+        pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5!"
       }
     },
     defaultVariants: {
@@ -207,9 +208,19 @@ function FieldError({
       return null;
     }
 
-    const uniqueErrors = [...new Map(errors.map((error) => [error?.message, error])).values()];
+    // Ignore entries without a message: callers often pass a fixed-shape array with `undefined` slots for
+    // fields that currently have no error, and those must not count toward the single-vs-list decision.
+    const uniqueErrors = [
+      ...new Map(
+        errors.filter((error) => error?.message).map((error) => [error?.message, error])
+      ).values()
+    ];
 
-    if (uniqueErrors?.length === 1) {
+    if (!uniqueErrors.length) {
+      return null;
+    }
+
+    if (uniqueErrors.length === 1) {
       return uniqueErrors[0]?.message;
     }
 

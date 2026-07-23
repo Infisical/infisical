@@ -102,6 +102,14 @@ const validateTemplateByExternalCaType = (
         });
       }
       break;
+    case CaType.ADCS:
+      if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
+        throw new ForbiddenRequestError({
+          message:
+            "Active Directory Certificate Service Certificate Authority requires a template to be specified in external configs"
+        });
+      }
+      break;
     default:
       break;
   }

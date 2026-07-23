@@ -45,6 +45,7 @@ export enum CertPolicyState {
 }
 
 export enum CertDurationUnit {
+  HOURS = "hours",
   DAYS = "days",
   MONTHS = "months",
   YEARS = "years"
@@ -56,7 +57,8 @@ export enum CertSubjectAttributeType {
   ORGANIZATIONAL_UNIT = "organizational_unit",
   COUNTRY = "country",
   STATE = "state",
-  LOCALITY = "locality"
+  LOCALITY = "locality",
+  DOMAIN_COMPONENT = "domain_component"
 }
 
 export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
@@ -132,6 +134,8 @@ export const formatSubjectAttributeType = (type: CertSubjectAttributeType): stri
       return "State/Province (ST)";
     case CertSubjectAttributeType.LOCALITY:
       return "Locality (L)";
+    case CertSubjectAttributeType.DOMAIN_COMPONENT:
+      return "Domain Component (DC)";
     default:
       return type;
   }
@@ -173,6 +177,7 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 
 export enum CertSubjectAttributeInclude {
+  REQUIRED = "required",
   OPTIONAL = "optional",
   PROHIBIT = "prohibit"
 }

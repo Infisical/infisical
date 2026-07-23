@@ -1,18 +1,31 @@
+import { useEffect, useState } from "react";
 import { Outlet } from "@tanstack/react-router";
 
-import { useProjectPermission } from "@app/context";
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { useProjectPermission, useSubscription } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const PamLayout = () => {
   const { assumedPrivilegeDetails } = useProjectPermission();
+  const { subscription } = useSubscription();
+
+  const isPamGated = subscription?.pam === false;
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(isPamGated);
+
+  useEffect(() => {
+    if (isPamGated) setIsUpgradeModalOpen(true);
+  }, [isPamGated]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-x-hidden">
+    <>
       {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
-      <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4">
-        <Outlet />
-      </div>
-    </div>
+      <Outlet />
+      <UpgradePlanModal
+        isOpen={isUpgradeModalOpen}
+        onOpenChange={setIsUpgradeModalOpen}
+        text="PAM is not available on your current plan. Upgrade to continue using it."
+      />
+    </>
   );
 };

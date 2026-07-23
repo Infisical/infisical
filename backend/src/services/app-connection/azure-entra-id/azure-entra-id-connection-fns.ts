@@ -122,10 +122,11 @@ export const validateAzureEntraIdConnectionCredentials = async (config: TAzureEn
 
   switch (method) {
     case AzureEntraIdConnectionMethod.ClientSecret: {
-      const { tenantId, clientId, clientSecret } = inputCredentials as {
+      const { tenantId, clientId, clientSecret, clientSecretKeyId } = inputCredentials as {
         tenantId: string;
         clientId: string;
         clientSecret: string;
+        clientSecretKeyId?: string;
       };
 
       try {
@@ -144,7 +145,8 @@ export const validateAzureEntraIdConnectionCredentials = async (config: TAzureEn
           accessToken: clientData.access_token,
           expiresAt: Date.now() + clientData.expires_in * 1000,
           clientId,
-          clientSecret
+          clientSecret,
+          clientSecretKeyId
         };
       } catch (e: unknown) {
         if (e instanceof AxiosError) {

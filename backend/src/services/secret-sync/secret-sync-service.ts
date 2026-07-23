@@ -13,10 +13,13 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
+import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -255,7 +258,7 @@ export const secretSyncServiceFactory = ({
   };
 
   const checkDuplicateDestination = async (
-    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    { destination, destinationConfig, connectionId, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
     actor: OrgServiceActor
   ) => {
     const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
@@ -280,29 +283,82 @@ export const secretSyncServiceFactory = ({
     try {
       const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
 
-      const duplicates = existingSyncs.filter((sync) => {
-        if (sync.id === excludeSyncId) {
-          return false;
-        }
+      const connectionCache = new Map<string, Promise<TAppConnection>>();
+      const decryptConnection = (connId: string): Promise<TAppConnection> => {
+        const cached = connectionCache.get(connId);
+        if (cached) return cached;
 
-        try {
-          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
-          if (baseFieldsMatch) {
-            return DESTINATION_DUPLICATE_CHECK_MAP[destination](
-              sync.destinationConfig as Record<string, unknown>,
-              destinationConfig
-            );
+        const promise = (async () => {
+          const conn = await appConnectionDAL.findById(connId);
+          if (!conn || conn.orgId !== actor.orgId) {
+            throw new NotFoundError({ message: `App connection with ID "${connId}" not found` });
           }
-          return false;
-        } catch {
-          return false;
-        }
+          const credentials = await decryptAppConnectionCredentials({
+            orgId: conn.orgId,
+            encryptedCredentials: conn.encryptedCredentials,
+            kmsService,
+            projectId: conn.projectId
+          });
+          return { ...conn, credentials } as TAppConnection;
+        })();
+
+        connectionCache.set(connId, promise);
+        return promise;
+      };
+
+      const candidates = existingSyncs.filter((sync) => {
+        if (sync.id === excludeSyncId) return false;
+        return deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
       });
 
+      const duplicateCheckResults = await Promise.all(
+        candidates.map(async (sync) => {
+          try {
+            const isDuplicate = await DESTINATION_DUPLICATE_CHECK_MAP[destination]({
+              existingSync: {
+                connectionId: sync.connectionId,
+                destinationConfig: sync.destinationConfig as Record<string, unknown>
+              },
+              newSync: {
+                connectionId: connectionId ?? null,
+                destinationConfig
+              },
+              decryptConnection
+            });
+            return isDuplicate ? sync : null;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const duplicates = duplicateCheckResults.filter(Boolean);
+
       const hasDuplicate = duplicates.length > 0;
+
+      let duplicateProjectId: string | undefined;
+      if (hasDuplicate) {
+        const duplicateProject = duplicates[0]!.projectId;
+        try {
+          await permissionService.getProjectPermission({
+            actor: actor.type,
+            actorId: actor.id,
+            actorAuthMethod: actor.authMethod,
+            actorOrgId: actor.orgId,
+            actionProjectType: ActionProjectType.SecretManager,
+            projectId: duplicateProject
+          });
+          duplicateProjectId = duplicateProject;
+        } catch {
+          logger.warn(
+            `Duplicate secret sync destination detected but actor has no access to conflicting project [actorId=${actor.id}] [duplicateProjectId=${duplicateProject}]`
+          );
+        }
+      }
+
       return {
         hasDuplicate,
-        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
+        duplicateProjectId
       };
     } catch (error) {
       return { hasDuplicate: false, duplicateProjectId: undefined };
@@ -319,6 +375,18 @@ export const secretSyncServiceFactory = ({
       actor.orgId,
       "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
+
+    // secretSyncLimit is uncapped by default (null); only enforce a cap when the plan configures a
+    // numeric limit. Counted org-wide right before creation.
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (typeof plan.secretSyncLimit === "number") {
+      const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.orgId);
+      if (currentSecretSyncCount >= plan.secretSyncLimit) {
+        throw new BadRequestError({
+          message: "Failed to create secret sync due to plan limit reached. Upgrade plan to add more secret syncs."
+        });
+      }
+    }
 
     const { permission: projectPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -369,6 +437,7 @@ export const secretSyncServiceFactory = ({
         {
           destination: params.destination,
           destinationConfig: params.destinationConfig,
+          connectionId: params.connectionId,
           projectId
         },
         actor
@@ -376,7 +445,9 @@ export const secretSyncServiceFactory = ({
       if (duplicateCheck.hasDuplicate) {
         throw new BadRequestError({
           message: `A secret sync with this destination already exists${
-            duplicateCheck.duplicateProjectId ? ` in project ${duplicateCheck.duplicateProjectId}` : ""
+            duplicateCheck.duplicateProjectId
+              ? ` in project ${duplicateCheck.duplicateProjectId}`
+              : " in another project in your organization"
           }.`
         });
       }
@@ -491,7 +562,7 @@ export const secretSyncServiceFactory = ({
 
     let { folderId } = secretSync;
 
-    if (params.destinationConfig) {
+    if (params.destinationConfig || params.connectionId) {
       // getProjectPermission above throws NotFoundError if the project doesn't exist and
       // guarantees actor.orgId === project.orgId — no separate project lookup needed.
       const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
@@ -502,7 +573,8 @@ export const secretSyncServiceFactory = ({
         const duplicateCheck = await checkDuplicateDestination(
           {
             destination,
-            destinationConfig: params.destinationConfig,
+            destinationConfig: params.destinationConfig ?? (secretSync.destinationConfig as Record<string, unknown>),
+            connectionId: params.connectionId ?? connectionId,
             projectId: secretSync.projectId,
             excludeSyncId: secretSync.id
           },

@@ -4,7 +4,7 @@ import { logger } from "@app/lib/logger";
 import { mintServiceToken } from "../license-client-backends";
 
 export type TUsageSnapshot = {
-  feature_key: string;
+  dimension_key: string;
   value: number;
   observed_at: string;
   idempotency_key: string;
@@ -15,6 +15,21 @@ export type TUsageReporter = {
   reportSnapshots: (orgId: string, snapshots: TUsageSnapshot[]) => Promise<void>;
 };
 
+// Carries the license server's HTTP status + parsed message so callers can special-case responses
+// (e.g. swallow a 422 "not priced by any active product on this license") instead of retrying.
+export class UsageReportError extends Error {
+  readonly status: number;
+
+  readonly serverMessage: string;
+
+  constructor(status: number, serverMessage: string) {
+    super(`usage snapshot report failed with ${status}${serverMessage ? `: ${serverMessage}` : ""}`);
+    this.name = "UsageReportError";
+    this.status = status;
+    this.serverMessage = serverMessage;
+  }
+}
+
 // getBearerToken is called per request so a cloud reporter can mint a fresh short-lived JWT each time
 // (a self-hosted reporter just returns its static license key).
 export const usageReporterFactory = (serverUrl: string, getBearerToken: () => string): TUsageReporter => ({
@@ -23,7 +38,7 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => st
       return;
     }
 
-    const url = new URL(`/v1/${encodeURIComponent(orgId)}/usage-snapshots`, serverUrl);
+    const url = new URL(`/v1/organizations/${encodeURIComponent(orgId)}/usage-snapshots`, serverUrl);
     const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${getBearerToken()}`, "Content-Type": "application/json" },
@@ -32,7 +47,14 @@ export const usageReporterFactory = (serverUrl: string, getBearerToken: () => st
     });
 
     if (!res.ok) {
-      throw new Error(`usage snapshot report failed with ${res.status}`);
+      let serverMessage = "";
+      try {
+        const body = (await res.json()) as { message?: string; error?: string };
+        serverMessage = body?.message ?? body?.error ?? "";
+      } catch {
+        // non-JSON body; leave the message empty
+      }
+      throw new UsageReportError(res.status, serverMessage);
     }
   }
 });

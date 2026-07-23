@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { isValidAzureKeyVaultUrl } from "@app/lib/validator";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
@@ -9,7 +10,9 @@ import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 import { AZURE_KEY_VAULT_CERTIFICATE_NAMING } from "./azure-key-vault-pki-sync-constants";
 
 export const AzureKeyVaultPkiSyncConfigSchema = z.object({
-  vaultBaseUrl: z.string().url()
+  vaultBaseUrl: z.string().url("Invalid vault base URL format").refine(isValidAzureKeyVaultUrl, {
+    message: "Vault base URL must be a valid Azure Key Vault URL (https://<vault-name>.vault.azure.net)"
+  })
 });
 
 export const AzureKeyVaultPkiSyncOptionsSchema = z.object({
