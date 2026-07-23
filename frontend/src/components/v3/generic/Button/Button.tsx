@@ -8,10 +8,11 @@ import { cn } from "@app/components/v3/utils";
 
 const buttonVariants = cva(
   cn(
-    "inline-flex items-center rounded-md active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap",
+    "relative inline-flex items-center overflow-visible rounded-md active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap",
     " text-sm transition-all disabled:pointer-events-none disabled:opacity-50 shrink-0",
     "[&>svg]:pointer-events-none  [&>svg]:shrink-0",
-    "focus-visible:ring-ring outline-0 focus-visible:ring-2 select-none"
+    "focus-visible:ring-ring outline-0 focus-visible:ring-2 select-none",
+    "has-[[data-slot=button-badge]]:my-1.5 has-[[data-slot=button-badge]]:outline-1 has-[[data-slot=button-badge]]:outline-offset-4 has-[[data-slot=button-badge]]:outline-accent/60 has-[[data-slot=button-badge]]:outline-solid"
   ),
   {
     variants: {
@@ -37,10 +38,10 @@ const buttonVariants = cva(
         pam: "border-product-pam/30 bg-product-pam/25 text-foreground hover:bg-product-pam/30 hover:border-product-pam/35 data-[state=open]:bg-product-pam/30 data-[state=open]:border-product-pam/35"
       },
       size: {
-        xs: "h-7 px-2 text-xs rounded-sm [&>svg]:size-3 gap-1.5",
-        sm: "h-8 px-2.5 text-sm [&>svg]:size-3 gap-1.5",
-        md: "h-9 px-3 text-sm [&>svg]:size-3.5 gap-1.5",
-        lg: "h-10 px-3 text-sm [&>svg]:size-3.5 gap-1.5"
+        xs: "h-7 gap-2 rounded-sm px-2 text-xs [&>svg]:size-3",
+        sm: "h-8 gap-2 px-2.5 text-sm [&>svg]:size-3",
+        md: "h-9 gap-2 px-3 text-sm [&>svg]:size-3.5",
+        lg: "h-10 gap-2 px-3 text-sm [&>svg]:size-4"
       },
       isPending: {
         true: "text-transparent"

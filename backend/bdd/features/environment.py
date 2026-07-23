@@ -43,7 +43,7 @@ def bootstrap_infisical(context: Context):
             "/api/v1/admin/signup",
             json={
                 "email": f"{faker.user_name()}@infisical.com",
-                "password": faker.password(),
+                "password": "BddAdminPassword7!",
                 "firstName": faker.first_name(),
                 "lastName": faker.last_name(),
             },

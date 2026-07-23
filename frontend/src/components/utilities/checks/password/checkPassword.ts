@@ -2,7 +2,6 @@ import { checkIsPasswordBreached } from "./checkIsPasswordBreached";
 import {
   escapeCharRegex,
   letterCharRegex,
-  lowEntropyRegexes,
   numAndSpecialCharRegex,
   repeatedCharRegex
 } from "./passwordRegexes";
@@ -14,7 +13,6 @@ type Errors = {
   noNumOrSpecialChar?: string;
   repeatedChar?: string;
   escapeChar?: string;
-  lowEntropy?: string;
   breached?: string;
 };
 
@@ -31,7 +29,6 @@ interface CheckPasswordParams {
  * - Contains at least 1 number (0-9) or special character (emojis included)
  * - Does not contain 3 repeat, consecutive characters
  * - Does not contain any escape characters/sequences
- * - Does not contain PII and/or low entropy data (eg. email address, URL, SSN)
  * - Is not in a database of breached passwords
  *
  * The function returns whether or not the password [password]
@@ -76,11 +73,6 @@ const checkPassword = async ({ password, setErrors }: CheckPasswordParams): Prom
       name: "escapeChar",
       validator: (pwd: string) => !escapeCharRegex.test(pwd),
       errorText: "No escape characters allowed"
-    },
-    {
-      name: "lowEntropy",
-      validator: (pwd: string) => !lowEntropyRegexes.some((regex) => regex.test(pwd)),
-      errorText: "Password contains personal info"
     }
   ];
 

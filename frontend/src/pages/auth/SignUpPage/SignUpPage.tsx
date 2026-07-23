@@ -3,15 +3,12 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -24,6 +21,11 @@ enum SignupSection {
   InviteTeam = "invite-team"
 }
 
+type PendingEmailVerification = {
+  email: string;
+  resendCooldownEndTime: number;
+};
+
 export interface SignUpPageProps {
   invite?: {
     email: string;
@@ -33,7 +35,8 @@ export interface SignUpPageProps {
 export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const isInvite = Boolean(invite);
   const [email, setEmail] = useState(invite?.email ?? "");
-  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
+  const [pendingEmailVerification, setPendingEmailVerification] =
+    useState<PendingEmailVerification | null>(null);
   const [section, setSection] = useState<SignupSection>(
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
@@ -52,9 +55,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     }
   }, [config.allowSignUp]);
 
-  const handleEmailComplete = (cooldownSeconds: number) => {
-    setResendCooldownSeconds(cooldownSeconds);
+  const handleEmailComplete = (verificationEmail: string, cooldownSeconds: number) => {
+    setEmail(verificationEmail);
     if (serverDetails?.emailConfigured) {
+      setPendingEmailVerification({
+        email: verificationEmail,
+        resendCooldownEndTime: Date.now() + cooldownSeconds * 1000
+      });
       setSection(SignupSection.VerifyCode);
     } else {
       setSection(SignupSection.UserInfo);
@@ -62,7 +69,25 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   const handleCodeVerified = () => {
+    setPendingEmailVerification(null);
     setSection(SignupSection.UserInfo);
+  };
+
+  const handleChangeEmail = () => {
+    setSection(SignupSection.Email);
+  };
+
+  const handleResumeEmailVerification = () => {
+    if (!pendingEmailVerification) return;
+
+    setEmail(pendingEmailVerification.email);
+    setSection(SignupSection.VerifyCode);
+  };
+
+  const handleResendCooldownChange = (resendCooldownEndTime: number) => {
+    setPendingEmailVerification((pendingVerification) =>
+      pendingVerification ? { ...pendingVerification, resendCooldownEndTime } : null
+    );
   };
 
   const handleUserInfoComplete = async () => {
@@ -103,6 +128,8 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
             email={email}
             setEmail={setEmail}
             incrementStep={handleEmailComplete}
+            pendingVerificationEmail={pendingEmailVerification?.email}
+            onResumeVerification={handleResumeEmailVerification}
           />
         );
       case SignupSection.VerifyCode:
@@ -110,7 +137,9 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           <CodeInputStep
             email={email}
             onComplete={handleCodeVerified}
-            initialCooldown={resendCooldownSeconds}
+            onChangeEmail={handleChangeEmail}
+            resendCooldownEndTime={pendingEmailVerification?.resendCooldownEndTime ?? 0}
+            onResendCooldownChange={handleResendCooldownChange}
           />
         );
       case SignupSection.UserInfo:
@@ -124,9 +153,52 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     }
   };
 
+  const renderBottomContent = () => {
+    if (section === SignupSection.Email) {
+      return (
+        <p className="text-xs text-pretty text-label">
+          By signing up, you agree to our{" "}
+          <a
+            href="https://infisical.com/terms/cloud"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://infisical.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
+      );
+    }
+
+    if (section === SignupSection.VerifyCode) {
+      return (
+        <div className="flex items-center justify-center gap-1.5 text-sm">
+          <span className="text-label">Already have an account?</span>
+          <Link
+            to="/login"
+            className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+          >
+            Log in
+          </Link>
+        </div>
+      );
+    }
+
+    return undefined;
+  };
+
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4 py-4">
-      <AuthPageBackground />
+    <AuthPageLayout showFooter={false} bottomContent={renderBottomContent()}>
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -134,17 +206,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild variant="project">
-          <Link to="/login">Log In</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
+      {section === SignupSection.VerifyCode ? (
+        <div className="w-full">{renderView()}</div>
+      ) : (
         <form className="w-full" onSubmit={(e) => e.preventDefault()}>
           {renderView()}
         </form>
-      </div>
-      <AuthPageFooter />
-    </div>
+      )}
+    </AuthPageLayout>
   );
 };

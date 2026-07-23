@@ -11,12 +11,6 @@ type NavigateUserToOrgParams = {
   navigateTo?: string;
 };
 
-export enum LoginSection {
-  Initial = "initial",
-  SAML = "saml",
-  OIDC = "oidc"
-}
-
 const navigateToOrg = (navigate: NavigateFn, organizationId: string, navigateTo?: string) => {
   navigate({
     to: navigateTo || ("/organizations/$orgId/projects" as const),

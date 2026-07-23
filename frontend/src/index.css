@@ -3,6 +3,14 @@
 
 @source not "../public";
 
+@font-face {
+  font-family: "Alliance No. 2";
+  src: url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
@@ -55,7 +63,9 @@
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
+  --font-alliance: "Alliance No. 2", sans-serif;
   --font-inter: "Inter", sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", monospace;
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */
@@ -228,6 +238,10 @@
 
 @utility h-inherit {
   height: inherit;
+}
+
+@utility text-highlight {
+  @apply bg-project px-1.5 pt-1.5 pb-0.5 text-background;
 }
 
 @utility secret-table {
@@ -494,9 +508,54 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-/* v3-style focus ring for ReactCodeInput */
+/* v3-style focus treatment for ReactCodeInput */
+.code-input-v3 {
+  display: grid !important;
+  width: 100%;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.code-input-v3 input {
+  min-width: 0;
+  width: 100% !important;
+  outline: 1px solid transparent !important;
+  outline-offset: 4px;
+  transition:
+    border-color 150ms,
+    outline-color 150ms;
+}
+
+.code-input-v3 input:hover {
+  border-color: color-mix(in srgb, var(--color-foreground) 20%, transparent) !important;
+}
+
 .code-input-v3 input:focus {
-  outline: none;
-  border-color: var(--color-ring) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ring) 50%, transparent);
+  border-color: color-mix(in srgb, var(--color-project) 45%, var(--color-border)) !important;
+  outline-color: color-mix(in srgb, var(--color-project) 45%, transparent) !important;
+  box-shadow: none;
+}
+
+.code-input-v3-recovery {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (width < 40rem) {
+  .code-input-v3 {
+    gap: 0.5rem;
+  }
+
+  .code-input-v3 input {
+    height: auto !important;
+    aspect-ratio: 1;
+  }
+
+  .code-input-v3-recovery {
+    gap: 0.375rem;
+  }
+}
+
+.code-input-v3-error input {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, var(--color-border)) !important;
 }

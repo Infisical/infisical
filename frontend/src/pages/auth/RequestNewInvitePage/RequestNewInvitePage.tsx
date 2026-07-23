@@ -1,7 +1,9 @@
 import { Helmet } from "react-helmet";
 import { Link, useSearch } from "@tanstack/react-router";
 
-import { Button } from "@app/components/v2";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 
 /**
  * This is the page that shows up when a user's invitation
@@ -13,31 +15,28 @@ export const RequestNewInvitePage = () => {
   const isAlreadyMember = reason === "already_member";
 
   return (
-    <div className="flex flex-col justify-between bg-bunker-700 md:h-screen">
+    <AuthPageLayout variant="focused">
       <Helmet>
         <title>{isAlreadyMember ? "Already a Member" : "Request a New Invite"}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mt-8 flex h-screen w-screen flex-col items-center justify-center text-bunker-200">
-        {isAlreadyMember ? (
-          <>
-            <p className="text-4xl text-primary-100">Invite already accepted</p>
-            <p className="my-4 text-lg">You&apos;re already a member of this organization.</p>
-            <Link to="/login">
-              <Button size="lg">Go to Login</Button>
-            </Link>
-          </>
-        ) : (
-          <>
-            <p className="text-4xl text-primary-100">Oops, your invite has expired</p>
-            <p className="my-4 text-lg">Ask your admin for a new one.</p>
-            <p className="max-w-xs px-7 text-center text-sm leading-tight text-bunker-400">
-              <span className="rounded-md bg-primary-500/40 px-1 text-black">Note:</span> If it
-              still doesn&apos;t work, please reach out to us at support@infisical.com
-            </p>
-          </>
-        )}
-      </div>
-    </div>
+      <AuthPagePanel>
+        <CardHeader className="mb-6 gap-2 text-center">
+          <CardTitle>
+            {isAlreadyMember ? "Invite already accepted" : "Your invite has expired"}
+          </CardTitle>
+          <CardDescription>
+            {isAlreadyMember
+              ? "You're already a member of this organization."
+              : "Ask your administrator to send you a new invitation."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild variant="project" size="lg" isFullWidth>
+            <Link to="/login">Go to Login</Link>
+          </Button>
+        </CardContent>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };
