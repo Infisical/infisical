@@ -8,7 +8,7 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { PamAccountRow } from "../../PamAccessPage/components/PamAccountRow";
+import { PamAccountRow } from "../../components/PamAccountRow";
 import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityBadgeWithPermission";
 import { AccountActionsMenu } from "./AccountActionsMenu";
 

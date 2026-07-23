@@ -102,7 +102,7 @@ import { Route as projectRoleDetailsBySlugPageRoutePamImport } from './pages/pro
 import { Route as projectMemberDetailsByIDPageRoutePamImport } from './pages/project/MemberDetailsByIDPage/route-pam'
 import { Route as projectIdentityDetailsByIDPageRoutePamImport } from './pages/project/IdentityDetailsByIDPage/route-pam'
 import { Route as projectGroupDetailsByIDPageRoutePamImport } from './pages/project/GroupDetailsByIDPage/route-pam'
-import { Route as pamPamAccessPageRedirectImport } from './pages/pam/PamAccessPage/redirect'
+import { Route as redirectsPamOrgAccessRedirectImport } from './pages/redirects/pam-org-access-redirect'
 import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as organizationKmipServersPageKmipServerDetailsByIDPageRouteImport } from './pages/organization/KmipServersPage/KmipServerDetailsByIDPage/route'
 import { Route as organizationAppConnectionsGitHubManifestCallbackPageRouteImport } from './pages/organization/AppConnections/GitHubManifestCallbackPage/route'
@@ -1219,12 +1219,13 @@ const projectGroupDetailsByIDPageRoutePamRoute =
     getParentRoute: () => pamLayoutRoute,
   } as any)
 
-const pamPamAccessPageRedirectRoute = pamPamAccessPageRedirectImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRoute,
-} as any)
+const redirectsPamOrgAccessRedirectRoute =
+  redirectsPamOrgAccessRedirectImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRoute,
+  } as any)
 
 const pamPamAccountAccessPageRouteRoute =
   pamPamAccountAccessPageRouteImport.update({
@@ -3477,7 +3478,7 @@ declare module '@tanstack/react-router' {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
       path: '/'
       fullPath: '/organizations/$orgId/pam/access/'
-      preLoaderRoute: typeof pamPamAccessPageRedirectImport
+      preLoaderRoute: typeof redirectsPamOrgAccessRedirectImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId': {
@@ -5861,12 +5862,12 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdNetworkingRouteWith
   )
 
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteChildren {
-  pamPamAccessPageRedirectRoute: typeof pamPamAccessPageRedirectRoute
+  redirectsPamOrgAccessRedirectRoute: typeof redirectsPamOrgAccessRedirectRoute
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteChildren =
   {
-    pamPamAccessPageRedirectRoute: pamPamAccessPageRedirectRoute,
+    redirectsPamOrgAccessRedirectRoute: redirectsPamOrgAccessRedirectRoute,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren =
@@ -6328,7 +6329,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
-  '/organizations/$orgId/pam/access/': typeof pamPamAccessPageRedirectRoute
+  '/organizations/$orgId/pam/access/': typeof redirectsPamOrgAccessRedirectRoute
   '/organizations/$orgId/pam/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6613,7 +6614,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
-  '/organizations/$orgId/pam/access': typeof pamPamAccessPageRedirectRoute
+  '/organizations/$orgId/pam/access': typeof redirectsPamOrgAccessRedirectRoute
   '/organizations/$orgId/pam/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6902,7 +6903,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': typeof pamPamAccessPageRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': typeof redirectsPamOrgAccessRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -8612,7 +8613,7 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/": {
-      "filePath": "pam/PamAccessPage/redirect.tsx",
+      "filePath": "redirects/pam-org-access-redirect.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId": {

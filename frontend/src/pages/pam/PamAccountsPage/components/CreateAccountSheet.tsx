@@ -59,7 +59,7 @@ import {
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import {
   accountFormSchema,
   applyServerValidationErrors,

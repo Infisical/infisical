@@ -75,6 +75,7 @@ import {
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { PamMemberKind, PamMembershipScope, PamMemberSource } from "../../components/memberEnums";
 import {
   formatDetailDate,
@@ -86,7 +87,6 @@ import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTa
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";

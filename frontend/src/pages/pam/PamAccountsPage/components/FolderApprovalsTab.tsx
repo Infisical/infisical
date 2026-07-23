@@ -55,8 +55,8 @@ import {
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };

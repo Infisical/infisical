@@ -54,9 +54,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
+import { RequestAccessSheet } from "../components/RequestAccessSheet";
 import { PamDocsUrls } from "../pam-docs-urls";
-import { LaunchSessionSheet } from "../PamAccessPage/components/LaunchSessionSheet";
-import { RequestAccessSheet } from "../PamAccessPage/components/RequestAccessSheet";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
 import { CreateAccountSheet } from "./components/CreateAccountSheet";
 import { CreateFolderModal } from "./components/CreateFolderModal";

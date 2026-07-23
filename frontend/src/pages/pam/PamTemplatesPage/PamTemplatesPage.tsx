@@ -51,9 +51,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
 import { PAM_TEMPLATE_TABS } from "../components/pamResourceTabs";
 import { PamDocsUrls } from "../pam-docs-urls";
-import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { CreateTemplateModal } from "./components/CreateTemplateModal";
 import { DeleteTemplateModal } from "./components/DeleteTemplateModal";
 import { TemplateDetailSheet } from "./components/TemplateDetailSheet";
