@@ -534,12 +534,13 @@ export const ACCOUNT_TYPE_CONFIGS = {
         .trim()
         .min(1)
         .max(2048)
-        // Partition is matched as `aws` plus optional hyphenated segments so this stays valid for
-        // every current partition (aws, aws-cn, aws-us-gov, the aws-iso* family) and any AWS adds
-        // later, without re-touching this regex. Structure is still enforced: IAM service, empty
-        // region, 12-digit account, and a role resource.
+        // Matches every valid IAM role ARN without enumerating specifics that can grow:
+        //  - partition: `aws` plus optional hyphenated segments (aws, aws-cn, aws-us-gov, aws-iso*, future)
+        //  - service is always `iam`, region is always empty, account id is 12 digits
+        //  - resource is `role/` + path/name, whose characters AWS defines as printable ASCII
+        //    (0x21 to 0x7F); using that full range keeps unusual-but-valid role paths from being rejected
         .regex(
-          new RE2(/^arn:aws(-[a-z]+)*:iam::\d{12}:role\/[\w+=,.@/-]+$/),
+          new RE2(/^arn:aws(-[a-z]+)*:iam::\d{12}:role\/[\x21-\x7F]+$/),
           "Must be a valid IAM role ARN (e.g. arn:aws:iam::123456789012:role/my-role)"
         )
     }),
