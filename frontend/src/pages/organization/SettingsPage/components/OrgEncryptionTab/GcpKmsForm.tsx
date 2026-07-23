@@ -465,6 +465,10 @@ export const GcpKmsForm = ({
     />
   );
 
+  let submitLabel = "Add KMS";
+  if (kms) submitLabel = "Save Changes";
+  if (mode === "credentials") submitLabel = "Update Credentials";
+
   const formActions = (
     <>
       <Button type="button" variant="ghost" onClick={onCancel}>
@@ -476,7 +480,7 @@ export const GcpKmsForm = ({
         isPending={isSubmitting}
         isDisabled={isSubmitting || Boolean(kms && !isDirty)}
       >
-        {mode === "credentials" ? "Update Credentials" : kms ? "Save Changes" : "Add KMS"}
+        {submitLabel}
       </Button>
     </>
   );
