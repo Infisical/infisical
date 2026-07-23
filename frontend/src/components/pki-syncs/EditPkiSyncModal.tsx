@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangleIcon } from "lucide-react";
 
 import {
@@ -30,6 +30,10 @@ type Props = {
 export const EditPkiSyncModal = ({ isOpen, pkiSync, onOpenChange }: Props) => {
   const [isDirty, setIsDirty] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) setIsDirty(false);
+  }, [isOpen]);
 
   if (!pkiSync) return null;
 
