@@ -28,7 +28,6 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
-import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -167,7 +166,6 @@ type TSecretV2BridgeServiceFactoryDep = {
     TSecretApprovalRequestSecretDALFactory,
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -195,7 +193,6 @@ export const secretV2BridgeServiceFactory = ({
   folderDAL,
   permissionService,
   permissionDAL,
-  snapshotService,
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
@@ -493,7 +490,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
         orgId: actorOrgId,
@@ -820,7 +816,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
         actorId,
@@ -962,7 +957,6 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       if (inputSecret.type === SecretType.Shared) {
-        await snapshotService.performSnapshot(folderId);
         await secretQueueService.syncSecrets({
           secretPath,
           actorId,
@@ -2238,7 +2232,6 @@ export const secretV2BridgeServiceFactory = ({
       : await secretDAL.transaction(executeBulkInsert);
 
     if (!skipPostProcessing) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         actor,
         actorId,
@@ -2731,7 +2724,6 @@ export const secretV2BridgeServiceFactory = ({
       : await secretDAL.transaction(executeBulkUpdate);
 
     if (!skipPostProcessing) {
-      await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
       await Promise.allSettled(
         folders.map((el) =>
           el
@@ -2873,7 +2865,6 @@ export const secretV2BridgeServiceFactory = ({
         ? await executeBulkDelete(providedTx)
         : await secretDAL.transaction(executeBulkDelete);
 
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         actor,
         actorId,
@@ -3090,11 +3081,9 @@ export const secretV2BridgeServiceFactory = ({
     sourceFolder,
     destinationFolder,
     isSourceUpdated,
-    isDestinationUpdated,
-    skipSourceSnapshot = false
+    isDestinationUpdated
   }: TDispatchSecretMoveSideEffectsDTO) => {
     if (isDestinationUpdated) {
-      await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId,
         orgId,
@@ -3115,11 +3104,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      // a folder move deletes the source folder before dispatching side effects, so snapshotting it would
-      // only hit a NotFoundError; the sync still runs so secret imports referencing the path re-resolve.
-      if (!skipSourceSnapshot) {
-        await snapshotService.performSnapshot(sourceFolder.id);
-      }
       await secretQueueService.syncSecrets({
         projectId,
         orgId,

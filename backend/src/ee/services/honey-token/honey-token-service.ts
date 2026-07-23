@@ -42,7 +42,6 @@ import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-c
 import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
@@ -108,7 +107,6 @@ export type THoneyTokenServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -154,7 +152,6 @@ export const honeyTokenServiceFactory = ({
   secretTagDAL,
   folderCommitService,
   resourceMetadataDAL,
-  snapshotService,
   secretQueueService,
   webhookDAL,
   projectEnvDAL,
@@ -181,7 +178,6 @@ export const honeyTokenServiceFactory = ({
     secretTagDAL,
     folderCommitService,
     resourceMetadataDAL,
-    snapshotService,
     secretQueueService,
     webhookDAL,
     projectEnvDAL,
@@ -414,7 +410,6 @@ export const honeyTokenServiceFactory = ({
     });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
-    await snapshotService.performSnapshot(folder.id);
     await secretQueueService.syncSecrets({
       orgId: actor.orgId,
       secretPath,
@@ -605,7 +600,6 @@ export const honeyTokenServiceFactory = ({
         : await honeyTokenDAL.updateById(honeyTokenId, updatePayload);
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
-    await snapshotService.performSnapshot(honeyToken.folderId);
 
     const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
     if (folderInfo && hasSecretsMappingChanges) {
@@ -732,7 +726,6 @@ export const honeyTokenServiceFactory = ({
     });
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
-    await snapshotService.performSnapshot(honeyToken.folderId);
 
     const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
     if (folderInfo) {

@@ -325,15 +325,12 @@ export type TFnSecretMoveInTransaction = Omit<TFnSecretMove, "permission"> & {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
-// post-commit side effects for a single move: snapshot + sync the affected source/destination folders.
-// skipSourceSnapshot is set by callers (e.g. folder move) that have already deleted the source folder, so
-// snapshotting it would just fail with NotFoundError; the source sync still runs to notify secret imports.
+// post-commit side effects for a single move: sync the affected source/destination folders.
 export type TDispatchSecretMoveSideEffectsDTO = {
   projectId: string;
   orgId: string;
   actor: ActorType;
   actorId: string;
-  skipSourceSnapshot?: boolean;
 } & TFnSecretMoveResult;
 
 export type THandleReminderDTO = {

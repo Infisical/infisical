@@ -126,8 +126,8 @@ type Props = {
   tags?: WsTag[];
   isVisible?: boolean;
   isBatchMode?: boolean;
-  snapshotCount: number;
-  isSnapshotCountLoading?: boolean;
+  commitCount: number;
+  isCommitCountLoading?: boolean;
   protectedBranchPolicyName?: string;
   onSearchChange: (term: string) => void;
   onToggleTagFilter: (tagId: string) => void;
@@ -143,7 +143,6 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
-  isPITEnabled: boolean;
   onRequestAccess: (actions: ProjectPermissionActions[]) => void;
   hasPathPolicies: boolean;
   onClearFilters: () => void;
@@ -156,8 +155,8 @@ export const ActionBar = ({
   tags = [],
   isVisible,
   isBatchMode,
-  snapshotCount,
-  isSnapshotCountLoading,
+  commitCount,
+  isCommitCountLoading,
   onSearchChange,
   onToggleTagFilter,
   onVisibilityToggle,
@@ -165,7 +164,6 @@ export const ActionBar = ({
   onToggleRowType,
   protectedBranchPolicyName,
   importedBy,
-  isPITEnabled = false,
   usedBySecretSyncs,
   onRequestAccess,
   hasPathPolicies,
@@ -907,8 +905,8 @@ export const ActionBar = ({
         </div>
         <div>
           <ProjectPermissionCan
-            I={isPITEnabled ? ProjectPermissionCommitsActions.Read : ProjectPermissionActions.Read}
-            a={isPITEnabled ? ProjectPermissionSub.Commits : ProjectPermissionSub.SecretRollback}
+            I={ProjectPermissionCommitsActions.Read}
+            a={ProjectPermissionSub.Commits}
           >
             {(isAllowed) => (
               <Button
@@ -924,11 +922,11 @@ export const ActionBar = ({
                   });
                 }}
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                isLoading={isSnapshotCountLoading}
+                isLoading={isCommitCountLoading}
                 className="h-10"
                 isDisabled={!isAllowed}
               >
-                {`${snapshotCount} ${isPITEnabled ? "Commit" : "Snapshot"}${snapshotCount === 1 ? "" : "s"}`}
+                {`${commitCount} Commit${commitCount === 1 ? "" : "s"}`}
               </Button>
             )}
           </ProjectPermissionCan>

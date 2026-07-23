@@ -48,8 +48,6 @@ import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/h
 import {
   useGetImportedSecretsSingleEnv,
   useGetSecretApprovalPolicyOfABoard,
-  useGetWorkspaceSnapshotList,
-  useGetWsSnapshotCount,
   useGetWsTags
 } from "@app/hooks/api";
 import { useGetProjectSecretsDetails } from "@app/hooks/api/dashboard";
@@ -78,11 +76,9 @@ import { DynamicSecretListView } from "./components/DynamicSecretListView";
 import { EnvironmentTabs } from "./components/EnvironmentTabs";
 import { FolderBreadCrumbs } from "./components/FolderBreadCrumbs";
 import { FolderListView } from "./components/FolderListView";
-import { PitDrawer } from "./components/PitDrawer";
 import { SecretDropzone } from "./components/SecretDropzone";
 import { SecretImportListView } from "./components/SecretImportListView";
 import { SecretListView, SecretNoAccessListView } from "./components/SecretListView";
-import { SnapshotView } from "./components/SnapshotView";
 import {
   PendingChanges,
   PopUpNames,
@@ -147,12 +143,7 @@ const Page = () => {
     setUserTablePreference("secretDashboardTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const [snapshotId, setSnapshotId] = useState<string | null>(null);
-  const isRollbackMode = Boolean(snapshotId);
-  const { popUp, handlePopUpClose, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "snapshots",
-    "requestAccess"
-  ] as const);
+  const { popUp, handlePopUpClose, handlePopUpOpen } = usePopUp(["requestAccess"] as const);
 
   // env slug
   const projectId = currentProject?.id || "";
@@ -235,11 +226,6 @@ const Page = () => {
   const canReadSecretRotations = permission.can(
     ProjectPermissionSecretRotationActions.Read,
     subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
-  );
-
-  const canDoReadRollback = permission.can(
-    ProjectPermissionActions.Read,
-    ProjectPermissionSub.SecretRollback
   );
 
   const canReadCommits = permission.can(
@@ -429,19 +415,6 @@ const Page = () => {
   };
 
   const {
-    data: snapshotList,
-    isFetchingNextPage: isFetchingNextSnapshotList,
-    fetchNextPage: fetchNextSnapshotList,
-    hasNextPage: hasNextSnapshotListPage
-  } = useGetWorkspaceSnapshotList({
-    projectId,
-    directory: secretPath,
-    environment,
-    isPaused: !popUp.snapshots.isOpen || !canDoReadRollback,
-    limit: 10
-  });
-
-  const {
     data: { count: folderCommitsCount, folderId } = { count: 0, folderId: "" },
     isPending: isFolderCommitsCountLoading,
     isFetching: isFolderCommitsCountFetching
@@ -452,49 +425,20 @@ const Page = () => {
     isPaused: !canReadCommits
   });
 
-  const {
-    data: snapshotCount,
-    isPending: isSnapshotCountLoading,
-    isFetching: isSnapshotCountFetching
-  } = useGetWsSnapshotCount({
-    projectId,
-    environment,
-    directory: secretPath,
-    isPaused: !canDoReadRollback
-  });
-
-  const isPITEnabled = !currentProject?.showSnapshotsLegacy;
-
-  const changesCount = useMemo(() => {
-    return isPITEnabled ? folderCommitsCount : snapshotCount;
-  }, [folderCommitsCount, snapshotCount]);
-
-  const isChangesCountPending = useMemo(() => {
-    return isPITEnabled ? isFolderCommitsCountLoading || isSnapshotCountLoading : false;
-  }, [isFolderCommitsCountLoading, isSnapshotCountLoading]);
-
-  const isChangesCountFetching = useMemo(() => {
-    return isPITEnabled ? isFolderCommitsCountFetching || isSnapshotCountFetching : false;
-  }, [isFolderCommitsCountFetching, isSnapshotCountFetching]);
-
   const handleOnClickRollbackMode = () => {
-    if (isPITEnabled) {
-      navigate({
-        to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
-        params: {
-          orgId: currentOrg.id,
-          projectId,
-          folderId,
-          environment
-        },
-        search: (query) => ({
-          ...query,
-          secretPath
-        })
-      });
-    } else {
-      handlePopUpToggle("snapshots", true);
-    }
+    navigate({
+      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
+      params: {
+        orgId: currentOrg.id,
+        projectId,
+        folderId,
+        environment
+      },
+      search: (query) => ({
+        ...query,
+        secretPath
+      })
+    });
   };
 
   const noAccessSecretCount = Math.max(
@@ -627,16 +571,6 @@ const Page = () => {
   );
 
   const handleToggleVisibility = useCallback(() => setIsVisible((state) => !state), []);
-
-  // snapshot functions
-  const handleSelectSnapshot = useCallback((snapId: string) => {
-    setSnapshotId(snapId);
-  }, []);
-
-  const handleResetSnapshot = useCallback(() => {
-    setSnapshotId(null);
-    handlePopUpClose("snapshots");
-  }, []);
 
   const { handleMouseDown, isResizing, colWidth } = useResizableColWidth({
     initialWidth: 320,
@@ -907,316 +841,287 @@ const Page = () => {
       <SecretV2MigrationSection />
       <FolderBreadCrumbs secretPath={secretPath} />
       <EnvironmentTabs secretPath={secretPath} />
-      {!isRollbackMode ? (
-        <>
-          <ActionBar
-            environment={environment}
-            secretPath={secretPath}
-            isVisible={isVisible}
-            isBatchMode={isBatchMode}
-            filter={filter}
-            tags={tags}
-            onVisibilityToggle={handleToggleVisibility}
-            onSearchChange={handleSearchChange}
-            onToggleTagFilter={handleTagToggle}
-            snapshotCount={changesCount || 0}
-            isSnapshotCountLoading={isChangesCountPending && isChangesCountFetching}
-            onToggleRowType={handleToggleRowType}
-            onClickRollbackMode={handleOnClickRollbackMode}
-            protectedBranchPolicyName={boardPolicy?.name}
-            importedBy={importedBy}
-            usedBySecretSyncs={usedBySecretSyncs}
-            isPITEnabled={isPITEnabled}
-            hasPathPolicies={hasPathPolicies}
-            onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
-            onClearFilters={handleClearFilters}
-          />
-          <div
-            ref={tableRef}
-            className={twMerge(
-              "mt-3 thin-scrollbar overflow-x-hidden overflow-y-auto rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
-              isNotEmpty && "rounded-b-none"
-            )}
-          >
-            <div className="flex flex-col" id="dashboard">
-              {isNotEmpty && (
-                <div
-                  className={twMerge(
-                    "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
-                  )}
-                >
-                  <Tooltip
-                    className="max-w-[20rem] whitespace-nowrap"
-                    content={
-                      totalCount > 0
-                        ? `${
-                            !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
-                          } all secrets on page`
-                        : ""
-                    }
-                  >
-                    <div className="mr-[0.055rem] flex w-11 items-center justify-center pl-2.5">
-                      <Checkbox
-                        isDisabled={totalCount === 0}
-                        id="checkbox-select-all-rows"
-                        onClick={(e) => e.stopPropagation()}
-                        isChecked={allRowsSelectedOnPage.isChecked}
-                        isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
-                        onCheckedChange={toggleSelectAllRows}
-                      />
-                    </div>
-                  </Tooltip>
-                  <div className="relative">
-                    <div
-                      tabIndex={-1}
-                      role="button"
-                      className={`absolute -right-[0.05rem] z-40 h-full w-0.5 cursor-ew-resize hover:bg-blue-400/20 ${
-                        isResizing ? "bg-blue-400/75" : "bg-transparent"
-                      }`}
-                      onMouseDown={handleMouseDown}
-                    />
-                    <div className="pointer-events-none absolute top-2 -right-[0.04rem] z-30">
-                      <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
-                    </div>
-                    <div
-                      className="flex shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
-                      style={{ width: colWidth }}
-                      role="button"
-                      tabIndex={0}
-                      onClick={handleSortToggle}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") handleSortToggle();
-                      }}
-                    >
-                      Key
-                      <FontAwesomeIcon
-                        icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
-                        className="ml-2"
-                      />
-                    </div>
-                  </div>
-                  <div className="grow px-4 py-2">Value</div>
-                </div>
+      <ActionBar
+        environment={environment}
+        secretPath={secretPath}
+        isVisible={isVisible}
+        isBatchMode={isBatchMode}
+        filter={filter}
+        tags={tags}
+        onVisibilityToggle={handleToggleVisibility}
+        onSearchChange={handleSearchChange}
+        onToggleTagFilter={handleTagToggle}
+        commitCount={folderCommitsCount || 0}
+        isCommitCountLoading={isFolderCommitsCountLoading && isFolderCommitsCountFetching}
+        onToggleRowType={handleToggleRowType}
+        onClickRollbackMode={handleOnClickRollbackMode}
+        protectedBranchPolicyName={boardPolicy?.name}
+        importedBy={importedBy}
+        usedBySecretSyncs={usedBySecretSyncs}
+        hasPathPolicies={hasPathPolicies}
+        onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
+        onClearFilters={handleClearFilters}
+      />
+      <div
+        ref={tableRef}
+        className={twMerge(
+          "mt-3 thin-scrollbar overflow-x-hidden overflow-y-auto rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
+          isNotEmpty && "rounded-b-none"
+        )}
+      >
+        <div className="flex flex-col" id="dashboard">
+          {isNotEmpty && (
+            <div
+              className={twMerge(
+                "sticky top-0 flex border-b border-mineshaft-600 bg-mineshaft-800 font-medium"
               )}
-              {hasPathPolicies &&
-                // eslint-disable-next-line no-nested-ternary
-                (!canReadSecret ? (
-                  <div
-                    className={twMerge(
-                      "flex border-l-2 border-l-primary bg-mineshaft-700 px-4 py-2",
-                      isNotEmpty ? "border-b border-b-mineshaft-600" : ""
-                    )}
-                  >
-                    <div className="flex items-center text-sm">
-                      <FontAwesomeIcon
-                        icon={faInfoCircle}
-                        className="mr-[1.65rem] ml-[0.15rem] text-primary"
-                      />
-                      <span>You do not have permission to read secrets in this folder</span>
-                    </div>
-                    <Button
-                      variant="outline_bg"
-                      size="xs"
-                      className="ml-auto"
-                      onClick={() =>
-                        handlePopUpOpen("requestAccess", [ProjectPermissionActions.Read])
-                      }
-                    >
-                      Request Access
-                    </Button>
-                  </div>
-                ) : !canEditSecrets || !canDeleteSecrets ? (
-                  <div className="flex border-b border-l-2 border-b-mineshaft-600 border-l-primary bg-mineshaft-700 px-4 py-2">
-                    <div className="flex items-center text-sm">
-                      <FontAwesomeIcon
-                        icon={faInfoCircle}
-                        className="mr-[1.65rem] ml-[0.15rem] text-primary"
-                      />
-                      <span>
-                        You do not have permission to {!canEditSecrets ? "edit" : ""}
-                        {!canEditSecrets && !canDeleteSecrets ? " or " : ""}
-                        {!canDeleteSecrets ? "delete" : ""} secrets in this folder
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline_bg"
-                      size="xs"
-                      className="ml-auto"
-                      onClick={() =>
-                        handlePopUpOpen("requestAccess", [
-                          ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
-                          ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
-                        ])
-                      }
-                    >
-                      Request Access
-                    </Button>
-                  </div>
-                ) : null)}
-
-              {canReadSecretImports && Boolean(imports?.length) && (
-                <SecretImportListView
-                  searchTerm={debouncedSearchFilter}
-                  secretImports={imports}
-                  isFetching={isDetailsFetching}
-                  environment={environment}
-                  projectId={projectId}
-                  secretPath={secretPath}
-                  importedSecrets={importedSecrets}
-                />
-              )}
-              {Boolean(mergedFolders?.length) && (
-                <FolderListView
-                  folders={mergedFolders}
-                  environment={environment}
-                  projectId={projectId}
-                  secretPath={secretPath}
-                  onNavigateToFolder={handleResetFilter}
-                  canNavigate={isFetched}
-                />
-              )}
-              {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
-                <DynamicSecretListView
-                  selectedDynamicSecretId={selectedDynamicSecretId}
-                  environment={environment}
-                  projectSlug={projectSlug}
-                  secretPath={secretPath}
-                  dynamicSecrets={dynamicSecrets}
-                />
-              )}
-              {canReadSecretRotations && Boolean(secretRotations?.length) && (
-                <SecretRotationListView
-                  secretRotations={secretRotations}
-                  colWidth={colWidth}
-                  tags={tags}
-                  projectId={projectId}
-                  secretPath={secretPath}
-                  isProtectedBranch={isProtectedBranch}
-                  importedBy={importedBy}
-                  usedBySecretSyncs={usedBySecretSyncs}
-                  getMergedSecretsWithPending={getMergedSecretsWithPending}
-                />
-              )}
-              {Boolean(honeyTokens?.length) && <HoneyTokenListView honeyTokens={honeyTokens} />}
-              {canReadSecret && Boolean(mergedSecrets?.length) && (
-                <SecretListView
-                  colWidth={colWidth}
-                  secrets={mergedSecrets}
-                  tags={tags}
-                  isVisible={isVisible}
-                  environment={environment}
-                  projectId={projectId}
-                  secretPath={secretPath}
-                  isProtectedBranch={isProtectedBranch}
-                  importedBy={importedBy}
-                  usedBySecretSyncs={usedBySecretSyncs}
-                />
-              )}
-              {(pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0) && (
-                <CommitForm
-                  onCommit={handleCreateCommit}
-                  environment={environment}
-                  projectId={projectId}
-                  secretPath={secretPath}
-                  isCommitting={isCommitPending}
-                />
-              )}
-              {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
-            </div>
-          </div>
-          {!canReadSecret &&
-            !canReadDynamicSecret &&
-            !canReadSecretImports &&
-            folders?.length === 0 && <PermissionDeniedBanner />}
-          {!isDetailsLoading &&
-            (totalCount > 0 ||
-              pendingChanges.secrets.length > 0 ||
-              pendingChanges.folders.length > 0) && (
-              <Pagination
-                startAdornment={
-                  <SecretTableResourceCount
-                    dynamicSecretCount={totalDynamicSecretCount}
-                    importCount={totalImportCount}
-                    secretCount={
-                      totalSecretCount +
-                      pendingChanges.secrets.filter((s) => s.type === PendingAction.Create).length
-                    }
-                    folderCount={
-                      totalFolderCount +
-                      pendingChanges.folders.filter((f) => f.type === PendingAction.Create).length
-                    }
-                    secretRotationCount={totalSecretRotationCount}
-                  />
-                }
-                className="rounded-b-md border-t border-solid border-t-mineshaft-600"
-                count={totalCount + pendingChanges.secrets.length + pendingChanges.folders.length}
-                page={page}
-                perPage={perPage}
-                onChangePage={(newPage) => setPage(newPage)}
-                onChangePerPage={handlePerPageChange}
-              />
-            )}
-          <Modal
-            isOpen={createSecretPopUp.isOpen}
-            onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
-          >
-            <ModalContent
-              title="Create Secret"
-              subTitle="Add a secret to this particular environment and folder"
-              bodyClassName="overflow-visible"
             >
-              <CreateSecretForm
-                environment={environment}
-                projectId={projectId}
-                secretPath={secretPath}
-                autoCapitalize={currentProject?.autoCapitalization}
-                isProtectedBranch={isProtectedBranch}
-                isBatchMode={isBatchMode}
-              />
-            </ModalContent>
-          </Modal>
-          {!!pathPolicies && (
-            <RequestAccessModal
-              policies={pathPolicies}
-              isOpen={popUp.requestAccess.isOpen}
-              onOpenChange={() => {
-                handlePopUpClose("requestAccess");
-              }}
-              selectedActions={popUp.requestAccess.data}
-              secretPath={pathPolicies?.[0]?.secretPath}
+              <Tooltip
+                className="max-w-[20rem] whitespace-nowrap"
+                content={
+                  totalCount > 0
+                    ? `${
+                        !allRowsSelectedOnPage.isChecked ? "Select" : "Unselect"
+                      } all secrets on page`
+                    : ""
+                }
+              >
+                <div className="mr-[0.055rem] flex w-11 items-center justify-center pl-2.5">
+                  <Checkbox
+                    isDisabled={totalCount === 0}
+                    id="checkbox-select-all-rows"
+                    onClick={(e) => e.stopPropagation()}
+                    isChecked={allRowsSelectedOnPage.isChecked}
+                    isIndeterminate={allRowsSelectedOnPage.isIndeterminate}
+                    onCheckedChange={toggleSelectAllRows}
+                  />
+                </div>
+              </Tooltip>
+              <div className="relative">
+                <div
+                  tabIndex={-1}
+                  role="button"
+                  className={`absolute -right-[0.05rem] z-40 h-full w-0.5 cursor-ew-resize hover:bg-blue-400/20 ${
+                    isResizing ? "bg-blue-400/75" : "bg-transparent"
+                  }`}
+                  onMouseDown={handleMouseDown}
+                />
+                <div className="pointer-events-none absolute top-2 -right-[0.04rem] z-30">
+                  <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
+                </div>
+                <div
+                  className="flex shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
+                  style={{ width: colWidth }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleSortToggle}
+                  onKeyDown={(evt) => {
+                    if (evt.key === "Enter") handleSortToggle();
+                  }}
+                >
+                  Key
+                  <FontAwesomeIcon
+                    icon={orderDirection === OrderByDirection.ASC ? faArrowDown : faArrowUp}
+                    className="ml-2"
+                  />
+                </div>
+              </div>
+              <div className="grow px-4 py-2">Value</div>
+            </div>
+          )}
+          {hasPathPolicies &&
+            // eslint-disable-next-line no-nested-ternary
+            (!canReadSecret ? (
+              <div
+                className={twMerge(
+                  "flex border-l-2 border-l-primary bg-mineshaft-700 px-4 py-2",
+                  isNotEmpty ? "border-b border-b-mineshaft-600" : ""
+                )}
+              >
+                <div className="flex items-center text-sm">
+                  <FontAwesomeIcon
+                    icon={faInfoCircle}
+                    className="mr-[1.65rem] ml-[0.15rem] text-primary"
+                  />
+                  <span>You do not have permission to read secrets in this folder</span>
+                </div>
+                <Button
+                  variant="outline_bg"
+                  size="xs"
+                  className="ml-auto"
+                  onClick={() => handlePopUpOpen("requestAccess", [ProjectPermissionActions.Read])}
+                >
+                  Request Access
+                </Button>
+              </div>
+            ) : !canEditSecrets || !canDeleteSecrets ? (
+              <div className="flex border-b border-l-2 border-b-mineshaft-600 border-l-primary bg-mineshaft-700 px-4 py-2">
+                <div className="flex items-center text-sm">
+                  <FontAwesomeIcon
+                    icon={faInfoCircle}
+                    className="mr-[1.65rem] ml-[0.15rem] text-primary"
+                  />
+                  <span>
+                    You do not have permission to {!canEditSecrets ? "edit" : ""}
+                    {!canEditSecrets && !canDeleteSecrets ? " or " : ""}
+                    {!canDeleteSecrets ? "delete" : ""} secrets in this folder
+                  </span>
+                </div>
+                <Button
+                  variant="outline_bg"
+                  size="xs"
+                  className="ml-auto"
+                  onClick={() =>
+                    handlePopUpOpen("requestAccess", [
+                      ...(!canEditSecrets ? [ProjectPermissionActions.Edit] : []),
+                      ...(!canDeleteSecrets ? [ProjectPermissionActions.Delete] : [])
+                    ])
+                  }
+                >
+                  Request Access
+                </Button>
+              </div>
+            ) : null)}
+
+          {canReadSecretImports && Boolean(imports?.length) && (
+            <SecretImportListView
+              searchTerm={debouncedSearchFilter}
+              secretImports={imports}
+              isFetching={isDetailsFetching}
+              environment={environment}
+              projectId={projectId}
+              secretPath={secretPath}
+              importedSecrets={importedSecrets}
             />
           )}
-          <SecretDropzone
+          {Boolean(mergedFolders?.length) && (
+            <FolderListView
+              folders={mergedFolders}
+              environment={environment}
+              projectId={projectId}
+              secretPath={secretPath}
+              onNavigateToFolder={handleResetFilter}
+              canNavigate={isFetched}
+            />
+          )}
+          {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
+            <DynamicSecretListView
+              selectedDynamicSecretId={selectedDynamicSecretId}
+              environment={environment}
+              projectSlug={projectSlug}
+              secretPath={secretPath}
+              dynamicSecrets={dynamicSecrets}
+            />
+          )}
+          {canReadSecretRotations && Boolean(secretRotations?.length) && (
+            <SecretRotationListView
+              secretRotations={secretRotations}
+              colWidth={colWidth}
+              tags={tags}
+              projectId={projectId}
+              secretPath={secretPath}
+              isProtectedBranch={isProtectedBranch}
+              importedBy={importedBy}
+              usedBySecretSyncs={usedBySecretSyncs}
+              getMergedSecretsWithPending={getMergedSecretsWithPending}
+            />
+          )}
+          {Boolean(honeyTokens?.length) && <HoneyTokenListView honeyTokens={honeyTokens} />}
+          {canReadSecret && Boolean(mergedSecrets?.length) && (
+            <SecretListView
+              colWidth={colWidth}
+              secrets={mergedSecrets}
+              tags={tags}
+              isVisible={isVisible}
+              environment={environment}
+              projectId={projectId}
+              secretPath={secretPath}
+              isProtectedBranch={isProtectedBranch}
+              importedBy={importedBy}
+              usedBySecretSyncs={usedBySecretSyncs}
+            />
+          )}
+          {(pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0) && (
+            <CommitForm
+              onCommit={handleCreateCommit}
+              environment={environment}
+              projectId={projectId}
+              secretPath={secretPath}
+              isCommitting={isCommitPending}
+            />
+          )}
+          {noAccessSecretCount > 0 && <SecretNoAccessListView count={noAccessSecretCount} />}
+        </div>
+      </div>
+      {!canReadSecret &&
+        !canReadDynamicSecret &&
+        !canReadSecretImports &&
+        folders?.length === 0 && <PermissionDeniedBanner />}
+      {!isDetailsLoading &&
+        (totalCount > 0 ||
+          pendingChanges.secrets.length > 0 ||
+          pendingChanges.folders.length > 0) && (
+          <Pagination
+            startAdornment={
+              <SecretTableResourceCount
+                dynamicSecretCount={totalDynamicSecretCount}
+                importCount={totalImportCount}
+                secretCount={
+                  totalSecretCount +
+                  pendingChanges.secrets.filter((s) => s.type === PendingAction.Create).length
+                }
+                folderCount={
+                  totalFolderCount +
+                  pendingChanges.folders.filter((f) => f.type === PendingAction.Create).length
+                }
+                secretRotationCount={totalSecretRotationCount}
+              />
+            }
+            className="rounded-b-md border-t border-solid border-t-mineshaft-600"
+            count={totalCount + pendingChanges.secrets.length + pendingChanges.folders.length}
+            page={page}
+            perPage={perPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
+          />
+        )}
+      <Modal
+        isOpen={createSecretPopUp.isOpen}
+        onOpenChange={(state) => togglePopUp(PopUpNames.CreateSecretForm, state)}
+      >
+        <ModalContent
+          title="Create Secret"
+          subTitle="Add a secret to this particular environment and folder"
+          bodyClassName="overflow-visible"
+        >
+          <CreateSecretForm
             environment={environment}
             projectId={projectId}
             secretPath={secretPath}
-            isSmaller={isNotEmpty}
-            environments={currentProject?.environments}
+            autoCapitalize={currentProject?.autoCapitalization}
+            isProtectedBranch={isProtectedBranch}
+            isBatchMode={isBatchMode}
           />
-          <PitDrawer
-            secretSnaphots={snapshotList}
-            snapshotId={snapshotId}
-            isDrawerOpen={popUp.snapshots.isOpen}
-            onOpenChange={(isOpen) => handlePopUpToggle("snapshots", isOpen)}
-            hasNextPage={hasNextSnapshotListPage}
-            fetchNextPage={fetchNextSnapshotList}
-            onSelectSnapshot={handleSelectSnapshot}
-            isFetchingNextPage={isFetchingNextSnapshotList}
-          />
-        </>
-      ) : (
-        <SnapshotView
-          snapshotId={snapshotId || ""}
-          environment={environment}
-          projectId={projectId}
-          secretPath={secretPath}
-          secrets={secrets}
-          folders={folders}
-          snapshotCount={changesCount}
-          onGoBack={handleResetSnapshot}
-          onClickListSnapshot={() => handlePopUpToggle("snapshots", true)}
+        </ModalContent>
+      </Modal>
+      {!!pathPolicies && (
+        <RequestAccessModal
+          policies={pathPolicies}
+          isOpen={popUp.requestAccess.isOpen}
+          onOpenChange={() => {
+            handlePopUpClose("requestAccess");
+          }}
+          selectedActions={popUp.requestAccess.data}
+          secretPath={pathPolicies?.[0]?.secretPath}
         />
       )}
+      <SecretDropzone
+        environment={environment}
+        projectId={projectId}
+        secretPath={secretPath}
+        isSmaller={isNotEmpty}
+        environments={currentProject?.environments}
+      />
     </div>
   );
 };

@@ -87,7 +87,6 @@ import {
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
-import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
@@ -125,7 +124,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "find"
   >;
   secretBlindIndexDAL: Pick<TSecretBlindIndexDALFactory, "findOne">;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   secretVersionDAL: Pick<TSecretVersionDALFactory, "findLatestVersionMany" | "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "insertMany">;
@@ -178,7 +176,6 @@ export const secretApprovalRequestServiceFactory = ({
   secretBlindIndexDAL,
   projectDAL,
   permissionService,
-  snapshotService,
   secretVersionDAL,
   secretQueueService,
   projectBotService,
@@ -1179,7 +1176,6 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    await snapshotService.performSnapshot(folderId);
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
     if (!folder) {
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found in project with ID '${projectId}'` });
