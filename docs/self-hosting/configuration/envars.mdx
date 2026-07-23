@@ -712,6 +712,34 @@ SSL: Available on ports 465, 8465, and 443
 By default, users can only log in via the email/password-based login method.
 To log in to Infisical with OAuth providers such as Google, configure the associated variables.
 
+<ParamField query="JWT_AUTH_LIFETIME" type="string" default="30d" optional>
+  Controls how long user login sessions are valid before requiring re-authentication.
+  Applies to both CLI and web UI sessions. For self-hosted deployments, organization admins can also set a per-organization token lifetime in the organization security settings of the admin UI.
+  
+  Accepted formats: `"7d"`, `"14d"`, `"30d"`, `"90d"`, `"1y"`, or seconds as a number. `m` denotes minutes, not months.
+  
+  Example: `JWT_AUTH_LIFETIME="90d"` extends sessions to 90 days.
+</ParamField>
+
+<ParamField query="JWT_REFRESH_LIFETIME" type="string" default="90d" optional>
+  Controls how long refresh tokens are valid. Refresh tokens are used to issue new access tokens without re-authentication.
+  Should typically be longer than `JWT_AUTH_LIFETIME`.
+  
+  Accepted formats: `"7d"`, `"14d"`, `"30d"`, `"90d"`, `"1y"`, or seconds as a number.
+</ParamField>
+
+<ParamField query="JWT_SIGNUP_LIFETIME" type="string" default="15m" optional>
+  Controls the lifetime of signup/registration tokens.
+</ParamField>
+
+<ParamField query="JWT_INVITE_LIFETIME" type="string" default="1d" optional>
+  Controls how long invitation links remain valid.
+</ParamField>
+
+<ParamField query="JWT_MFA_LIFETIME" type="string" default="5m" optional>
+  Controls the lifetime of multi-factor authentication tokens.
+</ParamField>
+
 <ParamField query="DEFAULT_SAML_ORG_SLUG" type="string">
 
 When set, all visits to the Infisical login page will automatically redirect users of your Infisical instance to the SAML identity provider associated with the specified organization slug.
