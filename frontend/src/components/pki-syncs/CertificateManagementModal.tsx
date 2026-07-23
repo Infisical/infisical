@@ -27,13 +27,14 @@ import {
   useListPkiSyncCertificates,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api";
-import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+import { PkiSync, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   pkiSync?: TPkiSync;
+  destination?: PkiSync;
   applicationId?: string;
   onCertificatesUpdated?: () => void;
   selectedCertificateIds?: string[];
@@ -47,6 +48,7 @@ export const CertificateManagementModal = ({
   isOpen,
   onClose,
   pkiSync,
+  destination,
   applicationId: applicationIdProp,
   onCertificatesUpdated,
   selectedCertificateIds,
@@ -63,6 +65,9 @@ export const CertificateManagementModal = ({
 
   const isCreateMode = !pkiSync;
   const scopedApplicationId = pkiSync?.applicationId ?? applicationIdProp;
+
+  const { syncOption } = usePkiSyncOption((pkiSync?.destination ?? destination) as PkiSync);
+  const isSingleSelect = syncOption?.maxCertificates === 1;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -106,9 +111,13 @@ export const CertificateManagementModal = ({
   }, [JSON.stringify(syncedCertificateIds)]);
 
   const handleToggleSelection = (certId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(certId) ? prev.filter((id) => id !== certId) : [...prev, certId]
-    );
+    setSelectedIds((prev) => {
+      if (prev.includes(certId)) {
+        return prev.filter((id) => id !== certId);
+      }
+      // Single-slot destinations (e.g. Nutanix) allow only one certificate
+      return isSingleSelect ? [certId] : [...prev, certId];
+    });
   };
 
   const handleSelectAll = () => {
@@ -167,51 +176,53 @@ export const CertificateManagementModal = ({
         return;
       }
 
-      const operations = [];
+      type TOperationResult = {
+        type: "add" | "remove";
+        count: number;
+        success: boolean;
+        error?: unknown;
+      };
 
-      if (certificatesToAdd.length > 0) {
-        operations.push(
-          addCertificatesToSync
-            .mutateAsync({
-              pkiSyncId: pkiSync.id,
-              certificateIds: certificatesToAdd
-            })
-            .then(() => ({
-              type: "add",
-              count: certificatesToAdd.length,
-              success: true
-            }))
-            .catch((error) => ({
-              type: "add",
-              count: certificatesToAdd.length,
-              success: false,
-              error
-            }))
-        );
+      const runRemove = async (): Promise<TOperationResult | null> => {
+        if (certificatesToRemove.length === 0) return null;
+        try {
+          await removeCertificatesFromSync.mutateAsync({
+            pkiSyncId: pkiSync.id,
+            certificateIds: certificatesToRemove
+          });
+          return { type: "remove", count: certificatesToRemove.length, success: true };
+        } catch (error) {
+          return { type: "remove", count: certificatesToRemove.length, success: false, error };
+        }
+      };
+
+      const runAdd = async (): Promise<TOperationResult | null> => {
+        if (certificatesToAdd.length === 0) return null;
+        try {
+          await addCertificatesToSync.mutateAsync({
+            pkiSyncId: pkiSync.id,
+            certificateIds: certificatesToAdd
+          });
+          return { type: "add", count: certificatesToAdd.length, success: true };
+        } catch (error) {
+          return { type: "add", count: certificatesToAdd.length, success: false, error };
+        }
+      };
+
+      let results: (TOperationResult | null)[];
+      if (isSingleSelect) {
+        // Single-slot destinations (e.g. Nutanix, maxCertificates: 1) must remove the
+        // existing certificate before adding the replacement, otherwise the add would
+        // transiently exceed the limit and be rejected. Other destinations keep the
+        // original parallel behavior so their flow is unchanged.
+        results = [await runRemove(), await runAdd()];
+      } else {
+        results = await Promise.all([runAdd(), runRemove()]);
       }
 
-      if (certificatesToRemove.length > 0) {
-        operations.push(
-          removeCertificatesFromSync
-            .mutateAsync({
-              pkiSyncId: pkiSync.id,
-              certificateIds: certificatesToRemove
-            })
-            .then(() => ({
-              type: "remove",
-              count: certificatesToRemove.length,
-              success: true
-            }))
-            .catch((error) => ({
-              type: "remove",
-              count: certificatesToRemove.length,
-              success: false,
-              error
-            }))
-        );
-      }
+      const completed = results.filter((r): r is TOperationResult => r !== null);
 
-      if (operations.length === 0) {
+      if (completed.length === 0) {
         createNotification({
           text: "No changes to save",
           type: "info"
@@ -220,9 +231,8 @@ export const CertificateManagementModal = ({
         return;
       }
 
-      const results = await Promise.all(operations);
-      const failures = results.filter((r) => !r.success);
-      const successes = results.filter((r) => r.success);
+      const failures = completed.filter((r) => !r.success);
+      const successes = completed.filter((r) => r.success);
 
       if (failures.length === 0) {
         const addCount = successes.find((r) => r.type === "add")?.count || 0;
@@ -308,14 +318,16 @@ export const CertificateManagementModal = ({
               <THead>
                 <Tr>
                   <Th className="w-12">
-                    <Checkbox
-                      id="select-all-certificates"
-                      isChecked={
-                        allCertificates.length > 0 &&
-                        allCertificates.every((cert) => selectedIds.includes(cert.id))
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
+                    {!isSingleSelect && (
+                      <Checkbox
+                        id="select-all-certificates"
+                        isChecked={
+                          allCertificates.length > 0 &&
+                          allCertificates.every((cert) => selectedIds.includes(cert.id))
+                        }
+                        onCheckedChange={handleSelectAll}
+                      />
+                    )}
                   </Th>
                   <Th className="w-1/3">SAN / CN</Th>
                   <Th className="w-1/4">Serial Number</Th>

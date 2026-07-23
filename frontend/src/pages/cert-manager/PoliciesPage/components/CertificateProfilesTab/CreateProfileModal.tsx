@@ -56,15 +56,19 @@ import {
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 import {
+  certKeyAlgorithms,
   EXTENDED_KEY_USAGES_OPTIONS,
-  KEY_USAGES_OPTIONS
+  KEY_USAGES_OPTIONS,
+  SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import { AlgorithmSelectors } from "@app/pages/cert-manager/CertificatesPage/components/AlgorithmSelectors";
 import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import { KeyUsageSection } from "@app/pages/cert-manager/CertificatesPage/components/KeyUsageSection";
+import { SubjectAltNamesField } from "@app/pages/cert-manager/CertificatesPage/components/SubjectAltNamesField";
 import { SubjectAttributesField } from "@app/pages/cert-manager/CertificatesPage/components/SubjectAttributesField";
 import {
   CertPolicyState,
+  CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   mapPolicyKeyAlgorithmToApi,
   mapPolicySignatureAlgorithmToApi
@@ -80,6 +84,14 @@ const certificateDefaultsSchema = z
       .array(
         z.object({
           type: z.nativeEnum(CertSubjectAttributeType),
+          value: z.string().min(1, "Value is required")
+        })
+      )
+      .optional(),
+    subjectAltNames: z
+      .array(
+        z.object({
+          type: z.nativeEnum(CertSubjectAlternativeNameType),
           value: z.string().min(1, "Value is required")
         })
       )
@@ -302,10 +314,20 @@ const convertDefaultsToForm = (
     subjectAttributes.push({ type: CertSubjectAttributeType.STATE, value: defaults.state });
   if (defaults.locality)
     subjectAttributes.push({ type: CertSubjectAttributeType.LOCALITY, value: defaults.locality });
+  // Domain components are multi-valued: expand each into its own row.
+  if (defaults.domainComponents) {
+    defaults.domainComponents.forEach((dc) => {
+      subjectAttributes.push({ type: CertSubjectAttributeType.DOMAIN_COMPONENT, value: dc });
+    });
+  }
 
   return {
     ttlDays: defaults.ttlDays ?? null,
     subjectAttributes: subjectAttributes.length > 0 ? subjectAttributes : undefined,
+    subjectAltNames:
+      defaults.subjectAltNames && defaults.subjectAltNames.length > 0
+        ? (defaults.subjectAltNames as { type: CertSubjectAlternativeNameType; value: string }[])
+        : undefined,
     signatureAlgorithm: defaults.signatureAlgorithm ?? null,
     keyAlgorithm: defaults.keyAlgorithm ?? null,
     keyUsages: Object.keys(keyUsagesRecord).length > 0 ? keyUsagesRecord : undefined,
@@ -349,6 +371,7 @@ const convertFormToDefaults = (
 
   // Subject attributes → flat fields
   if (formDefaults.subjectAttributes && formDefaults.subjectAttributes.length > 0) {
+    const domainComponents: string[] = [];
     formDefaults.subjectAttributes.forEach((attr) => {
       if (!attr.value) return;
       switch (attr.type) {
@@ -370,10 +393,21 @@ const convertFormToDefaults = (
         case CertSubjectAttributeType.LOCALITY:
           result.locality = attr.value;
           break;
+        case CertSubjectAttributeType.DOMAIN_COMPONENT:
+          domainComponents.push(attr.value);
+          break;
         default:
           break;
       }
     });
+    if (domainComponents.length > 0) {
+      result.domainComponents = domainComponents;
+    }
+  }
+
+  if (formDefaults.subjectAltNames && formDefaults.subjectAltNames.length > 0) {
+    const sans = formDefaults.subjectAltNames.filter((san) => san.value?.trim());
+    if (sans.length > 0) result.subjectAltNames = sans;
   }
 
   if (formDefaults.basicConstraints) {
@@ -518,6 +552,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         allowedKeyAlgorithms: [] as Array<{ value: string; label: string }>,
         allowedSubjectAttributeTypes: [] as CertSubjectAttributeType[],
         shouldShowSubjectSection: false,
+        allowedSanTypes: [] as CertSubjectAlternativeNameType[],
+        shouldShowSanSection: false,
         templateAllowsCA: false,
         maxPathLength: undefined as number | undefined
       };
@@ -528,42 +564,67 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     const templateAllowsCA =
       isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
 
-    const allowedKeyUsages = [
-      ...(templateData.keyUsages?.required || []),
-      ...(templateData.keyUsages?.allowed || [])
-    ];
-    const allowedExtendedKeyUsages = [
-      ...(templateData.extendedKeyUsages?.required || []),
-      ...(templateData.extendedKeyUsages?.allowed || [])
-    ];
+    const hasKeyUsagePolicy = Boolean(templateData.keyUsages);
+    const allowedKeyUsages = hasKeyUsagePolicy
+      ? [...(templateData.keyUsages?.required || []), ...(templateData.keyUsages?.allowed || [])]
+      : KEY_USAGES_OPTIONS.map((option) => option.value);
 
-    const allowedSignatureAlgorithms = (templateData.algorithms?.signature || []).map(
-      (templateAlgorithm: string) => {
-        const apiAlgorithm = mapPolicySignatureAlgorithmToApi(templateAlgorithm);
-        return { value: apiAlgorithm, label: apiAlgorithm };
-      }
-    );
+    const hasExtendedKeyUsagePolicy = Boolean(templateData.extendedKeyUsages);
+    const allowedExtendedKeyUsages = hasExtendedKeyUsagePolicy
+      ? [
+          ...(templateData.extendedKeyUsages?.required || []),
+          ...(templateData.extendedKeyUsages?.allowed || [])
+        ]
+      : EXTENDED_KEY_USAGES_OPTIONS.map((option) => option.value);
 
-    const allowedKeyAlgorithms = (templateData.algorithms?.keyAlgorithm || []).map(
-      (templateAlgorithm: string) => {
-        const apiAlgorithm = mapPolicyKeyAlgorithmToApi(templateAlgorithm);
-        return { value: apiAlgorithm, label: apiAlgorithm };
-      }
-    );
+    const allowedSignatureAlgorithms = templateData.algorithms?.signature?.length
+      ? templateData.algorithms.signature.map((templateAlgorithm: string) => {
+          const apiAlgorithm = mapPolicySignatureAlgorithmToApi(templateAlgorithm);
+          return { value: apiAlgorithm, label: apiAlgorithm };
+        })
+      : SIGNATURE_ALGORITHMS_OPTIONS.map((option) => ({
+          value: option.value as string,
+          label: option.label
+        }));
 
-    let allowedSubjectAttributeTypes: CertSubjectAttributeType[] = [];
-    let shouldShowSubjectSection = false;
-    if (templateData.subject && templateData.subject.length > 0) {
-      shouldShowSubjectSection = true;
+    const allowedKeyAlgorithms = templateData.algorithms?.keyAlgorithm?.length
+      ? templateData.algorithms.keyAlgorithm.map((templateAlgorithm: string) => {
+          const apiAlgorithm = mapPolicyKeyAlgorithmToApi(templateAlgorithm);
+          return { value: apiAlgorithm, label: apiAlgorithm };
+        })
+      : certKeyAlgorithms.map((option) => ({ value: option.value as string, label: option.label }));
+
+    let allowedSubjectAttributeTypes: CertSubjectAttributeType[];
+    if (templateData.subject) {
       const subjectTypes: CertSubjectAttributeType[] = [];
       templateData.subject.forEach((subjectPolicy: { type: string }) => {
         if (!subjectTypes.includes(subjectPolicy.type as CertSubjectAttributeType)) {
           subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
         }
       });
-      allowedSubjectAttributeTypes =
-        subjectTypes.length > 0 ? subjectTypes : [CertSubjectAttributeType.COMMON_NAME];
+      allowedSubjectAttributeTypes = subjectTypes;
+    } else {
+      allowedSubjectAttributeTypes = Object.values(
+        CertSubjectAttributeType
+      ) as CertSubjectAttributeType[];
     }
+    const shouldShowSubjectSection = true;
+
+    let allowedSanTypes: CertSubjectAlternativeNameType[];
+    if (templateData.sans) {
+      const sanTypes: CertSubjectAlternativeNameType[] = [];
+      templateData.sans.forEach((sanPolicy: { type: string }) => {
+        if (!sanTypes.includes(sanPolicy.type as CertSubjectAlternativeNameType)) {
+          sanTypes.push(sanPolicy.type as CertSubjectAlternativeNameType);
+        }
+      });
+      allowedSanTypes = sanTypes;
+    } else {
+      allowedSanTypes = Object.values(
+        CertSubjectAlternativeNameType
+      ) as CertSubjectAlternativeNameType[];
+    }
+    const shouldShowSanSection = true;
 
     return {
       allowedKeyUsages,
@@ -574,6 +635,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       allowedKeyAlgorithms,
       allowedSubjectAttributeTypes,
       shouldShowSubjectSection,
+      allowedSanTypes,
+      shouldShowSanSection,
       templateAllowsCA,
       maxPathLength: templateData.basicConstraints?.maxPathLength as number | undefined
     };
@@ -595,8 +658,13 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
   const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
   const isAdcsCa = selectedCa?.type === CaType.ADCS;
+  // Combined flag for external ADCS CAs - these control validity, key usages, etc. via their templates
+  const isExternalAdcsCa = isAzureAdcsCa || isAdcsCa;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
   const isAwsAcmPublicCa = selectedCa?.type === CaType.AWS_ACM_PUBLIC_CA;
+
+  const externalCaHint =
+    "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
 
   // Fetch Azure ADCS templates if needed
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
@@ -999,48 +1067,50 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       Set default values for certificates issued under this profile. These defaults
                       are used when a certificate request does not specify its own values.
                     </p>
-                    {/* TTL — simple days number input */}
-                    <Controller
-                      name="defaults.ttlDays"
-                      control={control}
-                      render={({ field, fieldState: { error } }) => (
-                        <FormControl
-                          label={
-                            <FormLabel
-                              label="Time to Live (TTL) in Days"
-                              icon={
-                                <Tooltip
-                                  content={
-                                    isAwsAcmPublicCa
-                                      ? "AWS ACM Public CA issues certificates with a fixed 198-day validity — this field cannot be changed."
-                                      : "Fallback validity period used when not explicitly specified in certificate request. Leave empty for no TTL default."
-                                  }
-                                >
-                                  <FontAwesomeIcon
-                                    icon={faQuestionCircle}
-                                    className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
-                                    size="sm"
-                                  />
-                                </Tooltip>
-                              }
+                    {/* TTL — simple days number input (hidden for ADCS CAs) */}
+                    {!isExternalAdcsCa && (
+                      <Controller
+                        name="defaults.ttlDays"
+                        control={control}
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            label={
+                              <FormLabel
+                                label="Time to Live (TTL) in Days"
+                                icon={
+                                  <Tooltip
+                                    content={
+                                      isAwsAcmPublicCa
+                                        ? "AWS ACM Public CA issues certificates with a fixed 198-day validity — this field cannot be changed."
+                                        : "Fallback validity period used when not explicitly specified in certificate request. Leave empty for no TTL default."
+                                    }
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faQuestionCircle}
+                                      className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
+                                      size="sm"
+                                    />
+                                  </Tooltip>
+                                }
+                              />
+                            }
+                            isError={Boolean(error)}
+                            errorText={error?.message}
+                          >
+                            <Input
+                              type="number"
+                              placeholder="e.g. 365"
+                              value={field.value == null ? "" : field.value}
+                              isDisabled={isAwsAcmPublicCa}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === "" ? null : Number(val));
+                              }}
                             />
-                          }
-                          isError={Boolean(error)}
-                          errorText={error?.message}
-                        >
-                          <Input
-                            type="number"
-                            placeholder="e.g. 365"
-                            value={field.value == null ? "" : field.value}
-                            isDisabled={isAwsAcmPublicCa}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(val === "" ? null : Number(val));
-                            }}
-                          />
-                        </FormControl>
-                      )}
-                    />
+                          </FormControl>
+                        )}
+                      />
+                    )}
 
                     {/* Subject Attributes — only if policy allows subject fields */}
                     {policyConstraints.shouldShowSubjectSection && (
@@ -1048,6 +1118,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         control={control}
                         allowedAttributeTypes={policyConstraints.allowedSubjectAttributeTypes}
                         namePrefix="defaults.subjectAttributes"
+                      />
+                    )}
+
+                    {/* Subject Alternative Names — only if policy allows SANs */}
+                    {policyConstraints.shouldShowSanSection && (
+                      <SubjectAltNamesField
+                        control={control}
+                        allowedSanTypes={policyConstraints.allowedSanTypes}
+                        namePrefix="defaults.subjectAltNames"
                       />
                     )}
 
@@ -1062,110 +1141,118 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         availableKeyAlgorithms={policyConstraints.allowedKeyAlgorithms}
                         isRequired={false}
                         nonePlaceholder="No default"
+                        hideSignatureAlgorithm={isExternalAdcsCa}
                       />
                     )}
 
-                    {/* Key Usages, Ext Key Usages, Basic Constraints — in Accordion */}
-                    {(filteredKeyUsages.length > 0 ||
-                      filteredExtendedKeyUsages.length > 0 ||
-                      policyConstraints.templateAllowsCA) && (
-                      <Accordion type="single" collapsible className="w-full">
-                        {filteredKeyUsages.length > 0 && (
-                          <KeyUsageSection
-                            control={control}
-                            title="Key Usages"
-                            accordionValue="key-usages"
-                            namePrefix="defaults.keyUsages"
-                            options={filteredKeyUsages as Array<{ value: string; label: string }>}
-                            requiredUsages={[]}
-                          />
-                        )}
-                        {filteredExtendedKeyUsages.length > 0 && (
-                          <KeyUsageSection
-                            control={control}
-                            title="Extended Key Usages"
-                            accordionValue="extended-key-usages"
-                            namePrefix="defaults.extendedKeyUsages"
-                            options={
-                              filteredExtendedKeyUsages as Array<{ value: string; label: string }>
-                            }
-                            requiredUsages={[]}
-                          />
-                        )}
-                        {policyConstraints.templateAllowsCA && (
-                          <AccordionItem value="basic-constraints">
-                            <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                            <AccordionContent>
-                              <div className="space-y-4 pl-2">
-                                <Controller
-                                  control={control}
-                                  name="defaults.basicConstraints.isCA"
-                                  render={({ field: { value, onChange } }) => (
-                                    <div className="flex items-center gap-3">
-                                      <Checkbox
-                                        id="defaults-isCA"
-                                        isChecked={value || false}
-                                        onCheckedChange={(checked) => {
-                                          onChange(checked);
-                                          if (!checked) {
-                                            setValue(
-                                              "defaults.basicConstraints.pathLength",
-                                              undefined
-                                            );
-                                          }
-                                        }}
-                                      />
-                                      <div className="space-y-1">
-                                        <FormLabel
-                                          id="defaults-isCA"
-                                          className="cursor-pointer text-sm font-medium text-mineshaft-100"
-                                          label="Issue as Certificate Authority"
-                                        />
-                                        <p className="text-xs text-bunker-300">
-                                          Certificates will default to CA:TRUE extension
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-                                />
+                    {isExternalAdcsCa && (
+                      <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
+                    )}
 
-                                {watchedDefaultsIsCA && (
+                    {/* Key Usages, Ext Key Usages, Basic Constraints — in Accordion (hidden for ADCS CAs) */}
+                    {!isExternalAdcsCa &&
+                      (filteredKeyUsages.length > 0 ||
+                        filteredExtendedKeyUsages.length > 0 ||
+                        policyConstraints.templateAllowsCA) && (
+                        <Accordion type="single" collapsible className="w-full">
+                          {filteredKeyUsages.length > 0 && (
+                            <KeyUsageSection
+                              control={control}
+                              title="Key Usages"
+                              accordionValue="key-usages"
+                              namePrefix="defaults.keyUsages"
+                              options={filteredKeyUsages as Array<{ value: string; label: string }>}
+                              requiredUsages={[]}
+                            />
+                          )}
+                          {filteredExtendedKeyUsages.length > 0 && (
+                            <KeyUsageSection
+                              control={control}
+                              title="Extended Key Usages"
+                              accordionValue="extended-key-usages"
+                              namePrefix="defaults.extendedKeyUsages"
+                              options={
+                                filteredExtendedKeyUsages as Array<{ value: string; label: string }>
+                              }
+                              requiredUsages={[]}
+                            />
+                          )}
+                          {policyConstraints.templateAllowsCA && (
+                            <AccordionItem value="basic-constraints">
+                              <AccordionTrigger>Basic Constraints</AccordionTrigger>
+                              <AccordionContent>
+                                <div className="space-y-4 pl-2">
                                   <Controller
                                     control={control}
-                                    name="defaults.basicConstraints.pathLength"
-                                    render={({ field, fieldState: { error } }) => (
-                                      <FormControl
-                                        label="Path Length"
-                                        isError={Boolean(error)}
-                                        errorText={error?.message}
-                                      >
-                                        <Input
-                                          {...field}
-                                          type="number"
-                                          min={0}
-                                          placeholder="Leave empty for no constraint"
-                                          className="w-full"
-                                          value={field.value ?? ""}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === "") {
-                                              field.onChange(null);
-                                            } else {
-                                              const numVal = parseInt(val, 10);
-                                              field.onChange(Number.isNaN(numVal) ? null : numVal);
+                                    name="defaults.basicConstraints.isCA"
+                                    render={({ field: { value, onChange } }) => (
+                                      <div className="flex items-center gap-3">
+                                        <Checkbox
+                                          id="defaults-isCA"
+                                          isChecked={value || false}
+                                          onCheckedChange={(checked) => {
+                                            onChange(checked);
+                                            if (!checked) {
+                                              setValue(
+                                                "defaults.basicConstraints.pathLength",
+                                                undefined
+                                              );
                                             }
                                           }}
                                         />
-                                      </FormControl>
+                                        <div className="space-y-1">
+                                          <FormLabel
+                                            id="defaults-isCA"
+                                            className="cursor-pointer text-sm font-medium text-mineshaft-100"
+                                            label="Issue as Certificate Authority"
+                                          />
+                                          <p className="text-xs text-bunker-300">
+                                            Certificates will default to CA:TRUE extension
+                                          </p>
+                                        </div>
+                                      </div>
                                     )}
                                   />
-                                )}
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        )}
-                      </Accordion>
-                    )}
+
+                                  {watchedDefaultsIsCA && (
+                                    <Controller
+                                      control={control}
+                                      name="defaults.basicConstraints.pathLength"
+                                      render={({ field, fieldState: { error } }) => (
+                                        <FormControl
+                                          label="Path Length"
+                                          isError={Boolean(error)}
+                                          errorText={error?.message}
+                                        >
+                                          <Input
+                                            {...field}
+                                            type="number"
+                                            min={0}
+                                            placeholder="Leave empty for no constraint"
+                                            className="w-full"
+                                            value={field.value ?? ""}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if (val === "") {
+                                                field.onChange(null);
+                                              } else {
+                                                const numVal = parseInt(val, 10);
+                                                field.onChange(
+                                                  Number.isNaN(numVal) ? null : numVal
+                                                );
+                                              }
+                                            }}
+                                          />
+                                        </FormControl>
+                                      )}
+                                    />
+                                  )}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          )}
+                        </Accordion>
+                      )}
                   </div>
                 )}
               </Tab.Panel>

@@ -202,7 +202,12 @@ export const PamSessionsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Sessions" })}</title>
       </Helmet>
-      <PageHeader scope={ProjectType.PAM} icon={Video} title="Sessions" />
+      <PageHeader
+        scope={ProjectType.PAM}
+        icon={Video}
+        title="Sessions"
+        description="Monitor and manage active and historical sessions."
+      />
 
       <Card className="mt-4">
         <CardHeader>
@@ -240,7 +245,7 @@ export const PamSessionsPage = () => {
 
         {!isPending && displayedSessions.length === 0 ? (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {search || statusFilter !== "all"

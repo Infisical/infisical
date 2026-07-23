@@ -2,6 +2,7 @@ import { TImmutableDBKeys, TSecretApprovalPolicies, TSecretApprovalRequestsSecre
 import { TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretOperations } from "@app/services/secret/secret-types";
+import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export enum RequestState {
   Open = "open",
@@ -62,6 +63,7 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   secretPath: string;
   commitMessage?: string;
   policy: TSecretApprovalPolicies;
+  updateMode?: SecretUpdateMode;
   data: {
     [SecretOperations.Create]?: TApprovalCreateSecretV2Bridge[];
     [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];

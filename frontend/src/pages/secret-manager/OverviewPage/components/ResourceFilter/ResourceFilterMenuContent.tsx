@@ -1,9 +1,10 @@
 import { type ReactNode, useState } from "react";
-import { SearchIcon, TagsIcon, XIcon } from "lucide-react";
+import { BracesIcon, SearchIcon, TagsIcon, XIcon } from "lucide-react";
 
 import {
   Badge,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -30,6 +31,9 @@ type Props = {
   onToggleTag: (tagSlug: string) => void;
   onClearTags: () => void;
   menuLabel?: string;
+  // when provided, renders a "Metadata" entry below Tags that opens the metadata condition builder
+  onOpenMetadata?: () => void;
+  metadataCount?: number;
 };
 
 export function ResourceFilterMenuContent({
@@ -40,7 +44,9 @@ export function ResourceFilterMenuContent({
   selectedTagSlugs,
   onToggleTag,
   onClearTags,
-  menuLabel = "Filter by Resource"
+  menuLabel = "Filter by Resource",
+  onOpenMetadata,
+  metadataCount = 0
 }: Props) {
   const [tagSearch, setTagSearch] = useState("");
 
@@ -127,6 +133,17 @@ export function ResourceFilterMenuContent({
           </div>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
+      {onOpenMetadata && (
+        <DropdownMenuItem className="gap-2" onSelect={onOpenMetadata}>
+          <BracesIcon className="size-4 shrink-0 text-muted" />
+          <span className="flex-1">Metadata</span>
+          {metadataCount > 0 && (
+            <Badge variant="project" className="mr-1">
+              {metadataCount}
+            </Badge>
+          )}
+        </DropdownMenuItem>
+      )}
     </>
   );
 }

@@ -11,15 +11,39 @@ import { logger } from "@app/lib/logger";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
-import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "../auth/auth-type";
+import { getRequiredMfaMethod } from "../auth/auth-fns";
+import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
+import { TTotpConfigDALFactory } from "../totp/totp-config-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
+import { TWebAuthnCredentialDALFactory } from "../webauthn/webauthn-credential-dal";
 import { TUserDALFactory } from "./user-dal";
-import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO, TVerifyCurrentEmailOTPDTO } from "./user-types";
+import {
+  TActivateUserMfaDTO,
+  TDeactivateUserMfaDTO,
+  TListUserGroupsDTO,
+  TSetSelectedMfaMethodDTO,
+  TUpdateUserEmailDTO,
+  TVerifyCurrentEmailOTPDTO
+} from "./user-types";
+
+// Enforce a minimum execution time so response timing cannot disclose whether an email
+// address already has an account.
+const enforceMinimumExecutionTime = async (startTime: Date, minimumMs = 2000) => {
+  const elapsedMs = new Date().getTime() - startTime.getTime();
+  if (elapsedMs < minimumMs) {
+    await new Promise((resolve) => {
+      setTimeout(resolve, minimumMs - elapsedMs);
+    });
+  }
+};
 
 type TUserServiceFactoryDep = {
   userDAL: Pick<
@@ -44,6 +68,10 @@ type TUserServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
+  totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
+  webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
+  mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -56,7 +84,11 @@ export const userServiceFactory = ({
   tokenService,
   smtpService,
   permissionService,
-  userAliasDAL
+  userAliasDAL,
+  totpConfigDAL,
+  webAuthnCredentialDAL,
+  mfaRecoveryCodeService,
+  usageMeteringService
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -95,25 +127,114 @@ export const userServiceFactory = ({
     });
   };
 
-  const updateUserMfa = async ({ userId, isMfaEnabled, selectedMfaMethod }: TUpdateUserMfaDTO) => {
-    const user = await userDAL.findById(userId);
-
-    if (!user || !user.email) throw new BadRequestError({ name: "Failed to toggle MFA" });
-
-    let mfaMethods;
-    if (isMfaEnabled === undefined) {
-      mfaMethods = undefined;
-    } else {
-      mfaMethods = isMfaEnabled ? ["email"] : [];
+  // A method can only be selected/activated once the user has actually configured
+  // that factor. EMAIL uses the account email, so it needs no enrollment, but it
+  // delivers codes over SMTP — which self-hosted instances may not have configured.
+  const assertMfaMethodConfigured = async (userId: string, method: MfaMethod) => {
+    if (method === MfaMethod.EMAIL) {
+      if (!getConfig().isSmtpConfigured) {
+        throw new BadRequestError({
+          message: "Cannot use email two-factor authentication because SMTP is not configured for this instance"
+        });
+      }
+    } else if (method === MfaMethod.TOTP) {
+      const totpConfig = await totpConfigDAL.findOne({ userId, isVerified: true });
+      if (!totpConfig) {
+        throw new BadRequestError({
+          message: "Cannot select an authenticator app without a verified authenticator configured"
+        });
+      }
+    } else if (method === MfaMethod.WEBAUTHN) {
+      const credentials = await webAuthnCredentialDAL.find({ userId });
+      if (credentials.length === 0) {
+        throw new BadRequestError({
+          message: "Cannot select a passkey without a registered passkey"
+        });
+      }
     }
+  };
 
-    const updatedUser = await userDAL.updateById(userId, {
-      isMfaEnabled,
-      mfaMethods,
-      selectedMfaMethod
+  // Enables MFA for the account. Enabling always issues a fresh recovery-code pool
+  // (invalidating any prior codes) and returns it so the caller can surface the
+  // codes to the user once. EMAIL requires no prior enrollment, so this doubles as
+  // first-time setup; other methods must already be configured (asserted below).
+  const activateMfa = async ({ userId, selectedMfaMethod }: TActivateUserMfaDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user || !user.email || user.isMfaEnabled) throw new BadRequestError({ name: "Failed to enable MFA" });
+
+    const method = selectedMfaMethod ?? (user.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
+    await assertMfaMethodConfigured(userId, method);
+
+    const { recoveryCodes, updatedUser } = await userDAL.transaction(async (tx) => {
+      const codes = await mfaRecoveryCodeService.rotateRecoveryCodes({
+        userId,
+        skipMfaEnabledCheck: true,
+        tx
+      });
+
+      const updated = await userDAL.updateById(
+        userId,
+        {
+          isMfaEnabled: true,
+          selectedMfaMethod: method
+        },
+        tx
+      );
+
+      return { recoveryCodes: codes, updatedUser: updated };
+    });
+
+    return { user: updatedUser, recoveryCodes };
+  };
+
+  // MFA cannot be turned off while any organization the user belongs to enforces it,
+  // since doing so would lock them out of that org on the next login. This is the
+  // authoritative backend rule (the UI only greys out the button as a hint) and is
+  // enforced both up front in the disable route — so the user isn't put through a
+  // step-up challenge only to be rejected — and again here in deactivateMfa as the
+  // single source of truth that actually gates the state change.
+  const assertMfaDisableAllowed = async (userId: string) => {
+    const userOrgMemberships = await membershipUserDAL.find({
+      actorUserId: userId,
+      scope: AccessScope.Organization
+    });
+    if (!userOrgMemberships.length) return;
+
+    const orgIds = userOrgMemberships.map((membership) => membership.scopeOrgId);
+    const organizations = await orgDAL.find({ $in: { id: orgIds } });
+    if (organizations.some((org) => org.enforceMfa)) {
+      throw new ForbiddenRequestError({
+        message: "Two-factor authentication is required by your organization and cannot be disabled"
+      });
+    }
+  };
+
+  // Disables MFA. Enrolled factors are preserved so re-enabling does not require
+  // re-enrollment, but the recovery-code pool is wiped so codes never outlive the
+  // enabled state; a fresh pool is issued on the next enable.
+  const deactivateMfa = async ({ userId }: TDeactivateUserMfaDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to disable MFA" });
+
+    await assertMfaDisableAllowed(userId);
+
+    const updatedUser = await userDAL.transaction(async (tx) => {
+      const updated = await userDAL.updateById(userId, { isMfaEnabled: false }, tx);
+      await mfaRecoveryCodeService.deleteRecoveryCodes({ userId, tx });
+      return updated;
     });
 
     return updatedUser;
+  };
+
+  // Updates only the preferred challenge method among already-configured factors.
+  const setSelectedMfaMethod = async ({ userId, selectedMfaMethod }: TSetSelectedMfaMethodDTO) => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new BadRequestError({ name: "Failed to update MFA method" });
+
+    await assertMfaMethodConfigured(userId, selectedMfaMethod);
+
+    return userDAL.updateById(userId, { selectedMfaMethod });
   };
 
   const updateUserName = async (userId: string, firstName: string, lastName: string) => {
@@ -182,6 +303,13 @@ export const userServiceFactory = ({
         });
       }
 
+      if (normalizedNewEmail === user.email.toLowerCase() || normalizedNewEmail === user.username.toLowerCase()) {
+        throw new BadRequestError({
+          message: "The new email address must be different from your current email address.",
+          name: "RequestEmailChangeOTP"
+        });
+      }
+
       const hasScimRestriction = await checkUserScimRestriction(userId, tx);
       if (hasScimRestriction) {
         throw new BadRequestError({
@@ -190,44 +318,39 @@ export const userServiceFactory = ({
         });
       }
 
-      // Silently check if another user already has this email - don't send OTP if email is taken
-      const existingUser = await userDAL.findOne({ username: normalizedNewEmail }, tx);
-      if (!existingUser) {
-        // Step 1 of 2: send OTP to the CURRENT email so the legitimate owner must approve
-        // the change before any code is sent to the new address.
-        const otpCode = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP,
-          userId,
-          payload: newEmail.toLowerCase()
-        });
+      // Availability of the requested address is deliberately NOT checked here: step 1
+      // behaves identically whether or not the address is taken (anti-enumeration). The
+      // outcome is only ever disclosed to the requested address itself, in step 2.
 
-        await smtpService.sendMail({
-          template: SmtpTemplates.EmailChangeRequestNotification,
-          subjectLine: "Confirm your Infisical email change",
-          recipients: [user.email],
-          substitutions: {
-            currentEmail: user.email,
-            requestedEmail: newEmail.toLowerCase(),
-            code: otpCode
-          }
-        });
-      }
+      // Step 1 of 2: send OTP to the CURRENT email so the legitimate owner must approve
+      // the change before anything is sent to the new address.
+      const otpCode = await tokenService.createTokenForUser({
+        type: TokenType.TOKEN_EMAIL_CHANGE_CURRENT_OTP,
+        userId,
+        payload: newEmail.toLowerCase()
+      });
+
+      await smtpService.sendMail({
+        template: SmtpTemplates.EmailChangeRequestNotification,
+        subjectLine: "Confirm your Infisical email change",
+        recipients: [user.email],
+        substitutions: {
+          currentEmail: user.email,
+          requestedEmail: newEmail.toLowerCase(),
+          code: otpCode
+        }
+      });
 
       return { success: true, message: "Verification code sent to current email address" };
     });
-    // Force this function to have a minimum execution time of 2 seconds to avoid possible information disclosure about existing users
-    const endTime = new Date();
-    const timeDiff = endTime.getTime() - startTime.getTime();
-    if (timeDiff < 2000) {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 2000 - timeDiff);
-      });
-    }
+    // Keep response timing uniform so it cannot disclose anything about existing users
+    await enforceMinimumExecutionTime(startTime);
     return changeEmailOTP;
   };
 
   const verifyCurrentEmailOTP = async ({ userId, otpCode }: TVerifyCurrentEmailOTPDTO) => {
-    return userDAL.transaction(async (tx) => {
+    const startTime = new Date();
+    const result = await userDAL.transaction(async (tx) => {
       const user = await userDAL.findById(userId, tx);
       if (!user)
         throw new NotFoundError({ message: `User with ID '${userId}' not found`, name: "VerifyCurrentEmailOTP" });
@@ -260,30 +383,44 @@ export const userServiceFactory = ({
         throw new BadRequestError({ message: "Invalid verification code", name: "VerifyCurrentEmailOTP" });
       }
 
-      // Re-check availability — someone else may have claimed this email since the request was issued
+      // Step 2 of 2: current-email control is proven, so only now is availability of the
+      // requested address consulted. The API response stays identical whether the address
+      // is taken or free (anti-enumeration); the outcome is disclosed only to the requested
+      // address itself: a verification code if it is free, or an explanatory notice if it
+      // already belongs to an account (its owner is the one party who already knows that
+      // account exists).
       const existingUser = await userDAL.findOne({ username: newEmail }, tx);
       if (existingUser) {
-        throw new BadRequestError({ message: "Email is no longer available", name: "VerifyCurrentEmailOTP" });
+        await smtpService.sendMail({
+          template: SmtpTemplates.EmailChangeExistingAccount,
+          subjectLine: "Email Change Request for Your Infisical Account",
+          recipients: [newEmail],
+          substitutions: {
+            email: newEmail
+          }
+        });
+      } else {
+        const newEmailOtpCode = await tokenService.createTokenForUser({
+          type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
+          userId,
+          payload: newEmail
+        });
+
+        await smtpService.sendMail({
+          template: SmtpTemplates.EmailVerification,
+          subjectLine: "Infisical email change verification",
+          recipients: [newEmail],
+          substitutions: {
+            code: newEmailOtpCode
+          }
+        });
       }
-
-      // Step 2 of 2: now that current-email control is proven, send OTP to the NEW address
-      const newEmailOtpCode = await tokenService.createTokenForUser({
-        type: TokenType.TOKEN_EMAIL_CHANGE_OTP,
-        userId,
-        payload: newEmail
-      });
-
-      await smtpService.sendMail({
-        template: SmtpTemplates.EmailVerification,
-        subjectLine: "Infisical email change verification",
-        recipients: [newEmail],
-        substitutions: {
-          code: newEmailOtpCode
-        }
-      });
 
       return { success: true, newEmail };
     });
+    // Keep response timing uniform between the taken/free branches (anti-enumeration)
+    await enforceMinimumExecutionTime(startTime);
+    return result;
   };
 
   const updateUserEmail = async ({
@@ -389,6 +526,19 @@ export const userServiceFactory = ({
     };
   };
 
+  // Resolves the MFA method a step-up challenge must use, from the current org
+  // context. Recovery codes bypass the org-required method at login, so the step-up
+  // that gates them must challenge that same method rather than the user's personal
+  // preference (which could be weaker, e.g. email while the org enforces passkeys).
+  // Mirrors login via the shared getRequiredMfaMethod: an org enforcing MFA dictates
+  // the method, otherwise the user's own preference applies. Reaching a step-up-gated
+  // route already proves membership of this org, so no permission check is needed.
+  const getStepUpMfaMethod = async (userId: string, orgId: string): Promise<MfaMethod> => {
+    const [user, org] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const { requiredMfaMethod } = getRequiredMfaMethod(org ?? {}, user ?? {});
+    return requiredMfaMethod;
+  };
+
   const deleteUser = async (userId: string) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
@@ -408,7 +558,22 @@ export const userServiceFactory = ({
       }
     }
 
+    // Capture the user's org memberships before deletion; the delete cascades them away.
+    const orgMemberships = await membershipUserDAL.find({
+      scope: AccessScope.Organization,
+      actorUserId: userId
+    });
+
     const user = await userDAL.deleteById(userId);
+
+    // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
+    const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
+    orgIds.forEach((orgId) => {
+      usageMeteringService.emit(orgId, IdentitiesMeter.key);
+      usageMeteringService.emit(orgId, UserIdentities.key);
+      usageMeteringService.emit(orgId, SecretIdentities.key);
+      usageMeteringService.emit(orgId, PamIdentities.key);
+    });
 
     try {
       if (user?.email) {
@@ -542,7 +707,10 @@ export const userServiceFactory = ({
 
   return {
     sendEmailVerificationCode,
-    updateUserMfa,
+    activateMfa,
+    deactivateMfa,
+    assertMfaDisableAllowed,
+    setSelectedMfaMethod,
     updateUserName,
     updateAuthMethods,
     requestEmailChangeOTP,
@@ -550,6 +718,7 @@ export const userServiceFactory = ({
     updateUserEmail,
     deleteUser,
     getMe,
+    getStepUpMfaMethod,
     createUserAction,
     listUserGroups,
     getUserAction,

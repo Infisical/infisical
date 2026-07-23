@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Plus, Search } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { AlertTriangle, ArrowUpRight, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/v2/HighlightText";
@@ -36,15 +37,18 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3/generic/Sheet";
 import { TextArea } from "@app/components/v3/generic/TextArea";
+import { useOrganization } from "@app/context";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
   useCreatePamAccount,
+  useGetPamAccessCapabilities,
   useListPamAccountTemplates,
   useListPamAccountTypes,
   useListPamFoldersAdmin,
@@ -62,6 +66,7 @@ import {
 import { ConnectionDetailsForm } from "./ConnectionDetailsForm";
 import { CreateFolderModal } from "./CreateFolderModal";
 import { CredentialsForm } from "./CredentialsForm";
+import { SshCaSetupCallout } from "./SshCaSetupCallout";
 
 const CREATE_FOLDER_VALUE = "__create_folder__";
 
@@ -69,10 +74,15 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   defaultFolderId?: string;
+  onCreated?: (accountId: string) => void;
 };
 
-export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Props) => {
+export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCreated }: Props) => {
   const createAccount = useCreatePamAccount();
+
+  const { currentOrg } = useOrganization();
+  const { data: capabilities } = useGetPamAccessCapabilities();
+  const isProductAdmin = Boolean(capabilities?.isProductAdmin);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -221,9 +231,10 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
         ...(gateway.gatewayPoolId ? { gatewayPoolId: gateway.gatewayPoolId } : {})
       },
       {
-        onSuccess: () => {
+        onSuccess: (account: { id: string }) => {
           createNotification({ text: "Account created", type: "success" });
           onOpenChange(false);
+          onCreated?.(account.id);
         },
         onError: (error) => {
           const unmapped = applyServerValidationErrors(error, setError, knownFields);
@@ -254,11 +265,15 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
         <SheetContent>
           <SheetHeader>
             <SheetTitle>Add Account</SheetTitle>
+            <SheetDescription>
+              Pick a folder and an account template. The account inherits its type and governance
+              rules from the selected template.
+            </SheetDescription>
           </SheetHeader>
 
           {step === 1 ? (
             <>
-              <div className="flex min-h-0 flex-1 flex-col gap-5 px-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 pt-3">
                 <Controller
                   control={control}
                   name="folderId"
@@ -306,9 +321,28 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                   name="templateId"
                   render={({ field }) => (
                     <Field className="min-h-0 flex-1">
-                      <FieldLabel>
-                        Account Template<span className="text-product-pam">*</span>
-                      </FieldLabel>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel>
+                          Account Template<span className="text-product-pam">*</span>
+                        </FieldLabel>
+                        {isProductAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="text-muted hover:text-foreground"
+                            asChild
+                          >
+                            <Link
+                              to="/organizations/$orgId/pam/templates"
+                              params={{ orgId: currentOrg.id }}
+                              target="_blank"
+                            >
+                              Manage Templates
+                              <ArrowUpRight />
+                            </Link>
+                          </Button>
+                        )}
+                      </div>
                       <FieldContent className="min-h-0 flex-1">
                         <InputGroup>
                           <InputGroupAddon align="inline-start">
@@ -381,7 +415,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
             </>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-              <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4">
+              <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4 pt-3">
                 {selectedTemplate && (
                   <div className="flex items-center gap-3 rounded-md border border-border bg-container p-3">
                     <AccountPlatformIcon accountType={selectedTemplate.type} size={28} />
@@ -470,10 +504,18 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId }: Pr
                   </div>
                 </div>
 
-                <div className="mt-2">
-                  <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
-                  <CredentialsForm control={control} />
-                </div>
+                {(selectedMetadata?.credentialFields.length ?? 0) > 0 && (
+                  <div className="mt-2">
+                    <h3 className="mb-3 text-sm font-medium text-foreground">Credentials</h3>
+                    <div className="flex flex-col gap-4">
+                      <CredentialsForm control={control} />
+                      <SshCaSetupCallout
+                        accountType={watch("accountType")}
+                        authMethod={watch("credentials")?.authMethod as string | undefined}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div aria-hidden className="h-8 shrink-0" />
               </div>

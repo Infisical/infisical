@@ -13,6 +13,7 @@ import {
 import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretPersonalOverridePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -29,6 +30,7 @@ import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -41,8 +43,11 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
   recordSecretCacheAccessMetric,
   recordSecretCacheWriteMetric,
+  recordSecretOperationDuration,
   recordSecretReadMetric,
-  SecretCacheAccessResult
+  recordSecretWriteMetric,
+  SecretCacheAccessResult,
+  SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -110,6 +115,28 @@ import {
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
+
+type SecretMetricOp = {
+  duration: "read" | "write" | "delete";
+  write?: "create" | "update" | "delete";
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const withSecretMetrics = <T extends (...args: any[]) => Promise<any>>(fn: T, op: SecretMetricOp): T =>
+  (async (...args: Parameters<T>) => {
+    const startTime = performance.now();
+    let success = false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const result = await fn(...args);
+      success = true;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return result;
+    } finally {
+      recordSecretOperationDuration({ startTime, operation: op.duration, outcome: success ? "success" : "failure" });
+      if (success && op.write) recordSecretWriteMetric({ operation: op.write });
+    }
+  }) as T;
 
 type TSecretV2BridgeServiceFactoryDep = {
   secretDAL: TSecretV2BridgeDALFactory;
@@ -348,15 +375,24 @@ export const secretV2BridgeServiceFactory = ({
 
     const { secretName, type, ...inputSecretData } = inputSecret;
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Create,
-      subject(ProjectPermissionSub.Secrets, {
+    if (type === SecretType.Personal) {
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Create, {
         environment,
         secretPath,
         secretName,
-        secretTags: tags?.map((el) => el.slug)
-      })
-    );
+        secretTags: doesSecretExist?.tags?.map((el) => el.slug)
+      });
+    } else {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionSecretActions.Create,
+        subject(ProjectPermissionSub.Secrets, {
+          environment,
+          secretPath,
+          secretName,
+          secretTags: tags?.map((el) => el.slug)
+        })
+      );
+    }
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -544,6 +580,19 @@ export const secretV2BridgeServiceFactory = ({
     let secret;
     let secretId: string;
     if (inputSecret.type === SecretType.Personal) {
+      const sharedSecretForOverride = await secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      });
+
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Edit, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName,
+        secretTags: sharedSecretForOverride?.tags?.map((el) => el.slug)
+      });
+
       const personalSecretToModify = await secretDAL.findOne({
         key: inputSecret.secretName,
         type: SecretType.Personal,
@@ -853,12 +902,8 @@ export const secretV2BridgeServiceFactory = ({
     const secretToDelete = await secretDAL.findOne({
       key: inputSecret.secretName,
       folderId,
-      ...(inputSecret.type === SecretType.Shared
-        ? {}
-        : {
-            type: SecretType.Personal,
-            userId: actorId
-          })
+      type: inputSecret.type,
+      ...(inputSecret.type === SecretType.Personal && { userId: actorId })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
     if (inputSecret.type === SecretType.Shared) {
@@ -866,7 +911,23 @@ export const secretV2BridgeServiceFactory = ({
         throw new BadRequestError({ message: "Cannot delete honey token secrets" });
     }
 
-    if (secretToDelete.type !== SecretType.Personal)
+    if (inputSecret.type === SecretType.Personal) {
+      // check the shared secret that this personal secret overrides to get the tags
+      const sharedSecretForOverride = await secretDAL.findOne({
+        key: inputSecret.secretName,
+        type: SecretType.Shared,
+        folderId
+      });
+
+      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Delete, {
+        environment,
+        secretPath,
+        secretName: inputSecret.secretName,
+        secretTags: sharedSecretForOverride?.tags?.map((el) => el.slug)
+      });
+    }
+
+    if (inputSecret.type === SecretType.Shared)
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
         subject(ProjectPermissionSub.Secrets, {
@@ -1205,11 +1266,20 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      permissionFingerprint = await permissionDAL.getPermissionFingerprint({
-        projectId,
-        orgId: actorOrgId,
-        actorId,
-        actorType: actor
+      // Cache the fingerprint for the marker window so repeated polls
+      // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
+      // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
+      permissionFingerprint = await withCache({
+        keyStore,
+        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
+        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+        fetcher: () =>
+          permissionDAL.getPermissionFingerprint({
+            projectId,
+            orgId: actorOrgId,
+            actorId,
+            actorType: actor
+          })
       });
     }
 
@@ -1233,12 +1303,16 @@ export const secretV2BridgeServiceFactory = ({
     });
     const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
+    const hasIfNoneMatch = ifNoneMatch !== undefined;
+    let etagMissReason: SecretEtagMissReason | undefined;
+
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
       if (storedEtag && storedEtag === ifNoneMatch) {
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED, { hasIfNoneMatch: true });
         return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
       }
+      etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -1298,7 +1372,7 @@ export const secretV2BridgeServiceFactory = ({
         const payload = { secrets, imports };
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1558,7 +1632,7 @@ export const secretV2BridgeServiceFactory = ({
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
+      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
@@ -1649,7 +1723,7 @@ export const secretV2BridgeServiceFactory = ({
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
+    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };
@@ -3831,14 +3905,14 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   return {
-    createSecret,
-    deleteSecret,
-    updateSecret,
-    createManySecret,
-    updateManySecret,
-    deleteManySecret,
+    createSecret: withSecretMetrics(createSecret, { duration: "write", write: "create" }),
+    deleteSecret: withSecretMetrics(deleteSecret, { duration: "delete", write: "delete" }),
+    updateSecret: withSecretMetrics(updateSecret, { duration: "write", write: "update" }),
+    createManySecret: withSecretMetrics(createManySecret, { duration: "write", write: "create" }),
+    updateManySecret: withSecretMetrics(updateManySecret, { duration: "write", write: "update" }),
+    deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "delete", write: "delete" }),
+    getSecrets: withSecretMetrics(getSecrets, { duration: "read" }),
     getSecretByName,
-    getSecrets,
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,

@@ -86,6 +86,7 @@ import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
 import { RotationTab } from "./RotationTab";
+import { SshCaSetupCallout } from "./SshCaSetupCallout";
 
 type Props = {
   isOpen: boolean;
@@ -940,6 +941,13 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
         ) : undefined
       }
       metadata={metadata}
+      footer={
+        <SshCaSetupCallout
+          accountType={account?.accountType}
+          authMethod={account?.credentials?.authMethod as string | undefined}
+          accountId={accountId}
+        />
+      }
       activeTab={tab}
       onTabChange={setTab}
       tabs={availableTabs.map((tabDef) => ({

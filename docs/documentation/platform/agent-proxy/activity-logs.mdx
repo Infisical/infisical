@@ -1,0 +1,96 @@
+---
+title: "Activity Logs"
+sidebarTitle: "Activity Logs"
+description: "See what the agent proxy brokered on every request through its log stream, then ship it wherever you want."
+---
+
+The agent proxy logs one entry for every request it handles, in its normal log stream alongside its operational logs — nothing separate to enable. You ship that stream yourself (Infisical never stores it): point a collector like Fluent Bit or the OpenTelemetry Collector at it to forward to Splunk, Datadog, Elastic, or anywhere.
+
+<Note>
+  Only requests that reach the forwarding stage are logged. Requests rejected earlier (malformed proxy auth, an invalid `CONNECT` target, TLS failures) never reach it and aren't logged. A request whose identity can't be resolved at forwarding is still logged as an `error`, just with an empty agent.
+</Note>
+
+## What's in a record
+
+Each request is logged with these fields (plus the standard `time`, `level`, and `message`):
+
+| Field | Meaning |
+| --- | --- |
+| `event` | Always `agent-proxy.request`, so activity is easy to filter from other logs |
+| `decision` | `brokered`, `passthrough`, `blocked`, or `error` |
+| `agentId` / `agentName` | The agent that made the request, read from its access token |
+| `projectId` / `environment` / `secretPath` | The folder the request was scoped to |
+| `serviceName` / `serviceId` | The matched proxied service (omitted when none matched) |
+| `method` / `host` / `port` / `path` | The request line, before substitution (so `path` shows the placeholder) |
+| `status` | Upstream status on `brokered` / `passthrough`; `403` on `blocked`; `502` on `error` |
+| `credentials` | What was injected: each entry's secret key (or, for a dynamic secret, its name and output field), and the header or surfaces it landed in |
+
+<Warning>
+  A record never contains a real secret. The proxy logs the request as the agent sent it, before the real value is swapped in, so `path` only ever shows the placeholder. The `credentials` list records secret **names** and where they were applied, never values, and header values and request bodies are never logged.
+</Warning>
+
+## Log levels
+
+Each decision is logged at a level, so `--log-level` controls how much you see: the default `info` hides passthrough, `debug` shows everything, `warn` shows only blocked and errors.
+
+| decision | level |
+| --- | --- |
+| `passthrough` | debug |
+| `brokered` | info |
+| `blocked` | warn |
+| `error` | error |
+
+## Output format and destination
+
+| Flag | Values | Default |
+| --- | --- | --- |
+| `--log-format` | `console` \| `json` | `console` |
+| `--log-file` | file path | none |
+
+`--log-format` sets the shape: `console` (the default — human-readable, colorized in a terminal and plain when redirected or in a container) or `json` for machines and SIEMs. Logs go to **stderr** (capture with `2>` or `2>&1`). `--log-file` also writes `json` to a file, so you can watch the console **and** persist machine-readable logs at once.
+
+<Tabs>
+  <Tab title="console (human)">
+    ```text
+    2026-07-17T14:32:09 INF agent request  event=agent-proxy.request decision=brokered agentName=claude-agent serviceName=stripe-api method=POST host=api.stripe.com path=/v1/charges status=200 credentials=[{"key":"STRIPE_API_KEY","role":"header-rewrite","header":"Authorization"}]
+    2026-07-17T14:32:12 WRN agent request  event=agent-proxy.request decision=blocked agentName=claude-agent host=evil.example.com method=GET status=403
+    ```
+  </Tab>
+  <Tab title="json (machine)">
+    ```json
+    {"level":"info","time":"2026-07-17T14:32:09+05:30","message":"agent request","event":"agent-proxy.request","decision":"brokered","agentId":"9c1e40cf-...","agentName":"claude-agent","projectId":"53c8b330-...","environment":"prod","secretPath":"/ai-agents","serviceName":"stripe-api","method":"POST","host":"api.stripe.com","port":443,"path":"/v1/charges","status":200,"credentials":[{"key":"STRIPE_API_KEY","role":"header-rewrite","header":"Authorization"}]}
+    ```
+  </Tab>
+  <Tab title="dynamic secret">
+    A brokered credential backed by a [dynamic secret](/documentation/platform/dynamic-secrets/overview) records its name and output field instead of a static key:
+    ```json
+    "credentials":[{"dynamicSecretName":"my-postgres-creds","dynamicSecretField":"DB_PASSWORD","role":"header-rewrite","header":"Authorization"}]
+    ```
+  </Tab>
+</Tabs>
+
+## Common setups
+
+```bash
+# Watch live, readable (default)
+infisical secrets agent-proxy start
+
+# Watch the console and also persist json (e.g. for a SIEM)
+infisical secrets agent-proxy start --log-file /var/log/infisical/agent-proxy.log
+
+# Container: json on stderr for your platform to collect
+infisical secrets agent-proxy start --log-format json
+```
+
+For rotation, containers let the platform rotate the stream; for `--log-file`, use `logrotate` with `copytruncate` (or restart the proxy).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="agent-proxy CLI reference" icon="terminal" href="/cli/commands/agent-proxy">
+    Every flag for `start` and `connect`, including the logging options.
+  </Card>
+  <Card title="Audit Logs" icon="scroll" href="/documentation/platform/audit-logs">
+    Configuration changes to your proxied services are recorded in Infisical's own audit trail.
+  </Card>
+</CardGroup>

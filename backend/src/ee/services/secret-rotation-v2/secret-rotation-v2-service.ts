@@ -17,6 +17,7 @@ import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotati
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { convexAccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/convex-access-key/convex-access-key-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
+import { datadogApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-api-key/datadog-api-key-rotation-fns";
 import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
 import { fireworksApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/fireworks-api-key/fireworks-api-key-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
@@ -61,11 +62,13 @@ import {
   TUpdateSecretRotationV2DTO
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { sqlCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/shared/sql-credentials";
+import { snowflakeUserKeyPairRotationFactory } from "@app/ee/services/secret-rotation-v2/snowflake-user-key-pair/snowflake-user-key-pair-rotation-fns";
 import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { recordSecretRotationOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -209,8 +212,10 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
     salesforceOauthCredentialsRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.DatadogApplicationKeySecret]:
     datadogApplicationKeySecretRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.DatadogApiKey]: datadogApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.SnowflakeUserKeyPair]: snowflakeUserKeyPairRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -1461,9 +1466,13 @@ export const secretRotationV2ServiceFactory = ({
         excludeReplication: true
       });
 
+      recordSecretRotationOutcomeMetric({ type, outcome: "success" });
+
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
+
+      recordSecretRotationOutcomeMetric({ type, outcome: "failure" });
 
       if (isManualRotation) {
         await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);

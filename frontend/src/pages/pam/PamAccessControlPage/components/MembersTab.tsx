@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -51,6 +52,17 @@ export const MembersTab = () => {
 
   const { data: members = [], isPending } = useGetWorkspaceUsers(currentProject.id);
   const deleteMember = useRemovePamProductUserMember();
+
+  const requesterEmail = useSearch({
+    strict: false,
+    select: (el) => (el as { requesterEmail?: string })?.requesterEmail
+  });
+
+  useEffect(() => {
+    if (requesterEmail) {
+      setIsInviteOpen(true);
+    }
+  }, [requesterEmail]);
 
   const filteredMembers = useMemo(
     () =>
@@ -111,7 +123,7 @@ export const MembersTab = () => {
 
         {!isPending && filteredMembers.length === 0 ? (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {search ? "No members match your search" : "No members found"}

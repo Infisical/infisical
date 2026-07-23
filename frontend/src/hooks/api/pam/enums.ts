@@ -9,8 +9,20 @@ export enum PamAccountType {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
+  AzureCli = "azure-cli",
   Windows = "windows",
   WindowsAd = "windows-ad"
+}
+
+export enum PamDiscoveryType {
+  ActiveDirectory = "active-directory",
+  Unix = "unix"
+}
+
+export enum PamDiscoverySchedule {
+  Manual = "manual",
+  Daily = "daily",
+  Weekly = "weekly"
 }
 
 export const ROTATABLE_PAM_ACCOUNT_TYPES = [
@@ -126,4 +138,11 @@ export enum PamAccessGrantStatus {
 export enum PamApproverType {
   User = "user",
   Group = "group"
+}
+
+// Mirrors PamNotificationEvent in backend/src/ee/services/pam/pam-enums.ts
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied"
 }

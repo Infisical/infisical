@@ -9,34 +9,32 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
-  useUser
+  useOrgPermission
 } from "@app/context";
 import {
   useAddBillingV2PaymentMethod,
-  useCreateBillingV2CheckoutSession,
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
   useGetBillingV2Overview
 } from "@app/hooks/api";
 
-import { AddProductModal } from "./components/AddProductModal";
-import { BillingV2RenderState, Overview } from "./components/Overview";
+import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
-import { catalogById, intervalToCadence } from "./billing-v2-data";
+import { catalogById } from "./billing-v2-format";
+import { BillingV2RenderState } from "./billing-v2-view-types";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
-type BillingV2Flow = { type: "sheet"; prodId: string };
+// `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
+// from the "commit and save" nudge) instead of the default plans view.
+type BillingV2Flow = { type: "sheet"; prodId: string; view?: "commitment" };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
-  const { user } = useUser();
   const { permission } = useOrgPermission();
   const orgId = currentOrg?.id ?? "";
-  const billingEmail = user?.email ?? user?.username;
   const canManageBilling = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
@@ -45,13 +43,10 @@ export const BillingV2Page = () => {
   const { data: overview, isPending, isError, refetch } = useGetBillingV2Overview(orgId);
   const { data: catalog = [] } = useGetBillingV2Catalog(orgId);
   const createPortalSession = useCreateBillingV2PortalSession();
-  const createCheckoutSession = useCreateBillingV2CheckoutSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
-  // The product to add in place plus the chosen plan tier (an existing-subscription upgrade path).
-  const [addProd, setAddProd] = useState<{ id: string; plan: string } | null>(null);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -81,9 +76,7 @@ export const BillingV2Page = () => {
     subState = "loading";
   }
 
-  const cadence = intervalToCadence(overview?.interval ?? null);
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
-  const addProdProduct = addProd ? catalogById(catalog, addProd.id) : undefined;
 
   const close = () => setFlow(null);
 
@@ -99,63 +92,22 @@ export const BillingV2Page = () => {
     }
   };
 
-  const redirectToCheckout = async (productId: string, plan: string) => {
-    const result = await createCheckoutSession.mutateAsync({
-      orgId,
-      productId,
-      plan,
-      cadence,
-      email: billingEmail,
-      returnPath: window.location.pathname
-    });
-
-    // The product was added straight to the existing subscription; no Stripe redirect needed.
-    if (result.outcome === "subscription_updated") {
-      close();
-      createNotification({
-        type: "success",
-        text: "Product added to your subscription. It may take a moment to appear here."
-      });
-      refetch();
-      return;
-    }
-
-    if (result.checkoutUrl) {
-      window.location.href = result.checkoutUrl;
-      return;
-    }
-
-    createNotification({ type: "error", text: "Failed to start checkout." });
-  };
-
   const onManageSubscription = () => {
     redirectToPortal();
   };
 
+  // Opening a product (Manage or Activate) shows its sheet; activation, commitment changes, and trials
+  // are all handled inside the sheet against its own mutations.
   const onUpgrade = (productId: string) => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
-  // Owned products are managed in the Stripe portal. A new product is added in place with a proration
-  // confirmation when a subscription already exists; a first-time customer goes through Stripe Checkout.
-  const hasActiveSubscription =
-    overview?.subState === "active" ||
-    overview?.subState === "trialing" ||
-    overview?.subState === "past-due";
-
-  const onSheetManage = async (productId: string, plan: string) => {
-    const isEntitled = Boolean(overview?.entitlements[productId]?.entitled);
-    if (isEntitled) {
-      await redirectToPortal();
-      return;
-    }
-    if (hasActiveSubscription) {
-      close();
-      setAddProd({ id: productId, plan });
-      return;
-    }
-    await redirectToCheckout(productId, plan);
+  // Open the sheet directly into the set-commitment flow (from the "commit and save" nudge).
+  const onSetCommitment = (productId: string) => {
+    setFlow({ type: "sheet", prodId: productId, view: "commitment" });
   };
+
+  const hasActiveSubscription = overview?.subState === "active";
 
   const onUpdatePayment = async () => {
     try {
@@ -182,8 +134,6 @@ export const BillingV2Page = () => {
     refetch();
   };
 
-  const sheetRedirecting = createPortalSession.isPending || createCheckoutSession.isPending;
-
   // A managed (self-hosted licensed) org can't self-serve through Stripe; its plan is set by the license.
   const isManaged = overview?.mode === "managed";
   const pageDescription = isManaged
@@ -191,13 +141,13 @@ export const BillingV2Page = () => {
     : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
 
   return (
-    <div className="h-full bg-bunker-800">
+    <>
       <Helmet>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+      <div className="mb-8 flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan
@@ -211,6 +161,7 @@ export const BillingV2Page = () => {
               subState={subState}
               onManageSubscription={onManageSubscription}
               onUpgrade={onUpgrade}
+              onSetCommitment={onSetCommitment}
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
@@ -223,13 +174,15 @@ export const BillingV2Page = () => {
 
       {flow?.type === "sheet" && (
         <ProductSheet
-          prodId={flow.prodId}
+          orgId={orgId}
           prod={catalogById(catalog, flow.prodId)}
           entitlement={overview?.entitlements[flow.prodId]}
-          cadence={cadence}
-          redirecting={sheetRedirecting}
+          hasActiveSubscription={hasActiveSubscription}
+          initialView={flow.view}
+          returnPath={window.location.pathname}
+          renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
+          trialUsed={overview?.trialedProductKeys.includes(flow.prodId) ?? false}
           onClose={close}
-          onManage={onSheetManage}
           onRemove={setRemoveProdId}
           onContact={() => {
             close();
@@ -249,16 +202,6 @@ export const BillingV2Page = () => {
           }}
         />
       )}
-
-      {addProdProduct && addProd && (
-        <AddProductModal
-          orgId={orgId}
-          product={addProdProduct}
-          plan={addProd.plan}
-          cadence={cadence}
-          onClose={() => setAddProd(null)}
-        />
-      )}
-    </div>
+    </>
   );
 };

@@ -13,5 +13,8 @@ export const getSubscriptionPlanLabel = (subscription: SubscriptionPlan, suffix 
   if (!slug || slug === SubscriptionPlanTypes.Starter) {
     return `Free${suffix}`;
   }
+  if (slug === SubscriptionPlanTypes.Advanced) {
+    return `Advanced${suffix}`;
+  }
   return `Pro${suffix}`;
 };

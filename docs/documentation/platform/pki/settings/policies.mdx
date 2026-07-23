@@ -16,6 +16,20 @@ When a certificate is requested, Certificate Manager validates the request again
 
 This enforcement happens automatically — teams don't need to know the policy details. They just request certificates, and the policy ensures compliance.
 
+### Policy Enforcement Model
+
+Each policy field (Subject Attributes, SANs, Key Usages, etc.) follows a three-state enforcement model:
+
+| State | Meaning | Behavior |
+|-------|---------|----------|
+| **Not configured** | No constraints | Any value is allowed |
+| **Configured but empty** | Explicit restriction | Nothing is allowed — all requests with this field are rejected |
+| **Configured with rules** | Whitelist | Only values matching the defined rules are allowed |
+
+<Info>
+  This model lets you be precise about intent. Leave a field unconfigured to allow anything, or configure it with an empty rule set to explicitly forbid it entirely.
+</Info>
+
 ## Create a Certificate Policy
 
 Navigate to **Certificate Manager → Certificate Policies** and click **Create**.
@@ -59,6 +73,7 @@ Control what X.509 distinguished name attributes can appear in certificates:
 | Country | C | `US` |
 | State/Province | ST | `California` |
 | Locality | L | `San Francisco` |
+| Domain Component | DC | `example` |
 
 For each attribute, configure enforcement:
 
@@ -74,9 +89,15 @@ For each attribute, configure enforcement:
   </Accordion>
 </AccordionGroup>
 
-<Warning>
-  Any subject attribute in a certificate request that isn't explicitly defined in the policy will be rejected. If no subject rules are defined, any request with subject attributes will fail.
-</Warning>
+<Note>
+  Domain Component (DC) support is for requests that use DC attributes explicitly. Each DC value is
+  matched independently against the Domain Component rule (like a Subject Alternative Name),
+  separately from the Common Name. A subject can carry more than one domain component (for example
+  `CN=host, DC=auth, DC=example, DC=app`), so allow the labels your requests use, such as `auth`,
+  `example`, and `app`, or a pattern like `*`.
+</Note>
+
+Once you define subject attribute rules, only the attribute types you explicitly include are permitted — any other attribute in a request will be rejected. An empty configuration forbids all subject attributes; leave the section unconfigured to allow any attribute.
 
 ### Subject Alternative Names (SANs)
 
@@ -90,6 +111,8 @@ Control which SANs can appear on certificates:
 | URI | `spiffe://example.com/*` | SPIFFE identities |
 
 Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to **allow** or **deny** it.
+
+Once you define SAN rules, only the SAN types you explicitly include are permitted — any other SAN type in a request will be rejected. An empty SAN configuration forbids all SANs; leave the section unconfigured to allow any SAN type.
 
 ### Key & Signature Algorithms
 
@@ -124,6 +147,8 @@ Define the cryptographic purposes of certificates:
 | Certificate Sign | Sign other certificates (CA only) |
 | CRL Sign | Sign certificate revocation lists (CA only) |
 
+If you configure Key Usages, only the usages listed in **Required** or **Allowed** are permitted. Leave Key Usages unconfigured to allow any key usage.
+
 ### Extended Key Usages
 
 Define higher-level intended uses:
@@ -135,6 +160,8 @@ Define higher-level intended uses:
 | Code Signing | Software artifacts |
 | Email Protection | S/MIME |
 | OCSP Signing | OCSP responders |
+
+If you configure Extended Key Usages, only the usages listed in **Required** or **Allowed** are permitted. Leave Extended Key Usages unconfigured to allow any extended key usage.
 
 ### Basic Constraints
 

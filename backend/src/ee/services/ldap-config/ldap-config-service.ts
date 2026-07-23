@@ -34,6 +34,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -106,6 +107,7 @@ type TLdapConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
@@ -130,7 +132,8 @@ export const ldapConfigServiceFactory = ({
   kmsService,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
@@ -646,14 +649,15 @@ export const ldapConfigServiceFactory = ({
     let user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);
       if (groups && !isStaleAlias) {
-        const ldapGroupIdsToBePartOf = (
-          await ldapGroupMapDAL.find({
-            ldapConfigId,
-            $in: {
-              ldapGroupCN: groups.map((group) => group.cn)
-            }
-          })
-        ).map((groupMap) => groupMap.groupId);
+        const allLdapGroupMaps = await ldapGroupMapDAL.find({
+          ldapConfigId
+        });
+
+        // cn equality in LDAP is case-insensitive (caseIgnoreMatch).
+        const userLdapGroupCns = new Set(groups.map((group) => group.cn.toLowerCase()));
+        const ldapGroupIdsToBePartOf = allLdapGroupMaps
+          .filter((groupMap) => userLdapGroupCns.has(groupMap.ldapGroupCN.toLowerCase()))
+          .map((groupMap) => groupMap.groupId);
 
         const groupsToBePartOf = await groupDAL.find({
           orgId,
@@ -662,10 +666,6 @@ export const ldapConfigServiceFactory = ({
           }
         });
         const toBePartOfGroupIdsSet = new Set(groupsToBePartOf.map((groupToBePartOf) => groupToBePartOf.id));
-
-        const allLdapGroupMaps = await ldapGroupMapDAL.find({
-          ldapConfigId
-        });
 
         const ldapGroupIdsCurrentlyPartOf = (
           await userGroupMembershipDAL.find({
@@ -691,6 +691,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
+              usageMeteringService,
               tx
             });
           }
@@ -713,6 +714,7 @@ export const ldapConfigServiceFactory = ({
               userGroupMembershipDAL,
               membershipGroupDAL,
               projectKeyDAL,
+              usageMeteringService,
               tx
             });
           }
@@ -887,7 +889,19 @@ export const ldapConfigServiceFactory = ({
     const groupSearchFilter = `(cn=${ldapGroupCN})`;
     const groups = await searchGroups(ldapConfig, groupSearchFilter, ldapConfig.groupSearchBase);
 
-    if (!groups.some((g) => g.cn === ldapGroupCN)) {
+    // cn equality in LDAP is case-insensitive (caseIgnoreMatch). Prefer an exact-case
+    // match; fall back to a case-variant only when it is unambiguous, since distinct
+    // groups in different containers can have CNs differing only by case.
+    const candidateGroups = groups.filter((g) => g.cn.toLowerCase() === ldapGroupCN.toLowerCase());
+    const distinctCns = new Set(candidateGroups.map((g) => g.cn));
+    const matchedGroup =
+      candidateGroups.find((g) => g.cn === ldapGroupCN) ?? (distinctCns.size === 1 ? candidateGroups[0] : undefined);
+    if (!matchedGroup) {
+      if (distinctCns.size > 1) {
+        throw new BadRequestError({
+          message: `Multiple LDAP groups match CN '${ldapGroupCN}' case-insensitively: ${[...distinctCns].join(", ")}. Enter the exact CN of the intended group.`
+        });
+      }
       throw new NotFoundError({
         message: "Failed to find LDAP Group CN"
       });
@@ -902,7 +916,7 @@ export const ldapConfigServiceFactory = ({
 
     const groupMap = await ldapGroupMapDAL.create({
       ldapConfigId,
-      ldapGroupCN,
+      ldapGroupCN: matchedGroup.cn,
       groupId: group.id
     });
 

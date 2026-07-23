@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormLabel, Modal, ModalContent, TextArea } from "@app/components/v2";
 import { useProjectPermission, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { ApproverType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 import {
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
@@ -49,6 +49,10 @@ export const RequestActionsSection = ({ request }: Props) => {
   );
 
   if (!isApprover) {
+    return null;
+  }
+
+  if (request.type === ApprovalPolicyType.CertCodeSigning && request.requesterId === userId) {
     return null;
   }
 

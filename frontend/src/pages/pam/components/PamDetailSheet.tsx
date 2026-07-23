@@ -50,8 +50,10 @@ type Props = {
   title?: string;
   subtitle?: ReactNode;
   typeBadge?: string;
+  badges?: ReactNode;
   metadata?: MetadataField[];
   actions?: ReactNode;
+  footer?: ReactNode;
   tabs?: PamDetailSheetTab[];
   activeTab?: string;
   onTabChange?: (tab: string) => void;
@@ -107,8 +109,10 @@ export const PamDetailSheet = ({
   title,
   subtitle,
   typeBadge,
+  badges,
   metadata = [],
   actions,
+  footer,
   tabs,
   activeTab,
   onTabChange,
@@ -161,9 +165,10 @@ export const PamDetailSheet = ({
 
                 {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
                 {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
-                {typeBadge && (
-                  <div className="mt-2">
-                    <Badge variant="neutral">{typeBadge}</Badge>
+                {(typeBadge || badges) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {typeBadge && <Badge variant="neutral">{typeBadge}</Badge>}
+                    {badges}
                   </div>
                 )}
 
@@ -179,6 +184,8 @@ export const PamDetailSheet = ({
                     ))}
                   </div>
                 )}
+
+                {footer && <div className="mt-4">{footer}</div>}
               </div>
 
               <div className="flex flex-1 flex-col overflow-y-auto">

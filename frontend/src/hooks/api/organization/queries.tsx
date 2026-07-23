@@ -115,12 +115,13 @@ export const fetchOrganizationById = async (id: string) => {
   return organization;
 };
 
-export const useGetOrganizationById = (id: string) => {
+export const useGetOrganizationById = (id: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: organizationKeys.getOrgById(id),
     queryFn: async () => {
       return fetchOrganizationById(id);
-    }
+    },
+    enabled: options?.enabled ?? true
   });
 };
 

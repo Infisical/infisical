@@ -24,8 +24,10 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.SupabaseApiKey]: "Supabase API Key",
   [SecretRotation.SalesforceOauthCredentials]: "Salesforce OAuth Credentials",
   [SecretRotation.DatadogApplicationKeySecret]: "Datadog Application Key",
+  [SecretRotation.DatadogApiKey]: "Datadog API Key",
   [SecretRotation.ConvexAccessKey]: "Convex Access Key",
-  [SecretRotation.FireworksApiKey]: "Fireworks Secret"
+  [SecretRotation.FireworksApiKey]: "Fireworks Secret",
+  [SecretRotation.SnowflakeUserKeyPair]: "Snowflake User Key Pair"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -51,6 +53,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.SupabaseApiKey]: AppConnection.Supabase,
   [SecretRotation.SalesforceOauthCredentials]: AppConnection.Salesforce,
   [SecretRotation.DatadogApplicationKeySecret]: AppConnection.Datadog,
+  [SecretRotation.DatadogApiKey]: AppConnection.Datadog,
   [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
-  [SecretRotation.FireworksApiKey]: AppConnection.Fireworks
+  [SecretRotation.FireworksApiKey]: AppConnection.Fireworks,
+  [SecretRotation.SnowflakeUserKeyPair]: AppConnection.Snowflake
 };

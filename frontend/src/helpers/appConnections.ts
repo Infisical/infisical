@@ -71,11 +71,13 @@ import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/f
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
+import { NutanixPrismCentralConnectionMethod } from "@app/hooks/api/appConnections/types/nutanix-prism-central-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-connection";
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
@@ -93,6 +95,7 @@ import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/tr
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
+import { WinRMConnectionMethod } from "@app/hooks/api/appConnections/types/winrm-connection";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const APP_CONNECTION_MAP: Record<
@@ -412,11 +415,17 @@ export const APP_CONNECTION_MAP: Record<
     description: "Account and job access for dbt."
   },
   [AppConnection.SMB]: {
-    name: "SMB",
+    name: "Windows (SMB)",
     image: "SMB.png",
     size: 50,
     category: "STORAGE",
     description: "Connect to an SMB/CIFS file share."
+  },
+  [AppConnection.WinRM]: {
+    name: "Windows (WinRM)",
+    image: "Windows.png",
+    category: "INFRASTRUCTURE",
+    description: "Connect to a Windows host over WinRM via the Gateway."
   },
   [AppConnection.OpenRouter]: {
     name: "OpenRouter",
@@ -477,6 +486,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "NetScaler.png",
     category: "NETWORKING",
     description: "Manage a Citrix NetScaler appliance."
+  },
+  [AppConnection.KempLoadMaster]: {
+    name: "Kemp LoadMaster",
+    image: "Kemp LoadMaster.png",
+    category: "NETWORKING",
+    description: "Manage a Progress Kemp LoadMaster load balancer."
   },
   [AppConnection.Anthropic]: {
     name: "Anthropic",
@@ -587,6 +602,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Rundeck.svg",
     category: "INFRASTRUCTURE",
     description: "Job and project access for Rundeck."
+  },
+  [AppConnection.NutanixPrismCentral]: {
+    name: "Nutanix Prism Central",
+    image: "Nutanix.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage a Nutanix Prism Central instance."
   }
 };
 
@@ -695,6 +716,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DigiCertConnectionMethod.ApiKey:
     case GoDaddyConnectionMethod.ApiKey:
     case TriggerDevConnectionMethod.ApiKey:
+    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: faKey };
@@ -712,22 +734,28 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureEntraIdConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
-    case DatadogConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+    case DatadogConnectionMethod.Token:
+      return { name: "Service Access Token", icon: faKey };
     case SshConnectionMethod.Password:
       return { name: "Password", icon: faLock };
     case SshConnectionMethod.SshKey:
       return { name: "SSH Key", icon: faKey };
     case SmbConnectionMethod.Credentials:
       return { name: "Credentials", icon: faLock };
+    case WinRMConnectionMethod.UsernamePassword:
+      return { name: "Username & Password", icon: faLock };
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: faKey };
     case NetScalerConnectionMethod.BasicAuth:
-      return { name: "Basic Auth", icon: faLock };
-    case OVHConnectionMethod.Certificate:
-      return { name: "Certificate", icon: faCertificate };
+    case KempLoadMasterConnectionMethod.BasicAuth:
+    case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: faLock };
+    case NutanixPrismCentralConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
+    case OVHConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

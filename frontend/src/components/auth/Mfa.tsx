@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactCodeInput from "react-code-input";
-import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
+import { startAuthentication } from "@simplewebauthn/browser";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 
 import Error from "@app/components/basic/Error";
-import TotpRegistration from "@app/components/mfa/TotpRegistration";
+import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Input, Tooltip } from "@app/components/v2";
+import { Button, Tooltip } from "@app/components/v2";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useLogoutUser, useSendMfaToken } from "@app/hooks/api";
+import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
   checkUserTotpMfa,
   checkUserWebAuthnMfa,
@@ -19,12 +19,12 @@ import {
 } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getMfaTempToken } from "@app/hooks/api/reactQuery";
-import {
-  useGenerateAuthenticationOptions,
-  useGenerateRegistrationOptions,
-  useVerifyAuthentication,
-  useVerifyRegistration
-} from "@app/hooks/api/webauthn";
+import { fetchUserDetails } from "@app/hooks/api/users/queries";
+import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
+
+import { RecoveryCodesStep } from "../mfa/setup";
+
+const MAX_MFA_ATTEMPTS = 5;
 
 // The style for the verification code input
 const codeInputProps = {
@@ -82,18 +82,26 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
   const [shouldShowTotpRegistration, setShouldShowTotpRegistration] = useState(false);
   const [shouldShowWebAuthnRegistration, setShouldShowWebAuthnRegistration] = useState(false);
-  const [credentialName, setCredentialName] = useState("");
-  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
+  const [hasSavedRecoveryCodes, setHasSavedRecoveryCodes] = useState(false);
+  const wasMfaEnabledRef = useRef(true);
+  const { mutateAsync: activateMfa } = useActivateMfa();
   const logout = useLogoutUser();
 
   const { mutateAsync: generateWebAuthnAuthenticationOptions } = useGenerateAuthenticationOptions();
   const { mutateAsync: verifyWebAuthnAuthentication } = useVerifyAuthentication();
 
   const sendMfaToken = useSendMfaToken();
-  const generateRegistrationOptions = useGenerateRegistrationOptions();
-  const verifyRegistration = useVerifyRegistration();
 
   useEffect(() => {
+    fetchUserDetails()
+      .then((user) => {
+        wasMfaEnabledRef.current = Boolean(user.isMfaEnabled);
+      })
+      .catch(() => {
+        // Keep the safe default (treat as enabled) so existing codes are never rotated.
+      });
+
     if (method === MfaMethod.TOTP) {
       checkUserTotpMfa().then((isVerified) => {
         if (!isVerified) {
@@ -111,12 +119,58 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
   }, [method]);
 
   const getExpectedCodeLength = () => {
-    if (method === MfaMethod.EMAIL) return 6;
-    if (method === MfaMethod.TOTP) return showRecoveryCodeInput ? 8 : 6;
+    // Recovery codes are account-level and 8 characters for every MFA method
+    // (email, TOTP and passkeys).
+    if (showRecoveryCodeInput) return 8;
     return 6;
   };
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
+
+  const getRecoveryToggleLabel = () => {
+    if (!showRecoveryCodeInput) return "Use a recovery code";
+    if (method === MfaMethod.WEBAUTHN) return "Use passkey instead";
+    if (method === MfaMethod.EMAIL) return "Use email code";
+    return "Use authenticator code";
+  };
+
+  const completeLogin = async () => {
+    await successCallback();
+    if (closeMfa) {
+      closeMfa();
+    }
+  };
+
+  // Runs only after MFA verification has already succeeded: the MFA token is consumed
+  // and a real session token is issued. Enabling MFA + minting recovery codes is a
+  // distinct follow-up step and must NOT share the verification's error handling — if
+  // it fails, the user's code was still accepted, so bouncing them back to the code
+  // entry (where resubmitting a consumed code can never work) or decrementing the retry
+  // counter would trap them. On failure we surface a dedicated message and let them
+  // proceed; recovery codes can be generated later from account security settings.
+  const finalizeAfterMfaVerification = async (
+    sessionToken: string,
+    mfaMethod: MfaMethod,
+    isRecoveryCodeFlow: boolean
+  ) => {
+    SecurityClient.setMfaToken("");
+    SecurityClient.setToken(sessionToken);
+
+    if (!isRecoveryCodeFlow && !wasMfaEnabledRef.current) {
+      try {
+        const { recoveryCodes } = await activateMfa({ selectedMfaMethod: mfaMethod });
+        setNewRecoveryCodes(recoveryCodes);
+        return;
+      } catch {
+        createNotification({
+          text: "Your identity was verified, but two-factor setup couldn't be completed. You can set up recovery codes later from your account security settings.",
+          type: "error"
+        });
+      }
+    }
+
+    await completeLogin();
+  };
 
   const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -124,26 +178,17 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     if (!mfaCode.trim() || !isCodeComplete) return;
 
     setIsLoading(true);
+
+    let sessionToken: string;
     try {
-      let result;
-
-      if (method === MfaMethod.TOTP && showRecoveryCodeInput) {
-        result = await verifyRecoveryCode(mfaCode.trim());
-      } else {
-        result = await verifyMfaToken({
-          email,
-          mfaCode: mfaCode.trim(),
-          mfaMethod: method
-        });
-      }
-
-      SecurityClient.setMfaToken("");
-      SecurityClient.setToken(result.token);
-
-      await successCallback();
-      if (closeMfa) {
-        closeMfa();
-      }
+      const result = showRecoveryCodeInput
+        ? await verifyRecoveryCode(mfaCode.trim())
+        : await verifyMfaToken({
+            email,
+            mfaCode: mfaCode.trim(),
+            mfaMethod: method
+          });
+      sessionToken = result.token;
     } catch {
       if (typeof triesLeft === "number") {
         const newTriesLeft = triesLeft - 1;
@@ -153,7 +198,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             text: "User is temporary locked due to multiple failed login attempts. Try again later. You can also reset your password now to proceed.",
             type: "error"
           });
-          setIsLoading(false);
           SecurityClient.setMfaToken("");
           SecurityClient.setToken("");
           SecurityClient.setSignupToken("");
@@ -162,8 +206,14 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           return;
         }
       } else {
-        setTriesLeft(2);
+        setTriesLeft(MAX_MFA_ATTEMPTS - 1);
       }
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await finalizeAfterMfaVerification(sessionToken, method, showRecoveryCodeInput);
     } finally {
       setIsLoading(false);
     }
@@ -184,6 +234,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     setIsLoading(true);
     const mfaToken = getMfaTempToken();
 
+    let sessionToken: string;
     try {
       SecurityClient.setMfaToken("");
 
@@ -196,23 +247,21 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
       // Verify with server
       const result = await verifyWebAuthnAuthentication({ authenticationResponse });
 
-      // Use the sessionToken to verify MFA
-      if (result.sessionToken) {
-        SecurityClient.setMfaToken(mfaToken);
-        const mfaResult = await verifyMfaToken({
-          email,
-          mfaCode: result.sessionToken,
-          mfaMethod: MfaMethod.WEBAUTHN
-        });
-
-        SecurityClient.setMfaToken("");
-        SecurityClient.setToken(mfaResult.token);
-
-        await successCallback();
-        if (closeMfa) {
-          closeMfa();
-        }
+      // Nothing to verify against without a session token; bail out without counting
+      // this as a failed attempt.
+      if (!result.sessionToken) {
+        setIsLoading(false);
+        return;
       }
+
+      // Use the sessionToken to verify MFA
+      SecurityClient.setMfaToken(mfaToken);
+      const mfaResult = await verifyMfaToken({
+        email,
+        mfaCode: result.sessionToken,
+        mfaMethod: MfaMethod.WEBAUTHN
+      });
+      sessionToken = mfaResult.token;
     } catch (error: any) {
       console.error("WebAuthn verification failed:", error);
 
@@ -246,132 +295,52 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           return;
         }
       } else {
-        setTriesLeft(2);
+        setTriesLeft(MAX_MFA_ATTEMPTS - 1);
       }
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await finalizeAfterMfaVerification(sessionToken, MfaMethod.WEBAUTHN, false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRegisterPasskey = async () => {
-    try {
-      setIsRegisteringPasskey(true);
-
-      // Check if WebAuthn is supported
-      if (
-        !window.PublicKeyCredential ||
-        !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-      ) {
-        createNotification({
-          text: "WebAuthn is not supported on this browser",
-          type: "error"
-        });
-        return;
-      }
-
-      // Check if platform authenticator is available
-      const available =
-        await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-      if (!available) {
-        createNotification({
-          text: "No passkey-compatible authenticator found on this device",
-          type: "error"
-        });
-        return;
-      }
-
-      // Temporarily clear MFA token so the regular access token is used for registration endpoints
-      const mfaToken = getMfaTempToken();
-      SecurityClient.setMfaToken("");
-
-      try {
-        // Generate registration options from server (using regular user endpoint)
-        const options = await generateRegistrationOptions.mutateAsync();
-        const registrationResponse = await startRegistration({ optionsJSON: options });
-
-        // Verify registration with server (using regular user endpoint)
-        await verifyRegistration.mutateAsync({
-          registrationResponse,
-          name: credentialName || "Passkey"
-        });
-
-        createNotification({
-          text: "Successfully registered passkey",
-          type: "success"
-        });
-
-        setShouldShowWebAuthnRegistration(false);
-        await successCallback();
-      } finally {
-        // Restore MFA token
-        SecurityClient.setMfaToken(mfaToken);
-      }
-    } catch (error: any) {
-      console.error("Failed to register passkey:", error);
-
-      let errorMessage = "Failed to register passkey";
-      if (error.name === "NotAllowedError") {
-        errorMessage = "Passkey registration was cancelled or timed out";
-      } else if (error.name === "InvalidStateError") {
-        errorMessage = "This passkey has already been registered";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
-    } finally {
-      setIsRegisteringPasskey(false);
-    }
-  };
-
-  if (shouldShowTotpRegistration) {
+  if (newRecoveryCodes) {
     return (
-      <>
-        <div className="mb-6 text-center text-lg font-bold text-white">
-          Your organization requires mobile authentication to be configured.
-        </div>
-        <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
-          <TotpRegistration
-            shouldCenterQr
-            onComplete={async () => {
-              setShouldShowTotpRegistration(false);
-              await successCallback();
-            }}
-          />
-        </div>
-      </>
+      <div className="mx-auto flex w-full max-w-md flex-col gap-4 pt-4 pb-4 md:mb-16 md:px-8">
+        <RecoveryCodesStep
+          recoveryCodes={newRecoveryCodes}
+          acknowledgment={{
+            isAcknowledged: hasSavedRecoveryCodes,
+            onAcknowledgedChange: setHasSavedRecoveryCodes,
+            confirmLabel: "Continue",
+            isConfirmPending: isLoading,
+            labelClassName: "text-bunker-200",
+            onConfirm: async () => {
+              setIsLoading(true);
+              await completeLogin();
+            }
+          }}
+        />
+      </div>
     );
   }
 
-  if (shouldShowWebAuthnRegistration) {
+  if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
     return (
-      <>
-        <div className="mb-6 text-center text-lg font-bold text-white">
-          Your organization requires passkey authentication to be configured.
-        </div>
-        <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
-          <div className="flex max-w-lg flex-col text-bunker-200">
-            <div className="mb-8">
-              1. Click the button below to register your passkey. You&apos;ll be prompted to use
-              your device&apos;s biometric authentication (Touch ID, Face ID, Windows Hello, etc.).
-            </div>
-            <div className="mb-4">2. Optionally, give your passkey a name to identify it later</div>
-            <div className="mb-4 flex flex-col gap-2">
-              <Input
-                onChange={(e) => setCredentialName(e.target.value)}
-                value={credentialName}
-                placeholder="Passkey name (optional)"
-              />
-              <Button onClick={handleRegisterPasskey} isLoading={isRegisteringPasskey}>
-                Register Passkey
-              </Button>
-            </div>
-          </div>
-        </div>
-      </>
+      <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
+        <MfaEnrollment
+          method={method}
+          onComplete={async () => {
+            setShouldShowTotpRegistration(false);
+            setShouldShowWebAuthnRegistration(false);
+            await successCallback();
+          }}
+        />
+      </div>
     );
   }
 
@@ -384,12 +353,20 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           </div>
         </Link>
       )}
-      {method === MfaMethod.EMAIL && (
-        <>
-          <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-          <p className="text-l my-1 flex justify-center font-medium text-bunker-300">{email}</p>
-        </>
-      )}
+      {method === MfaMethod.EMAIL &&
+        (showRecoveryCodeInput ? (
+          <div className="mb-8 text-center">
+            <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
+            <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
+              Enter one of your backup recovery codes
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
+            <p className="text-l my-1 flex justify-center font-medium text-bunker-300">{email}</p>
+          </>
+        ))}
       {method === MfaMethod.TOTP && (
         <div className="mb-8 text-center">
           <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
@@ -404,11 +381,13 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
         <div className="mb-8 text-center">
           <h2 className="mb-3 text-xl font-medium text-bunker-100">Passkey Authentication</h2>
           <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-            Use your registered passkey to complete two-factor authentication
+            {showRecoveryCodeInput
+              ? "Enter one of your backup recovery codes"
+              : "Use your registered passkey to complete two-factor authentication"}
           </p>
         </div>
       )}
-      {method === MfaMethod.WEBAUTHN ? (
+      {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
         <>
           {typeof triesLeft === "number" && (
             <Error text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`} />
@@ -434,17 +413,18 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             {method === MfaMethod.EMAIL && (
               <div className="flex justify-center">
                 <ReactCodeInput
+                  key={showRecoveryCodeInput ? "recovery" : "email"}
                   name=""
                   inputMode="tel"
                   type="text"
-                  fields={6}
+                  fields={showRecoveryCodeInput ? 8 : 6}
                   onChange={setMfaCode}
                   className="mt-6 mb-2"
                   {...codeInputProps}
                 />
               </div>
             )}
-            {method === MfaMethod.TOTP && (
+            {(method === MfaMethod.TOTP || method === MfaMethod.WEBAUTHN) && (
               <div className="mt-8 mb-6 flex justify-center">
                 <ReactCodeInput
                   key={showRecoveryCodeInput ? "recovery" : "totp"}
@@ -463,17 +443,18 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             {method === MfaMethod.EMAIL && (
               <div className="flex justify-center">
                 <ReactCodeInput
+                  key={showRecoveryCodeInput ? "recovery-mobile" : "email-mobile"}
                   name=""
                   inputMode="tel"
                   type="text"
-                  fields={6}
+                  fields={showRecoveryCodeInput ? 8 : 6}
                   onChange={setMfaCode}
                   className="mt-2 mb-2"
                   {...codeInputPropsPhone}
                 />
               </div>
             )}
-            {method === MfaMethod.TOTP && (
+            {(method === MfaMethod.TOTP || method === MfaMethod.WEBAUTHN) && (
               <div className="mt-4 mb-6 flex justify-center">
                 <ReactCodeInput
                   key={showRecoveryCodeInput ? "recovery-mobile" : "totp-mobile"}
@@ -507,7 +488,26 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
           </div>
         </form>
       )}
-      {method === MfaMethod.TOTP && (
+      {method === MfaMethod.EMAIL && !showRecoveryCodeInput && (
+        <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
+          <div className="flex flex-row items-baseline gap-1 text-sm">
+            <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
+            <div className="text-md mt-2 flex flex-row text-bunker-400">
+              <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
+                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
+                  {isLoadingResend
+                    ? t("signup.step2-resend-progress")
+                    : t("signup.step2-resend-submit")}
+                </span>
+              </button>
+            </div>
+          </div>
+          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
+        </div>
+      )}
+      {(method === MfaMethod.EMAIL ||
+        method === MfaMethod.TOTP ||
+        method === MfaMethod.WEBAUTHN) && (
         <div className="mt-6 flex flex-col items-center gap-4 text-sm">
           <button
             type="button"
@@ -517,7 +517,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             }}
             className="text-bunker-400 transition-colors duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
           >
-            {showRecoveryCodeInput ? "Use authenticator code" : "Use a recovery code"}
+            {getRecoveryToggleLabel()}
           </button>
           <div className="text-center text-sm">
             <Tooltip
@@ -549,23 +549,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
               </span>
             </Tooltip>
           </div>
-        </div>
-      )}
-      {method === MfaMethod.EMAIL && (
-        <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-          <div className="flex flex-row items-baseline gap-1 text-sm">
-            <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-            <div className="text-md mt-2 flex flex-row text-bunker-400">
-              <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                  {isLoadingResend
-                    ? t("signup.step2-resend-progress")
-                    : t("signup.step2-resend-submit")}
-                </span>
-              </button>
-            </div>
-          </div>
-          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
         </div>
       )}
     </div>

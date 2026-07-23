@@ -11,16 +11,23 @@ import {
   TAddFolderGroupMemberDTO,
   TAddFolderIdentityMemberDTO,
   TAddFolderUserMemberDTO,
+  TAddPamProductGroupMemberDTO,
   TAddPamProductIdentityMemberDTO,
+  TAddPamProductUserMemberDTO,
   TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
+  TCreatePamDiscoverySourceDTO,
   TCreatePamFolderDTO,
   TDeletePamAccountDTO,
   TDeletePamAccountTemplateDTO,
+  TDeletePamDiscoverySourceDTO,
   TDeletePamFolderDTO,
+  TImportPamDiscoveredAccountResult,
+  TImportPamDiscoveredAccountsDTO,
   TPamAccessResponse,
   TPamAccountTemplate,
+  TPamDiscoverySource,
   TPamFolder,
   TPamSession,
   TRemoveAccountGroupMemberDTO,
@@ -34,6 +41,7 @@ import {
   TRevokePamAccessRequestDTO,
   TRotatePamAccountDTO,
   TSetPamApprovalConfigDTO,
+  TTriggerPamDiscoveryScanDTO,
   TUpdateAccountGroupMemberRoleDTO,
   TUpdateAccountIdentityMemberRoleDTO,
   TUpdateAccountMemberRoleDTO,
@@ -43,8 +51,11 @@ import {
   TUpdatePamAccountDTO,
   TUpdatePamAccountRotationDTO,
   TUpdatePamAccountTemplateDTO,
+  TUpdatePamDiscoverySourceDTO,
   TUpdatePamFolderDTO,
-  TUpdatePamProductIdentityMemberDTO
+  TUpdatePamProductGroupMemberDTO,
+  TUpdatePamProductIdentityMemberDTO,
+  TUpdatePamProductUserMemberDTO
 } from "./types";
 
 // Folders
@@ -475,8 +486,77 @@ export const useRemovePamProductIdentityMember = () => {
   });
 };
 
-// Product user/group removal must go through the PAM endpoints so approver assignments and
-// folder memberships are stripped alongside the membership (the generic workspace routes skip that).
+// Product user/group add & removal must go through the PAM endpoints so the PAM-specific audit
+// events fire and approver assignments / folder memberships are handled (the generic workspace
+// routes emit project-scoped events and skip that).
+export const useAddPamProductUserMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userIds, emails, role }: TAddPamProductUserMemberDTO) => {
+      const { data } = await apiRequest.post("/api/v1/pam/memberships/users", {
+        userIds,
+        emails,
+        role
+      });
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+    }
+  });
+};
+
+export const useAddPamProductGroupMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId, role }: TAddPamProductGroupMemberDTO) => {
+      const { data } = await apiRequest.post(`/api/v1/pam/memberships/groups/${groupId}`, {
+        role
+      });
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
+      });
+    }
+  });
+};
+
+export const useUpdatePamProductUserMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, role }: TUpdatePamProductUserMemberDTO) => {
+      const { data } = await apiRequest.patch(`/api/v1/pam/memberships/users/${userId}`, { role });
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+    }
+  });
+};
+
+export const useUpdatePamProductGroupMember = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ groupId, role }: TUpdatePamProductGroupMemberDTO) => {
+      const { data } = await apiRequest.patch(`/api/v1/pam/memberships/groups/${groupId}`, {
+        role
+      });
+      return data;
+    },
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.getProjectGroupMemberships(projectId)
+      });
+    }
+  });
+};
+
 export const useRemovePamProductUserMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -601,6 +681,73 @@ export const useRemoveFolderIdentityMember = () => {
   });
 };
 
+// Discovery
+export const useCreatePamDiscoverySource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, ...body }: TCreatePamDiscoverySourceDTO) => {
+      const { data } = await apiRequest.post<{ source: TPamDiscoverySource }>(
+        `/api/v1/pam/discovery-sources/${discoveryType}`,
+        body
+      );
+      return data.source;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useUpdatePamDiscoverySource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, sourceId, ...body }: TUpdatePamDiscoverySourceDTO) => {
+      const { data } = await apiRequest.patch<{ source: TPamDiscoverySource }>(
+        `/api/v1/pam/discovery-sources/${discoveryType}/${sourceId}`,
+        body
+      );
+      return data.source;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useDeletePamDiscoverySource = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, sourceId }: TDeletePamDiscoverySourceDTO) => {
+      await apiRequest.delete(`/api/v1/pam/discovery-sources/${discoveryType}/${sourceId}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useTriggerPamDiscoveryScan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ discoveryType, sourceId }: TTriggerPamDiscoveryScanDTO) => {
+      await apiRequest.post(`/api/v1/pam/discovery-sources/${discoveryType}/${sourceId}/scan`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: pamKeys.discovery() })
+  });
+};
+
+export const useImportPamDiscoveredAccounts = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sourceId, ...body }: TImportPamDiscoveredAccountsDTO) => {
+      const { data } = await apiRequest.post<{ results: TImportPamDiscoveredAccountResult[] }>(
+        `/api/v1/pam/discovery-sources/${sourceId}/discovered/import`,
+        body
+      );
+      return data.results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.discovery() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
+    }
+  });
+};
+
 export const useUpdatePamAccountRotation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -679,10 +826,10 @@ export const useRevokePamAccessRequest = () => {
 export const useSetPamApprovalConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ folderId, steps }: TSetPamApprovalConfigDTO) => {
+    mutationFn: async ({ folderId, steps, notificationConfigs }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps }
+        { steps, notificationConfigs }
       );
       return data;
     },

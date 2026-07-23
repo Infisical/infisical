@@ -51,7 +51,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.OctopusDeploy]: "Octopus Deploy",
   [AppConnection.SSH]: "SSH",
   [AppConnection.Dbt]: "DBT",
-  [AppConnection.SMB]: "SMB",
+  [AppConnection.SMB]: "Windows (SMB)",
+  [AppConnection.WinRM]: "Windows (WinRM)",
   [AppConnection.OpenRouter]: "OpenRouter",
   [AppConnection.OpenAI]: "OpenAI",
   [AppConnection.CircleCI]: "CircleCI",
@@ -61,6 +62,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
   [AppConnection.Anthropic]: "Anthropic",
   [AppConnection.OVH]: "OVH",
   [AppConnection.Devin]: "Devin",
@@ -78,7 +80,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Qovery]: "Qovery",
   [AppConnection.Cloud66]: "Cloud 66",
   [AppConnection.LiteLLM]: "LiteLLM",
-  [AppConnection.Fireworks]: "Fireworks"
+  [AppConnection.Fireworks]: "Fireworks",
+  [AppConnection.NutanixPrismCentral]: "Nutanix Prism Central"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -133,6 +136,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.SSH]: AppConnectionPlanType.Regular,
   [AppConnection.Dbt]: AppConnectionPlanType.Regular,
   [AppConnection.SMB]: AppConnectionPlanType.Regular,
+  [AppConnection.WinRM]: AppConnectionPlanType.Regular,
   [AppConnection.OpenRouter]: AppConnectionPlanType.Regular,
   [AppConnection.OpenAI]: AppConnectionPlanType.Regular,
   [AppConnection.CircleCI]: AppConnectionPlanType.Regular,
@@ -142,6 +146,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.KempLoadMaster]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
   [AppConnection.OVH]: AppConnectionPlanType.Regular,
   [AppConnection.Devin]: AppConnectionPlanType.Regular,
@@ -159,5 +164,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Qovery]: AppConnectionPlanType.Regular,
   [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
   [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
-  [AppConnection.Fireworks]: AppConnectionPlanType.Regular
+  [AppConnection.Fireworks]: AppConnectionPlanType.Regular,
+  [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular
 };

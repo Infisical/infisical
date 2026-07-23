@@ -302,25 +302,27 @@ export const PkiSyncRow = ({
                 </Tooltip>
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={faEraser} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onTriggerRemoveCertificates(pkiSync);
-              }}
-              isDisabled={!canRemoveCertificates}
-            >
-              <Tooltip
-                position="left"
-                sideOffset={42}
-                content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
+            {syncOption?.canRemoveCertificates && (
+              <DropdownMenuItem
+                icon={<FontAwesomeIcon icon={faEraser} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTriggerRemoveCertificates(pkiSync);
+                }}
+                isDisabled={!canRemoveCertificates}
               >
-                <div className="flex h-full w-full items-center justify-between gap-1">
-                  <span>Remove Certificates</span>
-                  <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
-                </div>
-              </Tooltip>
-            </DropdownMenuItem>
+                <Tooltip
+                  position="left"
+                  sideOffset={42}
+                  content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
+                >
+                  <div className="flex h-full w-full items-center justify-between gap-1">
+                    <span>Remove Certificates</span>
+                    <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
+                  </div>
+                </Tooltip>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               isDisabled={!canEditSync}
               icon={<FontAwesomeIcon icon={isAutoSyncEnabled ? faToggleOff : faToggleOn} />}

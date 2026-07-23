@@ -6,12 +6,97 @@ import {
   PamAccountType,
   PamAccountView,
   PamApproverType,
+  PamDiscoverySchedule,
+  PamDiscoveryType,
+  PamNotificationEvent,
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
+
+export type TPamDiscoveryTypeOption = {
+  type: PamDiscoveryType;
+  name: string;
+  icon: string;
+  credentialAccountType: PamAccountType;
+};
+
+export type TPamDiscoverySource = {
+  id: string;
+  projectId: string;
+  name: string;
+  discoveryType: PamDiscoveryType;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  credentialAccountId: string;
+  discoveryConfiguration: Record<string, unknown>;
+  schedule: PamDiscoverySchedule;
+  lastRunAt?: string | null;
+  lastRunStatus?: string | null;
+  lastRunError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TPamDiscoveryRun = {
+  id: string;
+  discoverySourceId: string;
+  status: string;
+  triggeredBy: string;
+  discoveredCount: number;
+  newCount: number;
+  errorMessage?: string | null;
+  machineErrors?: { machine: string; error: string }[] | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+};
+
+export type TPamDiscoveredAccount = {
+  id: string;
+  accountType: PamAccountType;
+  name: string;
+  fingerprint: string;
+  createdAt: string;
+};
+
+export type TCreatePamDiscoverySourceDTO = {
+  discoveryType: PamDiscoveryType;
+  name: string;
+  credentialAccountId: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  schedule: PamDiscoverySchedule;
+  configuration?: Record<string, unknown>;
+};
+
+export type TUpdatePamDiscoverySourceDTO = {
+  sourceId: string;
+  discoveryType: PamDiscoveryType;
+  name?: string;
+  credentialAccountId?: string;
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+  schedule?: PamDiscoverySchedule;
+  configuration?: Record<string, unknown>;
+};
+
+export type TDeletePamDiscoverySourceDTO = { sourceId: string; discoveryType: PamDiscoveryType };
+export type TTriggerPamDiscoveryScanDTO = { sourceId: string; discoveryType: PamDiscoveryType };
+export type TImportPamDiscoveredAccountsDTO = {
+  sourceId: string;
+  folderId: string;
+  accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+};
+
+export type TImportPamDiscoveredAccountResult = {
+  discoveredAccountId: string;
+  status: string;
+  accountId?: string;
+  message?: string;
+};
 
 export type PamFolderPermissionSet = [
   PamResourcePermissionActions,
@@ -469,6 +554,31 @@ export type TRemovePamProductIdentityMemberDTO = {
   projectId: string;
 };
 
+export type TAddPamProductUserMemberDTO = {
+  userIds?: string[];
+  emails?: string[];
+  role: string;
+  projectId: string;
+};
+
+export type TAddPamProductGroupMemberDTO = {
+  groupId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductUserMemberDTO = {
+  userId: string;
+  role: string;
+  projectId: string;
+};
+
+export type TUpdatePamProductGroupMemberDTO = {
+  groupId: string;
+  role: string;
+  projectId: string;
+};
+
 // Credential rotation
 
 export type TPamPasswordRequirements = {
@@ -540,10 +650,21 @@ export type TPamAccessRequest = {
   grantStatus?: string | null;
 };
 
+export type TPamNotificationConfig = {
+  workflowIntegrationId: string;
+  channels: { id: string; name: string }[];
+  events: PamNotificationEvent[];
+};
+
 export type TPamApprovalConfig = {
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
+  notificationConfigs: (TPamNotificationConfig & {
+    id: string;
+    integration: string;
+    integrationSlug: string;
+  })[];
 };
 
 export type TPamAccessGrant = {
@@ -581,4 +702,5 @@ export type TSetPamApprovalConfigDTO = {
   steps: {
     approvers: { type: PamApproverType; id: string }[];
   }[];
+  notificationConfigs?: TPamNotificationConfig[];
 };

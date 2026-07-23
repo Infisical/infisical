@@ -2,7 +2,14 @@ import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components
 
 export type TCertificatePolicyRule = {
   subject?: Array<{
-    type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
+    type:
+      | "common_name"
+      | "organization"
+      | "country"
+      | "state"
+      | "locality"
+      | "organizational_unit"
+      | "domain_component";
     allowed?: string[];
     required?: string[];
     denied?: string[];
@@ -77,28 +84,29 @@ export type TCertificatePolicy = {
 };
 
 export type TCreateCertificatePolicyDTO = {
+  projectId?: string;
   name: string;
   description?: string;
-  subject?: TCertificatePolicyRule["subject"];
-  sans?: TCertificatePolicyRule["sans"];
-  keyUsages?: TCertificatePolicyRule["keyUsages"];
-  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
-  algorithms?: TCertificatePolicyRule["algorithms"];
-  validity?: TCertificatePolicyRule["validity"];
-  basicConstraints?: TBasicConstraints;
+  subject?: TCertificatePolicyRule["subject"] | null;
+  sans?: TCertificatePolicyRule["sans"] | null;
+  keyUsages?: TCertificatePolicyRule["keyUsages"] | null;
+  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"] | null;
+  algorithms?: TCertificatePolicyRule["algorithms"] | null;
+  validity?: TCertificatePolicyRule["validity"] | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TUpdateCertificatePolicyDTO = {
   policyId: string;
   name?: string;
   description?: string;
-  subject?: TCertificatePolicyRule["subject"];
-  sans?: TCertificatePolicyRule["sans"];
-  keyUsages?: TCertificatePolicyRule["keyUsages"];
-  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
-  algorithms?: TCertificatePolicyRule["algorithms"];
-  validity?: TCertificatePolicyRule["validity"];
-  basicConstraints?: TBasicConstraints;
+  subject?: TCertificatePolicyRule["subject"] | null;
+  sans?: TCertificatePolicyRule["sans"] | null;
+  keyUsages?: TCertificatePolicyRule["keyUsages"] | null;
+  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"] | null;
+  algorithms?: TCertificatePolicyRule["algorithms"] | null;
+  validity?: TCertificatePolicyRule["validity"] | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TDeleteCertificatePolicyDTO = {

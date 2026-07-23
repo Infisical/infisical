@@ -1,4 +1,7 @@
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { SecretSync, SecretSyncPlanType } from "@app/services/secret-sync/secret-sync-enums";
 import { DestinationDuplicateCheckFn } from "@app/services/secret-sync/secret-sync-types";
 
@@ -156,7 +159,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.AWSParameterStore]: [],
   [SecretSync.AWSSecretsManager]: ["mappingBehavior"],
   [SecretSync.GitHub]: [],
-  [SecretSync.GCPSecretManager]: [],
+  [SecretSync.GCPSecretManager]: ["scope", "locationId", "userReplicaLocationIds"],
   [SecretSync.AzureKeyVault]: [],
   [SecretSync.AzureAppConfiguration]: ["label"],
   [SecretSync.AzureDevOps]: ["devopsProjectName"],
@@ -211,13 +214,52 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Cloud66]: ["stackName"]
 };
 
-const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
+const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
+const awsDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync, decryptConnection }) => {
+  if (!newSync.connectionId) return true;
+
+  if (existingSync.connectionId === newSync.connectionId) {
+    return true;
+  }
+
+  if (!existingSync.connectionId) return false;
+
+  const [existingConn, newConn] = await Promise.all([
+    decryptConnection(existingSync.connectionId),
+    decryptConnection(newSync.connectionId)
+  ]);
+
+  const existingAwsConn = existingConn as TAwsConnection;
+  const newAwsConn = newConn as TAwsConnection;
+
+  const [existingAccountId, newAccountId] = await Promise.all([
+    getAwsAccountId(buildAwsConnectionConfig(existingAwsConn, existingAwsConn.credentials)),
+    getAwsAccountId(buildAwsConnectionConfig(newAwsConn, newAwsConn.credentials))
+  ]);
+
+  if (!existingAccountId || !newAccountId) return false;
+
+  return existingAccountId === newAccountId;
+};
+
+const gcpDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSync, newSync }) => {
+  const existingConfig = existingSync.destinationConfig;
+  const newConfig = newSync.destinationConfig;
+
+  if (existingConfig.projectId !== newConfig.projectId) return false;
+
+  if (newConfig.scope === GcpSyncScope.Region) {
+    return existingConfig.scope === GcpSyncScope.Region && existingConfig.locationId === newConfig.locationId;
+  }
+
+  return existingConfig.scope === GcpSyncScope.Global;
+};
 
 export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDuplicateCheckFn> = {
-  [SecretSync.AWSParameterStore]: defaultDuplicateCheck,
-  [SecretSync.AWSSecretsManager]: defaultDuplicateCheck,
+  [SecretSync.AWSParameterStore]: awsDuplicateCheck,
+  [SecretSync.AWSSecretsManager]: awsDuplicateCheck,
   [SecretSync.GitHub]: defaultDuplicateCheck,
-  [SecretSync.GCPSecretManager]: defaultDuplicateCheck,
+  [SecretSync.GCPSecretManager]: gcpDuplicateCheck,
   [SecretSync.AzureKeyVault]: defaultDuplicateCheck,
   [SecretSync.AzureAppConfiguration]: defaultDuplicateCheck,
   [SecretSync.AzureDevOps]: defaultDuplicateCheck,
@@ -235,7 +277,10 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Render]: defaultDuplicateCheck,
   [SecretSync.Flyio]: defaultDuplicateCheck,
   [SecretSync.TriggerDev]: defaultDuplicateCheck,
-  [SecretSync.GitLab]: (existingConfig, newConfig) => {
+  [SecretSync.GitLab]: async ({ existingSync, newSync }) => {
+    const existingConfig = existingSync.destinationConfig;
+    const newConfig = newSync.destinationConfig;
+
     const existingTargetEnv = existingConfig.targetEnvironment as string | undefined;
     const newTargetEnv = newConfig.targetEnvironment as string | undefined;
 

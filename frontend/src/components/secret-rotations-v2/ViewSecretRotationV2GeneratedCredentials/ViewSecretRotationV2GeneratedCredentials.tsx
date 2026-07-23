@@ -24,6 +24,7 @@ import {
 
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
+import { ViewDatadogApiKeyRotationGeneratedCredentials } from "./ViewDatadogApiKeyRotationGeneratedCredentials";
 import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./ViewDatadogApplicationKeySecretRotationGeneratedCredentials";
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewFireworksApiKeyRotationGeneratedCredentials } from "./ViewFireworksApiKeyRotationGeneratedCredentials";
@@ -34,6 +35,7 @@ import { ViewOpenAIServiceAccountRotationGeneratedCredentials } from "./ViewOpen
 import { ViewOpenRouterApiKeyRotationGeneratedCredentials } from "./ViewOpenRouterApiKeyRotationGeneratedCredentials";
 import { ViewRedisCredentialsRotationGeneratedCredentials } from "./ViewRedisCredentialsRotationGeneratedCredentials";
 import { ViewSalesforceOauthCredentialsRotationGeneratedCredentials } from "./ViewSalesforceOauthCredentialsRotationGeneratedCredentials";
+import { ViewSnowflakeUserKeyPairRotationGeneratedCredentials } from "./ViewSnowflakeUserKeyPairRotationGeneratedCredentials";
 import { ViewSupabaseApiKeyRotationGeneratedCredentials } from "./ViewSupabaseApiKeyRotationGeneratedCredentials";
 import { ViewUnixLinuxLocalAccountRotationGeneratedCredentials } from "./ViewUnixLinuxLocalAccountRotationGeneratedCredentials";
 import { ViewWindowsLocalAccountRotationGeneratedCredentials } from "./ViewWindowsLocalAccountRotationGeneratedCredentials";
@@ -206,6 +208,13 @@ const Content = ({ secretRotation }: ContentProps) => {
         />
       );
       break;
+    case SecretRotation.DatadogApiKey:
+      Component = (
+        <ViewDatadogApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
     case SecretRotation.ConvexAccessKey:
       Component = (
         <ViewConvexAccessKeyRotationGeneratedCredentials
@@ -216,6 +225,13 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.FireworksApiKey:
       Component = (
         <ViewFireworksApiKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.SnowflakeUserKeyPair:
+      Component = (
+        <ViewSnowflakeUserKeyPairRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

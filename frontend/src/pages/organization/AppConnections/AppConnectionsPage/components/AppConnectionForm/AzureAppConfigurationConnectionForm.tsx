@@ -37,6 +37,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AzureAppConfigurationFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
@@ -66,7 +67,8 @@ const clientSecretSchema = baseSchema.extend({
   credentials: z.object({
     clientSecret: z.string().trim().min(1, "Client Secret is required"),
     clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
+    tenantId: z.string().trim().min(1, "Tenant ID is required"),
+    clientSecretKeyId: z.string().trim().optional()
   })
 });
 
@@ -74,11 +76,21 @@ const formSchema = z.discriminatedUnion("method", [oauthSchema, clientSecretSche
 
 type FormData = z.infer<typeof formSchema>;
 
+const defaultRotation = {
+  rotationInterval: 30,
+  rotateAtUtc: {
+    hours: 0,
+    minutes: 0
+  }
+};
+
 const getDefaultValues = (appConnection?: TAzureAppConfigurationConnection): Partial<FormData> => {
   if (!appConnection) {
     return {
       app: AppConnection.AzureAppConfiguration,
-      method: AzureAppConfigurationConnectionMethod.OAuth
+      method: AzureAppConfigurationConnectionMethod.OAuth,
+      isAutoRotationEnabled: false,
+      rotation: defaultRotation
     };
   }
 
@@ -86,7 +98,9 @@ const getDefaultValues = (appConnection?: TAzureAppConfigurationConnection): Par
     name: appConnection.name,
     description: appConnection.description,
     app: appConnection.app,
-    method: appConnection.method
+    method: appConnection.method,
+    isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+    rotation: appConnection.rotation ?? defaultRotation
   };
   const { credentials } = appConnection;
 
@@ -318,6 +332,36 @@ export const AzureAppConfigurationConnectionForm = ({
                 </Field>
               )}
             />
+            <CredentialRotationForm>
+              <Controller
+                name="credentials.clientSecretKeyId"
+                control={control}
+                render={({ field, fieldState: { error } }) => (
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="credentials.clientSecretKeyId">
+                      Client Secret Key ID
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          The Key ID of the client secret provided above. Found in Azure Portal
+                          under App Registrations &gt; Certificates &amp; Secrets. Required so
+                          Infisical can revoke the original secret after rotation.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="credentials.clientSecretKeyId"
+                      placeholder="00000000-0000-0000-0000-000000000000"
+                      isError={Boolean(error)}
+                    />
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+            </CredentialRotationForm>
           </>
         )}
         <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
