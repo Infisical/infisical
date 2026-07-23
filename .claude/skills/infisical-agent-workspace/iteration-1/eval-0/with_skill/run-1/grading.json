@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)",
+      "passed": true,
+      "evidence": "Agent config has top-level sections: infisical, auth, sinks, templates with proper YAML structure"
+    },
+    {
+      "text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature",
+      "passed": true,
+      "evidence": "Uses 'listSecretsByProjectSlug \"my-app\" \"production\" \"/\"' with correct 3-arg signature. Also mentions 'Optional 4th param: {\"recursive\": true, \"expandSecretReferences\": true}' for optional 4th parameter"
+    },
+    {
+      "text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})",
+      "passed": true,
+      "evidence": "Template shows '{{- with listSecretsByProjectSlug...', '{{- range . }}', '{{ .Key }}={{ .Value }}' with proper whitespace control"
+    },
+    {
+      "text": "Includes polling-interval configuration for auto-update",
+      "passed": true,
+      "evidence": "Template config shows 'polling-interval: \"5m\"'"
+    },
+    {
+      "text": "Includes destination-path pointing to a .env file",
+      "passed": true,
+      "evidence": "Template shows 'destination-path: /infisical/secrets/.env'"
+    },
+    {
+      "text": "Mentions execute.command option for triggering app restart on change",
+      "passed": true,
+      "evidence": "Shows 'execute: command: \"kill -HUP 1\"' to signal Node process to reload"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 37.7
+  }
+}

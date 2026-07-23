@@ -1,0 +1,13 @@
+{
+  "eval_id": 1,
+  "eval_name": "docker-secrets",
+  "prompt": "I need to inject secrets from Infisical into my Docker containers at runtime. I'm deploying to AWS ECS. What's the best way to do this without baking secrets into the image?",
+  "assertions": [
+    {"id": "recommends-aws-auth", "text": "Recommends AWS Auth as the preferred method for ECS (platform-native, zero-secret)", "type": "content_check"},
+    {"id": "correct-cli-install", "text": "Uses correct CLI install URL (artifacts-cli.infisical.com, not dl.infisical.com)", "type": "keyword_check"},
+    {"id": "uses-infisical-run", "text": "Shows 'infisical run' pattern for injecting secrets at container startup", "type": "keyword_check"},
+    {"id": "no-service-tokens", "text": "Does not recommend deprecated Service Tokens for authentication", "type": "content_check"},
+    {"id": "no-baked-secrets", "text": "Explicitly warns against baking secrets into Docker images", "type": "content_check"},
+    {"id": "machine-identity-auth", "text": "Uses machine identity authentication (not API keys or service tokens)", "type": "content_check"}
+  ]
+}

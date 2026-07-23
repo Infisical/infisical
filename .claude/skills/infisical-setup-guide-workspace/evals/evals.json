@@ -1,0 +1,23 @@
+{
+  "skill_name": "infisical-setup-guide",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just cloned the infisical repo and want to get it running locally on my mac for development. Can you walk me through the setup?",
+      "expected_output": "Step-by-step local dev setup using docker-compose.dev.yml, referencing .env.dev.example, correct ports, correct services",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need to set up a machine identity so my Kubernetes pods can pull secrets from Infisical. What auth method should I use and how do I configure it?",
+      "expected_output": "Recommends Kubernetes Auth as the zero-secret option, explains service account token verification, provides setup steps",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We want to self-host Infisical for our small team using Docker. What's the simplest way to get it deployed?",
+      "expected_output": "Recommends Docker Compose with docker-compose.prod.yml, walks through env var setup including ENCRYPTION_KEY generation, mentions FIPS variant",
+      "files": []
+    }
+  ]
+}

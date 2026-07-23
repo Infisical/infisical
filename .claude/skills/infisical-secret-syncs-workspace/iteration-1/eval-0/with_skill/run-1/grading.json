@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Mentions App Connection as a prerequisite for the sync",
+      "passed": true,
+      "evidence": "\"Before you can sync secrets, you need to create an authenticated connection to AWS. This is a one-time setup\" and \"Step 1: Create an AWS App Connection\""
+    },
+    {
+      "text": "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM",
+      "passed": true,
+      "evidence": "Explicitly states 'Mapping Behavior' with options: one-to-one (Each Infisical secret becomes a separate secret in AWS) and many-to-one (All secrets packed into a single AWS secret as a JSON object)"
+    },
+    {
+      "text": "Recommends or mentions Key Schema for scoping managed secrets",
+      "passed": true,
+      "evidence": "\"Key Schema (Strongly Recommended)\" section with template \"INFISICAL_{{secretKey}}\" and explanation 'Prevents Infisical from managing secrets it didn't create'"
+    },
+    {
+      "text": "Explains initial sync behavior options (overwrite vs import)",
+      "passed": true,
+      "evidence": "\"Initial Sync Behavior\" table with Overwrite Destination, Import (Prioritize Infisical), and Import (Prioritize AWS) options clearly explained"
+    },
+    {
+      "text": "Mentions region configuration for the AWS destination",
+      "passed": true,
+      "evidence": "\"Region\" field mentioned: 'us-east-1 (as you specified)' in the configuration table"
+    },
+    {
+      "text": "References auto-sync capability (secrets propagate on change)",
+      "passed": true,
+      "evidence": "\"Auto-Sync (Default: Enabled)\" section states 'Any change to secrets in Infisical automatically syncs to AWS within seconds'"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 36.8
+  }
+}

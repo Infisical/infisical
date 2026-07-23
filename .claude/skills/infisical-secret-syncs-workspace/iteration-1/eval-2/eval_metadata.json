@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "azure-key-vault-underscore-issue",
+  "prompt": "I need to sync secrets from Infisical to Azure Key Vault. My secret names use underscores like DATABASE_URL and API_KEY. Will that cause any issues? Also what permissions does my service principal need?",
+  "assertions": [
+    "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)",
+    "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover",
+    "Recommends Key Vault Secrets Officer role as the appropriate built-in role",
+    "Explains why secrets/recover is needed (Azure soft-delete behavior)",
+    "Mentions App Connection prerequisite",
+    "Mentions the vault base URL as a required destination config field"
+  ]
+}

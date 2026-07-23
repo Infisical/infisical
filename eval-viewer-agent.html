@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "infisical-agent", "runs": [{"id": "eval-0-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Rendering Infisical Secrets to a .env File with Auto-Update\n\nYou want to run your Node.js app in Docker with a `.env` file that automatically updates when secrets change. The **Infisical Agent** is perfect for this\u2014it runs as a sidecar daemon, authenticates to Infisical, renders secrets to a file via Go templates, and can trigger your app to reload.\n\n## Quick Overview\n\nThe Infisical Agent:\n- **Authenticates** using credentials you provide (platform-native auth or universal auth)\n- **Renews tokens** automatically before expiration\n- **Renders templates** to files (your `.env` in this case)\n- **Polls for changes** and can trigger commands (e.g., app restart) when secrets update\n- **Works in Docker** as a sidecar service\n\n---\n\n## Complete Agent Config File\n\nBelow is a **production-ready config** for a Node.js app in Docker. Adjust the project ID, environment, and auth method for your setup.\n\n### Standard Docker Compose Sidecar Setup\n\n```yaml\n# agent-config.yaml\ninfisical:\n  address: \"https://app.infisical.com\"  # Your Infisical instance (cloud or self-hosted)\n  exit-after-auth: false                 # Keep running to watch for secret changes\n  revoke-credentials-on-shutdown: true   # Clean up if using dynamic secrets\n\nauth:\n  type: \"universal-auth\"\n  config:\n    client-id: \"/etc/infisical/client-id\"           # Path to client ID file\n    client-secret: \"/etc/infisical/client-secret\"   # Path to client secret file\n    remove_client_secret_on_read: false\n\nsinks:\n  - type: \"file\"\n    config:\n      path: \"/infisical/secrets/access-token\"\n\ntemplates:\n  - template-content: |\n      {{- with listSecrets \"YOUR_PROJECT_ID\" \"production\" \"/\" }}\n      {{- range . }}\n      {{ .Key }}={{ .Value }}\n      {{- end }}\n      {{- end }}\n    destination-path: /infisical/secrets/.env\n    config:\n      polling-interval: \"5m\"             # Check for changes every 5 minutes\n      execute:\n        command: \"kill -HUP 1\"           # Signal Node process to reload (if app handles SIGHUP)\n        timeout: 30\n```\n\n**Key settings explained:**\n\n| Setting | Value | Why |\n|---------|-------|-----|\n| `exit-after-auth` | `false` | Agent keeps running to poll for changes |\n| `polling-interval` | `5m` | Check for secret updates every 5 minutes (adjust as needed) |\n| `execute.command` | `kill -HUP 1` | Send SIGHUP to Node.js (PID 1) to reload without restarting |\n| `revoke-credentials-on-shutdown` | `true` | Clean up if using dynamic secrets |\n\n---\n\n## Docker Compose Setup\n\n```yaml\n# docker-compose.yml\nversion: \"3.8\"\n\nservices:\n  infisical-agent:\n    image: infisical/cli:latest\n    command: agent --config /etc/infisical/agent-config.yaml\n    volumes:\n      - ./agent-config.yaml:/etc/infisical/agent-config.yaml:ro\n      - ./client-id:/etc/infisical/client-id:ro\n      - ./client-secret:/etc/infisical/client-secret:ro\n      - shared-secrets:/infisical/secrets\n    restart: unless-stopped\n    healthcheck:\n      test: [\"CMD\", \"test\", \"-f\", \"/infisical/secrets/.env\"]\n      interval: 30s\n      timeout: 5s\n      retries: 3\n\n  app:\n    build: .\n    depends_on:\n      infisical-agent:\n        condition: service_healthy\n    volumes:\n      - shared-secrets:/app/secrets:ro\n    environment:\n      - NODE_ENV=production\n      - PORT=3000\n    ports:\n      - \"3000:3000\"\n    restart: unless-stopped\n\nvolumes:\n  shared-secrets:\n```\n\n**How it works:**\n\n1. **infisical-agent** starts first, renders `.env` to the shared volume\n2. **healthcheck** verifies the file exists before app starts\n3. **app** depends on the healthcheck, so it doesn't start until secrets are ready\n4. Both containers share `/infisical/secrets` volume (app mounts read-only)\n\n---\n\n## Node.js App Integration\n\nYour Node.js app reads the `.env` file normally:\n\n```javascript\n// app.js\nrequire('dotenv').config({ path: '/app/secrets/.env' });\n\nconst express = require('express');\nconst app = express();\n\napp.get('/health', (req, res) => {\n  res.json({ status: 'ok', env: process.env.NODE_ENV });\n});\n\nconst server = app.listen(process.env.PORT || 3000, () => {\n  console.log(`Server running on port ${process.env.PORT}`);\n});\n\n// Optional: reload secrets on SIGHUP (if execute.command sends kill -HUP 1)\nprocess.on('SIGHUP', () => {\n  console.log('Reloading secrets...');\n  delete require.cache[require.resolve('dotenv')];\n  require('dotenv').config({ path: '/app/secrets/.env', override: true });\n});\n```\n\nIf your app doesn't handle SIGHUP, skip the `execute.command` and just monitor the `.env` file with tools like `nodemon` or app-level watchers.\n\n---\n\n## Template Functions Reference\n\n### For .env files (most common):\n\n**Option 1: `listSecrets` (by project UUID)**\n```yaml\ntemplate-content: |\n  {{- with listSecrets \"6553ccb2b7da580d7f6e7260\" \"dev\" \"/\" }}\n  {{- range . }}\n  {{ .Key }}={{ .Value }}\n  {{- end }}\n  {{- end }}\n```\n\n**Option 2: `listSecretsByProjectSlug` (easier to read)**\n```yaml\ntemplate-content: |\n  {{- with listSecretsByProjectSlug \"my-app\" \"production\" \"/\" }}\n  {{- range . }}\n  {{ .Key }}={{ .Value }}\n  {{- end }}\n  {{- end }}\n```\n\nBoth render all secrets from the path as `KEY=VALUE` pairs.\n\n**Parameters:**\n- `project-id` or `project-slug` \u2014 Your Infisical project\n- `environment-slug` \u2014 `dev`, `staging`, `production`, etc.\n- `secret-path` \u2014 `/` (root) or `/api`, `/database`, etc.\n- Optional 4th param: `{\"recursive\": true, \"expandSecretReferences\": true}` to fetch subdirs and resolve `${VAR}` references\n\n---\n\n## Authentication Methods\n\nChoose one based on your environment:\n\n### Universal Auth (Docker Compose, any environment)\n```yaml\nauth:\n  type: \"universal-auth\"\n  config:\n    client-id: \"/etc/infisical/client-id\"\n    client-secret: \"/etc/infisical/client-secret\"\n```\n**How to get credentials:**\n1. In Infisical \u2192 Project Settings \u2192 Machine Identities\n2. Create a new universal auth identity\n3. Copy the Client ID and Client Secret\n4. Save to files: `client-id` and `client-secret`\n\n### AWS IAM (ECS, EC2)\n```yaml\nauth:\n  type: \"aws-iam\"\n  config:\n    identity-id: \"MACHINE_IDENTITY_ID_HERE\"\n```\nNo credentials files needed\u2014uses the ECS task role or EC2 instance role automatically.\n\n### Kubernetes (K8s)\n```yaml\nauth:\n  type: \"kubernetes\"\n  config:\n    identity-id: \"/etc/infisical/identity-id\"\n    service-account-token: \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\n```\nService account token is provided automatically by K8s.\n\n### Azure (ACI, VMs)\n```yaml\nauth:\n  type: \"azure\"\n  config:\n    identity-id: \"/etc/infisical/identity-id\"\n```\n\n### GCP (Cloud Run, Compute Engine)\n```yaml\nauth:\n  type: \"gcp-id-token\"\n  config:\n    identity-id: \"/etc/infisical/identity-id\"\n```\n\n---\n\n## Advanced Features\n\n### Dynamic Secrets (Database Credentials)\n\nIf you need database credentials that auto-rotate:\n\n```yaml\ntemplates:\n  # Static secrets\n  - template-content: |\n      {{- with listSecretsByProjectSlug \"my-app\" \"prod\" \"/\" }}\n      {{- range . }}\n      {{ .Key }}={{ .Value }}\n      {{- end }}\n      {{- end }}\n    destination-path: /infisical/secrets/app.env\n\n  # Dynamic database credentials\n  - template-content: |\n      {{ with dynamicSecret \"my-app\" \"prod\" \"/\" \"postgres-user\" \"1h\" }}\n      DB_HOST=db.internal.example.com\n      DB_PORT=5432\n      DB_USER={{ .DB_USERNAME }}\n      DB_PASSWORD={{ .DB_PASSWORD }}\n      {{ end }}\n    destination-path: /infisical/secrets/db.env\n    config:\n      polling-interval: \"15m\"\n      execute:\n        command: \"./reconnect-db.sh\"\n        timeout: 30\n```\n\nThe agent automatically renews credentials before expiration.\n\n### Persistent Caching (Kubernetes only)\n\nIf Infisical becomes temporarily unavailable, cached secrets are served:\n\n```yaml\ncache:\n  persistent:\n    type: \"kubernetes\"\n    path: \"/home/infisical/cache\"\n    service-account-token-path: \"/var/run/secrets/kubernetes.io/serviceaccount/token\"\n```\n\n### Init Container Mode (Kubernetes)\n\nFor one-shot secret rendering at startup:\n\n```yaml\ninfisical:\n  address: \"https://app.infisical.com\"\n  exit-after-auth: true  # Render once and exit\n```\n\n---\n\n## Polling & Performance\n\n**`polling-interval`** controls how often the agent checks for secret changes:\n\n| Interval | Use Case |\n|----------|----------|\n| `30s` | Latency-sensitive apps (real-time config changes) |\n| `5m` | Standard apps (most deployments) |\n| `1h` | Stable configs (minimal API load) |\n\nEach poll hits the Infisical API, so tune based on your needs. For Docker, `5m` is a good starting point.\n\n---\n\n## Troubleshooting\n\n### Secrets not rendering\n- Check the project ID/slug and environment name in the template\n- Verify the machine identity has access to that project\n- Check agent logs: `docker logs <container-id>`\n\n### `.env` file exists but app doesn't see changes\n- If app caches env vars on startup, it won't see updates\n- Use the `execute.command` to trigger reload (e.g., restart or SIGHUP)\n- Or use a file watcher in your app (see SIGHUP example above)\n\n### Agent keeps retrying auth\n- Invalid client ID/secret\n- Machine identity doesn't have permission on the project\n- Infisical instance URL is wrong\n\n### Polling too fast/slow\n- Increase `polling-interval` to reduce API calls\n- Decrease it if you need near-real-time updates\n\n---\n\n## Deployment Checklist\n\n- [ ] Get Infisical project ID/slug and environment name\n- [ ] Create a universal auth machine identity in Infisical\n- [ ] Save `client-id` and `client-secret` files locally\n- [ ] Update `agent-config.yaml` with your project ID and environment\n- [ ] Update `docker-compose.yml` volume mounts\n- [ ] Test locally: `docker-compose up`\n- [ ] Verify `.env` is created in the shared volume\n- [ ] Verify your app can read it\n- [ ] Deploy to your environment (Docker, ECS, K8s, etc.)\n\n---\n\n## Summary\n\nYour complete setup is:\n\n1. **agent-config.yaml** \u2014 The config above (with your project ID and auth creds)\n2. **docker-compose.yml** \u2014 Two services: agent + app\n3. **Shared volume** \u2014 Both read/write to `/infisical/secrets`\n4. **App code** \u2014 Load `.env` from `/app/secrets/.env`\n5. **Optional reload** \u2014 Use `execute.command` or SIGHUP to detect changes\n\nThe agent handles all authentication, token renewal, and secret rendering\u2014your app just reads the `.env` file like normal.\n"}], "grading": {"expectations": [{"text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)", "passed": true, "evidence": "Agent config has top-level sections: infisical, auth, sinks, templates with proper YAML structure"}, {"text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature", "passed": true, "evidence": "Uses 'listSecretsByProjectSlug \"my-app\" \"production\" \"/\"' with correct 3-arg signature. Also mentions 'Optional 4th param: {\"recursive\": true, \"expandSecretReferences\": true}' for optional 4th parameter"}, {"text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})", "passed": true, "evidence": "Template shows '{{- with listSecretsByProjectSlug...', '{{- range . }}', '{{ .Key }}={{ .Value }}' with proper whitespace control"}, {"text": "Includes polling-interval configuration for auto-update", "passed": true, "evidence": "Template config shows 'polling-interval: \"5m\"'"}, {"text": "Includes destination-path pointing to a .env file", "passed": true, "evidence": "Template shows 'destination-path: /infisical/secrets/.env'"}, {"text": "Mentions execute.command option for triggering app restart on change", "passed": true, "evidence": "Shows 'execute: command: \"kill -HUP 1\"' to signal Node process to reload"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}, "timing": {"total_duration_seconds": 37.7}}}, {"id": "eval-0-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Infisical Agent Configuration for .env File Rendering in Docker\n\n## Overview\n\nTo render Infisical secrets as a `.env` file on disk for your Node.js app running in Docker with automatic updates when secrets change, you'll use **Infisical Agent** with a configuration file. Here's the complete setup.\n\n## Complete Infisical Agent Config File\n\nCreate an `infisical-agent-config.yaml` file in your project root or mounted config directory:\n\n```yaml\n# infisical-agent-config.yaml\n# Full Infisical Agent configuration for .env file rendering with auto-updates\n\nagentVersion: 1\nlogLevel: info  # debug, info, warn, error\n\n# Authentication to Infisical API\nauth:\n  # Use one of the following authentication methods:\n  \n  # Option 1: Machine Identity (Recommended for Docker/production)\n  machineIdentity:\n    clientId: ${INFISICAL_CLIENT_ID}\n    clientSecret: ${INFISICAL_CLIENT_SECRET}\n  \n  # Option 2: Service Token (Legacy, less secure)\n  # serviceToken: ${INFISICAL_SERVICE_TOKEN}\n  \n  # Option 3: API Key\n  # apiKey: ${INFISICAL_API_KEY}\n\n# Infisical API endpoint\ninfisicalApiUrl: https://app.infisical.com/api  # or your self-hosted instance\n\n# List of secret syncs to manage\nsecretSyncs:\n  - name: nodejs-env-sync\n    # Source: Infisical secret\n    source:\n      # Authenticate to Infisical workspace\n      workspaceId: ${INFISICAL_WORKSPACE_ID}\n      # Secrets environment (e.g., prod, staging, dev)\n      environment: production\n      # Path within environment (typically \"/\" for root)\n      secretPath: /\n      # Optional: Filter secrets by tag\n      # secretTags:\n      #   - nodejs\n      #   - production\n    \n    # Destination: Local .env file\n    destination:\n      type: file\n      # Mount path inside Docker container\n      path: /app/.env\n      # File format: dotenv, yaml, json\n      format: dotenv\n      # Optional: Template to transform secrets\n      # templateFormat: |\n      #   DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}\n      #   REDIS_URL=redis://${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}\n    \n    # Sync behavior\n    sync:\n      # Auto-update when secrets change in Infisical\n      autoSync: true\n      # Poll interval for secret changes (in seconds)\n      # Infisical Agent checks for changes at this interval\n      pollIntervalSeconds: 60\n      # Immediately restart Node.js app when .env changes\n      onSyncSuccess:\n        command: npm restart\n        # Or use: kill -HUP $(pgrep -f \"node\")\n      onSyncFailure:\n        # Retry logic on sync failures\n        maxRetries: 3\n        retryDelaySeconds: 10\n        alertCommand: |\n          curl -X POST http://monitoring-service/alerts \\\n            -d '{\"type\": \"env_sync_failed\", \"timestamp\": \"$(date)\"}'\n    \n    # Permissions for generated .env file\n    filePermissions:\n      mode: \"0600\"  # Read/write owner only (secure)\n      owner: \"node\" # Container user\n      group: \"node\"\n    \n    # Validation rules for synced secrets\n    validation:\n      # Fail if these required secrets are missing\n      requiredSecrets:\n        - DATABASE_URL\n        - API_KEY\n        - JWT_SECRET\n      # Optional: Validate secret formats\n      secretSchemas:\n        DATABASE_URL:\n          pattern: '^postgresql://.*'\n          errorMessage: \"DATABASE_URL must be a valid PostgreSQL connection string\"\n        PORT:\n          pattern: '^\\d+$'\n          errorMessage: \"PORT must be a numeric value\"\n\n# Multiple syncs example (sync to multiple .env files)\n  - name: infra-env-sync\n    source:\n      workspaceId: ${INFISICAL_WORKSPACE_ID}\n      environment: production\n      secretPath: /infrastructure\n    destination:\n      type: file\n      path: /app/.env.infrastructure\n      format: dotenv\n    sync:\n      autoSync: true\n      pollIntervalSeconds: 120\n\n# Advanced: Sync to Redis (for distributed apps)\n  - name: redis-config-cache\n    source:\n      workspaceId: ${INFISICAL_WORKSPACE_ID}\n      environment: production\n      secretPath: /\n    destination:\n      type: redis\n      url: redis://redis:6379\n      keyPrefix: infisical:secrets:\n      ttlSeconds: 300\n    sync:\n      autoSync: true\n      pollIntervalSeconds: 30\n\n# Logging and monitoring\nlogging:\n  format: json  # json or text\n  outputPath: /var/log/infisical-agent.log\n  rotateMaxSize: 100M\n  rotateMaxBackups: 5\n  rotateMaxAgeDays: 7\n\n# Health check for the agent itself\nhealthCheck:\n  enabled: true\n  listenAddress: 0.0.0.0:8080\n  endpoint: /health\n  # Check interval\n  checkIntervalSeconds: 30\n\n# Optional: Backup original .env before updating\nbackup:\n  enabled: true\n  backupDir: /app/.env.backups\n  keepBackups: 5\n  # Timestamp format: timestamp or version\n  namingFormat: timestamp\n```\n\n## Docker Compose Setup\n\nHere's how to integrate this with Docker Compose:\n\n```yaml\n# docker-compose.yml\nversion: '3.8'\n\nservices:\n  infisical-agent:\n    image: infisical/agent:latest\n    container_name: infisical-agent\n    restart: unless-stopped\n    environment:\n      # Machine Identity credentials (from Infisical dashboard)\n      INFISICAL_CLIENT_ID: ${INFISICAL_CLIENT_ID}\n      INFISICAL_CLIENT_SECRET: ${INFISICAL_CLIENT_SECRET}\n      INFISICAL_WORKSPACE_ID: ${INFISICAL_WORKSPACE_ID}\n      LOG_LEVEL: info\n    volumes:\n      # Mount the config file\n      - ./infisical-agent-config.yaml:/etc/infisical/agent-config.yaml:ro\n      # Shared volume for .env file (Docker named volume or bind mount)\n      - app-secrets:/app-secrets\n      # Optional: logs volume\n      - ./logs:/var/log\n    networks:\n      - infisical-network\n    command: /infisical/agent -config /etc/infisical/agent-config.yaml\n    # Wait for Infisical API to be ready\n    healthcheck:\n      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:8080/health\"]\n      interval: 30s\n      timeout: 10s\n      retries: 3\n      start_period: 10s\n    depends_on:\n      - infisical  # or your Infisical instance\n\n  nodejs-app:\n    image: node:20-alpine\n    container_name: nodejs-app\n    restart: unless-stopped\n    environment:\n      NODE_ENV: production\n      # .env file will be mounted from agent\n    volumes:\n      # Shared secrets volume from infisical-agent\n      - app-secrets:/app-secrets:ro\n      # Your app source\n      - ./src:/app/src:ro\n      - ./package.json:/app/package.json:ro\n    working_dir: /app\n    ports:\n      - \"3000:3000\"\n    networks:\n      - infisical-network\n    command: sh -c \"\n      # Wait for .env to be created by agent\n      while [ ! -f /app-secrets/.env ]; do \n        echo 'Waiting for .env file...'; \n        sleep 1; \n      done && \n      node src/index.js\n    \"\n    depends_on:\n      - infisical-agent\n      - database\n\n  database:\n    image: postgres:15-alpine\n    container_name: postgres-db\n    environment:\n      POSTGRES_USER: postgres\n      POSTGRES_PASSWORD: postgres\n      POSTGRES_DB: myapp\n    volumes:\n      - postgres-data:/var/lib/postgresql/data\n    networks:\n      - infisical-network\n\nvolumes:\n  app-secrets:\n    driver: local\n  postgres-data:\n\nnetworks:\n  infisical-network:\n    driver: bridge\n```\n\n## Environment File (.env.example)\n\nCreate `.env.example` for development:\n\n```bash\n# .env.example\n# Infisical Agent Configuration\n\n# Machine Identity from Infisical Dashboard (Settings > Machine Identities)\nINFISICAL_CLIENT_ID=your_client_id_here\nINFISICAL_CLIENT_SECRET=your_client_secret_here\nINFISICAL_WORKSPACE_ID=your_workspace_id_here\n\n# Optional: If using self-hosted Infisical\n# INFISICAL_API_URL=https://your-infisical-instance.com/api\n\n# Application Secrets (auto-populated by Infisical Agent)\n# These will be written to .env file by the agent:\n# DATABASE_URL=\n# API_KEY=\n# JWT_SECRET=\n# REDIS_URL=\n```\n\n## Node.js Application Code\n\nLoad the generated .env file in your Node.js app:\n\n```javascript\n// src/index.js\nimport dotenv from 'dotenv';\nimport path from 'path';\nimport { fileURLToPath } from 'url';\n\nconst __dirname = path.dirname(fileURLToPath(import.meta.url));\n\n// Load .env from mounted volume (updated by Infisical Agent)\nconst envPath = process.env.ENV_FILE_PATH || '/.env';\ndotenv.config({ path: envPath });\n\nconsole.log('Environment loaded:', {\n  databaseUrl: process.env.DATABASE_URL ? '[REDACTED]' : 'MISSING',\n  apiKey: process.env.API_KEY ? '[REDACTED]' : 'MISSING',\n  jwtSecret: process.env.JWT_SECRET ? '[REDACTED]' : 'MISSING',\n});\n\n// Your app code\nconst PORT = process.env.PORT || 3000;\nconsole.log(`App listening on port ${PORT}`);\n```\n\n## Graceful Reload on Secret Updates\n\nTo reload your Node.js app when the .env file updates (without restart):\n\n```javascript\n// src/config.js\nimport fs from 'fs';\nimport dotenv from 'dotenv';\nimport path from 'path';\n\nlet config = {};\n\nexport function loadConfig(filePath) {\n  const raw = fs.readFileSync(filePath, 'utf-8');\n  const parsed = dotenv.parse(raw);\n  config = { ...parsed };\n  console.log('Config loaded:', Object.keys(config).length, 'keys');\n  return config;\n}\n\nexport function getConfig(key) {\n  return config[key];\n}\n\nexport function watchConfigFile(filePath) {\n  // Watch for changes to .env file\n  fs.watchFile(filePath, (curr, prev) => {\n    if (curr.mtime > prev.mtime) {\n      console.log('Config file changed, reloading...');\n      try {\n        loadConfig(filePath);\n        // Emit event for app to handle reload\n        process.emit('config:reload');\n      } catch (error) {\n        console.error('Failed to reload config:', error);\n      }\n    }\n  });\n}\n\n// Load on startup\nloadConfig(process.env.ENV_FILE_PATH || '/.env');\nwatchConfigFile(process.env.ENV_FILE_PATH || '/.env');\n```\n\n```javascript\n// src/index.js (updated with reload handler)\nimport { loadConfig, watchConfigFile, getConfig } from './config.js';\n\nconst ENV_PATH = process.env.ENV_FILE_PATH || '/.env';\nloadConfig(ENV_PATH);\nwatchConfigFile(ENV_PATH);\n\n// Listen for config changes\nprocess.on('config:reload', () => {\n  console.log('Reloading configuration...');\n  // Reconnect database with new credentials\n  reconnectDatabase(getConfig('DATABASE_URL'));\n  // Update API clients with new keys\n  updateApiClients(getConfig('API_KEY'));\n});\n\nconst PORT = getConfig('PORT') || 3000;\nconsole.log(`App listening on port ${PORT}`);\n```\n\n## Dockerfile for Your Node.js App\n\n```dockerfile\n# Dockerfile\nFROM node:20-alpine\n\nWORKDIR /app\n\n# Copy package files\nCOPY package*.json ./\n\n# Install dependencies (respecting Infisical's 7-day minimum age policy)\nRUN npm ci --only=production\n\n# Copy source code\nCOPY src ./src\n\n# Use non-root user for security\nRUN addgroup -g 1001 -S nodejs && \\\n    adduser -S nodejs -u 1001\n\nUSER nodejs\n\n# .env will be mounted as read-only volume from infisical-agent\nEXPOSE 3000\n\nCMD [\"node\", \"src/index.js\"]\n```\n\n## Setup Instructions\n\n### 1. Create Machine Identity in Infisical\n\n1. Go to **Infisical Dashboard** > **Settings** > **Machine Identities**\n2. Click **Add Identity**\n3. Name it (e.g., \"Docker Agent\")\n4. Grant it access to your workspace secrets\n5. Copy the **Client ID** and **Client Secret**\n\n### 2. Deploy with Docker Compose\n\n```bash\n# Create .env file with credentials\ncat > .env << EOF\nINFISICAL_CLIENT_ID=your_client_id\nINFISICAL_CLIENT_SECRET=your_client_secret\nINFISICAL_WORKSPACE_ID=your_workspace_id\nEOF\n\n# Start services\ndocker-compose up -d\n\n# Monitor logs\ndocker-compose logs -f infisical-agent\ndocker-compose logs -f nodejs-app\n```\n\n### 3. Verify Setup\n\n```bash\n# Check if .env file was created\ndocker exec nodejs-app cat /.env\n\n# Monitor live updates\ndocker-compose exec infisical-agent tail -f /var/log/infisical-agent.log\n```\n\n## Key Features\n\n- **Auto-updates**: Agent polls Infisical every 60 seconds (configurable)\n- **Secure auth**: Machine Identities instead of API keys\n- **Graceful reload**: File watcher detects .env changes without container restart\n- **Validation**: Required secrets validation with helpful error messages\n- **Backup**: Keep backup copies of previous .env files\n- **Health checks**: Built-in health endpoint for orchestration\n- **Multi-sync**: Sync different secret paths to different files\n- **Backup support**: Redis caching, file formats (dotenv, JSON, YAML)\n\n## Troubleshooting\n\n### Agent not syncing secrets\n\n```bash\n# Check agent logs\ndocker-compose logs infisical-agent\n\n# Verify credentials\ndocker exec infisical-agent curl -X GET \\\n  -H \"Authorization: Bearer $TOKEN\" \\\n  https://app.infisical.com/api/v1/secrets\n\n# Test file permissions\ndocker exec nodejs-app ls -la /.env\n```\n\n### .env file not appearing\n\n1. Verify **INFISICAL_CLIENT_ID** and **INFISICAL_CLIENT_SECRET** are correct\n2. Check that Machine Identity has workspace access\n3. Ensure secrets exist in the workspace\n4. Check agent health endpoint: `curl http://localhost:8080/health`\n\n### Frequent sync failures\n\n- Increase **pollIntervalSeconds** to reduce API load\n- Check network connectivity between agent and Infisical API\n- Verify firewall rules allow outbound HTTPS (port 443)\n\n## Security Best Practices\n\n1. **Never commit secrets** \u2014 `.env` and credentials in `.env` are Git-ignored\n2. **Use Machine Identities** \u2014 More secure than API keys for service accounts\n3. **Restrict file permissions** \u2014 `mode: \"0600\"` limits access to container user\n4. **Separate environments** \u2014 Use different Machine Identities per environment\n5. **Audit logs** \u2014 Enable Infisical audit logging to track secret access\n6. **Rotate credentials** \u2014 Regularly rotate Machine Identity secrets\n7. **Network isolation** \u2014 Run Infisical Agent in a private network segment\n\n## References\n\n- [Infisical Agent Documentation](https://infisical.com/docs/agent/overview)\n- [Machine Identities](https://infisical.com/docs/identity/machine-identities)\n- [Docker Secrets Management Best Practices](https://docs.docker.com/config/containers/secrets/)\n- [Environment Variable Security](https://12factor.net/config)\n"}], "grading": {"expectations": [{"text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)", "passed": false, "evidence": "Uses different structure with agentVersion, logLevel, auth.machineIdentity, infisicalApiUrl, secretSyncs - not the standard Infisical Agent format with infisical/auth/sinks/templates sections"}, {"text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature", "passed": false, "evidence": "Uses generic placeholder syntax 'DATABASE_URL=postgresql://...' but does not show listSecrets or listSecretsByProjectSlug function calls"}, {"text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})", "passed": false, "evidence": "Uses simple placeholder syntax '{{ DB_USER }}', '{{ DB_PASSWORD }}' but not Go template with 'with', 'range' control structures"}, {"text": "Includes polling-interval configuration for auto-update", "passed": true, "evidence": "Config shows 'pollIntervalSeconds: 60' for polling interval"}, {"text": "Includes destination-path pointing to a .env file", "passed": true, "evidence": "Shows 'destination: path: /app/.env'"}, {"text": "Mentions execute.command option for triggering app restart on change", "passed": true, "evidence": "Shows 'onSyncSuccess: command: npm restart' and 'onSyncFailure' with alert command"}], "summary": {"passed": 3, "failed": 3, "total": 6, "pass_rate": 0.5}, "timing": {"total_duration_seconds": 43.0}}}, {"id": "eval-1-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Deploying Infisical Agent as an ECS Sidecar with AWS IAM Authentication\n\nYou're in the right place! The Infisical Agent with AWS IAM authentication is the cleanest way to inject secrets into ECS without managing credentials. The agent will use your ECS task role directly, so there's no need to store or rotate client credentials.\n\n## Architecture Overview\n\nYour setup will look like this:\n\n1. **Infisical Agent sidecar** \u2014 Runs in the same ECS task as your application\n2. **ECS task role** \u2014 Provides AWS IAM credentials to the agent automatically\n3. **Shared volume** \u2014 Both containers mount a shared volume to exchange secrets\n4. **Agent renders secrets** \u2014 Writes a `.env` file that your app can read\n5. **Application** \u2014 Reads secrets from the mounted volume\n\n## Step 1: Create a Machine Identity in Infisical\n\nYou need to create a Machine Identity in Infisical that's authorized to use AWS IAM authentication.\n\n**In Infisical UI:**\n1. Go to **Settings \u2192 Machine Identities** (or Organization \u2192 Machine Identities)\n2. Click **Create Machine Identity**\n3. Give it a name: `ecs-app-identity`\n4. Select **Auth Method: AWS IAM**\n5. Fill in your AWS account ID and role name (the ECS task role)\n6. Note the **Machine Identity ID** \u2014 you'll need this in your config\n\n**Key fields:**\n- **AWS Account ID**: The AWS account where your ECS task runs\n- **AWS IAM Role Name**: The IAM role your ECS task assumes (e.g., `ecsTaskExecutionRole` or custom role)\n\nGrant the Machine Identity access to your project and environments in the access control section.\n\n## Step 2: Prepare Your Agent Configuration File\n\nCreate an `agent-config.yaml` file. Since you want one-time secret rendering (not continuous polling), use `exit-after-auth: true`.\n\n```yaml\ninfisical:\n  address: \"https://app.infisical.com\"    # Or your self-hosted Infisical URL\n  exit-after-auth: true                    # Render once and exit\n\nauth:\n  type: \"aws-iam\"\n  config:\n    identity-id: \"<your-machine-identity-id>\"    # Paste the ID from Step 1\n\nsinks:\n  - type: \"file\"\n    config:\n      path: \"/infisical/secrets/access-token\"\n\ntemplates:\n  - template-content: |\n      {{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}\n      {{- range . }}\n      {{ .Key }}={{ .Value }}\n      {{- end }}\n      {{- end }}\n    destination-path: /infisical/secrets/.env\n```\n\n**Key options to customize:**\n\n| Setting | Your Value | Notes |\n|---------|-----------|-------|\n| `address` | `https://app.infisical.com` | Or your self-hosted Infisical instance |\n| `identity-id` | Your Machine Identity ID | From Step 1 |\n| `my-project` | Your project slug | Find in Infisical UI \u2192 Project Settings |\n| `prod` | Your environment | `dev`, `staging`, `prod`, etc. |\n| `destination-path` | `/infisical/secrets/.env` | Path inside container to write secrets |\n\n## Step 3: Update Your ECS Task Definition\n\nHere's a complete task definition with both the agent and your application:\n\n```json\n{\n  \"family\": \"my-app\",\n  \"networkMode\": \"awsvpc\",\n  \"requiresCompatibilities\": [\"FARGATE\"],\n  \"cpu\": \"512\",\n  \"memory\": \"1024\",\n  \"executionRoleArn\": \"arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole\",\n  \"taskRoleArn\": \"arn:aws:iam::ACCOUNT_ID:role/ecsTaskRole\",\n  \"containerDefinitions\": [\n    {\n      \"name\": \"infisical-agent\",\n      \"image\": \"infisical/cli:latest\",\n      \"command\": [\n        \"agent\",\n        \"--config\",\n        \"/etc/infisical/agent-config.yaml\"\n      ],\n      \"essential\": false,\n      \"logConfiguration\": {\n        \"logDriver\": \"awslogs\",\n        \"options\": {\n          \"awslogs-group\": \"/ecs/my-app\",\n          \"awslogs-region\": \"us-east-1\",\n          \"awslogs-stream-prefix\": \"agent\"\n        }\n      },\n      \"mountPoints\": [\n        {\n          \"sourceVolume\": \"agent-config\",\n          \"containerPath\": \"/etc/infisical\"\n        },\n        {\n          \"sourceVolume\": \"secrets\",\n          \"containerPath\": \"/infisical/secrets\"\n        }\n      ]\n    },\n    {\n      \"name\": \"app\",\n      \"image\": \"myapp:latest\",\n      \"essential\": true,\n      \"portMappings\": [\n        {\n          \"containerPort\": 3000,\n          \"hostPort\": 3000,\n          \"protocol\": \"tcp\"\n        }\n      ],\n      \"logConfiguration\": {\n        \"logDriver\": \"awslogs\",\n        \"options\": {\n          \"awslogs-group\": \"/ecs/my-app\",\n          \"awslogs-region\": \"us-east-1\",\n          \"awslogs-stream-prefix\": \"app\"\n        }\n      },\n      \"mountPoints\": [\n        {\n          \"sourceVolume\": \"secrets\",\n          \"containerPath\": \"/app/secrets\",\n          \"readOnly\": true\n        }\n      ],\n      \"dependsOn\": [\n        {\n          \"containerName\": \"infisical-agent\",\n          \"condition\": \"COMPLETE\"\n        }\n      ],\n      \"environment\": [\n        {\n          \"name\": \"SECRETS_PATH\",\n          \"value\": \"/app/secrets/.env\"\n        }\n      ]\n    }\n  ],\n  \"volumes\": [\n    {\n      \"name\": \"secrets\",\n      \"emptyDir\": {}\n    },\n    {\n      \"name\": \"agent-config\",\n      \"configFileType\": \"text\",\n      \"configFileValue\": \"# Inline agent config YAML here\"\n    }\n  ]\n}\n```\n\n**Important task definition fields:**\n\n| Field | Purpose |\n|-------|---------|\n| `taskRoleArn` | The **ECS task role** \u2014 provides AWS IAM credentials to the agent. Must match the role configured in your Machine Identity. |\n| `executionRoleArn` | The task execution role \u2014 allows ECS to pull images and write logs. |\n| `infisical-agent.essential: false` | Agent isn't essential; if it fails, app still starts (but without secrets). |\n| `app.dependsOn` | App waits for agent to complete (`COMPLETE` condition). |\n| `volumes.secrets` | Shared ephemeral volume. Agent writes `.env` here, app reads from here. |\n\n## Step 4: Provide the Agent Config to ECS\n\nYou have two options:\n\n### Option A: Use ECS Secrets/ConfigMap (Recommended)\n1. Store `agent-config.yaml` in **AWS Secrets Manager** or **Parameter Store**\n2. Reference it in the task definition's `configFileValue` or use volume mounts with `secretsManagerSecrets`\n3. This keeps the config out of your task definition JSON\n\n### Option B: Embed in Task Definition (Simple but less flexible)\nReplace the `configFileValue` placeholder in the task definition above with your actual YAML content.\n\n## Step 5: Configure Your Application\n\nYour application should read the `.env` file from `/app/secrets/.env`:\n\n**Node.js example:**\n```javascript\nrequire('dotenv').config({ path: '/app/secrets/.env' });\nconsole.log(process.env.DATABASE_URL);  // From Infisical\n```\n\n**Python example:**\n```python\nfrom dotenv import load_dotenv\nload_dotenv('/app/secrets/.env')\nimport os\nprint(os.getenv('DATABASE_URL'))\n```\n\n**Bash example:**\n```bash\nsource /app/secrets/.env\necho $DATABASE_URL\n```\n\n## IAM Permissions Required\n\nYour **ECS task role** needs permission to call the Infisical API (over HTTPS). No specific AWS permissions are needed \u2014 the agent uses IMDS (EC2 Instance Metadata Service) to get temporary credentials from your task role, then uses those to authenticate to Infisical.\n\nIf you want to be extra restrictive, you can leave the role as-is (no special permissions). The agent only needs outbound HTTPS to Infisical.\n\n## Step 6: Deploy\n\n1. Register your task definition in ECS\n2. Update your ECS service to use the new task definition\n3. ECS will pull the Infisical CLI image, run the agent, wait for it to complete, then start your app\n\n## Troubleshooting\n\n### Agent exits with \"identity not found\"\n- Verify the Machine Identity ID is correct\n- Check that the Machine Identity is active in Infisical\n- Verify the Machine Identity has access to your project\n\n### Agent times out or can't authenticate\n- Check the ECS task role ARN matches the role in your Machine Identity\n- Verify the role is in the same AWS account as Infisical\n- Check Security Groups allow outbound HTTPS (port 443)\n- Review agent logs in CloudWatch\n\n### App can't find `.env` file\n- Verify the shared volume is mounted to both containers\n- Check `destination-path` in agent config matches the path your app expects\n- Verify `app.dependsOn` specifies the agent as a dependency\n\n### Application sees stale secrets\n- `exit-after-auth: true` means agent runs once at startup. If you need live updates, change to `exit-after-auth: false` and add a `polling-interval` (e.g., `5m`)\n- If you enable polling, also add an `execute.command` to restart your app when secrets change\n\n## Optional: Continuous Secret Updates\n\nIf you want the agent to monitor for secret changes and auto-update your app:\n\n```yaml\ninfisical:\n  address: \"https://app.infisical.com\"\n  # Remove exit-after-auth or set to false\n\ntemplates:\n  - template-content: |\n      {{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}\n      {{- range . }}\n      {{ .Key }}={{ .Value }}\n      {{- end }}\n      {{- end }}\n    destination-path: /infisical/secrets/.env\n    config:\n      polling-interval: \"5m\"\n      execute:\n        command: \"kill -HUP 1\"    # Signal app to reload\n        timeout: 10\n```\n\nThis keeps the agent running, re-renders the `.env` file every 5 minutes, and signals your app to reload if secrets change.\n\n## Recap: Key Takeaways\n\n\u2705 **Use `aws-iam` auth** \u2014 No credential files needed, task role handles everything  \n\u2705 **Set `exit-after-auth: true`** \u2014 Agent renders secrets once and exits  \n\u2705 **Share a volume** \u2014 Agent writes to `/infisical/secrets`, app reads from `/app/secrets`  \n\u2705 **Set `dependsOn`** \u2014 App waits for agent to finish  \n\u2705 **Set `essential: false`** on agent \u2014 App can still start if agent fails (with cached secrets)  \n\u2705 **Use `listSecretsByProjectSlug`** \u2014 Easier to read than project IDs  \n\nYou're all set! Let me know if you hit any snags or need to adapt this for dynamic secrets (like database credentials).\n"}], "grading": {"expectations": [{"text": "Uses aws-iam auth type (not universal-auth with client-id/secret)", "passed": true, "evidence": "Auth config shows 'auth: type: \"aws-iam\"' with 'identity-id' field, not universal-auth"}, {"text": "Shows correct auth config with identity-id field", "passed": true, "evidence": "Config shows 'identity-id: \"<your-machine-identity-id>\"' with comment 'Paste the ID from Step 1'"}, {"text": "Shows ECS task definition pattern with shared volume between agent and app containers", "passed": true, "evidence": "Complete ECS task definition with two containers (infisical-agent and app) sharing 'secrets' volume with mountPoints specified for both"}, {"text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature", "passed": true, "evidence": "Template uses 'listSecretsByProjectSlug \"my-project\" \"prod\" \"/\"' with proper 3-arg signature"}, {"text": "Mentions exit-after-auth option for init-style sidecar pattern", "passed": true, "evidence": "Config shows 'exit-after-auth: true' with comment 'Render once and exit' and separate section 'Optional: Continuous Secret Updates' that shows setting to false"}, {"text": "Does not require manually managing any credentials or access keys", "passed": true, "evidence": "Uses AWS IAM authentication through ECS task role - no explicit credential files or keys needed to be managed"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}, "timing": {"total_duration_seconds": 41.5}}}, {"id": "eval-1-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Infisical Agent as ECS Sidecar with Task Roles\n\n## Overview\n\nDeploying the Infisical Agent as a sidecar container in AWS ECS with task roles is an excellent approach for secure secret injection without managing credentials. This guide covers the complete configuration.\n\n## Architecture\n\nThe Infisical Agent runs as a sidecar in your ECS task and injects secrets into your main application containers via a shared volume or Unix socket. By using ECS task roles (IAM roles attached to the task), you avoid storing credentials in environment variables or task definitions.\n\n## Prerequisites\n\n1. **ECS Task Role** with permissions to access Infisical (API endpoints or AWS Secrets Manager if using a hybrid approach)\n2. **Infisical instance** running and accessible from your ECS tasks (typically in the same VPC)\n3. **Machine Identity** (Service Account or Bot) in Infisical for the agent to authenticate\n\n## Configuration Steps\n\n### 1. Set Up Machine Identity in Infisical\n\nCreate a Machine Identity that the Agent will use to authenticate to Infisical:\n\n- **Option A: Service Account** (recommended for ECS)\n  - Go to your Infisical workspace \u2192 Settings \u2192 Machine Identities\n  - Create a new Machine Identity with type \"Service Account\"\n  - Generate client credentials (Client ID and Client Secret)\n  - Assign appropriate scopes (e.g., read secrets from specific projects/environments)\n\n- **Option B: Bot Identity**\n  - Similar process, use Bot type for application-level authentication\n  - Assign minimal required permissions\n\n### 2. Configure ECS Task Role\n\nCreate or update your ECS task role with a policy allowing the Infisical Agent to authenticate using service account credentials. The agent will need:\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"secretsmanager:GetSecretValue\"\n      ],\n      \"Resource\": \"arn:aws:secretsmanager:*:*:secret:infisical/*\"\n    }\n  ]\n}\n```\n\n**Note:** If using a direct Infisical API approach, the task role may not directly authenticate with Infisical. Instead, store the Client ID/Secret in:\n- **AWS Secrets Manager** (recommended) \u2014 store machine identity credentials as a secret\n- **AWS Systems Manager Parameter Store** \u2014 store credentials securely\n- **Environment variables** \u2014 less secure, only as fallback\n\n### 3. Store Machine Identity Credentials\n\n**Recommended: AWS Secrets Manager**\n\nStore the Infisical machine identity credentials in Secrets Manager:\n\n```bash\naws secretsmanager create-secret \\\n  --name infisical/agent-credentials \\\n  --secret-string '{\"clientId\":\"YOUR_CLIENT_ID\",\"clientSecret\":\"YOUR_CLIENT_SECRET\"}'\n```\n\nUpdate task role policy to allow reading this secret:\n\n```json\n{\n  \"Effect\": \"Allow\",\n  \"Action\": [\n    \"secretsmanager:GetSecretValue\"\n  ],\n  \"Resource\": \"arn:aws:secretsmanager:REGION:ACCOUNT:secret:infisical/agent-credentials-*\"\n}\n```\n\n### 4. ECS Task Definition\n\nDefine your task with the Infisical Agent as a sidecar. Here's an example:\n\n```json\n{\n  \"family\": \"my-app-with-infisical\",\n  \"networkMode\": \"awsvpc\",\n  \"requiresCompatibilities\": [\"FARGATE\"],\n  \"cpu\": \"1024\",\n  \"memory\": \"2048\",\n  \"executionRoleArn\": \"arn:aws:iam::ACCOUNT:role/ecsTaskExecutionRole\",\n  \"taskRoleArn\": \"arn:aws:iam::ACCOUNT:role/ecsTaskRole\",\n  \"containerDefinitions\": [\n    {\n      \"name\": \"infisical-agent\",\n      \"image\": \"infisical/infisical-agent:latest\",\n      \"essential\": false,\n      \"portMappings\": [\n        {\n          \"containerPort\": 8080,\n          \"hostPort\": 8080,\n          \"protocol\": \"tcp\"\n        }\n      ],\n      \"environment\": [\n        {\n          \"name\": \"INFISICAL_API_URL\",\n          \"value\": \"https://your-infisical-instance.com\"\n        },\n        {\n          \"name\": \"INFISICAL_AGENT_MODE\",\n          \"value\": \"kubernetes\"\n        }\n      ],\n      \"secrets\": [\n        {\n          \"name\": \"INFISICAL_CLIENT_ID\",\n          \"valueFrom\": \"arn:aws:secretsmanager:REGION:ACCOUNT:secret:infisical/agent-credentials:clientId::\"\n        },\n        {\n          \"name\": \"INFISICAL_CLIENT_SECRET\",\n          \"valueFrom\": \"arn:aws:secretsmanager:REGION:ACCOUNT:secret:infisical/agent-credentials:clientSecret::\"\n        }\n      ],\n      \"mountPoints\": [\n        {\n          \"sourceVolume\": \"infisical-socket\",\n          \"containerPath\": \"/var/run/infisical\"\n        }\n      ],\n      \"logConfiguration\": {\n        \"logDriver\": \"awslogs\",\n        \"options\": {\n          \"awslogs-group\": \"/ecs/infisical-agent\",\n          \"awslogs-region\": \"us-east-1\",\n          \"awslogs-stream-prefix\": \"ecs\"\n        }\n      }\n    },\n    {\n      \"name\": \"my-app\",\n      \"image\": \"my-registry/my-app:latest\",\n      \"essential\": true,\n      \"portMappings\": [\n        {\n          \"containerPort\": 3000,\n          \"hostPort\": 3000,\n          \"protocol\": \"tcp\"\n        }\n      ],\n      \"environment\": [\n        {\n          \"name\": \"INFISICAL_AGENT_ENDPOINT\",\n          \"value\": \"unix:///var/run/infisical/agent.sock\"\n        },\n        {\n          \"name\": \"INFISICAL_PROJECT_ID\",\n          \"value\": \"your-project-id\"\n        }\n      ],\n      \"mountPoints\": [\n        {\n          \"sourceVolume\": \"infisical-socket\",\n          \"containerPath\": \"/var/run/infisical\"\n        }\n      ],\n      \"logConfiguration\": {\n        \"logDriver\": \"awslogs\",\n        \"options\": {\n          \"awslogs-group\": \"/ecs/my-app\",\n          \"awslogs-region\": \"us-east-1\",\n          \"awslogs-stream-prefix\": \"ecs\"\n        }\n      }\n    }\n  ],\n  \"volumes\": [\n    {\n      \"name\": \"infisical-socket\",\n      \"efsVolumeConfiguration\": {\n        \"filesystemId\": \"fs-12345678\",\n        \"transitEncryption\": \"ENABLED\"\n      }\n    }\n  ]\n}\n```\n\n**Key considerations:**\n\n- **Shared Volume**: The `infisical-socket` volume allows both containers to communicate. Use EFS or tmpfs depending on your needs.\n- **Secrets Injection**: Machine identity credentials come from AWS Secrets Manager, not environment variables in the task definition.\n- **Agent Endpoint**: Your main application uses `INFISICAL_AGENT_ENDPOINT` to connect to the agent's socket.\n- **Essential Flag**: Set `essential: false` for the sidecar so task doesn't fail if agent restarts.\n\n### 5. Application Configuration\n\nIn your application, configure the Infisical SDK to use the agent:\n\n**Node.js Example:**\n\n```javascript\nconst { InfisicalClient } = require('@infisical/sdk');\n\nconst client = new InfisicalClient({\n  agentEndpoint: process.env.INFISICAL_AGENT_ENDPOINT || 'unix:///var/run/infisical/agent.sock',\n  projectId: process.env.INFISICAL_PROJECT_ID\n});\n\n// Fetch secret\nconst secret = await client.getSecret({\n  path: '/db',\n  key: 'DATABASE_URL'\n});\n\nconsole.log(secret.value);\n```\n\n**Go Example:**\n\n```go\npackage main\n\nimport (\n\t\"fmt\"\n\t\"os\"\n\t\n\tinfisical \"github.com/infisical/go-sdk\"\n)\n\nfunc main() {\n\tclient := infisical.NewClient(\n\t\tinfisical.WithAgentEndpoint(os.Getenv(\"INFISICAL_AGENT_ENDPOINT\")),\n\t)\n\t\n\tsecret, err := client.GetSecret(\n\t\t\"DATABASE_URL\",\n\t\t\"/db\",\n\t\tos.Getenv(\"INFISICAL_PROJECT_ID\"),\n\t)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n\t\n\tfmt.Println(secret.Value)\n}\n```\n\n### 6. IAM Task Role Permissions\n\nEnsure your ECS task role has the correct permissions. The execution role (different from task role) needs to fetch secrets from Secrets Manager:\n\n**Execution Role Policy:**\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"secretsmanager:GetSecretValue\"\n      ],\n      \"Resource\": \"arn:aws:secretsmanager:REGION:ACCOUNT:secret:infisical/agent-credentials-*\"\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:CreateLogStream\",\n        \"logs:PutLogEvents\"\n      ],\n      \"Resource\": \"arn:aws:logs:REGION:ACCOUNT:log-group:/ecs/*\"\n    }\n  ]\n}\n```\n\n**Task Role Policy:**\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"ec2:DescribeNetworkInterfaces\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n```\n\nThe task role primarily grants permissions your application needs (e.g., accessing other AWS services). In this setup, it's minimal since credentials come through the agent.\n\n## Alternative: Using tmpfs Instead of EFS\n\nIf you prefer temporary socket storage instead of EFS:\n\n```json\n{\n  \"name\": \"infisical-socket\",\n  \"host\": {}\n}\n```\n\nAnd add to agent container:\n\n```json\n{\n  \"mountPoints\": [\n    {\n      \"sourceVolume\": \"infisical-socket\",\n      \"containerPath\": \"/var/run/infisical\"\n    }\n  ]\n}\n```\n\n**Trade-off**: tmpfs is simpler but doesn't persist across task replacements. EFS is more robust for production.\n\n## Security Best Practices\n\n1. **Least Privilege Scope**: When creating the Infisical Machine Identity, restrict it to only the projects and environments your application needs.\n\n2. **Credential Rotation**: Rotate machine identity credentials regularly. Update the Secrets Manager secret and redeploy tasks.\n\n3. **Network Isolation**: Ensure your ECS tasks can reach your Infisical instance (same VPC, VPC endpoints, or private link).\n\n4. **Audit Logging**: Enable CloudWatch logs for both sidecar and main application. Monitor for authentication failures.\n\n5. **Secret Caching**: The Infisical Agent caches secrets locally. Configure cache TTL appropriately in agent configuration.\n\n6. **TLS/mTLS**: If your Infisical instance is over the internet, use TLS. For internal communication, ensure secure VPC setup.\n\n## Troubleshooting\n\n### Agent Fails to Start\n\n- Check CloudWatch logs for the agent container\n- Verify Secrets Manager secret name and ARN are correct\n- Ensure execution role has permission to fetch the secret\n\n### Application Can't Connect to Agent\n\n- Verify shared volume is mounted correctly in both containers\n- Check socket path matches `INFISICAL_AGENT_ENDPOINT`\n- Ensure agent container is running before application starts\n\n### Authentication Failures\n\n- Confirm machine identity credentials in Secrets Manager are correct\n- Verify INFISICAL_API_URL is accessible from ECS task\n- Check machine identity has appropriate scopes in Infisical\n\n### Slow Secret Retrieval\n\n- Configure agent caching to reduce API calls\n- Consider pre-fetching secrets at application startup\n- Monitor network latency between ECS and Infisical instance\n\n## Summary\n\nThis setup provides:\n\n- **No credential management**: Task role handles AWS authentication\n- **Secure secret injection**: Credentials stored in Secrets Manager\n- **Scalability**: Sidecar pattern works across many ECS tasks\n- **Flexibility**: Works with any application language via agent endpoint\n\nThe key is separating concerns: ECS manages container orchestration and authentication, Infisical manages secrets, and the agent acts as a secure bridge between them.\n"}], "grading": {"expectations": [{"text": "Uses aws-iam auth type (not universal-auth with client-id/secret)", "passed": false, "evidence": "Discusses 'INFISICAL_AGENT_MODE: kubernetes' and machine identity with client credentials stored in AWS Secrets Manager, not aws-iam auth type"}, {"text": "Shows correct auth config with identity-id field", "passed": false, "evidence": "Shows 'secrets' with INFISICAL_CLIENT_ID/SECRET from AWS Secrets Manager, not identity-id field for aws-iam"}, {"text": "Shows ECS task definition pattern with shared volume between agent and app containers", "passed": true, "evidence": "Task definition shows two containers (infisical-agent and my-app) with shared volume 'infisical-socket' mounted in both"}, {"text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature", "passed": false, "evidence": "Does not show actual template with listSecrets or listSecretsByProjectSlug. Shows environment variable approach instead"}, {"text": "Mentions exit-after-auth option for init-style sidecar pattern", "passed": false, "evidence": "Does not mention exit-after-auth option. Shows container running continuously"}, {"text": "Does not require manually managing any credentials or access keys", "passed": false, "evidence": "Requires storing machine identity credentials in AWS Secrets Manager and managing them manually"}], "summary": {"passed": 1, "failed": 5, "total": 6, "pass_rate": 0.17}, "timing": {"total_duration_seconds": 28.1}}}, {"id": "eval-2-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Infisical Agent: Rendering Static & Dynamic PostgreSQL Secrets\n\nThis guide shows you how to configure the Infisical Agent to render both **static secrets** (API keys, tokens, configuration) and **auto-renewing dynamic PostgreSQL credentials** into separate config files.\n\n## Quick Overview\n\nThe Infisical Agent is a daemon that:\n1. Authenticates to Infisical using a platform-native auth method\n2. Renews tokens automatically before expiration\n3. Renders secrets to files using Go templates\n4. Watches for changes and triggers on-change commands (app reloads, etc.)\n5. Automatically renews dynamic secret leases (like database credentials)\n\nFor your use case, you'll need:\n- **One template** for static secrets (using `listSecrets` or `listSecretsByProjectSlug`)\n- **One template** for dynamic PostgreSQL credentials (using `dynamicSecret`)\n- Polling interval short enough to catch renewal timing\n- Optional: `revoke-credentials-on-shutdown` to clean up DB users on exit\n\n---\n\n## Complete Agent Config\n\nHere's a production-ready `agent-config.yaml` that renders both static and dynamic secrets:\n\n```yaml\n# Infisical Agent Configuration\ninfisical:\n  address: \"https://app.infisical.com\"           # Your Infisical instance\n  exit-after-auth: false                          # Keep running to auto-renew\n  revoke-credentials-on-shutdown: true            # Clean up DB users on shutdown\n  retry-strategy:\n    max-retries: 3\n    max-delay: \"5s\"\n    base-delay: \"200ms\"\n\n# Authentication (choose one based on your platform)\nauth:\n  type: \"universal-auth\"                          # For local dev / Docker\n  config:\n    client-id: \"./client-id\"                      # Path to file with client ID\n    client-secret: \"./client-secret\"              # Path to file with client secret\n    remove_client_secret_on_read: false           # Keep files after reading\n\n# Token storage (optional, for SDK/API access)\nsinks:\n  - type: \"file\"\n    config:\n      path: \"/tmp/infisical-token\"\n\n# Secret rendering templates\ntemplates:\n  # Template 1: Static secrets (.env format)\n  - template-content: |\n      {{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}\n      {{- range . }}\n      {{ .Key }}={{ .Value }}\n      {{- end }}\n      {{- end }}\n    destination-path: /app/secrets/app.env\n    config:\n      polling-interval: \"5m\"\n      execute:\n        command: \"./reload-config.sh\"\n        timeout: 30\n\n  # Template 2: Dynamic PostgreSQL credentials\n  - template-content: |\n      {{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-creds\" \"1h\" }}\n      # PostgreSQL auto-renewed credentials (TTL: 1h)\n      DB_HOST=db.internal.example.com\n      DB_PORT=5432\n      DB_NAME=myapp\n      DB_USER={{ .DB_USERNAME }}\n      DB_PASSWORD={{ .DB_PASSWORD }}\n      {{ end }}\n    destination-path: /app/secrets/postgres.env\n    config:\n      polling-interval: \"5m\"\n      execute:\n        command: \"./reconnect-db.sh\"\n        timeout: 30\n```\n\n---\n\n## Template Explanations\n\n### Static Secrets Template\n\n```go\n{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}\n{{- range . }}\n{{ .Key }}={{ .Value }}\n{{- end }}\n{{- end }}\n```\n\n**What it does:**\n- `listSecretsByProjectSlug` \u2014 fetch all secrets from the `my-project` project in the `prod` environment at path `/`\n- `range` \u2014 iterate over each secret\n- `{{ .Key }}={{ .Value }}` \u2014 render as `KEY=VALUE` pairs\n- Whitespace control (`{{-` and `-}}`) \u2014 removes extra newlines\n\n**Output example:**\n```\nAPI_KEY=sk-12345...\nDATABASE_URL=postgresql://...\nSTRIPE_SECRET=rk-live-...\n```\n\n### Dynamic PostgreSQL Credentials Template\n\n```go\n{{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-creds\" \"1h\" }}\nDB_HOST=db.internal.example.com\nDB_PORT=5432\nDB_NAME=myapp\nDB_USER={{ .DB_USERNAME }}\nDB_PASSWORD={{ .DB_PASSWORD }}\n{{ end }}\n```\n\n**What it does:**\n- `dynamicSecret` \u2014 creates and renews a PostgreSQL credential lease\n  - `\"my-project\"` \u2014 project slug\n  - `\"prod\"` \u2014 environment slug\n  - `\"/\"` \u2014 secret path where the dynamic secret is defined\n  - `\"postgres-creds\"` \u2014 name of the dynamic secret in Infisical\n  - `\"1h\"` \u2014 lease TTL (agent will auto-renew before expiration)\n- `{{ .DB_USERNAME }}` and `{{ .DB_PASSWORD }}` \u2014 inject the generated credentials\n- Host, port, and database name are static; credentials rotate automatically\n\n**Output example:**\n```\nDB_HOST=db.internal.example.com\nDB_PORT=5432\nDB_NAME=myapp\nDB_USER=generated_user_xyz\nDB_PASSWORD=a1b2c3d4e5f6...\n```\n\n---\n\n## How Auto-Renewal Works\n\n### Dynamic Secret Lifecycle\n\n1. **Initial lease creation:** Agent calls `dynamicSecret` \u2192 Infisical creates PostgreSQL user and password\n2. **Lease stored:** Generated credentials stored in-memory (TTL = 1 hour in this example)\n3. **Polling cycle:** Every 5 minutes, agent re-renders template\n4. **Auto-renewal:** Before TTL expires (typically at 80% of TTL), agent auto-renews the lease\n   - Old PostgreSQL user is revoked (or kept alive per your config)\n   - New user/password created with fresh TTL\n5. **Template re-renders:** New credentials injected into `/app/secrets/postgres.env`\n6. **On-change command:** If credentials changed, runs `./reconnect-db.sh` to reconnect with new creds\n\n### Why This Works\n\n- **Deduplication:** If multiple templates reference the same dynamic secret, only one lease exists\n- **Graceful rotation:** Your app gets a reload command to pick up new credentials before the old ones expire\n- **Automatic cleanup:** With `revoke-credentials-on-shutdown: true`, PostgreSQL users are cleaned up when the agent exits\n\n---\n\n## Step-by-Step Setup\n\n### 1. Create or Find Your Infisical Secrets\n\nIn the Infisical web UI:\n\n**Static secrets** (in `/` path):\n- `API_KEY` = your API key\n- `DATABASE_URL` = static connection info (optional; you'll also have dynamic creds)\n- `STRIPE_SECRET` = your Stripe secret key\n- etc.\n\n**Dynamic secret** (in `/` path):\n- Name: `postgres-creds`\n- Type: PostgreSQL\n- Configuration: point to your PostgreSQL instance\n  - Host\n  - Port\n  - Master user (with CREATE ROLE permissions)\n  - Database\n  - Optional: Role templates or TTL settings\n\n### 2. Create Machine Identity\n\nCreate a **Machine Identity** in Infisical with access to your project. Get its:\n- `client-id` (for universal-auth)\n- `client-secret` (for universal-auth)\n\nOr use platform-native auth (Kubernetes, AWS IAM, Azure, GCP).\n\n### 3. Save Credentials Locally (for local dev / Docker)\n\nCreate files in your working directory:\n\n```bash\n# ./client-id\nabc123def456...\n\n# ./client-secret\nxyz789uvw012...\n\n# Make sure they're not world-readable\nchmod 600 client-id client-secret\n```\n\n### 4. Create agent-config.yaml\n\nCopy the complete config from the section above. Update:\n- `client-id` and `client-secret` paths (or use platform-native auth)\n- `listSecretsByProjectSlug \"my-project\"` \u2192 your actual project slug\n- `dynamicSecret \"my-project\"` \u2192 your actual project slug\n- `postgres-creds` \u2192 your dynamic secret name in Infisical\n- `destination-path` values \u2192 where you want files written\n- `execute.command` \u2192 your reload scripts\n\n### 5. Create Reload Scripts\n\n**`./reload-config.sh`** \u2014 called when static secrets change:\n```bash\n#!/bin/bash\nset -e\necho \"Static secrets updated, reloading application...\"\n# Signal your app to reload config\nkill -HUP $(pgrep -f \"my-app\") || true\nexit 0\n```\n\n**`./reconnect-db.sh`** \u2014 called when PostgreSQL credentials rotate:\n```bash\n#!/bin/bash\nset -e\necho \"Database credentials rotated, reconnecting...\"\n# Your app should read new credentials from /app/secrets/postgres.env\n# and reconnect to PostgreSQL\nkill -HUP $(pgrep -f \"my-app\") || true\nexit 0\n```\n\nMake them executable:\n```bash\nchmod +x reload-config.sh reconnect-db.sh\n```\n\n### 6. Run the Agent\n\n```bash\ninfisical agent --config ./agent-config.yaml\n```\n\nWatch the output:\n```\n[INFO] Starting Infisical Agent\n[INFO] Authenticating with universal-auth...\n[INFO] Token obtained, valid until 2026-04-14T12:00:00Z\n[INFO] Rendering template 1/2: /app/secrets/app.env\n[INFO] Rendering template 2/2: /app/secrets/postgres.env\n[INFO] Dynamic secret lease created: postgres-creds (TTL: 1h)\n[INFO] Polling every 5m for secret changes\n```\n\n### 7. Verify Output Files\n\n```bash\n# Static secrets\ncat /app/secrets/app.env\n# API_KEY=sk-12345...\n# DATABASE_URL=...\n# STRIPE_SECRET=...\n\n# Dynamic PostgreSQL credentials\ncat /app/secrets/postgres.env\n# DB_HOST=db.internal.example.com\n# DB_PORT=5432\n# DB_NAME=myapp\n# DB_USER=generated_user_xyz\n# DB_PASSWORD=a1b2c3d4e5f6...\n```\n\n### 8. Source in Your Application\n\nLoad both files in your app startup:\n\n**Node.js/JavaScript:**\n```javascript\nrequire('dotenv').config({ path: '/app/secrets/app.env' });\nrequire('dotenv').config({ path: '/app/secrets/postgres.env' });\n```\n\n**Python:**\n```python\nfrom dotenv import load_dotenv\nload_dotenv('/app/secrets/app.env')\nload_dotenv('/app/secrets/postgres.env')\n```\n\n**Shell/Bash:**\n```bash\nsource /app/secrets/app.env\nsource /app/secrets/postgres.env\n```\n\n---\n\n## Polling Interval Tuning\n\nThe `polling-interval` controls how often the agent checks for secret changes.\n\n**When to use short intervals (30s - 1m):**\n- Rapid credential rotation needed (e.g., high-security environments)\n- Applications that reconnect on every request\n- Development/testing where fast feedback is important\n\n**When to use long intervals (5m - 60m):**\n- Stable production deployments\n- Reduce API calls to Infisical\n- Apps that maintain persistent database connections\n\nIn the example above, both templates use **5m**, which balances:\n- Quick credential pickup (PostgreSQL user created within 5 minutes)\n- Reasonable API load\n- Safe renewal window (1h TTL with 5m refresh = 55m buffer before expiration)\n\n---\n\n## Dynamic Secret TTL Considerations\n\nThe TTL value in `dynamicSecret \"...\" \"...\" \"...\" \"...\" \"1h\"` is the **lease duration** Infisical will assign to the generated credentials.\n\n**Recommended values:**\n- **Short-lived (15m - 1h):** For high-security, frequent-rotation scenarios\n- **Medium (1h - 4h):** Standard production default (example uses 1h)\n- **Long-lived (4h - 24h):** Stable deployments with infrequent reconnects\n\n**Auto-renewal timing:**\n- Agent renews at ~80% of TTL\n- For 1h TTL \u2192 renewal attempt at ~48 minutes\n- Polling every 5m means new credentials appear within 5m of renewal\n\n---\n\n## Template Variations\n\n### If using project ID instead of slug:\n\nReplace:\n```go\nlistSecretsByProjectSlug \"my-project\"\ndynamicSecret \"my-project\"\n```\n\nWith:\n```go\nlistSecrets \"6553ccb2b7da580d7f6e7260\"\ndynamicSecret \"my-project\"  # dynamicSecret requires slug, not ID\n```\n\n### If you want recursive secrets (subdirectories):\n\n```go\n{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" `{\"recursive\": true}` }}\n{{- range . }}\n{{ .Key }}={{ .Value }}\n{{- end }}\n{{- end }}\n```\n\n### If you need JSON output instead of .env:\n\n```go\n{\n{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}\n{{- range $i, $s := . }}\n{{- if $i }},{{ end }}\n  \"{{ $s.Key }}\": \"{{ $s.Value }}\"\n{{- end }}\n{{- end }}\n}\n```\n\n### If you have multiple databases:\n\n```yaml\ntemplates:\n  - template-content: |\n      {{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-primary\" \"1h\" }}\n      PRIMARY_DB_USER={{ .DB_USERNAME }}\n      PRIMARY_DB_PASS={{ .DB_PASSWORD }}\n      {{ end }}\n    destination-path: /app/secrets/postgres-primary.env\n\n  - template-content: |\n      {{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-replica\" \"1h\" }}\n      REPLICA_DB_USER={{ .DB_USERNAME }}\n      REPLICA_DB_PASS={{ .DB_PASSWORD }}\n      {{ end }}\n    destination-path: /app/secrets/postgres-replica.env\n```\n\nEach gets its own lease and auto-renewal cycle.\n\n---\n\n## Troubleshooting\n\n### \"Dynamic secret lease not created\"\n\n- Verify the dynamic secret exists in Infisical with the correct name\n- Check that the machine identity has permission to create dynamic secret leases\n- Look for errors in agent logs: `infisical agent --config ... --debug` (if available)\n\n### \"Credentials expire before renewal\"\n\n- Increase TTL in the `dynamicSecret` call (e.g., `\"2h\"` instead of `\"1h\"`)\n- Decrease `polling-interval` (e.g., `\"1m\"` instead of `\"5m\"`)\n- Ensure your app's database connection pools reconnect when notified\n\n### \"On-change command not running\"\n\n- Verify the script path is correct and executable (`chmod +x`)\n- Check that the script doesn't require shell (use `#!/bin/bash` shebang)\n- Ensure the agent process has permission to execute the script\n- Test manually: `./reload-config.sh` should succeed without errors\n\n### \"Secrets not updating in app\"\n\n- Confirm app reads from the correct file paths at startup\n- For persistent connections (database, cache), your reload script must signal the app\n- Check file permissions: agent must write, app must read\n- Verify polling interval isn't so long that changes are missed during testing\n\n---\n\n## Security Best Practices\n\n1. **File permissions:** Set restrictive permissions on secret files\n   ```bash\n   chmod 600 /app/secrets/*.env\n   ```\n\n2. **Machine identity credentials:** Never commit `client-id` or `client-secret` files\n   ```bash\n   echo \"client-id\" >> .gitignore\n   echo \"client-secret\" >> .gitignore\n   ```\n\n3. **Revoke on shutdown:** Set `revoke-credentials-on-shutdown: true` so PostgreSQL users are cleaned up\n   ```yaml\n   infisical:\n     revoke-credentials-on-shutdown: true\n   ```\n\n4. **No logs with secrets:** The agent never logs secret values \u2014 it only logs key names and paths\n\n5. **Use platform-native auth:** Avoid storing client secrets; use Kubernetes, AWS IAM, Azure, or GCP auth when available\n\n---\n\n## Summary\n\nYou now have a complete, production-ready configuration that:\n\n\u2713 Renders static secrets from Infisical to `/app/secrets/app.env`  \n\u2713 Creates auto-renewing PostgreSQL credentials in `/app/secrets/postgres.env`  \n\u2713 Automatically renews database credentials before expiration  \n\u2713 Polls every 5 minutes for changes and reloads your app  \n\u2713 Cleans up database users on shutdown  \n\u2713 Handles multiple dynamic secrets independently  \n\nThe agent runs continuously, maintains token lifecycle, and ensures your application always has fresh credentials without manual intervention.\n"}], "grading": {"expectations": [{"text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets", "passed": true, "evidence": "Template 1 uses '{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}' for static secrets"}, {"text": "Template uses dynamicSecret function for PostgreSQL credentials", "passed": true, "evidence": "Template 2 uses '{{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-creds\" \"1h\" }}' for PostgreSQL credentials"}, {"text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)", "passed": true, "evidence": "dynamicSecret call shows all 5 args: project-slug (my-project), env (prod), path (/), name (postgres-creds), ttl (1h)"}, {"text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output", "passed": true, "evidence": "Template shows 'DB_USER={{ .DB_USERNAME }}' and 'DB_PASSWORD={{ .DB_PASSWORD }}'"}, {"text": "Mentions auto-renewal behavior (agent renews before expiration)", "passed": true, "evidence": "\"Auto-renewal: Before TTL expires (typically at 80% of TTL), agent auto-renews the lease\" and detailed lease lifecycle explanation"}, {"text": "Recommends revoke-credentials-on-shutdown: true for cleanup", "passed": true, "evidence": "Top-level config shows 'revoke-credentials-on-shutdown: true' with explanation in best practices"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}, "timing": {"total_duration_seconds": 44.1}}}, {"id": "eval-2-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Infisical Agent: Rendering Static & Dynamic PostgreSQL Credentials\n\n## Overview\n\nThe Infisical Agent supports templating that can inject both static secrets and dynamic PostgreSQL credentials into configuration files. Dynamic credentials include built-in auto-renewal logic that refreshes them before expiration, eliminating manual credential management.\n\n---\n\n## Template Structure\n\n### Basic Template Format\n\nInfisical templates use a simple `.env` or YAML format with placeholders for secrets. The agent interpolates values at deployment time.\n\n```bash\n# Example: .env.template\nDB_HOST={{ secrets.db_host }}\nDB_PORT={{ secrets.db_port }}\nDB_USER={{ secrets.db_user }}\nDB_PASSWORD={{ secrets.db_password }}\nAPI_KEY={{ secrets.api_key }}\n```\n\n---\n\n## Rendering Static Secrets\n\nFor static secrets stored in Infisical:\n\n```bash\n# .env.template\n# Static secrets\nAPI_KEY={{ secrets.api_key }}\nDATABASE_URL={{ secrets.database_url }}\nAUTH_TOKEN={{ secrets.auth_token }}\nLOG_LEVEL={{ secrets.log_level }}\n```\n\n**Key points:**\n- Use double-brace syntax: `{{ secrets.SECRET_NAME }}`\n- Secret names are case-sensitive\n- The agent fetches secrets from your Infisical workspace at deployment\n\n---\n\n## Rendering Dynamic PostgreSQL Credentials\n\n### Template with Dynamic Credentials\n\nFor dynamic credentials, use a dedicated section that tells Infisical to manage credential rotation:\n\n```bash\n# .env.template\n# ===== STATIC SECRETS =====\nAPI_KEY={{ secrets.api_key }}\nENVIRONMENT={{ secrets.environment }}\n\n# ===== DYNAMIC POSTGRESQL CREDENTIALS =====\n# These credentials are auto-renewed before expiration\nDB_HOST={{ dynamic.postgres.host }}\nDB_PORT={{ dynamic.postgres.port }}\nDB_NAME={{ dynamic.postgres.database }}\nDB_USER={{ dynamic.postgres.username }}\nDB_PASSWORD={{ dynamic.postgres.password }}\n\n# Metadata for renewal tracking (optional but recommended)\nDB_CREDENTIAL_TTL={{ dynamic.postgres.ttl }}\nDB_CREDENTIAL_EXPIRES_AT={{ dynamic.postgres.expires_at }}\n```\n\n### Advanced Config Example\n\nFor a more realistic production setup:\n\n```yaml\n# config.yml.template\nserver:\n  port: 3000\n  environment: {{ secrets.environment }}\n\ndatabase:\n  host: {{ dynamic.postgres.host }}\n  port: {{ dynamic.postgres.port }}\n  database: {{ dynamic.postgres.database }}\n  username: {{ dynamic.postgres.username }}\n  password: {{ dynamic.postgres.password }}\n  ssl: true\n  pool:\n    min: 2\n    max: 10\n  \n  # Renewal tracking\n  credential:\n    ttl: {{ dynamic.postgres.ttl }}\n    expires_at: {{ dynamic.postgres.expires_at }}\n\napi:\n  key: {{ secrets.api_key }}\n  secret: {{ secrets.api_secret }}\n  timeout: 30\n\nlogging:\n  level: {{ secrets.log_level }}\n  service: {{ secrets.service_name }}\n```\n\n---\n\n## Auto-Renewal Mechanism\n\n### How It Works\n\n1. **Initial Fetch**: When the agent deploys, it retrieves:\n   - All static secrets from your Infisical vault\n   - Dynamic PostgreSQL credentials from the configured database\n\n2. **TTL Tracking**: Dynamic credentials include a `ttl` (time-to-live) and `expires_at` timestamp\n\n3. **Renewal Trigger**: The agent monitors credential expiration and automatically renews:\n   - **Default**: Renews when 75% of TTL has elapsed (customizable)\n   - **New credentials** are generated and the config file is updated\n   - **Old credentials** remain valid during the grace period (if configured)\n\n4. **Graceful Updates**: \n   - Applications can reload config without downtime\n   - Database connection pools adapt to new credentials\n   - No manual intervention required\n\n### TTL and Renewal Configuration\n\nIn your Infisical workspace, configure the dynamic credential lease:\n\n```json\n{\n  \"type\": \"postgres\",\n  \"name\": \"prod-db-creds\",\n  \"host\": \"db.example.com\",\n  \"port\": 5432,\n  \"database\": \"myapp_db\",\n  \"ttl\": 3600,\n  \"renewal_threshold\": 0.75,\n  \"max_ttl\": 86400\n}\n```\n\n**Parameters:**\n- `ttl`: Credential lifetime in seconds (e.g., 3600 = 1 hour)\n- `renewal_threshold`: Renew when this % of TTL remains (0.75 = 75%)\n- `max_ttl`: Maximum possible credential lifetime before forced refresh\n\n---\n\n## Complete Working Example\n\n### Scenario: Production PostgreSQL Config\n\n```bash\n# .env.template\n# Application\nNODE_ENV={{ secrets.node_env }}\nLOG_LEVEL={{ secrets.log_level }}\nAPP_VERSION={{ secrets.app_version }}\n\n# API Authentication (static)\nAPI_KEY={{ secrets.api_key }}\nJWT_SECRET={{ secrets.jwt_secret }}\n\n# PostgreSQL (dynamic, auto-renewing)\nDB_HOST={{ dynamic.postgres.host }}\nDB_PORT={{ dynamic.postgres.port }}\nDB_NAME={{ dynamic.postgres.database }}\nDB_USER={{ dynamic.postgres.username }}\nDB_PASSWORD={{ dynamic.postgres.password }}\n\n# Connection pooling (adjust based on credential availability)\nDB_POOL_MIN=2\nDB_POOL_MAX=10\nDB_POOL_IDLE_TIMEOUT=30000\n\n# Credential lifecycle (for app awareness)\nDB_CRED_TTL={{ dynamic.postgres.ttl }}\nDB_CRED_EXPIRES={{ dynamic.postgres.expires_at }}\n\n# Optional: Renewal grace period (seconds before expiry to warn)\nDB_RENEWAL_WARNING_SECS=300\n```\n\n### Application Integration\n\n**Node.js Example** \u2014 using the config file:\n\n```javascript\n// config.js\nimport dotenv from 'dotenv';\ndotenv.config({ path: '.env' });\n\nconst pool = new Pool({\n  host: process.env.DB_HOST,\n  port: process.env.DB_PORT,\n  database: process.env.DB_NAME,\n  user: process.env.DB_USER,\n  password: process.env.DB_PASSWORD,\n  max: parseInt(process.env.DB_POOL_MAX),\n});\n\n// Monitor credential expiration\nconst credExpires = new Date(process.env.DB_CRED_EXPIRES);\nconst timeUntilExpiry = credExpires.getTime() - Date.now();\n\nif (timeUntilExpiry < 60000) {\n  console.warn('DB credentials expiring soon, reload config');\n}\n\nexport default pool;\n```\n\n---\n\n## Best Practices\n\n### 1. Separation of Concerns\n```bash\n# Good: Separate static and dynamic secrets\nAPI_KEY={{ secrets.api_key }}           # Static\nDB_USER={{ dynamic.postgres.username }} # Dynamic\n```\n\n### 2. Include Metadata for Observability\n```bash\n# Track credential state\nDB_CRED_TTL={{ dynamic.postgres.ttl }}\nDB_CRED_EXPIRES_AT={{ dynamic.postgres.expires_at }}\nDB_CRED_ISSUED_AT={{ dynamic.postgres.issued_at }}\n```\n\n### 3. Set Appropriate TTLs\n- **Short-lived** (1 hour): Maximum security, more renewals\n- **Medium** (4-8 hours): Balanced approach\n- **Long-lived** (24 hours): Fewer renewals, less secure\n\n### 4. Application Reload Strategy\n- **Reload on signal**: Watch config file for changes, reload on SIGHUP\n- **Graceful shutdown**: Close old DB connections before accepting new ones\n- **Blue-green**: Deploy new instances with fresh credentials\n\n### 5. Monitoring & Alerting\n```bash\n# Log renewal events\nexport DB_RENEWAL_LOG_LEVEL=debug\n\n# Alert if renewals fail\nexport CRITICAL_ALERTS=true\n```\n\n---\n\n## Troubleshooting\n\n### Issue: Credentials Not Rendering\n\n**Check:**\n1. Secret name exists in Infisical workspace (case-sensitive)\n2. Template uses correct placeholder syntax: `{{ secrets.name }}` or `{{ dynamic.postgres.name }}`\n3. Agent has permission to read secrets\n\n### Issue: Dynamic Credentials Not Renewing\n\n**Check:**\n1. PostgreSQL database is accessible from agent\n2. `ttl` is set (not null or 0)\n3. Agent is running continuously (not just one-off deploy)\n4. Check agent logs: `renewal_threshold` may be set too high\n\n### Issue: Connection Failures After Renewal\n\n**Check:**\n1. Old connections terminated before new credentials expire\n2. Connection pool has `idleTimeoutMillis` set appropriately\n3. App reloads config file when it changes\n4. Database user permissions are correct for dynamic credential user\n\n---\n\n## Advanced: Custom Renewal Logic\n\nIf you need more control, implement credential reloading:\n\n```javascript\n// monitor-credentials.js\nimport fs from 'fs';\nimport dotenv from 'dotenv';\n\nfunction reloadCredentials() {\n  const config = dotenv.parse(fs.readFileSync('.env', 'utf8'));\n  const credExpires = new Date(config.DB_CRED_EXPIRES_AT);\n  const timeLeft = credExpires.getTime() - Date.now();\n  \n  // Renew if less than 5 minutes left\n  if (timeLeft < 300000) {\n    console.log('Credential renewal in progress...');\n    // Signal Infisical agent to refresh\n    process.kill(process.pid, 'SIGHUP');\n  }\n}\n\nsetInterval(reloadCredentials, 30000); // Check every 30 seconds\n```\n\n---\n\n## Summary\n\nTo enable auto-renewing dynamic PostgreSQL credentials in Infisical:\n\n1. **Define the template** with both static (`{{ secrets.* }}`) and dynamic (`{{ dynamic.postgres.* }}`) placeholders\n2. **Configure the dynamic credential** in Infisical (TTL, host, database, renewal threshold)\n3. **Deploy with the agent** \u2014 it automatically manages lifecycle and renewal\n4. **Monitor expiration** using the `ttl` and `expires_at` metadata\n5. **Reload config** when credentials renew (file watch or signal-based)\n\nThe agent handles all renewal logic automatically, eliminating manual credential rotation while keeping your database connections secure.\n"}], "grading": {"expectations": [{"text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets", "passed": false, "evidence": "Uses generic placeholder syntax '{{ secrets.api_key }}', '{{ secrets.database_url }}' rather than listSecrets or listSecretsByProjectSlug function"}, {"text": "Template uses dynamicSecret function for PostgreSQL credentials", "passed": false, "evidence": "Uses generic placeholder syntax '{{ dynamic.postgres.username }}', '{{ dynamic.postgres.password }}' rather than dynamicSecret function"}, {"text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)", "passed": false, "evidence": "Does not use dynamicSecret function at all; uses generic template placeholder syntax"}, {"text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output", "passed": true, "evidence": "Shows 'DB_USER={{ dynamic.postgres.username }}' and 'DB_PASSWORD={{ dynamic.postgres.password }}'"}, {"text": "Mentions auto-renewal behavior (agent renews before expiration)", "passed": true, "evidence": "\"Auto-renewal Mechanism: The agent monitors credential expiration and automatically renews...Renews when 75% of TTL has elapsed\""}, {"text": "Recommends revoke-credentials-on-shutdown: true for cleanup", "passed": false, "evidence": "Does not mention revoke-credentials-on-shutdown configuration"}], "summary": {"passed": 2, "failed": 4, "total": 6, "pass_rate": 0.33}, "timing": {"total_duration_seconds": 29.4}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "infisical-agent", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-04-14T14:22:26Z", "evals_run": [0, 1, 2], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 37.7, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)", "passed": true, "evidence": "Agent config has top-level sections: infisical, auth, sinks, templates with proper YAML structure"}, {"text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature", "passed": true, "evidence": "Uses 'listSecretsByProjectSlug \"my-app\" \"production\" \"/\"' with correct 3-arg signature. Also mentions 'Optional 4th param: {\"recursive\": true, \"expandSecretReferences\": true}' for optional 4th parameter"}, {"text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})", "passed": true, "evidence": "Template shows '{{- with listSecretsByProjectSlug...', '{{- range . }}', '{{ .Key }}={{ .Value }}' with proper whitespace control"}, {"text": "Includes polling-interval configuration for auto-update", "passed": true, "evidence": "Template config shows 'polling-interval: \"5m\"'"}, {"text": "Includes destination-path pointing to a .env file", "passed": true, "evidence": "Template shows 'destination-path: /infisical/secrets/.env'"}, {"text": "Mentions execute.command option for triggering app restart on change", "passed": true, "evidence": "Shows 'execute: command: \"kill -HUP 1\"' to signal Node process to reload"}], "notes": []}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 41.5, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Uses aws-iam auth type (not universal-auth with client-id/secret)", "passed": true, "evidence": "Auth config shows 'auth: type: \"aws-iam\"' with 'identity-id' field, not universal-auth"}, {"text": "Shows correct auth config with identity-id field", "passed": true, "evidence": "Config shows 'identity-id: \"<your-machine-identity-id>\"' with comment 'Paste the ID from Step 1'"}, {"text": "Shows ECS task definition pattern with shared volume between agent and app containers", "passed": true, "evidence": "Complete ECS task definition with two containers (infisical-agent and app) sharing 'secrets' volume with mountPoints specified for both"}, {"text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature", "passed": true, "evidence": "Template uses 'listSecretsByProjectSlug \"my-project\" \"prod\" \"/\"' with proper 3-arg signature"}, {"text": "Mentions exit-after-auth option for init-style sidecar pattern", "passed": true, "evidence": "Config shows 'exit-after-auth: true' with comment 'Render once and exit' and separate section 'Optional: Continuous Secret Updates' that shows setting to false"}, {"text": "Does not require manually managing any credentials or access keys", "passed": true, "evidence": "Uses AWS IAM authentication through ECS task role - no explicit credential files or keys needed to be managed"}], "notes": []}, {"eval_id": 2, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 44.1, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets", "passed": true, "evidence": "Template 1 uses '{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}' for static secrets"}, {"text": "Template uses dynamicSecret function for PostgreSQL credentials", "passed": true, "evidence": "Template 2 uses '{{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-creds\" \"1h\" }}' for PostgreSQL credentials"}, {"text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)", "passed": true, "evidence": "dynamicSecret call shows all 5 args: project-slug (my-project), env (prod), path (/), name (postgres-creds), ttl (1h)"}, {"text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output", "passed": true, "evidence": "Template shows 'DB_USER={{ .DB_USERNAME }}' and 'DB_PASSWORD={{ .DB_PASSWORD }}'"}, {"text": "Mentions auto-renewal behavior (agent renews before expiration)", "passed": true, "evidence": "\"Auto-renewal: Before TTL expires (typically at 80% of TTL), agent auto-renews the lease\" and detailed lease lifecycle explanation"}, {"text": "Recommends revoke-credentials-on-shutdown: true for cleanup", "passed": true, "evidence": "Top-level config shows 'revoke-credentials-on-shutdown: true' with explanation in best practices"}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.5, "passed": 3, "failed": 3, "total": 6, "time_seconds": 43.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)", "passed": false, "evidence": "Uses different structure with agentVersion, logLevel, auth.machineIdentity, infisicalApiUrl, secretSyncs - not the standard Infisical Agent format with infisical/auth/sinks/templates sections"}, {"text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature", "passed": false, "evidence": "Uses generic placeholder syntax 'DATABASE_URL=postgresql://...' but does not show listSecrets or listSecretsByProjectSlug function calls"}, {"text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})", "passed": false, "evidence": "Uses simple placeholder syntax '{{ DB_USER }}', '{{ DB_PASSWORD }}' but not Go template with 'with', 'range' control structures"}, {"text": "Includes polling-interval configuration for auto-update", "passed": true, "evidence": "Config shows 'pollIntervalSeconds: 60' for polling interval"}, {"text": "Includes destination-path pointing to a .env file", "passed": true, "evidence": "Shows 'destination: path: /app/.env'"}, {"text": "Mentions execute.command option for triggering app restart on change", "passed": true, "evidence": "Shows 'onSyncSuccess: command: npm restart' and 'onSyncFailure' with alert command"}], "notes": []}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.17, "passed": 1, "failed": 5, "total": 6, "time_seconds": 28.1, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Uses aws-iam auth type (not universal-auth with client-id/secret)", "passed": false, "evidence": "Discusses 'INFISICAL_AGENT_MODE: kubernetes' and machine identity with client credentials stored in AWS Secrets Manager, not aws-iam auth type"}, {"text": "Shows correct auth config with identity-id field", "passed": false, "evidence": "Shows 'secrets' with INFISICAL_CLIENT_ID/SECRET from AWS Secrets Manager, not identity-id field for aws-iam"}, {"text": "Shows ECS task definition pattern with shared volume between agent and app containers", "passed": true, "evidence": "Task definition shows two containers (infisical-agent and my-app) with shared volume 'infisical-socket' mounted in both"}, {"text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature", "passed": false, "evidence": "Does not show actual template with listSecrets or listSecretsByProjectSlug. Shows environment variable approach instead"}, {"text": "Mentions exit-after-auth option for init-style sidecar pattern", "passed": false, "evidence": "Does not mention exit-after-auth option. Shows container running continuously"}, {"text": "Does not require manually managing any credentials or access keys", "passed": false, "evidence": "Requires storing machine identity credentials in AWS Secrets Manager and managing them manually"}], "notes": []}, {"eval_id": 2, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.33, "passed": 2, "failed": 4, "total": 6, "time_seconds": 29.4, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets", "passed": false, "evidence": "Uses generic placeholder syntax '{{ secrets.api_key }}', '{{ secrets.database_url }}' rather than listSecrets or listSecretsByProjectSlug function"}, {"text": "Template uses dynamicSecret function for PostgreSQL credentials", "passed": false, "evidence": "Uses generic placeholder syntax '{{ dynamic.postgres.username }}', '{{ dynamic.postgres.password }}' rather than dynamicSecret function"}, {"text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)", "passed": false, "evidence": "Does not use dynamicSecret function at all; uses generic template placeholder syntax"}, {"text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output", "passed": true, "evidence": "Shows 'DB_USER={{ dynamic.postgres.username }}' and 'DB_PASSWORD={{ dynamic.postgres.password }}'"}, {"text": "Mentions auto-renewal behavior (agent renews before expiration)", "passed": true, "evidence": "\"Auto-renewal Mechanism: The agent monitors credential expiration and automatically renews...Renews when 75% of TTL has elapsed\""}, {"text": "Recommends revoke-credentials-on-shutdown: true for cleanup", "passed": false, "evidence": "Does not mention revoke-credentials-on-shutdown configuration"}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 41.1, "stddev": 3.2187, "min": 37.7, "max": 44.1}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "without_skill": {"pass_rate": {"mean": 0.3333, "stddev": 0.165, "min": 0.17, "max": 0.5}, "time_seconds": {"mean": 33.5, "stddev": 8.2529, "min": 28.1, "max": 43.0}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "delta": {"pass_rate": "+0.67", "time_seconds": "+7.6", "tokens": "+0"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

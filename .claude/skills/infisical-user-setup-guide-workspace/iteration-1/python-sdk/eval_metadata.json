@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "python-sdk",
+  "prompt": "I'm running a Python Flask app and I want to pull secrets from Infisical using the Python SDK with Universal Auth. Can you show me how to set it up end to end — install the package, authenticate, and fetch secrets from my project?",
+  "assertions": [
+    {"id": "correct-package-name", "text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "type": "keyword_check"},
+    {"id": "correct-import", "text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "type": "keyword_check"},
+    {"id": "correct-class-name", "text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "type": "keyword_check"},
+    {"id": "uses-machine-identity", "text": "References machine identity for Universal Auth (not service tokens or API keys)", "type": "content_check"},
+    {"id": "no-deprecated-patterns", "text": "Does not recommend deprecated Service Tokens (st.* prefix) or API Keys", "type": "content_check"},
+    {"id": "working-auth-flow", "text": "Shows client ID + client secret auth flow for Universal Auth", "type": "content_check"}
+  ]
+}

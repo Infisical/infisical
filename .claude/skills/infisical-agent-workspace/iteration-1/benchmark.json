@@ -1,0 +1,353 @@
+{
+  "metadata": {
+    "skill_name": "infisical-agent",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-04-14T14:22:26Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 37.7,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)",
+          "passed": true,
+          "evidence": "Agent config has top-level sections: infisical, auth, sinks, templates with proper YAML structure"
+        },
+        {
+          "text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature",
+          "passed": true,
+          "evidence": "Uses 'listSecretsByProjectSlug \"my-app\" \"production\" \"/\"' with correct 3-arg signature. Also mentions 'Optional 4th param: {\"recursive\": true, \"expandSecretReferences\": true}' for optional 4th parameter"
+        },
+        {
+          "text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})",
+          "passed": true,
+          "evidence": "Template shows '{{- with listSecretsByProjectSlug...', '{{- range . }}', '{{ .Key }}={{ .Value }}' with proper whitespace control"
+        },
+        {
+          "text": "Includes polling-interval configuration for auto-update",
+          "passed": true,
+          "evidence": "Template config shows 'polling-interval: \"5m\"'"
+        },
+        {
+          "text": "Includes destination-path pointing to a .env file",
+          "passed": true,
+          "evidence": "Template shows 'destination-path: /infisical/secrets/.env'"
+        },
+        {
+          "text": "Mentions execute.command option for triggering app restart on change",
+          "passed": true,
+          "evidence": "Shows 'execute: command: \"kill -HUP 1\"' to signal Node process to reload"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 41.5,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses aws-iam auth type (not universal-auth with client-id/secret)",
+          "passed": true,
+          "evidence": "Auth config shows 'auth: type: \"aws-iam\"' with 'identity-id' field, not universal-auth"
+        },
+        {
+          "text": "Shows correct auth config with identity-id field",
+          "passed": true,
+          "evidence": "Config shows 'identity-id: \"<your-machine-identity-id>\"' with comment 'Paste the ID from Step 1'"
+        },
+        {
+          "text": "Shows ECS task definition pattern with shared volume between agent and app containers",
+          "passed": true,
+          "evidence": "Complete ECS task definition with two containers (infisical-agent and app) sharing 'secrets' volume with mountPoints specified for both"
+        },
+        {
+          "text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature",
+          "passed": true,
+          "evidence": "Template uses 'listSecretsByProjectSlug \"my-project\" \"prod\" \"/\"' with proper 3-arg signature"
+        },
+        {
+          "text": "Mentions exit-after-auth option for init-style sidecar pattern",
+          "passed": true,
+          "evidence": "Config shows 'exit-after-auth: true' with comment 'Render once and exit' and separate section 'Optional: Continuous Secret Updates' that shows setting to false"
+        },
+        {
+          "text": "Does not require manually managing any credentials or access keys",
+          "passed": true,
+          "evidence": "Uses AWS IAM authentication through ECS task role - no explicit credential files or keys needed to be managed"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 44.1,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets",
+          "passed": true,
+          "evidence": "Template 1 uses '{{- with listSecretsByProjectSlug \"my-project\" \"prod\" \"/\" }}' for static secrets"
+        },
+        {
+          "text": "Template uses dynamicSecret function for PostgreSQL credentials",
+          "passed": true,
+          "evidence": "Template 2 uses '{{ with dynamicSecret \"my-project\" \"prod\" \"/\" \"postgres-creds\" \"1h\" }}' for PostgreSQL credentials"
+        },
+        {
+          "text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)",
+          "passed": true,
+          "evidence": "dynamicSecret call shows all 5 args: project-slug (my-project), env (prod), path (/), name (postgres-creds), ttl (1h)"
+        },
+        {
+          "text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output",
+          "passed": true,
+          "evidence": "Template shows 'DB_USER={{ .DB_USERNAME }}' and 'DB_PASSWORD={{ .DB_PASSWORD }}'"
+        },
+        {
+          "text": "Mentions auto-renewal behavior (agent renews before expiration)",
+          "passed": true,
+          "evidence": "\"Auto-renewal: Before TTL expires (typically at 80% of TTL), agent auto-renews the lease\" and detailed lease lifecycle explanation"
+        },
+        {
+          "text": "Recommends revoke-credentials-on-shutdown: true for cleanup",
+          "passed": true,
+          "evidence": "Top-level config shows 'revoke-credentials-on-shutdown: true' with explanation in best practices"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.5,
+        "passed": 3,
+        "failed": 3,
+        "total": 6,
+        "time_seconds": 43.0,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)",
+          "passed": false,
+          "evidence": "Uses different structure with agentVersion, logLevel, auth.machineIdentity, infisicalApiUrl, secretSyncs - not the standard Infisical Agent format with infisical/auth/sinks/templates sections"
+        },
+        {
+          "text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature",
+          "passed": false,
+          "evidence": "Uses generic placeholder syntax 'DATABASE_URL=postgresql://...' but does not show listSecrets or listSecretsByProjectSlug function calls"
+        },
+        {
+          "text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})",
+          "passed": false,
+          "evidence": "Uses simple placeholder syntax '{{ DB_USER }}', '{{ DB_PASSWORD }}' but not Go template with 'with', 'range' control structures"
+        },
+        {
+          "text": "Includes polling-interval configuration for auto-update",
+          "passed": true,
+          "evidence": "Config shows 'pollIntervalSeconds: 60' for polling interval"
+        },
+        {
+          "text": "Includes destination-path pointing to a .env file",
+          "passed": true,
+          "evidence": "Shows 'destination: path: /app/.env'"
+        },
+        {
+          "text": "Mentions execute.command option for triggering app restart on change",
+          "passed": true,
+          "evidence": "Shows 'onSyncSuccess: command: npm restart' and 'onSyncFailure' with alert command"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.17,
+        "passed": 1,
+        "failed": 5,
+        "total": 6,
+        "time_seconds": 28.1,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Uses aws-iam auth type (not universal-auth with client-id/secret)",
+          "passed": false,
+          "evidence": "Discusses 'INFISICAL_AGENT_MODE: kubernetes' and machine identity with client credentials stored in AWS Secrets Manager, not aws-iam auth type"
+        },
+        {
+          "text": "Shows correct auth config with identity-id field",
+          "passed": false,
+          "evidence": "Shows 'secrets' with INFISICAL_CLIENT_ID/SECRET from AWS Secrets Manager, not identity-id field for aws-iam"
+        },
+        {
+          "text": "Shows ECS task definition pattern with shared volume between agent and app containers",
+          "passed": true,
+          "evidence": "Task definition shows two containers (infisical-agent and my-app) with shared volume 'infisical-socket' mounted in both"
+        },
+        {
+          "text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature",
+          "passed": false,
+          "evidence": "Does not show actual template with listSecrets or listSecretsByProjectSlug. Shows environment variable approach instead"
+        },
+        {
+          "text": "Mentions exit-after-auth option for init-style sidecar pattern",
+          "passed": false,
+          "evidence": "Does not mention exit-after-auth option. Shows container running continuously"
+        },
+        {
+          "text": "Does not require manually managing any credentials or access keys",
+          "passed": false,
+          "evidence": "Requires storing machine identity credentials in AWS Secrets Manager and managing them manually"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.33,
+        "passed": 2,
+        "failed": 4,
+        "total": 6,
+        "time_seconds": 29.4,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Template uses listSecrets or listSecretsByProjectSlug for static secrets",
+          "passed": false,
+          "evidence": "Uses generic placeholder syntax '{{ secrets.api_key }}', '{{ secrets.database_url }}' rather than listSecrets or listSecretsByProjectSlug function"
+        },
+        {
+          "text": "Template uses dynamicSecret function for PostgreSQL credentials",
+          "passed": false,
+          "evidence": "Uses generic placeholder syntax '{{ dynamic.postgres.username }}', '{{ dynamic.postgres.password }}' rather than dynamicSecret function"
+        },
+        {
+          "text": "dynamicSecret function has correct 5-arg signature (project-slug, env, path, name, ttl)",
+          "passed": false,
+          "evidence": "Does not use dynamicSecret function at all; uses generic template placeholder syntax"
+        },
+        {
+          "text": "Shows .DB_USERNAME and .DB_PASSWORD fields from dynamic secret output",
+          "passed": true,
+          "evidence": "Shows 'DB_USER={{ dynamic.postgres.username }}' and 'DB_PASSWORD={{ dynamic.postgres.password }}'"
+        },
+        {
+          "text": "Mentions auto-renewal behavior (agent renews before expiration)",
+          "passed": true,
+          "evidence": "\"Auto-renewal Mechanism: The agent monitors credential expiration and automatically renews...Renews when 75% of TTL has elapsed\""
+        },
+        {
+          "text": "Recommends revoke-credentials-on-shutdown: true for cleanup",
+          "passed": false,
+          "evidence": "Does not mention revoke-credentials-on-shutdown configuration"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 41.1,
+        "stddev": 3.2187,
+        "min": 37.7,
+        "max": 44.1
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.3333,
+        "stddev": 0.165,
+        "min": 0.17,
+        "max": 0.5
+      },
+      "time_seconds": {
+        "mean": 33.5,
+        "stddev": 8.2529,
+        "min": 28.1,
+        "max": 43.0
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.67",
+      "time_seconds": "+7.6",
+      "tokens": "+0"
+    }
+  },
+  "notes": []
+}

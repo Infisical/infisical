@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Mentions App Connection as a prerequisite for the sync",
+      "passed": false,
+      "evidence": "Never explicitly mentions 'App Connection'. Instead discusses 'AWS Integration' and 'AWS connection' but not the Infisical-specific 'App Connection' concept"
+    },
+    {
+      "text": "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM",
+      "passed": false,
+      "evidence": "The response discusses 'Destination Secret Name' as a path prefix (e.g., 'infisical/my-app/') but does not mention one-to-one vs many-to-one mapping behavior as AWS SM-specific options"
+    },
+    {
+      "text": "Recommends or mentions Key Schema for scoping managed secrets",
+      "passed": false,
+      "evidence": "Uses 'Destination Secret Name' with path prefix approach, but does not mention 'Key Schema' template or the INFISICAL_{{secretKey}} pattern"
+    },
+    {
+      "text": "Explains initial sync behavior options (overwrite vs import)",
+      "passed": false,
+      "evidence": "Mentions 'Sync Behavior' (Automatic/Manual) but does not discuss initial sync behavior options like 'overwrite vs import'"
+    },
+    {
+      "text": "Mentions region configuration for the AWS destination",
+      "passed": true,
+      "evidence": "\"AWS Region: us-east-1\" is mentioned in the configuration section"
+    },
+    {
+      "text": "References auto-sync capability (secrets propagate on change)",
+      "passed": true,
+      "evidence": "\"Automatic Syncing: If you enabled automatic sync, any changes to secrets in Infisical will push to AWS SM\""
+    }
+  ],
+  "summary": {
+    "passed": 2,
+    "failed": 4,
+    "total": 6,
+    "pass_rate": 0.33
+  },
+  "timing": {
+    "total_duration_seconds": 34.7
+  }
+}

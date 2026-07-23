@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Mentions need for pre-existing PostgreSQL admin user with CREATE ROLE/GRANT privileges",
+      "passed": true,
+      "evidence": "\"Create a dedicated PostgreSQL user that Infisical will use to create/drop temporary users. This user needs: CREATE ROLE privilege, GRANT and REVOKE privileges, ALTER ROLE\""
+    },
+    {
+      "text": "Correctly identifies Gateway requirement for private VPC access",
+      "passed": true,
+      "evidence": "\"Since your database is in a private VPC, you must deploy an Infisical Gateway...For your private VPC database, the Infisical Gateway is essential\""
+    },
+    {
+      "text": "Shows correct config fields (host, port, user, password, database name, TTL settings)",
+      "passed": true,
+      "evidence": "Configuration table shows all required fields: Host, Port, Username, Password, Database Name, CA (SSL), Gateway, plus Default TTL and Max TTL"
+    },
+    {
+      "text": "Mentions customizable SQL creation statements for least-privilege access",
+      "passed": true,
+      "evidence": "\"Custom Creation Statement (Optional but Recommended)\" section with detailed examples for read-only access, full write access, and application-specific permissions using {{username}}, {{password}}, {{expiration}} templates"
+    },
+    {
+      "text": "Recommends short TTLs for security",
+      "passed": true,
+      "evidence": "\"Short TTLs for Maximum Security\" section: 'Developers working in IDE: 30m - 1h, Automated jobs/services: 1h - 2h, CI/CD pipelines: 15m - 30m'"
+    },
+    {
+      "text": "Explains lease lifecycle (generate, renew, revoke/expire)",
+      "passed": true,
+      "evidence": "\"Step 3: Generate and Use Credentials\" covers generation, Step 4 covers lease management with Renew, Revoke, and Auto-Expiration"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 54.5
+  }
+}

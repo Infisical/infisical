@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "ssh-certificates-setup",
+  "prompt": "We want to use Infisical to issue SSH certificates for our team so they can access production servers without managing SSH keys. How does this work and how do I set it up?",
+  "assertions": [
+    "Explains CA-based architecture (Infisical generates CA key pair, signs certificates)",
+    "Shows correct config fields (allowed principals, key algorithm)",
+    "Recommends ED25519 as the key algorithm",
+    "Shows target host setup with TrustedUserCAKeys in sshd_config",
+    "Correctly states certificates CANNOT be renewed (must create new lease)",
+    "Shows correct SSH usage command with -i key.pem and -o CertificateFile=cert.pub"
+  ]
+}

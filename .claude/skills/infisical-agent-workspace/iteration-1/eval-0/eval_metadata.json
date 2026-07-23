@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "agent-env-file-docker",
+  "prompt": "I need to render my Infisical secrets as a .env file on disk for my Node.js app running in Docker. I want the file to auto-update when secrets change. Show me the full Infisical Agent config file I'd need.",
+  "assertions": [
+    "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)",
+    "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature",
+    "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})",
+    "Includes polling-interval configuration for auto-update",
+    "Includes destination-path pointing to a .env file",
+    "Mentions execute.command option for triggering app restart on change"
+  ]
+}
