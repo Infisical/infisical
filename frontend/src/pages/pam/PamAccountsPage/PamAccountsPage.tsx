@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
@@ -80,13 +80,21 @@ export const PamAccountsPage = () => {
   const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
 
   // Check user capabilities to determine admin vs regular user view
-  const { data: capabilities } = useGetPamAccessCapabilities();
+  const { data: capabilities, isLoading: isLoadingCapabilities } = useGetPamAccessCapabilities();
   const isAdmin = Boolean(capabilities?.isProductAdmin || capabilities?.isResourceAdmin);
 
   // Admin users see all folders; regular users see only accessible folders
-  const { data: adminFolders = [], isLoading: isLoadingAdminFolders } = useListPamFoldersAdmin();
-  const { data: userFolders = [], isLoading: isLoadingUserFolders } = useListAccessiblePamFolders();
-  const isLoadingFolders = isAdmin ? isLoadingAdminFolders : isLoadingUserFolders;
+  // Only enable the relevant hook once capabilities are loaded to avoid duplicate/failing requests
+  const capabilitiesLoaded = !isLoadingCapabilities && capabilities !== undefined;
+  const { data: adminFolders = [], isLoading: isLoadingAdminFolders } = useListPamFoldersAdmin(
+    undefined,
+    { enabled: capabilitiesLoaded && isAdmin }
+  );
+  const { data: userFolders = [], isLoading: isLoadingUserFolders } = useListAccessiblePamFolders({
+    enabled: capabilitiesLoaded && !isAdmin
+  });
+  const isLoadingFolders =
+    isLoadingCapabilities || (isAdmin ? isLoadingAdminFolders : isLoadingUserFolders);
 
   // Admin: filter by templates; Users: filter by account types
   const { data: templates = [] } = useListPamAccountTemplates();
@@ -132,6 +140,11 @@ export const PamAccountsPage = () => {
   const handleResultCount = useCallback((folderId: string, count: number) => {
     setResultCounts((prev) => (prev[folderId] === count ? prev : { ...prev, [folderId]: count }));
   }, []);
+
+  // Reset result counts when filters change so folder groups recompute counts for new filter
+  useEffect(() => {
+    setResultCounts({});
+  }, [query, selectedTemplateId, selectedAccountType]);
 
   // Compute visible folders separately for admin and user views (for proper typing)
   const visibleAdminFolders = selectedFolderId

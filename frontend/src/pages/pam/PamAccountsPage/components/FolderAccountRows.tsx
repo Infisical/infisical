@@ -1,8 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { ChevronRight, Folder, FolderOpen, Rocket } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { Badge, IconButton, TableCell, TableRow } from "@app/components/v3";
+import { Badge, TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   PamAccountType,
@@ -15,7 +15,7 @@ import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { AccountAccessibilityBadge } from "../../components/AccountAccessibilityBadge";
 import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-import { AccountActionsMenu } from "./AccountActionsMenu";
+import { AccountRowActions } from "./AccountRowActions";
 import { FolderActionsMenu } from "./FolderActionsMenu";
 
 type Props = {
@@ -155,26 +155,14 @@ export const FolderAccountRows = ({
               </TableCell>
               <TableCell className="w-20">
                 <div className="flex items-center justify-end">
-                  <div className="flex items-center gap-0.5">
-                    <IconButton
-                      variant="ghost"
-                      size="xs"
-                      aria-label="Launch session"
-                      className="text-muted hover:text-foreground"
-                      isDisabled={!account.isAccessible}
-                      onClick={() => onLaunchAccount(launchableAccount)}
-                    >
-                      <Rocket className="size-4" />
-                    </IconButton>
-                    <AccountActionsMenu
-                      accountId={account.id}
-                      accountType={accountType}
-                      isAccessible={account.isAccessible}
-                      onLaunch={() => onLaunchAccount(launchableAccount)}
-                      onOpenTab={(tab) => onOpenAccount(account.id, tab)}
-                      onDelete={() => onDeleteAccount(account.id, account.name, accountType)}
-                    />
-                  </div>
+                  <AccountRowActions
+                    accountId={account.id}
+                    accountType={accountType}
+                    isAccessible={account.isAccessible}
+                    onLaunch={() => onLaunchAccount(launchableAccount)}
+                    onOpenTab={(tab) => onOpenAccount(account.id, tab)}
+                    onDelete={() => onDeleteAccount(account.id, account.name, accountType)}
+                  />
                 </div>
               </TableCell>
             </TableRow>

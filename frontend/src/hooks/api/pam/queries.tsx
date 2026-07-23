@@ -207,7 +207,7 @@ export type TAccessiblePamFolder = {
   accountCount: number;
 };
 
-export const useListAccessiblePamFolders = () => {
+export const useListAccessiblePamFolders = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: pamKeys.accessibleFolders(),
     queryFn: async () => {
@@ -216,7 +216,8 @@ export const useListAccessiblePamFolders = () => {
         { params: { onlyAccessible: "true" } }
       );
       return data.folders;
-    }
+    },
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -262,7 +263,10 @@ export const useListPamAccountsAdmin = (
   });
 };
 
-export const useListPamFoldersAdmin = (params?: { search?: string }) => {
+export const useListPamFoldersAdmin = (
+  params?: { search?: string },
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: pamKeys.listFolders(params),
     queryFn: async () => {
@@ -271,7 +275,8 @@ export const useListPamFoldersAdmin = (params?: { search?: string }) => {
         { params }
       );
       return data.folders;
-    }
+    },
+    enabled: options?.enabled ?? true
   });
 };
 

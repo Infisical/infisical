@@ -40,8 +40,15 @@ export const AccountActionsMenu = ({
 }: Props) => {
   const { can, isLoading } = usePamAccountActions(accountId, true);
 
+  const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
   const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
   const isRotatable = isRotatablePamAccountType(accountType);
+
+  // Launch requires both: account is provisioned AND user has permission
+  const isLaunchDisabled = !isAccessible || !canLaunch;
+  const launchDisabledReason = !canLaunch
+    ? "You don't have permission to launch sessions"
+    : "This account is not ready to launch";
 
   return (
     <DropdownMenu>
@@ -63,16 +70,14 @@ export const AccountActionsMenu = ({
             <Tooltip>
               <TooltipTrigger asChild>
                 <div>
-                  <DropdownMenuItem isDisabled={!isAccessible} onClick={onLaunch}>
+                  <DropdownMenuItem isDisabled={isLaunchDisabled} onClick={onLaunch}>
                     <Rocket className="size-4" />
                     Launch Session
                   </DropdownMenuItem>
                 </div>
               </TooltipTrigger>
-              {!isAccessible && (
-                <TooltipContent side="left">
-                  You don&apos;t have access to launch this account
-                </TooltipContent>
+              {isLaunchDisabled && (
+                <TooltipContent side="left">{launchDisabledReason}</TooltipContent>
               )}
             </Tooltip>
             <DropdownMenuSeparator />
