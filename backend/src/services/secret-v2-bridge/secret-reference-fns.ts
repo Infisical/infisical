@@ -10,7 +10,7 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
+import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 
@@ -101,6 +101,7 @@ type TInterpolateSecretArg = {
   // Omit them for same-project-only expansion; cross-project refs then fail closed.
   actorOrgId?: string;
   orgDAL?: Pick<TOrgDALFactory, "findOrgById">;
+  crossProjectSecretSharingService?: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   projectDAL?: Pick<TProjectDALFactory, "find">;
   kmsService?: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -121,6 +122,7 @@ export const expandSecretReferencesFactory = ({
   userId,
   actorOrgId,
   orgDAL,
+  crossProjectSecretSharingService,
   projectFolderGrantDAL,
   projectDAL,
   kmsService,
@@ -128,11 +130,13 @@ export const expandSecretReferencesFactory = ({
 }: TInterpolateSecretArg) => {
   const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
-  const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
+  const hasCrossProjectConfig = Boolean(
+    actorOrgId && orgDAL && crossProjectSecretSharingService && projectFolderGrantDAL && projectDAL && kmsService
+  );
   const checkCrossProjectAllowed = async () => {
-    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL) return false;
+    if (!hasCrossProjectConfig || !actorOrgId || !orgDAL || !crossProjectSecretSharingService) return false;
     if (crossProjectAllowedCache !== undefined) return crossProjectAllowedCache;
-    crossProjectAllowedCache = await isCrossProjectEnabled(actorOrgId, orgDAL);
+    crossProjectAllowedCache = await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL);
     return crossProjectAllowedCache;
   };
   const slugToProjectId = new Map<string, string | null>();

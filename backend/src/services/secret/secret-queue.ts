@@ -55,6 +55,7 @@ import { createProjectKey } from "../project/project-fns";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
@@ -134,6 +135,7 @@ type TSecretQueueFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
 };
 
 export type TGetSecrets = {
@@ -203,7 +205,8 @@ export const secretQueueFactory = ({
   membershipRoleDAL,
   telemetryService,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  crossProjectSecretSharingService
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -407,6 +410,7 @@ export const secretQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId: dto.orgId,
       orgDAL,
+      crossProjectSecretSharingService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -459,6 +463,7 @@ export const secretQueueFactory = ({
       projectFolderGrantDAL,
       actorOrgId: dto.orgId,
       orgDAL,
+      crossProjectSecretSharingService,
       kmsService
     });
 

@@ -16,6 +16,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
+import { TCrossProjectSecretSharingServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -94,6 +95,7 @@ type TSecretReplicationServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
 };
 
 export type TSecretReplicationServiceFactory = ReturnType<typeof secretReplicationServiceFactory>;
@@ -143,6 +145,7 @@ export const secretReplicationServiceFactory = ({
   folderCommitService,
   projectFolderGrantDAL,
   orgDAL,
+  crossProjectSecretSharingService,
   resourceMetadataDAL
 }: TSecretReplicationServiceFactoryDep) => {
   const $getReplicatedSecrets = (
@@ -299,6 +302,7 @@ export const secretReplicationServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId: orgId,
         orgDAL,
+        crossProjectSecretSharingService,
         kmsService
       });
       // secrets that gets replicated across imports

@@ -27,7 +27,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
+import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
@@ -59,6 +59,7 @@ type TSecretImportServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -77,6 +78,7 @@ export const secretImportServiceFactory = ({
   secretDAL,
   secretQueueService,
   licenseService,
+  crossProjectSecretSharingService,
   projectBotService,
   secretV2BridgeDAL,
   kmsService
@@ -92,7 +94,7 @@ export const secretImportServiceFactory = ({
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
     // If org-level toggle is disabled, strip cross-project imports entirely
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
       return imports
         .filter((imp) => imp.importEnv.projectId === projectId)
         .map((imp) => ({ ...imp, isAccessRevoked: false }));
@@ -153,7 +155,7 @@ export const secretImportServiceFactory = ({
     const isCrossProjectImport = sourceProjectId !== projectId;
 
     if (isCrossProjectImport) {
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
         throw new ForbiddenRequestError({
           message: "Cross-project secret sharing is not enabled for this organization"
         });
@@ -911,6 +913,7 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
+        crossProjectSecretSharingService,
         kmsService
       });
 
@@ -1047,7 +1050,7 @@ export const secretImportServiceFactory = ({
     let crossProjItems = importedBy.filter((el) => el.projectSlug);
 
     if (crossProjItems.length) {
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
         crossProjItems = [];
       } else {
         const targetProjectIds = crossProjItems

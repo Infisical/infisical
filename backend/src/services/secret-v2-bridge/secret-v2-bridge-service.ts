@@ -58,6 +58,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
 import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -178,6 +179,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
 };
 
 export type TSecretV2BridgeServiceFactory = ReturnType<typeof secretV2BridgeServiceFactory>;
@@ -209,7 +211,8 @@ export const secretV2BridgeServiceFactory = ({
   reminderDAL,
   secretValidationRuleService,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  crossProjectSecretSharingService
 }: TSecretV2BridgeServiceFactoryDep) => {
   const $validateSecretReferences = async (
     projectId: string,
@@ -1563,6 +1566,7 @@ export const secretV2BridgeServiceFactory = ({
           : undefined,
       actorOrgId,
       orgDAL,
+      crossProjectSecretSharingService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService,
@@ -1710,6 +1714,7 @@ export const secretV2BridgeServiceFactory = ({
       projectFolderGrantDAL,
       actorOrgId,
       orgDAL,
+      crossProjectSecretSharingService,
       kmsService
     });
 
@@ -1913,6 +1918,7 @@ export const secretV2BridgeServiceFactory = ({
       userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
       actorOrgId,
       orgDAL,
+      crossProjectSecretSharingService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -1948,6 +1954,7 @@ export const secretV2BridgeServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
+        crossProjectSecretSharingService,
         kmsService
       });
 
@@ -3243,6 +3250,7 @@ export const secretV2BridgeServiceFactory = ({
         }),
       actorOrgId,
       orgDAL,
+      crossProjectSecretSharingService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService

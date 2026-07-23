@@ -158,6 +158,7 @@ import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-tem
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
+import { TCrossProjectSecretSharingServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { TProjectFolderGrantServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-service";
 import { TProjectKeyServiceFactory } from "@app/services/project-key/project-key-service";
 import { TProjectMembershipServiceFactory } from "@app/services/project-membership/project-membership-service";
@@ -314,6 +315,7 @@ declare module "fastify" {
       secretImport: TSecretImportServiceFactory;
       resourceMetadata: TResourceMetadataServiceFactory;
       projectFolderGrant: TProjectFolderGrantServiceFactory;
+      crossProjectSecretSharingService: TCrossProjectSecretSharingServiceFactory;
       projectBot: TProjectBotServiceFactory;
       folder: TSecretFolderServiceFactory;
       integration: TIntegrationServiceFactory;
