@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Controller,
   useFieldArray,
@@ -507,15 +507,6 @@ export const RequestAccessForm = ({
 
   const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
 
-  const isInitialMount = useRef(true);
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    form.setValue("secretPath", "", { shouldValidate: form.formState.isSubmitted });
-  }, [selectedEnvironment]);
-
   // policies with a max time period forbid permanent access and cap the range
   useEffect(() => {
     if (!maxDurationMs || !matchedPolicy?.maxTimePeriod) return;
@@ -613,7 +604,17 @@ export const RequestAccessForm = ({
             render={({ field }) => (
               <Field>
                 <FieldLabel htmlFor="environmentSlug">Environment</FieldLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    if (value === field.value) return;
+                    field.onChange(value);
+                    // clear alongside the env change so both land in one render
+                    form.setValue("secretPath", "", {
+                      shouldValidate: form.formState.isSubmitted
+                    });
+                  }}
+                >
                   <SelectTrigger id="environmentSlug" className="w-full">
                     <SelectValue placeholder="Select an environment" />
                   </SelectTrigger>
