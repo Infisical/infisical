@@ -7,7 +7,8 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
+  useSidebar
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { parseProjectSlugFromPath, urlSlugToProjectType } from "@app/helpers/project";
@@ -20,7 +21,10 @@ export const ProjectTypeNav = () => {
   };
   const { pathname } = useLocation();
   const { currentOrg } = useOrganization();
+  const { setOpenMobile } = useSidebar();
   const resolvedOrgId = orgId ?? currentOrg.id;
+
+  const closeMobileSidebar = () => setOpenMobile(false);
 
   // KMIP servers and Secret Sharing live at literal /projects/<slug>/<resource> paths (no $type
   // param), so fall back to parsing the product slug out of the pathname when it's absent.
@@ -63,6 +67,7 @@ export const ProjectTypeNav = () => {
             <Link
               to="/organizations/$orgId/projects/$type"
               params={{ orgId: resolvedOrgId, type: typeSlug ?? "" }}
+              onClick={closeMobileSidebar}
             >
               <ProjectIcon className="size-4" />
               <span>Projects</span>
@@ -81,6 +86,7 @@ export const ProjectTypeNav = () => {
               <Link
                 to="/organizations/$orgId/projects/kms/kmip-servers"
                 params={{ orgId: resolvedOrgId }}
+                onClick={closeMobileSidebar}
               >
                 <Server className="size-4" />
                 <span>KMIP Servers</span>
@@ -100,6 +106,7 @@ export const ProjectTypeNav = () => {
               <Link
                 to="/organizations/$orgId/projects/secret-management/secret-sharing"
                 params={{ orgId: resolvedOrgId }}
+                onClick={closeMobileSidebar}
               >
                 <Share2 className="size-4" />
                 <span>Secret Sharing</span>
@@ -119,6 +126,7 @@ export const ProjectTypeNav = () => {
               <Link
                 to="/organizations/$orgId/projects/secret-management/product-settings"
                 params={{ orgId: resolvedOrgId }}
+                onClick={closeMobileSidebar}
               >
                 <SlidersHorizontal className="size-4" />
                 <span>Product Settings</span>

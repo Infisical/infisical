@@ -7,6 +7,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
   useSidebarScope
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
@@ -27,6 +28,7 @@ export const ProjectNavLink = ({
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { pathname, search: locationSearch } = useLocation();
+  const { setOpenMobile } = useSidebar();
   const sidebarScope = useSidebarScope();
 
   const typePath = PROJECT_TYPE_PATH[currentProject.type];
@@ -96,6 +98,7 @@ export const ProjectNavLink = ({
           params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           search={item.search as any}
+          onClick={() => setOpenMobile(false)}
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>
