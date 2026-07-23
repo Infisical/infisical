@@ -55,7 +55,14 @@ const createUserInfoFormSchema = (isInvite: boolean) =>
     name: z.string().min(1, "Please, specify your name"),
     organizationName: isInvite
       ? z.string().optional()
-      : z.string().min(1, "Please, specify your organization name").max(64),
+      : z
+          .string()
+          .min(1, "Please, specify your organization name")
+          .max(64, "Name must be 64 or fewer characters")
+          .refine(
+            (val) => /^[a-zA-Z0-9\-_ ]+$/.test(val),
+            "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
+          ),
     password: passwordSchema,
     attributionSource: z.string().optional()
   });
