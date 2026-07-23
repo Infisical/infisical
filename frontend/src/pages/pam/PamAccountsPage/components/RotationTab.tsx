@@ -20,7 +20,11 @@ import {
   PopoverTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { formatRotationInterval, PamResourcePermissionActions } from "@app/hooks/api/pam";
+import {
+  formatRotationInterval,
+  PamResourcePermissionActions,
+  PamRotationStatus
+} from "@app/hooks/api/pam";
 import { useRotatePamAccount, useUpdatePamAccountRotation } from "@app/hooks/api/pam/mutations";
 import {
   useGetPamAccountRotation,
@@ -33,7 +37,11 @@ import { formatDetailDate } from "../../components/PamDetailSheet";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { DependenciesSection } from "./DependenciesSection";
 
-type Props = { accountId: string; onDirtyChange?: (isDirty: boolean) => void };
+type Props = {
+  accountId: string;
+  supportsDependencies?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
+};
 
 type RotationForm = { rotationAccountId: string | null };
 
@@ -140,7 +148,7 @@ const RotationAccountPicker = ({
   );
 };
 
-export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
+export const RotationTab = ({ accountId, supportsDependencies, onDirtyChange }: Props) => {
   const { data: rotation, isPending } = useGetPamAccountRotation(accountId);
   const { can } = usePamAccountActions(accountId);
   const canManage = can(PamResourcePermissionActions.ManageRotation);
@@ -193,7 +201,8 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
     );
   }
 
-  const hasFailure = rotation.rotationStatus === "failed" && Boolean(rotation.lastRotationError);
+  const hasFailure =
+    rotation.rotationStatus === PamRotationStatus.Failed && Boolean(rotation.lastRotationError);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4 p-4">
@@ -301,7 +310,7 @@ export const RotationTab = ({ accountId, onDirtyChange }: Props) => {
         </p>
       </div>
 
-      <DependenciesSection accountId={accountId} />
+      {supportsDependencies && <DependenciesSection accountId={accountId} />}
 
       {!rotation.isReady && (
         <Alert variant="warning">

@@ -2,11 +2,44 @@ import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { PamAccountType } from "../pam/pam-enums";
+import {
+  isRotatableAccountType,
+  isSqlRotatableType,
+  isWindowsRotatableType,
+  ROTATABLE_ACCOUNT_TYPES,
+  SQL_ROTATABLE_ACCOUNT_TYPES,
+  TRotatableType,
+  TSqlRotatableType,
+  TWindowsRotatableType,
+  WINDOWS_ROTATABLE_ACCOUNT_TYPES
+} from "../pam-account/pam-account-schemas";
+
+// Rotatable-account-type sets and guards live with the central account-type config; re-exported here so the
+// rotation module's existing consumers keep importing them from one place.
+export {
+  isRotatableAccountType,
+  isSqlRotatableType,
+  isWindowsRotatableType,
+  ROTATABLE_ACCOUNT_TYPES,
+  SQL_ROTATABLE_ACCOUNT_TYPES,
+  TRotatableType,
+  TSqlRotatableType,
+  TWindowsRotatableType,
+  WINDOWS_ROTATABLE_ACCOUNT_TYPES
+};
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
   });
+
+// Strip a domain qualifier (DOMAIN\user or user@domain) to the bare sAMAccountName. Case is preserved; callers
+// that need a case-insensitive comparison lowercase the result themselves.
+export const toBareAccountName = (username: string): string => {
+  if (username.includes("\\")) return username.split("\\").pop() ?? username;
+  if (username.includes("@")) return username.split("@")[0];
+  return username;
+};
 
 // Rotation talks to the target through a gateway tunnel; a transient tunnel/TLS/auth blip is not a real failure,
 // so the probe throws on those and we retry, short-circuiting on a definitive result. Last error propagates.
@@ -36,28 +69,6 @@ export const withGatewayRetry = async (
   }
   throw lastErr;
 };
-
-export const SQL_ROTATABLE_ACCOUNT_TYPES = [
-  PamAccountType.Postgres,
-  PamAccountType.MySQL,
-  PamAccountType.MsSQL
-] as const;
-
-// Windows accounts rotate over WinRM through the gateway: local accounts on their host, domain accounts
-// on the DC. They do not use the SQL rotation path.
-export const WINDOWS_ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Windows, PamAccountType.WindowsAd] as const;
-
-export const ROTATABLE_ACCOUNT_TYPES = [...SQL_ROTATABLE_ACCOUNT_TYPES, ...WINDOWS_ROTATABLE_ACCOUNT_TYPES] as const;
-
-export type TSqlRotatableType = (typeof SQL_ROTATABLE_ACCOUNT_TYPES)[number];
-export type TWindowsRotatableType = (typeof WINDOWS_ROTATABLE_ACCOUNT_TYPES)[number];
-export type TRotatableType = (typeof ROTATABLE_ACCOUNT_TYPES)[number];
-
-export const isRotatableAccountType = (accountType: PamAccountType | string): accountType is TRotatableType =>
-  (ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
-
-export const isWindowsRotatableType = (accountType: PamAccountType | string): accountType is TWindowsRotatableType =>
-  (WINDOWS_ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
 
 // PamAccountType -> AppConnection, so we can reuse the per-dialect ALTER statement map keyed by AppConnection.
 export const PAM_ROTATION_APP_MAP: Record<

@@ -7,10 +7,12 @@ import {
 } from "@app/services/app-connection/shared/sql";
 
 import { PamAccountType } from "../pam/pam-enums";
-import { ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
+import { TWindowsAdConnectionDetails, TWindowsConnectionDetails } from "../pam-account/pam-account-schemas";
+import { DEFAULT_WINRM_PORT, ldapBindCheckViaGateway, winrmRpcWithGateway } from "../pam-discovery/pam-discovery-fns";
 import {
   PAM_ROTATION_APP_MAP,
   redactRotationError,
+  toBareAccountName,
   TRotatableType,
   TSqlRotatableType,
   withGatewayRetry
@@ -109,29 +111,6 @@ const sqlRotationHandler: TPamRotationHandler = {
   }
 };
 
-// Default when an account carries no explicit WinRM port (e.g. an older imported/manual account).
-const DEFAULT_WINRM_PORT = 5985;
-
-// WinRM connection settings live on the account's connection details, populated from the discovery source on
-// import (or set manually), so rotation and dependency sync honor HTTPS / a custom port / a pinned CA.
-type TWinrmConnSettings = {
-  winrmPort?: number;
-  useWinrmHttps?: boolean;
-  winrmRejectUnauthorized?: boolean;
-  winrmCaCert?: string;
-};
-
-type TWindowsConnDetails = TWinrmConnSettings & { host?: string };
-type TWindowsAdConnDetails = TWinrmConnSettings & {
-  domain?: string;
-  dcAddress?: string;
-  port?: number;
-  useLdaps?: boolean;
-  ldapRejectUnauthorized?: boolean;
-  ldapCaCert?: string;
-  ldapTlsServerName?: string;
-};
-
 export const winrmPortFromConn = (conn: Record<string, unknown>): number =>
   typeof conn.winrmPort === "number" ? conn.winrmPort : DEFAULT_WINRM_PORT;
 
@@ -150,13 +129,13 @@ export const winrmTransportFromConn = (
 // Local accounts rotate on their own host; domain accounts rotate on the DC (which has the AD tooling).
 const winrmRotationTargetHost = (accountType: TRotatableType, connectionDetails: Record<string, unknown>): string => {
   if (accountType === PamAccountType.WindowsAd) {
-    const conn = connectionDetails as TWindowsAdConnDetails;
+    const conn = connectionDetails as TWindowsAdConnectionDetails;
     if (!conn.dcAddress) {
       throw new BadRequestError({ message: "Windows AD account is missing a domain controller address" });
     }
     return conn.dcAddress;
   }
-  const conn = connectionDetails as TWindowsConnDetails;
+  const conn = connectionDetails as TWindowsConnectionDetails;
   if (!conn.host) throw new BadRequestError({ message: "Windows account is missing a host" });
   return conn.host;
 };
@@ -175,12 +154,6 @@ const resolveRotationGatewayId = async (
 
 // Set-ADAccountPassword -Identity and Set-LocalUser -Name want a bare sAMAccountName, not DOMAIN\user or a
 // UPN (both accepted by the account schema), so strip any domain qualifier before building the rotate script.
-const toBareAccountName = (username: string): string => {
-  if (username.includes("\\")) return username.split("\\").pop() ?? username;
-  if (username.includes("@")) return username.split("@")[0];
-  return username;
-};
-
 // The identity WinRM connects AS must be domain-qualified for a domain rotator: NTLM resolves a bare name
 // against the target's local SAM (and 401s), so qualify to a UPN. Local accounts stay bare.
 export const winrmConnectUsername = (
@@ -190,7 +163,7 @@ export const winrmConnectUsername = (
 ): string => {
   if (accountType !== PamAccountType.WindowsAd) return username;
   if (username.includes("\\") || username.includes("@")) return username;
-  const { domain } = connectionDetails as TWindowsAdConnDetails;
+  const { domain } = connectionDetails as TWindowsAdConnectionDetails;
   return domain ? `${username}@${domain}` : username;
 };
 
@@ -234,7 +207,7 @@ const windowsRotationHandler: TPamRotationHandler = {
 
     if (accountType === PamAccountType.WindowsAd) {
       // A domain service account usually can't WinRM to the DC, but an LDAP bind needs only the credential.
-      const conn = connectionDetails as TWindowsAdConnDetails;
+      const conn = connectionDetails as TWindowsAdConnectionDetails;
       const { dcAddress, domain } = conn;
       if (!dcAddress || !domain) return false;
       const bindDn =

@@ -11,7 +11,7 @@ import { logger } from "@app/lib/logger";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { PamAccountType } from "../../pam/pam-enums";
 import { isDomainQualifiedUsername, toNetbiosUsername } from "../../pam-account/pam-account-schemas";
-import { executeWithGateway, winrmRpcWithGateway } from "../pam-discovery-fns";
+import { DEFAULT_WINRM_PORT, executeWithGateway, winrmRpcWithGateway } from "../pam-discovery-fns";
 import {
   TDiscoveredAccount,
   TDiscoveredDependency,
@@ -381,7 +381,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     // Carry the source's WinRM settings onto imported accounts so rotation and dependency sync honor HTTPS /
     // a custom port / a pinned CA (the account connection schema has no separate WinRM discovery step).
     const winrmConnDetails = {
-      winrmPort: config.winrmPort ?? 5985,
+      winrmPort: config.winrmPort ?? DEFAULT_WINRM_PORT,
       useWinrmHttps: config.useWinrmHttps ?? false,
       winrmRejectUnauthorized: config.winrmRejectUnauthorized ?? true,
       ...(config.winrmCaCert ? { winrmCaCert: config.winrmCaCert } : {})
@@ -411,7 +411,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
       }
 
       const winrm: TWinrmConfig = {
-        port: config.winrmPort ?? 5985,
+        port: config.winrmPort ?? DEFAULT_WINRM_PORT,
         useHttps: config.useWinrmHttps ?? false,
         rejectUnauthorized: config.winrmRejectUnauthorized ?? true,
         caCert: config.winrmCaCert

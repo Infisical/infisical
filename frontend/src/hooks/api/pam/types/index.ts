@@ -12,6 +12,7 @@ import {
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
+  PamRotationStatus,
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
@@ -75,7 +76,7 @@ export type TPamDiscoveredAccount = {
 
 export type TPamAccountDependency = TPamDependency & {
   data: Record<string, unknown> | null;
-  rotationStatus: string | null;
+  rotationStatus: PamRotationStatus | null;
   lastRotatedAt: string | null;
   lastRotationMessage: string | null;
 };
@@ -154,6 +155,7 @@ export type TPamAccountTypeMetadata = {
   icon: string;
   supportsWebAccess: boolean;
   requiresGateway: boolean;
+  supportsDependencies: boolean;
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
   applicablePolicies: TPamPolicyDescriptor[];
@@ -612,7 +614,7 @@ export type TPamAccountRotation = {
   rotationAccountId: string | null;
   rotationAccountName: string | null;
   lastRotatedAt: string | null;
-  rotationStatus: string | null;
+  rotationStatus: PamRotationStatus | null;
   lastRotationError: string | null;
   isReady: boolean;
   sharedIdentity: { id: string; name: string; discoverySources: string[] }[];

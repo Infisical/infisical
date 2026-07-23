@@ -12,6 +12,8 @@ import { resolveDnsTcp } from "./active-directory/dns-over-dc";
 
 type TGatewayDep = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 
+export const DEFAULT_WINRM_PORT = 5985;
+
 const SWEEP_RESPONSE_TIMEOUT_MS = 10 * 60 * 1000;
 
 // runs a command on the target via the gateway's ssh-exec handler; the gateway performs the ssh login (any auth

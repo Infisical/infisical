@@ -17,7 +17,11 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3/generic/Tooltip";
-import { TPamAccountDependency, useListPamAccountDependencies } from "@app/hooks/api/pam";
+import {
+  PamRotationStatus,
+  TPamAccountDependency,
+  useListPamAccountDependencies
+} from "@app/hooks/api/pam";
 
 const TYPE_LABELS: Record<string, string> = {
   "windows-service": "Windows Service",
@@ -38,9 +42,9 @@ const TYPE_DETAIL_FIELDS: Record<string, { key: string; label: string }[]> = {
 };
 
 const StatusBadge = ({ dep }: { dep: TPamAccountDependency }) => {
-  if (dep.rotationStatus === "success") return <Badge variant="success">Rotated</Badge>;
-  if (dep.rotationStatus === "pending") return <Badge variant="warning">Pending</Badge>;
-  if (dep.rotationStatus === "failed") {
+  if (dep.rotationStatus === PamRotationStatus.Success)
+    return <Badge variant="success">Rotated</Badge>;
+  if (dep.rotationStatus === PamRotationStatus.Failed) {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -96,7 +100,7 @@ const DependencyDetail = ({ dep }: { dep: TPamAccountDependency }) => {
         })}
         <DetailRow label="Last rotation" value={lastRotated} />
       </div>
-      {dep.rotationStatus === "failed" && dep.lastRotationMessage && (
+      {dep.rotationStatus === PamRotationStatus.Failed && dep.lastRotationMessage && (
         <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
           {dep.lastRotationMessage}
         </div>

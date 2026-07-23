@@ -39,10 +39,12 @@ import {
   computeNextRotationAt,
   getRotationReadiness,
   isRotatableAccountType,
+  isSqlRotatableType,
   isWindowsRotatableType,
   PamRotationReadinessIssue,
   redactRotationError,
   ROTATION_FAILURE_RETRY_CAP_SECONDS,
+  toBareAccountName,
   withGatewayRetry
 } from "./pam-rotation-fns";
 import {
@@ -68,6 +70,7 @@ type TPamAccountRotationServiceFactoryDep = {
     TPamAccountDALFactory,
     | "findById"
     | "findByIdWithDetails"
+    | "findByIdsWithDetails"
     | "find"
     | "updateById"
     | "findRotationCandidates"
@@ -197,7 +200,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     gatewayId,
     gatewayPoolId
   }: TPostRotate) => {
-    // Dependencies are detected for both domain (WindowsAd) and local (Windows) accounts.
     if (!isWindowsRotatableType(accountType)) return;
 
     const dependencies = await pamAccountDependencyDAL.findByAccountId(accountId);
@@ -256,7 +258,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
               return true;
             }, "dependency sync");
             await pamAccountDependencyDAL.updateById(dep.id, {
-              rotationStatus: "success",
+              rotationStatus: ROTATION_STATUS.Success,
               lastRotatedAt: new Date(),
               encryptedLastRotationMessage: null
             });
@@ -264,22 +266,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
             const message = redactRotationError(err, [newPassword, connectAuth.password]);
             logger.warn(err, `PAM dependency sync failed [accountId=${accountId}] [dependencyId=${dep.id}]`);
             await pamAccountDependencyDAL.updateById(dep.id, {
-              rotationStatus: "failed",
+              rotationStatus: ROTATION_STATUS.Failed,
               encryptedLastRotationMessage: encryptor({ plainText: Buffer.from(message) }).cipherTextBlob
             });
           }
         })
       )
     );
-  };
-
-  // Strip a domain qualifier (DOMAIN\user or user@domain) to a bare, case-insensitive sAMAccountName, so two
-  // accounts can be compared for being the same directory identity.
-  const bareUsername = (username: string): string => {
-    let bare = username;
-    if (username.includes("\\")) bare = username.split("\\").pop() ?? username;
-    else if (username.includes("@")) [bare] = username.split("@");
-    return bare.toLowerCase();
   };
 
   // A delegated rotator must sit on the same resource as its target so its credential can reach it: same
@@ -309,7 +302,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   // Stable key for the identity an account authenticates as, to detect two PAM objects on the same credential:
   // domain accounts on domain, local Windows on host, SQL on host+port, all on the bare name. Null if not rotatable.
   const identityKey = (accountType: PamAccountType, conn: Record<string, unknown>, username: string): string | null => {
-    const user = bareUsername(username);
+    const user = toBareAccountName(username).toLowerCase();
     if (accountType === PamAccountType.WindowsAd) {
       const domain = (conn.domain as string | undefined)?.toLowerCase();
       return domain ? `ad|${domain}|${user}` : null;
@@ -318,11 +311,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       const host = (conn.host as string | undefined)?.toLowerCase();
       return host ? `win|${host}|${user}` : null;
     }
-    if (
-      accountType === PamAccountType.Postgres ||
-      accountType === PamAccountType.MySQL ||
-      accountType === PamAccountType.MsSQL
-    ) {
+    if (isSqlRotatableType(accountType)) {
       const host = (conn.host as string | undefined)?.toLowerCase();
       return host ? `sql|${host}|${String(conn.port)}|${user}` : null;
     }
@@ -354,14 +343,17 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       : [];
 
     // A source whose credential is the account itself is fine (it updates in place); only a *different*
-    // same-identity account breaks. A credential we can't decrypt/parse can't be compared, so it drops out.
+    // same-identity account breaks. Only a same-type credential can share this identity (identityKey is
+    // type-prefixed), so filter by type in the query and decrypt each distinct credential account at most once.
     const sources = await pamDiscoverySourceDAL.find({ projectId });
-    const sourceMatches = (
+    const externalSources = sources.filter((source) => source.credentialAccountId !== account.id);
+    const credentialAccountIds = [...new Set(externalSources.map((source) => source.credentialAccountId))];
+    const credentialAccounts = await pamAccountDAL.findByIdsWithDetails(credentialAccountIds, account.accountType);
+
+    const matches = (
       await Promise.all(
-        sources.map(async (source) => {
-          if (source.credentialAccountId === account.id) return null;
-          const cred = await pamAccountDAL.findByIdWithDetails(source.credentialAccountId).catch(() => null);
-          if (!cred || !isRotatableAccountType(cred.accountType)) return null;
+        credentialAccounts.map(async (cred) => {
+          if (!isRotatableAccountType(cred.accountType)) return null;
           try {
             const credCreds = await decryptSqlCredentials(projectId, cred.accountType, cred.encryptedCredentials);
             const credConn = resolveConnectionDetails(
@@ -369,13 +361,22 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
               await decrypt(projectId, cred.encryptedConnectionDetails)
             );
             if (identityKey(cred.accountType, credConn, credCreds.username) !== key) return null;
-            return { accountId: cred.id, accountName: cred.name, folderId: cred.folderId, sourceName: source.name };
+            return { id: cred.id, name: cred.name, folderId: cred.folderId ?? null };
           } catch {
+            // a credential we can't decrypt/parse can't be compared, so it drops out
             return null;
           }
         })
       )
-    ).filter((m): m is { accountId: string; accountName: string; folderId: string; sourceName: string } => m !== null);
+    ).filter((c): c is { id: string; name: string; folderId: string | null } => c !== null);
+    const matchingById = new Map(matches.map((c) => [c.id, c]));
+
+    const sourceMatches = externalSources.flatMap((source) => {
+      const match = matchingById.get(source.credentialAccountId);
+      return match
+        ? [{ accountId: match.id, accountName: match.name, folderId: match.folderId, sourceName: source.name }]
+        : [];
+    });
 
     // Merge into one list keyed by account, collecting the discovery sources each is a credential for.
     const byAccount = new Map<
@@ -848,7 +849,10 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           account.accountType,
           rotator.encryptedCredentials
         );
-        if (bareUsername(rotatorCredentials.username) === bareUsername(targetCredentials.username)) {
+        if (
+          toBareAccountName(rotatorCredentials.username).toLowerCase() ===
+          toBareAccountName(targetCredentials.username).toLowerCase()
+        ) {
           throw new BadRequestError({
             message:
               "Rotation account is the same identity as this account, so rotating it would invalidate its own credential. Set this account to rotate itself, or choose a different privileged account."

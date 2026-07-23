@@ -212,6 +212,20 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return rows[0] || null;
   };
 
+  const findByIdsWithDetails = async (
+    accountIds: string[],
+    accountType: string,
+    tx?: Knex
+  ): Promise<TPamAccountDetail[]> => {
+    if (!accountIds.length) return [];
+    return (await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .whereIn(`${TableName.PamAccount}.id`, accountIds)
+      .where(`${TableName.PamAccountTemplate}.type`, accountType)
+      .select(detailSelect)) as unknown as TPamAccountDetail[];
+  };
+
   // Due, rotatable, enabled; excludes soft-deleted projects (rotating their accounts is a side effect during cleanup).
   const dueRotationQuery = (now: Date, tx?: Knex) =>
     (tx || db.replicaNode())(TableName.PamAccount)
@@ -353,6 +367,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     ...orm,
     findAccessible,
     findByIdWithDetails,
+    findByIdsWithDetails,
     findAccountsToRotate,
     countAccountsToRotate,
     findRotationCandidates,
