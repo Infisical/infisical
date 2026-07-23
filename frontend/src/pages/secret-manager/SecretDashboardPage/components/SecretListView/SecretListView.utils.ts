@@ -18,6 +18,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { z } from "zod";
 
+import { SecretNameSchema } from "@app/lib/schemas";
+
 export enum SecretActionType {
   Created = "created",
   Modified = "modified",
@@ -25,7 +27,7 @@ export enum SecretActionType {
 }
 
 export const formSchema = z.object({
-  key: z.string().trim().min(1, { message: "Secret key is required" }),
+  key: SecretNameSchema,
   value: z
     .string()
     .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
