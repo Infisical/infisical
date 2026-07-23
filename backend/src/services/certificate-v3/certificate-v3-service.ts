@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
-import { Knex } from "knex";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
@@ -2301,19 +2300,6 @@ export const certificateV3ServiceFactory = ({
     });
   };
 
-  const $assertCertificateEnrollmentRenewable = async (
-    certId: string,
-    { context, tx }: { context: "renewal" | "auto-renewal"; tx?: Knex }
-  ) => {
-    const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certId, tx);
-    if (enrollmentType && enrollmentType !== EnrollmentType.API) {
-      const verb = context === "renewal" ? "renewed" : "auto-renewed";
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for ${context}: ${enrollmentType.toUpperCase()} certificates cannot be ${verb}`
-      });
-    }
-  };
-
   const renewCertificate = async ({
     certificateId,
     actor,
@@ -2371,7 +2357,12 @@ export const certificateV3ServiceFactory = ({
         }
       }
 
-      await $assertCertificateEnrollmentRenewable(originalCert.id, { context: "renewal", tx });
+      const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(originalCert.id, tx);
+      if (enrollmentType && enrollmentType !== EnrollmentType.API) {
+        throw new ForbiddenRequestError({
+          message: `Certificate is not eligible for renewal: ${enrollmentType.toUpperCase()} certificates cannot be renewed`
+        });
+      }
 
       const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
       if (!certificateSecret) {
@@ -2966,7 +2957,12 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    await $assertCertificateEnrollmentRenewable(certificate.id, { context: "auto-renewal" });
+    const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certificate.id);
+    if (enrollmentType && enrollmentType !== EnrollmentType.API) {
+      throw new ForbiddenRequestError({
+        message: `Certificate is not eligible for auto-renewal: ${enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
+      });
+    }
 
     const certificateSecret = await certificateSecretDAL.findOne({ certId: certificate.id });
     if (!certificateSecret) {
