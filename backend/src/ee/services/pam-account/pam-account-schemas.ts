@@ -453,7 +453,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Windows.png",
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
-      port: z.coerce.number().int().min(1).max(65535)
+      port: z.coerce.number().int().min(1).max(65535),
+      winrmPort: z.coerce.number().int().min(1).max(65535).default(5985),
+      useWinrmHttps: z.boolean().default(false),
+      winrmRejectUnauthorized: z.boolean().default(true),
+      winrmCaCert: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -463,7 +467,18 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: z.string()
     }),
     ui: {
-      port: { defaultValue: 3389 },
+      port: { label: "RDP Port", defaultValue: 3389 },
+      winrmPort: { label: "WinRM Port", defaultValue: 5985 },
+      useWinrmHttps: { label: "Use WinRM HTTPS" },
+      winrmRejectUnauthorized: {
+        label: "Reject Unauthorized (WinRM)",
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
+      winrmCaCert: {
+        label: "WinRM CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   },
@@ -480,7 +495,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
       useLdaps: z.boolean(),
       ldapRejectUnauthorized: z.boolean(),
       ldapCaCert: optionalTrimmedString,
-      ldapTlsServerName: optionalTrimmedString
+      ldapTlsServerName: optionalTrimmedString,
+      winrmPort: z.coerce.number().int().min(1).max(65535).default(5985),
+      useWinrmHttps: z.boolean().default(false),
+      winrmRejectUnauthorized: z.boolean().default(true),
+      winrmCaCert: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -516,6 +535,17 @@ export const ACCOUNT_TYPE_CONFIGS = {
       ldapTlsServerName: {
         label: "TLS Server Name",
         showWhen: { field: "useLdaps", equals: true }
+      },
+      winrmPort: { label: "WinRM Port", defaultValue: 5985 },
+      useWinrmHttps: { label: "Use WinRM HTTPS" },
+      winrmRejectUnauthorized: {
+        label: "Reject Unauthorized (WinRM)",
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
+      winrmCaCert: {
+        label: "WinRM CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useWinrmHttps", equals: true }
       },
       username: {
         tooltip: "Use the DOMAIN\\username format for domain authentication (e.g. CORP\\Administrator)."
@@ -617,6 +647,38 @@ export const ACCOUNT_TYPE_CONFIGS = {
 >;
 
 type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
+
+export type TWindowsConnectionDetails = z.infer<
+  (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.Windows]["connectionDetails"]
+>;
+export type TWindowsAdConnectionDetails = z.infer<
+  (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.WindowsAd]["connectionDetails"]
+>;
+
+export const SQL_ROTATABLE_ACCOUNT_TYPES = [
+  PamAccountType.Postgres,
+  PamAccountType.MySQL,
+  PamAccountType.MsSQL
+] as const;
+
+// Windows accounts rotate over WinRM through the gateway: local accounts on their host, domain accounts
+// on the DC. They do not use the SQL rotation path.
+export const WINDOWS_ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Windows, PamAccountType.WindowsAd] as const;
+
+export const ROTATABLE_ACCOUNT_TYPES = [...SQL_ROTATABLE_ACCOUNT_TYPES, ...WINDOWS_ROTATABLE_ACCOUNT_TYPES] as const;
+
+export type TSqlRotatableType = (typeof SQL_ROTATABLE_ACCOUNT_TYPES)[number];
+export type TWindowsRotatableType = (typeof WINDOWS_ROTATABLE_ACCOUNT_TYPES)[number];
+export type TRotatableType = (typeof ROTATABLE_ACCOUNT_TYPES)[number];
+
+export const isRotatableAccountType = (accountType: PamAccountType | string): accountType is TRotatableType =>
+  (ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
+
+export const isWindowsRotatableType = (accountType: PamAccountType | string): accountType is TWindowsRotatableType =>
+  (WINDOWS_ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
+
+export const isSqlRotatableType = (accountType: PamAccountType | string): accountType is TSqlRotatableType =>
+  (SQL_ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
 
 const getAccountTypeConfig = (accountType: PamAccountType | string) => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
@@ -869,6 +931,7 @@ export const PamAccountTypeMetadataSchema = z.object({
   icon: z.string(),
   supportsWebAccess: z.boolean(),
   requiresGateway: z.boolean(),
+  supportsDependencies: z.boolean(),
   connectionFields: z.array(PamFieldDescriptorSchema),
   credentialFields: z.array(PamFieldDescriptorSchema),
   applicablePolicies: z.array(PamPolicyDescriptorSchema)
@@ -1025,6 +1088,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     icon: config.icon,
     supportsWebAccess: webAccessSupportedTypes.has(type),
     requiresGateway: accountTypeRequiresGateway(type),
+    supportsDependencies: isWindowsRotatableType(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui),
     applicablePolicies: getApplicablePolicies(type)

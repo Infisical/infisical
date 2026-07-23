@@ -3,17 +3,18 @@ import net from "node:net";
 import ldapjs from "@infisical/ldapjs";
 import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
-import { runPowershell } from "winrm-client";
 
 import { BadRequestError } from "@app/lib/errors";
+import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { logger } from "@app/lib/logger";
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { PamAccountType } from "../../pam/pam-enums";
 import { isDomainQualifiedUsername, toNetbiosUsername } from "../../pam-account/pam-account-schemas";
-import { executeWithGateway } from "../pam-discovery-fns";
+import { DEFAULT_WINRM_PORT, executeWithGateway, winrmRpcWithGateway } from "../pam-discovery-fns";
 import {
   TDiscoveredAccount,
+  TDiscoveredDependency,
   TDiscoveryMachineError,
   TDiscoveryScanResult,
   TPamDiscoveryFactory
@@ -165,7 +166,16 @@ const resolveHostnamesViaDc = (
     }
   });
 
-const enumerateLocalUsers = (
+const buildWinrmCredentials = (conn: TAdConnection, password: string, winrm: TWinrmConfig) => ({
+  username: toNetbiosUsername(conn.username, conn.domain),
+  password,
+  useHttps: winrm.useHttps,
+  // WinRM `insecure` skips cert verification (HTTPS only); it maps from the source's reject-unauthorized flag.
+  insecure: winrm.useHttps && !winrm.rejectUnauthorized,
+  caCertificate: winrm.caCert
+});
+
+const enumerateLocalUsers = async (
   computer: TLdapComputer,
   conn: TAdConnection,
   password: string,
@@ -173,30 +183,101 @@ const enumerateLocalUsers = (
   gatewayId: string,
   gatewayV2Service: TGatewayDep
 ): Promise<TWinRmLocalUser[]> => {
-  const hostname = computer.dNSHostName || computer.cn;
-  const targetAddress = computer.resolvedIp || hostname;
-
-  return executeWithGateway(targetAddress, winrm.port, gatewayId, gatewayV2Service, async (proxyPort) => {
-    const winrmUsername = toNetbiosUsername(conn.username, conn.domain);
-    const script =
-      "Get-LocalUser | Select-Object Name, Enabled, LastLogon, PasswordLastSet, Description, SID | ConvertTo-Json";
-
-    const stdout = await runPowershell(
-      script,
-      "localhost",
-      winrmUsername,
-      password,
-      proxyPort,
-      winrm.useHttps,
-      winrm.rejectUnauthorized,
-      winrm.caCert,
-      hostname
-    );
-
-    if (!stdout.trim()) return [];
-    const parsed = JSON.parse(stdout) as TWinRmLocalUser | TWinRmLocalUser[];
-    return Array.isArray(parsed) ? parsed : [parsed];
+  const targetAddress = computer.resolvedIp || computer.dNSHostName || computer.cn;
+  const { accounts } = await winrmRpcWithGateway<{ accounts: TWinRmLocalUser[] }>({
+    targetHost: targetAddress,
+    targetPort: winrm.port,
+    gatewayId,
+    gatewayV2Service,
+    endpoint: WinRmRpcEndpoint.EnumerateAccounts,
+    credentials: buildWinrmCredentials(conn, password, winrm)
   });
+  return (accounts ?? []).filter((u) => u.Name);
+};
+
+type TWinRmDependency = { type: string; runAs: string; name: string; data: Record<string, unknown> };
+
+// Run-as values that are built-in service identities: they have no password, so nothing to rotate.
+const BUILTIN_RUNAS = new Set(["localsystem", "system", "localservice", "networkservice", "applicationpoolidentity"]);
+
+// Split a run-as into its domain qualifier (null when unqualified) and account name; null for built-ins/empty.
+export const parseRunAs = (runAs: string): { domain: string | null; account: string } | null => {
+  const value = runAs.trim();
+  if (!value) return null;
+  if (value.includes("\\")) {
+    const [domainPart, user] = value.split("\\");
+    const dp = domainPart.toLowerCase();
+    if (dp === "nt authority" || dp === "nt service" || dp === "builtin") return null;
+    if (!user) return null;
+    return { domain: domainPart, account: user };
+  }
+  if (value.includes("@")) {
+    const [user, suffix] = value.split("@");
+    return { domain: suffix, account: user };
+  }
+  return { domain: null, account: value };
+};
+
+// Retained for the account-name extraction; the fingerprint resolver below adds the domain check.
+export const extractSamAccountName = (runAs: string): string | null => parseRunAs(runAs)?.account ?? null;
+
+// Anchor a run-as to a domain account's stable identity (domain:objectGUID), null for built-ins and non-domain
+// users; a qualified run-as must name the scanned domain so a same-named local account isn't mis-anchored.
+export const resolveRunAsFingerprint = (
+  runAs: string,
+  domain: string,
+  userGuidByName: Map<string, string>,
+  netbiosName?: string | null,
+  // The machine currently being swept; lets a local run-as anchor to that machine's local account.
+  machine?: { objectGUID: string; name: string }
+): string | null => {
+  const parsed = parseRunAs(runAs);
+  if (!parsed) return null;
+  const account = parsed.account.toLowerCase();
+  if (BUILTIN_RUNAS.has(account)) return null;
+  // A trailing '$' marks a gMSA / sMSA / machine account whose password AD manages automatically, so there is
+  // nothing for rotation to set; never a dependency's run-as.
+  if (account.endsWith("$")) return null;
+
+  if (parsed.domain !== null) {
+    const runAsDomain = parsed.domain.toLowerCase();
+
+    // Local run-as (.\user or MACHINE\user for this machine) anchors to the machine's local account, whose
+    // fingerprint mirrors how enumerateLocalUsers mints it: domain:machineObjectGUID:username.
+    if (machine && (runAsDomain === "." || runAsDomain === machine.name.toLowerCase())) {
+      return `${domain}:${machine.objectGUID}:${account}`;
+    }
+
+    // Domain run-as: accept the DNS first label, the FQDN, or the real NetBIOS name (which can differ).
+    const accepted = [domain.split(".")[0], domain, netbiosName]
+      .filter((d): d is string => Boolean(d))
+      .map((d) => d.toLowerCase());
+    if (!accepted.includes(runAsDomain)) return null;
+  }
+
+  const guid = userGuidByName.get(account);
+  if (!guid) return null;
+  return `${domain}:${guid}`;
+};
+
+const enumerateDependencies = async (
+  computer: TLdapComputer,
+  conn: TAdConnection,
+  password: string,
+  winrm: TWinrmConfig,
+  gatewayId: string,
+  gatewayV2Service: TGatewayDep
+): Promise<TWinRmDependency[]> => {
+  const targetAddress = computer.resolvedIp || computer.dNSHostName || computer.cn;
+  const { dependencies } = await winrmRpcWithGateway<{ dependencies: TWinRmDependency[] }>({
+    targetHost: targetAddress,
+    targetPort: winrm.port,
+    gatewayId,
+    gatewayV2Service,
+    endpoint: WinRmRpcEndpoint.EnumerateDependencies,
+    credentials: buildWinrmCredentials(conn, password, winrm)
+  });
+  return dependencies ?? [];
 };
 
 export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
@@ -220,6 +301,7 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
   const conn: TAdConnection = { ...connectionDetails, username: credentials.username };
   const config = configuration as {
     scanLocalAccounts?: boolean;
+    discoverDependencies?: boolean;
     winrmPort?: number;
     useWinrmHttps?: boolean;
     winrmRejectUnauthorized?: boolean;
@@ -238,47 +320,72 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
     const domain = connectionDetails.domain.toLowerCase();
     const baseDN = buildDomainDN(connectionDetails.domain);
     const machineErrors: TDiscoveryMachineError[] = [];
+    const dependencies: TDiscoveredDependency[] = [];
+    const scannedDependencyMachines: string[] = [];
+    // Both local-account and dependency sweeps need the machine list from LDAP.
+    const enumerateComputers = Boolean(config.scanLocalAccounts || config.discoverDependencies);
 
-    const { users, computers } = await runLdap<{ users: TLdapUser[]; computers: TLdapComputer[] }>(
-      conn,
-      credentials,
-      gatewayId,
-      gatewayV2Service,
-      async (client) => {
-        const userEntries = await ldapSearch(client, baseDN, "(&(objectClass=user)(objectCategory=person))", [
-          "sAMAccountName",
-          "objectGUID"
-        ]);
-        const parsedUsers = userEntries
-          .map((entry) => ({
-            sAMAccountName: getAttr(entry, "sAMAccountName"),
-            objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
-          }))
-          .filter((u) => u.sAMAccountName && u.objectGUID);
+    const { users, computers, netbiosName } = await runLdap<{
+      users: TLdapUser[];
+      computers: TLdapComputer[];
+      netbiosName: string | null;
+    }>(conn, credentials, gatewayId, gatewayV2Service, async (client) => {
+      const userEntries = await ldapSearch(client, baseDN, "(&(objectClass=user)(objectCategory=person))", [
+        "sAMAccountName",
+        "objectGUID"
+      ]);
+      const parsedUsers = userEntries
+        .map((entry) => ({
+          sAMAccountName: getAttr(entry, "sAMAccountName"),
+          objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
+        }))
+        .filter((u) => u.sAMAccountName && u.objectGUID);
 
-        if (!config.scanLocalAccounts) return { users: parsedUsers, computers: [] as TLdapComputer[] };
+      if (!enumerateComputers) return { users: parsedUsers, computers: [] as TLdapComputer[], netbiosName: null };
 
-        const computerEntries = await ldapSearch(
+      const computerEntries = await ldapSearch(client, baseDN, "(&(objectClass=computer)(operatingSystem=*Server*))", [
+        "cn",
+        "dNSHostName",
+        "objectGUID"
+      ]);
+      const parsedComputers = computerEntries
+        .map((entry) => ({
+          cn: getAttr(entry, "cn"),
+          dNSHostName: getAttr(entry, "dNSHostName"),
+          objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
+        }))
+        .filter((c) => (c.dNSHostName || c.cn) && c.objectGUID);
+
+      // The real NetBIOS domain name can differ from the DNS first label (renamed/legacy domains). Read it from
+      // the Partitions container so a NETBIOS\user run-as isn't wrongly rejected and its dependencies dropped.
+      let resolvedNetbios: string | null = null;
+      try {
+        const partitions = await ldapSearch(
           client,
-          baseDN,
-          "(&(objectClass=computer)(operatingSystem=*Server*))",
-          ["cn", "dNSHostName", "objectGUID"]
+          `CN=Partitions,CN=Configuration,${baseDN}`,
+          `(&(objectClass=crossRef)(nETBIOSName=*)(nCName=${baseDN}))`,
+          ["nETBIOSName"]
         );
-        const parsedComputers = computerEntries
-          .map((entry) => ({
-            cn: getAttr(entry, "cn"),
-            dNSHostName: getAttr(entry, "dNSHostName"),
-            objectGUID: parseObjectGUID(getAttrBuffer(entry, "objectGUID"))
-          }))
-          .filter((c) => (c.dNSHostName || c.cn) && c.objectGUID);
-
-        return { users: parsedUsers, computers: parsedComputers };
+        resolvedNetbios = partitions.length ? getAttr(partitions[0], "nETBIOSName") || null : null;
+      } catch (err) {
+        logger.warn(err, `PAM AD discovery could not read the NetBIOS name; using the DNS label [domain=${domain}]`);
       }
-    );
+
+      return { users: parsedUsers, computers: parsedComputers, netbiosName: resolvedNetbios };
+    });
 
     logger.info(
       `PAM AD discovery enumerated ${users.length} domain accounts and ${computers.length} servers [domain=${domain}]`
     );
+
+    // Carry the source's WinRM settings onto imported accounts so rotation and dependency sync honor HTTPS /
+    // a custom port / a pinned CA (the account connection schema has no separate WinRM discovery step).
+    const winrmConnDetails = {
+      winrmPort: config.winrmPort ?? DEFAULT_WINRM_PORT,
+      useWinrmHttps: config.useWinrmHttps ?? false,
+      winrmRejectUnauthorized: config.winrmRejectUnauthorized ?? true,
+      ...(config.winrmCaCert ? { winrmCaCert: config.winrmCaCert } : {})
+    };
 
     // Domain accounts inherit the source's connection target; only the login user differs
     const domainShortName = domain.split(".")[0];
@@ -288,56 +395,104 @@ export const activeDirectoryDiscoveryFactory: TPamDiscoveryFactory = ({
         .slice(0, 64)
         .replace(TRAILING_HYPHENS_REGEX, ""),
       fingerprint: `${domain}:${u.objectGUID}`,
-      details: { connectionDetails, credentials: { username: u.sAMAccountName } }
+      details: {
+        connectionDetails: { ...connectionDetails, ...winrmConnDetails },
+        credentials: { username: u.sAMAccountName }
+      }
     }));
 
-    if (config.scanLocalAccounts && computers.length > 0) {
-      await resolveHostnamesViaDc(computers, conn, gatewayId, gatewayV2Service);
+    if (enumerateComputers && computers.length > 0) {
+      // A DC unreachable on TCP/53 must not abort the whole scan (account enumeration already succeeded);
+      // WinRM then falls back to the hostname, which resolves in environments where the gateway has DNS.
+      try {
+        await resolveHostnamesViaDc(computers, conn, gatewayId, gatewayV2Service);
+      } catch (err) {
+        logger.warn(err, `PAM AD discovery could not resolve hostnames via the DC; using hostnames [domain=${domain}]`);
+      }
 
       const winrm: TWinrmConfig = {
-        port: config.winrmPort ?? 5985,
+        port: config.winrmPort ?? DEFAULT_WINRM_PORT,
         useHttps: config.useWinrmHttps ?? false,
         rejectUnauthorized: config.winrmRejectUnauthorized ?? true,
         caCert: config.winrmCaCert
       };
+      const password = credentials.password ?? "";
+      // Resolve a dependency's run-as (DOMAIN\user / user@domain / user) to its domain account's objectGUID.
+      const userGuidByName = new Map(users.map((u) => [u.sAMAccountName.toLowerCase(), u.objectGUID]));
 
       for (const computer of computers) {
         if (signal.aborted) break;
         const host = computer.resolvedIp || computer.dNSHostName || computer.cn;
         const hostLabel = computer.cn || computer.dNSHostName || host;
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const localUsers = await enumerateLocalUsers(
-            computer,
-            conn,
-            credentials.password ?? "",
-            winrm,
-            gatewayId,
-            gatewayV2Service
-          );
+        const machineName = computer.dNSHostName || computer.cn;
 
-          for (const u of localUsers.filter((lu) => lu.Name)) {
-            discovered.push({
-              accountType: PamAccountType.Windows,
-              name: slugify(`${hostLabel} ${u.Name}`, { lowercase: true })
-                .slice(0, 64)
-                .replace(TRAILING_HYPHENS_REGEX, ""),
-              fingerprint: `${domain}:${computer.objectGUID}:${u.Name.toLowerCase()}`,
-              details: {
-                connectionDetails: { host, port: connectionDetails.rdpPort },
-                credentials: { username: u.Name }
-              }
-            });
+        if (config.scanLocalAccounts) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const localUsers = await enumerateLocalUsers(computer, conn, password, winrm, gatewayId, gatewayV2Service);
+
+            for (const u of localUsers.filter((lu) => lu.Name)) {
+              discovered.push({
+                accountType: PamAccountType.Windows,
+                name: slugify(`${hostLabel} ${u.Name}`, { lowercase: true })
+                  .slice(0, 64)
+                  .replace(TRAILING_HYPHENS_REGEX, ""),
+                fingerprint: `${domain}:${computer.objectGUID}:${u.Name.toLowerCase()}`,
+                details: {
+                  connectionDetails: { host, port: connectionDetails.rdpPort, ...winrmConnDetails },
+                  credentials: { username: u.Name }
+                }
+              });
+            }
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "WinRM enumeration failed";
+            logger.warn(err, `PAM AD discovery failed to enumerate local accounts [host=${host}]`);
+            machineErrors.push({ machine: host, error: message });
           }
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "WinRM enumeration failed";
-          logger.warn(err, `PAM AD discovery failed to enumerate local accounts [host=${host}]`);
-          machineErrors.push({ machine: host, error: message });
+        }
+
+        if (config.discoverDependencies) {
+          try {
+            // eslint-disable-next-line no-await-in-loop
+            const machineDeps = await enumerateDependencies(
+              computer,
+              conn,
+              password,
+              winrm,
+              gatewayId,
+              gatewayV2Service
+            );
+
+            for (const dep of machineDeps) {
+              // built-in run-as resolves to null: nothing to anchor to an account or rotate. A local run-as
+              // anchors to this machine's local account; a domain run-as to the enumerated domain user.
+              const fingerprint = resolveRunAsFingerprint(dep.runAs, domain, userGuidByName, netbiosName, {
+                objectGUID: computer.objectGUID,
+                name: computer.cn
+              });
+              if (fingerprint) {
+                dependencies.push({
+                  fingerprint,
+                  type: dep.type,
+                  name: dep.name,
+                  // machine stays the hostname (stable reconciliation identity); the resolved IP is carried in
+                  // data so rotation sync can connect even where the gateway can't resolve AD hostnames.
+                  machine: machineName,
+                  data: computer.resolvedIp ? { ...dep.data, resolvedIp: computer.resolvedIp } : dep.data
+                });
+              }
+            }
+            scannedDependencyMachines.push(machineName);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "WinRM dependency enumeration failed";
+            logger.warn(err, `PAM AD discovery failed to enumerate dependencies [host=${host}]`);
+            machineErrors.push({ machine: host, error: message });
+          }
         }
       }
     }
 
-    return { accounts: discovered, machineErrors };
+    return { accounts: discovered, machineErrors, dependencies, scannedDependencyMachines };
   };
 
   return { validateConnection, scan };

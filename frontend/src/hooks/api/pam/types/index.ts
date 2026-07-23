@@ -12,6 +12,7 @@ import {
   PamPolicyType,
   PamResourcePermissionActions,
   PamResourcePermissionSub,
+  PamRotationStatus,
   PamSessionStatus,
   SessionChannelType
 } from "../enums";
@@ -47,11 +48,20 @@ export type TPamDiscoveryRun = {
   triggeredBy: string;
   discoveredCount: number;
   newCount: number;
+  dependencyCount?: number | null;
+  newDependencyCount?: number | null;
   errorMessage?: string | null;
   machineErrors?: { machine: string; error: string }[] | null;
   startedAt?: string | null;
   completedAt?: string | null;
   createdAt: string;
+};
+
+export type TPamDependency = {
+  id: string;
+  type: string;
+  name: string;
+  machine: string;
 };
 
 export type TPamDiscoveredAccount = {
@@ -60,6 +70,15 @@ export type TPamDiscoveredAccount = {
   name: string;
   fingerprint: string;
   createdAt: string;
+  dependencyCount: number;
+  dependencies: TPamDependency[];
+};
+
+export type TPamAccountDependency = TPamDependency & {
+  data: Record<string, unknown> | null;
+  rotationStatus: PamRotationStatus | null;
+  lastRotatedAt: string | null;
+  lastRotationMessage: string | null;
 };
 
 export type TCreatePamDiscoverySourceDTO = {
@@ -136,6 +155,7 @@ export type TPamAccountTypeMetadata = {
   icon: string;
   supportsWebAccess: boolean;
   requiresGateway: boolean;
+  supportsDependencies: boolean;
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
   applicablePolicies: TPamPolicyDescriptor[];
@@ -594,9 +614,10 @@ export type TPamAccountRotation = {
   rotationAccountId: string | null;
   rotationAccountName: string | null;
   lastRotatedAt: string | null;
-  rotationStatus: string | null;
+  rotationStatus: PamRotationStatus | null;
   lastRotationError: string | null;
   isReady: boolean;
+  sharedIdentity: { id: string; name: string; discoverySources: string[] }[];
 };
 
 export type TPamRotationCandidateGroup = {

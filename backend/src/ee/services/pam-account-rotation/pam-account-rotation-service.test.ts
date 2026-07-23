@@ -59,7 +59,9 @@ const buildService = (
   const rotationHandlers: typeof PAM_ROTATION_FACTORY_MAP = {
     [PamAccountType.Postgres]: handler,
     [PamAccountType.MySQL]: handler,
-    [PamAccountType.MsSQL]: handler
+    [PamAccountType.MsSQL]: handler,
+    [PamAccountType.Windows]: handler,
+    [PamAccountType.WindowsAd]: handler
   };
 
   const identityCipher = {
@@ -84,6 +86,7 @@ const buildService = (
     gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
+    pamAccountDependencyDAL: { findByAccountId: vi.fn(async () => []), updateById: vi.fn(async () => undefined) },
     rotationHandlers
   };
 
@@ -133,13 +136,16 @@ describe("rotateScheduledAccount recovery probe", () => {
     );
   });
 
-  test("defers when neither the pending nor the current credential authenticates", async () => {
+  test("self-rotation fails with an actionable error when neither the pending nor the current credential works", async () => {
+    // Definitive rejection of both (not a transport blip): a self-rotating account has no other way in, so it
+    // surfaces an actionable "update the stored password" error rather than a transient defer-and-retry.
     const { service, applyPasswordChange } = buildService(() => false);
 
     const result = await service.rotateScheduledAccount("acc-1");
 
     expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
-    expect(result?.message).toContain("deferred");
+    expect(result?.message).toContain("stored password no longer works");
+    expect(result?.message).not.toContain("deferred");
     expect(applyPasswordChange).not.toHaveBeenCalled();
   });
 
@@ -151,6 +157,40 @@ describe("rotateScheduledAccount recovery probe", () => {
 
     expect(result?.rotationStatus).toBe(ROTATION_STATUS.Success);
     expect(applyPasswordChange).toHaveBeenCalledTimes(1);
+  });
+
+  test("discards a pending credential whose probe throws once the current credential proves reachability", async () => {
+    // Verify throws on a wrong password just as on a transport blip, so a working current credential proves
+    // reachability: the pending throw is then a real rejection and can be discarded, not deferred forever.
+    const { service, applyPasswordChange, updateById } = buildService((password) => {
+      if (password === PENDING_PASSWORD) throw new Error("winrm auth rejected");
+      return true;
+    });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Success);
+    expect(applyPasswordChange).toHaveBeenCalledTimes(1);
+    // The freshly-rotated credential is written and the stale pending cleared.
+    expect(updateById).toHaveBeenCalledWith(
+      "acc-1",
+      expect.objectContaining({ encryptedPendingCredentials: null, rotationStatus: ROTATION_STATUS.Success })
+    );
+  });
+
+  test("defers when the pending probe throws and the current credential can't prove reachability", async () => {
+    // Both probes throw (target genuinely unreachable): can't tell a dead pending from a transient failure, so
+    // defer rather than risk discarding a possibly-live pending.
+    const { service, applyPasswordChange } = buildService((password) => {
+      if (password === PENDING_PASSWORD || password === CURRENT_PASSWORD) throw new Error("transport error");
+      return true;
+    });
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Failed);
+    expect(result?.message).toContain("deferred");
+    expect(applyPasswordChange).not.toHaveBeenCalled();
   });
 
   test("delegated target with no stored current password falls through instead of deferring, and applies over the rotator's own connection", async () => {
@@ -200,6 +240,39 @@ describe("rotateScheduledAccount recovery probe", () => {
     expect(applyArgs.auth.username).toBe("rotuser");
     // ...but the target's own username is what gets altered.
     expect(applyArgs.targetUsername).toBe("app");
+  });
+
+  test("delegated target auto-heals a drifted stored credential instead of deferring", async () => {
+    // The account keeps a stored current password, but it no longer matches the target (drift), and there is a
+    // stale pending. Because the rotator resets unconditionally, rotation must proceed and heal the drift, unlike
+    // self-rotation which would defer.
+    const account = { ...buildAccount(), rotationAccountId: "rot-1" };
+    const rotator = {
+      id: "rot-1",
+      projectId: "proj-1",
+      accountType: PamAccountType.Postgres,
+      encryptedCredentials: blobOf({ username: "rotuser", password: "rot-pw" }),
+      encryptedConnectionDetails: blobOf(connectionDetails),
+      gatewayId: "gw-rot",
+      gatewayPoolId: null,
+      templateGatewayId: null,
+      templateGatewayPoolId: null
+    };
+    // Both the pending and the stored current password are rejected; only the freshly-generated password verifies.
+    const { service, applyPasswordChange, updateById } = buildService(
+      (password) => password !== PENDING_PASSWORD && password !== CURRENT_PASSWORD,
+      { account, rotator }
+    );
+
+    const result = await service.rotateScheduledAccount("acc-1");
+
+    expect(result?.rotationStatus).toBe(ROTATION_STATUS.Success);
+    // It rotated (applied a new password) rather than deferring on the drifted current credential.
+    expect(applyPasswordChange).toHaveBeenCalledTimes(1);
+    expect(updateById).toHaveBeenCalledWith(
+      "acc-1",
+      expect.objectContaining({ encryptedPendingCredentials: null, rotationStatus: ROTATION_STATUS.Success })
+    );
   });
 
   test("aborts a delegated rotation when target and rotator are no longer the same resource, sending no credential", async () => {

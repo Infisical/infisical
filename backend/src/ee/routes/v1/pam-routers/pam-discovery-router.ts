@@ -30,12 +30,21 @@ const SourceSchema = PamDiscoverySourcesSchema.extend({
   lastRunError: z.string().nullable().optional()
 });
 
+const DiscoveredDependencySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  name: z.string(),
+  machine: z.string()
+});
+
 const DiscoveredAccountSchema = z.object({
   id: z.string(),
   accountType: z.nativeEnum(PamAccountType),
   name: z.string(),
   fingerprint: z.string(),
-  createdAt: z.date()
+  createdAt: z.date(),
+  dependencyCount: z.number(),
+  dependencies: z.array(DiscoveredDependencySchema)
 });
 
 const toPascalCase = (s: string) =>
@@ -356,7 +365,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "GET",
-    url: "/:sourceId/discovered",
+    url: "/:sourceId/discovered-accounts",
     schema: {
       operationId: "listPamDiscoveredAccounts",
       description: "List staged accounts discovered by a PAM discovery source",
@@ -391,7 +400,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "POST",
-    url: "/:sourceId/discovered/import",
+    url: "/:sourceId/discovered-accounts/import",
     schema: {
       operationId: "importPamDiscoveredAccounts",
       description: "Import staged accounts into a folder",

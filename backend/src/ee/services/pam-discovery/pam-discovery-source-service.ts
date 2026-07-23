@@ -24,6 +24,7 @@ import { checkAccountAccess, TActorContext, verifyProductMembership } from "../p
 import { validateGatewayAttachment } from "../pam/pam-validators";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
+import { TPamAccountDependencyDALFactory } from "./pam-account-dependency-dal";
 import { TPamDiscoveredAccountDALFactory } from "./pam-discovered-account-dal";
 import {
   PamDiscoveryImportStatus,
@@ -45,6 +46,7 @@ import {
   TDeleteDiscoverySourceDTO,
   TGetDiscoverySourceDTO,
   TImportDiscoveredDTO,
+  TListAccountDependenciesDTO,
   TListDiscoveredDTO,
   TListDiscoverySourcesDTO,
   TListRunsDTO,
@@ -56,6 +58,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
   pamDiscoverySourceDAL: TPamDiscoverySourceDALFactory;
   pamDiscoverySourceRunDAL: TPamDiscoverySourceRunDALFactory;
   pamDiscoveredAccountDAL: TPamDiscoveredAccountDALFactory;
+  pamAccountDependencyDAL: TPamAccountDependencyDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findByIdWithDetails">;
   pamAccountService: Pick<TPamAccountServiceFactory, "create">;
   permissionService: Pick<
@@ -108,6 +111,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     pamDiscoverySourceDAL,
     pamDiscoverySourceRunDAL,
     pamDiscoveredAccountDAL,
+    pamAccountDependencyDAL,
     pamAccountDAL,
     pamAccountService,
     permissionService,
@@ -447,7 +451,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       });
 
       const controller = new AbortController();
-      const { accounts, machineErrors } = await withScanTimeout(
+      const { accounts, machineErrors, dependencies, scannedDependencyMachines } = await withScanTimeout(
         provider.scan(controller.signal),
         controller,
         MAX_SCAN_DURATION_MS
@@ -465,11 +469,63 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         )
       );
 
+      // Persist dependencies from the sweep, anchoring each to its run-as account by fingerprint. null =
+      // dependency discovery did not run this scan, so the summary omits the dependencies clause.
+      let dependencyCount: number | null = null;
+      let newDependencyCount: number | null = null;
+      if (scannedDependencyMachines.length) {
+        const sourceAccounts = await pamDiscoveredAccountDAL.findFingerprintLinks(sourceId);
+        const accountByFingerprint = new Map(
+          sourceAccounts.map((a) => [
+            a.fingerprint,
+            { discoveredAccountId: a.id, importedAccountId: a.importedAccountId ?? null }
+          ])
+        );
+
+        const depLimit = pLimit(DISCOVERED_UPSERT_CONCURRENCY);
+        const depResults = (
+          await Promise.all(
+            dependencies.map((dep) => {
+              const match = accountByFingerprint.get(dep.fingerprint);
+              if (!match) return Promise.resolve(null); // run-as isn't an account this source discovered
+              const accountId = match.importedAccountId;
+              return depLimit(() =>
+                pamAccountDependencyDAL.upsertByIdentity({
+                  projectId: source.projectId,
+                  fingerprint: dep.fingerprint,
+                  machine: dep.machine,
+                  type: dep.type,
+                  name: dep.name,
+                  data: dep.data,
+                  accountId,
+                  discoveredAccountId: accountId ? null : match.discoveredAccountId
+                })
+              );
+            })
+          )
+        ).filter((r): r is { id: string; isNew: boolean } => Boolean(r));
+
+        // Count only anchored dependencies (those matching an account this source knows); un-anchored run-as
+        // values aren't persisted or shown, so counting them would inflate the "found" number.
+        dependencyCount = depResults.length;
+        newDependencyCount = depResults.filter((r) => r.isNew).length;
+
+        await pamAccountDependencyDAL.deleteStaleForSource({
+          projectId: source.projectId,
+          accountIds: sourceAccounts.map((a) => a.importedAccountId).filter((v): v is string => Boolean(v)),
+          discoveredAccountIds: sourceAccounts.map((a) => a.id),
+          scannedMachines: scannedDependencyMachines,
+          keepIds: depResults.map((r) => r.id)
+        });
+      }
+
       const newCount = results.filter((r) => r.isNew).length;
       await pamDiscoverySourceRunDAL.updateById(run.id, {
         status: PamDiscoveryRunStatus.Completed,
         discoveredCount: accounts.length,
         newCount,
+        dependencyCount,
+        newDependencyCount,
         machineErrors: machineErrors.length ? JSON.stringify(machineErrors) : null,
         completedAt: new Date()
       });
@@ -555,16 +611,65 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
     }
     const { accounts, totalCount } = await pamDiscoveredAccountDAL.listStaged(sourceId, { search, offset, limit });
+
+    const dependencies = await pamAccountDependencyDAL.findByDiscoveredAccountIds(accounts.map((a) => a.id));
+    const dependenciesByAccount = new Map<string, { id: string; type: string; name: string; machine: string }[]>();
+    for (const dep of dependencies) {
+      if (dep.discoveredAccountId) {
+        const depList = dependenciesByAccount.get(dep.discoveredAccountId) ?? [];
+        depList.push({ id: dep.id, type: dep.type, name: dep.name, machine: dep.machine });
+        dependenciesByAccount.set(dep.discoveredAccountId, depList);
+      }
+    }
+
     return {
-      discoveredAccounts: accounts.map((a) => ({
-        id: a.id,
-        accountType: a.accountType as PamAccountType,
-        name: a.name,
-        fingerprint: a.fingerprint,
-        createdAt: a.createdAt
-      })),
+      discoveredAccounts: accounts.map((a) => {
+        const accountDependencies = dependenciesByAccount.get(a.id) ?? [];
+        return {
+          id: a.id,
+          accountType: a.accountType as PamAccountType,
+          name: a.name,
+          fingerprint: a.fingerprint,
+          createdAt: a.createdAt,
+          dependencyCount: accountDependencies.length,
+          dependencies: accountDependencies
+        };
+      }),
       totalCount
     };
+  };
+
+  const listAccountDependencies = async ({ accountId, projectId, ...ctx }: TListAccountDependenciesDTO) => {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    if (!account || account.projectId !== projectId) {
+      throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    }
+    await checkAccountAccess(
+      permissionService,
+      accountId,
+      account.folderId,
+      projectId,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ctx
+    );
+
+    const dependencies = await pamAccountDependencyDAL.findByAccountId(accountId);
+    const needsDecrypt = dependencies.some((d) => d.rotationStatus === "failed" && d.encryptedLastRotationMessage);
+    const decryptor = needsDecrypt ? (await getProjectCipher(projectId)).decryptor : null;
+
+    return dependencies.map((d) => ({
+      id: d.id,
+      type: d.type,
+      name: d.name,
+      machine: d.machine,
+      data: d.data,
+      rotationStatus: d.rotationStatus ?? null,
+      lastRotatedAt: d.lastRotatedAt ?? null,
+      lastRotationMessage:
+        d.rotationStatus === "failed" && d.encryptedLastRotationMessage && decryptor
+          ? decryptor({ cipherTextBlob: d.encryptedLastRotationMessage }).toString("utf-8")
+          : null
+    }));
   };
 
   const importAccounts = async ({ projectId, sourceId, folderId, accounts, ...ctx }: TImportDiscoveredDTO) => {
@@ -583,7 +688,17 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           if (!discovered || discovered.discoverySourceId !== sourceId) {
             throw new NotFoundError({ message: "Discovered account not found" });
           }
-          if (discovered.importedAccountId) throw new BadRequestError({ message: "Already imported" });
+          if (discovered.importedAccountId) {
+            // Already imported. Re-run the idempotent backfill so a retry heals a prior import whose backfill
+            // didn't complete (the three writes aren't one transaction), rather than stranding still-staged deps.
+            await pamAccountDependencyDAL.backfillImported(discovered.id, discovered.importedAccountId);
+            return {
+              discoveredAccountId: item.discoveredAccountId,
+              status: PamDiscoveryImportStatus.Imported,
+              accountId: discovered.importedAccountId,
+              name: item.name ?? discovered.name
+            };
+          }
 
           const details = decryptToObject(discovered.encryptedDetails, decryptor) as {
             connectionDetails: Record<string, unknown>;
@@ -604,6 +719,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           });
 
           await pamDiscoveredAccountDAL.updateById(discovered.id, { importedAccountId: account.id });
+          // Flip this account's staged dependencies onto the managed account so they're rotation-eligible
+          // immediately, without waiting for the next scan.
+          await pamAccountDependencyDAL.backfillImported(discovered.id, account.id);
           return {
             discoveredAccountId: item.discoveredAccountId,
             status: PamDiscoveryImportStatus.Imported,
@@ -660,6 +778,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     runScan,
     listRuns,
     listDiscovered,
-    importAccounts
+    importAccounts,
+    listAccountDependencies
   };
 };

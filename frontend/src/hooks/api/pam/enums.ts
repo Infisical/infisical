@@ -28,11 +28,18 @@ export enum PamDiscoverySchedule {
 export const ROTATABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
-  PamAccountType.MsSQL
+  PamAccountType.MsSQL,
+  PamAccountType.Windows,
+  PamAccountType.WindowsAd
 ];
 
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
+
+export enum PamRotationStatus {
+  Success = "success",
+  Failed = "failed"
+}
 
 export const PAM_ROTATION_INTERVAL_OPTIONS: { seconds: number; label: string }[] = [
   { seconds: 3600, label: "1 hour" },
