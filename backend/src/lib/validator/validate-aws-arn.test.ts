@@ -10,9 +10,8 @@ describe("isAwsIamRoleArn", () => {
     "arn:aws-cn:iam::123456789012:role/cn-role",
     "arn:aws-iso:iam::123456789012:role/iso-role",
     "arn:aws-iso-b:iam::123456789012:role/iso-b-role",
-    // resource is matched permissively (any non-whitespace) so unusual-but-valid role paths/names pass
+    // path may use AWS's broad path charset (here `!` and `$`), while the final name stays valid
     "arn:aws:iam::123456789012:role/odd!path$/role_name",
-    "arn:aws:iam::123456789012:role/team#svc|role~name",
     "arn:aws:iam::123456789012:role/aws-service-role/elasticbeanstalk.amazonaws.com/AWSServiceRoleForElasticBeanstalk"
   ])("accepts valid role ARN: %s", (arn) => {
     expect(isAwsIamRoleArn(arn)).toBe(true);
@@ -26,7 +25,9 @@ describe("isAwsIamRoleArn", () => {
     "arn:aws:iam:us-east-1:123456789012:role/regional", // IAM ARNs have no region
     "arn:aws:iam::123456789012:role/", // empty role name
     "arn:awsx:iam::123456789012:role/my-role", // partition must be aws or aws-<segment>
-    "arn:aws:iam::123456789012:role/has space" // resource may not contain spaces / control chars
+    "arn:aws:iam::123456789012:role/has space", // resource may not contain spaces / control chars
+    "arn:aws:iam::123456789012:role/team#svc|role~name", // invalid characters in role name
+    "arn:aws:iam::123456789012:role/service-role/foo#bar" // invalid character in name segment (after a valid path)
   ])("rejects invalid role ARN: %s", (arn) => {
     expect(isAwsIamRoleArn(arn)).toBe(false);
   });
