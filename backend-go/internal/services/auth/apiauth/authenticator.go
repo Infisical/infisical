@@ -322,7 +322,7 @@ func (a *ApiAuthenticator) validateIdentityTokenClaims(ctx context.Context, clai
 	}
 
 	// 5. Check org membership.
-	membership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeIdentity, identityID, orgID, "")
+	membership, err := a.findEffectiveOrgMembership(ctx, auth.ActorTypeIdentity, identityID, orgID, "accepted")
 	if err != nil {
 		return nil, errutil.DatabaseErr("Failed to check org membership").WithErrf("validateIdentityAccessToken(identityId=%s, orgId=%s): %w", identityID, orgID, err)
 	}
