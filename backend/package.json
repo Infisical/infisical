@@ -235,6 +235,7 @@
     "dd-trace": "^5.40.0",
     "dns-packet": "^5.6.1",
     "dotenv": "^16.4.1",
+    "fast-xml-parser": "^5.7.0",
     "fastify": "^5.8.3",
     "fastify-plugin": "^5.0.1",
     "file-type": "^22.0.0",

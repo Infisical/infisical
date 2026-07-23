@@ -8,6 +8,8 @@ Infisical supports connecting to Azure DNS using a Service Principal with Client
 <Accordion title="Client Secret Authentication">
   To use client secret authentication, ensure your Azure Service Principal has the required permissions to manage DNS records in your Azure DNS Zone.
 
+  <Note>If you want to configure automatic client secret rotation for this App Connection, you also need to grant either `Application.ReadWrite.OwnedBy` or `Application.ReadWrite.All` permissions.</Note>
+
   **Prerequisites:**
   - Set up Azure and have an existing DNS Zone.
   - An Azure Service Principal (App Registration) with a Client Secret.

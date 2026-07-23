@@ -1929,6 +1929,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2DAL,
+    gatewayV2Service,
     gatewayPoolService,
     appConnectionDAL,
     pamAccessRequestService,

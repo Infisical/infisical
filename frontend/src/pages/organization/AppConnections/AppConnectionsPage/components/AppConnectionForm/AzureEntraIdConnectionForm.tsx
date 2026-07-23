@@ -27,6 +27,7 @@ import {
   TAzureEntraIdConnection
 } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
 
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { useAppConnectionForm } from "./AppConnectionFormContext";
 import {
   genericAppConnectionFieldsSchema,
@@ -39,7 +40,8 @@ const formSchema = genericAppConnectionFieldsSchema.extend({
   credentials: z.object({
     tenantId: z.string().trim().min(1, "Tenant ID is required"),
     clientId: z.string().trim().min(1, "Client ID is required"),
-    clientSecret: z.string().trim().min(1, "Client Secret is required")
+    clientSecret: z.string().trim().min(1, "Client Secret is required"),
+    clientSecretKeyId: z.string().trim().optional()
   })
 });
 
@@ -54,6 +56,14 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
   const isUpdate = Boolean(appConnection);
   const { onCancel } = useAppConnectionForm();
 
+  const defaultRotation = {
+    rotationInterval: 30,
+    rotateAtUtc: {
+      hours: 0,
+      minutes: 0
+    }
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: appConnection
@@ -62,6 +72,8 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
           description: appConnection.description,
           app: AppConnection.AzureEntraId,
           method: AzureEntraIdConnectionMethod.ClientSecret,
+          isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+          rotation: appConnection.rotation ?? defaultRotation,
           credentials: {
             tenantId: appConnection.credentials.tenantId,
             clientId: appConnection.credentials.clientId,
@@ -71,6 +83,8 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
       : {
           app: AppConnection.AzureEntraId,
           method: AzureEntraIdConnectionMethod.ClientSecret,
+          isAutoRotationEnabled: false,
+          rotation: defaultRotation,
           credentials: {
             tenantId: "",
             clientId: "",
@@ -210,6 +224,37 @@ export const AzureEntraIdConnectionForm = ({ appConnection, onSubmit }: Props) =
             </Field>
           )}
         />
+
+        <CredentialRotationForm>
+          <Controller
+            name="credentials.clientSecretKeyId"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="credentials.clientSecretKeyId">
+                  Client Secret Key ID
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The Key ID of the client secret provided above. Found in Azure Portal under
+                      App Registrations &gt; Certificates &amp; Secrets. Required so Infisical can
+                      revoke the original secret after rotation.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="credentials.clientSecretKeyId"
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </CredentialRotationForm>
 
         <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
           <Button

@@ -3488,6 +3488,11 @@ const OverviewPageContent = () => {
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
             onSecretCreated={checkSecretsActivation}
+            onUploadSecrets={(env) => {
+              setImportParsedSecrets(env ?? null);
+              handlePopUpClose("addSecretsInAllEnvs");
+              handlePopUpOpen("importSecrets");
+            }}
             onBatchSecretCreate={(params) => {
               addPendingChange(
                 {

@@ -84,28 +84,29 @@ export type TCertificatePolicy = {
 };
 
 export type TCreateCertificatePolicyDTO = {
+  projectId?: string;
   name: string;
   description?: string;
-  subject?: TCertificatePolicyRule["subject"];
-  sans?: TCertificatePolicyRule["sans"];
-  keyUsages?: TCertificatePolicyRule["keyUsages"];
-  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
-  algorithms?: TCertificatePolicyRule["algorithms"];
-  validity?: TCertificatePolicyRule["validity"];
-  basicConstraints?: TBasicConstraints;
+  subject?: TCertificatePolicyRule["subject"] | null;
+  sans?: TCertificatePolicyRule["sans"] | null;
+  keyUsages?: TCertificatePolicyRule["keyUsages"] | null;
+  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"] | null;
+  algorithms?: TCertificatePolicyRule["algorithms"] | null;
+  validity?: TCertificatePolicyRule["validity"] | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TUpdateCertificatePolicyDTO = {
   policyId: string;
   name?: string;
   description?: string;
-  subject?: TCertificatePolicyRule["subject"];
-  sans?: TCertificatePolicyRule["sans"];
-  keyUsages?: TCertificatePolicyRule["keyUsages"];
-  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"];
-  algorithms?: TCertificatePolicyRule["algorithms"];
-  validity?: TCertificatePolicyRule["validity"];
-  basicConstraints?: TBasicConstraints;
+  subject?: TCertificatePolicyRule["subject"] | null;
+  sans?: TCertificatePolicyRule["sans"] | null;
+  keyUsages?: TCertificatePolicyRule["keyUsages"] | null;
+  extendedKeyUsages?: TCertificatePolicyRule["extendedKeyUsages"] | null;
+  algorithms?: TCertificatePolicyRule["algorithms"] | null;
+  validity?: TCertificatePolicyRule["validity"] | null;
+  basicConstraints?: TBasicConstraints | null;
 };
 
 export type TDeleteCertificatePolicyDTO = {

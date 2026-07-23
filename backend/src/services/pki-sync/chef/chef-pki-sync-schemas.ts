@@ -4,7 +4,7 @@ import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { BasePkiSyncOptionsSchema, PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { CHEF_PKI_SYNC_CERTIFICATE_NAMING, CHEF_PKI_SYNC_DATA_BAG_NAMING } from "./chef-pki-sync-constants";
 
@@ -27,11 +27,8 @@ const ChefFieldMappingsSchema = z.object({
   caCertificate: z.string().min(1, "CA certificate field name is required").default("ca_certificate")
 });
 
-const ChefPkiSyncOptionsSchema = z.object({
+const ChefPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
   canImportCertificates: z.boolean().default(false),
-  canRemoveCertificates: z.boolean().default(true),
-  includeRootCa: z.boolean().default(false),
-  preserveItemOnRenewal: z.boolean().default(true),
   updateExistingCertificates: z.boolean().default(true),
   certificateNameSchema: z
     .string()
