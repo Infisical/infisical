@@ -23,7 +23,7 @@ Relays support two enrollment methods. The enrollment method is set when creatin
   <Accordion title="Token Auth">
     Token auth uses a one-time enrollment token (1 hour expiry) generated from the relay detail page. The token is exchanged for a long-lived access token on first start and stored on disk for subsequent restarts.
 
-    The `--host` flag is not required — the host is stored server-side when the relay is created.
+    For `infisical relay start`, `--host` is not required — the host is stored server-side when the relay is created.
 
     <Tabs>
       <Tab title="Foreground">
@@ -39,11 +39,13 @@ Relays support two enrollment methods. The enrollment method is set when creatin
         ```bash
         sudo infisical relay systemd install \
           --name=<name> \
-          --enroll-method=token \
-          --token=<enrollment-token> \
+          --host=<host> \
+          --token=<machine-identity-access-token> \
           --domain=<your-infisical-domain>
         sudo systemctl start infisical-relay
         ```
+
+        `infisical relay systemd install` does not accept `--enroll-method`. Its `--token` flag is a machine identity access token — not the one-time enrollment token used by `relay start` — and `--host` is required (install does not store/look up the host server-side). It always installs an org-type relay (the default) unless `--type=instance` is passed. See [`infisical relay systemd`](#infisical-relay-systemd) below for its full flag set.
       </Tab>
     </Tabs>
 
@@ -66,14 +68,9 @@ Relays support two enrollment methods. The enrollment method is set when creatin
         ```
       </Tab>
       <Tab title="Linux (systemd)">
-        ```bash
-        sudo infisical relay systemd install \
-          --name=<name> \
-          --enroll-method=aws \
-          --relay-id=<relay-id> \
-          --domain=<your-infisical-domain>
-        sudo systemctl start infisical-relay
-        ```
+        `infisical relay systemd install` has no equivalent to `relay start --enroll-method=aws --relay-id` — it cannot enroll a relay configured with the AWS Auth method. Its `--type=instance` / `--relay-auth-secret` flags are an unrelated, static-secret instance-relay mechanism and won't authenticate as an AWS-authenticated relay.
+
+        To run an AWS-authenticated relay under systemd today, wrap the foreground command above in your own systemd unit.
       </Tab>
     </Tabs>
 
@@ -120,6 +117,16 @@ Relays support two enrollment methods. The enrollment method is set when creatin
 <AccordionGroup>
 <Accordion title="install">
   Install and enable systemd service for the relay. See the authentication section above for install commands.
+
+  `install` has its own flag set, distinct from `infisical relay start` — it does **not** accept `--enroll-method` or `--relay-id`:
+
+  - `--name` — the name of the relay
+  - `--host` — the IP or hostname for the relay (required)
+  - `--type` — `org` (default) or `instance`
+  - `--token` — machine identity access token, used for `--type=org` (default)
+  - `--relay-auth-secret` — relay auth secret, used for `--type=instance` (or set via env if unset)
+  - `--domain` — domain of your self-hosted Infisical instance
+  - `--log-file` — file to write service logs to (logs aren't written to a file if omitted)
 
   After installation, start the service:
 
