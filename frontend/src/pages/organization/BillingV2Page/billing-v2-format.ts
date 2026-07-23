@@ -192,7 +192,7 @@ export const commitSavingsNudge = (
 // Capitalize a plan tier ("pro" -> "Pro") for the badge beside a product's name.
 // hardcoded legacy for now
 export const tierLabel = (tier: string): string => {
-  const stripped = tier.replace("Legacy_", "");
+  const stripped = tier.replace("legacy_", "");
   return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 };
 
