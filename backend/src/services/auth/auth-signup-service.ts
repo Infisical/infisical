@@ -76,8 +76,12 @@ export const authSignupServiceFactory = ({
       }
     }
 
-    // Case sensitive email resolution
-    const existingUser = await userDAL.findOne({ username: sanitizedEmail });
+    // Case sensitive email resolution.
+    // Use a transaction so the read hits the primary — replica lag right after
+    // a hard-delete of the previous account would otherwise return the stale
+    // row with isAccepted=true and silently send the "account exists" email
+    // instead of starting a fresh signup. See #6034.
+    const existingUser = await userDAL.transaction(async (tx) => userDAL.findOne({ username: sanitizedEmail }, tx));
     if (existingUser?.isAccepted) {
       // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();
@@ -121,23 +125,33 @@ export const authSignupServiceFactory = ({
     await tokenService.validateEmailSignupToken(sanitizedEmail, code);
 
     // Only create (or recover) the user after the OTP has been verified.
-    let user = await userDAL.findOne({ username: sanitizedEmail });
-    if (!user) {
-      user = await userDAL.create({
-        authMethods: [AuthMethod.EMAIL],
-        username: sanitizedEmail,
-        email: sanitizedEmail,
-        isGhost: false,
-        isEmailVerified: true
-      });
-    } else if (!user.isAccepted) {
-      // Migration path: pre-user created by the old flow before this refactor.
-      await userDAL.updateById(user.id, { isEmailVerified: true });
-      user = { ...user, isEmailVerified: true };
-    } else {
+    // Run the lookup + create/update inside a transaction so the read hits
+    // the primary. If replication still hasn't caught up with the delete
+    // from a re-signup flow, the replica would return the old isAccepted=true
+    // row and we'd throw "Invalid or expired verification request" even
+    // though the OTP itself was valid. See #6034.
+    const user = await userDAL.transaction(async (tx) => {
+      const existing = await userDAL.findOne({ username: sanitizedEmail }, tx);
+      if (!existing) {
+        return userDAL.create(
+          {
+            authMethods: [AuthMethod.EMAIL],
+            username: sanitizedEmail,
+            email: sanitizedEmail,
+            isGhost: false,
+            isEmailVerified: true
+          },
+          tx
+        );
+      }
+      if (!existing.isAccepted) {
+        // Migration path: pre-user created by the old flow before this refactor.
+        await userDAL.updateById(existing.id, { isEmailVerified: true }, tx);
+        return { ...existing, isEmailVerified: true };
+      }
       // isAccepted guard should have been caught in beginEmailSignupProcess, but defend here too.
       throw new Error("Invalid or expired verification request");
-    }
+    });
 
     const appCfg = getConfig();
     const jwtToken = crypto.jwt().sign(
