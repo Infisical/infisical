@@ -26,6 +26,7 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectFolderGrantDALFactory } from "@app/services/project-folder-grant/project-folder-grant-dal";
+import { TCrossProjectSecretSharingServiceFactory } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -137,6 +138,7 @@ type TSecretSyncQueueFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
 };
 
 type SecretSyncActionJob = Job<
@@ -190,7 +192,8 @@ export const secretSyncQueueFactory = ({
   microsoftTeamsService,
   telemetryService,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  crossProjectSecretSharingService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -295,6 +298,7 @@ export const secretSyncQueueFactory = ({
       canExpandValue: () => true,
       actorOrgId,
       orgDAL,
+      crossProjectSecretSharingService,
       projectFolderGrantDAL,
       projectDAL,
       kmsService
@@ -347,6 +351,7 @@ export const secretSyncQueueFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
+        crossProjectSecretSharingService,
         kmsService
       });
 
