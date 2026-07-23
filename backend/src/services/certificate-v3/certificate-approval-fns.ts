@@ -44,6 +44,7 @@ import {
   CertPolicyState
 } from "../certificate-common/certificate-constants";
 import {
+  assertCaIssuancePolicyAllowed,
   calculateFinalRenewBeforeDays,
   extractCertificateFromBuffer,
   generateSelfSignedCertificate,
@@ -466,15 +467,7 @@ export const certificateApprovalServiceFactory = (
     validateAlgorithmCompatibility(ca, certPolicy);
 
     const csrBasicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | undefined;
-    const policyIsCAState: CertPolicyState =
-      (certPolicy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    if (csrBasicConstraints?.isCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by the current policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
+    const policyIsCAState = assertCaIssuancePolicyAllowed(certPolicy, csrBasicConstraints?.isCA === true);
 
     let effectiveBasicConstraints = csrBasicConstraints;
     const storedPathLength = csrBasicConstraints?.pathLength;

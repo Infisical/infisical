@@ -64,7 +64,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertPolicyState,
   mapExtendedKeyUsageToLegacy,
   mapKeyUsageToLegacy,
   mapLegacyExtendedKeyUsageToStandard,
@@ -76,6 +75,7 @@ import {
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
 import {
+  assertCaIssuancePolicyAllowed,
   calculateFinalRenewBeforeDays,
   detectSanType,
   extractCertificateFromBuffer,
@@ -1295,15 +1295,7 @@ export const certificateV3ServiceFactory = ({
     validateAlgorithmCompatibility(ca, policy);
 
     const shouldIssueAsCA = certificateRequest.basicConstraints?.isCA === true;
-    const policyIsCAState: CertPolicyState =
-      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
+    assertCaIssuancePolicyAllowed(policy, shouldIssueAsCA);
 
     const caBasicConstraints = shouldIssueAsCA
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
@@ -1615,15 +1607,7 @@ export const certificateV3ServiceFactory = ({
 
     validateAlgorithmCompatibility(ca, policy);
 
-    const policyIsCAState: CertPolicyState =
-      (policy.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-
-    if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
-      throw new BadRequestError({
-        message:
-          "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
-      });
-    }
+    assertCaIssuancePolicyAllowed(policy, shouldIssueAsCA);
 
     const csrApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
       ApprovalPolicyType.CertRequest
@@ -2476,6 +2460,10 @@ export const certificateV3ServiceFactory = ({
 
       const ttl = getSimpleTtl(originalCert.notBefore, originalCert.notAfter);
 
+      // The renewed certificate must keep the original's CA status (and stay subject to the
+      // same CA-issuance policy checks every other issuance path runs) — see basicConstraints below.
+      const shouldIssueAsCA = originalCert.isCA === true;
+
       const certificateRequest = {
         commonName: originalCert.commonName || undefined,
         organization: originalCert.subjectOrganization || undefined,
@@ -2495,7 +2483,8 @@ export const certificateV3ServiceFactory = ({
           ttl
         },
         signatureAlgorithm: originalCert.signatureAlgorithm || undefined,
-        keyAlgorithm: originalCert.keyAlgorithm || undefined
+        keyAlgorithm: originalCert.keyAlgorithm || undefined,
+        basicConstraints: shouldIssueAsCA ? { isCA: true, pathLength: originalCert.pathLength ?? undefined } : undefined
       };
 
       let validationResult: { isValid: boolean; errors: string[] } = { isValid: true, errors: [] };
@@ -2519,6 +2508,8 @@ export const certificateV3ServiceFactory = ({
           message: `Certificate renewal failed. Errors: ${validationResult.errors.join(", ")}`
         });
       }
+
+      assertCaIssuancePolicyAllowed(policy, shouldIssueAsCA);
 
       const notBefore = new Date();
       const notAfter = new Date(Date.now() + parseTtlToMs(ttl));
@@ -2574,6 +2565,10 @@ export const certificateV3ServiceFactory = ({
             signatureAlgorithm: originalSignatureAlgorithm,
             keyAlgorithm: originalKeyAlgorithm,
             isFromProfile: true,
+            basicConstraints: shouldIssueAsCA
+              ? { isCA: true, pathLength: policy?.basicConstraints?.maxPathLength }
+              : undefined,
+            pathLength: originalCert.pathLength ?? policy?.basicConstraints?.maxPathLength ?? undefined,
             organization: originalCert.subjectOrganization || undefined,
             ou: originalCert.subjectOrganizationalUnit || undefined,
             country: originalCert.subjectCountry || undefined,
