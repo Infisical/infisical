@@ -8,33 +8,29 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/infisical/api/internal/config"
 	"github.com/infisical/api/internal/libs/requestid"
 	"github.com/infisical/api/internal/server/api"
 	"github.com/infisical/api/internal/server/middlewares"
+	"github.com/infisical/api/internal/services"
 )
 
 // Server is the HTTP server for the Infisical API.
 type Server struct {
-	services *api.Services
+	services *services.Services
 	config   *config.Config
 	logger   *slog.Logger
-	router   chi.Router
+	router   *api.Router
 }
 
 // NewServer creates a new HTTP server with chi routing.
-func NewServer(services *api.Services, cfg *config.Config, logger *slog.Logger) *Server {
-	router := chi.NewRouter()
-
-	// Register domain routes
-	api.RegisterPlatformRoutes(router, logger, services.Platform)
-	api.RegisterSecretManagerRoutes(router, logger, services.Platform, services.SecretManager)
+func NewServer(svc *services.Services, cfg *config.Config, logger *slog.Logger) *Server {
+	router := api.NewRouter(logger, svc)
 
 	return &Server{
-		services: services,
+		services: svc,
 		config:   cfg,
 		logger:   logger,
 		router:   router,
@@ -47,6 +43,7 @@ func (s *Server) Listen(ctx context.Context, addr string, wg *sync.WaitGroup, er
 
 	// Middleware stack (applied in reverse order - last wraps first)
 	// Inner middlewares (closest to handler) first, outer middlewares last
+	handler = middlewares.ETag(handler)
 	handler = requestLogger(handler, s.logger)
 	handler = chimw.StripSlashes(handler)
 	handler = middlewares.Timeout(100 * time.Second)(handler) // Match Node.js connectionTimeout
