@@ -232,7 +232,8 @@ export const oidcConfigServiceFactory = ({
     // When the org enforces SSO, the verified domain + IdP are authoritative, so we skip the
     // separate email-verification step (the email-domain ownership check above already proves the
     // org owns this domain, and password signup is blocked for enforced domains).
-    const skipEmailVerification = Boolean(organization.authEnforced);
+    // Also skip when the instance admin has enabled "Trust OIDC Emails" in the server admin console.
+    const skipEmailVerification = Boolean(organization.authEnforced) || Boolean(serverCfg.trustOidcEmails);
 
     let user: TUsers;
     // A stale, still-unverified alias may point at another user's account. Don't mutate that
@@ -569,7 +570,8 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id
     });
 
-    if (isActive) {
+    const updateServerCfg = await getServerCfg();
+    if (isActive && !updateServerCfg.trustOidcEmails) {
       const isSmtpConnected = await smtpService.verify();
       if (!isSmtpConnected) {
         throw new BadRequestError({
