@@ -10,7 +10,9 @@ export const forwardWritesToPrimary = fp(async (server, opt: { primaryUrl: strin
   // stream so it can be piped to the primary byte-for-byte (e.g. SAML callback form posts).
   // Safe on replicas: all /api writes are forwarded, so no local route needs a parsed form body.
   server.removeContentTypeParser("application/x-www-form-urlencoded");
-  server.addContentTypeParser("application/x-www-form-urlencoded", (_req, payload, done) => done(null, payload));
+  server.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "buffer" }, (_req, payload, done) =>
+    done(null, payload)
+  );
 
   server.addHook("preValidation", async (request, reply) => {
     if (request.url.startsWith("/api") && ["POST", "PUT", "DELETE", "PATCH"].includes(request.method)) {
