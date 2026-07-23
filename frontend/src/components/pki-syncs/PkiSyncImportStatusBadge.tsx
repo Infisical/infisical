@@ -4,8 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
 import { CheckIcon, DownloadIcon, LucideIcon, TriangleAlertIcon } from "lucide-react";
 
-import { Tooltip } from "@app/components/v2";
-import { Badge, TBadgeProps } from "@app/components/v3";
+import { Badge, TBadgeProps, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -90,11 +89,18 @@ export const PkiSyncImportStatusBadge = ({ pkiSync, mini }: Props) => {
   }
 
   return (
-    <Tooltip position="bottom" className="max-w-sm" content={tooltipContent}>
-      <Badge isSquare={mini} variant={variant}>
-        <Icon />
-        {!mini && label}
-      </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-block">
+          <Badge isSquare={mini} variant={variant}>
+            <Icon />
+            {!mini && label}
+          </Badge>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-sm">
+        {tooltipContent}
+      </TooltipContent>
     </Tooltip>
   );
 };

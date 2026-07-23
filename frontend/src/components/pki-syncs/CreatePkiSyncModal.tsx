@@ -1,8 +1,25 @@
 import { useEffect, useState } from "react";
+import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 
-import { Modal, ModalContent } from "@app/components/v2";
-import { PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
+import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
+import { TPkiSyncForm } from "./forms/schemas/pki-sync-schema";
 import { CreatePkiSyncForm } from "./forms";
 import { PkiSyncModalHeader } from "./PkiSyncModalHeader";
 import { PkiSyncSelect } from "./PkiSyncSelect";
@@ -11,90 +28,106 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   selectSync?: PkiSync | null;
-  initialData?: any;
+  initialData?: Partial<TPkiSyncForm>;
   applicationId?: string;
-};
-
-type ContentProps = {
-  onComplete: (pkiSync: TPkiSync) => void;
-  selectedSync: PkiSync | null;
-  setSelectedSync: (selectedSync: PkiSync | null) => void;
-  initialData?: any;
-  applicationId?: string;
-};
-
-const Content = ({
-  onComplete,
-  setSelectedSync,
-  selectedSync,
-  initialData,
-  applicationId
-}: ContentProps) => {
-  if (selectedSync) {
-    return (
-      <CreatePkiSyncForm
-        onComplete={onComplete}
-        onCancel={() => setSelectedSync(null)}
-        destination={selectedSync}
-        initialData={initialData}
-        applicationId={applicationId}
-      />
-    );
-  }
-
-  return <PkiSyncSelect onSelect={setSelectedSync} />;
 };
 
 export const CreatePkiSyncModal = ({
+  isOpen,
   onOpenChange,
   selectSync = null,
   initialData,
-  applicationId,
-  ...props
+  applicationId
 }: Props) => {
   const [selectedSync, setSelectedSync] = useState<PkiSync | null>(selectSync);
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
 
   useEffect(() => {
     setSelectedSync(selectSync);
   }, [selectSync]);
 
+  const closeSheet = () => {
+    setConfirmDiscardOpen(false);
+    setSelectedSync(null);
+    onOpenChange(false);
+  };
+
+  const handleSheetOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && selectedSync) {
+      setConfirmDiscardOpen(true);
+      return;
+    }
+    if (!nextOpen) setSelectedSync(null);
+    onOpenChange(nextOpen);
+  };
+
+  const showBack = !selectSync && Boolean(selectedSync);
+
   return (
-    <Modal
-      {...props}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) setSelectedSync(null);
-        onOpenChange(isOpen);
-      }}
-    >
-      {/* z-50 (not the v2 default z-[60]) so the inline "Create Connection" Sheet and its v3 Select
-          menus (all z-50, portaled later) stack above this modal instead of being buried behind it,
-          while the backdrop still covers page chrome up to z-50 by portal order. */}
-      <ModalContent
-        overlayClassName="z-50"
-        title={
-          selectedSync ? (
-            <PkiSyncModalHeader isConfigured={false} destination={selectedSync} />
+    <>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1500px]">
+          <SheetHeader className="border-b">
+            {selectedSync ? (
+              <>
+                {showBack && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSync(null)}
+                    className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
+                  >
+                    <ArrowLeftIcon className="size-3" />
+                    Select Another Service
+                  </button>
+                )}
+                <SheetTitle>
+                  <PkiSyncModalHeader isConfigured={false} destination={selectedSync} />
+                </SheetTitle>
+              </>
+            ) : (
+              <>
+                <SheetTitle>Add Sync</SheetTitle>
+                <SheetDescription>
+                  Select a third-party service to sync certificates to.
+                </SheetDescription>
+              </>
+            )}
+          </SheetHeader>
+          {selectedSync ? (
+            <CreatePkiSyncForm
+              onComplete={closeSheet}
+              onCancel={() => setSelectedSync(null)}
+              destination={selectedSync}
+              initialData={initialData}
+              applicationId={applicationId}
+            />
           ) : (
-            "Add Sync"
-          )
-        }
-        className="z-50 max-w-3xl"
-        bodyClassName={selectedSync ? "overflow-visible" : undefined}
-        subTitle={
-          selectedSync ? undefined : "Select a third-party service to sync certificates to."
-        }
-      >
-        <Content
-          onComplete={() => {
-            setSelectedSync(null);
-            onOpenChange(false);
-          }}
-          selectedSync={selectedSync}
-          setSelectedSync={setSelectedSync}
-          initialData={initialData}
-          applicationId={applicationId}
-        />
-      </ModalContent>
-    </Modal>
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+              <PkiSyncSelect onSelect={setSelectedSync} />
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangleIcon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Discard sync setup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your progress configuring this sync will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={closeSheet}>
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

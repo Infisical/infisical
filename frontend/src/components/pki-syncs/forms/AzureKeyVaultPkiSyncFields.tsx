@@ -1,6 +1,15 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Info } from "lucide-react";
 
-import { FormControl, Input } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -21,15 +30,29 @@ export const AzureKeyVaultPkiSyncFields = () => {
       <Controller
         name="destinationConfig.vaultBaseUrl"
         control={control}
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Vault Base URL"
-            tooltipText="Enter your Azure Key Vault URL. This is the base URL for your Azure Key Vault, e.g. https://example.vault.azure.net."
-          >
-            <Input {...field} placeholder="https://example.vault.azure.net" />
-          </FormControl>
+        render={({ field: { value, onChange, ...field }, fieldState: { error } }) => (
+          <Field className="mb-4">
+            <FieldLabel>
+              Vault Base URL
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Enter your Azure Key Vault URL. This is the base URL for your Azure Key Vault,
+                  e.g. https://example.vault.azure.net.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Input
+              {...field}
+              value={value ?? ""}
+              onChange={onChange}
+              placeholder="https://example.vault.azure.net"
+              isError={Boolean(error)}
+            />
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
     </>

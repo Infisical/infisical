@@ -102,11 +102,8 @@ export const PkiSyncRow = ({
       type: "info"
     });
 
-    const timer = setTimeout(() => setIsIdCopied.off(), 2000);
-
-    // eslint-disable-next-line consistent-return
-    return () => clearTimeout(timer);
-  }, [isIdCopied]);
+    setTimeout(() => setIsIdCopied.off(), 2000);
+  }, [id, setIsIdCopied]);
 
   const failureMessage = useMemo(() => {
     if (syncStatus === PkiSyncStatus.Failed) {
@@ -152,7 +149,7 @@ export const PkiSyncRow = ({
         <img
           alt={`${destinationDetails.name} sync`}
           src={`/images/integrations/${destinationDetails.image}`}
-          className="min-w-7"
+          className="w-5 min-w-5"
         />
       </TableCell>
       <TableCell className="max-w-0 min-w-32!">
@@ -225,7 +222,7 @@ export const PkiSyncRow = ({
           ) : (
             <Tooltip
               className="text-xs"
-              content="This sync has not run yet — no certificates have been pushed to the destination."
+              content="This sync has not run yet. No certificates have been pushed to the destination."
             >
               <Badge variant="neutral">Not Synced</Badge>
             </Tooltip>

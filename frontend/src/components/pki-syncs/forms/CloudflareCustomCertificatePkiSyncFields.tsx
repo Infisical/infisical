@@ -1,7 +1,16 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   TCloudflareZone,
   useCloudflareConnectionListZones
@@ -37,16 +46,26 @@ export const CloudflareCustomCertificatePkiSyncFields = () => {
         name="destinationConfig.zoneId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Zone"
-            tooltipText="Select the Cloudflare zone (domain) where the custom SSL certificate will be uploaded."
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              Zone
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Select the Cloudflare zone (domain) where the custom SSL certificate will be
+                  uploaded.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FilterableSelect
               isLoading={isZonesLoading && !!connectionId}
               isDisabled={!connectionId}
-              value={zones.find((zone) => zone.id === value)}
+              value={
+                zones.find((zone) => zone.id === value) ||
+                (value ? { id: value, name: value } : null)
+              }
               onChange={(option) => {
                 onChange((option as SingleValue<TCloudflareZone>)?.id ?? "");
               }}
@@ -54,8 +73,10 @@ export const CloudflareCustomCertificatePkiSyncFields = () => {
               placeholder={connectionId ? "Select a zone..." : "Select a connection first"}
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              isError={Boolean(error)}
             />
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
     </>

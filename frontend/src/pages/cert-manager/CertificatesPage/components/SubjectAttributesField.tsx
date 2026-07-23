@@ -1,8 +1,18 @@
 import { Control, Controller } from "react-hook-form";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Plus, Trash2 } from "lucide-react";
 
-import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 export type SubjectAttribute = {
@@ -63,8 +73,8 @@ export const SubjectAttributesField = ({
       name={namePrefix}
       shouldUnregister={shouldUnregister}
       render={({ field: { onChange, value } }) => {
-        const currentValues = value || [];
-        const usedTypes = currentValues.map((attr: SubjectAttribute) => attr.type);
+        const currentValues: SubjectAttribute[] = value || [];
+        const usedTypes = currentValues.map((attr) => attr.type);
         // Domain components are multi-valued, so they may appear in more than one row.
         const isMultiValued = (type: CertSubjectAttributeType) =>
           type === CertSubjectAttributeType.DOMAIN_COMPONENT;
@@ -74,9 +84,10 @@ export const SubjectAttributesField = ({
         const canAddMore = availableTypes.length > 0;
 
         return (
-          <FormControl label="Subject Attributes" errorText={error} isError={Boolean(error)}>
+          <Field className="mb-4">
+            <FieldLabel>Subject Attributes</FieldLabel>
             <div className="space-y-2">
-              {currentValues.map((attr: SubjectAttribute, index: number) => {
+              {currentValues.map((attr, index) => {
                 const selectableTypes = allowedAttributeTypes.filter(
                   (type) => type === attr.type || isMultiValued(type) || !usedTypes.includes(type)
                 );
@@ -85,25 +96,26 @@ export const SubjectAttributesField = ({
                   <div
                     // eslint-disable-next-line react/no-array-index-key
                     key={`subject-attr-${attr.type}-${index}`}
-                    className="flex items-center gap-2"
+                    className="flex items-start gap-2"
                   >
                     <Select
                       value={attr.type}
                       onValueChange={(newType) => {
                         const newValue = [...currentValues];
-                        newValue[index] = {
-                          ...attr,
-                          type: newType as CertSubjectAttributeType
-                        };
+                        newValue[index] = { ...attr, type: newType as CertSubjectAttributeType };
                         onChange(newValue);
                       }}
-                      className="w-44"
                     >
-                      {selectableTypes.map((attrType) => (
-                        <SelectItem key={attrType} value={attrType}>
-                          {SUBJECT_ATTRIBUTE_LABELS[attrType]}
-                        </SelectItem>
-                      ))}
+                      <SelectTrigger className="w-52">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {selectableTypes.map((attrType) => (
+                          <SelectItem key={attrType} value={attrType}>
+                            {SUBJECT_ATTRIBUTE_LABELS[attrType]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                     <Input
                       value={attr.value}
@@ -115,39 +127,32 @@ export const SubjectAttributesField = ({
                       placeholder={getSubjectAttributePlaceholder(attr.type)}
                       className="flex-1"
                     />
-                    <IconButton
-                      ariaLabel="Remove attribute"
-                      variant="plain"
+                    <Button
+                      type="button"
+                      variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        const newValue = currentValues.filter(
-                          (_: SubjectAttribute, i: number) => i !== index
-                        );
-                        onChange(newValue);
-                      }}
+                      onClick={() => onChange(currentValues.filter((_, i) => i !== index))}
                     >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </IconButton>
+                      <Trash2 className="size-4" />
+                    </Button>
                   </div>
                 );
               })}
               {canAddMore && (
                 <Button
                   type="button"
-                  variant="outline_bg"
-                  size="xs"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    const nextType = availableTypes[0];
-                    onChange([...currentValues, { type: nextType, value: "" }]);
-                  }}
-                  className="w-full"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    onChange([...currentValues, { type: availableTypes[0], value: "" }])
+                  }
                 >
-                  Add Subject Attribute
+                  <Plus className="size-4" /> Add Subject Attribute
                 </Button>
               )}
             </div>
-          </FormControl>
+            <FieldError>{error}</FieldError>
+          </Field>
         );
       }}
     />

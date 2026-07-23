@@ -1,59 +1,97 @@
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
-import { IconButton } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
-
-const GenericFieldLabel = ({
-  label,
-  children,
-  labelClassName
-}: {
-  label: string;
-  children: React.ReactNode;
-  labelClassName?: string;
-}) => (
-  <div className="mb-4">
-    <p className={`text-sm font-medium text-mineshaft-300 ${labelClassName || ""}`}>{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
-  </div>
-);
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  Separator
+} from "@app/components/v3";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
-  onEditOptions: VoidFunction;
 };
 
-export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
+const EnabledBadge = ({ enabled }: { enabled: boolean }) => (
+  <Badge variant={enabled ? "success" : "neutral"}>{enabled ? "Enabled" : "Disabled"}</Badge>
+);
+
+export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
   const {
-    syncOptions: { canRemoveCertificates: removeCertificatesEnabled }
+    syncOptions: {
+      canRemoveCertificates,
+      certificateNameSchema,
+      preserveArn,
+      enableVersioning,
+      preserveItemOnRenewal,
+      updateExistingCertificates
+    }
   } = pkiSync;
-  const { canEdit } = usePkiSyncPermissions(pkiSync);
 
   return (
-    <div>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="text-lg font-medium text-mineshaft-100">Sync Options</h3>
-          <IconButton
-            variant="plain"
-            colorSchema="secondary"
-            isDisabled={!canEdit}
-            ariaLabel="Edit sync options"
-            onClick={onEditOptions}
-          >
-            <FontAwesomeIcon icon={faEdit} />
-          </IconButton>
-        </div>
-        <div className="pt-1">
-          <GenericFieldLabel label="Inactive Certificate Removal" labelClassName="mb-1">
-            <Badge variant={removeCertificatesEnabled ? "success" : "danger"}>
-              {removeCertificatesEnabled ? "Enabled" : "Disabled"}
-            </Badge>
-          </GenericFieldLabel>
-        </div>
-      </div>
-    </div>
+    <>
+      <Separator className="mt-4" />
+      <Accordion type="multiple" variant="ghost">
+        <AccordionItem value="sync-options">
+          <AccordionTrigger>Sync Options</AccordionTrigger>
+          <AccordionContent>
+            <DetailGroup>
+              <Detail>
+                <DetailLabel>Inactive Certificate Removal</DetailLabel>
+                <DetailValue>
+                  <EnabledBadge enabled={canRemoveCertificates} />
+                </DetailValue>
+              </Detail>
+              {certificateNameSchema && (
+                <Detail>
+                  <DetailLabel>Certificate Name Schema</DetailLabel>
+                  <DetailValue>
+                    <Badge variant="neutral" className="max-w-full truncate">
+                      {certificateNameSchema}
+                    </Badge>
+                  </DetailValue>
+                </Detail>
+              )}
+              {preserveArn !== undefined && (
+                <Detail>
+                  <DetailLabel>Preserve ARN</DetailLabel>
+                  <DetailValue>
+                    <EnabledBadge enabled={preserveArn} />
+                  </DetailValue>
+                </Detail>
+              )}
+              {enableVersioning !== undefined && (
+                <Detail>
+                  <DetailLabel>Versioning</DetailLabel>
+                  <DetailValue>
+                    <EnabledBadge enabled={enableVersioning} />
+                  </DetailValue>
+                </Detail>
+              )}
+              {preserveItemOnRenewal !== undefined && (
+                <Detail>
+                  <DetailLabel>Preserve Item on Renewal</DetailLabel>
+                  <DetailValue>
+                    <EnabledBadge enabled={preserveItemOnRenewal} />
+                  </DetailValue>
+                </Detail>
+              )}
+              {updateExistingCertificates !== undefined && (
+                <Detail>
+                  <DetailLabel>Update Existing Certificates</DetailLabel>
+                  <DetailValue>
+                    <EnabledBadge enabled={updateExistingCertificates} />
+                  </DetailValue>
+                </Detail>
+              )}
+            </DetailGroup>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </>
   );
 };

@@ -31,6 +31,7 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
+  Label,
   Select,
   SelectContent,
   SelectItem,
@@ -88,7 +89,7 @@ const SectionCard = ({
     className={`rounded-md border border-border bg-foreground/[0.02] ${className ?? ""}`.trim()}
   >
     <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-      <h3 className="text-xs font-semibold tracking-wider text-accent uppercase">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>
     <div className="space-y-4 px-4 py-4">{children}</div>
@@ -263,7 +264,7 @@ const ApiPanel = ({
           render={({ field }) => (
             <div className="flex items-start justify-between gap-4">
               <div>
-                <FieldLabel>Auto-renew</FieldLabel>
+                <Label>Auto-renew</Label>
                 <p className="text-xs text-accent">
                   Automatically renew certificates issued via this profile before they expire.
                 </p>

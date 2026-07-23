@@ -1,6 +1,15 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Info } from "lucide-react";
 
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { PkiSync, TKempVirtualService, useListKempVirtualServices } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -30,13 +39,19 @@ export const KempLoadMasterPkiSyncFields = () => {
         name="destinationConfig.virtualServiceId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Virtual Service"
-            isOptional
-            tooltipText="The Virtual Service to bind the certificate to. Leave unset to only import the certificate without binding it to a Virtual Service."
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              Virtual Service <span className="text-muted">(optional)</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The Virtual Service to bind the certificate to. Leave unset to only import the
+                  certificate without binding it to a Virtual Service.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FilterableSelect
               isDisabled={!connectionId}
               isLoading={Boolean(connectionId) && isLoadingVirtualServices}
@@ -51,8 +66,10 @@ export const KempLoadMasterPkiSyncFields = () => {
                   ? "Leave unset to import certificate only"
                   : "Select a connection first"
               }
+              isError={Boolean(error)}
             />
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
     </>

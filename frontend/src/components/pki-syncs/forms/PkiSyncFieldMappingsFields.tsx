@@ -1,6 +1,15 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { Info } from "lucide-react";
 
-import { FormControl, Input } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -19,24 +28,26 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Configure how certificate fields are mapped to your{" "}
-        {currentDestination === PkiSync.Chef ? "Chef data bag items" : "AWS secrets"}.
-      </p>
-
       <div className="grid grid-cols-2 gap-4">
         <Controller
           control={control}
           name="syncOptions.fieldMappings.certificate"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Certificate Field"
-              tooltipText={`The field name used to store the certificate content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
-            >
-              <Input {...field} placeholder="certificate" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel>
+                Certificate Field
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The field name used to store the certificate content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input {...field} placeholder="certificate" isError={Boolean(error)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -44,14 +55,21 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
           control={control}
           name="syncOptions.fieldMappings.privateKey"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Private Key Field"
-              tooltipText={`The field name used to store the private key content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
-            >
-              <Input {...field} placeholder="private_key" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel>
+                Private Key Field
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The field name used to store the private key content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input {...field} placeholder="private_key" isError={Boolean(error)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -59,14 +77,21 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
           control={control}
           name="syncOptions.fieldMappings.certificateChain"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Certificate Chain Field"
-              tooltipText={`The field name used to store the certificate chain content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
-            >
-              <Input {...field} placeholder="certificate_chain" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel>
+                Certificate Chain Field
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The field name used to store the certificate chain content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input {...field} placeholder="certificate_chain" isError={Boolean(error)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
 
@@ -74,21 +99,28 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
           control={control}
           name="syncOptions.fieldMappings.caCertificate"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="CA Certificate Field"
-              tooltipText={`The field name used to store the CA certificate content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
-            >
-              <Input {...field} placeholder="ca_certificate" />
-            </FormControl>
+            <Field className="mb-4">
+              <FieldLabel>
+                CA Certificate Field
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    {`The field name used to store the CA certificate content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input {...field} placeholder="ca_certificate" isError={Boolean(error)} />
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
       </div>
 
-      <div className="mt-6 rounded-lg border border-mineshaft-600 bg-mineshaft-800 p-4">
-        <h4 className="mb-2 text-sm font-medium text-mineshaft-100">Preview JSON Structure</h4>
-        <pre className="text-xs text-bunker-300">
+      <div className="mt-6 rounded-lg border border-border bg-container p-4">
+        <h4 className="mb-2 text-sm font-medium text-foreground">Preview JSON Structure</h4>
+        <pre className="text-xs text-muted">
           {`{
   "id": "certificate-item-name",
   "${watch("syncOptions.fieldMappings.certificate") || "certificate"}": "<certificate-content>",

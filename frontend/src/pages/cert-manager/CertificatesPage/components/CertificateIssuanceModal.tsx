@@ -1,30 +1,41 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
+import { FileBadge, Plus, Tags, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Button,
   Checkbox,
-  FormControl,
-  FormLabel,
+  DocumentationLinkBadge,
+  Empty,
+  EmptyContent,
+  EmptyMedia,
+  EmptyTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
-  TextArea,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Stepper,
+  StepperList,
+  StepperStep,
+  TextArea
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { useGetCert } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
@@ -37,14 +48,14 @@ import {
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { PkiDocsUrls } from "@app/pages/cert-manager/pki-docs-urls";
 import {
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
-import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
-import { filterUsages, formatSubjectAltNames } from "./certificateUtils";
+import { buildManagedRequest } from "./buildManagedRequest";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { SubjectAttributesField } from "./SubjectAttributesField";
@@ -156,6 +167,81 @@ type Props = {
   applicationName?: string;
 };
 
+type IssuanceStepKey = "profile" | "csr" | "subject" | "options" | "metadata";
+
+const STEP_META: Record<
+  IssuanceStepKey,
+  {
+    name: string;
+    shortDescription: string;
+    title: string;
+    subtitle: string;
+    rightLabel: string;
+    rightDescription: string;
+  }
+> = {
+  profile: {
+    name: "Profile",
+    shortDescription: "Method and profile",
+    title: "Profile",
+    subtitle: "Choose how to request the certificate and which profile to use.",
+    rightLabel: "PROFILE",
+    rightDescription:
+      "The certificate profile determines the issuing CA and the policy that constrains what this certificate may contain. Choose Managed to have Infisical generate the key pair for you, or CSR to supply your own certificate signing request."
+  },
+  csr: {
+    name: "Signing Request",
+    shortDescription: "Provide your CSR",
+    title: "Certificate Signing Request",
+    subtitle: "Paste the certificate signing request to submit for signing.",
+    rightLabel: "SIGNING REQUEST",
+    rightDescription:
+      "The subject, key, and extensions are taken from your CSR. The profile's policy still validates the request at issuance."
+  },
+  subject: {
+    name: "Subject",
+    shortDescription: "Names and SANs",
+    title: "Subject",
+    subtitle: "Set the subject attributes and alternative names for this certificate.",
+    rightLabel: "SUBJECT",
+    rightDescription:
+      "Subject attributes and alternative names identify the certificate. The available fields are constrained by the profile's policy."
+  },
+  options: {
+    name: "Options",
+    shortDescription: "Validity and key usage",
+    title: "Certificate Options",
+    subtitle: "Set validity, algorithms, and key usages within the profile's policy.",
+    rightLabel: "OPTIONS",
+    rightDescription:
+      "These values are validated against the profile's policy at issuance. Fields that the profile or an external CA fully controls are hidden or read-only."
+  },
+  metadata: {
+    name: "Metadata",
+    shortDescription: "Optional key-values",
+    title: "Metadata",
+    subtitle: "Attach optional metadata key-value pairs to this certificate.",
+    rightLabel: "METADATA",
+    rightDescription:
+      "Metadata is stored alongside the certificate for your own tracking and automation. It does not affect the issued certificate."
+  }
+};
+
+const STEP_FIELDS: Record<IssuanceStepKey, string[]> = {
+  profile: ["requestMethod", "profileId"],
+  csr: ["csr", "ttl"],
+  subject: ["subjectAttributes", "subjectAltNames"],
+  options: [
+    "ttl",
+    "signatureAlgorithm",
+    "keyAlgorithm",
+    "keyUsages",
+    "extendedKeyUsages",
+    "basicConstraints"
+  ],
+  metadata: ["metadata"]
+};
+
 export const CertificateIssuanceModal = ({
   popUp,
   handlePopUpToggle,
@@ -166,6 +252,8 @@ export const CertificateIssuanceModal = ({
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
+
+  const [step, setStep] = useState(0);
 
   const inputSerialNumber =
     (popUp?.issueCertificate?.data as { serialNumber: string })?.serialNumber || "";
@@ -226,6 +314,12 @@ export const CertificateIssuanceModal = ({
     }
   });
 
+  const {
+    fields: metadataFields,
+    append: appendMetadata,
+    remove: removeMetadata
+  } = useFieldArray({ control, name: "metadata" });
+
   const requestMethod = watch("requestMethod");
 
   const actualSelectedProfileId = watch("profileId");
@@ -267,6 +361,28 @@ export const CertificateIssuanceModal = ({
     reset();
   }, [reset, resetConstraints]);
 
+  const stepKeys = useMemo<IssuanceStepKey[]>(() => {
+    const keys: IssuanceStepKey[] = ["profile"];
+    if (requestMethod === RequestMethod.CSR) {
+      keys.push("csr");
+    } else {
+      if (constraints.shouldShowSubjectSection || constraints.shouldShowSanSection) {
+        keys.push("subject");
+      }
+      keys.push("options");
+    }
+    keys.push("metadata");
+    return keys;
+  }, [requestMethod, constraints.shouldShowSubjectSection, constraints.shouldShowSanSection]);
+
+  const currentStepKey = stepKeys[Math.min(step, stepKeys.length - 1)];
+  const currentStepMeta = STEP_META[currentStepKey];
+  const isLastStep = step === stepKeys.length - 1;
+
+  useEffect(() => {
+    if (step > stepKeys.length - 1) setStep(stepKeys.length - 1);
+  }, [stepKeys.length, step]);
+
   useEffect(() => {
     if (cert) {
       const subjectAttrs: Array<{ type: CertSubjectAttributeType; value: string }> = [];
@@ -285,7 +401,7 @@ export const CertificateIssuanceModal = ({
               const trimmed = name.trim();
               if (trimmed.includes("@"))
                 return { type: CertSubjectAlternativeNameType.EMAIL, value: trimmed };
-              if (trimmed.match(/^\d+\.\d+\.\d+\.\d+$/))
+              if (isIPv4(trimmed) || isIPv6(trimmed))
                 return { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: trimmed };
               if (trimmed.startsWith("http"))
                 return { type: CertSubjectAlternativeNameType.URI, value: trimmed };
@@ -308,6 +424,10 @@ export const CertificateIssuanceModal = ({
       setValue("profileId", profileId);
     }
   }, [popUp?.issueCertificate?.isOpen, profileId, cert, setValue]);
+
+  useEffect(() => {
+    if (popUp?.issueCertificate?.isOpen) setStep(0);
+  }, [popUp?.issueCertificate?.isOpen]);
 
   const onFormSubmit = useCallback(
     async (formData: FormData) => {
@@ -380,134 +500,13 @@ export const CertificateIssuanceModal = ({
           return;
         }
 
-        const {
-          subjectAttributes,
-          subjectAltNames,
-          basicConstraints,
-          signatureAlgorithm,
-          keyAlgorithm,
-          keyUsages,
-          extendedKeyUsages,
-          metadata: formMetadata
-        } = formData;
-
-        const managedMetadataEntries = formMetadata?.filter((m) => m.key);
-        const request: any = {
-          profileId: formProfileId,
-          ...(applicationId && { applicationId }),
-          attributes: {
-            keyAlgorithm: keyAlgorithm || "",
-            ...(!isAdcsProfile && {
-              ttl,
-              signatureAlgorithm: signatureAlgorithm || "",
-              keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
-              extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
-            })
-          },
-          ...(managedMetadataEntries?.length && { metadata: managedMetadataEntries })
-        };
-
-        if (constraints.shouldShowSubjectSection) {
-          const defaults = actualSelectedProfile?.defaults;
-
-          if (subjectAttributes && subjectAttributes.length > 0) {
-            const cnAttr = subjectAttributes.find(
-              (attr) => attr.type === CertSubjectAttributeType.COMMON_NAME
-            );
-            if (cnAttr?.value) {
-              request.attributes.commonName = cnAttr.value;
-            } else if (defaults?.commonName) {
-              request.attributes.commonName = null;
-            }
-
-            const orgAttr = subjectAttributes.find(
-              (attr) => attr.type === CertSubjectAttributeType.ORGANIZATION
-            );
-            if (orgAttr?.value) {
-              request.attributes.organization = orgAttr.value;
-            } else if (defaults?.organization) {
-              request.attributes.organization = null;
-            }
-
-            const ouAttr = subjectAttributes.find(
-              (attr) => attr.type === CertSubjectAttributeType.ORGANIZATIONAL_UNIT
-            );
-            if (ouAttr?.value) {
-              request.attributes.organizationalUnit = ouAttr.value;
-            } else if (defaults?.organizationalUnit) {
-              request.attributes.organizationalUnit = null;
-            }
-
-            const countryAttr = subjectAttributes.find(
-              (attr) => attr.type === CertSubjectAttributeType.COUNTRY
-            );
-            if (countryAttr?.value) {
-              request.attributes.country = countryAttr.value;
-            } else if (defaults?.country) {
-              request.attributes.country = null;
-            }
-
-            const stateAttr = subjectAttributes.find(
-              (attr) => attr.type === CertSubjectAttributeType.STATE
-            );
-            if (stateAttr?.value) {
-              request.attributes.state = stateAttr.value;
-            } else if (defaults?.state) {
-              request.attributes.state = null;
-            }
-
-            const localityAttr = subjectAttributes.find(
-              (attr) => attr.type === CertSubjectAttributeType.LOCALITY
-            );
-            if (localityAttr?.value) {
-              request.attributes.locality = localityAttr.value;
-            } else if (defaults?.locality) {
-              request.attributes.locality = null;
-            }
-
-            // Domain components are multi-valued: collect every DC row (order preserved).
-            const domainComponents = subjectAttributes
-              .filter((attr) => attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT)
-              .map((attr) => attr.value.trim())
-              .filter((val) => val.length > 0);
-            if (domainComponents.length > 0) {
-              request.attributes.domainComponents = domainComponents;
-            }
-          } else if (defaults) {
-            // No subject attributes provided; send null overrides for profile defaults
-            if (defaults.commonName) request.attributes.commonName = null;
-            if (defaults.organization) request.attributes.organization = null;
-            if (defaults.organizationalUnit) request.attributes.organizationalUnit = null;
-            if (defaults.country) request.attributes.country = null;
-            if (defaults.state) request.attributes.state = null;
-            if (defaults.locality) request.attributes.locality = null;
-          }
-        }
-
-        if (constraints.shouldShowSanSection) {
-          if (subjectAltNames && subjectAltNames.length > 0) {
-            const formattedSans = formatSubjectAltNames(subjectAltNames);
-            if (formattedSans && formattedSans.length > 0) {
-              request.attributes.altNames = formattedSans;
-            }
-          } else {
-            request.attributes.altNames = [];
-          }
-        }
-
-        if (!isAdcsProfile) {
-          if (
-            (constraints.templateAllowsCA && basicConstraints?.isCA) ||
-            constraints.templateRequiresCA
-          ) {
-            request.attributes.basicConstraints = {
-              isCA: true,
-              pathLength: basicConstraints?.pathLength ?? undefined
-            };
-          } else if (constraints.templateAllowsCA) {
-            request.attributes.basicConstraints = { isCA: false };
-          }
-        }
+        const request = buildManagedRequest({
+          formData,
+          applicationId,
+          isAdcsProfile,
+          constraints,
+          defaults: actualSelectedProfile?.defaults
+        });
 
         const response = await issueCertificate(request);
         handleIssuanceResponse(response);
@@ -523,11 +522,10 @@ export const CertificateIssuanceModal = ({
       currentProject?.id,
       currentOrg?.id,
       issueCertificate,
-      constraints.shouldShowSubjectSection,
-      constraints.shouldShowSanSection,
-      constraints.templateAllowsCA,
-      constraints.templateRequiresCA,
+      constraints,
       actualSelectedProfile?.defaults,
+      applicationId,
+      applicationName,
       isAdcsProfile,
       handlePopUpToggle,
       navigate,
@@ -545,9 +543,29 @@ export const CertificateIssuanceModal = ({
     return "Request a new certificate using a certificate profile";
   };
 
+  const selectedProfileReady = Boolean(profileId || actualSelectedProfileId);
+
+  const goBack = () => setStep((s) => Math.max(0, s - 1));
+  const goNext = () => {
+    if (currentStepKey === "profile" && !selectedProfileReady) return;
+    setStep((s) => Math.min(stepKeys.length - 1, s + 1));
+  };
+
+  const onFormInvalid = (errors: Record<string, unknown>) => {
+    const errorKeys = Object.keys(errors);
+    const idx = stepKeys.findIndex((key) =>
+      STEP_FIELDS[key].some((fieldName) => errorKeys.includes(fieldName))
+    );
+    if (idx >= 0) setStep(idx);
+    createNotification({
+      text: "Please fix the highlighted fields before requesting.",
+      type: "error"
+    });
+  };
+
   return (
-    <Modal
-      isOpen={popUp?.issueCertificate?.isOpen}
+    <Sheet
+      open={popUp?.issueCertificate?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("issueCertificate", isOpen);
         if (!isOpen) {
@@ -555,372 +573,482 @@ export const CertificateIssuanceModal = ({
         }
       }}
     >
-      <ModalContent title={getModalTitle()} subTitle={getModalSubTitle()}>
-        {cert && (
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-medium text-mineshaft-300">Certificate Details</h4>
-              <p className="text-sm text-mineshaft-400">Serial Number: {cert.serialNumber}</p>
-              <p className="text-sm text-mineshaft-400">Certificate Id: {cert.id}</p>
-              <p className="text-sm text-mineshaft-400">Common Name: {cert.commonName}</p>
-              <p className="text-sm text-mineshaft-400">Status: {cert.status}</p>
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+        <SheetHeader className="border-b border-border">
+          <SheetTitle>
+            <div className="flex w-full items-start gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
+                <FileBadge className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-x-2 text-foreground">{getModalTitle()}</div>
+                <p className="text-sm leading-4 text-muted">{getModalSubTitle()}</p>
+              </div>
             </div>
+          </SheetTitle>
+        </SheetHeader>
+
+        {cert ? (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+            <h4 className="text-sm font-medium text-foreground">Certificate Details</h4>
+            <p className="mt-1 text-sm text-muted">Serial Number: {cert.serialNumber}</p>
+            <p className="text-sm text-muted">Certificate Id: {cert.id}</p>
+            <p className="text-sm text-muted">Common Name: {cert.commonName}</p>
+            <p className="text-sm text-muted">Status: {cert.status}</p>
           </div>
-        )}
-        {!cert && (
-          <form onSubmit={handleSubmit(onFormSubmit)}>
-            <Controller
-              control={control}
-              name="requestMethod"
-              render={({ field: { onChange, value } }) => (
-                <FormControl
-                  label={
-                    <FormLabel
-                      label="Request Method"
-                      icon={
-                        <Tooltip
-                          content={
-                            <div className="space-y-2">
-                              <p>
-                                <strong>Managed:</strong> We generate and manage the private key for
-                                you.
-                              </p>
-                              <p>
-                                <strong>CSR:</strong> Provide your own Certificate Signing Request.
-                                Use this when you need to manage your own private key.
-                              </p>
-                            </div>
-                          }
-                        >
-                          <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                        </Tooltip>
-                      }
-                    />
-                  }
+        ) : (
+          <form onSubmit={(e) => e.preventDefault()} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Setup steps
+                </p>
+                <Stepper
+                  activeStep={step}
+                  orientation="vertical"
+                  onStepChange={(i) => {
+                    if (isSubmitting) return;
+                    if (i < step) setStep(i);
+                  }}
                 >
-                  <Select
-                    value={value}
-                    onValueChange={(val) => onChange(val as RequestMethod)}
-                    className="w-full"
-                  >
-                    <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
-                    <SelectItem value={RequestMethod.CSR}>
-                      Certificate Signing Request (CSR)
-                    </SelectItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
+                  <StepperList>
+                    {stepKeys.map((key, i) => (
+                      <StepperStep
+                        key={key}
+                        index={i}
+                        title={STEP_META[key].name}
+                        description={STEP_META[key].shortDescription}
+                      />
+                    ))}
+                  </StepperList>
+                </Stepper>
+              </aside>
 
-            {!profileId && (
-              <Controller
-                control={control}
-                name="profileId"
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl
-                    label="Certificate Profile"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    isRequired
-                  >
-                    <Select
-                      defaultValue=""
-                      {...field}
-                      onValueChange={(e) => onChange(e)}
-                      className="w-full"
-                      placeholder="Select a certificate profile"
-                      position="popper"
-                      dropdownContainerClassName="max-w-none"
-                    >
-                      {availableProfiles.length === 0 && applicationId ? (
-                        <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-mineshaft-300">
-                          Only profiles with API enrollment configured on this Application are
-                          listed here. Configure API enrollment under this Application&apos;s
-                          Settings tab.
-                        </div>
-                      ) : (
-                        availableProfiles.map((profile) => (
-                          <SelectItem key={profile.id} value={profile.id}>
-                            {profile.slug}
-                          </SelectItem>
-                        ))
+              <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold text-foreground">{currentStepMeta.title}</h2>
+                  <p className="mt-1 text-sm text-muted">{currentStepMeta.subtitle}</p>
+                </div>
+
+                {currentStepKey === "profile" && (
+                  <div className="space-y-5">
+                    <Controller
+                      control={control}
+                      name="requestMethod"
+                      render={({ field: { onChange, value } }) => (
+                        <Field>
+                          <FieldLabel>Request Method</FieldLabel>
+                          <FieldContent>
+                            <Select
+                              value={value}
+                              onValueChange={(val) => onChange(val as RequestMethod)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                <SelectItem value={RequestMethod.MANAGED}>Managed</SelectItem>
+                                <SelectItem value={RequestMethod.CSR}>
+                                  Certificate Signing Request (CSR)
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FieldDescription>
+                              Managed generates and manages the private key for you. CSR lets you
+                              provide your own certificate signing request when you need to manage
+                              your own private key.
+                            </FieldDescription>
+                          </FieldContent>
+                        </Field>
                       )}
-                    </Select>
-                  </FormControl>
-                )}
-              />
-            )}
-
-            {(actualSelectedProfile || profileId) && (
-              <>
-                {requestMethod === RequestMethod.CSR && (
-                  <Controller
-                    control={control}
-                    name="csr"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Certificate Signing Request (CSR)"
-                        isRequired
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <TextArea
-                          {...field}
-                          spellCheck={false}
-                          placeholder={
-                            "-----BEGIN CERTIFICATE REQUEST-----\n" +
-                            "MIIByDCCAU4CAQAwfjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWEx\n" +
-                            "FjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xEjAQBgNVBAoMCURlbW8gQ29ycDEUMBIG\n" +
-                            "A1UECwwLRW5naW5lZXJpbmcxGDAWBgNVBAMMD2FwcC5leGFtcGxlLmNvbTB2MBAG\n" +
-                            "ByqGSM49AgEGBSuBBAAiA2IABDHV5yengUugeBcpjsw+iAaxSkCr16LMr3ITyvlM\n" +
-                            "lDv+AE0Ddc6FsFXJicBfTalM3AKl5F14OCBRfI2jugWJOGCLcKYqRDTDevxQmgCI\n" +
-                            "IfpRM6+jzPkqe0PsuLhYiRfbFKBRME8GCSqGSIb3DQEJDjFCMEAwPgYDVR0RBDcw\n" +
-                            "NYIPYXBwLmV4YW1wbGUuY29tghEqLmFwcC5leGFtcGxlLmNvbYIJbG9jYWxob3N0\n" +
-                            "hwR/AAABMAoGCCqGSM49BAMCA2gAMGUCMGQQYs4lTSc3r/5MlabDx4m+sWaAtDhO\n" +
-                            "17c3TaoDZOMG6r45mgUskPGTripXV9ItTQIxAJypXNlHnMvks7MO4LmicPqku4MF\n" +
-                            "IeFqqXMFzC9uAO3iQ8/ji6ukvT6a9A3DE9LLIg==\n" +
-                            "-----END CERTIFICATE REQUEST-----"
-                          }
-                          rows={13}
-                          className="w-full font-mono text-xs"
-                        />
-                      </FormControl>
-                    )}
-                  />
-                )}
-
-                {requestMethod === RequestMethod.MANAGED &&
-                  constraints.shouldShowSubjectSection && (
-                    <SubjectAttributesField
-                      control={control}
-                      allowedAttributeTypes={constraints.allowedSubjectAttributeTypes}
-                      error={
-                        (formState.errors as { subjectAttributes?: { message?: string } })
-                          .subjectAttributes?.message
-                      }
-                    />
-                  )}
-
-                {requestMethod === RequestMethod.MANAGED && constraints.shouldShowSanSection && (
-                  <SubjectAltNamesField
-                    control={control}
-                    allowedSanTypes={constraints.allowedSanTypes}
-                    error={
-                      (formState.errors as { subjectAltNames?: { message?: string } })
-                        .subjectAltNames?.message
-                    }
-                  />
-                )}
-
-                {!isAdcsProfile && (
-                  <Controller
-                    control={control}
-                    name="ttl"
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        label="Time to Live (TTL)"
-                        isRequired
-                        errorText={error?.message}
-                        isError={Boolean(error)}
-                      >
-                        <Input {...field} placeholder="30d, 1y, 8760h" />
-                      </FormControl>
-                    )}
-                  />
-                )}
-
-                {requestMethod === RequestMethod.MANAGED && (
-                  <>
-                    <AlgorithmSelectors
-                      control={control}
-                      availableSignatureAlgorithms={availableSignatureAlgorithms}
-                      availableKeyAlgorithms={availableKeyAlgorithms}
-                      hideSignatureAlgorithm={isAdcsProfile}
-                      signatureError={
-                        (formState.errors as { signatureAlgorithm?: { message?: string } })
-                          .signatureAlgorithm?.message
-                      }
-                      keyError={
-                        (formState.errors as { keyAlgorithm?: { message?: string } }).keyAlgorithm
-                          ?.message
-                      }
                     />
 
-                    {isAdcsProfile && (
+                    {!profileId && (
+                      <Controller
+                        control={control}
+                        name="profileId"
+                        render={({ field: { onChange, value }, fieldState: { error } }) => (
+                          <Field>
+                            <FieldLabel>
+                              Certificate Profile <span className="text-danger">*</span>
+                            </FieldLabel>
+                            <FieldContent>
+                              <Select value={value || ""} onValueChange={(val) => onChange(val)}>
+                                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                                  <SelectValue placeholder="Select a certificate profile" />
+                                </SelectTrigger>
+                                <SelectContent position="popper">
+                                  {availableProfiles.length === 0 && applicationId ? (
+                                    <div className="px-3 py-3 text-xs leading-snug whitespace-normal text-muted">
+                                      Only profiles with API enrollment configured on this
+                                      Application are listed here. Configure API enrollment under
+                                      this Application&apos;s Settings tab.
+                                    </div>
+                                  ) : (
+                                    availableProfiles.map((profile) => (
+                                      <SelectItem key={profile.id} value={profile.id}>
+                                        {profile.slug}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              {isAdcsProfile && (
+                                <FieldDescription>{externalCaHint}</FieldDescription>
+                              )}
+                              <FieldError errors={[error]} />
+                            </FieldContent>
+                          </Field>
+                        )}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {currentStepKey !== "profile" && (actualSelectedProfile || profileId) && (
+                  <div className="space-y-4">
+                    {currentStepKey === "options" && profileId && isAdcsProfile && (
                       <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
                     )}
 
-                    {!isAdcsProfile && (
-                      <Accordion type="single" collapsible className="w-full">
-                        <KeyUsageSection
-                          control={control}
-                          title="Key Usages"
-                          accordionValue="key-usages"
-                          namePrefix="keyUsages"
-                          options={filteredKeyUsages}
-                          requiredUsages={constraints.requiredKeyUsages}
-                        />
-                        <KeyUsageSection
-                          control={control}
-                          title="Extended Key Usages"
-                          accordionValue="extended-key-usages"
-                          namePrefix="extendedKeyUsages"
-                          options={filteredExtendedKeyUsages}
-                          requiredUsages={constraints.requiredExtendedKeyUsages}
-                        />
-                        {constraints.templateAllowsCA && (
-                          <AccordionItem value="basic-constraints">
-                            <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                            <AccordionContent forceMount className="data-[state=closed]:hidden">
-                              <div className="space-y-4 pl-2">
-                                <Controller
-                                  control={control}
-                                  name="basicConstraints.isCA"
-                                  render={({ field: { value, onChange } }) => (
-                                    <div className="flex items-center gap-3">
-                                      <Checkbox
-                                        id="isCA"
-                                        isChecked={constraints.templateRequiresCA || value || false}
-                                        isDisabled={constraints.templateRequiresCA}
-                                        onCheckedChange={(checked) => {
-                                          if (!constraints.templateRequiresCA) {
-                                            onChange(checked);
-                                            if (!checked) {
-                                              setValue("basicConstraints.pathLength", null);
-                                            }
-                                          }
-                                        }}
-                                      />
-                                      <div className="space-y-1">
-                                        <FormLabel
-                                          id="isCA"
-                                          className="cursor-pointer text-sm font-medium text-mineshaft-100"
-                                          label="Issue as Certificate Authority"
-                                        />
-                                        <p className="text-xs text-bunker-300">
-                                          This certificate will be issued with the CA:TRUE extension
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-                                />
+                    {currentStepKey === "csr" && (
+                      <Controller
+                        control={control}
+                        name="csr"
+                        render={({ field: { value, ...field }, fieldState: { error } }) => (
+                          <Field className="mb-4">
+                            <FieldLabel>
+                              Certificate Signing Request (CSR){" "}
+                              <span className="text-danger">*</span>
+                            </FieldLabel>
+                            <TextArea
+                              {...field}
+                              value={value ?? ""}
+                              spellCheck={false}
+                              isError={Boolean(error)}
+                              placeholder={
+                                "-----BEGIN CERTIFICATE REQUEST-----\n" +
+                                "MIIByDCCAU4CAQAwfjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWEx\n" +
+                                "FjAUBgNVBAcMDVNhbiBGcmFuY2lzY28xEjAQBgNVBAoMCURlbW8gQ29ycDEUMBIG\n" +
+                                "A1UECwwLRW5naW5lZXJpbmcxGDAWBgNVBAMMD2FwcC5leGFtcGxlLmNvbTB2MBAG\n" +
+                                "ByqGSM49AgEGBSuBBAAiA2IABDHV5yengUugeBcpjsw+iAaxSkCr16LMr3ITyvlM\n" +
+                                "lDv+AE0Ddc6FsFXJicBfTalM3AKl5F14OCBRfI2jugWJOGCLcKYqRDTDevxQmgCI\n" +
+                                "IfpRM6+jzPkqe0PsuLhYiRfbFKBRME8GCSqGSIb3DQEJDjFCMEAwPgYDVR0RBDcw\n" +
+                                "NYIPYXBwLmV4YW1wbGUuY29tghEqLmFwcC5leGFtcGxlLmNvbYIJbG9jYWxob3N0\n" +
+                                "hwR/AAABMAoGCCqGSM49BAMCA2gAMGUCMGQQYs4lTSc3r/5MlabDx4m+sWaAtDhO\n" +
+                                "17c3TaoDZOMG6r45mgUskPGTripXV9ItTQIxAJypXNlHnMvks7MO4LmicPqku4MF\n" +
+                                "IeFqqXMFzC9uAO3iQ8/ji6ukvT6a9A3DE9LLIg==\n" +
+                                "-----END CERTIFICATE REQUEST-----"
+                              }
+                              rows={13}
+                              className="w-full font-mono text-xs"
+                            />
+                            <FieldError errors={[error]} />
+                          </Field>
+                        )}
+                      />
+                    )}
 
-                                {watchedIsCA && (
+                    {currentStepKey === "subject" && constraints.shouldShowSubjectSection && (
+                      <SubjectAttributesField
+                        control={control}
+                        allowedAttributeTypes={constraints.allowedSubjectAttributeTypes}
+                        error={
+                          (formState.errors as { subjectAttributes?: { message?: string } })
+                            .subjectAttributes?.message
+                        }
+                      />
+                    )}
+
+                    {currentStepKey === "subject" && constraints.shouldShowSanSection && (
+                      <SubjectAltNamesField
+                        control={control}
+                        allowedSanTypes={constraints.allowedSanTypes}
+                        error={
+                          (formState.errors as { subjectAltNames?: { message?: string } })
+                            .subjectAltNames?.message
+                        }
+                      />
+                    )}
+
+                    {(currentStepKey === "csr" || currentStepKey === "options") &&
+                      !isAdcsProfile && (
+                        <Controller
+                          control={control}
+                          name="ttl"
+                          render={({ field, fieldState: { error } }) => (
+                            <Field className="mb-4">
+                              <FieldLabel>
+                                Time to Live (TTL) <span className="text-danger">*</span>
+                              </FieldLabel>
+                              <Input
+                                {...field}
+                                placeholder="30d, 1y, 8760h"
+                                isError={Boolean(error)}
+                              />
+                              <FieldError errors={[error]} />
+                            </Field>
+                          )}
+                        />
+                      )}
+
+                    {currentStepKey === "options" && (
+                      <>
+                        <AlgorithmSelectors
+                          control={control}
+                          availableSignatureAlgorithms={availableSignatureAlgorithms}
+                          availableKeyAlgorithms={availableKeyAlgorithms}
+                          hideSignatureAlgorithm={isAdcsProfile}
+                          signatureError={
+                            (formState.errors as { signatureAlgorithm?: { message?: string } })
+                              .signatureAlgorithm?.message
+                          }
+                          keyError={
+                            (formState.errors as { keyAlgorithm?: { message?: string } })
+                              .keyAlgorithm?.message
+                          }
+                        />
+
+                        {!isAdcsProfile && (
+                          <div className="mt-4 space-y-6">
+                            <KeyUsageSection
+                              control={control}
+                              title="Key Usages"
+                              namePrefix="keyUsages"
+                              options={filteredKeyUsages}
+                              requiredUsages={constraints.requiredKeyUsages}
+                            />
+                            <KeyUsageSection
+                              control={control}
+                              title="Extended Key Usages"
+                              namePrefix="extendedKeyUsages"
+                              options={filteredExtendedKeyUsages}
+                              requiredUsages={constraints.requiredExtendedKeyUsages}
+                            />
+                            {constraints.templateAllowsCA && (
+                              <div>
+                                <p className="text-sm font-medium text-foreground">
+                                  Basic Constraints
+                                </p>
+                                <div className="mt-4 space-y-4">
                                   <Controller
                                     control={control}
-                                    name="basicConstraints.pathLength"
-                                    render={({ field, fieldState: { error } }) => {
-                                      const isPathLengthRequired =
-                                        typeof constraints.maxPathLength === "number" &&
-                                        constraints.maxPathLength !== -1;
-                                      return (
-                                        <FormControl
-                                          label={
-                                            <div>
-                                              <FormLabel
-                                                isRequired={isPathLengthRequired}
-                                                label="Path Length"
-                                                icon={
-                                                  <Tooltip
-                                                    content={
-                                                      <div className="max-w-xs">
-                                                        <p className="font-medium">Values:</p>
-                                                        <ul className="mt-1 list-disc pl-4 text-xs">
-                                                          <li>
-                                                            <strong>Empty</strong> = Unlimited depth
-                                                          </li>
-                                                          <li>
-                                                            <strong>0</strong> = Can only sign
-                                                            end-entity certs
-                                                          </li>
-                                                          <li>
-                                                            <strong>1+</strong> = CA levels allowed
-                                                            beneath
-                                                          </li>
-                                                        </ul>
-                                                      </div>
-                                                    }
-                                                  >
-                                                    <FontAwesomeIcon
-                                                      icon={faQuestionCircle}
-                                                      size="sm"
-                                                    />
-                                                  </Tooltip>
-                                                }
-                                              />
-                                            </div>
+                                    name="basicConstraints.isCA"
+                                    render={({ field: { value, onChange } }) => (
+                                      <div className="flex items-start gap-3">
+                                        <Checkbox
+                                          id="isCA"
+                                          variant="project"
+                                          isChecked={
+                                            constraints.templateRequiresCA || value || false
                                           }
-                                          isError={Boolean(error)}
-                                          errorText={error?.message}
-                                          helperText="Sets the pathLen for this CA certificate. Controls how many levels of sub-CAs can exist below."
-                                        >
-                                          <Input
-                                            {...field}
-                                            type="number"
-                                            min={0}
-                                            placeholder={
-                                              isPathLengthRequired
-                                                ? "Enter path length (required)"
-                                                : "Leave empty for no constraint"
-                                            }
-                                            className="w-full"
-                                            value={field.value ?? ""}
-                                            onChange={(e) => {
-                                              const val = e.target.value;
-                                              if (val === "") {
-                                                field.onChange(null);
-                                              } else {
-                                                const numVal = parseInt(val, 10);
-                                                field.onChange(
-                                                  Number.isNaN(numVal) ? null : numVal
-                                                );
+                                          isDisabled={constraints.templateRequiresCA}
+                                          onCheckedChange={(checked) => {
+                                            if (!constraints.templateRequiresCA) {
+                                              onChange(checked);
+                                              if (!checked) {
+                                                setValue("basicConstraints.pathLength", null);
                                               }
-                                            }}
-                                          />
-                                        </FormControl>
-                                      );
-                                    }}
+                                            }
+                                          }}
+                                        />
+                                        <span className="text-sm text-foreground">
+                                          Issue as Certificate Authority
+                                          <span className="mt-1 block text-xs text-muted">
+                                            This certificate will be issued with the CA:TRUE
+                                            extension.
+                                          </span>
+                                        </span>
+                                      </div>
+                                    )}
                                   />
-                                )}
+
+                                  {watchedIsCA && (
+                                    <Controller
+                                      control={control}
+                                      name="basicConstraints.pathLength"
+                                      render={({ field, fieldState: { error } }) => {
+                                        const isPathLengthRequired =
+                                          typeof constraints.maxPathLength === "number" &&
+                                          constraints.maxPathLength !== -1;
+                                        return (
+                                          <Field>
+                                            <FieldLabel>
+                                              Path Length{" "}
+                                              {isPathLengthRequired && (
+                                                <span className="text-danger">*</span>
+                                              )}
+                                            </FieldLabel>
+                                            <Input
+                                              {...field}
+                                              type="number"
+                                              min={0}
+                                              isError={Boolean(error)}
+                                              placeholder={
+                                                isPathLengthRequired
+                                                  ? "Enter path length (required)"
+                                                  : "Leave empty for no constraint"
+                                              }
+                                              value={field.value ?? ""}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "") {
+                                                  field.onChange(null);
+                                                } else {
+                                                  const numVal = parseInt(val, 10);
+                                                  field.onChange(
+                                                    Number.isNaN(numVal) ? null : numVal
+                                                  );
+                                                }
+                                              }}
+                                            />
+                                            <FieldDescription>
+                                              Sets the pathLen for this CA certificate. Controls how
+                                              many levels of sub-CAs can exist below. Empty means
+                                              unlimited; 0 means it can only sign end-entity
+                                              certificates.
+                                            </FieldDescription>
+                                            <FieldError errors={[error]} />
+                                          </Field>
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                </div>
                               </div>
-                            </AccordionContent>
-                          </AccordionItem>
+                            )}
+                          </div>
                         )}
-                      </Accordion>
+                      </>
                     )}
-                  </>
+
+                    {currentStepKey === "metadata" && (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Metadata</p>
+                        {metadataFields.length === 0 ? (
+                          <Empty className="mt-3 border py-8">
+                            <EmptyMedia variant="icon">
+                              <Tags />
+                            </EmptyMedia>
+                            <EmptyTitle>No metadata added</EmptyTitle>
+                            <EmptyContent>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => appendMetadata({ key: "", value: "" })}
+                              >
+                                <Plus className="size-4" /> Add entry
+                              </Button>
+                            </EmptyContent>
+                          </Empty>
+                        ) : (
+                          <div className="mt-3 space-y-2">
+                            {metadataFields.map((metaField, index) => (
+                              <div key={metaField.id} className="flex items-start gap-2">
+                                <Controller
+                                  control={control}
+                                  name={`metadata.${index}.key`}
+                                  render={({ field, fieldState: { error } }) => (
+                                    <Input
+                                      {...field}
+                                      placeholder="Key"
+                                      className="flex-1"
+                                      isError={Boolean(error)}
+                                    />
+                                  )}
+                                />
+                                <Controller
+                                  control={control}
+                                  name={`metadata.${index}.value`}
+                                  render={({ field }) => (
+                                    <Input
+                                      {...field}
+                                      value={field.value ?? ""}
+                                      placeholder="Value (optional)"
+                                      className="flex-1"
+                                    />
+                                  )}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label="Remove metadata entry"
+                                  onClick={() => removeMetadata(index)}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => appendMetadata({ key: "", value: "" })}
+                            >
+                              <Plus className="size-4" /> Add entry
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
+              </div>
 
-                <div className="mt-4">
-                  <MetadataForm control={control} />
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div className="mb-auto">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                      Step {step + 1} · {currentStepMeta.rightLabel}
+                    </p>
+                    <DocumentationLinkBadge href={PkiDocsUrls.applications.certificates} />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {currentStepMeta.rightDescription}
+                  </p>
                 </div>
-              </>
-            )}
+              </aside>
+            </div>
 
-            <div className="mt-7 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting || (!actualSelectedProfile && !profileId)}
-              >
-                {cert ? "Update" : "Request Certificate"}
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => {
-                  handlePopUpToggle("issueCertificate", false);
-                  resetAllState();
-                }}
-              >
-                Cancel
-              </Button>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+              <span className="text-xs text-muted" />
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">
+                  Step {step + 1} of {stepKeys.length}
+                </span>
+                {step > 0 && (
+                  <Button type="button" variant="outline" onClick={goBack}>
+                    Back
+                  </Button>
+                )}
+                {isLastStep ? (
+                  <Button
+                    type="button"
+                    variant="project"
+                    isPending={isSubmitting}
+                    isDisabled={isSubmitting || (!actualSelectedProfile && !profileId)}
+                    onClick={handleSubmit(onFormSubmit, onFormInvalid)}
+                  >
+                    Request Certificate
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="project"
+                    isDisabled={!selectedProfileReady}
+                    onClick={goNext}
+                  >
+                    Continue
+                  </Button>
+                )}
+              </div>
             </div>
           </form>
         )}
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

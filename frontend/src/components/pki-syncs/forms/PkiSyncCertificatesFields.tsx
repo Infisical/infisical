@@ -1,22 +1,26 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { faCertificate, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Pencil, ScrollText, Trash2 } from "lucide-react";
 
 import {
   Button,
-  EmptyState,
-  FormControl,
+  Empty,
+  EmptyMedia,
+  EmptyTitle,
+  Field,
+  FieldError,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getCertificateDisplayName, truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
 import { CertStatus } from "@app/hooks/api";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
@@ -57,124 +61,116 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="text-sm text-bunker-300">Loading certificates...</div>
+        <div className="text-sm text-muted">Loading certificates...</div>
       </div>
     );
   }
 
   return (
-    <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Select certificates to sync with this integration. Only active certificates can be synced.
-        You can modify this selection after creating the sync.
-      </p>
-
+    <div className="flex min-h-0 flex-1 flex-col">
       <Controller
         control={control}
         name="certificateIds"
         render={({ field: { value = [], onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message}>
-            <div className="space-y-4">
+          <Field className="min-h-0 flex-1">
+            <div className="flex min-h-0 flex-1 flex-col gap-4">
               <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faEdit} />}
+                type="button"
+                variant="outline"
+                size="sm"
+                className="self-end"
                 onClick={() => setIsSelectionModalOpen(true)}
               >
+                <Pencil className="size-3.5" />
                 Add Certificates
               </Button>
-              <div className="max-h-64 overflow-y-auto">
-                <TableContainer>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {selectedCertificates.length > 0 ? (
                   <Table>
-                    <THead>
-                      <Tr>
-                        <Th className="w-1/3">SAN / CN</Th>
-                        <Th className="w-1/4">Serial Number</Th>
-                        <Th className="w-1/6">Issued At</Th>
-                        <Th className="w-1/6">Expires At</Th>
-                        <Th className="w-12">Remove</Th>
-                      </Tr>
-                    </THead>
-                    <TBody>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-1/3">SAN / CN</TableHead>
+                        <TableHead className="w-1/4">Serial Number</TableHead>
+                        <TableHead className="w-1/6">Issued At</TableHead>
+                        <TableHead className="w-1/6">Expires At</TableHead>
+                        <TableHead className="w-12">Remove</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {selectedCertificates.map((cert) => {
-                        let originalDisplayName = "—";
-                        if (cert.altNames && cert.altNames.trim()) {
-                          originalDisplayName = cert.altNames.trim();
-                        } else if (cert.commonName && cert.commonName.trim()) {
-                          originalDisplayName = cert.commonName.trim();
-                        }
-
-                        let displayName = originalDisplayName;
-                        let isTruncated = false;
-                        if (originalDisplayName.length > 34) {
-                          displayName = `${originalDisplayName.substring(0, 34)}...`;
-                          isTruncated = true;
-                        }
-
-                        const truncatedSerial =
-                          cert.serialNumber.length > 8
-                            ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
-                            : cert.serialNumber;
+                        const { originalDisplayName, displayName, isTruncated } =
+                          getCertificateDisplayName(cert);
+                        const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
 
                         const isExpired = new Date(cert.notAfter) < new Date();
 
                         return (
-                          <Tr key={cert.id}>
-                            <Td className="max-w-0">
+                          <TableRow key={cert.id}>
+                            <TableCell className="max-w-0">
                               {isTruncated ? (
-                                <Tooltip content={originalDisplayName} className="max-w-lg">
-                                  <div className="truncate">{displayName}</div>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="truncate">{displayName}</div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-lg">
+                                    {originalDisplayName}
+                                  </TooltipContent>
                                 </Tooltip>
                               ) : (
                                 <div className="truncate">{displayName}</div>
                               )}
-                            </Td>
-                            <Td className="max-w-0">
+                            </TableCell>
+                            <TableCell className="max-w-0">
                               <div
-                                className="font-mono text-xs text-bunker-300"
+                                className="font-mono text-xs text-muted"
                                 title={cert.serialNumber}
                               >
                                 {truncatedSerial}
                               </div>
-                            </Td>
-                            <Td className="max-w-0">
-                              <span className="text-sm text-bunker-300">
+                            </TableCell>
+                            <TableCell className="max-w-0">
+                              <span className="text-sm text-muted">
                                 {new Date(cert.notBefore).toLocaleDateString()}
                               </span>
-                            </Td>
-                            <Td className="max-w-0">
+                            </TableCell>
+                            <TableCell className="max-w-0">
                               <span
-                                className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
+                                className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}
                               >
                                 {new Date(cert.notAfter).toLocaleDateString()}
                               </span>
-                            </Td>
-                            <Td>
+                            </TableCell>
+                            <TableCell>
                               <Button
-                                size="xs"
-                                variant="plain"
-                                colorSchema="secondary"
-                                className="pl-5"
+                                type="button"
+                                size="sm"
+                                variant="ghost"
                                 aria-label="Remove certificate"
                                 onClick={() => {
                                   const newIds = value.filter((id: string) => id !== cert.id);
                                   onChange(newIds);
                                 }}
                               >
-                                <FontAwesomeIcon icon={faTrash} />
+                                <Trash2 className="size-4" />
                               </Button>
-                            </Td>
-                          </Tr>
+                            </TableCell>
+                          </TableRow>
                         );
                       })}
-                    </TBody>
+                    </TableBody>
                   </Table>
-                  {selectedCertificates.length === 0 && (
-                    <EmptyState title="No certificates selected" icon={faCertificate} />
-                  )}
-                </TableContainer>
+                ) : (
+                  <Empty className="border py-8">
+                    <EmptyMedia variant="icon">
+                      <ScrollText />
+                    </EmptyMedia>
+                    <EmptyTitle>No certificates selected</EmptyTitle>
+                  </Empty>
+                )}
               </div>
             </div>
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
 
@@ -191,6 +187,6 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
         subtitle="Choose which certificates you want to include in this sync. You can modify this selection after creating the sync."
         saveButtonText="Update Selection"
       />
-    </>
+    </div>
   );
 };

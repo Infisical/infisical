@@ -1,34 +1,37 @@
 import { useEffect, useMemo, useState } from "react";
 import { Control, Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import { FileBadge } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Button,
-  Checkbox,
-  EmptyState,
+  DocumentationLinkBadge,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   FilterableSelect,
-  FormControl,
-  FormLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
-  TextArea,
-  Tooltip
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Stepper,
+  StepperList,
+  StepperStep,
+  TextArea
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
@@ -61,11 +64,7 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { AlgorithmSelectors } from "@app/pages/cert-manager/CertificatesPage/components/AlgorithmSelectors";
 import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
-import { KeyUsageSection } from "@app/pages/cert-manager/CertificatesPage/components/KeyUsageSection";
-import { SubjectAltNamesField } from "@app/pages/cert-manager/CertificatesPage/components/SubjectAltNamesField";
-import { SubjectAttributesField } from "@app/pages/cert-manager/CertificatesPage/components/SubjectAttributesField";
 import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
@@ -74,7 +73,9 @@ import {
   mapPolicySignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
+import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { CreatePolicyModal } from "../CertificatePoliciesTab/CreatePolicyModal";
+import { PolicyConstraints, ProfileDefaultsStep } from "./CreateProfileModal/ProfileDefaultsStep";
 import { CertificatePolicyOption } from "./CertificatePolicyOption";
 
 const certificateDefaultsSchema = z
@@ -84,7 +85,7 @@ const certificateDefaultsSchema = z
       .array(
         z.object({
           type: z.nativeEnum(CertSubjectAttributeType),
-          value: z.string().min(1, "Value is required")
+          value: z.string()
         })
       )
       .optional(),
@@ -92,7 +93,7 @@ const certificateDefaultsSchema = z
       .array(
         z.object({
           type: z.nativeEnum(CertSubjectAlternativeNameType),
-          value: z.string().min(1, "Value is required")
+          value: z.string()
         })
       )
       .optional(),
@@ -102,7 +103,10 @@ const certificateDefaultsSchema = z
     extendedKeyUsages: z.record(z.boolean().optional()).optional(),
     basicConstraints: z
       .object({
-        isCA: z.boolean().default(false),
+        isCA: z
+          .boolean()
+          .nullish()
+          .transform((v) => v ?? false),
         pathLength: z.number().min(0).nullable().optional()
       })
       .nullable()
@@ -110,27 +114,46 @@ const certificateDefaultsSchema = z
   })
   .optional();
 
-const configurationFields = [
-  "slug",
-  "description",
-  "issuerType",
-  "certificateAuthorityId",
-  "certificatePolicyId",
-  "externalConfigs"
-] as const;
-
-const FORM_STEPS = [
+const STEPS = [
   {
-    name: "Configuration",
-    key: "configuration",
-    fields: configurationFields as unknown as string[]
+    name: "Details",
+    key: "details",
+    shortDescription: "Name and description",
+    title: "Details",
+    subtitle: "Name this profile and describe what it is used for.",
+    rightLabel: "DETAILS",
+    rightDescription:
+      "A clear name and description help your team identify what this profile issues. The name is used to reference the profile when requesting certificates.",
+    fields: ["slug", "description"] as string[]
+  },
+  {
+    name: "Issuer",
+    key: "issuer",
+    shortDescription: "CA and policy",
+    title: "Issuer",
+    subtitle: "Choose how certificates are issued and which policy governs them.",
+    rightLabel: "ISSUER",
+    rightDescription:
+      "Choose this profile's issuer. A Certificate Authority issues from an existing CA in your organization, while Self-Signed produces standalone certificates. The certificate policy defines the rules every certificate issued from this profile must satisfy.",
+    fields: [
+      "issuerType",
+      "certificateAuthorityId",
+      "certificatePolicyId",
+      "externalConfigs"
+    ] as string[]
   },
   {
     name: "Certificate Defaults",
     key: "certificate-defaults",
+    shortDescription: "Default values",
+    title: "Certificate Defaults",
+    subtitle: "Set default values applied when a request omits its own.",
+    rightLabel: "CERTIFICATE DEFAULTS",
+    rightDescription:
+      "These defaults pre-fill certificate requests issued from this profile. A request can override any of them, within the bounds of the selected policy. Leave a field empty to apply no default.",
     fields: ["defaults"] as string[]
   }
-];
+] as const;
 
 const slugSchema = z
   .string()
@@ -148,83 +171,59 @@ const descriptionSchema = z
   .max(1000, "Description must be less than 1000 characters")
   .optional();
 
-const createSchema = z
-  .object({
-    slug: slugSchema,
-    description: descriptionSchema,
-    issuerType: z.nativeEnum(IssuerType),
-    certificateAuthorityId: z.string().nullable().optional(),
-    certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
-    externalConfigs: z
-      .object({
-        template: z.string().min(1, "Azure ADCS template is required")
-      })
-      .optional(),
-    defaults: certificateDefaultsSchema
-  })
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.CA) {
-        return !!data.certificateAuthorityId;
-      }
-      return true;
-    },
-    {
-      message: "Certificate Authority is required",
-      path: ["certificateAuthorityId"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        return !data.certificateAuthorityId;
-      }
-      return true;
-    },
-    {
-      message: "Self-signed issuer type cannot have a certificate authority",
-      path: ["certificateAuthorityId"]
-    }
-  );
+const baseProfileSchema = z.object({
+  slug: slugSchema,
+  description: descriptionSchema,
+  issuerType: z.nativeEnum(IssuerType),
+  certificateAuthorityId: z.string().nullable().optional(),
+  certificatePolicyId: z.string().min(1, "Certificate Policy is required"),
+  externalConfigs: z
+    .object({
+      template: z.string().min(1, "Azure ADCS template is required")
+    })
+    .optional(),
+  defaults: certificateDefaultsSchema
+});
 
-const editSchema = z
-  .object({
-    slug: slugSchema,
-    description: descriptionSchema,
-    issuerType: z.nativeEnum(IssuerType),
-    certificateAuthorityId: z.string().nullable().optional(),
+const applyIssuerRefinements = <T extends z.ZodTypeAny>(schema: T) =>
+  schema
+    .refine(
+      (data: { issuerType: IssuerType; certificateAuthorityId?: string | null }) => {
+        if (data.issuerType === IssuerType.CA) {
+          return !!data.certificateAuthorityId;
+        }
+        return true;
+      },
+      {
+        message: "Certificate Authority is required",
+        path: ["certificateAuthorityId"]
+      }
+    )
+    .refine(
+      (data: { issuerType: IssuerType; certificateAuthorityId?: string | null }) => {
+        if (data.issuerType === IssuerType.SELF_SIGNED) {
+          return !data.certificateAuthorityId;
+        }
+        return true;
+      },
+      {
+        message: "Self-signed issuer type cannot have a certificate authority",
+        path: ["certificateAuthorityId"]
+      }
+    );
+
+const createSchema = applyIssuerRefinements(baseProfileSchema);
+
+const editSchema = applyIssuerRefinements(
+  baseProfileSchema.extend({
     certificatePolicyId: z.string().optional(),
     externalConfigs: z
       .object({
         template: z.string().optional()
       })
-      .optional(),
-    defaults: certificateDefaultsSchema
+      .optional()
   })
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.CA) {
-        return !!data.certificateAuthorityId;
-      }
-      return true;
-    },
-    {
-      message: "Certificate Authority is required",
-      path: ["certificateAuthorityId"]
-    }
-  )
-  .refine(
-    (data) => {
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        return !data.certificateAuthorityId;
-      }
-      return true;
-    },
-    {
-      message: "Self-signed issuer type cannot have a certificate authority",
-      path: ["certificateAuthorityId"]
-    }
-  );
+);
 
 export type FormData = z.infer<typeof createSchema>;
 
@@ -245,29 +244,34 @@ const ExternalCaTemplateSelect = ({
     control={control}
     name="externalConfigs.template"
     render={({ field: { onChange, value }, fieldState: { error } }) => (
-      <FormControl
-        label="Windows ADCS Template"
-        isRequired
-        isError={Boolean(error)}
-        errorText={error?.message}
-      >
-        <FilterableSelect
-          value={templates.find((template) => template[valueKey] === value) || null}
-          onChange={(selected) => {
-            const option = Array.isArray(selected) ? selected[0] : selected;
-            onChange(
-              option && typeof option === "object" && valueKey in option
-                ? option[valueKey] || ""
-                : ""
-            );
-          }}
-          getOptionLabel={(template) => template.name}
-          getOptionValue={(template) => template[valueKey]}
-          options={templates}
-          placeholder={placeholder}
-          className="w-full"
-        />
-      </FormControl>
+      <Field>
+        <FieldLabel>
+          Windows ADCS Template <span className="text-danger">*</span>
+        </FieldLabel>
+        <FieldContent>
+          <FilterableSelect
+            value={
+              templates.find((template) => template[valueKey] === value) ||
+              (value ? { id: value, name: value } : null)
+            }
+            onChange={(selected) => {
+              const option = Array.isArray(selected) ? selected[0] : selected;
+              onChange(
+                option && typeof option === "object" && valueKey in option
+                  ? option[valueKey] || ""
+                  : ""
+              );
+            }}
+            getOptionLabel={(template) => template.name}
+            getOptionValue={(template) => template[valueKey]}
+            options={templates}
+            placeholder={placeholder}
+            isError={Boolean(error)}
+            className="w-full"
+          />
+          <FieldError errors={[error]} />
+        </FieldContent>
+      </Field>
     )}
   />
 );
@@ -372,41 +376,45 @@ const convertFormToDefaults = (
   // Subject attributes → flat fields
   if (formDefaults.subjectAttributes && formDefaults.subjectAttributes.length > 0) {
     const domainComponents: string[] = [];
-    formDefaults.subjectAttributes.forEach((attr) => {
-      if (!attr.value) return;
-      switch (attr.type) {
-        case CertSubjectAttributeType.COMMON_NAME:
-          result.commonName = attr.value;
-          break;
-        case CertSubjectAttributeType.ORGANIZATION:
-          result.organization = attr.value;
-          break;
-        case CertSubjectAttributeType.ORGANIZATIONAL_UNIT:
-          result.organizationalUnit = attr.value;
-          break;
-        case CertSubjectAttributeType.COUNTRY:
-          result.country = attr.value;
-          break;
-        case CertSubjectAttributeType.STATE:
-          result.state = attr.value;
-          break;
-        case CertSubjectAttributeType.LOCALITY:
-          result.locality = attr.value;
-          break;
-        case CertSubjectAttributeType.DOMAIN_COMPONENT:
-          domainComponents.push(attr.value);
-          break;
-        default:
-          break;
+    formDefaults.subjectAttributes.forEach(
+      (attr: { type: CertSubjectAttributeType; value: string }) => {
+        if (!attr.value) return;
+        switch (attr.type) {
+          case CertSubjectAttributeType.COMMON_NAME:
+            result.commonName = attr.value;
+            break;
+          case CertSubjectAttributeType.ORGANIZATION:
+            result.organization = attr.value;
+            break;
+          case CertSubjectAttributeType.ORGANIZATIONAL_UNIT:
+            result.organizationalUnit = attr.value;
+            break;
+          case CertSubjectAttributeType.COUNTRY:
+            result.country = attr.value;
+            break;
+          case CertSubjectAttributeType.STATE:
+            result.state = attr.value;
+            break;
+          case CertSubjectAttributeType.LOCALITY:
+            result.locality = attr.value;
+            break;
+          case CertSubjectAttributeType.DOMAIN_COMPONENT:
+            domainComponents.push(attr.value);
+            break;
+          default:
+            break;
+        }
       }
-    });
+    );
     if (domainComponents.length > 0) {
       result.domainComponents = domainComponents;
     }
   }
 
   if (formDefaults.subjectAltNames && formDefaults.subjectAltNames.length > 0) {
-    const sans = formDefaults.subjectAltNames.filter((san) => san.value?.trim());
+    const sans = formDefaults.subjectAltNames.filter(
+      (san: { type: CertSubjectAlternativeNameType; value: string }) => san.value?.trim()
+    );
     if (sans.length > 0) result.subjectAltNames = sans;
   }
 
@@ -468,6 +476,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const queryClient = useQueryClient();
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
+  const currentStep = STEPS[selectedStepIndex];
 
   const canCreatePolicy = permission.can(
     ProjectPermissionCertificatePolicyActions.Create,
@@ -485,11 +494,11 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
   const isEdit = mode === "edit" && profile;
   const isClone = mode === "clone" && profile;
-  const isFinalStep = selectedStepIndex === FORM_STEPS.length - 1;
+  const isFinalStep = selectedStepIndex === STEPS.length - 1;
 
   const certificateAuthorities = (allCaData || []).map((ca) => ({
     ...ca,
-    groupType: ca.type === "internal" ? "internal" : "external"
+    groupType: ca.type === CaType.INTERNAL ? "internal" : "external"
   }));
   const certificatePolicies = policyData?.certificatePolicies || [];
 
@@ -532,54 +541,52 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const watchedIssuerType = watch("issuerType");
   const watchedCertificateAuthorityId = watch("certificateAuthorityId");
   const watchedPolicyId = watch("certificatePolicyId");
-  const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
-
-  // Fetch the policy for the defaults tab
   const { data: selectedPolicyData } = useGetCertificatePolicyById({
     policyId: watchedPolicyId || ""
   });
 
-  // Compute constraints from the policy for the defaults tab
-  const policyConstraints = useMemo(() => {
-    const templateData = selectedPolicyData;
-    if (!templateData) {
+  const policyConstraints = useMemo<PolicyConstraints>(() => {
+    if (!selectedPolicyData) {
       return {
-        allowedKeyUsages: [] as string[],
-        allowedExtendedKeyUsages: [] as string[],
-        requiredKeyUsages: [] as string[],
-        requiredExtendedKeyUsages: [] as string[],
-        allowedSignatureAlgorithms: [] as Array<{ value: string; label: string }>,
-        allowedKeyAlgorithms: [] as Array<{ value: string; label: string }>,
-        allowedSubjectAttributeTypes: [] as CertSubjectAttributeType[],
+        allowedKeyUsages: [],
+        allowedExtendedKeyUsages: [],
+        requiredKeyUsages: [],
+        requiredExtendedKeyUsages: [],
+        allowedSignatureAlgorithms: [],
+        allowedKeyAlgorithms: [],
+        allowedSubjectAttributeTypes: [],
         shouldShowSubjectSection: false,
-        allowedSanTypes: [] as CertSubjectAlternativeNameType[],
+        allowedSanTypes: [],
         shouldShowSanSection: false,
-        templateAllowsCA: false,
-        maxPathLength: undefined as number | undefined
+        policyAllowsCA: false,
+        maxPathLength: undefined
       };
     }
 
     const isCaPolicy =
-      (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
-    const templateAllowsCA =
+      (selectedPolicyData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+    const policyAllowsCA =
       isCaPolicy === CertPolicyState.ALLOWED || isCaPolicy === CertPolicyState.REQUIRED;
 
-    const hasKeyUsagePolicy = Boolean(templateData.keyUsages);
+    const hasKeyUsagePolicy = Boolean(selectedPolicyData.keyUsages);
     const allowedKeyUsages = hasKeyUsagePolicy
-      ? [...(templateData.keyUsages?.required || []), ...(templateData.keyUsages?.allowed || [])]
+      ? [
+          ...(selectedPolicyData.keyUsages?.required || []),
+          ...(selectedPolicyData.keyUsages?.allowed || [])
+        ]
       : KEY_USAGES_OPTIONS.map((option) => option.value);
 
-    const hasExtendedKeyUsagePolicy = Boolean(templateData.extendedKeyUsages);
+    const hasExtendedKeyUsagePolicy = Boolean(selectedPolicyData.extendedKeyUsages);
     const allowedExtendedKeyUsages = hasExtendedKeyUsagePolicy
       ? [
-          ...(templateData.extendedKeyUsages?.required || []),
-          ...(templateData.extendedKeyUsages?.allowed || [])
+          ...(selectedPolicyData.extendedKeyUsages?.required || []),
+          ...(selectedPolicyData.extendedKeyUsages?.allowed || [])
         ]
       : EXTENDED_KEY_USAGES_OPTIONS.map((option) => option.value);
 
-    const allowedSignatureAlgorithms = templateData.algorithms?.signature?.length
-      ? templateData.algorithms.signature.map((templateAlgorithm: string) => {
-          const apiAlgorithm = mapPolicySignatureAlgorithmToApi(templateAlgorithm);
+    const allowedSignatureAlgorithms = selectedPolicyData.algorithms?.signature?.length
+      ? selectedPolicyData.algorithms.signature.map((policyAlgorithm: string) => {
+          const apiAlgorithm = mapPolicySignatureAlgorithmToApi(policyAlgorithm);
           return { value: apiAlgorithm, label: apiAlgorithm };
         })
       : SIGNATURE_ALGORITHMS_OPTIONS.map((option) => ({
@@ -587,17 +594,17 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           label: option.label
         }));
 
-    const allowedKeyAlgorithms = templateData.algorithms?.keyAlgorithm?.length
-      ? templateData.algorithms.keyAlgorithm.map((templateAlgorithm: string) => {
-          const apiAlgorithm = mapPolicyKeyAlgorithmToApi(templateAlgorithm);
+    const allowedKeyAlgorithms = selectedPolicyData.algorithms?.keyAlgorithm?.length
+      ? selectedPolicyData.algorithms.keyAlgorithm.map((policyAlgorithm: string) => {
+          const apiAlgorithm = mapPolicyKeyAlgorithmToApi(policyAlgorithm);
           return { value: apiAlgorithm, label: apiAlgorithm };
         })
       : certKeyAlgorithms.map((option) => ({ value: option.value as string, label: option.label }));
 
     let allowedSubjectAttributeTypes: CertSubjectAttributeType[];
-    if (templateData.subject) {
+    if (selectedPolicyData.subject) {
       const subjectTypes: CertSubjectAttributeType[] = [];
-      templateData.subject.forEach((subjectPolicy: { type: string }) => {
+      selectedPolicyData.subject.forEach((subjectPolicy: { type: string }) => {
         if (!subjectTypes.includes(subjectPolicy.type as CertSubjectAttributeType)) {
           subjectTypes.push(subjectPolicy.type as CertSubjectAttributeType);
         }
@@ -611,9 +618,9 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     const shouldShowSubjectSection = true;
 
     let allowedSanTypes: CertSubjectAlternativeNameType[];
-    if (templateData.sans) {
+    if (selectedPolicyData.sans) {
       const sanTypes: CertSubjectAlternativeNameType[] = [];
-      templateData.sans.forEach((sanPolicy: { type: string }) => {
+      selectedPolicyData.sans.forEach((sanPolicy: { type: string }) => {
         if (!sanTypes.includes(sanPolicy.type as CertSubjectAlternativeNameType)) {
           sanTypes.push(sanPolicy.type as CertSubjectAlternativeNameType);
         }
@@ -629,44 +636,25 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     return {
       allowedKeyUsages,
       allowedExtendedKeyUsages,
-      requiredKeyUsages: (templateData.keyUsages?.required || []) as string[],
-      requiredExtendedKeyUsages: (templateData.extendedKeyUsages?.required || []) as string[],
+      requiredKeyUsages: (selectedPolicyData.keyUsages?.required || []) as string[],
+      requiredExtendedKeyUsages: (selectedPolicyData.extendedKeyUsages?.required || []) as string[],
       allowedSignatureAlgorithms,
       allowedKeyAlgorithms,
       allowedSubjectAttributeTypes,
       shouldShowSubjectSection,
       allowedSanTypes,
       shouldShowSanSection,
-      templateAllowsCA,
-      maxPathLength: templateData.basicConstraints?.maxPathLength as number | undefined
+      policyAllowsCA,
+      maxPathLength: selectedPolicyData.basicConstraints?.maxPathLength as number | undefined
     };
   }, [selectedPolicyData]);
 
-  const filteredKeyUsages = useMemo(() => {
-    return KEY_USAGES_OPTIONS.filter(({ value }) =>
-      policyConstraints.allowedKeyUsages.includes(value)
-    );
-  }, [policyConstraints.allowedKeyUsages]);
-
-  const filteredExtendedKeyUsages = useMemo(() => {
-    return EXTENDED_KEY_USAGES_OPTIONS.filter(({ value }) =>
-      policyConstraints.allowedExtendedKeyUsages.includes(value)
-    );
-  }, [policyConstraints.allowedExtendedKeyUsages]);
-
-  // Get the selected CA to check if it's Azure ADCS
   const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
   const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
   const isAdcsCa = selectedCa?.type === CaType.ADCS;
-  // Combined flag for external ADCS CAs - these control validity, key usages, etc. via their templates
-  const isExternalAdcsCa = isAzureAdcsCa || isAdcsCa;
   // ACM Public CA issues certificates with a fixed 198-day validity, so pin the TTL default.
   const isAwsAcmPublicCa = selectedCa?.type === CaType.AWS_ACM_PUBLIC_CA;
 
-  const externalCaHint =
-    "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
-
-  // Fetch Azure ADCS templates if needed
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
     caId: watchedCertificateAuthorityId || "",
     isAzureAdcsCa
@@ -677,7 +665,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     isAdcsCa
   });
 
-  // Reset step to 0 when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setSelectedStepIndex(0);
@@ -688,7 +675,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     if ((isEdit || isClone) && profile) {
       reset(buildFormValuesFromProfile(profile, Boolean(isClone)));
     }
-  }, [isEdit, isClone, profile, reset, allCaData]);
+  }, [isEdit, isClone, profile, reset]);
 
   // Re-apply the saved template once the external CA's templates have loaded (edit/clone).
   useEffect(() => {
@@ -717,7 +704,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     setValue
   ]);
 
-  // Pin TTL to 198 days when the selected CA is AWS ACM Public CA — backend rejects any other value.
+  // Pin TTL to 198 days when the selected CA is AWS ACM Public CA. Backend rejects any other value.
   // Also re-applies when the user lands on the Defaults tab (policy selected) so the field shows 198
   // even if the TTL Controller was unmounted when the CA first got picked.
   useEffect(() => {
@@ -738,7 +725,27 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
       return;
     }
 
-    const serializedDefaults = convertFormToDefaults(data.defaults);
+    let effectiveDefaults = data.defaults;
+    if (effectiveDefaults) {
+      const nextDefaults = { ...effectiveDefaults };
+      if (policyConstraints.requiredKeyUsages.length) {
+        const keyUsages = { ...(nextDefaults.keyUsages || {}) };
+        policyConstraints.requiredKeyUsages.forEach((usage) => {
+          keyUsages[usage] = true;
+        });
+        nextDefaults.keyUsages = keyUsages;
+      }
+      if (policyConstraints.requiredExtendedKeyUsages.length) {
+        const extendedKeyUsages = { ...(nextDefaults.extendedKeyUsages || {}) };
+        policyConstraints.requiredExtendedKeyUsages.forEach((usage) => {
+          extendedKeyUsages[usage] = true;
+        });
+        nextDefaults.extendedKeyUsages = extendedKeyUsages;
+      }
+      effectiveDefaults = nextDefaults;
+    }
+
+    const serializedDefaults = convertFormToDefaults(effectiveDefaults);
 
     if (isEdit) {
       const updateData: TUpdateCertificateProfileDTO = {
@@ -792,501 +799,389 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     onClose();
   };
 
-  // Step validation and navigation (PolicyModal pattern)
   const isStepValid = async (index: number) => {
-    const { fields } = FORM_STEPS[index];
+    const { fields } = STEPS[index];
     if (fields.length === 0) return true;
     return trigger(fields as any);
   };
 
-  const handleNext = async () => {
-    if (isFinalStep) {
-      await handleSubmit(onFormSubmit)();
-      return;
-    }
+  const goNext = async () => {
     const isValid = await isStepValid(selectedStepIndex);
     if (!isValid) return;
-    setSelectedStepIndex((prev) => prev + 1);
+    setSelectedStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1));
   };
 
-  const handlePrev = () => {
-    if (selectedStepIndex === 0) {
-      handlePopUpToggle("createPolicy", false);
-      reset();
-      onClose();
-      return;
-    }
-    setSelectedStepIndex((prev) => prev - 1);
+  const goBack = () => {
+    if (selectedStepIndex > 0) setSelectedStepIndex((prev) => prev - 1);
   };
 
-  const isTabEnabled = async (index: number) => {
-    let isEnabled = true;
-    for (let i = index - 1; i >= 0; i -= 1) {
-      // eslint-disable-next-line no-await-in-loop
-      isEnabled = isEnabled && (await isStepValid(i));
-    }
-    return isEnabled;
+  const handleClose = () => {
+    handlePopUpToggle("createPolicy", false);
+    reset();
+    setSelectedStepIndex(0);
+    onClose();
   };
+
+  const isSubmitting = createProfile.isPending || updateProfile.isPending;
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <Sheet
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          reset();
-          setSelectedStepIndex(0);
+          handleClose();
         }
-        onClose();
       }}
     >
-      <ModalContent
-        title={
-          // eslint-disable-next-line no-nested-ternary
-          isEdit
-            ? "Edit Certificate Profile"
-            : isClone
-              ? "Clone Certificate Profile"
-              : "Create Certificate Profile"
-        }
-        subTitle={
-          // eslint-disable-next-line no-nested-ternary
-          isEdit
-            ? `Update configuration for ${profile?.slug}`
-            : isClone
-              ? `Create a new profile based on ${profile?.slug}`
-              : "Define the CA and policy used to issue certificates from this profile"
-        }
-      >
-        <form>
-          <Tab.Group selectedIndex={selectedStepIndex} onChange={setSelectedStepIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
-              {FORM_STEPS.map((step, index) => (
-                <Tab
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const isEnabled = await isTabEnabled(index);
-                    setSelectedStepIndex((prev) => (isEnabled ? index : prev));
-                  }}
-                  className={({ selected }) =>
-                    `-mb-[0.14rem] whitespace-nowrap ${index > selectedStepIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                      selected
-                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                        : "text-bunker-300"
-                    }`
-                  }
-                  key={step.key}
-                >
-                  {index + 1}. {step.name}
-                </Tab>
-              ))}
-            </Tab.List>
-            <Tab.Panels>
-              {/* Tab 1: Configuration */}
-              <Tab.Panel>
-                <Controller
-                  control={control}
-                  name="slug"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Name"
-                      isRequired
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Input {...field} placeholder="your-profile-name" />
-                    </FormControl>
-                  )}
-                />
+      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-[1100px]">
+        <SheetHeader className="border-b border-border">
+          <SheetTitle>
+            <div className="flex w-full items-start gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
+                <FileBadge className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-x-2 text-foreground">
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  {isEdit
+                    ? "Edit Certificate Profile"
+                    : isClone
+                      ? "Clone Certificate Profile"
+                      : "Create Certificate Profile"}
+                  <DocumentationLinkBadge href={PkiDocsUrls.settings.profiles} />
+                </div>
+                <p className="text-sm leading-4 text-muted">
+                  {/* eslint-disable-next-line no-nested-ternary */}
+                  {isEdit
+                    ? `Update configuration for ${profile?.slug}`
+                    : isClone
+                      ? `Create a new profile based on ${profile?.slug}`
+                      : "Define the CA and policy used to issue certificates from this profile"}
+                </p>
+              </div>
+            </div>
+          </SheetTitle>
+        </SheetHeader>
 
-                <Controller
-                  control={control}
-                  name="description"
-                  render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      label="Description"
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <TextArea {...field} placeholder="Enter profile description" rows={3} />
-                    </FormControl>
-                  )}
-                />
+        <form onSubmit={(e) => e.preventDefault()} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                Setup steps
+              </p>
+              <Stepper
+                activeStep={selectedStepIndex}
+                orientation="vertical"
+                onStepChange={(i) => {
+                  if (i < selectedStepIndex) setSelectedStepIndex(i);
+                }}
+              >
+                <StepperList>
+                  {STEPS.map((s, i) => (
+                    <StepperStep
+                      key={s.key}
+                      index={i}
+                      title={s.name}
+                      description={s.shortDescription}
+                    />
+                  ))}
+                </StepperList>
+              </Stepper>
+            </aside>
 
-                <Controller
-                  control={control}
-                  name="issuerType"
-                  render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Issuer Type"
-                      tooltipText="Choose how certificates are signed. Certificate Authority issues from an existing CA in your organization, which is the standard path for production use. Self-Signed produces standalone certificates with no CA chain, suitable for testing or one-off identities only"
-                      isRequired
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <Select
-                        {...field}
-                        onValueChange={(value) => {
-                          if (value === "self-signed") {
-                            setValue("certificateAuthorityId", "");
-                          }
-                          onChange(value);
-                        }}
-                        className="w-full"
-                        position="popper"
-                        isDisabled={Boolean(isEdit)}
-                      >
-                        <SelectItem value="ca">Certificate Authority</SelectItem>
-                        <SelectItem value="self-signed">Self-Signed</SelectItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
+            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+              </div>
 
-                {watchedIssuerType === "ca" && (
+              {selectedStepIndex === 0 && (
+                <div className="space-y-5">
                   <Controller
                     control={control}
-                    name="certificateAuthorityId"
-                    render={({ field: { onChange, value }, fieldState: { error } }) => {
-                      const hasCas = certificateAuthorities.length > 0;
-                      return (
-                        <div>
-                          <FormControl
-                            label="Certificate Authority"
-                            isRequired
+                    name="slug"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>
+                          Name <span className="text-danger">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <Input
+                            {...field}
+                            placeholder="your-profile-name"
                             isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <FilterableSelect
-                              value={certificateAuthorities.find((ca) => ca.id === value) || null}
-                              onChange={(selectedCaValue) => {
-                                if (Array.isArray(selectedCaValue)) {
-                                  onChange(selectedCaValue[0]?.id || "");
-                                } else if (
-                                  selectedCaValue &&
-                                  typeof selectedCaValue === "object" &&
-                                  "id" in selectedCaValue
-                                ) {
-                                  onChange(selectedCaValue.id || "");
-                                } else {
-                                  onChange("");
-                                }
-                              }}
-                              getOptionLabel={(ca) => ca.name}
-                              getOptionValue={(ca) => ca.id}
-                              options={certificateAuthorities}
-                              groupBy={hasCas ? "groupType" : undefined}
-                              getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
-                              placeholder="Select a certificate authority"
-                              isDisabled={Boolean(isEdit)}
-                              className="w-full"
-                            />
-                          </FormControl>
-                          {!hasCas && (
-                            <p className="-mt-2 mb-4 text-xs text-yellow-500">
-                              No certificate authorities available.{" "}
-                              <Link
-                                to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
-                                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
-                                className="underline hover:text-yellow-400"
-                              >
-                                Create one in Certificate Authorities
-                              </Link>
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }}
+                          />
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
                   />
-                )}
 
-                {isAzureAdcsCa && (
-                  <ExternalCaTemplateSelect
+                  <Controller
                     control={control}
-                    templates={azureAdcsTemplatesData?.templates || []}
-                    valueKey="id"
-                    placeholder="Select an Azure ADCS certificate template"
-                  />
-                )}
-
-                {isAdcsCa && (
-                  <ExternalCaTemplateSelect
-                    control={control}
-                    templates={adcsTemplatesData?.templates || []}
-                    valueKey="name"
-                    placeholder="Select an ADCS certificate template"
-                  />
-                )}
-
-                <Controller
-                  control={control}
-                  name="certificatePolicyId"
-                  render={({ field: { onChange, value }, fieldState: { error } }) => (
-                    <FormControl
-                      label="Certificate Policy"
-                      tooltipText="The rules that govern certificates issued from this profile — allowed key/signature algorithms, key usages, TTL bounds, and subject constraints. Pick an existing policy or create a new one to enforce your organization's standards."
-                      isRequired
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                    >
-                      <FilterableSelect
-                        value={certificatePolicies.find((p) => p.id === value) ?? null}
-                        onChange={(newValue) => {
-                          const selected = newValue as SingleValue<PolicyOption>;
-                          if (selected?.id === "_create") {
-                            handlePopUpOpen("createPolicy");
-                            return;
-                          }
-                          onChange(selected?.id || "");
-
-                          // Reset defaults when policy changes
-                          setValue("defaults", undefined);
-                        }}
-                        options={policyOptions}
-                        getOptionLabel={(option) => option.name}
-                        getOptionValue={(option) => option.id}
-                        placeholder={
-                          certificatePolicies.length === 0 && !canCreatePolicy
-                            ? "No certificate policies available"
-                            : "Select a certificate policy"
-                        }
-                        isDisabled={Boolean(isEdit)}
-                        components={{ Option: CertificatePolicyOption }}
-                      />
-                    </FormControl>
-                  )}
-                />
-              </Tab.Panel>
-
-              {/* Tab 2: Certificate Defaults */}
-              <Tab.Panel>
-                {!watchedPolicyId ? (
-                  <EmptyState title="Select a certificate policy on the Configuration tab to configure defaults." />
-                ) : (
-                  <div>
-                    <p className="mb-4 text-sm text-bunker-300">
-                      Set default values for certificates issued under this profile. These defaults
-                      are used when a certificate request does not specify its own values.
-                    </p>
-                    {/* TTL — simple days number input (hidden for ADCS CAs) */}
-                    {!isExternalAdcsCa && (
-                      <Controller
-                        name="defaults.ttlDays"
-                        control={control}
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            label={
-                              <FormLabel
-                                label="Time to Live (TTL) in Days"
-                                icon={
-                                  <Tooltip
-                                    content={
-                                      isAwsAcmPublicCa
-                                        ? "AWS ACM Public CA issues certificates with a fixed 198-day validity — this field cannot be changed."
-                                        : "Fallback validity period used when not explicitly specified in certificate request. Leave empty for no TTL default."
-                                    }
-                                  >
-                                    <FontAwesomeIcon
-                                      icon={faQuestionCircle}
-                                      className="cursor-help text-mineshaft-400 hover:text-mineshaft-300"
-                                      size="sm"
-                                    />
-                                  </Tooltip>
-                                }
-                              />
-                            }
+                    name="description"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>Description</FieldLabel>
+                        <FieldContent>
+                          <TextArea
+                            {...field}
+                            value={field.value ?? ""}
+                            placeholder="Enter profile description"
+                            rows={3}
                             isError={Boolean(error)}
-                            errorText={error?.message}
-                          >
-                            <Input
-                              type="number"
-                              placeholder="e.g. 365"
-                              value={field.value == null ? "" : field.value}
-                              isDisabled={isAwsAcmPublicCa}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                field.onChange(val === "" ? null : Number(val));
-                              }}
-                            />
-                          </FormControl>
-                        )}
-                      />
+                          />
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
                     )}
+                  />
+                </div>
+              )}
 
-                    {/* Subject Attributes — only if policy allows subject fields */}
-                    {policyConstraints.shouldShowSubjectSection && (
-                      <SubjectAttributesField
-                        control={control}
-                        allowedAttributeTypes={policyConstraints.allowedSubjectAttributeTypes}
-                        namePrefix="defaults.subjectAttributes"
-                      />
-                    )}
-
-                    {/* Subject Alternative Names — only if policy allows SANs */}
-                    {policyConstraints.shouldShowSanSection && (
-                      <SubjectAltNamesField
-                        control={control}
-                        allowedSanTypes={policyConstraints.allowedSanTypes}
-                        namePrefix="defaults.subjectAltNames"
-                      />
-                    )}
-
-                    {/* Algorithms — filtered to policy-allowed values, with "None" option */}
-                    {(policyConstraints.allowedSignatureAlgorithms.length > 0 ||
-                      policyConstraints.allowedKeyAlgorithms.length > 0) && (
-                      <AlgorithmSelectors
-                        control={control}
-                        signatureFieldName="defaults.signatureAlgorithm"
-                        keyFieldName="defaults.keyAlgorithm"
-                        availableSignatureAlgorithms={policyConstraints.allowedSignatureAlgorithms}
-                        availableKeyAlgorithms={policyConstraints.allowedKeyAlgorithms}
-                        isRequired={false}
-                        nonePlaceholder="No default"
-                        hideSignatureAlgorithm={isExternalAdcsCa}
-                      />
-                    )}
-
-                    {isExternalAdcsCa && (
-                      <p className="mb-4 text-xs text-mineshaft-400">{externalCaHint}</p>
-                    )}
-
-                    {/* Key Usages, Ext Key Usages, Basic Constraints — in Accordion (hidden for ADCS CAs) */}
-                    {!isExternalAdcsCa &&
-                      (filteredKeyUsages.length > 0 ||
-                        filteredExtendedKeyUsages.length > 0 ||
-                        policyConstraints.templateAllowsCA) && (
-                        <Accordion type="single" collapsible className="w-full">
-                          {filteredKeyUsages.length > 0 && (
-                            <KeyUsageSection
-                              control={control}
-                              title="Key Usages"
-                              accordionValue="key-usages"
-                              namePrefix="defaults.keyUsages"
-                              options={filteredKeyUsages as Array<{ value: string; label: string }>}
-                              requiredUsages={[]}
-                            />
-                          )}
-                          {filteredExtendedKeyUsages.length > 0 && (
-                            <KeyUsageSection
-                              control={control}
-                              title="Extended Key Usages"
-                              accordionValue="extended-key-usages"
-                              namePrefix="defaults.extendedKeyUsages"
-                              options={
-                                filteredExtendedKeyUsages as Array<{ value: string; label: string }>
+              {selectedStepIndex === 1 && (
+                <div className="space-y-5">
+                  <Controller
+                    control={control}
+                    name="issuerType"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>
+                          Issuer Type <span className="text-danger">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <Select
+                            value={value}
+                            disabled={Boolean(isEdit)}
+                            onValueChange={(next) => {
+                              if (next === IssuerType.SELF_SIGNED) {
+                                setValue("certificateAuthorityId", "");
                               }
-                              requiredUsages={[]}
-                            />
-                          )}
-                          {policyConstraints.templateAllowsCA && (
-                            <AccordionItem value="basic-constraints">
-                              <AccordionTrigger>Basic Constraints</AccordionTrigger>
-                              <AccordionContent>
-                                <div className="space-y-4 pl-2">
-                                  <Controller
-                                    control={control}
-                                    name="defaults.basicConstraints.isCA"
-                                    render={({ field: { value, onChange } }) => (
-                                      <div className="flex items-center gap-3">
-                                        <Checkbox
-                                          id="defaults-isCA"
-                                          isChecked={value || false}
-                                          onCheckedChange={(checked) => {
-                                            onChange(checked);
-                                            if (!checked) {
-                                              setValue(
-                                                "defaults.basicConstraints.pathLength",
-                                                undefined
-                                              );
-                                            }
-                                          }}
-                                        />
-                                        <div className="space-y-1">
-                                          <FormLabel
-                                            id="defaults-isCA"
-                                            className="cursor-pointer text-sm font-medium text-mineshaft-100"
-                                            label="Issue as Certificate Authority"
-                                          />
-                                          <p className="text-xs text-bunker-300">
-                                            Certificates will default to CA:TRUE extension
-                                          </p>
-                                        </div>
-                                      </div>
-                                    )}
-                                  />
+                              onChange(next);
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              <SelectItem value={IssuerType.CA}>Certificate Authority</SelectItem>
+                              <SelectItem value={IssuerType.SELF_SIGNED}>Self-Signed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FieldDescription>
+                            Certificate Authority issues from an existing CA in your organization,
+                            which is the standard path for production use. Self-Signed produces
+                            standalone certificates with no CA chain, suitable for testing or
+                            one-off identities only.
+                          </FieldDescription>
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
 
-                                  {watchedDefaultsIsCA && (
-                                    <Controller
-                                      control={control}
-                                      name="defaults.basicConstraints.pathLength"
-                                      render={({ field, fieldState: { error } }) => (
-                                        <FormControl
-                                          label="Path Length"
-                                          isError={Boolean(error)}
-                                          errorText={error?.message}
-                                        >
-                                          <Input
-                                            {...field}
-                                            type="number"
-                                            min={0}
-                                            placeholder="Leave empty for no constraint"
-                                            className="w-full"
-                                            value={field.value ?? ""}
-                                            onChange={(e) => {
-                                              const val = e.target.value;
-                                              if (val === "") {
-                                                field.onChange(null);
-                                              } else {
-                                                const numVal = parseInt(val, 10);
-                                                field.onChange(
-                                                  Number.isNaN(numVal) ? null : numVal
-                                                );
-                                              }
-                                            }}
-                                          />
-                                        </FormControl>
-                                      )}
-                                    />
-                                  )}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          )}
-                        </Accordion>
-                      )}
-                  </div>
-                )}
-              </Tab.Panel>
-            </Tab.Panels>
-          </Tab.Group>
+                  {watchedIssuerType === IssuerType.CA && (
+                    <Controller
+                      control={control}
+                      name="certificateAuthorityId"
+                      render={({ field: { onChange, value }, fieldState: { error } }) => {
+                        const hasCas = certificateAuthorities.length > 0;
+                        return (
+                          <Field>
+                            <FieldLabel>
+                              Certificate Authority <span className="text-danger">*</span>
+                            </FieldLabel>
+                            <FieldContent>
+                              <FilterableSelect
+                                value={certificateAuthorities.find((ca) => ca.id === value) || null}
+                                onChange={(selectedCaValue) => {
+                                  if (Array.isArray(selectedCaValue)) {
+                                    onChange(selectedCaValue[0]?.id || "");
+                                  } else if (
+                                    selectedCaValue &&
+                                    typeof selectedCaValue === "object" &&
+                                    "id" in selectedCaValue
+                                  ) {
+                                    onChange(selectedCaValue.id || "");
+                                  } else {
+                                    onChange("");
+                                  }
+                                }}
+                                getOptionLabel={(ca) => ca.name}
+                                getOptionValue={(ca) => ca.id}
+                                options={certificateAuthorities}
+                                groupBy={hasCas ? "groupType" : undefined}
+                                getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
+                                placeholder="Select a certificate authority"
+                                isDisabled={Boolean(isEdit)}
+                                isError={Boolean(error)}
+                                className="w-full"
+                              />
+                              <FieldError errors={[error]} />
+                              {!hasCas && (
+                                <FieldDescription className="text-yellow-500">
+                                  No certificate authorities available.{" "}
+                                  <Link
+                                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                                    params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                                    className="underline hover:text-yellow-400"
+                                  >
+                                    Create one in Certificate Authorities
+                                  </Link>
+                                </FieldDescription>
+                              )}
+                            </FieldContent>
+                          </Field>
+                        );
+                      }}
+                    />
+                  )}
 
-          {/* Next/Back buttons OUTSIDE tabs — always visible */}
-          <div className="mt-6 flex justify-between border-t border-mineshaft-600 pt-4">
-            <Button type="button" variant="outline_bg" onClick={handlePrev}>
-              {selectedStepIndex === 0 ? "Cancel" : "Back"}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleNext}
-              isLoading={createProfile.isPending || updateProfile.isPending}
-              isDisabled={createProfile.isPending || updateProfile.isPending}
-            >
-              {isFinalStep && (isEdit ? "Update" : "Create")}
-              {!isFinalStep && "Next"}
-            </Button>
+                  {isAzureAdcsCa && (
+                    <ExternalCaTemplateSelect
+                      control={control}
+                      templates={azureAdcsTemplatesData?.templates || []}
+                      valueKey="id"
+                      placeholder="Select an Azure ADCS certificate template"
+                    />
+                  )}
+
+                  {isAdcsCa && (
+                    <ExternalCaTemplateSelect
+                      control={control}
+                      templates={adcsTemplatesData?.templates || []}
+                      valueKey="name"
+                      placeholder="Select an ADCS certificate template"
+                    />
+                  )}
+
+                  <Controller
+                    control={control}
+                    name="certificatePolicyId"
+                    render={({ field: { onChange, value }, fieldState: { error } }) => (
+                      <Field>
+                        <FieldLabel>
+                          Certificate Policy <span className="text-danger">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                          <FilterableSelect
+                            value={certificatePolicies.find((p) => p.id === value) ?? null}
+                            onChange={(newValue) => {
+                              const selected = newValue as SingleValue<PolicyOption>;
+                              if (selected?.id === "_create") {
+                                handlePopUpOpen("createPolicy");
+                                return;
+                              }
+                              onChange(selected?.id || "");
+
+                              setValue("defaults", undefined);
+                            }}
+                            options={policyOptions}
+                            getOptionLabel={(option) => option.name}
+                            getOptionValue={(option) => option.id}
+                            placeholder={
+                              certificatePolicies.length === 0 && !canCreatePolicy
+                                ? "No certificate policies available"
+                                : "Select a certificate policy"
+                            }
+                            isDisabled={Boolean(isEdit)}
+                            isError={Boolean(error)}
+                            components={{ Option: CertificatePolicyOption }}
+                            className="w-full"
+                          />
+                          <FieldDescription>
+                            The rules that govern certificates issued from this profile: allowed
+                            key/signature algorithms, key usages, TTL bounds, and subject
+                            constraints.
+                          </FieldDescription>
+                          <FieldError errors={[error]} />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                </div>
+              )}
+
+              {selectedStepIndex === 2 && (
+                <ProfileDefaultsStep
+                  control={control}
+                  watch={watch}
+                  setValue={setValue}
+                  policyConstraints={policyConstraints}
+                  isAwsAcmPublicCa={isAwsAcmPublicCa}
+                />
+              )}
+            </div>
+
+            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+              <div className="mb-auto">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                    Step {selectedStepIndex + 1} · {currentStep.rightLabel}
+                  </p>
+                  <DocumentationLinkBadge href={PkiDocsUrls.settings.profiles} />
+                </div>
+                <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {currentStep.rightDescription}
+                </p>
+              </div>
+            </aside>
+          </div>
+
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+            <span className="text-xs text-muted" />
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted">
+                Step {selectedStepIndex + 1} of {STEPS.length}
+              </span>
+              {selectedStepIndex > 0 && (
+                <Button type="button" variant="outline" onClick={goBack}>
+                  Back
+                </Button>
+              )}
+              {isFinalStep ? (
+                <Button
+                  key="submit-cta"
+                  type="button"
+                  variant="project"
+                  isPending={isSubmitting}
+                  isDisabled={isSubmitting}
+                  onClick={handleSubmit(onFormSubmit, (errors) => {
+                    const errorKeys = Object.keys(errors);
+                    const stepIndex = STEPS.findIndex((s) =>
+                      s.fields.some((fld) => errorKeys.includes(fld))
+                    );
+                    if (stepIndex >= 0) setSelectedStepIndex(stepIndex);
+                    createNotification({
+                      text: "Please fix the highlighted errors before saving.",
+                      type: "error"
+                    });
+                  })}
+                >
+                  {isEdit ? "Save Changes" : "Create Profile"}
+                </Button>
+              ) : (
+                <Button key="continue-cta" type="button" variant="project" onClick={goNext}>
+                  Continue
+                </Button>
+              )}
+            </div>
           </div>
         </form>
-        <CreatePolicyModal
-          isOpen={popUp.createPolicy.isOpen}
-          onClose={() => handlePopUpToggle("createPolicy", false)}
-          onComplete={async (createdPolicy) => {
-            await queryClient.refetchQueries({
-              queryKey: ["list-certificate-policies", currentProject?.id]
-            });
-            setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
-            handlePopUpToggle("createPolicy", false);
-          }}
-        />
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+
+      <CreatePolicyModal
+        isOpen={popUp.createPolicy.isOpen}
+        onClose={() => handlePopUpToggle("createPolicy", false)}
+        onComplete={async (createdPolicy) => {
+          await queryClient.refetchQueries({
+            queryKey: ["list-certificate-policies", currentProject?.id]
+          });
+          setValue("certificatePolicyId", createdPolicy.id, { shouldValidate: true });
+          handlePopUpToggle("createPolicy", false);
+        }}
+      />
+    </Sheet>
   );
 };
