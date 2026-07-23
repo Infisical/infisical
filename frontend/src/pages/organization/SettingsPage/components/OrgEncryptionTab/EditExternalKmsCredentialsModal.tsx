@@ -33,7 +33,7 @@ export const EditExternalKmsCredentialsModal = ({
         <DialogHeader>
           <DialogTitle>Edit KMS Credentials</DialogTitle>
           <DialogDescription>
-            Update the credentials used to access this external KMS.
+            Update the credentials, region, and key used by this external KMS.
           </DialogDescription>
         </DialogHeader>
         {isPending && (

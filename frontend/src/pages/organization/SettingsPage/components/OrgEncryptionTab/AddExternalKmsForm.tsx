@@ -58,7 +58,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetContent className="sm:max-w-lg">
+      <SheetContent className="gap-0 sm:max-w-lg">
         <SheetHeader className="border-b">
           <SheetTitle>
             {selectedProvider ? `Add ${PROVIDER_TITLES[selectedProvider]}` : "Add External KMS"}
@@ -71,7 +71,7 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
         </SheetHeader>
         {!selectedProvider && (
           <>
-            <div className="grid gap-3 px-4">
+            <div className="grid gap-3 p-4">
               {EXTERNAL_KMS_LIST.map(({ icon, provider, title, description }) => (
                 <Item
                   asChild

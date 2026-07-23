@@ -112,7 +112,7 @@ export const AwsKmsForm = ({
                 }
               }
             : {}),
-          ...(mode !== "credentials"
+          ...(mode !== "details"
             ? {
                 awsRegion: kms?.externalKms?.configuration?.awsRegion ?? "",
                 kmsKeyId: kms?.externalKms?.configuration?.kmsKeyId ?? ""
@@ -147,7 +147,9 @@ export const AwsKmsForm = ({
             configuration: {
               type: ExternalKmsProvider.Aws,
               inputs: {
-                credential: { ...awsInputs.credential }
+                credential: { ...awsInputs.credential },
+                awsRegion: awsInputs.awsRegion,
+                kmsKeyId: awsInputs.kmsKeyId
               }
             }
           });
@@ -155,14 +157,7 @@ export const AwsKmsForm = ({
           await updateAwsExternalKms({
             kmsId: kms.id,
             name,
-            description,
-            configuration: {
-              type: ExternalKmsProvider.Aws,
-              inputs: {
-                awsRegion: awsInputs.awsRegion,
-                kmsKeyId: awsInputs.kmsKeyId
-              }
-            }
+            description
           });
         }
 
@@ -221,7 +216,9 @@ export const AwsKmsForm = ({
       autoComplete="off"
       className={layout === "sheet" ? "flex min-h-0 flex-1 flex-col" : "flex flex-col gap-4"}
     >
-      <FieldGroup className={layout === "sheet" ? "flex-1 overflow-y-auto px-4" : undefined}>
+      <FieldGroup
+        className={layout === "sheet" ? "flex-1 overflow-y-auto px-4 pt-4 pb-12" : undefined}
+      >
         {(mode === "full" || mode === "details") && (
           <>
             <Controller
@@ -378,7 +375,7 @@ export const AwsKmsForm = ({
             )}
           </>
         )}
-        {(mode === "full" || mode === "details") && (
+        {(mode === "full" || mode === "credentials") && (
           <>
             <Controller
               control={control}
