@@ -271,6 +271,7 @@ export const PamAccountsPage = () => {
                     <DropdownMenuContent
                       align="end"
                       sideOffset={4}
+                      className="min-w-48"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <DropdownMenuLabel>New</DropdownMenuLabel>
