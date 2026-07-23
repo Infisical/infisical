@@ -665,7 +665,8 @@ export const extractGatewayTarget = async (
     case PamAccountType.Kubernetes: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
-      return { host: parsed.hostname };
+      const defaultPort = parsed.protocol === "http:" ? 80 : 443;
+      return { host: parsed.hostname, port: parsed.port ? Number(parsed.port) : defaultPort };
     }
     case PamAccountType.MongoDB: {
       const { connectionString } = validated as { connectionString: string };
