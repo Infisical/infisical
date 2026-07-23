@@ -59,14 +59,15 @@ export const updateCheckServiceFactory = ({ cronJob, keyStore }: TUpdateCheckSer
   };
 
   const init = () => {
-    if (!isEnabled) return;
-
     cronJob.register({
       name: CronJobName.InstanceUpdateCheck,
       pattern: "0 0 * * 0", // weekly on Sunday at midnight UTC
       runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: isEnabled,
       handler: refreshLatestVersion
     });
+
+    if (!isEnabled) return;
 
     // also refresh once at boot so a fresh instance is not blind until the next Sunday fire
     void keyStore

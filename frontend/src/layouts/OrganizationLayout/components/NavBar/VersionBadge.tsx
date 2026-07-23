@@ -33,7 +33,7 @@ export const VersionBadge = () => {
     <Tooltip>
       <TooltipTrigger asChild>
         <a
-          href="https://github.com/Infisical/infisical/releases"
+          href="https://upgrade.infisical.com/"
           target="_blank"
           rel="noopener noreferrer"
           className="mt-1 mr-2 hidden items-center gap-x-1.5 text-xs text-muted transition-colors hover:text-accent md:inline-flex"

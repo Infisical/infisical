@@ -703,7 +703,7 @@ export const Navbar = () => {
                   Version: {envConfig.PLATFORM_VERSION}
                   {serverConfig.latestAvailableVersion && (
                     <a
-                      href="https://github.com/Infisical/infisical/releases"
+                      href="https://upgrade.infisical.com/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-info hover:underline"
