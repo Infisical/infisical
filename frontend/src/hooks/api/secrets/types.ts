@@ -319,6 +319,8 @@ export type TSecretReferenceTraceNode = {
   value?: string;
   environment: string;
   secretPath: string;
+  // Present when this node's value was resolved through a secret import rather than being defined directly at environment/secretPath
+  importedFrom?: { environment: string; secretPath: string };
   children: TSecretReferenceTraceNode[];
 };
 

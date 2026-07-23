@@ -1,12 +1,15 @@
-import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
+import { useState } from "react";
+import { ClipboardCheckIcon, CopyIcon, WorkflowIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretInput } from "@app/components/v2";
+import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
+import { Modal, ModalContent, SecretInput } from "@app/components/v2";
 import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { ProjectPermissionSecretActions, useProject, useProjectPermission } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 type Props = {
@@ -26,9 +29,15 @@ export const SecretImportSecretValueCell = ({
 }: Props) => {
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
+  const [isReferenceTreeOpen, setIsReferenceTreeOpen] = useState(false);
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
 
   const canFetchSecretValue = !isEmpty;
+  const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.ReadValue
+  );
 
   const {
     data: secretValue,
@@ -110,7 +119,36 @@ export const SecretImportSecretValueCell = ({
           </TooltipTrigger>
           <TooltipContent>{isCopied ? "Copied" : "Copy value"}</TooltipContent>
         </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>
+            <IconButton
+              variant="ghost"
+              size="xs"
+              className="w-0 overflow-hidden border-0 transition-all duration-300 group-hover:w-7"
+              isDisabled={isEmpty || !canReadSecretValue}
+              onClick={() => setIsReferenceTreeOpen(true)}
+            >
+              <WorkflowIcon />
+            </IconButton>
+          </TooltipTrigger>
+          <TooltipContent>Secret Reference Tree</TooltipContent>
+        </Tooltip>
       </div>
+      <Modal isOpen={isReferenceTreeOpen} onOpenChange={setIsReferenceTreeOpen}>
+        <ModalContent
+          className="max-w-3xl"
+          title="Secret Reference Details"
+          subTitle="Visual breakdown of secrets referenced by this secret."
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <SecretReferenceTree
+            secretPath={secretPath}
+            environment={environment}
+            secretKey={secretKey}
+            onClose={() => setIsReferenceTreeOpen(false)}
+          />
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

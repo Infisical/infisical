@@ -325,129 +325,132 @@ export const SecretEditRow = ({
         />
       </div>
 
-      <div
-        className={twMerge(
-          "flex w-24 justify-center space-x-3 pl-2 transition-all",
-          isImportedSecret && "pointer-events-none opacity-0"
-        )}
-      >
-        {isDirty ? (
-          <>
-            <ProjectPermissionCan
-              I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <div>
-                  <Tooltip content="Save">
-                    <IconButton
-                      variant="plain"
-                      ariaLabel="submit-value"
-                      className="h-full"
-                      isDisabled={isSubmitting || !isAllowed}
-                      onClick={handleSubmit(handleFormSubmit)}
-                    >
-                      <FontAwesomeIcon icon={faCheck} />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              )}
-            </ProjectPermissionCan>
-            <div>
-              <Tooltip content="cancel">
-                <IconButton
-                  variant="plain"
-                  colorSchema="danger"
-                  ariaLabel="reset-value"
-                  className="h-full"
-                  onClick={handleFormReset}
-                  isDisabled={isSubmitting}
-                >
-                  <FontAwesomeIcon icon={faXmark} className="hover:text-red" />
-                </IconButton>
-              </Tooltip>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Copy Secret">
-                <IconButton
-                  isDisabled={secretValueHidden}
-                  ariaLabel="copy-value"
-                  onClick={handleCopySecretToClipboard}
-                  variant="plain"
-                  className="h-full"
-                >
-                  <FontAwesomeIcon icon={faCopy} />
-                </IconButton>
-              </Tooltip>
-            </div>
-
-            <div className="opacity-0 group-hover:opacity-100">
-              <Tooltip content="Secret Reference Tree">
-                <IconButton
-                  variant="plain"
-                  ariaLabel="reference-tree"
-                  className="h-full"
-                  isDisabled={!canReadSecretValue || !secretId || isEmpty}
-                  onClick={() => handlePopUpOpen("secretReferenceTree")}
-                >
-                  <FontAwesomeIcon icon={faProjectDiagram} />
-                </IconButton>
-              </Tooltip>
-            </div>
-            <Modal
-              isOpen={popUp.secretReferenceTree.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("secretReferenceTree", isOpen)}
-            >
-              <ModalContent
-                className="max-w-3xl"
-                title="Secret Reference Details"
-                subTitle="Visual breakdown of secrets referenced by this secret."
-                onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+      <div className="flex w-24 justify-center space-x-3 pl-2 transition-all">
+        {!isDirty && (
+          <div className="opacity-0 group-hover:opacity-100">
+            <Tooltip content="Secret Reference Tree">
+              <IconButton
+                variant="plain"
+                ariaLabel="reference-tree"
+                className="h-full"
+                isDisabled={!canReadSecretValue || !canFetchValue}
+                onClick={() => handlePopUpOpen("secretReferenceTree")}
               >
-                <SecretReferenceTree
-                  secretPath={secretPath}
-                  environment={environment}
-                  secretKey={secretName}
-                  onClose={() => handlePopUpToggle("secretReferenceTree", false)}
-                />
-              </ModalContent>
-            </Modal>
-
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Delete}
-              a={subject(ProjectPermissionSub.Secrets, {
-                environment,
-                secretPath,
-                secretName,
-                secretTags: ["*"]
-              })}
-            >
-              {(isAllowed) => (
-                <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content={deleteTooltipContent}>
-                    <IconButton
-                      variant="plain"
-                      ariaLabel="delete-value"
-                      className="h-full"
-                      onClick={toggleModal}
-                      isDisabled={isDeleting || !isAllowed || isManagedSecret}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              )}
-            </ProjectPermissionCan>
-          </>
+                <FontAwesomeIcon icon={faProjectDiagram} />
+              </IconButton>
+            </Tooltip>
+          </div>
         )}
+        <Modal
+          isOpen={popUp.secretReferenceTree.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("secretReferenceTree", isOpen)}
+        >
+          <ModalContent
+            className="max-w-3xl"
+            title="Secret Reference Details"
+            subTitle="Visual breakdown of secrets referenced by this secret."
+            onOpenAutoFocus={(e) => e.preventDefault()} // prevents secret input from displaying value on open
+          >
+            <SecretReferenceTree
+              secretPath={fetchSecretValueParams.secretPath}
+              environment={fetchSecretValueParams.environment}
+              secretKey={fetchSecretValueParams.secretKey}
+              onClose={() => handlePopUpToggle("secretReferenceTree", false)}
+            />
+          </ModalContent>
+        </Modal>
+        <div
+          className={twMerge(
+            "flex justify-center space-x-3 transition-all",
+            isImportedSecret && "pointer-events-none opacity-0"
+          )}
+        >
+          {isDirty ? (
+            <>
+              <ProjectPermissionCan
+                I={isCreatable ? ProjectPermissionActions.Create : ProjectPermissionActions.Edit}
+                a={subject(ProjectPermissionSub.Secrets, {
+                  environment,
+                  secretPath,
+                  secretName,
+                  secretTags: ["*"]
+                })}
+              >
+                {(isAllowed) => (
+                  <div>
+                    <Tooltip content="Save">
+                      <IconButton
+                        variant="plain"
+                        ariaLabel="submit-value"
+                        className="h-full"
+                        isDisabled={isSubmitting || !isAllowed}
+                        onClick={handleSubmit(handleFormSubmit)}
+                      >
+                        <FontAwesomeIcon icon={faCheck} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                )}
+              </ProjectPermissionCan>
+              <div>
+                <Tooltip content="cancel">
+                  <IconButton
+                    variant="plain"
+                    colorSchema="danger"
+                    ariaLabel="reset-value"
+                    className="h-full"
+                    onClick={handleFormReset}
+                    isDisabled={isSubmitting}
+                  >
+                    <FontAwesomeIcon icon={faXmark} className="hover:text-red" />
+                  </IconButton>
+                </Tooltip>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="opacity-0 group-hover:opacity-100">
+                <Tooltip content="Copy Secret">
+                  <IconButton
+                    isDisabled={secretValueHidden}
+                    ariaLabel="copy-value"
+                    onClick={handleCopySecretToClipboard}
+                    variant="plain"
+                    className="h-full"
+                  >
+                    <FontAwesomeIcon icon={faCopy} />
+                  </IconButton>
+                </Tooltip>
+              </div>
+
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={subject(ProjectPermissionSub.Secrets, {
+                  environment,
+                  secretPath,
+                  secretName,
+                  secretTags: ["*"]
+                })}
+              >
+                {(isAllowed) => (
+                  <div className="opacity-0 group-hover:opacity-100">
+                    <Tooltip content={deleteTooltipContent}>
+                      <IconButton
+                        variant="plain"
+                        ariaLabel="delete-value"
+                        className="h-full"
+                        onClick={toggleModal}
+                        isDisabled={isDeleting || !isAllowed || isManagedSecret}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                )}
+              </ProjectPermissionCan>
+            </>
+          )}
+        </div>
       </div>
       <DeleteActionModal
         isOpen={popUp.editSecret.isOpen}
