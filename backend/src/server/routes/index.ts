@@ -856,6 +856,7 @@ export const registerRoutes = async (
     envConfig,
     orgDAL,
     permissionService,
+    meteredFeatures,
     licenseClient
   });
 

@@ -138,7 +138,7 @@ export const BillingHeaderCard = ({ overview, catalog }: BillingHeaderCardProps)
           icon={<CreditCard />}
           value={
             hasRecurring ? (
-              <div className="flex flex-col gap-0.5">
+              <div className="flex items-center justify-between gap-0.5">
                 {billing.monthlyRecurring > 0 && (
                   <div>
                     {fmtMoney(billing.monthlyRecurring)}{" "}
@@ -158,7 +158,7 @@ export const BillingHeaderCard = ({ overview, catalog }: BillingHeaderCardProps)
           }
           footer={
             hasRecurring ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex w-full items-center justify-between gap-1.5">
                 {billing.monthlyRecurring > 0 && <Badge variant="info">Monthly</Badge>}
                 {billing.annualCommitted > 0 && <Badge variant="warning">Annual</Badge>}
               </div>
