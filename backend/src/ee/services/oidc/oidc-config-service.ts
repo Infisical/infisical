@@ -192,7 +192,9 @@ export const oidcConfigServiceFactory = ({
       clientId,
       clientSecret,
       manageGroupMemberships: oidcCfg.manageGroupMemberships,
-      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm
+      jwtSignatureAlgorithm: oidcCfg.jwtSignatureAlgorithm,
+      claimEmailPath: oidcCfg.claimEmailPath,
+      claimNamePath: oidcCfg.claimNamePath
     };
   };
 
@@ -530,7 +532,9 @@ export const oidcConfigServiceFactory = ({
     clientId,
     clientSecret,
     manageGroupMemberships,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    claimEmailPath,
+    claimNamePath
   }: TUpdateOidcCfgDTO) => {
     const org = await orgDAL.findOne({ id: organizationId });
 
@@ -604,7 +608,9 @@ export const oidcConfigServiceFactory = ({
       isActive,
       lastUsed: null,
       manageGroupMemberships,
-      jwtSignatureAlgorithm
+      jwtSignatureAlgorithm,
+      ...(claimEmailPath !== undefined && { claimEmailPath: claimEmailPath || null }),
+      ...(claimNamePath !== undefined && { claimNamePath: claimNamePath || null })
     };
 
     if (clientId !== undefined) {
@@ -639,7 +645,9 @@ export const oidcConfigServiceFactory = ({
     clientId,
     clientSecret,
     manageGroupMemberships,
-    jwtSignatureAlgorithm
+    jwtSignatureAlgorithm,
+    claimEmailPath,
+    claimNamePath
   }: TCreateOidcCfgDTO) => {
     const org = await orgDAL.findOne({ id: organizationId });
     if (!org) {
@@ -703,6 +711,8 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
+      claimEmailPath: claimEmailPath ?? null,
+      claimNamePath: claimNamePath ?? null,
       encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
       encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
     });
@@ -802,29 +812,35 @@ export const oidcConfigServiceFactory = ({
       (_req: any, tokenSet: TokenSet, cb: any) => {
         const authMetricStartTime = performance.now();
         const claims = tokenSet.claims();
-        if (!claims.email) {
+
+        const emailClaimPath = oidcCfg.claimEmailPath || "email";
+        const rawEmailClaim = claims[emailClaimPath];
+        const email = typeof rawEmailClaim === "string" ? rawEmailClaim : undefined;
+        if (!email) {
           throw new BadRequestError({
-            message: "Invalid request. Missing email claim."
+            message: `Invalid request. Missing or non-string "${emailClaimPath}" claim in the OIDC token.`
           });
         }
 
-        if (!matchesAllowedEmailDomain(claims.email, oidcCfg.allowedEmailDomains ?? "")) {
+        if (email.includes("@") && !matchesAllowedEmailDomain(email, oidcCfg.allowedEmailDomains ?? "")) {
           throw new ForbiddenRequestError({
             message: "Email not allowed."
           });
         }
 
-        const name = claims?.given_name || claims?.name;
+        const nameClaimPath = oidcCfg.claimNamePath;
+        const rawNameClaim = nameClaimPath ? claims[nameClaimPath] : claims?.given_name || claims?.name;
+        const name = typeof rawNameClaim === "string" ? rawNameClaim : undefined;
         if (!name) {
           throw new BadRequestError({
-            message: "Invalid request. Missing name claim."
+            message: `Invalid request. Missing or non-string "${nameClaimPath || "given_name/name"}" claim in the OIDC token.`
           });
         }
 
         const groups = typeof claims.groups === "string" ? [claims.groups] : (claims.groups as string[] | undefined);
 
         oidcLogin({
-          email: claims.email.toLowerCase(),
+          email: email.toLowerCase(),
           externalId: claims.sub,
           firstName: name,
           lastName: claims.family_name ?? "",
@@ -840,7 +856,7 @@ export const oidcConfigServiceFactory = ({
 
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
-                "infisical.user.email": claims?.email?.toLowerCase(),
+                "infisical.user.email": email.toLowerCase(),
                 "infisical.user.id": loginResult.userId,
                 "infisical.organization.id": org.id,
                 "infisical.organization.name": org.name,
@@ -861,7 +877,7 @@ export const oidcConfigServiceFactory = ({
           .catch((error: unknown) => {
             if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
               authAttemptCounter.add(1, {
-                "infisical.user.email": claims?.email?.toLowerCase(),
+                "infisical.user.email": email.toLowerCase(),
                 "infisical.organization.id": org.id,
                 "infisical.organization.name": org.name,
                 "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
