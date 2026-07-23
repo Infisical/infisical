@@ -141,7 +141,11 @@ const subscriptionItemDimensionSchema = z
     committedRateCents: z.number().nullish(),
     onDemandRateCents: z.number().nullish(),
     freeBand: z.number().nullish(),
-    rateCents: z.number().nullish()
+    rateCents: z.number().nullish(),
+    commitAvailable: z.boolean().default(false),
+    renewalDate: z.number().nullish(),
+    canDecreaseNow: z.boolean().nullish(),
+    decreaseAllowedFrom: z.number().nullish()
   })
   .passthrough();
 
@@ -199,6 +203,12 @@ const subscriptionBillingSchema = z
 export const subscriptionResponseSchema = z
   .object({
     status: z.string(),
+    // Mutating billing actions are frozen server-side (DISABLE_CHECKOUT); the client disables controls
+    // ahead of a 503 rather than discovering it on submit.
+    capabilities: z
+      .object({ checkoutFrozen: z.boolean().default(false) })
+      .passthrough()
+      .nullish(),
     // Per-line billing: there is no subscription-level cadence/period/total (a subscription can mix
     // monthly and annual lines). These top-level fields are legacy summaries kept nullish for
     // back-compat with older servers; read `billing` for the authoritative per-line view.
@@ -229,10 +239,9 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
-// Proration preview for an add/remove against an existing subscription. prorationAmount is signed:
-// positive is charged now (an add), negative is a credit toward the next invoice (a removal). The
-// server prorates at request time; no client-supplied timestamp is accepted (it would let a caller
-// pick a cheaper proration instant), so the preview carries an amount but not a timestamp to echo.
+// Proration preview for an add/remove/commitment change. prorationAmount is signed: positive is
+// charged now (an add/increase), negative is a credit toward the next invoice (a removal). prorationDate
+// is the instant the server priced at; echo it back into the apply so it reproduces the exact charge.
 const subscriptionPreviewLineSchema = z
   .object({
     description: z.string(),
@@ -245,8 +254,11 @@ export const subscriptionPreviewResponseSchema = z
   .object({
     currency: z.string(),
     prorationAmount: z.number(),
+    additionalCharges: z.number().default(0),
+    totalDueNow: z.number().nullish(),
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
+    prorationDate: z.number().nullish(),
     lines: z.array(subscriptionPreviewLineSchema).default([])
   })
   .passthrough();
@@ -337,40 +349,40 @@ export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
 export type TBillingProfileResponse = z.infer<typeof billingProfileResponseSchema>;
 export type TSubscriptionPreview = z.infer<typeof subscriptionPreviewResponseSchema>;
 
-export type TCheckoutLineItem = {
+export type TProductLineItem = {
   productId: string;
   plan: string;
-  cadence: string;
-  // Legacy per-unit quantities (pre-commitment). Superseded by commitments for an annual per_resource
-  // line; kept optional so the server tolerates either during rollout.
+  cadence?: string;
   quantities?: Record<string, number>;
-  // Per-dimension committed quantity; REQUIRED for an annual per_resource line, omitted for monthly.
-  commitments?: Record<string, number>;
+  declaredUsage?: Record<string, number>;
 };
 
-// A single per_resource commitment quantity change (preview) applied post-purchase.
+// A single per_resource commitment quantity change (shared by preview commitmentChanges and the
+// multi-dimension commitment apply).
 export type TCommitmentChange = {
   dimensionKey: string;
   quantity: number;
 };
 
 export type TSubscriptionPreviewPayload = {
-  add?: TCheckoutLineItem[];
+  add?: TProductLineItem[];
   remove?: string[];
   commitmentChanges?: TCommitmentChange[];
 };
 
-export type TAddSubscriptionItemsPayload = {
-  items: TCheckoutLineItem[];
-};
-
-export type TCreateCheckoutPayload = {
-  items: TCheckoutLineItem[];
+export type TBuyProductPayload = {
+  productId: string;
+  plan: string;
+  cadence?: string;
+  // Committed units (annual commitment lines only; ignored on monthly).
+  quantities?: Record<string, number>;
+  // Present actual usage per per_resource dimension (sizes a monthly line, seeds the usage reading).
+  declaredUsage?: Record<string, number>;
   email?: string;
   // Absolute return URL; its origin must be in the license server's CUSTOMER_PORTAL_ORIGINS allowlist
-  // (the multi-region fix). returnPath is the relative back-compat fallback.
+  // (the multi-region fix).
   returnUrl?: string;
-  returnPath?: string;
+  prorationDate?: number;
 };
 
 export type TCreatePortalPayload = {
@@ -378,11 +390,11 @@ export type TCreatePortalPayload = {
   returnPath?: string;
 };
 
-// Self-serve apply of a previewed commitment change. The server prorates at commit time; the caller
-// cannot supply a proration timestamp (that would let a billing user pick a cheaper instant).
-export type TChangeCommitmentPayload = {
-  dimensionKey: string;
-  quantity: number;
+// Start / change annual commitments across dimensions (PUT /subscription/commitments), all-or-nothing.
+// prorationDate is echoed from a prior preview for dimensions that already have a commit item.
+export type TChangeCommitmentsPayload = {
+  dimensions: TCommitmentChange[];
+  prorationDate?: number;
 };
 
 export type TStartTrialPayload = {
@@ -447,13 +459,14 @@ export type TLicenseClientBackend = {
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
-  createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TCheckoutResult>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
-  addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
-  removeSubscriptionItem: (orgId: string, productId: string) => Promise<TCheckoutResult>;
-  // Apply a previewed per_resource commitment change (self-serve).
-  changeCommitment: (orgId: string, payload: TChangeCommitmentPayload) => Promise<TCheckoutResult>;
+  // Buy/add one product; self-selects append vs hosted Checkout server side.
+  buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;
+  // Remove one product; removing the last product cancels the subscription.
+  removeProduct: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  // Start / change annual commitments across dimensions (all-or-nothing).
+  changeCommitments: (orgId: string, payload: TChangeCommitmentsPayload) => Promise<TCheckoutResult>;
   // Start a plan-scoped self-serve trial.
   startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
   // Cancel an in-progress trial for a product (product → free; the trial never converts).

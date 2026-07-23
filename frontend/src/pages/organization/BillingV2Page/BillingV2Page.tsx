@@ -9,8 +9,7 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission,
-  useUser
+  useOrgPermission
 } from "@app/context";
 import {
   useAddBillingV2PaymentMethod,
@@ -27,15 +26,15 @@ import { BillingV2RenderState } from "./billing-v2-view-types";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
-type BillingV2Flow = { type: "sheet"; prodId: string };
+// `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
+// from the "commit and save" nudge) instead of the default plans view.
+type BillingV2Flow = { type: "sheet"; prodId: string; view?: "commitment" };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
-  const { user } = useUser();
   const { permission } = useOrgPermission();
   const orgId = currentOrg?.id ?? "";
-  const billingEmail = user?.email ?? user?.username;
   const canManageBilling = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
@@ -103,6 +102,11 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
+  // Open the sheet directly into the set-commitment flow (from the "commit and save" nudge).
+  const onSetCommitment = (productId: string) => {
+    setFlow({ type: "sheet", prodId: productId, view: "commitment" });
+  };
+
   const hasActiveSubscription = overview?.subState === "active";
 
   const onUpdatePayment = async () => {
@@ -137,13 +141,13 @@ export const BillingV2Page = () => {
     : "Manage your subscription, products, and payment. Payment is handled securely through Stripe.";
 
   return (
-    <div className="h-full bg-bunker-800">
+    <>
       <Helmet>
         <title>{t("common.head-title", { title: t("billing.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Helmet>
-      <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
+      <div className="mb-8 flex w-full justify-center bg-bunker-800 text-white">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />
           <OrgPermissionCan
@@ -157,6 +161,7 @@ export const BillingV2Page = () => {
               subState={subState}
               onManageSubscription={onManageSubscription}
               onUpgrade={onUpgrade}
+              onSetCommitment={onSetCommitment}
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
@@ -173,7 +178,7 @@ export const BillingV2Page = () => {
           prod={catalogById(catalog, flow.prodId)}
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
-          billingEmail={billingEmail}
+          initialView={flow.view}
           returnPath={window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           trialUsed={overview?.trialedProductKeys.includes(flow.prodId) ?? false}
@@ -197,6 +202,6 @@ export const BillingV2Page = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };

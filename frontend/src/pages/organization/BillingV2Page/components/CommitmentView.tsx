@@ -18,7 +18,9 @@ import {
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { dimAnnualCommitted, fmtMoney } from "../billing-v2-format";
+import { dimCommittable, fmtMoney } from "../billing-v2-format";
+import { ChargeBreakdown } from "./ChargeBreakdown";
+import { CommitmentTerms } from "./CommitmentTerms";
 import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
 
 type Props = {
@@ -34,10 +36,28 @@ type Props = {
 // committed quantity per dimension; the preview endpoint (commitmentChanges) prices the change and the
 // apply endpoint commits it. Usage above the commitment is billed monthly on-demand.
 export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onDone }: Props) => {
+  // Commit-eligible dimensions come from the subscription read's per-dimension commitAvailable (this
+  // customer's pinned plan version), NOT the catalog, so a later catalog price never lights up commit
+  // for a grandfathered customer. An eligible dimension with committed === null starts from zero (e.g.
+  // a monthly subscriber committing annually). committed is normalized to a number so the stepper and
+  // cost math handle the not-yet-committed case.
   const committable = useMemo(
-    () => (entitlement.dimensions ?? []).filter(dimAnnualCommitted),
+    () =>
+      (entitlement.dimensions ?? []).filter(dimCommittable).map((dim) => ({
+        key: dim.key,
+        label: dim.label,
+        noun: dim.noun,
+        used: dim.used,
+        committed: dim.committed ?? 0,
+        committedRate: dim.committedRate ?? 0,
+        onDemandRate: dim.onDemandRate ?? 0,
+        canDecreaseNow: dim.canDecreaseNow ?? false,
+        decreaseAllowedFrom: dim.decreaseAllowedFrom ?? null
+      })),
     [entitlement.dimensions]
   );
+  // "Set up" a first commitment reads differently from "Change" an existing one.
+  const hasExistingCommitment = committable.some((dim) => dim.committed > 0);
 
   const [quantities, setQuantities] = useState<Record<string, number>>(() =>
     Object.fromEntries(committable.map((dim) => [dim.key, dim.committed ?? 0]))
@@ -45,6 +65,11 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
 
   const preview = usePreviewBillingV2Change();
   const applyCommitment = useChangeBillingV2Commitment();
+
+  // An increase (or a brand-new commitment) charges upfront and locks in the annual terms, so it
+  // requires the customer to acknowledge the commitment terms before confirming. A pure decrease
+  // (only possible inside the renewal window) does not.
+  const [acknowledged, setAcknowledged] = useState(false);
 
   // Only the dimensions whose committed quantity actually changed are sent to preview/apply.
   const changes: BillingV2CommitmentChange[] = useMemo(
@@ -101,20 +126,29 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     (sum, dim) => sum + Math.max(0, dim.used - quantities[dim.key]) * (dim.onDemandRate ?? 0),
     0
   );
-  const chargedToday = hasChanges ? Math.max(preview.data?.prorationAmount ?? 0, 0) : 0;
+  // Applying is invoice-now, so the card is charged totalDueNow (this change + any earlier unbilled
+  // mid-cycle changes), not just this change's proration. Disclose the split when there are extras.
+  const chargedToday = hasChanges ? Math.max(preview.data?.totalDueNow ?? 0, 0) : 0;
+  const additionalCharges = preview.data?.additionalCharges ?? 0;
+  const showChargeBreakdown = hasChanges && previewFresh && additionalCharges !== 0;
 
   let chargedNote = "No change yet";
   if (hasChanges) {
     chargedNote = isCalculating ? "Calculating…" : "Prorated for the rest of your annual term";
   }
 
-  const canConfirm = hasChanges && previewFresh;
+  // An increase raises the prepaid annual total; that (and starting a commitment from zero) is what
+  // needs the upfront-commitment acknowledgment.
+  const isIncreasing = newAnnual > currentAnnual;
+  const canConfirm = hasChanges && previewFresh && (!isIncreasing || acknowledged);
 
   const handleConfirm = async () => {
     try {
       await applyCommitment.mutateAsync({
         orgId,
-        changes
+        changes,
+        // Echo the previewed proration instant so the applied charge matches what was shown.
+        prorationDate: preview.data?.prorationDate ?? undefined
       });
       createNotification({
         type: "success",
@@ -122,7 +156,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
       });
       onDone();
     } catch {
-      createNotification({ type: "error", text: `Failed to update ${prod.name} commitment.` });
+      // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
     }
   };
 
@@ -133,6 +167,14 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
       : newOnDemand < currentOnDemand
         ? `Down from ${fmtMoney(currentOnDemand)} / mo`
         : `Up from ${fmtMoney(currentOnDemand)} / mo`;
+
+  // When decreases are locked, name the date the window opens (first dimension that reports it).
+  const lockedDim = committable.find(
+    (dim) => dim.canDecreaseNow === false && dim.decreaseAllowedFrom
+  );
+  const decreaseLockNote = lockedDim?.decreaseAllowedFrom
+    ? ` (from ${lockedDim.decreaseAllowedFrom})`
+    : "";
 
   const annualNote = `For ${prod.name}${renewsOn ? `, billed on ${renewsOn}` : ""}`;
   const annualDelta =
@@ -148,10 +190,12 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
       <SheetHeader className="flex-row items-center gap-3.5 border-b pr-12">
         <ProductIcon product={prod} size={40} />
         <div className="min-w-0 flex-1">
-          <SheetTitle className="text-base">Change {prod.name} commitment</SheetTitle>
+          <SheetTitle className="text-base">
+            {hasExistingCommitment ? "Change" : "Set up"} {prod.name} commitment
+          </SheetTitle>
           <p className="text-xs text-muted">
-            Adjust the units you pre-buy for the year. Usage above your commitment is billed monthly
-            on-demand.
+            {hasExistingCommitment ? "Adjust the" : "Pre-buy"} units you commit for the year. Usage
+            above your commitment is billed monthly on-demand.
           </p>
         </div>
       </SheetHeader>
@@ -159,6 +203,11 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
         {committable.map((dim) => {
           const onDemandQty = Math.max(0, dim.used - quantities[dim.key]);
+          // Increase-only: the stepper cannot go below the current committed quantity unless the
+          // decrease window is open (canDecreaseNow). A decrease outside the window is rejected server
+          // side (commitment_decrease_locked), so the floor is locked to committed until renewal.
+          const committedFloor = dim.committed ?? 0;
+          const stepperMin = dim.canDecreaseNow ? 0 : committedFloor;
           return (
             <div
               key={dim.key}
@@ -191,21 +240,26 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
               </div>
               <Stepper
                 value={quantities[dim.key]}
-                min={1}
+                min={stepperMin}
                 onChange={(value) => setQuantities((prev) => ({ ...prev, [dim.key]: value }))}
               />
             </div>
           );
         })}
 
-        <Alert variant="info">
-          <InfoIcon />
-          <AlertDescription className="text-foreground">
-            Committed units are pre-bought for the year at the annual rate. Usage above your
-            commitment is billed monthly at the on-demand rate until your renewal. Adjusting your
-            commitment takes effect immediately for the rest of the term and is invoiced right away.
-          </AlertDescription>
-        </Alert>
+        {isIncreasing ? (
+          <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
+        ) : (
+          <Alert variant="info">
+            <InfoIcon />
+            <AlertDescription className="text-foreground">
+              Committed units are pre-bought for the year at the annual rate. Usage above your
+              commitment is billed monthly at the on-demand rate until your renewal. You can raise a
+              commitment any time (charged now); lowering it is only allowed in the final window
+              before renewal{decreaseLockNote}.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <CostSummary>
           <CostSummaryRow
@@ -227,6 +281,14 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
             valueClassName={newOnDemand > 0 ? "text-warning/90" : "text-muted"}
           />
         </CostSummary>
+
+        {showChargeBreakdown && (
+          <ChargeBreakdown
+            prorationAmount={preview.data?.prorationAmount ?? 0}
+            additionalCharges={additionalCharges}
+            totalDueNow={preview.data?.totalDueNow ?? 0}
+          />
+        )}
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

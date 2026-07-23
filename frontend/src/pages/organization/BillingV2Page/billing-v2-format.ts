@@ -81,15 +81,17 @@ export const isMeteredCadence = (dim: BillingV2Dim, cad: BillingV2Cadence): bool
 export const cadencePeriod = (cadence: BillingV2Cadence | null | undefined): string =>
   cadence === "annual" ? "year" : "month";
 
-// An annually-committed per_resource dimension: usage above `committed` is billed monthly on-demand.
-// Metered dimensions are usage-based (no buyer-selected quantity), so they are never "committed" even
-// if the server reports a committed value for them — this keeps commitment UI off usage-based pricing.
-export const dimAnnualCommitted = (dim: BillingV2EntitlementDim): boolean =>
-  dim.cadence === "annual" && !dim.metered && dim.committed !== null;
+// A per_resource dimension carrying a prepaid annual commitment: usage above `committed` is billed
+// monthly on-demand. A commitment is identified by a non-null committed quantity, NOT by the product's
+// cadence — a monthly-cadence product can still prepay an annual commitment on a dimension. Metered
+// dimensions are usage-based (no buyer-selected quantity), so they are never "committed" even if the
+// server reports a committed value, which keeps the commitment UI off usage-based pricing.
+export const dimCommitted = (dim: BillingV2EntitlementDim): boolean =>
+  !dim.metered && dim.committed !== null;
 
 // A ceiling to fill a usage bar against: an annual commitment or a finite limit.
 export const dimHasCeiling = (dim: BillingV2EntitlementDim): boolean =>
-  dimAnnualCommitted(dim) || (dim.limit !== null && dim.limit > 0);
+  dimCommitted(dim) || (dim.limit !== null && dim.limit > 0);
 
 // Per-unit monthly rate for a dimension (dollars): metered uses its per-unit rate; a monthly
 // per_resource (and an annual dimension's overage) uses the on-demand rate.
@@ -102,7 +104,7 @@ export const dimMonthlyRate = (dim: BillingV2EntitlementDim): number => {
 
 // On-demand overflow quantity for an annually-committed dimension (0 otherwise).
 export const dimOnDemandQuantity = (dim: BillingV2EntitlementDim): number =>
-  dimAnnualCommitted(dim) ? Math.max(0, dim.used - (dim.committed ?? 0)) : 0;
+  dimCommitted(dim) ? Math.max(0, dim.used - (dim.committed ?? 0)) : 0;
 
 // Fill percentage (0-100) for a simple usage bar, or null when there's no finite cap to fill against.
 export const usagePct = (used: number, limit: number | null): number | null => {
@@ -117,7 +119,7 @@ export const usagePct = (used: number, limit: number | null): number | null => {
 export const dimBarSegments = (
   dim: BillingV2EntitlementDim
 ): { committedPct: number; onDemandPct: number } => {
-  if (dimAnnualCommitted(dim)) {
+  if (dimCommitted(dim)) {
     const committed = dim.committed ?? 0;
     const denominator = Math.max(committed, dim.used, 1);
     const committedFill = Math.min(committed, dim.used);
@@ -135,11 +137,51 @@ export const dimBarSegments = (
 export const productAnnualCommitted = (entitlement?: BillingV2Entitlement): number => {
   const dims = entitlement?.dimensions ?? [];
   return dims.reduce((sum, dim) => {
-    if (dimAnnualCommitted(dim) && dim.committedRate) {
+    if (dimCommitted(dim) && dim.committedRate) {
       return sum + (dim.committed ?? 0) * dim.committedRate;
     }
     return sum;
   }, 0);
+};
+
+export const dimCommittable = (dim: BillingV2EntitlementDim): boolean =>
+  dim.commitAvailable && !dim.metered;
+
+export const canStartCommitment = (entitlement?: BillingV2Entitlement): boolean =>
+  (entitlement?.dimensions ?? []).some((dim) => dimCommittable(dim) && dim.committed === null);
+
+export type BillingV2CommitNudge = {
+  label: string;
+  qty: number;
+  annualCommitted: number;
+  monthlyAnnualized: number;
+  savingsPct: number;
+};
+
+export const commitSavingsNudge = (
+  entitlement?: BillingV2Entitlement
+): BillingV2CommitNudge | null => {
+  if (!entitlement?.entitled) {
+    return null;
+  }
+  const dim = (entitlement.dimensions ?? []).find(
+    (d) =>
+      dimCommittable(d) &&
+      d.committed === null &&
+      d.used > 0 &&
+      (d.committedRate ?? 0) > 0 &&
+      (d.onDemandRate ?? 0) > 0
+  );
+  if (!dim) {
+    return null;
+  }
+  const annualCommitted = dim.used * (dim.committedRate ?? 0);
+  const monthlyAnnualized = dim.used * (dim.onDemandRate ?? 0) * 12;
+  const savingsPct = Math.round((1 - annualCommitted / monthlyAnnualized) * 100);
+  if (savingsPct <= 0) {
+    return null;
+  }
+  return { label: dim.label, qty: dim.used, annualCommitted, monthlyAnnualized, savingsPct };
 };
 
 // Capitalize a plan tier ("pro" -> "Pro") for the badge beside a product's name.

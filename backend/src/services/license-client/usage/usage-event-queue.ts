@@ -68,15 +68,22 @@ export const usageEventQueueFactory = ({
           }
         ]);
       } catch (error) {
-        if (
-          error instanceof UsageReportError &&
-          error.status === 422 &&
-          error.serverMessage.includes("not priced by any active product on this license")
-        ) {
-          logger.info(
-            `usage-event-queue: dimension not priced on this license, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
-          );
-          return;
+        if (error instanceof UsageReportError) {
+          if (error.status === 404) {
+            logger.info(
+              `usage-event-queue: dimension not found, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+            );
+            return;
+          }
+          if (
+            error.status === 422 &&
+            error.serverMessage.includes("not priced by any active product on this license")
+          ) {
+            logger.info(
+              `usage-event-queue: dimension not priced on this license, skipping [orgId=${orgId}] [dimensionKey=${dimensionKey}]`
+            );
+            return;
+          }
         }
         throw error;
       }
