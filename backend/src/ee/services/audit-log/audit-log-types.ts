@@ -4065,6 +4065,9 @@ interface SetPkiApplicationScepEnrollment {
     applicationId: string;
     profileId: string;
     challengeType: string;
+    signRaWithCa: boolean;
+    validationConnectionId?: string;
+    validationConnectionName?: string;
   };
 }
 

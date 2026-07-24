@@ -281,6 +281,12 @@ import {
   TValidateLiteLLMConnectionCredentialsSchema
 } from "./litellm";
 import {
+  TMicrosoftIntuneConnection,
+  TMicrosoftIntuneConnectionConfig,
+  TMicrosoftIntuneConnectionInput,
+  TValidateMicrosoftIntuneConnectionCredentialsSchema
+} from "./microsoft-intune/microsoft-intune-connection-types";
+import {
   TMongoDBConnection,
   TMongoDBConnectionConfig,
   TMongoDBConnectionInput,
@@ -534,6 +540,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TCircleCIConnection
   | TCloud66Connection
   | TAzureEntraIdConnection
+  | TMicrosoftIntuneConnection
   | TVenafiConnection
   | TVenafiTppConnection
   | TExternalInfisicalConnection
@@ -625,6 +632,7 @@ export type TAppConnectionInput = { id: string } & (
   | TCircleCIConnectionInput
   | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
+  | TMicrosoftIntuneConnectionInput
   | TVenafiConnectionInput
   | TVenafiTppConnectionInput
   | TExternalInfisicalConnectionInput
@@ -748,6 +756,7 @@ export type TAppConnectionConfig =
   | TCircleCIConnectionConfig
   | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
+  | TMicrosoftIntuneConnectionConfig
   | TVenafiConnectionConfig
   | TVenafiTppConnectionConfig
   | TExternalInfisicalConnectionConfig
@@ -830,6 +839,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
+  | TValidateMicrosoftIntuneConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateVenafiTppConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema

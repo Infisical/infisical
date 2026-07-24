@@ -151,6 +151,10 @@ import {
   SanitizedLiteLLMConnectionSchema
 } from "@app/services/app-connection/litellm";
 import {
+  MicrosoftIntuneConnectionListItemSchema,
+  SanitizedMicrosoftIntuneConnectionSchema
+} from "@app/services/app-connection/microsoft-intune";
+import {
   MongoDBConnectionListItemSchema,
   SanitizedMongoDBConnectionSchema
 } from "@app/services/app-connection/mongodb";
@@ -311,6 +315,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAnthropicConnectionSchema.options,
   ...SanitizedDevinConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedMicrosoftIntuneConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
@@ -392,6 +397,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   OpenAIConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
+  MicrosoftIntuneConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   VenafiTppConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,

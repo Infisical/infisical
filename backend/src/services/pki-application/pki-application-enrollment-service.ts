@@ -8,11 +8,17 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
-import { generateRaCertificate } from "@app/ee/services/pki-scep/pki-scep-fns";
+import { generateAndEncryptScepRaCertificate, resolveScepRaSigning } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   generateAndEncryptAcmeEabSecret,
   validateAndEncryptPemCaChain
@@ -21,6 +27,7 @@ import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
+import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -66,6 +73,8 @@ type TSetScepEnrollmentDTO = {
     allowCertBasedRenewal?: boolean;
     dynamicChallengeExpiryMinutes?: number;
     dynamicChallengeMaxPending?: number;
+    validationConnectionId?: string;
+    signRaWithCa?: boolean;
   };
 } & TProjectPermission;
 
@@ -89,7 +98,16 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
-  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
+  hsmConnectorService: THsmConnectorServiceFactory;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
+  >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
 };
@@ -103,6 +121,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   estEnrollmentConfigDAL,
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
+  appConnectionDAL,
+  certificateProfileDAL,
+  certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  certificateAuthorityCertDAL,
+  hsmConnectorService,
   kmsService,
   projectDAL,
   permissionService
@@ -188,6 +212,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const estConfig = junction.estConfigId ? await estEnrollmentConfigDAL.findById(junction.estConfigId) : null;
     const scepConfig = junction.scepConfigId ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId) : null;
 
+    const profile = await certificateProfileDAL.findById(profileId);
+    const { raCaSigningSupported, caType } = await resolveScepRaSigning({
+      caId: profile?.caId,
+      certificateAuthorityDAL
+    });
+
     const siteUrl = getConfig().SITE_URL ?? "";
     const appProfilePath = `applications/${applicationId}/profiles/${profileId}`;
 
@@ -230,9 +260,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
                 ? `${siteUrl}/scep/${appProfilePath}/challenge`
                 : null,
             raCertificatePem: scepConfig.raCertificate,
-            raCertExpiresAt: scepConfig.raCertExpiresAt
+            raCertExpiresAt: scepConfig.raCertExpiresAt,
+            validationConnectionId: scepConfig.validationConnectionId ?? null,
+            signRaWithCa: Boolean(scepConfig.signRaWithCa)
           }
         : null,
+      raCaSigningSupported,
+      caType,
       estConfigured: Boolean(junction.estConfigId),
       acmeConfigured: Boolean(junction.acmeConfigId),
       scepConfigured: Boolean(junction.scepConfigId)
@@ -622,7 +656,25 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     );
 
     const challengeType = config.challengeType ?? ScepChallengeType.STATIC;
+    const isIntune = challengeType === ScepChallengeType.MICROSOFT_INTUNE;
     const appCfg = getConfig();
+
+    let validationConnectionId: string | null = null;
+    let validationConnectionName: string | null = null;
+    if (isIntune) {
+      if (!config.validationConnectionId) {
+        throw new BadRequestError({
+          message: "A Microsoft Intune connection is required for Microsoft Intune SCEP validation."
+        });
+      }
+      const connection = await appConnectionDAL.findById(config.validationConnectionId);
+      if (!connection || connection.orgId !== actorOrgId || connection.app !== AppConnection.MicrosoftIntune) {
+        throw new BadRequestError({ message: "The selected Microsoft Intune connection could not be found." });
+      }
+      validationConnectionId = connection.id;
+      validationConnectionName = connection.name;
+    }
+
     let hashedChallengePassword: string | null = null;
     if (challengeType === ScepChallengeType.STATIC) {
       if (!config.challengePassword) {
@@ -631,14 +683,41 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       hashedChallengePassword = await crypto.hashing().createHash(config.challengePassword, appCfg.SALT_ROUNDS);
     }
 
+    // Cert-based renewal skips the challenge, which would bypass Intune's per-request validation, so force it off.
+    const allowCertBasedRenewal = isIntune ? false : (config.allowCertBasedRenewal ?? true);
+
     const isFirstCreate = !junction.scepConfigId;
-    const raCert = isFirstCreate ? await generateRaCertificate(`app-${applicationId}-${profileId}`) : null;
-    let encryptedRaPrivateKey: Buffer | null = null;
-    if (raCert) {
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({ projectId, projectDAL, kmsService });
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-      const encResult = await kmsEncryptor({ plainText: Buffer.from(raCert.privateKeyDer) });
-      encryptedRaPrivateKey = encResult.cipherTextBlob;
+    const raSlug = `app-${applicationId}-${profileId}`;
+
+    const profile = await certificateProfileDAL.findById(profileId);
+    const { signRaWithCa } = await resolveScepRaSigning({
+      caId: profile?.caId,
+      requestedSignRaWithCa: config.signRaWithCa,
+      certificateAuthorityDAL
+    });
+
+    const existingScepConfig = junction.scepConfigId
+      ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId)
+      : null;
+    // Regenerating the RA breaks devices already trusting it, so only do it on first enable or a signing change.
+    const shouldGenerateRaCert =
+      isFirstCreate || (existingScepConfig ? existingScepConfig.signRaWithCa !== signRaWithCa : false);
+    let raCert: Awaited<ReturnType<typeof generateAndEncryptScepRaCertificate>> | null = null;
+    if (shouldGenerateRaCert) {
+      raCert = await generateAndEncryptScepRaCertificate({
+        slug: raSlug,
+        caId: profile?.caId,
+        signRaWithCa,
+        projectId,
+        deps: {
+          certificateAuthorityDAL,
+          certificateAuthoritySecretDAL,
+          certificateAuthorityCertDAL,
+          projectDAL,
+          kmsService,
+          hsmConnectorService
+        }
+      });
     }
 
     return pkiApplicationProfileDAL.transaction(async (tx) => {
@@ -653,30 +732,41 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           scepConfigId,
           {
             ...(hashedChallengePassword !== null ? { hashedChallengePassword } : {}),
+            ...(raCert
+              ? {
+                  raCertificate: raCert.certificatePem,
+                  raCertExpiresAt: raCert.expiresAt,
+                  encryptedRaPrivateKey: raCert.encryptedPrivateKey
+                }
+              : {}),
             challengeType,
             includeCaCertInResponse: config.includeCaCertInResponse ?? true,
-            allowCertBasedRenewal: config.allowCertBasedRenewal ?? true,
+            allowCertBasedRenewal,
+            signRaWithCa,
             dynamicChallengeExpiryMinutes,
-            dynamicChallengeMaxPending
+            dynamicChallengeMaxPending,
+            validationConnectionId
           },
           tx
         );
       } else {
-        if (!raCert || !encryptedRaPrivateKey) {
+        if (!raCert) {
           // Defensive, should never hit; raCert is generated when isFirstCreate.
           throw new BadRequestError({ message: "Failed to generate SCEP RA certificate." });
         }
         const created = await scepEnrollmentConfigDAL.create(
           {
-            encryptedRaPrivateKey,
+            encryptedRaPrivateKey: raCert.encryptedPrivateKey,
             raCertificate: raCert.certificatePem,
             raCertExpiresAt: raCert.expiresAt,
             hashedChallengePassword,
             challengeType,
             includeCaCertInResponse: config.includeCaCertInResponse ?? true,
-            allowCertBasedRenewal: config.allowCertBasedRenewal ?? true,
+            allowCertBasedRenewal,
+            signRaWithCa,
             dynamicChallengeExpiryMinutes,
             dynamicChallengeMaxPending,
+            validationConnectionId,
             applicationProfileId: junction.id
           },
           tx
@@ -684,7 +774,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
         scepConfigId = created.id;
         await pkiApplicationProfileDAL.update({ applicationId, profileId }, { scepConfigId }, tx);
       }
-      return { applicationId, profileId, scep: { id: scepConfigId, challengeType } };
+      return {
+        applicationId,
+        profileId,
+        scep: { id: scepConfigId, challengeType },
+        signRaWithCa,
+        validationConnection: validationConnectionId
+          ? { id: validationConnectionId, name: validationConnectionName }
+          : null
+      };
     });
   };
 

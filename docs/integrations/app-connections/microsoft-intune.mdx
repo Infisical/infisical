@@ -1,0 +1,87 @@
+---
+title: "Microsoft Intune Connection"
+description: "Learn how to configure a Microsoft Intune Connection for Infisical."
+---
+
+Infisical's Microsoft Intune Connection lets you validate SCEP certificate requests against Microsoft Intune using Client Secrets. When a device enrolls through a [SCEP enrollment method](/documentation/platform/pki/applications/enrollment-methods/scep) configured with Intune validation, Infisical asks Intune to confirm the device's challenge before issuing the certificate, then reports the outcome back to Intune.
+
+**Prerequisites:**
+
+- A Microsoft Entra ID tenant with Microsoft Intune enabled.
+- An App Registration in Azure with a Client Secret and the API permissions below.
+
+#### Required Azure permissions
+
+Set the API permissions of your Azure application to include the following **Application permissions**, then grant admin consent:
+
+- Microsoft Graph
+  - `Application.Read.All`
+- Microsoft Intune
+  - `scep_challenge_provider`
+
+## Setup Microsoft Intune Connection in Infisical
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your **Certificate Manager** project, go to **Settings** and open the **App Connections** tab, then click **Add Connection**.
+      </Step>
+      <Step title="Add Connection">
+        Select the **Microsoft Intune** option from the connection options modal.
+      </Step>
+      <Step title="Create Connection">
+        Fill in the following fields with the credentials from your Azure App Registration:
+
+        - **Tenant ID**: The Directory (Tenant) ID of your Microsoft Entra ID tenant.
+        - **Client ID**: The Application (Client) ID of your registered application.
+        - **Client Secret**: A client secret generated for your registered application.
+
+        Click **Connect** to create the connection.
+      </Step>
+      <Step title="Connection Created">
+        Your **Microsoft Intune Connection** is now available for use as the validation connection on a SCEP enrollment method.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a Microsoft Intune Connection via API, send a request to the [Create Microsoft Intune Connection](/api-reference/endpoints/app-connections/microsoft-intune/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/microsoft-intune \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-microsoft-intune-connection",
+                "method": "client-secret",
+                "credentials": {
+                    "tenantId": "your-tenant-id",
+                    "clientId": "your-client-id",
+                    "clientSecret": "your-client-secret"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```json Response
+    {
+      "appConnection": {
+          "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+          "name": "my-microsoft-intune-connection",
+          "description": null,
+          "version": 1,
+          "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+          "createdAt": "2023-11-07T05:31:56Z",
+          "updatedAt": "2023-11-07T05:31:56Z",
+          "isPlatformManagedCredentials": false,
+          "app": "microsoft-intune",
+          "method": "client-secret",
+          "credentials": {}
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

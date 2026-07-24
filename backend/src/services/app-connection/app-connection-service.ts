@@ -136,6 +136,7 @@ import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-con
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
 import { ValidateLiteLLMConnectionCredentialsSchema } from "./litellm";
 import { liteLLMConnectionService } from "./litellm/litellm-connection-service";
+import { ValidateMicrosoftIntuneConnectionCredentialsSchema } from "./microsoft-intune";
 import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
@@ -276,6 +277,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.CircleCI]: ValidateCircleCIConnectionCredentialsSchema,
   [AppConnection.Cloud66]: ValidateCloud66ConnectionCredentialsSchema,
   [AppConnection.AzureEntraId]: ValidateAzureEntraIdConnectionCredentialsSchema,
+  [AppConnection.MicrosoftIntune]: ValidateMicrosoftIntuneConnectionCredentialsSchema,
   [AppConnection.Venafi]: ValidateVenafiConnectionCredentialsSchema,
   [AppConnection.VenafiTpp]: ValidateVenafiTppConnectionCredentialsSchema,
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,

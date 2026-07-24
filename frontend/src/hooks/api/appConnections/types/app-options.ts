@@ -49,6 +49,10 @@ export type TAzureEntraIdConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureEntraId;
 };
 
+export type TMicrosoftIntuneConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MicrosoftIntune;
+};
+
 export type TAzureDevOpsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDevOps;
   oauthClientId?: string;
@@ -390,6 +394,7 @@ export type TAppConnectionOption =
   | TSmbConnectionOption
   | TWinRMConnectionOption
   | TAzureEntraIdConnectionOption
+  | TMicrosoftIntuneConnectionOption
   | TVenafiConnectionOption
   | TVenafiTppConnectionOption
   | TExternalInfisicalConnectionOption
@@ -472,6 +477,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
   [AppConnection.Cloud66]: TCloud66ConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
+  [AppConnection.MicrosoftIntune]: TMicrosoftIntuneConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.VenafiTpp]: TVenafiTppConnectionOption;
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;

@@ -16,7 +16,7 @@ import {
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
-import { generateRaCertificate } from "@app/ee/services/pki-scep/pki-scep-fns";
+import { generateAndEncryptScepRaCertificate, resolveScepRaSigning } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
@@ -27,8 +27,10 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
@@ -43,6 +45,7 @@ import {
 } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "../enrollment-config/scep-enrollment-config-dal";
+import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiApplicationProfileDALFactory } from "../pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -292,7 +295,10 @@ type TCertificateProfileServiceFactoryDep = {
   scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "deleteByConfigId">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
-  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
+  hsmConnectorService: THsmConnectorServiceFactory;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
@@ -354,6 +360,9 @@ export const certificateProfileServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   certificateAuthorityDAL,
+  certificateAuthoritySecretDAL,
+  certificateAuthorityCertDAL,
+  hsmConnectorService,
   externalCertificateAuthorityDAL,
   permissionService,
   kmsService,
@@ -482,20 +491,37 @@ export const certificateProfileServiceFactory = ({
           allowCertBasedRenewal: boolean;
           dynamicChallengeExpiryMinutes: number | null;
           dynamicChallengeMaxPending: number | null;
+          signRaWithCa: boolean;
         }
       | undefined;
 
     if (enrollmentType === EnrollmentType.SCEP && data.scepConfig) {
-      const raCert = await generateRaCertificate(data.slug);
+      if (data.scepConfig.challengeType === ScepChallengeType.MICROSOFT_INTUNE) {
+        throw new BadRequestError({
+          message:
+            "Microsoft Intune SCEP validation must be configured through an application's enrollment method, not directly on a certificate profile."
+        });
+      }
 
-      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
-        projectId,
-        projectDAL,
-        kmsService
+      const { signRaWithCa } = await resolveScepRaSigning({
+        caId: data.caId,
+        requestedSignRaWithCa: data.scepConfig.signRaWithCa,
+        certificateAuthorityDAL
       });
-      const kmsEncryptor = await kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
-      const { cipherTextBlob: encryptedRaPrivateKey } = await kmsEncryptor({
-        plainText: Buffer.from(raCert.privateKeyDer)
+
+      const raCert = await generateAndEncryptScepRaCertificate({
+        slug: data.slug,
+        caId: data.caId,
+        signRaWithCa,
+        projectId,
+        deps: {
+          certificateAuthorityDAL,
+          certificateAuthoritySecretDAL,
+          certificateAuthorityCertDAL,
+          projectDAL,
+          kmsService,
+          hsmConnectorService
+        }
       });
 
       const challengeType = (data.scepConfig.challengeType as ScepChallengeType) || ScepChallengeType.STATIC;
@@ -509,13 +535,14 @@ export const certificateProfileServiceFactory = ({
       }
 
       precomputedScepConfig = {
-        encryptedRaPrivateKey,
+        encryptedRaPrivateKey: raCert.encryptedPrivateKey,
         raCertificatePem: raCert.certificatePem,
         raCertExpiresAt: raCert.expiresAt,
         hashedChallengePassword,
         challengeType,
         includeCaCertInResponse: data.scepConfig.includeCaCertInResponse ?? true,
         allowCertBasedRenewal: data.scepConfig.allowCertBasedRenewal ?? true,
+        signRaWithCa,
         dynamicChallengeExpiryMinutes:
           challengeType === ScepChallengeType.DYNAMIC ? (data.scepConfig.dynamicChallengeExpiryMinutes ?? 60) : null,
         dynamicChallengeMaxPending:
@@ -585,6 +612,7 @@ export const certificateProfileServiceFactory = ({
             challengeType: precomputedScepConfig.challengeType,
             includeCaCertInResponse: precomputedScepConfig.includeCaCertInResponse,
             allowCertBasedRenewal: precomputedScepConfig.allowCertBasedRenewal,
+            signRaWithCa: precomputedScepConfig.signRaWithCa,
             dynamicChallengeExpiryMinutes: precomputedScepConfig.dynamicChallengeExpiryMinutes,
             dynamicChallengeMaxPending: precomputedScepConfig.dynamicChallengeMaxPending
           },

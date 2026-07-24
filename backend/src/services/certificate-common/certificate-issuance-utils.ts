@@ -179,17 +179,13 @@ export const validateAlgorithmCompatibility = (
       }
 
       const parts = sigAlg.split("-");
-      if (parts.length === 0) {
-        return false;
-      }
-      const keyType = parts[parts.length - 1];
 
       if (caKeyAlgorithm.startsWith("RSA")) {
-        return keyType === CertKeyType.RSA;
+        return parts.includes(CertKeyType.RSA);
       }
 
       if (caKeyAlgorithm.startsWith("EC")) {
-        return keyType === CertKeyType.ECDSA;
+        return parts.includes(CertKeyType.ECDSA);
       }
 
       return false;

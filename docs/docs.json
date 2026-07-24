@@ -151,6 +151,7 @@
                       "integrations/app-connections/litellm",
                       "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
+                      "integrations/app-connections/microsoft-intune",
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
