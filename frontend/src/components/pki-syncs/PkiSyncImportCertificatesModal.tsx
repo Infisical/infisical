@@ -47,8 +47,8 @@ export const PkiSyncImportCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
         <AlertDialogHeader>
           <AlertDialogTitle>Import Certificates</AlertDialogTitle>
           <AlertDialogDescription>
-            Retrieve certificates from this {destinationName} destination and make certificates
-            that have not already been imported available in Infisical.
+            Retrieve certificates from this {destinationName} destination and make certificates that
+            have not already been imported available in Infisical.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -324,131 +324,128 @@ export const CertificateManagementModal = ({
             </div>
           </div>
 
-          <>
-            <Table>
-              <THead>
-                <Tr>
-                  <Th className="w-12">
-                    {!isSingleSelect && (
+          <Table>
+            <THead>
+              <Tr>
+                <Th className="w-12">
+                  {!isSingleSelect && (
+                    <Checkbox
+                      id="select-all-certificates"
+                      isChecked={
+                        allCertificates.length > 0 &&
+                        allCertificates.every((cert) => selectedIds.includes(cert.id))
+                      }
+                      onCheckedChange={handleSelectAll}
+                    />
+                  )}
+                </Th>
+                <Th className="w-1/3">SAN / CN</Th>
+                <Th className="w-1/4">Serial Number</Th>
+                <Th className="w-1/6">Issued At</Th>
+                <Th className="w-1/6">Expires At</Th>
+              </Tr>
+            </THead>
+            <TBody>
+              {allCertificates.map((cert) => {
+                const isExpired = new Date(cert.notAfter) < new Date();
+                const isRevoked = cert.status === CertStatus.REVOKED;
+                const cannotBeAdded = isExpired || isRevoked;
+                const isAlreadySynced = syncedCertificateIds.includes(cert.id);
+
+                let originalDisplayName = "—";
+                if (cert.altNames && cert.altNames.trim()) {
+                  originalDisplayName = cert.altNames.trim();
+                } else if (cert.commonName && cert.commonName.trim()) {
+                  originalDisplayName = cert.commonName.trim();
+                }
+
+                let displayName = originalDisplayName;
+                let isTruncated = false;
+                if (originalDisplayName.length > 34) {
+                  displayName = `${originalDisplayName.substring(0, 34)}...`;
+                  isTruncated = true;
+                }
+
+                const truncatedSerial =
+                  cert.serialNumber.length > 8
+                    ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
+                    : cert.serialNumber;
+
+                return (
+                  <Tr
+                    key={cert.id}
+                    className={`cursor-pointer hover:bg-mineshaft-700 ${
+                      cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
+                    }`}
+                    onClick={() => {
+                      if (!cannotBeAdded || isAlreadySynced) {
+                        handleToggleSelection(cert.id);
+                      }
+                    }}
+                  >
+                    <Td className="max-w-0" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
-                        id="select-all-certificates"
-                        isChecked={
-                          allCertificates.length > 0 &&
-                          allCertificates.every((cert) => selectedIds.includes(cert.id))
-                        }
-                        onCheckedChange={handleSelectAll}
+                        id={cert.id}
+                        isChecked={selectedIds.includes(cert.id)}
+                        onCheckedChange={() => {
+                          if (!cannotBeAdded || isAlreadySynced) {
+                            handleToggleSelection(cert.id);
+                          }
+                        }}
+                        isDisabled={cannotBeAdded && !isAlreadySynced}
                       />
-                    )}
-                  </Th>
-                  <Th className="w-1/3">SAN / CN</Th>
-                  <Th className="w-1/4">Serial Number</Th>
-                  <Th className="w-1/6">Issued At</Th>
-                  <Th className="w-1/6">Expires At</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {allCertificates.map((cert) => {
-                  const isExpired = new Date(cert.notAfter) < new Date();
-                  const isRevoked = cert.status === CertStatus.REVOKED;
-                  const cannotBeAdded = isExpired || isRevoked;
-                  const isAlreadySynced = syncedCertificateIds.includes(cert.id);
-
-                  let originalDisplayName = "—";
-                  if (cert.altNames && cert.altNames.trim()) {
-                    originalDisplayName = cert.altNames.trim();
-                  } else if (cert.commonName && cert.commonName.trim()) {
-                    originalDisplayName = cert.commonName.trim();
-                  }
-
-                  let displayName = originalDisplayName;
-                  let isTruncated = false;
-                  if (originalDisplayName.length > 34) {
-                    displayName = `${originalDisplayName.substring(0, 34)}...`;
-                    isTruncated = true;
-                  }
-
-                  const truncatedSerial =
-                    cert.serialNumber.length > 8
-                      ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
-                      : cert.serialNumber;
-
-                  return (
-                    <Tr
-                      key={cert.id}
-                      className={`cursor-pointer hover:bg-mineshaft-700 ${
-                        cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
-                      }`}
-                      onClick={() => {
-                        if (!cannotBeAdded || isAlreadySynced) {
-                          handleToggleSelection(cert.id);
-                        }
-                      }}
-                    >
-                      <Td className="max-w-0" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          id={cert.id}
-                          isChecked={selectedIds.includes(cert.id)}
-                          onCheckedChange={() => {
-                            if (!cannotBeAdded || isAlreadySynced) {
-                              handleToggleSelection(cert.id);
-                            }
-                          }}
-                          isDisabled={cannotBeAdded && !isAlreadySynced}
-                        />
-                      </Td>
-                      <Td className="max-w-0">
-                        {isTruncated ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="truncate">{displayName}</div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-lg">
-                              {originalDisplayName}
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <div className="truncate">{displayName}</div>
-                        )}
-                      </Td>
-                      <Td className="max-w-0">
-                        <div
-                          className="font-mono text-xs text-bunker-300"
-                          title={cert.serialNumber}
-                        >
-                          {truncatedSerial}
-                        </div>
-                      </Td>
-                      <Td className="max-w-0">
-                        <span className="text-sm text-bunker-300">
-                          {new Date(cert.notBefore).toLocaleDateString()}
-                        </span>
-                      </Td>
-                      <Td className="max-w-0">
-                        <span
-                          className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
-                        >
-                          {new Date(cert.notAfter).toLocaleDateString()}
-                        </span>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </TBody>
-            </Table>
-            {allCertificates.length === 0 && (
-              <Empty className="rounded-t-none border-t-0">
-                <EmptyHeader>
-                  <EmptyTitle>No certificates found</EmptyTitle>
-                  <EmptyDescription>
-                    {searchTerm
-                      ? "No certificates match your search criteria."
-                      : "No certificates available for sync."}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-          </>
-
+                    </Td>
+                    <Td className="max-w-0">
+                      {isTruncated ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="truncate">{displayName}</div>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-lg">
+                            {originalDisplayName}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div className="truncate">{displayName}</div>
+                      )}
+                    </Td>
+                    <Td className="max-w-0">
+                      <div
+                        className="font-mono text-xs text-bunker-300"
+                        title={cert.serialNumber}
+                      >
+                        {truncatedSerial}
+                      </div>
+                    </Td>
+                    <Td className="max-w-0">
+                      <span className="text-sm text-bunker-300">
+                        {new Date(cert.notBefore).toLocaleDateString()}
+                      </span>
+                    </Td>
+                    <Td className="max-w-0">
+                      <span
+                        className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
+                      >
+                        {new Date(cert.notAfter).toLocaleDateString()}
+                      </span>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </TBody>
+          </Table>
+          {allCertificates.length === 0 && (
+            <Empty className="rounded-t-none border-t-0">
+              <EmptyHeader>
+                <EmptyTitle>No certificates found</EmptyTitle>
+                <EmptyDescription>
+                  {searchTerm
+                    ? "No certificates match your search criteria."
+                    : "No certificates available for sync."}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">
               <Pagination
@@ -466,11 +463,7 @@ export const CertificateManagementModal = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            variant="project"
-            onClick={handleSaveCertificates}
-            isPending={isLoading}
-          >
+          <Button variant="project" onClick={handleSaveCertificates} isPending={isLoading}>
             {saveButtonText}
           </Button>
         </DialogFooter>
