@@ -148,7 +148,7 @@ export type TUnifiedCertificateIssuanceDTO = {
       type: string;
       value: string;
     }>;
-    ttl: string;
+    ttl?: string;
     notBefore?: string;
     notAfter?: string;
   };

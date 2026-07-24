@@ -63,7 +63,7 @@ type TIdentityAwsAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -457,6 +457,7 @@ export const identityAwsAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AWS_AUTH);
     return { ...identityAwsAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -556,6 +557,7 @@ export const identityAwsAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AWS_AUTH);
     return { ...updatedAwsAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -702,6 +704,7 @@ export const identityAwsAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.AWS_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AWS_AUTH);
 
     return revokedIdentityAwsAuth;
   };

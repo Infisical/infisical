@@ -12,7 +12,13 @@ Before setting up a Microsoft ADCS certificate authority, configure a [Microsoft
 You can use AD CS in a few ways: as an **External CA** that issues certificates directly, to back a **code signing signer**, or to **sign internal intermediate CAs** so you can build an Infisical-managed CA hierarchy backed by your AD CS server. In every case the certificate template is chosen by the issuance flow (profile, signer, or intermediate CA), not by the CA itself.
 
 <Note>
-  The certificate authority name is discovered automatically from the CA host. Provide it explicitly only when discovery cannot run in your environment.
+  Enter the certificate authority name (for example `corp-ca01-CA`). To find it, run this on the AD CS server:
+
+  ```powershell
+  certutil -getreg CA\CommonName
+  ```
+
+  You can leave it blank only if the Gateway can reach the CA host over SMB (TCP 445), which lets Infisical discover the name for you.
 </Note>
 
 <Tabs>
@@ -27,7 +33,9 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
         - **Type**: Choose **Microsoft ADCS**
         - **Name**: Friendly name for this CA (for example, `production-adcs`)
         - **Microsoft ADCS Connection**: Choose your Microsoft ADCS connection
-        - **Certificate Authority**: Optional. Leave blank to discover it automatically from the CA host.
+        - **Certificate Authority**: The CA common name, for example `corp-ca01-CA` (run `certutil -getreg CA\CommonName` on the AD CS server to find it). Leave it blank only if the Gateway can reach the CA host over SMB (TCP 445) for automatic discovery.
+
+        Infisical contacts the CA through the Gateway when you save, so a wrong name or an unreachable host is rejected here.
       </Step>
 
       <Step title="Create a Certificate Profile">
@@ -184,7 +192,10 @@ You can use AD CS in a few ways: as an **External CA** that issues certificates 
     The connection account does not have Enroll permission on the requested template. Grant Enroll to the account on the template's security settings.
   </Accordion>
   <Accordion title="The certificate authority name could not be discovered">
-    Discovery reads the CA name from the host's registry over the network, which requires the Remote Registry service to be running and reachable from the Gateway. If it cannot run, set the certificate authority name explicitly on the external CA.
+    Automatic discovery reads the CA name from the host's registry over SMB (TCP 445), which requires the Remote Registry service to be running and reachable from the Gateway. If SMB is not open to the Gateway, leave discovery aside and set the certificate authority name explicitly on the external CA. Run `certutil -getreg CA\CommonName` on the AD CS server to find it.
+  </Accordion>
+  <Accordion title="Could not reach certificate authority through the gateway">
+    When you create or update the CA, Infisical validates the certificate authority name against the CA over the Gateway. This error means the name does not match a CA on the host, or the Gateway cannot reach the AD CS server. Confirm the name with `certutil -getreg CA\CommonName` on the AD CS server and that the Gateway can connect to the host over DCOM (MS-WCCE).
   </Accordion>
   <Accordion title="Signer rejected: missing Code Signing extended key usage">
     The template used for a code signing signer does not produce a code-signing certificate. Point the signer at a template that carries the Code Signing extended key usage.

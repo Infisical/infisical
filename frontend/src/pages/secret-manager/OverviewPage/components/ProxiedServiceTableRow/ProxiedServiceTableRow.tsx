@@ -1,4 +1,5 @@
 import { subject } from "@casl/ability";
+import { formatDistanceToNow } from "date-fns";
 import {
   BanIcon,
   ChevronDownIcon,
@@ -26,10 +27,20 @@ import {
   ProjectPermissionProxiedServiceActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { formatDateTime } from "@app/helpers/datetime";
 import { useToggle } from "@app/hooks";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
+
+// Returns null (renders nothing) for a never-used service rather than "Never".
+const formatLastUsed = (lastUsedAt?: string | null) => {
+  if (!lastUsedAt) return null;
+  const date = new Date(lastUsedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  if (Date.now() - date.getTime() < 60_000) return "Used just now";
+  return `Used ${formatDistanceToNow(date)} ago`;
+};
 
 type Props = {
   proxiedServiceName: string;
@@ -123,29 +134,45 @@ export const ProxiedServiceTableRow = ({
     </div>
   );
 
-  const renderInlineDetails = (proxiedService: TDashboardProxiedService) => (
-    <>
-      <span
-        className="ml-2 max-w-[240px] truncate text-xs text-muted"
-        title={proxiedService.hostPattern}
-      >
-        {proxiedService.hostPattern}
-      </span>
-      <div
-        className={twMerge(
-          "ml-auto flex items-center gap-x-2 transition-[margin] duration-300",
-          "group-hover:mr-24"
-        )}
-      >
-        {!proxiedService.isEnabled && (
-          <Badge variant="neutral">
-            <BanIcon />
-            Disabled
-          </Badge>
-        )}
-      </div>
-    </>
-  );
+  const renderInlineDetails = (proxiedService: TDashboardProxiedService) => {
+    const lastUsedLabel = formatLastUsed(proxiedService.lastUsedAt);
+
+    return (
+      <>
+        <span
+          className="ml-2 max-w-[240px] truncate text-xs text-muted"
+          title={proxiedService.hostPattern}
+        >
+          {proxiedService.hostPattern}
+        </span>
+        <div
+          className={twMerge(
+            "ml-auto flex items-center gap-x-2 transition-[margin] duration-300",
+            "group-hover:mr-24"
+          )}
+        >
+          {!proxiedService.isEnabled && (
+            <Badge variant="neutral">
+              <BanIcon />
+              Disabled
+            </Badge>
+          )}
+          {lastUsedLabel && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-default text-xs whitespace-nowrap text-muted">
+                  {lastUsedLabel}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {formatDateTime({ timestamp: proxiedService.lastUsedAt! })}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </>
+    );
+  };
 
   return (
     <>

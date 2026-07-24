@@ -62,6 +62,14 @@ the frontend renders create/edit forms from `GET /pam/accounts/types` metadata, 
 frontend components**. Adding a type is mostly a config entry + an icon; the gateway extension points are
 `extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
 
+**Connection test** (`assertConnectionOk`) runs inside account `create`/`update` and **throws to block the write**
+if the target can't be reached/authenticated (verified from the gateway, never the backend). Which types are
+testable and how each builds its request is one registry — `PAM_CONNECTION_TEST_BUILDERS` in
+`pam-account-connection-test.ts` (a type absent from it isn't tested; add a testable type by adding an entry).
+One gateway RPC runs it all — `testConnectionWithGateway` → the gateway's `/v1/test-connection` handler
+(`packages/gateway-v2/test_connection_handler.go`), which dispatches on a `mode`: `postgres` (pgx auth + `SELECT 1`),
+`ssh` (login via the shared exec path), or `tcp` (reachability).
+
 Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
 `requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
 metadata; **gateway-injection** (`GcpServiceAccount`, `AzureCli`) proxies the cloud REST API through the

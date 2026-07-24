@@ -12,14 +12,13 @@ import {
   sessionResponseSchema,
   subscriptionPreviewResponseSchema,
   subscriptionResponseSchema,
-  TAddSubscriptionItemsPayload,
   TBillingProfileResponse,
+  TBuyProductPayload,
   TCancelTrialPayload,
   TCatalogResponse,
-  TChangeCommitmentPayload,
+  TChangeCommitmentsPayload,
   TCheckoutResult,
   TCloudPlanResponse,
-  TCreateCheckoutPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TEntitlementsResponse,
@@ -69,13 +68,37 @@ export const mintServiceToken = (signingKey: string): string =>
 // product; cancel the subscription instead"); when it has none, fall back to the generic error
 // default rather than a status code the customer can't act on. 5xx bodies may carry internal detail,
 // so those stay generic.
+// Friendly, action-oriented copy for the license server's machine error codes (details.code). Resolved
+// here so the whole billing surface throws a user-facing message the frontend just renders (no per-code
+// branching in the UI). Falls back to the server's own message when the code is unknown/absent.
+const BILLING_ERROR_MESSAGES: Record<string, string> = {
+  commitment_decrease_locked: "Commitments can't be reduced until the final window before your renewal.",
+  cap_exceeded: "That amount is above the limit available on your plan.",
+  plan_cadence_not_offered: "Your current plan version doesn't offer this billing option.",
+  product_already_held: "You already have this product. Remove it before adding it again.",
+  past_due: "There's an unpaid invoice on your account. Resolve payment before making changes.",
+  resubscribe_cooldown: "This product was removed recently. Please wait a bit before resubscribing."
+};
+
 const throwIfResponseError = async (res: Response): Promise<void> => {
   if (res.ok) {
     return;
   }
   if (res.status >= 400 && res.status < 500) {
-    const body = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new BadRequestError({ message: body?.message });
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+      message?: string;
+      details?: { code?: string };
+    } | null;
+    // Resolve the contract's machine code (details.code) to friendly copy so the message thrown here is
+    // user-facing; keep the code in details for any caller that still branches on it. The envelope uses
+    // `error`; older servers used `message`, so read both as the fallback.
+    const code = body?.details?.code;
+    const message = (code && BILLING_ERROR_MESSAGES[code]) || body?.error || body?.message;
+    throw new BadRequestError({
+      message,
+      details: code ? { code } : undefined
+    });
   }
   throw new InternalServerError({ message: "Billing service error" });
 };
@@ -191,8 +214,10 @@ export const licenseServerBackend = (
     return billingProfileResponseSchema.parse(body);
   },
 
-  createCheckoutSession: async (orgId: string, payload: TCreateCheckoutPayload): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/billing/checkout-session"), serverUrl);
+  // Buy/add one product. Self-selects append-to-live-subscription vs open a hosted Checkout server
+  // side, so the caller never branches on subscription state.
+  buyProduct: async (orgId: string, payload: TBuyProductPayload): Promise<TCheckoutResult> => {
+    const url = new URL(orgScoped(orgId, "/subscription/products"), serverUrl);
     const res = await fetch(url, {
       method: "POST",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
@@ -233,21 +258,9 @@ export const licenseServerBackend = (
     return subscriptionPreviewResponseSchema.parse(body);
   },
 
-  addSubscriptionItems: async (orgId: string, payload: TAddSubscriptionItemsPayload): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/items"), serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
-  },
-
-  removeSubscriptionItem: async (orgId: string, productId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, `/subscription/items/${encodeURIComponent(productId)}`), serverUrl);
+  // Remove one product. Removing the last product cancels the subscription; idempotent when absent.
+  removeProduct: async (orgId: string, productId: string): Promise<TCheckoutResult> => {
+    const url = new URL(orgScoped(orgId, `/subscription/products/${encodeURIComponent(productId)}`), serverUrl);
     const res = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
@@ -258,12 +271,12 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  // Apply a previewed per_resource commitment change. The server prorates at commit time; the payload
-  // carries no proration timestamp, so the caller can't influence the charged amount.
-  changeCommitment: async (orgId: string, payload: TChangeCommitmentPayload): Promise<TCheckoutResult> => {
+  // Start / change annual commitments across dimensions, all-or-nothing. The license server prices at
+  // its current time; no client-supplied proration instant is forwarded.
+  changeCommitments: async (orgId: string, payload: TChangeCommitmentsPayload): Promise<TCheckoutResult> => {
     const url = new URL(orgScoped(orgId, "/subscription/commitments"), serverUrl);
     const res = await fetch(url, {
-      method: "POST",
+      method: "PUT",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}`, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       redirect: "manual"
@@ -284,7 +297,8 @@ export const licenseServerBackend = (
         product_key: payload.productKey,
         plan_key: payload.planKey,
         email: payload.email,
-        name: payload.name
+        name: payload.name,
+        returnUrl: payload.returnUrl
       }),
       redirect: "manual"
     });
@@ -427,12 +441,11 @@ export const licenseServerSelfHostedBackend = (
 
   fetchCloudPlan: notSupportedOnSelfHosted("fetchCloudPlan"),
   fetchBillingProfile: notSupportedOnSelfHosted("fetchBillingProfile"),
-  createCheckoutSession: notSupportedOnSelfHosted("createCheckoutSession"),
   createPortalSession: notSupportedOnSelfHosted("createPortalSession"),
   previewSubscriptionChange: notSupportedOnSelfHosted("previewSubscriptionChange"),
-  addSubscriptionItems: notSupportedOnSelfHosted("addSubscriptionItems"),
-  removeSubscriptionItem: notSupportedOnSelfHosted("removeSubscriptionItem"),
-  changeCommitment: notSupportedOnSelfHosted("changeCommitment"),
+  buyProduct: notSupportedOnSelfHosted("buyProduct"),
+  removeProduct: notSupportedOnSelfHosted("removeProduct"),
+  changeCommitments: notSupportedOnSelfHosted("changeCommitments"),
   startTrial: notSupportedOnSelfHosted("startTrial"),
   cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
   fetchTrials: notSupportedOnSelfHosted("fetchTrials"),

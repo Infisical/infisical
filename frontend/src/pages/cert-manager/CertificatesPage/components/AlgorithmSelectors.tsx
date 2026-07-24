@@ -21,6 +21,7 @@ type AlgorithmSelectorsProps = {
   keyFieldName?: string;
   isRequired?: boolean;
   nonePlaceholder?: string;
+  hideSignatureAlgorithm?: boolean;
 };
 
 const NONE_VALUE = "__none__";
@@ -35,56 +36,59 @@ export const AlgorithmSelectors = ({
   signatureFieldName = "signatureAlgorithm",
   keyFieldName = "keyAlgorithm",
   isRequired = true,
-  nonePlaceholder
+  nonePlaceholder,
+  hideSignatureAlgorithm = false
 }: AlgorithmSelectorsProps) => {
   const { subscription } = useSubscription();
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <Controller
-          control={control}
-          name={signatureFieldName}
-          shouldUnregister={shouldUnregister}
-          render={({ field: { onChange, value, ...field } }) => (
-            <FormControl
-              label="Signature Algorithm"
-              errorText={signatureError}
-              isError={Boolean(signatureError)}
-              isRequired={isRequired}
-            >
-              <Select
-                defaultValue=""
-                {...field}
-                value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
-                onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
-                className="w-full"
-                placeholder={
-                  availableSignatureAlgorithms.length > 0
-                    ? "Select signature algorithm"
-                    : "No algorithms available"
-                }
-                position="popper"
+    <div className={hideSignatureAlgorithm ? "grid grid-cols-1 gap-4" : "grid grid-cols-2 gap-4"}>
+      {!hideSignatureAlgorithm && (
+        <div>
+          <Controller
+            control={control}
+            name={signatureFieldName}
+            shouldUnregister={shouldUnregister}
+            render={({ field: { onChange, value, ...field } }) => (
+              <FormControl
+                label="Signature Algorithm"
+                errorText={signatureError}
+                isError={Boolean(signatureError)}
+                isRequired={isRequired}
               >
-                {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
-                {availableSignatureAlgorithms.map((algorithm) => (
-                  <SelectItem
-                    key={algorithm.value}
-                    value={algorithm.value}
-                    isDisabled={isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc}
-                  >
-                    <div className="flex items-center gap-2">
-                      {algorithm.label}
-                      {isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc && (
-                        <Badge variant="info">Enterprise</Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-        />
-      </div>
+                <Select
+                  defaultValue=""
+                  {...field}
+                  value={value ?? (nonePlaceholder ? NONE_VALUE : "")}
+                  onValueChange={(e) => onChange(e === NONE_VALUE ? null : e)}
+                  className="w-full"
+                  placeholder={
+                    availableSignatureAlgorithms.length > 0
+                      ? "Select signature algorithm"
+                      : "No algorithms available"
+                  }
+                  position="popper"
+                >
+                  {nonePlaceholder && <SelectItem value={NONE_VALUE}>{nonePlaceholder}</SelectItem>}
+                  {availableSignatureAlgorithms.map((algorithm) => (
+                    <SelectItem
+                      key={algorithm.value}
+                      value={algorithm.value}
+                      isDisabled={isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc}
+                    >
+                      <div className="flex items-center gap-2">
+                        {algorithm.label}
+                        {isPqcAlgorithm(algorithm.value) && !subscription?.pkiPqc && (
+                          <Badge variant="info">Enterprise</Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+        </div>
+      )}
 
       <div>
         <Controller

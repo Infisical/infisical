@@ -1,9 +1,20 @@
 import { useState } from "react";
-import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AnimatePresence, motion } from "framer-motion";
 
-import { Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AwsKmsForm } from "./AwsKmsForm";
@@ -14,103 +25,100 @@ type Props = {
   onToggle: (isOpen: boolean) => void;
 };
 
-enum WizardSteps {
-  SelectProvider = "select-provider",
-  ProviderInputs = "provider-inputs"
-}
-
 const EXTERNAL_KMS_LIST = [
   {
-    icon: faAws,
+    icon: "/images/integrations/Amazon Web Services.png",
     provider: ExternalKmsProvider.Aws,
-    title: "AWS KMS"
+    title: "AWS KMS",
+    description: "Use an AWS KMS key to encrypt organization data."
   },
   {
-    icon: faGoogle,
+    icon: "/images/integrations/Google Cloud Platform.png",
     provider: ExternalKmsProvider.Gcp,
-    title: "GCP KMS"
+    title: "GCP KMS",
+    description: "Use a Google Cloud KMS key to encrypt organization data."
   }
 ];
 
-export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
-  const [wizardStep, setWizardStep] = useState(WizardSteps.SelectProvider);
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+const PROVIDER_TITLES: Record<ExternalKmsProvider, string> = {
+  [ExternalKmsProvider.Aws]: "AWS KMS",
+  [ExternalKmsProvider.Gcp]: "GCP KMS"
+};
 
-  const handleFormReset = (state: boolean = false) => {
+export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
+  const { isSubOrganization } = useOrganization();
+  const [selectedProvider, setSelectedProvider] = useState<ExternalKmsProvider | null>(null);
+
+  const handleOpenChange = (state: boolean) => {
     onToggle(state);
-    setWizardStep(WizardSteps.SelectProvider);
-    setSelectedProvider(null);
+    if (!state) {
+      setSelectedProvider(null);
+    }
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
-      <ModalContent
-        title="Add a Key Management System"
-        subTitle="Configure an external key management system (KMS)"
-        className="my-4"
-        bodyClassName="overflow-visible"
-      >
-        <AnimatePresence mode="wait">
-          {wizardStep === WizardSteps.SelectProvider && (
-            <motion.div
-              key="select-type-step"
-              transition={{ duration: 0.1 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: -30 }}
-            >
-              <div className="mb-4 text-mineshaft-300">Select a KMS Provider</div>
-              <div className="flex items-center space-x-4">
-                {EXTERNAL_KMS_LIST.map(({ icon, provider, title }) => (
-                  <div
-                    key={`kms-${provider}`}
-                    className="flex h-28 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      setSelectedProvider(provider);
-                      setWizardStep(WizardSteps.ProviderInputs);
-                    }}
-                    onKeyDown={(evt) => {
-                      if (evt.key === "Enter") {
-                        setSelectedProvider(provider);
-                        setWizardStep(WizardSteps.ProviderInputs);
-                      }
-                    }}
-                  >
-                    <FontAwesomeIcon icon={icon} size="lg" />
-                    <div className="text-center text-sm whitespace-pre-wrap">{title}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-          {wizardStep === WizardSteps.ProviderInputs &&
-            selectedProvider === ExternalKmsProvider.Aws && (
-              <motion.div
-                key="kms-aws"
-                transition={{ duration: 0.1 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: -30 }}
-              >
-                <AwsKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
-              </motion.div>
-            )}
-          {wizardStep === WizardSteps.ProviderInputs &&
-            selectedProvider === ExternalKmsProvider.Gcp && (
-              <motion.div
-                key="kms-gcp"
-                transition={{ duration: 0.1 }}
-                initial={{ opacity: 0, translateX: 30 }}
-                animate={{ opacity: 1, translateX: 0 }}
-                exit={{ opacity: 0, translateX: -30 }}
-              >
-                <GcpKmsForm onCancel={() => onToggle(false)} onCompleted={() => onToggle(false)} />
-              </motion.div>
-            )}
-        </AnimatePresence>
-      </ModalContent>
-    </Modal>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
+      <SheetContent className="gap-0 sm:max-w-lg">
+        <SheetHeader className="border-b">
+          <SheetTitle>
+            {selectedProvider ? `Add ${PROVIDER_TITLES[selectedProvider]}` : "Add External KMS"}
+          </SheetTitle>
+          <SheetDescription>
+            {selectedProvider
+              ? `Configure ${PROVIDER_TITLES[selectedProvider]} for organization data encryption.`
+              : "Select a provider for organization data encryption."}
+          </SheetDescription>
+        </SheetHeader>
+        {!selectedProvider && (
+          <>
+            <div className="grid gap-3 p-4">
+              {EXTERNAL_KMS_LIST.map(({ icon, provider, title, description }) => (
+                <Item
+                  asChild
+                  variant="outline"
+                  key={provider}
+                  className={`cursor-pointer hover:bg-container-hover ${
+                    isSubOrganization
+                      ? "hover:border-sub-org/70 focus-visible:border-sub-org"
+                      : "hover:border-org/70 focus-visible:border-org"
+                  }`}
+                >
+                  <button type="button" onClick={() => setSelectedProvider(provider)}>
+                    <ItemMedia variant="image">
+                      <img src={icon} alt="" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{title}</ItemTitle>
+                      <ItemDescription>{description}</ItemDescription>
+                    </ItemContent>
+                  </button>
+                </Item>
+              ))}
+            </div>
+            <SheetFooter className="justify-end border-t">
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
+                Cancel
+              </Button>
+            </SheetFooter>
+          </>
+        )}
+        {selectedProvider === ExternalKmsProvider.Aws && (
+          <AwsKmsForm
+            layout="sheet"
+            secondaryActionLabel="Back"
+            onCancel={() => setSelectedProvider(null)}
+            onCompleted={() => handleOpenChange(false)}
+          />
+        )}
+        {selectedProvider === ExternalKmsProvider.Gcp && (
+          <GcpKmsForm
+            layout="sheet"
+            secondaryActionLabel="Back"
+            onCancel={() => setSelectedProvider(null)}
+            onCompleted={() => handleOpenChange(false)}
+          />
+        )}
+      </SheetContent>
+    </Sheet>
   );
 };

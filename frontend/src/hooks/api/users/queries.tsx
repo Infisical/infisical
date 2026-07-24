@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { SessionStorageKeys } from "@app/const";
+import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { getAuthToken, queryClient as qc } from "@app/hooks/api/reactQuery";
 
 import { authKeys } from "../auth/queries";
@@ -331,6 +332,8 @@ export const logoutUser = async () => {
 
 // Utility function to clear session storage and query cache
 export const clearSession = () => {
+  const serverConfig = qc.getQueryData(adminQueryKeys.serverConfig());
+
   setAuthToken(""); // Clear authentication token
   localStorage.removeItem("protectedKey");
   localStorage.removeItem("protectedKeyIV");
@@ -344,6 +347,12 @@ export const clearSession = () => {
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
   qc.clear();
+
+  // Server configuration is public and required to render authentication routes.
+  // Preserve it so delayed logout cleanup cannot suspend and remount the login page.
+  if (serverConfig !== undefined) {
+    qc.setQueryData(adminQueryKeys.serverConfig(), serverConfig);
+  }
 };
 
 let logoutTimer: ReturnType<typeof setTimeout> | null = null;
