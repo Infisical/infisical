@@ -37,12 +37,11 @@ Relays support two enrollment methods. The enrollment method is set when creatin
       </Tab>
       <Tab title="Linux (systemd)">
         ```bash
-        sudo infisical relay systemd install \
-          --name=<name> \
+        sudo infisical relay systemd install <name> \
           --enroll-method=token \
           --token=<enrollment-token> \
           --domain=<your-infisical-domain>
-        sudo systemctl start infisical-relay
+        sudo systemctl start <name>
         ```
       </Tab>
     </Tabs>
@@ -67,12 +66,11 @@ Relays support two enrollment methods. The enrollment method is set when creatin
       </Tab>
       <Tab title="Linux (systemd)">
         ```bash
-        sudo infisical relay systemd install \
-          --name=<name> \
+        sudo infisical relay systemd install <name> \
           --enroll-method=aws \
           --relay-id=<relay-id> \
           --domain=<your-infisical-domain>
-        sudo systemctl start infisical-relay
+        sudo systemctl start <name>
         ```
       </Tab>
     </Tabs>
@@ -119,28 +117,38 @@ Relays support two enrollment methods. The enrollment method is set when creatin
 
 <AccordionGroup>
 <Accordion title="install">
-  Install and enable systemd service for the relay. See the authentication section above for install commands.
-
-  After installation, start the service:
+  Install and enable a systemd service for the relay. The relay name is provided as a positional argument, and the installed service is named after it, so you can run multiple relays on the same machine. See the authentication section above for the full install commands.
 
   ```bash
-  sudo systemctl start infisical-relay
-  sudo systemctl enable infisical-relay
+  sudo infisical relay systemd install <name> --enroll-method=token --token=<enrollment-token> --domain=<your-infisical-domain>
+  ```
+
+  After installation, start and enable the service (replace `<name>` with your relay name):
+
+  ```bash
+  sudo systemctl start <name>
   ```
 
   To check status and logs:
 
   ```bash
-  sudo systemctl status infisical-relay
-  sudo journalctl -u infisical-relay -f
+  sudo systemctl status <name>
+  sudo journalctl -u <name> -f
   ```
+
+  ### Service Details
+
+  - Service file: `/etc/systemd/system/<name>.service`
+  - Config directory: `/etc/infisical/relays/`
+  - Runs with restricted privileges and automatically restarts on failure
+  - Enabled to start on boot
 </Accordion>
 
 <Accordion title="uninstall">
-  Uninstall and remove systemd service for the relay.
+  Uninstall and remove a relay's systemd service. The relay name is provided as a positional argument.
 
   ```bash
-  sudo infisical relay systemd uninstall
+  sudo infisical relay systemd uninstall <name>
   ```
 </Accordion>
 </AccordionGroup>

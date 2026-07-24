@@ -71,12 +71,11 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
         <Tabs>
           <Tab title="Linux (Production)">
             ```bash
-            sudo infisical relay systemd install \
-              --name=<relay-name> \
+            sudo infisical relay systemd install <relay-name> \
               --enroll-method=token \
               --token=<enrollment-token> \
               --domain=<your-infisical-domain>
-            sudo systemctl start infisical-relay
+            sudo systemctl start <relay-name>
             ```
           </Tab>
           <Tab title="Foreground">
@@ -96,12 +95,11 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
         <Tabs>
           <Tab title="Linux (Production)">
             ```bash
-            sudo infisical relay systemd install \
-              --name=<relay-name> \
+            sudo infisical relay systemd install <relay-name> \
               --enroll-method=aws \
               --relay-id=<relay-id> \
               --domain=<your-infisical-domain>
-            sudo systemctl start infisical-relay
+            sudo systemctl start <relay-name>
             ```
           </Tab>
           <Tab title="Foreground">

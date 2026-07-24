@@ -109,15 +109,14 @@ module "infisical_relay_instance" {
     # Create the relay in the Infisical UI first, then use the enrollment token here.
     #
     # Note: For production environments, you might consider fetching the token from AWS Parameter Store or AWS Secrets Manager.
-    sudo infisical relay systemd install \
-      --name "my-relay-example" \
+    sudo infisical relay systemd install my-relay-example \
       --enroll-method=token \
       --token "your-enrollment-token" \
       --domain "https://app.infisical.com"
 
-    # Start and enable the service to run on boot
-    sudo systemctl start infisical-relay
-    sudo systemctl enable infisical-relay
+    # Start and enable the service to run on boot.
+    # The systemd service is named after the relay.
+    sudo systemctl start my-relay-example
   EOT
 }
 
