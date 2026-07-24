@@ -1,5 +1,17 @@
+import { useState } from "react";
+
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Input
+} from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { TPkiSync, useDeletePkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -12,6 +24,7 @@ type Props = {
 
 export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }: Props) => {
   const deleteSync = useDeletePkiSync();
+  const [confirmation, setConfirmation] = useState("");
 
   if (!pkiSync) return null;
 
@@ -36,12 +49,38 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
   };
 
   return (
-    <DeleteActionModal
-      isOpen={isOpen}
-      onChange={onOpenChange}
-      title={`Are you sure you want to delete ${name}?`}
-      deleteKey={name}
-      onDeleteApproved={handleDeletePkiSync}
-    />
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        onOpenChange(open);
+        if (!open) setConfirmation("");
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes the PKI sync. Type {name} to confirm.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <Input
+          aria-label={`Type ${name} to confirm deletion`}
+          value={confirmation}
+          onChange={(event) => setConfirmation(event.target.value)}
+          placeholder={name}
+        />
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="danger"
+            isDisabled={confirmation !== name}
+            isPending={deleteSync.isPending}
+            onClick={handleDeletePkiSync}
+          >
+            Delete PKI Sync
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
