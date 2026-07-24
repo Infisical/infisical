@@ -72,8 +72,8 @@ export const AuthPageLayout = ({
                 Trusted by 400,000+ developers
               </p>
               <h2 className="font-alliance text-3xl leading-tight font-normal text-foreground xl:text-4xl">
-                The <span className="text-highlight">all-in-one</span> security stack for developers
-                and AI agents.
+                Security <span className="text-highlight">infrastructure</span> for developers and
+                agents
               </h2>
               <p className="mt-4 max-w-lg font-alliance text-sm leading-relaxed text-label xl:text-base">
                 One place to audit every credential your apps and agents use.
