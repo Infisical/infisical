@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { InfoIcon, PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -83,11 +83,14 @@ const ConfirmDeleteDialog = ({
 }: ConfirmDeleteDialogProps) => {
   const [confirmation, setConfirmation] = useState("");
 
+  useEffect(() => {
+    if (!isOpen) setConfirmation("");
+  }, [isOpen]);
+
   return (
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) setConfirmation("");
         onOpenChange(open);
       }}
     >
@@ -277,125 +280,146 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
               </OrgPermissionCan>
             </CardAction>
           </CardHeader>
-          <CardContent className={areAuthTemplatesEmpty ? "hidden" : undefined}>
-            <IdentityAuthTemplatesTable
-              handlePopUpOpen={handlePopUpOpen}
-              onEmptyStateChange={setAreAuthTemplatesEmpty}
-            />
-          </CardContent>
+          <OrgPermissionCan
+            I={OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates}
+            a={OrgPermissionSubjects.MachineIdentityAuthTemplate}
+          >
+            {(isAllowed) =>
+              isAllowed ? (
+                <CardContent className={areAuthTemplatesEmpty ? "hidden" : undefined}>
+                  <IdentityAuthTemplatesTable
+                    handlePopUpOpen={handlePopUpOpen}
+                    onEmptyStateChange={setAreAuthTemplatesEmpty}
+                  />
+                </CardContent>
+              ) : null
+            }
+          </OrgPermissionCan>
         </Card>
       )}
-      <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <MachineAuthTemplateUsagesModal
-        isOpen={popUp.viewUsages.isOpen}
-        onClose={() => handlePopUpClose("viewUsages")}
-        templateId={
-          (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template?.id ||
-          ""
-        }
-        templateName={
-          (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template?.name ||
-          ""
-        }
-      />
-      <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <Dialog
-        open={popUp.identity.isOpen}
-        onOpenChange={(open) => {
-          handlePopUpToggle("identity", open);
-          if (!open) {
-            setWizardStep(IdentityWizardSteps.CreateIdentity);
-          }
-        }}
-      >
-        <DialogContent className="max-w-xl overflow-visible">
-          <DialogHeader>
-            <DialogTitle>
-              {isSubOrganization
-                ? "Add Machine Identity to Sub-Organization"
-                : "Create Organization Machine Identity"}
-            </DialogTitle>
-            <DialogDescription>
-              {isSubOrganization
-                ? "Create a new machine identity or assign an existing one"
-                : "Create a new machine identity in the organization"}
-            </DialogDescription>
-          </DialogHeader>
-          {isSubOrganization && (
-            <div className="mx-auto flex items-center gap-2">
-              <Tabs
-                value={wizardStep}
-                onValueChange={(value) => setWizardStep(value as IdentityWizardSteps)}
-              >
-                <TabsList className="w-fit">
-                  <TabsTrigger value={IdentityWizardSteps.CreateIdentity}>Create New</TabsTrigger>
-                  <TabsTrigger value={IdentityWizardSteps.LinkIdentity}>
-                    Assign Existing
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <Tooltip>
-                <TooltipTrigger>
-                  <InfoIcon size={16} className="text-mineshaft-400" />
-                </TooltipTrigger>
-                <TooltipContent side="right" align="start" className="max-w-sm">
-                  <p className="mb-2 text-mineshaft-300">
-                    You can add machine identities to your sub-organization in one of two ways:
-                  </p>
-                  <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">Create New</strong> -
-                      Create a new machine identity specifically for this sub-organization. This
-                      machine identity will be managed at the sub-organization level.
-                      <p className="mt-2">
-                        This method is recommended for autonomous teams that need to manage machine
-                        identity authentication.
+      {view === "templates" && (
+        <>
+          <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+          <MachineAuthTemplateUsagesModal
+            isOpen={popUp.viewUsages.isOpen}
+            onClose={() => handlePopUpClose("viewUsages")}
+            templateId={
+              (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template
+                ?.id || ""
+            }
+            templateName={
+              (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template
+                ?.name || ""
+            }
+          />
+          <ConfirmDeleteDialog
+            isOpen={popUp.deleteTemplate.isOpen}
+            name={(popUp?.deleteTemplate?.data as { name: string })?.name || "template"}
+            isPending={isDeletingTemplate}
+            onOpenChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
+            onConfirm={() =>
+              onDeleteTemplateSubmit(
+                (popUp?.deleteTemplate?.data as { templateId: string })?.templateId
+              )
+            }
+          />
+        </>
+      )}
+      {view === "identities" && (
+        <>
+          <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+          <Dialog
+            open={popUp.identity.isOpen}
+            onOpenChange={(open) => {
+              handlePopUpToggle("identity", open);
+              if (!open) {
+                setWizardStep(IdentityWizardSteps.CreateIdentity);
+              }
+            }}
+          >
+            <DialogContent className="max-w-xl overflow-visible">
+              <DialogHeader>
+                <DialogTitle>
+                  {isSubOrganization
+                    ? "Add Machine Identity to Sub-Organization"
+                    : "Create Organization Machine Identity"}
+                </DialogTitle>
+                <DialogDescription>
+                  {isSubOrganization
+                    ? "Create a new machine identity or assign an existing one"
+                    : "Create a new machine identity in the organization"}
+                </DialogDescription>
+              </DialogHeader>
+              {isSubOrganization && (
+                <div className="mx-auto flex items-center gap-2">
+                  <Tabs
+                    value={wizardStep}
+                    onValueChange={(value) => setWizardStep(value as IdentityWizardSteps)}
+                  >
+                    <TabsList className="w-fit">
+                      <TabsTrigger value={IdentityWizardSteps.CreateIdentity}>
+                        Create New
+                      </TabsTrigger>
+                      <TabsTrigger value={IdentityWizardSteps.LinkIdentity}>
+                        Assign Existing
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <InfoIcon size={16} className="text-mineshaft-400" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="start" className="max-w-sm">
+                      <p className="mb-2 text-mineshaft-300">
+                        You can add machine identities to your sub-organization in one of two ways:
                       </p>
-                    </li>
-                    <li>
-                      <strong className="font-medium text-mineshaft-100">Assign Existing</strong>{" "}
-                      Assign an existing machine identity from your parent organization. The machine
-                      identity will continue to be managed at its original scope.
-                      <p className="mt-2">
-                        This method is recommended for organizations that need to maintain
-                        centralized control.
-                      </p>
-                    </li>
-                  </ul>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-          {wizardStep === IdentityWizardSteps.CreateIdentity && (
-            <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-          )}
-          {wizardStep === IdentityWizardSteps.LinkIdentity && (
-            <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
-          )}
-        </DialogContent>
-      </Dialog>
-      <ConfirmDeleteDialog
-        isOpen={popUp.deleteIdentity.isOpen}
-        name={(popUp?.deleteIdentity?.data as { name: string })?.name || "machine identity"}
-        isPending={isDeletingIdentity}
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
-        onConfirm={() =>
-          onDeleteIdentitySubmit(
-            (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
-          )
-        }
-      />
-      <ConfirmDeleteDialog
-        isOpen={popUp.deleteTemplate.isOpen}
-        name={(popUp?.deleteTemplate?.data as { name: string })?.name || "template"}
-        isPending={isDeletingTemplate}
-        onOpenChange={(isOpen) => handlePopUpToggle("deleteTemplate", isOpen)}
-        onConfirm={() =>
-          onDeleteTemplateSubmit(
-            (popUp?.deleteTemplate?.data as { templateId: string })?.templateId
-          )
-        }
-      />
+                      <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
+                        <li className="text-mineshaft-200">
+                          <strong className="font-medium text-mineshaft-100">Create New</strong> -
+                          Create a new machine identity specifically for this sub-organization. This
+                          machine identity will be managed at the sub-organization level.
+                          <p className="mt-2">
+                            This method is recommended for autonomous teams that need to manage
+                            machine identity authentication.
+                          </p>
+                        </li>
+                        <li>
+                          <strong className="font-medium text-mineshaft-100">
+                            Assign Existing
+                          </strong>{" "}
+                          Assign an existing machine identity from your parent organization. The
+                          machine identity will continue to be managed at its original scope.
+                          <p className="mt-2">
+                            This method is recommended for organizations that need to maintain
+                            centralized control.
+                          </p>
+                        </li>
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+              {wizardStep === IdentityWizardSteps.CreateIdentity && (
+                <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+              )}
+              {wizardStep === IdentityWizardSteps.LinkIdentity && (
+                <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
+              )}
+            </DialogContent>
+          </Dialog>
+          <ConfirmDeleteDialog
+            isOpen={popUp.deleteIdentity.isOpen}
+            name={(popUp?.deleteIdentity?.data as { name: string })?.name || "machine identity"}
+            isPending={isDeletingIdentity}
+            onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+            onConfirm={() =>
+              onDeleteIdentitySubmit(
+                (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+              )
+            }
+          />
+        </>
+      )}
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
@@ -411,10 +435,4 @@ export const IdentitySection = withPermission(() => <IdentitySectionContent />, 
   subject: OrgPermissionSubjects.Identity
 });
 
-export const IdentityAuthTemplatesSection = withPermission(
-  () => <IdentitySectionContent view="templates" />,
-  {
-    action: OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
-    subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
-  }
-);
+export const IdentityAuthTemplatesSection = () => <IdentitySectionContent view="templates" />;
