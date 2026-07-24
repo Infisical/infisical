@@ -102,7 +102,13 @@ const AdminSubmenuView = ({ submenu, onBack }: { submenu: AdminSubmenu; onBack: 
 
           return (
             <SidebarMenuItem key={sub.label}>
-              <SidebarMenuButton size="lg" asChild isActive={isActive} tooltip={sub.label}>
+              <SidebarMenuButton
+                size="lg"
+                asChild
+                closeOnMobile
+                isActive={isActive}
+                tooltip={sub.label}
+              >
                 <Link to={submenu.link} search={{ selectedTab: sub.tab }}>
                   <sub.icon className="size-4" />
                   <span>{sub.label}</span>
@@ -143,7 +149,13 @@ const AdminNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: AdminSubmenu) =>
 
         return (
           <SidebarMenuItem key={item.link}>
-            <SidebarMenuButton asChild isActive={isActive} size="lg" tooltip={item.label}>
+            <SidebarMenuButton
+              asChild
+              closeOnMobile
+              isActive={isActive}
+              size="lg"
+              tooltip={item.label}
+            >
               <Link to={item.link}>
                 <item.icon className="size-4" />
                 <span>{item.label}</span>

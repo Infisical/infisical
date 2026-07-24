@@ -82,6 +82,7 @@ export const ProjectNavLink = ({
         size="lg"
         scope={sidebarScope}
         asChild
+        closeOnMobile
         isActive={isActive}
         tooltip={item.label}
       >

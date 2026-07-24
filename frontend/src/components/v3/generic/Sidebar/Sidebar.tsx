@@ -663,20 +663,23 @@ const sidebarMenuButtonVariants = cva(
 
 function SidebarMenuButton({
   asChild = false,
+  closeOnMobile = false,
   isActive = false,
   variant = "default",
   size = "default",
   scope: scopeProp,
   tooltip,
   className,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean;
+  closeOnMobile?: boolean;
   isActive?: boolean;
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, setOpenMobile, state } = useSidebar();
   const contextScope = useSidebarScope();
   const scope = scopeProp ?? contextScope;
 
@@ -687,6 +690,12 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive || undefined}
       className={cn(sidebarMenuButtonVariants({ variant, size, scope }), className)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (closeOnMobile && isMobile) {
+          setOpenMobile(false);
+        }
+      }}
       {...props}
     />
   );
