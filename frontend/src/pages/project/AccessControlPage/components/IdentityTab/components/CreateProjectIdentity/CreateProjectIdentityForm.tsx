@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AxiosError } from "axios";
-import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
@@ -19,10 +18,7 @@ import {
   SheetFooter,
   Tabs,
   TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TabsTrigger
 } from "@app/components/v3";
 import { getProjectBaseURL } from "@app/helpers/project";
 import {
@@ -243,12 +239,13 @@ export const CreateProjectIdentityForm = ({
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
         <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-          <div className="mx-auto flex items-center gap-2">
+          <div className="flex flex-col gap-2">
             <Controller
               control={control}
               name="mode"
               render={({ field: { value, onChange } }) => (
                 <Tabs
+                  className="w-full"
                   value={value}
                   onValueChange={(next) => {
                     onChange(next as CreateProjectIdentityMode);
@@ -259,7 +256,7 @@ export const CreateProjectIdentityForm = ({
                     }
                   }}
                 >
-                  <TabsList className="w-fit">
+                  <TabsList className="w-full">
                     <TabsTrigger value={CreateProjectIdentityMode.Create}>Create New</TabsTrigger>
                     <TabsTrigger value={CreateProjectIdentityMode.Assign}>
                       Assign Existing
@@ -268,22 +265,13 @@ export const CreateProjectIdentityForm = ({
                 </Tabs>
               )}
             />
-            <Tooltip>
-              <TooltipTrigger type="button">
-                <InfoIcon size={16} className="text-muted" />
-              </TooltipTrigger>
-              <TooltipContent side="left" align="start" className="max-w-md">
-                <p>
-                  <span className="font-medium">Create New</span>
-                  {" — a dedicated identity managed at the "}
-                  {isCertManager ? "Certificate Manager" : "project"} level.
-                </p>
-                <p className="mt-1.5">
-                  <span className="font-medium">Assign Existing</span> — reuse an identity from your
-                  organization.
-                </p>
-              </TooltipContent>
-            </Tooltip>
+            <p className="text-sm text-muted">
+              {mode === CreateProjectIdentityMode.Assign
+                ? "Reuse an existing machine identity from your organization."
+                : `Create a dedicated machine identity managed at the ${
+                    isCertManager ? "Certificate Manager" : "project"
+                  } level.`}
+            </p>
           </div>
 
           {mode === CreateProjectIdentityMode.Create ? (
