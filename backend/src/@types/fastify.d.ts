@@ -79,6 +79,7 @@ import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAnnouncementServiceFactory } from "@app/services/announcement/announcement-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
@@ -439,6 +440,7 @@ declare module "fastify" {
       projectEventsSSE: TProjectEventsSSEService;
       identityAuthTemplate: TIdentityAuthTemplateServiceFactory;
       notification: TNotificationServiceFactory;
+      alert: TAlertServiceFactory;
       announcement: TAnnouncementServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       orgProductStats: TOrgProductStatsServiceFactory;

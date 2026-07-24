@@ -236,6 +236,19 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
+import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
+import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { alertChannelServiceFactory } from "@app/services/alert/alert-channel-service";
+import { alertDALFactory } from "@app/services/alert/alert-dal";
+import { alertEngineFactory } from "@app/services/alert/alert-engine";
+import { alertHistoryDALFactory } from "@app/services/alert/alert-history-dal";
+import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider-registry";
+import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
+import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
+import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
+import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -886,9 +899,12 @@ export const registerRoutes = async (
     userDAL
   });
 
+  const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
+
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
     membershipRoleDAL,
+    alertChannelRecipientDAL,
     membershipUserDAL,
     orgDAL,
     permissionService,
@@ -999,6 +1015,55 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const alertDAL = alertDALFactory(db);
+  const alertChannelDAL = alertChannelDALFactory(db);
+  const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
+  const alertHistoryDAL = alertHistoryDALFactory(db);
+  const alertProviderRegistry = alertProviderRegistryFactory();
+  alertProviderRegistry.register(
+    identityCredentialAlertProviderFactory({
+      identityCredentialAlertDAL: identityCredentialAlertDALFactory(db),
+      permissionService
+    })
+  );
+  const alertRecipientResolver = alertRecipientResolverFactory({
+    userDAL,
+    userGroupMembershipDAL,
+    orgDAL,
+    projectDAL
+  });
+  const alertEngine = alertEngineFactory({
+    alertChannelDAL,
+    alertChannelRecipientDAL,
+    alertHistoryDAL,
+    alertProviderRegistry,
+    alertRecipientResolver,
+    kmsService,
+    smtpService
+  });
+  const alertQueue = alertQueueServiceFactory({
+    cronJob,
+    queueService,
+    alertDAL,
+    alertProviderRegistry,
+    alertEngine
+  });
+  const alertChannelService = alertChannelServiceFactory({
+    alertChannelDAL,
+    alertChannelRecipientDAL,
+    orgDAL,
+    projectDAL,
+    groupDAL
+  });
+  const alertService = alertServiceFactory({
+    alertDAL,
+    alertChannelDAL,
+    alertChannelMembershipDAL,
+    alertChannelService,
+    kmsService,
+    alertProviderRegistry
+  });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
@@ -2475,7 +2540,8 @@ export const registerRoutes = async (
     orgDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertService
   });
 
   const identityAccessTokenService = identityAccessTokenServiceFactory({
@@ -3851,6 +3917,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
+  alertQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pamDiscoveryService.init();
@@ -4038,6 +4105,7 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
+    alert: alertService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

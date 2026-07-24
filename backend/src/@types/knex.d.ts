@@ -41,6 +41,24 @@ import {
   TAiMcpServerUserCredentials,
   TAiMcpServerUserCredentialsInsert,
   TAiMcpServerUserCredentialsUpdate,
+  TAlertChannelMemberships,
+  TAlertChannelMembershipsInsert,
+  TAlertChannelMembershipsUpdate,
+  TAlertChannelRecipients,
+  TAlertChannelRecipientsInsert,
+  TAlertChannelRecipientsUpdate,
+  TAlertChannels,
+  TAlertChannelsInsert,
+  TAlertChannelsUpdate,
+  TAlertHistory,
+  TAlertHistoryInsert,
+  TAlertHistoryTarget,
+  TAlertHistoryTargetInsert,
+  TAlertHistoryTargetUpdate,
+  TAlertHistoryUpdate,
+  TAlerts,
+  TAlertsInsert,
+  TAlertsUpdate,
   TAppConnectionCredentialRotations,
   TAppConnectionCredentialRotationsInsert,
   TAppConnectionCredentialRotationsUpdate,
@@ -1558,6 +1576,28 @@ declare module "knex/types/tables" {
       TResourceMetadata,
       TResourceMetadataInsert,
       TResourceMetadataUpdate
+    >;
+    [TableName.Alert]: KnexOriginal.CompositeTableType<TAlerts, TAlertsInsert, TAlertsUpdate>;
+    [TableName.AlertChannel]: KnexOriginal.CompositeTableType<
+      TAlertChannels,
+      TAlertChannelsInsert,
+      TAlertChannelsUpdate
+    >;
+    [TableName.AlertChannelRecipient]: KnexOriginal.CompositeTableType<
+      TAlertChannelRecipients,
+      TAlertChannelRecipientsInsert,
+      TAlertChannelRecipientsUpdate
+    >;
+    [TableName.AlertChannelMembership]: KnexOriginal.CompositeTableType<
+      TAlertChannelMemberships,
+      TAlertChannelMembershipsInsert,
+      TAlertChannelMembershipsUpdate
+    >;
+    [TableName.AlertHistory]: KnexOriginal.CompositeTableType<TAlertHistory, TAlertHistoryInsert, TAlertHistoryUpdate>;
+    [TableName.AlertHistoryTarget]: KnexOriginal.CompositeTableType<
+      TAlertHistoryTarget,
+      TAlertHistoryTargetInsert,
+      TAlertHistoryTargetUpdate
     >;
     [TableName.AppConnection]: KnexOriginal.CompositeTableType<
       TAppConnections,
