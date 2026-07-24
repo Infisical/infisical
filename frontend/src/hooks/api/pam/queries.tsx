@@ -282,7 +282,17 @@ export const useListPamAccountsAdmin = (
       return data.accounts;
     },
     enabled: options?.enabled ?? true,
-    placeholderData: (prev) => prev
+    placeholderData: (prev) => prev,
+    // Grants and pending requests change state on their own (expiry, approval by another user), so
+    // poll while any are on screen so rows don't stay stuck as pending or still show Launch until a
+    // manual refresh; a fully static list costs nothing. Mirrors useListAccessiblePamAccounts.
+    refetchInterval: (query) => {
+      const hasLiveAccessState = query.state.data?.some(
+        (a) =>
+          a.accessStatus === PamAccessStatus.Granted || a.accessStatus === PamAccessStatus.Pending
+      );
+      return hasLiveAccessState ? 60_000 : false;
+    }
   });
 };
 
