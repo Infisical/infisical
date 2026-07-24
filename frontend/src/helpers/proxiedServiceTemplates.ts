@@ -452,13 +452,14 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     seed: { basicAuth: { withPassword: true } }
   },
   {
-    key: "google-drive",
-    name: "Google Drive",
-    image: "Google Drive.svg",
+    key: "google-workspace",
+    name: "Google Workspace",
+    image: "Google Workspace.svg",
     category: ProxiedServiceTemplateCategory.Productivity,
-    description: "Google Drive file storage API.",
-    hostPattern: "www.googleapis.com/*",
-    aliases: ["gdrive", "google"],
+    description: "Gmail, Calendar, Sheets, and Drive.",
+    hostPattern:
+      "gmail.googleapis.com/*, sheets.googleapis.com/*, www.googleapis.com/calendar/*, www.googleapis.com/drive/*, www.googleapis.com/upload/drive/*",
+    aliases: ["workspace", "gsuite", "gmail", "calendar", "sheets", "drive", "gdrive"],
     seed: {
       substitutions: bearerSubstitution(
         "GOOGLE_ACCESS_TOKEN",
