@@ -74,6 +74,9 @@ export interface IResourceAlertProvider<TTarget = unknown> {
 
   // Resources currently due to alert for this alert's scope + condition. The engine handles dedup
   // afterwards, so this returns all current matches in the window (not minus already-alerted).
+  // Must be ordered most-urgent-first (soonest expiry): the engine's per-channel maxTargetsPerRun cap
+  // keeps the head of this list and defers the tail, so urgency ordering ensures the targets closest
+  // to expiry are never the ones dropped.
   findDueTargets(input: TFindDueTargetsInput): Promise<TTarget[]>;
 
   // Deep link to the alert's resource, honouring its scope (org- vs project-scoped). Resolved once
