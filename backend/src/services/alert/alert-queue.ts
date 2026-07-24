@@ -26,7 +26,8 @@ export const alertQueueServiceFactory = ({
 }: TAlertQueueServiceFactoryDep) => {
   const appCfg = getConfig();
 
-  const enqueueDueAlerts = async () => {
+  const enqueueEnabledAlerts = async () => {
+    const scheduledAt = new Date().toISOString();
     for (const resourceType of alertProviderRegistry.resourceTypes()) {
       // eslint-disable-next-line no-await-in-loop
       const alerts = await alertDAL.findEnabledByResourceType(resourceType);
@@ -36,7 +37,7 @@ export const alertQueueServiceFactory = ({
           queueService.queue(
             QueueName.AlertDispatch,
             QueueJobs.AlertDispatch,
-            { alertId: alert.id },
+            { alertId: alert.id, scheduledAt },
             {
               jobId: `alert-dispatch-${alert.id}`,
               removeOnComplete: true,
@@ -53,10 +54,10 @@ export const alertQueueServiceFactory = ({
     queueService.start(
       QueueName.AlertDispatch,
       async (job) => {
-        const { alertId } = job.data;
+        const { alertId, scheduledAt } = job.data;
         const alert = await alertDAL.findActiveById(alertId);
         if (!alert || !alert.enabled) return;
-        await alertEngine.runAlert(alert);
+        await alertEngine.runAlert(alert, { asOf: scheduledAt ? new Date(scheduledAt) : new Date() });
       },
       { concurrency: ALERT_DISPATCH_CONCURRENCY }
     );
@@ -67,8 +68,8 @@ export const alertQueueServiceFactory = ({
       runHashTtlS: 60 * 60 * 24,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
-        logger.info("cron[daily-alert-processing]: enqueueing due alerts");
-        await enqueueDueAlerts();
+        logger.info("cron[daily-alert-processing]: enqueueing enabled alerts");
+        await enqueueEnabledAlerts();
         logger.info("cron[daily-alert-processing]: enqueue complete");
       }
     });

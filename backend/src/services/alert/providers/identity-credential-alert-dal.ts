@@ -21,8 +21,15 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
       orgId,
       projectId,
       identityId,
-      alertBeforeInterval
-    }: { orgId: string; projectId?: string | null; identityId?: string | null; alertBeforeInterval: string },
+      alertBeforeInterval,
+      asOf
+    }: {
+      orgId: string;
+      projectId?: string | null;
+      identityId?: string | null;
+      alertBeforeInterval: string;
+      asOf: Date;
+    },
     tx?: Knex
   ): Promise<TExpiringUaClientSecret[]> => {
     try {
@@ -44,8 +51,8 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.IdentityUaClientSecret}.isClientSecretRevoked`, false)
         .where(`${TableName.IdentityUaClientSecret}.clientSecretTTL`, ">", 0)
-        .whereRaw(`${expiresAtSql} > NOW()`)
-        .whereRaw(`${expiresAtSql} <= NOW() + ?::interval`, [alertBeforeInterval]);
+        .whereRaw(`${expiresAtSql} > ?`, [asOf])
+        .whereRaw(`${expiresAtSql} <= ? + ?::interval`, [asOf, alertBeforeInterval]);
 
       if (projectId) {
         void query

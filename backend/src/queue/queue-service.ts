@@ -482,7 +482,7 @@ export type TQueueJobTypes = {
   };
   [QueueName.AlertDispatch]: {
     name: QueueJobs.AlertDispatch;
-    payload: { alertId: string };
+    payload: { alertId: string; scheduledAt: string };
   };
   [QueueName.AuditReportGeneration]: {
     name: QueueJobs.GenerateAuditReport;

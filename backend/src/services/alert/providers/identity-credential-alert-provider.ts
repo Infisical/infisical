@@ -132,7 +132,8 @@ export const identityCredentialAlertProviderFactory = ({
       orgId: input.orgId,
       projectId: input.projectId,
       identityId: input.resourceId,
-      alertBeforeInterval: intervalSql
+      alertBeforeInterval: intervalSql,
+      asOf: input.asOf
     });
 
     return uaSecrets.map((secret) => ({ credentialType: "ua-client-secret" as const, ...secret }));

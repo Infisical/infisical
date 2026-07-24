@@ -38,7 +38,7 @@ export const alertEngineFactory = ({
   kmsService,
   smtpService
 }: TAlertEngineDep) => {
-  const runAlert = async (alert: TAlerts) => {
+  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }) => {
     const provider = alertProviderRegistry.get(alert.resourceType);
     if (!provider) {
       logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
@@ -50,7 +50,8 @@ export const alertEngineFactory = ({
       projectId: alert.projectId,
       resourceId: alert.resourceId,
       eventType: alert.eventType,
-      condition: alert.condition
+      condition: alert.condition,
+      asOf: opts?.asOf ?? new Date()
     });
     if (targets.length === 0) return;
 

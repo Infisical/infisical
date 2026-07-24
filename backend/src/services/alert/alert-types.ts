@@ -56,6 +56,7 @@ export type TFindDueTargetsInput = {
   resourceId?: string | null;
   eventType: string;
   condition: unknown;
+  asOf: Date;
 };
 
 export interface IResourceAlertProvider<TTarget = unknown> {

@@ -44,6 +44,7 @@ const buildProvider = (opts?: {
     projectId?: string | null;
     identityId?: string | null;
     alertBeforeInterval: string;
+    asOf: Date;
   }) => void;
   abilityRules?: { action: string; subject: string; conditions?: Record<string, unknown> }[];
   inOrg?: boolean;
@@ -56,6 +57,7 @@ const buildProvider = (opts?: {
       projectId?: string | null;
       identityId?: string | null;
       alertBeforeInterval: string;
+      asOf: Date;
     }) => {
       opts?.onFind?.(args);
       return opts?.secrets ?? [];
@@ -87,7 +89,9 @@ describe("identity credential alert provider", () => {
   });
 
   test("findDueTargets converts alertBefore to a postgres interval and tags credential type", async () => {
-    let seenArgs: { alertBeforeInterval: string; projectId?: string | null; identityId?: string | null } | undefined;
+    let seenArgs:
+      | { alertBeforeInterval: string; projectId?: string | null; identityId?: string | null; asOf: Date }
+      | undefined;
     const provider = buildProvider({
       secrets: [sampleSecret()],
       onFind: (args) => {
@@ -95,15 +99,18 @@ describe("identity credential alert provider", () => {
       }
     });
 
+    const asOf = new Date("2026-07-24T00:00:00.000Z");
     const targets = await provider.findDueTargets({
       orgId: "org-1",
       resourceId: "ident-1",
       eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
-      condition: { alertBefore: "30d" }
+      condition: { alertBefore: "30d" },
+      asOf
     });
 
     expect(seenArgs?.alertBeforeInterval).toBe("30 days");
     expect(seenArgs?.identityId).toBe("ident-1");
+    expect(seenArgs?.asOf).toBe(asOf);
     expect(targets).toHaveLength(1);
     expect(provider.targetId(targets[0])).toBe("ua-client-secret:sec-1");
   });
@@ -121,7 +128,8 @@ describe("identity credential alert provider", () => {
       projectId: "proj-1",
       resourceId: null,
       eventType: IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
-      condition: { alertBefore: "30d" }
+      condition: { alertBefore: "30d" },
+      asOf: new Date("2026-07-24T00:00:00.000Z")
     });
 
     expect(seenArgs?.projectId).toBe("proj-1");
