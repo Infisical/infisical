@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -24,10 +23,7 @@ import {
   SheetTitle,
   Tabs,
   TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TabsTrigger
 } from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
@@ -212,31 +208,22 @@ export const CreateOrgIdentitySheet = ({ isOpen, onOpenChange }: Props) => {
           </SheetDescription>
         </SheetHeader>
         {isSubOrganization && (
-          <div className="flex shrink-0 items-center justify-center gap-2 border-b p-4">
+          <div className="flex shrink-0 flex-col gap-2 px-4 pt-4">
             <Tabs
+              className="w-full"
               value={wizardStep}
               onValueChange={(value) => setWizardStep(value as IdentityWizardSteps)}
             >
-              <TabsList className="w-fit">
+              <TabsList className="w-full">
                 <TabsTrigger value={IdentityWizardSteps.CreateIdentity}>Create New</TabsTrigger>
                 <TabsTrigger value={IdentityWizardSteps.LinkIdentity}>Assign Existing</TabsTrigger>
               </TabsList>
             </Tabs>
-            <Tooltip>
-              <TooltipTrigger>
-                <InfoIcon size={16} className="text-muted" />
-              </TooltipTrigger>
-              <TooltipContent side="left" align="start" className="max-w-md">
-                <p>
-                  <span className="font-medium">Create New</span> — a dedicated identity managed at
-                  the sub-organization level.
-                </p>
-                <p className="mt-1.5">
-                  <span className="font-medium">Assign Existing</span> — reuse an identity from your
-                  parent organization.
-                </p>
-              </TooltipContent>
-            </Tooltip>
+            <p className="text-sm text-muted">
+              {wizardStep === IdentityWizardSteps.LinkIdentity
+                ? "Reuse an existing machine identity from your parent organization."
+                : "Create a dedicated machine identity managed at the sub-organization level."}
+            </p>
           </div>
         )}
         {wizardStep === IdentityWizardSteps.CreateIdentity && (
