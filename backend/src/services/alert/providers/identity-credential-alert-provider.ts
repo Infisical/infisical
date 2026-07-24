@@ -141,6 +141,7 @@ export const identityCredentialAlertProviderFactory = ({
         id: alert.id,
         name: alert.name,
         orgId: alert.orgId,
+        ...(alert.projectId ? { projectId: alert.projectId } : {}),
         resourceType: alert.resourceType,
         ...(alertBefore ? { condition: alertBefore } : {}),
         viewUrl
