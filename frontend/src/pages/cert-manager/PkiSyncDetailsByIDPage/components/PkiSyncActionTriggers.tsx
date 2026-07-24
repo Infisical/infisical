@@ -105,22 +105,25 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
     });
   }, [triggerSyncMutation, id, destination, projectId]);
 
-  const handleAutoSyncChange = useCallback(async (value: string) => {
-    const isAutoSyncEnabled = value === "enabled";
+  const handleAutoSyncChange = useCallback(
+    async (value: string) => {
+      const isAutoSyncEnabled = value === "enabled";
 
-    if (isAutoSyncEnabled === pkiSync.isAutoSyncEnabled) return;
+      if (isAutoSyncEnabled === pkiSync.isAutoSyncEnabled) return;
 
-    await updatePkiSyncMutation.mutateAsync({
-      syncId: id,
-      projectId,
-      destination,
-      isAutoSyncEnabled
-    });
-    createNotification({
-      text: `Auto-sync ${isAutoSyncEnabled ? "enabled" : "disabled"} successfully`,
-      type: "success"
-    });
-  }, [updatePkiSyncMutation, id, projectId, destination, pkiSync.isAutoSyncEnabled]);
+      await updatePkiSyncMutation.mutateAsync({
+        syncId: id,
+        projectId,
+        destination,
+        isAutoSyncEnabled
+      });
+      createNotification({
+        text: `Auto-sync ${isAutoSyncEnabled ? "enabled" : "disabled"} successfully`,
+        type: "success"
+      });
+    },
+    [updatePkiSyncMutation, id, projectId, destination, pkiSync.isAutoSyncEnabled]
+  );
 
   return (
     <>
@@ -133,9 +136,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
           disabled={!canEditSync || updatePkiSyncMutation.isPending}
         >
           <SelectTrigger aria-label="Auto-sync setting">
-            <RefreshCwIcon
-              className={pkiSync.isAutoSyncEnabled ? "text-success" : "text-muted"}
-            />
+            <RefreshCwIcon className={pkiSync.isAutoSyncEnabled ? "text-success" : "text-muted"} />
             Auto-Sync {pkiSync.isAutoSyncEnabled ? "Enabled" : "Disabled"}
           </SelectTrigger>
           <SelectContent position="popper" align="end" sideOffset={4}>

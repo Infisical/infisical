@@ -107,7 +107,7 @@ const PageContent = () => {
                 className="size-12 shrink-0 object-contain sm:size-14"
               />
               <div className="min-w-0">
-                <h1 className="break-words text-2xl font-medium leading-tight text-white sm:text-3xl">
+                <h1 className="text-2xl leading-tight font-medium break-words text-white sm:text-3xl">
                   {pkiSync.name}
                 </h1>
                 <p className="mt-1 text-sm leading-snug text-bunker-300 sm:text-base">
