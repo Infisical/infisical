@@ -204,203 +204,201 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
 
         <div>
           <div className="space-y-4">
-            <>
-              <Table>
-                <THead>
-                  <Tr>
-                    <Th className="w-3/16">SAN / CN</Th>
-                    <Th className="w-1/8">Certificate Status</Th>
-                    <Th className="w-1/8">Serial Number</Th>
-                    <Th className="w-3/16">External ID</Th>
-                    <Th className="w-1/8">Sync Status</Th>
-                    <Th className="w-1/8">Expires At</Th>
-                    <Th className="w-1/8" />
-                  </Tr>
-                </THead>
-                <TBody>
-                  {syncCertificates.map((syncCert) => {
-                    const isExpired = syncCert.certificateNotAfter
-                      ? new Date(syncCert.certificateNotAfter) < new Date()
-                      : false;
-                    const isRevoked = syncCert.certificateStatus === "revoked";
+            <Table>
+              <THead>
+                <Tr>
+                  <Th className="w-3/16">SAN / CN</Th>
+                  <Th className="w-1/8">Certificate Status</Th>
+                  <Th className="w-1/8">Serial Number</Th>
+                  <Th className="w-3/16">External ID</Th>
+                  <Th className="w-1/8">Sync Status</Th>
+                  <Th className="w-1/8">Expires At</Th>
+                  <Th className="w-1/8" />
+                </Tr>
+              </THead>
+              <TBody>
+                {syncCertificates.map((syncCert) => {
+                  const isExpired = syncCert.certificateNotAfter
+                    ? new Date(syncCert.certificateNotAfter) < new Date()
+                    : false;
+                  const isRevoked = syncCert.certificateStatus === "revoked";
 
-                    // Calculate auto-renewal timeline
-                    const hasAutoRenewal = Boolean(
-                      syncCert.certificateRenewBeforeDays &&
-                        syncCert.certificateRenewBeforeDays > 0 &&
-                        !syncCert.certificateRenewalError &&
-                        syncCert.certificateNotAfter
-                    );
+                  // Calculate auto-renewal timeline
+                  const hasAutoRenewal = Boolean(
+                    syncCert.certificateRenewBeforeDays &&
+                      syncCert.certificateRenewBeforeDays > 0 &&
+                      !syncCert.certificateRenewalError &&
+                      syncCert.certificateNotAfter
+                  );
 
-                    const daysUntilRenewal =
-                      hasAutoRenewal && syncCert.certificateNotAfter
-                        ? (() => {
-                            const expiryDate = new Date(syncCert.certificateNotAfter);
-                            const renewalDate = new Date(
-                              expiryDate.getTime() -
-                                syncCert.certificateRenewBeforeDays! * 24 * 60 * 60 * 1000
-                            );
-                            const now = new Date();
-                            const diffInMs = renewalDate.getTime() - now.getTime();
-                            return Math.max(0, Math.ceil(diffInMs / (24 * 60 * 60 * 1000)));
-                          })()
-                        : null;
+                  const daysUntilRenewal =
+                    hasAutoRenewal && syncCert.certificateNotAfter
+                      ? (() => {
+                          const expiryDate = new Date(syncCert.certificateNotAfter);
+                          const renewalDate = new Date(
+                            expiryDate.getTime() -
+                              syncCert.certificateRenewBeforeDays! * 24 * 60 * 60 * 1000
+                          );
+                          const now = new Date();
+                          const diffInMs = renewalDate.getTime() - now.getTime();
+                          return Math.max(0, Math.ceil(diffInMs / (24 * 60 * 60 * 1000)));
+                        })()
+                      : null;
 
-                    const { originalDisplayName } = getCertificateDisplayName(
-                      {
-                        altNames: syncCert.certificateAltNames,
-                        commonName: syncCert.certificateCommonName
-                      },
-                      34,
-                      "Unknown"
-                    );
+                  const { originalDisplayName } = getCertificateDisplayName(
+                    {
+                      altNames: syncCert.certificateAltNames,
+                      commonName: syncCert.certificateCommonName
+                    },
+                    34,
+                    "Unknown"
+                  );
 
-                    const isDefaultCertificate = syncCert.syncMetadata?.isDefault === true;
+                  const isDefaultCertificate = syncCert.syncMetadata?.isDefault === true;
 
-                    return (
-                      <Tr key={syncCert.id}>
-                        <Td className="max-w-0">
-                          <div className="flex items-center gap-2">
-                            <CertificateDisplayName
-                              cert={{
-                                altNames: syncCert.certificateAltNames,
-                                commonName: syncCert.certificateCommonName
-                              }}
-                              maxLength={34}
-                              fallback="Unknown"
-                            />
-                            {supportsDefaultCertificate && isDefaultCertificate && (
-                              <Badge variant="neutral">Default</Badge>
-                            )}
-                          </div>
-                        </Td>
-                        <Td>
-                          <Badge variant={getCertificateStatusVariant(isExpired, isRevoked)}>
-                            {getCertificateStatusText(isExpired, isRevoked)}
-                          </Badge>
-                        </Td>
-                        <Td className="max-w-0">
-                          <div
-                            className="truncate text-xs"
-                            title={syncCert.certificateSerialNumber || "Unknown"}
-                          >
-                            {(() => {
-                              const serial = syncCert.certificateSerialNumber;
-                              if (!serial || serial === "Unknown") return "Unknown";
-                              if (serial.length <= 8) return serial;
-                              return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
-                            })()}
-                          </div>
-                        </Td>
-                        <Td className="max-w-0">
-                          {syncCert.externalIdentifier ? (
-                            <div className="flex items-center gap-1">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="truncate text-xs text-bunker-300">
-                                    {syncCert.externalIdentifier}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-none whitespace-nowrap">
+                  return (
+                    <Tr key={syncCert.id}>
+                      <Td className="max-w-0">
+                        <div className="flex items-center gap-2">
+                          <CertificateDisplayName
+                            cert={{
+                              altNames: syncCert.certificateAltNames,
+                              commonName: syncCert.certificateCommonName
+                            }}
+                            maxLength={34}
+                            fallback="Unknown"
+                          />
+                          {supportsDefaultCertificate && isDefaultCertificate && (
+                            <Badge variant="neutral">Default</Badge>
+                          )}
+                        </div>
+                      </Td>
+                      <Td>
+                        <Badge variant={getCertificateStatusVariant(isExpired, isRevoked)}>
+                          {getCertificateStatusText(isExpired, isRevoked)}
+                        </Badge>
+                      </Td>
+                      <Td className="max-w-0">
+                        <div
+                          className="truncate text-xs"
+                          title={syncCert.certificateSerialNumber || "Unknown"}
+                        >
+                          {(() => {
+                            const serial = syncCert.certificateSerialNumber;
+                            if (!serial || serial === "Unknown") return "Unknown";
+                            if (serial.length <= 8) return serial;
+                            return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
+                          })()}
+                        </div>
+                      </Td>
+                      <Td className="max-w-0">
+                        {syncCert.externalIdentifier ? (
+                          <div className="flex items-center gap-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate text-xs text-bunker-300">
                                   {syncCert.externalIdentifier}
-                                </TooltipContent>
-                              </Tooltip>
-                              <CopyButton
-                                value={syncCert.externalIdentifier}
-                                ariaLabel="Copy external identifier"
-                              />
-                            </div>
-                          ) : (
-                            <span className="text-xs text-bunker-400">-</span>
-                          )}
-                        </Td>
-                        <Td>
-                          {syncCert.lastSyncMessage &&
-                          syncCert.syncStatus === CertificateSyncStatus.Failed ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="danger">Failed</Badge>
+                                </span>
                               </TooltipTrigger>
-                              <TooltipContent>{syncCert.lastSyncMessage}</TooltipContent>
+                              <TooltipContent className="max-w-none whitespace-nowrap">
+                                {syncCert.externalIdentifier}
+                              </TooltipContent>
                             </Tooltip>
-                          ) : (
-                            <Badge variant={getSyncStatusVariant(syncCert.syncStatus)}>
-                              {getSyncStatusText(syncCert.syncStatus)}
-                            </Badge>
-                          )}
-                        </Td>
-                        <Td>
-                          <span
-                            className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
-                          >
-                            {syncCert.certificateNotAfter
-                              ? new Date(syncCert.certificateNotAfter).toLocaleDateString()
-                              : "Unknown"}
-                          </span>
-                        </Td>
-                        <Td className="flex items-center justify-end gap-2 pr-4">
-                          {hasAutoRenewal && daysUntilRenewal !== null && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="text-primary-500">
-                                  <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>Auto-renews in {daysUntilRenewal}d</TooltipContent>
-                            </Tooltip>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                size="xs"
-                                variant="ghost-muted"
-                                aria-label="Certificate actions"
-                                isDisabled={!canEdit}
-                              >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {supportsDefaultCertificate && !isDefaultCertificate && (
-                                <DropdownMenuItem
-                                  onClick={() => handleSetAsDefault(syncCert.certificateId)}
-                                >
-                                  Set as Default
-                                </DropdownMenuItem>
-                              )}
-                              {supportsDefaultCertificate && isDefaultCertificate && (
-                                <DropdownMenuItem onClick={handleClearDefault}>
-                                  Unset Default
-                                </DropdownMenuItem>
-                              )}
+                            <CopyButton
+                              value={syncCert.externalIdentifier}
+                              ariaLabel="Copy external identifier"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-bunker-400">-</span>
+                        )}
+                      </Td>
+                      <Td>
+                        {syncCert.lastSyncMessage &&
+                        syncCert.syncStatus === CertificateSyncStatus.Failed ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="danger">Failed</Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>{syncCert.lastSyncMessage}</TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <Badge variant={getSyncStatusVariant(syncCert.syncStatus)}>
+                            {getSyncStatusText(syncCert.syncStatus)}
+                          </Badge>
+                        )}
+                      </Td>
+                      <Td>
+                        <span
+                          className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
+                        >
+                          {syncCert.certificateNotAfter
+                            ? new Date(syncCert.certificateNotAfter).toLocaleDateString()
+                            : "Unknown"}
+                        </span>
+                      </Td>
+                      <Td className="flex items-center justify-end gap-2 pr-4">
+                        {hasAutoRenewal && daysUntilRenewal !== null && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="text-primary-500">
+                                <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>Auto-renews in {daysUntilRenewal}d</TooltipContent>
+                          </Tooltip>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              size="xs"
+                              variant="ghost-muted"
+                              aria-label="Certificate actions"
+                              isDisabled={!canEdit}
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {supportsDefaultCertificate && !isDefaultCertificate && (
                               <DropdownMenuItem
-                                onClick={() =>
-                                  handleDeleteClick(syncCert.certificateId, originalDisplayName)
-                                }
-                                variant="danger"
+                                onClick={() => handleSetAsDefault(syncCert.certificateId)}
                               >
-                                <Trash2Icon />
-                                Remove from Sync
+                                Set as Default
                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                </TBody>
-              </Table>
-              {syncCertificates.length === 0 && (
-                <Empty className="rounded-t-none border-t-0 py-12">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <ScrollTextIcon />
-                    </EmptyMedia>
-                    <EmptyTitle>No certificates are part of this certificate sync</EmptyTitle>
-                  </EmptyHeader>
-                </Empty>
-              )}
-            </>
+                            )}
+                            {supportsDefaultCertificate && isDefaultCertificate && (
+                              <DropdownMenuItem onClick={handleClearDefault}>
+                                Unset Default
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleDeleteClick(syncCert.certificateId, originalDisplayName)
+                              }
+                              variant="danger"
+                            >
+                              <Trash2Icon />
+                              Remove from Sync
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+            {syncCertificates.length === 0 && (
+              <Empty className="rounded-t-none border-t-0 py-12">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ScrollTextIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>No certificates are part of this certificate sync</EmptyTitle>
+                </EmptyHeader>
+              </Empty>
+            )}
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center">
