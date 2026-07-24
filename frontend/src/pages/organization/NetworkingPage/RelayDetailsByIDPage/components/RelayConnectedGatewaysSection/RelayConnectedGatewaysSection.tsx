@@ -3,18 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
   Badge,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -23,7 +17,8 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
-  ItemTitle
+  ItemTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -75,15 +70,19 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
   const total = gateways?.length ?? 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Connected Gateways</CardTitle>
-        <CardDescription>Gateways currently routing through this relay</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <section className="min-w-0 space-y-4" aria-labelledby="relay-connected-gateways-title">
+      <div>
+        <h2 id="relay-connected-gateways-title" className="text-base font-medium text-foreground">
+          Connected Gateways
+        </h2>
+        <p className="mt-1 text-sm text-muted">Gateways currently routing through this relay</p>
+      </div>
+      <div>
         {isPending && (
-          <div className="flex h-32 items-center justify-center">
-            <Spinner size="lg" />
+          <div className="space-y-2" aria-label="Loading connected gateways">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         )}
         {!isPending && total === 0 && (
@@ -133,7 +132,7 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
             })}
           </Accordion>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 };

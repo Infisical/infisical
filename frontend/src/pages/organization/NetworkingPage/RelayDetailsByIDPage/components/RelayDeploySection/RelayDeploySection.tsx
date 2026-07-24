@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { RocketIcon } from "lucide-react";
+import { RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  Card,
-  CardAction,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { Button } from "@app/components/v3";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -19,84 +11,92 @@ import {
 import { useGenerateRelayEnrollmentToken } from "@app/hooks/api/relays";
 import { TRelayAuthMethodView } from "@app/hooks/api/relays/types";
 
-import { RelayDeployCommandDialog } from "./RelayDeployCommandDialog";
+import { RelayDeployCommandContent } from "./RelayDeployCommandDialog";
 
 type Props = {
   relayId: string;
   relayName: string;
   authMethod: TRelayAuthMethodView;
-  isFirstTimeSetup: boolean;
 };
 
-export const RelayDeploySection = ({ relayId, relayName, authMethod, isFirstTimeSetup }: Props) => {
-  const { isSubOrganization } = useOrganization();
-  const [showDialog, setShowDialog] = useState(false);
-  const [enrollmentToken, setEnrollmentToken] = useState<string | null>(null);
+type Enrollment = { token: string; expiresAt: string; relayId: string };
+
+export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) => {
+  const [mintedEnrollment, setMintedEnrollment] = useState<Enrollment | null>(null);
   const { mutateAsync: mint, isPending: isMinting } = useGenerateRelayEnrollmentToken();
+  const enrollment = mintedEnrollment?.relayId === relayId ? mintedEnrollment : null;
 
   if (authMethod.method === "identity") return null;
 
-  const handleClick = async () => {
-    if (authMethod.method === "token") {
-      try {
-        const result = await mint({ relayId });
-        setEnrollmentToken(result.token);
-        setShowDialog(true);
-      } catch {
-        createNotification({ type: "error", text: "Failed to generate enrollment token" });
-      }
-    } else {
-      setShowDialog(true);
+  const handleGenerate = async () => {
+    try {
+      const result = await mint({ relayId });
+      setMintedEnrollment({ ...result, relayId });
+    } catch {
+      createNotification({ type: "error", text: "Failed to generate enrollment token" });
     }
   };
 
   return (
-    <>
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Deployment</CardTitle>
-          <CardDescription>Launch this relay on a target host</CardDescription>
-          <CardAction>
-            <OrgPermissionCan
-              I={OrgRelayPermissionActions.EditRelays}
-              a={OrgPermissionSubjects.Relay}
-            >
-              {(isAllowed) => {
-                let variant: "neutral" | "org" | "sub-org" = "neutral";
-                if (isFirstTimeSetup) variant = isSubOrganization ? "sub-org" : "org";
-                return (
-                  <Button
-                    variant={variant}
-                    size="sm"
-                    isPending={isMinting}
-                    isDisabled={!isAllowed || isMinting}
-                    onClick={handleClick}
-                  >
-                    <RocketIcon className="size-4" />
-                    Show deploy command
-                  </Button>
-                );
-              }}
-            </OrgPermissionCan>
-          </CardAction>
-        </CardHeader>
-      </Card>
-
-      {showDialog && (
-        <RelayDeployCommandDialog
-          isOpen
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowDialog(false);
-              setEnrollmentToken(null);
-            }
-          }}
-          relayId={relayId}
-          relayName={relayName}
-          authMethod={authMethod.method as "token" | "aws"}
-          enrollmentToken={enrollmentToken}
-        />
+    <section className="min-w-0 space-y-4" aria-label="Relay deployment">
+      {authMethod.method === "token" && !enrollment && (
+        <div>
+          <h2 className="text-base font-medium text-foreground">Deployment</h2>
+          <p className="mt-1 text-sm text-muted">Run this relay on a target host.</p>
+        </div>
       )}
-    </>
+
+      {authMethod.method === "aws" && (
+        <OrgPermissionCan I={OrgRelayPermissionActions.EditRelays} a={OrgPermissionSubjects.Relay}>
+          <RelayDeployCommandContent relayId={relayId} relayName={relayName} authMethod="aws" />
+        </OrgPermissionCan>
+      )}
+
+      {authMethod.method === "token" && !enrollment && (
+        <OrgPermissionCan I={OrgRelayPermissionActions.EditRelays} a={OrgPermissionSubjects.Relay}>
+          {(isAllowed) => (
+            <Button
+              variant="neutral"
+              size="sm"
+              isPending={isMinting}
+              isDisabled={!isAllowed || isMinting}
+              onClick={handleGenerate}
+            >
+              <RocketIcon className="size-4" />
+              Generate deploy command
+            </Button>
+          )}
+        </OrgPermissionCan>
+      )}
+
+      {authMethod.method === "token" && enrollment && (
+        <>
+          <RelayDeployCommandContent
+            relayId={relayId}
+            relayName={relayName}
+            authMethod="token"
+            enrollmentToken={enrollment.token}
+            expiresAt={enrollment.expiresAt}
+          />
+          <OrgPermissionCan
+            I={OrgRelayPermissionActions.EditRelays}
+            a={OrgPermissionSubjects.Relay}
+          >
+            {(isAllowed) => (
+              <Button
+                variant="neutral"
+                size="sm"
+                isPending={isMinting}
+                isDisabled={!isAllowed || isMinting}
+                onClick={handleGenerate}
+              >
+                <RefreshCwIcon className="size-4" />
+                Regenerate command
+              </Button>
+            )}
+          </OrgPermissionCan>
+        </>
+      )}
+    </section>
   );
 };

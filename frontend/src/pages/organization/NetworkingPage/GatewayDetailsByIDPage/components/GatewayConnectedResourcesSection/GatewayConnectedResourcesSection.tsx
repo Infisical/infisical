@@ -1,18 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
   Badge,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -21,7 +15,8 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
-  ItemTitle
+  ItemTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -69,15 +64,22 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const total = totalCountOf(resources);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Connected Resources</CardTitle>
-        <CardDescription>Resources currently routing through this gateway</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <section className="min-w-0 space-y-4" aria-labelledby="gateway-connected-resources-title">
+      <div>
+        <h2
+          id="gateway-connected-resources-title"
+          className="text-base font-medium text-foreground"
+        >
+          Connected Resources
+        </h2>
+        <p className="mt-1 text-sm text-muted">Resources currently routing through this gateway</p>
+      </div>
+      <div>
         {isPending && (
-          <div className="flex h-32 items-center justify-center">
-            <Spinner size="lg" />
+          <div className="space-y-2" aria-label="Loading connected resources">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         )}
         {!isPending && total === 0 && (
@@ -209,7 +211,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
             )}
           </Accordion>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 };

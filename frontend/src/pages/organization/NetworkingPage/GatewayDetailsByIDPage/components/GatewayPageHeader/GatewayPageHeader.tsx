@@ -3,8 +3,16 @@ import { BanIcon, CopyIcon, EllipsisIcon, HeartPulseIcon, TrashIcon } from "luci
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v2";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +33,8 @@ import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
 export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; orgId: string }) => {
   const navigate = useNavigate();
-  const { mutateAsync: deleteGateway } = useDeleteGatewayV2ById();
-  const { mutateAsync: revokeGateway } = useRevokeGatewayAccess();
+  const { mutateAsync: deleteGateway, isPending: isDeleting } = useDeleteGatewayV2ById();
+  const { mutateAsync: revokeGateway, isPending: isRevoking } = useRevokeGatewayAccess();
   const { mutateAsync: triggerHeartbeat, isPending: isHeartbeating } =
     useTriggerGatewayV2Heartbeat();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -128,22 +136,45 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
         </DropdownMenu>
       </PageHeader>
 
-      <DeleteActionModal
-        isOpen={popUp.deleteGateway.isOpen}
-        title={`Delete gateway "${gateway.name}"?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onDelete}
-      />
-      <DeleteActionModal
-        isOpen={popUp.revokeGateway.isOpen}
-        title={`Revoke access for gateway "${gateway.name}"?`}
-        subTitle="The gateway will be disconnected and any active tokens will be invalidated. The gateway will need to re-authenticate to reconnect."
-        onChange={(isOpen) => handlePopUpToggle("revokeGateway", isOpen)}
-        deleteKey="confirm"
-        buttonText="Revoke access"
-        onDeleteApproved={onRevoke}
-      />
+      <AlertDialog
+        open={popUp.deleteGateway.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {gateway.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the gateway from your organization.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" isPending={isDeleting} onClick={onDelete}>
+              Delete Gateway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={popUp.revokeGateway.isOpen}
+        onOpenChange={(open) => handlePopUpToggle("revokeGateway", open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke access for {gateway.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The gateway will be disconnected and active tokens invalidated. It must
+              re-authenticate to reconnect.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" isPending={isRevoking} onClick={onRevoke}>
+              Revoke Access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

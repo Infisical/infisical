@@ -1,18 +1,19 @@
+import { Badge } from "@app/components/v3";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 
 export const PoolHealthBadge = ({ pool }: { pool: TGatewayPool }) => {
   if (pool.memberCount === 0) {
-    return <span className="text-mineshaft-400">No members</span>;
+    return <Badge variant="neutral">No members</Badge>;
   }
-  let colorClass = "text-yellow-500";
+  let variant: "warning" | "danger" | "success" = "warning";
   if (pool.healthyMemberCount === 0) {
-    colorClass = "text-red-400";
+    variant = "danger";
   } else if (pool.healthyMemberCount === pool.memberCount) {
-    colorClass = "text-green-500";
+    variant = "success";
   }
   return (
-    <span className={colorClass}>
+    <Badge variant={variant}>
       {pool.healthyMemberCount}/{pool.memberCount} healthy
-    </span>
+    </Badge>
   );
 };

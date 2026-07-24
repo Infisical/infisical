@@ -1,50 +1,61 @@
-import { useMemo, useState } from "react";
-import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useEffect, useMemo, useState } from "react";
+import { ExternalLinkIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
-  Button,
-  FilterableSelect,
-  FormControl,
-  FormLabel,
-  IconButton,
-  Input,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3/generic/Badge";
+  Badge,
+  CodeBlock,
+  Field,
+  FieldDescription,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 
 type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
   gatewayName: string;
   enrollmentToken: string;
+  expiresAt: string;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
 
-// Renders the token-method start command after a fresh enrollment token has been minted.
-export const EnrollmentTokenDialog = ({
-  isOpen,
-  onOpenChange,
-  gatewayName,
-  enrollmentToken
-}: Props) => {
+const formatTimeRemaining = (expiresAt: string, now: number) => {
+  const remainingSeconds = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 1000));
+  if (remainingSeconds === 0) return "Expired";
+
+  const hours = Math.floor(remainingSeconds / 3600);
+  const minutes = Math.floor((remainingSeconds % 3600) / 60);
+  const seconds = remainingSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m remaining`;
+  return `${minutes}m ${seconds}s remaining`;
+};
+
+// Renders a freshly minted token as inline deployment instructions.
+export const EnrollmentTokenContent = ({ gatewayName, enrollmentToken, expiresAt }: Props) => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
+  const expiryLabel = formatTimeRemaining(expiresAt, now);
+  const isExpired = expiryLabel === "Expired";
 
   const cliCommand = useMemo(() => {
     const relayPart = resolvedRelayName ? ` --target-relay-name=${resolvedRelayName}` : "";
@@ -57,113 +68,78 @@ export const EnrollmentTokenDialog = ({
   }, [gatewayName, enrollmentToken, resolvedRelayName, siteURL]);
 
   const startServiceCommand = `sudo systemctl start ${gatewayName}`;
-
-  const copy = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    createNotification({ type: "info", text: `${label} copied to clipboard` });
-  };
+  const commandLabel = (
+    <span className="flex flex-wrap items-center gap-2">
+      <span>Command</span>
+      <Badge variant="info">Token Auth</Badge>
+      <Badge variant={isExpired ? "danger" : "neutral"}>{expiryLabel}</Badge>
+    </span>
+  );
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        className="max-w-2xl"
-        title={`Deploy command for ${gatewayName}`}
-        subTitle="Run the following command on the machine where you want to deploy the gateway."
-        bodyClassName="overflow-visible"
-      >
-        <div className="mb-4">
-          <div className="mb-0.5 flex items-center gap-2">
-            <FormLabel label="Auth Method" className="mb-0 text-foreground" />
-            <Badge variant="info">Token Auth</Badge>
-          </div>
-          <p className="mt-1 text-xs text-mineshaft-400">
-            The enrollment token expires in 1 hour and can only be used once. To use a different
-            auth method, update it in the gateway settings.
-          </p>
+    <div className="min-w-0 space-y-4">
+      <Tabs defaultValue="cli" className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList variant="filled">
+            <TabsTrigger value="cli">CLI</TabsTrigger>
+            <TabsTrigger value="systemd">System service</TabsTrigger>
+          </TabsList>
+          <a
+            href="https://infisical.com/docs/cli/overview"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-label underline underline-offset-4 hover:text-foreground"
+          >
+            Installation guide
+            <ExternalLinkIcon className="size-3" />
+          </a>
         </div>
-        <FormControl
-          label="Relay"
-          tooltipText="The relay this gateway should connect through. Auto Select picks a healthy relay and switches to another if it becomes unreachable."
-          tooltipClassName="max-w-md"
-        >
-          <FilterableSelect
-            value={relay}
-            onChange={(newValue) =>
-              setRelay((newValue as { id: string; name: string }) ?? AUTO_RELAY_OPTION)
+        <TabsContent value="cli" className="min-w-0">
+          <CodeBlock value={cliCommand} label={commandLabel} isCopyable={!isExpired} />
+        </TabsContent>
+        <TabsContent value="systemd" className="min-w-0 space-y-4">
+          <CodeBlock
+            value={systemdInstallCommand}
+            isCopyable={!isExpired}
+            label={
+              <span className="flex flex-wrap items-center gap-2">
+                <span>Install service</span>
+                <Badge variant="info">Token Auth</Badge>
+                <Badge variant={isExpired ? "danger" : "neutral"}>{expiryLabel}</Badge>
+              </span>
             }
-            isLoading={isRelaysLoading}
-            options={[AUTO_RELAY_OPTION, ...(relays || [])]}
-            placeholder="Select relay..."
-            getOptionLabel={(option) => option.name}
-            getOptionValue={(option) => option.id}
           />
-        </FormControl>
-
-        <Tabs defaultValue="cli" className="mt-2">
-          <TabList>
-            <Tab value="cli">CLI</Tab>
-            <Tab value="systemd">CLI (systemd)</Tab>
-          </TabList>
-          <TabPanel value="cli">
-            <div className="flex gap-2">
-              <Input value={cliCommand} isDisabled />
-              <IconButton
-                ariaLabel="copy"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => copy(cliCommand, "Command")}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-          </TabPanel>
-          <TabPanel value="systemd">
-            <FormLabel label="Installation Command" />
-            <div className="flex gap-2">
-              <Input value={systemdInstallCommand} isDisabled />
-              <IconButton
-                ariaLabel="copy install"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => copy(systemdInstallCommand, "Installation command")}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-            <FormLabel label="Start the Gateway Service" className="mt-4" />
-            <div className="flex gap-2">
-              <Input value={startServiceCommand} isDisabled />
-              <IconButton
-                ariaLabel="copy start"
-                variant="outline_bg"
-                colorSchema="secondary"
-                onClick={() => copy(startServiceCommand, "Start command")}
-                className="w-10"
-              >
-                <FontAwesomeIcon icon={faCopy} />
-              </IconButton>
-            </div>
-          </TabPanel>
-        </Tabs>
-        <a
-          href="https://infisical.com/docs/cli/overview"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors hover:border-yellow-400 hover:text-yellow-400"
+          <CodeBlock value={startServiceCommand} label="Start service" />
+        </TabsContent>
+      </Tabs>
+      <Field>
+        <Select
+          value={relay.id}
+          onValueChange={(id) =>
+            setRelay(
+              [AUTO_RELAY_OPTION, ...(relays || [])].find((item) => item.id === id) ||
+                AUTO_RELAY_OPTION
+            )
+          }
+          disabled={isRelaysLoading}
         >
-          <span>Install the Infisical CLI</span>
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
-        </a>
-        <div className="mt-6 flex items-center">
-          <ModalClose asChild>
-            <Button className="mr-4" size="sm" colorSchema="secondary">
-              Done
-            </Button>
-          </ModalClose>
-        </div>
-      </ModalContent>
-    </Modal>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select relay" />
+          </SelectTrigger>
+          <SelectContent>
+            {[AUTO_RELAY_OPTION, ...(relays || [])].map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {relay.id !== "_auto" && (
+          <FieldDescription>
+            * Auto Select chooses a healthy relay and fails over if needed.
+          </FieldDescription>
+        )}
+      </Field>
+    </div>
   );
 };
