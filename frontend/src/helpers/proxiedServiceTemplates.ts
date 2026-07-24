@@ -461,7 +461,7 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     aliases: ["gdrive", "google"],
     seed: {
       substitutions: bearerSubstitution(
-        "GDRIVE_TOKEN",
+        "GOOGLE_ACCESS_TOKEN",
         () => `ya29.${randomToken(60, BASE64URL)}`,
         [ProxiedServiceSubstitutionSurface.Header]
       )
