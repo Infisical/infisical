@@ -83,6 +83,8 @@ export type TServerConfig = {
   isPublicSecretSharingDisabled?: boolean;
   licenseServerV2Enabled?: boolean;
   isCrossProjectSecretSharingEnabled?: boolean;
+  // populated on self-hosted instances when a newer release than the running version exists
+  latestAvailableVersion?: string | null;
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId?: string;
   createdAt?: string;

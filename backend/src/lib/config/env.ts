@@ -55,6 +55,7 @@ const envSchema = z
       .default("false")
       .transform((el) => el === "true"),
     DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
+    DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),

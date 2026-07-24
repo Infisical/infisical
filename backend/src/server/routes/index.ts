@@ -524,6 +524,7 @@ import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
+import { updateCheckServiceFactory } from "@app/services/update-check/update-check-queue";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userActivationDALFactory } from "@app/services/user-activation/user-activation-dal";
@@ -1140,6 +1141,10 @@ export const registerRoutes = async (
     telemetryDAL,
     cronJob,
     telemetryService
+  });
+  const updateCheckService = updateCheckServiceFactory({
+    cronJob,
+    keyStore
   });
 
   const scimService = scimServiceFactory({
@@ -3846,6 +3851,7 @@ export const registerRoutes = async (
   // Register all cron jobs (synchronous registrations) before starting the scheduler
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
+  updateCheckService.init();
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
@@ -3994,6 +4000,7 @@ export const registerRoutes = async (
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
+    updateCheck: updateCheckService,
     secretSharing: secretSharingService,
     userActivation: userActivationService,
     userEngagement: userEngagementService,

@@ -140,6 +140,7 @@ export const KeyStorePrefixes = {
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
+  UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
@@ -186,6 +187,7 @@ export const KeyStoreTtls = {
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   AdminConfigInSeconds: 60,
+  UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 300, // 5 minutes
