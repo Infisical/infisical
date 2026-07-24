@@ -12,6 +12,7 @@ const buildDAL = () => {
     join: [] as unknown[][],
     where: [] as unknown[][],
     whereNull: [] as unknown[],
+    whereRaw: [] as unknown[][],
     // Calls made inside a `.where((builder) => ...)` group.
     groupedWhereNull: [] as unknown[],
     groupedOrWhere: [] as unknown[][]
@@ -45,7 +46,10 @@ const buildDAL = () => {
       calls.whereNull.push(col);
       return chain;
     },
-    whereRaw: () => chain,
+    whereRaw: (...args: unknown[]) => {
+      calls.whereRaw.push(args);
+      return chain;
+    },
     orderByRaw: () => chain,
     select: async () => []
   };
@@ -75,6 +79,23 @@ describe("identity credential alert dal", () => {
     expect(calls.whereNull).toContainEqual(`${TableName.Identity}.projectId`);
     // No project membership join: the scan spans the whole org.
     expect(calls.where.some((args) => args[0] === "projectMembership.scope")).toBe(false);
+  });
+
+  test("every bound `asOf` timestamp is explicitly cast", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findExpiringUaClientSecrets(scanArgs);
+
+    // An untyped bind on the left of `+ interval` makes Postgres resolve the operator to
+    // `interval + interval`, so the whole predicate fails to type-check at parse time and the scan
+    // throws instead of returning targets.
+    const asOfBindings = calls.whereRaw.filter((args) =>
+      ((args[1] as unknown[]) ?? []).some((binding) => binding instanceof Date)
+    );
+    expect(asOfBindings.length).toBeGreaterThan(0);
+    asOfBindings.forEach(([sql]) => {
+      expect(sql).toContain("?::timestamptz");
+    });
   });
 
   test("a project-scoped scan keeps org-level identities but only its own project's identities", async () => {

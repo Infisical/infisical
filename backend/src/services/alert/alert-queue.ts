@@ -71,10 +71,15 @@ export const alertQueueServiceFactory = ({
           return;
         }
 
-        const outcome = await alertEngine.runAlert(alert, {
-          asOf: scheduledAt ? new Date(scheduledAt) : new Date()
-        });
-        recordAlertDispatchOutcomeMetric({ resourceType: alert.resourceType, outcome });
+        try {
+          const outcome = await alertEngine.runAlert(alert, {
+            asOf: scheduledAt ? new Date(scheduledAt) : new Date()
+          });
+          recordAlertDispatchOutcomeMetric({ resourceType: alert.resourceType, outcome });
+        } catch (err) {
+          logger.error(err, `Alert dispatch failed [alertId=${alertId}] [resourceType=${alert.resourceType}]`);
+          throw err;
+        }
       },
       { concurrency: ALERT_DISPATCH_CONCURRENCY }
     );

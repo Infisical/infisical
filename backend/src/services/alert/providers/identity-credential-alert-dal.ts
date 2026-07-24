@@ -53,8 +53,12 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .where(`${TableName.IdentityUaClientSecret}.isClientSecretRevoked`, false)
         .where(`${TableName.IdentityUaClientSecret}.clientSecretTTL`, ">", 0)
-        .whereRaw(`${expiresAtSql} > ?`, [asOf])
-        .whereRaw(`${expiresAtSql} <= ? + ?::interval + ?::interval`, [asOf, alertBeforeInterval, leadInterval])
+        .whereRaw(`${expiresAtSql} > ?::timestamptz`, [asOf])
+        .whereRaw(`${expiresAtSql} <= ?::timestamptz + ?::interval + ?::interval`, [
+          asOf,
+          alertBeforeInterval,
+          leadInterval
+        ])
         .orderByRaw(`${expiresAtSql} asc`);
 
       if (projectId) {
