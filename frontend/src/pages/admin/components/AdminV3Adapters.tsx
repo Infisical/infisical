@@ -290,7 +290,7 @@ export const DeleteActionModal = ({
           className="contents"
           onSubmit={(event) => {
             event.preventDefault();
-            void handleAction();
+            handleAction().catch(() => undefined);
           }}
         >
           <AlertDialogHeader className="text-left">

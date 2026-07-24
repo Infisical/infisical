@@ -133,7 +133,7 @@ export const CachingPageForm = () => {
             className="contents"
             onSubmit={(event) => {
               event.preventDefault();
-              void handleInvalidateCacheSubmit();
+              handleInvalidateCacheSubmit().catch(() => undefined);
             }}
           >
             <AlertDialogHeader className="text-left">

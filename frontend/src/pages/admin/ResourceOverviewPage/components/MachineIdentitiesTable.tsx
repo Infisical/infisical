@@ -180,8 +180,7 @@ export const MachineIdentitiesTable = () => {
     "removeServerAdmin"
   ] as const);
 
-  const { mutateAsync: deleteIdentitySuperAdminAccess } =
-    useAdminRemoveIdentitySuperAdminAccess();
+  const { mutateAsync: deleteIdentitySuperAdminAccess } = useAdminRemoveIdentitySuperAdminAccess();
 
   const handleRemoveServerAdmin = async () => {
     const { id } = popUp?.removeServerAdmin?.data as {
