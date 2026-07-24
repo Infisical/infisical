@@ -89,7 +89,12 @@ export const identityCredentialAlertProviderFactory = ({
   identityCredentialAlertDAL,
   permissionService
 }: TIdentityCredentialAlertProviderDep): IResourceAlertProvider<TIdentityCredentialTarget> => {
-  const projectBaseUrl = (siteUrl: string, orgId: string, projectType: string, projectId: string): string => {
+  const projectBaseUrl = (
+    siteUrl: string | undefined,
+    orgId: string,
+    projectType: string,
+    projectId: string
+  ): string => {
     switch (projectType) {
       case ProjectType.SecretManager:
         return `${siteUrl}/organizations/${orgId}/projects/secret-management/${projectId}`;
@@ -102,7 +107,7 @@ export const identityCredentialAlertProviderFactory = ({
 
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
     const appCfg = getConfig();
-    const siteUrl = appCfg.SITE_URL ?? "https://app.infisical.com";
+    const siteUrl = appCfg.SITE_URL;
 
     if (alert.projectId) {
       const projectType = await identityCredentialAlertDAL.getProjectType(alert.projectId);

@@ -112,6 +112,13 @@ export const alertServiceFactory = ({
   });
 
   const createAlert = async (dto: TCreateAlertDTO): Promise<TAlertResponse> => {
+    if (!dto.resourceId) {
+      throw new BadRequestError({
+        message:
+          "Alerts must be bound to a specific resource. Organization wide and project wide alerts are not supported yet."
+      });
+    }
+
     const provider = $getProvider(dto.resourceType);
     $validate(provider, dto, { alwaysValidateCondition: true });
 

@@ -219,6 +219,7 @@ const webhookChannel: TAlertChannelInput = {
 const validCreate = {
   name: "test-alert",
   resourceType: RESOURCE_TYPE,
+  resourceId: "resource-1",
   eventType: "test.resource.expiration",
   condition: { alertBefore: "30d" },
   channels: [emailChannel, webhookChannel],
@@ -256,9 +257,9 @@ describe("alert service", () => {
     );
   });
 
-  test("skips the resource-scope check for a filter-based alert (no resourceId)", async () => {
-    const { service } = buildService({ resourceScopeThrows: true });
-    await expect(service.createAlert(validCreate)).resolves.toBeDefined();
+  test("rejects a resource-less (scope-wide) alert as unsupported", async () => {
+    const { service } = buildService();
+    await expect(service.createAlert({ ...validCreate, resourceId: undefined })).rejects.toThrow(/not supported yet/);
   });
 
   test("rejects a condition that fails the provider schema", async () => {
