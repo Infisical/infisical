@@ -451,6 +451,22 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     hostPattern: "*.atlassian.net",
     seed: { basicAuth: { withPassword: true } }
   },
+  {
+    key: "google-drive",
+    name: "Google Drive",
+    image: "Google Drive.svg",
+    category: ProxiedServiceTemplateCategory.Productivity,
+    description: "Google Drive file storage API.",
+    hostPattern: "www.googleapis.com/*",
+    aliases: ["gdrive", "google"],
+    seed: {
+      substitutions: bearerSubstitution(
+        "GDRIVE_TOKEN",
+        () => `ya29.${randomToken(60, BASE64URL)}`,
+        [ProxiedServiceSubstitutionSurface.Header]
+      )
+    }
+  },
 
   // ---- Communication (email) ----
   {
