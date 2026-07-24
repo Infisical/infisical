@@ -339,7 +339,7 @@ export const CreateProjectIdentityForm = ({
           {canGrantPrivileges && (
             <Field>
               <FieldLabel>
-                Policy Templates <span className="text-muted">(optional)</span>
+                Additional Privileges <span className="text-muted">(optional)</span>
               </FieldLabel>
               <FieldContent>
                 <PolicyTemplateSelect projectType={projectType} />
