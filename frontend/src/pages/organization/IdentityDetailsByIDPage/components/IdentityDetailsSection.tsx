@@ -189,7 +189,9 @@ export const IdentityDetailsSection = ({
                   )}
                 </DetailValue>
               </Detail>
-              <IdentityAlertDetail identityId={identityId} identityName={data.identity.name} />
+              {!data.identity.projectId && (
+                <IdentityAlertDetail identityId={identityId} identityName={data.identity.name} />
+              )}
             </>
           )}
         </DetailGroup>

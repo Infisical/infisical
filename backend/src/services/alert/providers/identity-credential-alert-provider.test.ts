@@ -67,8 +67,7 @@ const buildProvider = (opts?: {
       opts?.onFind?.(args);
       return opts?.secrets ?? [];
     },
-    findIdentityInOrg: async () =>
-      (opts?.inOrg ?? true) ? { projectId: opts?.ownerProjectId ?? null } : undefined,
+    findIdentityInOrg: async () => ((opts?.inOrg ?? true) ? { projectId: opts?.ownerProjectId ?? null } : undefined),
     isIdentityInProject: async () => opts?.inProject ?? true,
     getProjectType: async () => opts?.projectType ?? null
   };

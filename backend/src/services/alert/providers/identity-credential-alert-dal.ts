@@ -66,8 +66,9 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
           )
           .where("projectMembership.scope", AccessScope.Project)
           .where("projectMembership.scopeProjectId", projectId)
-          .where((bd) =>
-            void bd.whereNull(`${TableName.Identity}.projectId`).orWhere(`${TableName.Identity}.projectId`, projectId)
+          .where(
+            (bd) =>
+              void bd.whereNull(`${TableName.Identity}.projectId`).orWhere(`${TableName.Identity}.projectId`, projectId)
           );
       } else {
         void query.whereNull(`${TableName.Identity}.projectId`);
