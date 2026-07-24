@@ -465,6 +465,7 @@ import { reminderServiceFactory } from "@app/services/reminder/reminder-service"
 import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-recipient-dal";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { resourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { roleServiceFactory } from "@app/services/role/role-service";
 import { secretDALFactory } from "@app/services/secret/secret-dal";
@@ -845,6 +846,7 @@ export const registerRoutes = async (
     envConfig,
     orgDAL,
     permissionService,
+    meteredFeatures,
     licenseClient
   });
 
@@ -957,6 +959,13 @@ export const registerRoutes = async (
     projectDAL,
     hsmService,
     envConfig
+  });
+
+  const resourceMetadataService = resourceMetadataServiceFactory({
+    resourceMetadataDAL,
+    permissionService,
+    folderDAL,
+    kmsService
   });
 
   const externalKmsService = externalKmsServiceFactory({
@@ -1911,6 +1920,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     gatewayV2DAL,
+    gatewayV2Service,
     gatewayPoolService,
     appConnectionDAL,
     pamAccessRequestService,
@@ -2871,7 +2881,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     keyStore,
     kmsService,
-    queueService
+    queueService,
+    gatewayV2Service,
+    gatewayPoolService
   });
 
   const appConnectionService = appConnectionServiceFactory({
@@ -2946,7 +2958,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     dynamicSecretDAL,
-    projectDAL
+    projectDAL,
+    keyStore
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({
@@ -3061,6 +3074,7 @@ export const registerRoutes = async (
     secretRotationV2DAL,
     reminderDAL,
     auditLogDAL,
+    clickhouseAuditLogDAL,
     secretValidationRuleDAL,
     kmsService
   });
@@ -3848,6 +3862,7 @@ export const registerRoutes = async (
     secretValidationRule: secretValidationRuleService,
     rateLimit: rateLimitService,
     folder: folderService,
+    resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
     projectFolderGrant: projectFolderGrantService,
     projectBot: projectBotService,

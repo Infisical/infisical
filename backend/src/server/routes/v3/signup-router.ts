@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
@@ -107,7 +108,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
           firstName: z.string().trim(),
           lastName: z.string().trim().optional(),
           attributionSource: z.string().trim().optional(),
-          password: z.string(),
+          password: PasswordPolicySchema,
           organizationName: GenericResourceNameSchema.optional(),
           hubspotUtk: z.string().trim().max(512).optional()
         }),

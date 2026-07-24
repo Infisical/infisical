@@ -68,6 +68,9 @@ export const IdentityTlsCertAuthContent = ({ identityId }: ViewAuthMethodProps) 
       <IdentityAuthFieldDisplay className="col-span-2" label="Allowed Subject Alternative Names">
         {data.allowedSubjectAltNames?.join(", ")}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay className="col-span-2" label="Verify Client Certificate Chain">
+        {data.verifyClientCertificateChain ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
     </div>
   );
 };

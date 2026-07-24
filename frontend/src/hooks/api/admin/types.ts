@@ -13,6 +13,21 @@ export enum LoginMethod {
   OIDC = "oidc"
 }
 
+export type TPasswordPolicyRequirement = {
+  code: string;
+  message: string;
+  validationMessage: string;
+  isPrimary: boolean;
+  patterns: string[];
+  flags?: string;
+  maxConsecutiveCharacters?: number;
+  shouldMatch: boolean;
+};
+
+export type TPasswordPolicy = {
+  requirements: TPasswordPolicyRequirement[];
+};
+
 export type OrganizationWithProjects = Organization & {
   members: {
     user: {
@@ -60,6 +75,7 @@ export type TServerConfig = {
   defaultAuthOrgAuthMethod?: string | null;
   defaultAuthOrgAuthEnforced?: boolean | null;
   enabledLoginMethods: LoginMethod[];
+  passwordPolicy: TPasswordPolicy;
   authConsentContent?: string;
   pageFrameContent?: string;
   invalidatingCache: boolean;

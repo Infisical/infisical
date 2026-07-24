@@ -1,97 +1,89 @@
 ---
 title: "Agent Proxy"
 sidebarTitle: "Overview"
-description: "Let AI agents and untrusted code execution environments call authenticated APIs without ever holding real credentials."
+description: "Give AI agents and untrusted code execution environments access without handing over your secrets."
 ---
 
-You want an AI agent to do real work: push code, file tickets, call external APIs. That work needs credentials, and the **Infisical Agent Proxy** lets the agent do all of it without ever being handed one.
+The **Infisical Agent Proxy** is a credential broker for AI agents and untrusted code execution environments. It sits between your AI agents and the APIs they call including LLM providers, GitHub, Slack, and more.
 
-It works like this: the agent makes an API call with no real credential (or a dummy placeholder, where one is expected). On its way out, the request passes through the agent proxy. The proxy attaches the real credential and forwards the request to the API. The API sees a normal authenticated call. The agent never saw the key, so there is nothing to leak.
+Agents like Claude Code or OpenClaw route HTTP requests through the proxy, which swaps dummy credentials for real ones (or replaces auth headers entirely), before forwarding the request to the target service.
 
-A credential that enters an untrusted code execution environment is exposed in more ways than one:
+```text
+            Your private network                                Public internet
 
-- A prompt injection can talk the agent into sending its keys to an attacker (**credential exfiltration**).
-- Anything in the agent's environment can end up in its context window, and from there in LLM provider logs and transcripts, or even training data.
-- Keys leak sideways into shell history, log files, and error reports as the agent works.
-- A stolen key works from anywhere until someone notices and rotates it.
-
-Brokered credentials sidestep all of it: they cannot be exfiltrated, logged, or memorized from inside the agent, they only work through the proxy for the services you configured, and an agent's access can be revoked centrally at any time.
-
-<Note>
-  The agent proxy is not limited to AI agents. Any untrusted code execution environment that respects an HTTP proxy can run behind it, with no code changes.
-</Note>
-
-## How It Works
-
-```mermaid
-flowchart LR
-    A[Agent] -->|request without real credentials| B[Agent Proxy]
-    B -->|real credentials applied on the wire| C[External Service]
-    B <-->|fetches configs + secrets| D[Infisical]
++----------+                 +-------------+                  +------------------+
+| AI agent | --------------> | Agent Proxy | ---------------> |  api.slack.com   |
++----------+  request with a +-------------+ request with the |  api.github.com  |
+             placeholder key        |        real credential  |  ...             |
+                                    |                         +------------------+
+                                    |  fetches the real
+                                    |  credential values
+                                    v
+                             +-------------+
+                             |  Infisical  |
+                             +-------------+
 ```
 
-1. **Keep your secrets in Infisical**, exactly as you do today. Next to them, define [proxied services](/documentation/platform/agent-proxy/proxied-services): small configs that say, for example, "requests to `api.stripe.com` get `STRIPE_API_KEY` as a Bearer token".
-2. **Run the agent proxy** with one command: `infisical secrets agent-proxy start`.
-3. **Launch your agent through the wrapper**: `infisical secrets agent-proxy connect -- claude`. The wrapper points the agent's traffic at the proxy and starts it. The agent holds none of the brokered credentials, and has no idea any of this is happening.
+## Why Agent Proxy
 
-Now the agent calls `api.stripe.com`. The proxy adds the real `STRIPE_API_KEY` and forwards the request. Stripe sees a normal authenticated call.
+Traditional secrets management involves returning credentials back to applications and services.
 
-## The Whole Platform Comes With It
+This is not suitable for AI agents because they are vulnerable to credential exfiltration via [prompt injection](https://en.wikipedia.org/wiki/Prompt_injection); an attacker could craft a malicious prompt or payload and exfiltrate credentials from an agent back to the attacker.
 
-Standalone credential proxies manage their own keys, users, and permissions in isolation, so you end up running a second secrets manager just for your agents. The agent proxy is different: brokered credentials are ordinary Infisical secrets, so everything the platform does applies to them with zero extra setup.
+Enter Infisical Agent Proxy - a proxy service backed by Infisical that prevents credential exfiltration by brokering access to credentials stored in Infisical at the network boundary.
 
-<CardGroup cols={2}>
-  <Card title="Secret Rotation" icon="rotate" href="/documentation/platform/secret-rotation/overview">
-    Rotate brokered credentials on a schedule. The proxy applies the new value within a minute, with no agent restart and no agent awareness.
-  </Card>
-  <Card title="Dynamic Secrets" icon="bolt" href="/documentation/platform/dynamic-secrets/overview">
-    Generate short-lived, per-use credentials on demand for databases, clouds, Kubernetes, and more, so there is no long-lived key to steal in the first place.
-  </Card>
-  <Card title="Approval Workflows" icon="check-double" href="/documentation/platform/pr-workflows">
-    Require a review before a brokered credential changes, exactly like a code change.
-  </Card>
-  <Card title="Audit Logs" icon="scroll" href="/documentation/platform/audit-logs">
-    A complete trail of everything around your proxied services, from configuration changes to activity.
-  </Card>
-  <Card title="Access Controls" icon="user-lock" href="/documentation/platform/access-controls/role-based-access-controls">
-    Scope each agent identity to exactly the environments, paths, and services it should reach.
-  </Card>
-  <Card title="Versioning & Recovery" icon="clock-rotate-left" href="/documentation/platform/secret-versioning">
-    Every brokered credential keeps its full version history, with point-in-time recovery.
-  </Card>
-</CardGroup>
+## How it works
 
-## What You Work With
+Start by configuring the resources Agent Proxy needs within Infisical to broker your agent access to an external service.
 
-<Tabs>
-  <Tab title="Proxied Service" icon="right-left">
-    A small config that lives in a folder next to your secrets. It says which hosts it covers, which secrets to use, and how to apply them (set a header, or swap a placeholder). You manage it in the secrets dashboard like any other resource.
-  </Tab>
-  <Tab title="Agent Proxy" icon="server">
-    An HTTP(S) forward proxy built into the Infisical CLI (`infisical secrets agent-proxy start`). It runs in your private network, close to your agents, and applies credentials to their outbound traffic. It authenticates to Infisical with its own machine identity, which needs read access to the referenced secrets. A single agent proxy can serve many agents at once while keeping them isolated from each other.
-  </Tab>
-  <Tab title="Agent" icon="robot">
-    Any program that respects an HTTP proxy: Claude Code, Codex, OpenClaw, or any other untrusted code execution environment. Each agent authenticates with its own machine identity and is launched through `infisical secrets agent-proxy connect`, which sets up the proxy routing and trust environment before starting the agent process.
-  </Tab>
-</Tabs>
+1. Add a credential as a secret in Infisical; this can be a static secret or a [dynamic secret](/documentation/platform/dynamic-secrets/overview).
+
+2. Configure a [proxied service](/documentation/platform/agent-proxy/proxied-services) in Infisical. This defines the external service (e.g. `api.anthropic.com`, `api.github.com`, `slack.com`, etc.) that Agent Proxy can broker access to using the credential.
+
+3. Configure a [machine identity](/documentation/platform/identities/machine-identities) for Agent Proxy using [Universal Auth](/documentation/platform/identities/universal-auth) and another one for your agent.
+
+Next, set up an instance of Agent Proxy on a separate host machine:
+
+4. Start up an Agent Proxy server using the [Infisical CLI](/cli/overview) with the `infisical secrets agent-proxy start` command [here](/cli/commands/agent-proxy) with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` set in the environment.
+
+Finally, configure your AI agent to route requests through Agent Proxy:
+
+5. Bootstrap your AI agent’s environment to automatically route all outbound HTTP and HTTPS traffic through Agent Proxy. This can be done with the [Infisical CLI](/cli/overview) and setting `INFISICAL_PROJECT_ID`, `INFISICAL_ENVIRONMENT`, `INFISICAL_SECRET_PATH`, and `INFISICAL_AGENT_PROXY_ADDRESS` in the agent’s environment.
+
+6. Launch your agent with the `infisical secrets agent-proxy connect` command to start routing requests through Agent Proxy.
+
+## What you work with
+
+| Object              | What it is                                                                                                                                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Proxied service** | A config that maps a host to the secret the proxy applies, static or [dynamic](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets). Defined next to your secrets in the dashboard. |
+| **Agent proxy**     | The forward proxy in the [Infisical CLI](/cli/overview) that runs in your network and attaches credentials to outbound requests.                                                                           |
+| **Agent**           | Any program that respects `HTTPS_PROXY`: Claude Code, Codex, OpenClaw, Hermes, or any other untrusted workload.                                                                                            |
 
 <Warning>
-  The Agent Proxy is distinct from other similarly named Infisical components: the [Infisical Agent](/integrations/platforms/infisical-agent) is a daemon that fetches secrets to disk for applications, the [Infisical Proxy](/integrations/platforms/infisical-proxy) is a caching proxy for the Infisical API itself, and [Gateways](/documentation/platform/gateways/overview) let Infisical reach into private networks. Those all deliver secrets or connectivity to software you trust. The Agent Proxy does the opposite: it exists so that software you do not trust never receives a secret at all.
+  The Agent Proxy is distinct from similarly named Infisical components:
+
+    - The [Infisical Agent](/integrations/platforms/infisical-agent) fetches secrets to disk for applications.
+    - The [Infisical Proxy](/integrations/platforms/infisical-proxy) caches the Infisical API.
+    - [Gateways](/documentation/platform/gateways/overview) let Infisical reach into private networks.
+
 </Warning>
 
-## Next Steps
+## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-proxy/quickstart">
-    Broker your first credential to an agent in a few minutes.
+  <Card
+    title="Quickstart"
+    icon="rocket"
+    href="/documentation/platform/agent-proxy/quickstart"
+  >
+    Broker your first credential to an agent.
   </Card>
-  <Card title="Proxied Services" icon="right-left" href="/documentation/platform/agent-proxy/proxied-services">
-    Host patterns, header rewriting, and credential substitution.
-  </Card>
-  <Card title="Activity Logs" icon="list-timeline" href="/documentation/platform/agent-proxy/activity-logs">
-    Record what the proxy brokered on every request, and ship it to your SIEM.
-  </Card>
-  <Card title="Security & Architecture" icon="shield-halved" href="/documentation/platform/agent-proxy/security">
-    Agent authentication, isolation, certificates, and high availability.
+  <Card
+    title="Security"
+    icon="shield-halved"
+    href="/documentation/platform/agent-proxy/security"
+  >
+    Isolation, authentication, certificates, and permissions.
   </Card>
 </CardGroup>

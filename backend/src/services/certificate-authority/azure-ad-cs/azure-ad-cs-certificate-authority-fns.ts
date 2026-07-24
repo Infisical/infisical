@@ -17,6 +17,7 @@ import {
 } from "@app/services/app-connection/azure-adcs/azure-adcs-connection-fns";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -366,10 +367,10 @@ const submitCertificateRequest = async (
     }
 
     // Check for immediate certificate issuance
-    const certMatch = responseText.match(new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----"));
+    const [certMatch] = splitPemChain(responseText);
     if (certMatch) {
       // Clean up the certificate format
-      certificate = certMatch[0].replace(new RE2("\\\\r\\\\n", "g"), "\n").replace(new RE2("\\\\r", "g"), "\n").trim();
+      certificate = certMatch.replace(new RE2("\\\\r\\\\n", "g"), "\n").replace(new RE2("\\\\r", "g"), "\n").trim();
 
       // Validate the certificate format before using it
       try {

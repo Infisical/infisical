@@ -5,6 +5,7 @@ import { PkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs";
 import {
   TAwsListener,
   TAwsLoadBalancer,
+  TKempVirtualService,
   TListPkiSyncOptions,
   TListPkiSyncs,
   TPkiSync,
@@ -29,7 +30,9 @@ export const pkiSyncKeys = {
   awsLoadBalancers: (connectionId: string, region: string) =>
     [...pkiSyncKeys.all, "aws-load-balancers", connectionId, region] as const,
   awsListeners: (connectionId: string, region: string, loadBalancerArn: string) =>
-    [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const
+    [...pkiSyncKeys.all, "aws-listeners", connectionId, region, loadBalancerArn] as const,
+  kempVirtualServices: (connectionId: string) =>
+    [...pkiSyncKeys.all, "kemp-virtual-services", connectionId] as const
 };
 
 export const usePkiSyncOptions = (
@@ -227,6 +230,34 @@ export const useListAwsListeners = (
       return data.listeners;
     },
     enabled: !!connectionId && !!region && !!loadBalancerArn,
+    ...options
+  });
+};
+
+export const useListKempVirtualServices = (
+  { connectionId }: { connectionId: string },
+  options?: Omit<
+    UseQueryOptions<
+      TKempVirtualService[],
+      unknown,
+      TKempVirtualService[],
+      ReturnType<typeof pkiSyncKeys.kempVirtualServices>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pkiSyncKeys.kempVirtualServices(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ virtualServices: TKempVirtualService[] }>(
+        "/api/v1/cert-manager/syncs/kemp-loadmaster/virtual-services",
+        {
+          params: { connectionId }
+        }
+      );
+      return data.virtualServices;
+    },
+    enabled: !!connectionId,
     ...options
   });
 };

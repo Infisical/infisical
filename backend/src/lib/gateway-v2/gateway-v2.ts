@@ -99,6 +99,7 @@ export const createGatewayConnection = async (
     [GatewayProxyProtocol.Pkcs11]: ["infisical-pkcs11"],
     [GatewayProxyProtocol.Adcs]: ["infisical-adcs"],
     [GatewayProxyProtocol.Discovery]: ["infisical-discovery"],
+    [GatewayProxyProtocol.ConnectionTest]: ["infisical-connection-test"],
     [GatewayProxyProtocol.WinRm]: ["infisical-winrm"]
   };
 

@@ -1113,6 +1113,7 @@ const Page = () => {
           }}
           selectedActions={popUp.requestAccess.data}
           secretPath={pathPolicies?.[0]?.secretPath}
+          environment={environment}
         />
       )}
       <SecretDropzone

@@ -20,6 +20,7 @@ import {
   WindowsFileAccess
 } from "@app/hooks/api/pkiSyncs";
 
+import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "../schemas/kemp-loadmaster-pki-sync-destination-schema";
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
 
 type Props = {
@@ -435,6 +436,112 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
                   </Tooltip>
                 </p>
               </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
+      {currentDestination === PkiSync.KempLoadMaster && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveItemOnRenewal"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-item-on-renewal"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Certificate on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          <strong>Only applies to certificate renewals:</strong> controls the
+                          identifier a renewed certificate uses on the LoadMaster.
+                        </p>
+                        <p className="mt-4">
+                          When on, the renewed certificate keeps the original certificate&apos;s
+                          identifier and replaces that entry in place, so any Virtual Service
+                          binding keeps working. This matters when your name schema is
+                          certificate-specific (for example it includes{" "}
+                          <code>{"{{certificateId}}"}</code>), which would otherwise resolve to a
+                          new name on renewal.
+                        </p>
+                        <p className="mt-4">
+                          When off, the renewed certificate is imported under a newly generated
+                          identifier and the original stays on the LoadMaster.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
+      {currentDestination === PkiSync.KempLoadMaster && (
+        <Controller
+          control={control}
+          name="syncOptions.caCertificateNameSchema"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl
+              tooltipClassName="max-w-md"
+              tooltipText={
+                <div className="flex flex-col gap-3">
+                  <span>
+                    This schema names each CA (intermediate) certificate that Infisical pushes into
+                    the LoadMaster&apos;s Intermediate Certs store.
+                  </span>
+
+                  <div className="flex flex-col">
+                    <span>Available placeholders:</span>
+                    <ul className="list-disc pl-4 text-sm">
+                      <li>
+                        <code>{"{{fingerprint}}"}</code> - A hash of the CA certificate. Include it
+                        so each distinct CA gets a unique name and is never duplicated.
+                      </li>
+                      <li>
+                        <code>{"{{commonName}}"}</code> - The CA certificate&apos;s common name
+                      </li>
+                    </ul>
+                    <span className="mt-1 text-xs text-bunker-300">
+                      A placeholder is optional. A schema with no placeholder resolves to a fixed
+                      name and can hold only one CA certificate. When placeholders resolve, any
+                      characters the destination doesn&apos;t support are replaced with hyphens.
+                    </span>
+                  </div>
+                  {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-yellow">
+                        Character restrictions for {syncOption.name}:
+                      </span>
+                      <div className="text-xs text-bunker-300">
+                        The following characters are not allowed:{" "}
+                        {syncOption.forbiddenCharacters.split("").join(" ")}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              }
+              isError={Boolean(error)}
+              errorText={error?.message}
+              label="CA Certificate Name Schema"
+              helperText="Controls how CA (intermediate) certificates are named in the LoadMaster's Intermediate Certs store."
+            >
+              <Input
+                value={value ?? ""}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={KEMP_DEFAULT_CA_NAME_SCHEMA}
+              />
             </FormControl>
           )}
         />

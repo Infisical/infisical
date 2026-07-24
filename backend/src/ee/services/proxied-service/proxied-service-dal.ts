@@ -17,6 +17,7 @@ export type TProxiedServiceWithScope = {
   projectId: string;
   createdAt: Date;
   updatedAt: Date;
+  lastUsedAt: Date | null;
   environment: { id: string; name: string; slug: string };
   folder: { path: string };
 };
@@ -31,6 +32,7 @@ export type TProxiedServiceScoped = {
   environmentSlug: string;
   createdAt: Date;
   updatedAt: Date;
+  lastUsedAt: Date | null;
 };
 
 const scopedSelectColumns = (db: TDbClient) => [
@@ -41,6 +43,7 @@ const scopedSelectColumns = (db: TDbClient) => [
   db.ref("folderId").withSchema(TableName.ProxiedService),
   db.ref("createdAt").withSchema(TableName.ProxiedService),
   db.ref("updatedAt").withSchema(TableName.ProxiedService),
+  db.ref("lastUsedAt").withSchema(TableName.ProxiedService),
   db.ref("projectId").withSchema(TableName.Environment).as("projectId"),
   db.ref("id").withSchema(TableName.Environment).as("envId"),
   db.ref("name").withSchema(TableName.Environment).as("envName"),
@@ -57,6 +60,7 @@ type TScopedRow = {
   projectId: string;
   createdAt: Date;
   updatedAt: Date;
+  lastUsedAt?: Date | null;
   envId: string;
   envName: string;
   envSlug: string;
@@ -72,6 +76,7 @@ const mapRowToScope = (row: TScopedRow): TProxiedServiceWithScope => ({
   projectId: row.projectId,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
+  lastUsedAt: row.lastUsedAt ?? null,
   environment: {
     id: row.envId,
     name: row.envName,
@@ -179,7 +184,8 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
         db.ref("isEnabled").withSchema(TableName.ProxiedService),
         db.ref("folderId").withSchema(TableName.ProxiedService),
         db.ref("createdAt").withSchema(TableName.ProxiedService),
-        db.ref("updatedAt").withSchema(TableName.ProxiedService)
+        db.ref("updatedAt").withSchema(TableName.ProxiedService),
+        db.ref("lastUsedAt").withSchema(TableName.ProxiedService)
       )
       .select(
         db.ref("projectId").withSchema(TableName.Environment).as("projectId"),
@@ -197,8 +203,15 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
       projectId: row.projectId,
       environmentSlug: row.envSlug,
       createdAt: row.createdAt,
-      updatedAt: row.updatedAt
+      updatedAt: row.updatedAt,
+      lastUsedAt: row.lastUsedAt ?? null
     };
+  };
+
+  const stampLastUsed = async (serviceId: string, tx?: Knex) => {
+    await (tx || db)(TableName.ProxiedService)
+      .where({ id: serviceId })
+      .update({ lastUsedAt: db.fn.now() as unknown as Date });
   };
 
   return {
@@ -206,6 +219,7 @@ export const proxiedServiceDALFactory = (db: TDbClient) => {
     findByFolderIds,
     findDashboardByFolderIds,
     countByFolderIds,
-    findByIdWithScope
+    findByIdWithScope,
+    stampLastUsed
   };
 };

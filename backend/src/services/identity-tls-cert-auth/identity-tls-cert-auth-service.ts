@@ -46,7 +46,8 @@ import {
   isSubjectAltNameAllowed,
   parseAllowedSubjectAltNames,
   parseSubjectDetails,
-  serializeAllowedSubjectAltNames
+  serializeAllowedSubjectAltNames,
+  verifyClientCertificateChain
 } from "./identity-tls-cert-auth-fns";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
 
@@ -119,7 +120,8 @@ export const identityTlsCertAuthServiceFactory = ({
         cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
       }).toString();
 
-      const leafCertificate = extractX509CertFromChain(decodeURIComponent(clientCertificate))?.[0];
+      const presentedCertificates = extractX509CertFromChain(decodeURIComponent(clientCertificate));
+      const leafCertificate = presentedCertificates?.[0];
       if (!leafCertificate) {
         throw new BadRequestError({ message: "Missing client certificate" });
       }
@@ -127,17 +129,51 @@ export const identityTlsCertAuthServiceFactory = ({
       const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
       const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
 
-      const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
-      if (!isValidCertificate)
-        throw new UnauthorizedError({
-          message: "Access denied: Certificate not issued by the provided CA.",
-          detail: {
-            reasonCode: "ca_verification_failed",
-            identityId: identity.id,
-            orgId: identity.orgId,
-            identityName: identity.name
-          }
+      if (identityTlsCertAuth.verifyClientCertificateChain) {
+        // Trust-anchor mode: the configured CA is a trust anchor. Build a path from the presented
+        // leaf through the presented intermediates up to the anchor (RFC 5280 path validation),
+        // rather than requiring the anchor to be the leaf's direct issuer. This supports issuers
+        // that rotate beneath a stable root (e.g. SPIRE X.509-SVID intermediates) by pinning the
+        // long-lived root while the client presents the current intermediate alongside its leaf.
+        const presentedChain = presentedCertificates
+          .slice(1)
+          .map((pem) => new crypto.nativeCrypto.X509Certificate(pem));
+
+        const chainResult = verifyClientCertificateChain({
+          leaf: clientCertificateX509,
+          presentedChain,
+          trustAnchor: caCertificateX509
         });
+
+        if (!chainResult.ok) {
+          const message =
+            chainResult.reasonCode === "ca_verification_failed"
+              ? "Access denied: Certificate chain could not be validated against the provided CA."
+              : "Access denied: A certificate in the chain is outside its validity period.";
+          throw new UnauthorizedError({
+            message,
+            detail: {
+              reasonCode: chainResult.reasonCode,
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+        }
+      } else {
+        // Single-hop mode (default): the configured CA must be the direct issuer of the leaf.
+        const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
+        if (!isValidCertificate)
+          throw new UnauthorizedError({
+            message: "Access denied: Certificate not issued by the provided CA.",
+            detail: {
+              reasonCode: "ca_verification_failed",
+              identityId: identity.id,
+              orgId: identity.orgId,
+              identityName: identity.name
+            }
+          });
+      }
 
       // Require an end-entity certificate issued by the configured CA, not the CA certificate
       // itself. `.ca` covers certs marked CA:TRUE; the raw comparison also covers a self-signed CA
@@ -356,7 +392,8 @@ export const identityTlsCertAuthServiceFactory = ({
     isActorSuperAdmin,
     caCertificate,
     allowedCommonNames,
-    allowedSubjectAltNames
+    allowedSubjectAltNames,
+    verifyClientCertificateChain: verifyClientCertificateChainOpt
   }) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -443,6 +480,7 @@ export const identityTlsCertAuthServiceFactory = ({
           allowedSubjectAltNames: serializeAllowedSubjectAltNames(allowedSubjectAltNames),
           accessTokenTTL,
           encryptedCaCertificate: encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob,
+          verifyClientCertificateChain: verifyClientCertificateChainOpt ?? false,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
         },
@@ -458,6 +496,7 @@ export const identityTlsCertAuthServiceFactory = ({
     caCertificate,
     allowedCommonNames,
     allowedSubjectAltNames,
+    verifyClientCertificateChain: verifyClientCertificateChainOpt,
     accessTokenTTL,
     accessTokenMaxTTL,
     accessTokenNumUsesLimit,
@@ -549,6 +588,7 @@ export const identityTlsCertAuthServiceFactory = ({
       encryptedCaCertificate: caCertificate
         ? encryptor({ plainText: Buffer.from(caCertificate) }).cipherTextBlob
         : undefined,
+      verifyClientCertificateChain: verifyClientCertificateChainOpt,
       accessTokenMaxTTL,
       accessTokenTTL,
       accessTokenNumUsesLimit,

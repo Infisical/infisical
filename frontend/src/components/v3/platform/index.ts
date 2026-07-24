@@ -8,3 +8,4 @@ export * from "./PermissionActionSelect";
 export * from "./ScopeIcons";
 export * from "./SecretInput";
 export * from "./SecretPathInput";
+export * from "./VerificationCode";

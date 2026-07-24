@@ -14,6 +14,7 @@ import {
   AzureKeyVaultPkiSyncDestinationSection,
   ChefPkiSyncDestinationSection,
   F5BigIpPkiSyncDestinationSection,
+  KempLoadMasterPkiSyncDestinationSection,
   LinuxServerPkiSyncDestinationSection,
   NetScalerPkiSyncDestinationSection,
   NutanixPrismCentralPkiSyncDestinationSection,
@@ -59,6 +60,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       break;
     case PkiSync.F5BigIp:
       DestinationComponents = <F5BigIpPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.KempLoadMaster:
+      DestinationComponents = <KempLoadMasterPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     case PkiSync.LinuxServer:
       DestinationComponents = <LinuxServerPkiSyncDestinationSection pkiSync={pkiSync} />;

@@ -41,6 +41,7 @@ import { THasuraCloudConnection } from "./hasura-cloud-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TLiteLLMConnection } from "./litellm-connection";
@@ -119,6 +120,7 @@ export * from "./hasura-cloud-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
+export * from "./kemp-loadmaster-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
 export * from "./litellm-connection";
@@ -221,6 +223,7 @@ export type TAppConnection =
   | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TNetScalerConnection
+  | TKempLoadMasterConnection
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection

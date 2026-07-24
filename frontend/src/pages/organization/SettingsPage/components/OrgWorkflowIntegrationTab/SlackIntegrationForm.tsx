@@ -2,10 +2,19 @@ import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
+import { ChevronLeft } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
@@ -18,6 +27,7 @@ import { slugSchema } from "@app/lib/schemas";
 type Props = {
   id?: string;
   onClose: () => void;
+  onBack?: () => void;
 };
 
 const slackFormSchema = z.object({
@@ -27,7 +37,7 @@ const slackFormSchema = z.object({
 
 type TSlackFormData = z.infer<typeof slackFormSchema>;
 
-export const SlackIntegrationForm = ({ id, onClose }: Props) => {
+export const SlackIntegrationForm = ({ id, onClose, onBack }: Props) => {
   const {
     control,
     handleSubmit,
@@ -86,7 +96,7 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
 
       onClose();
       createNotification({
-        text: "Successfully updated Slack integration",
+        text: "Updated Slack integration",
         type: "success"
       });
     } else {
@@ -95,42 +105,62 @@ export const SlackIntegrationForm = ({ id, onClose }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(handleSlackFormSubmit)} autoComplete="off">
+    <form
+      onSubmit={handleSubmit(handleSlackFormSubmit)}
+      className="flex flex-col gap-4"
+      autoComplete="off"
+    >
       <Controller
         control={control}
         name="slug"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Alias" isRequired errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="slack-integration-alias">
+              Alias <span className="text-danger">*</span>
+            </FieldLabel>
+            <Input id="slack-integration-alias" isError={Boolean(error)} {...field} />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="description"
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="slack-integration-description">Description</FieldLabel>
+            <Input id="slack-integration-description" isError={Boolean(error)} {...field} />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
       {slackIntegration && (
-        <FormControl label="Connected Slack workspace">
-          <Input value={slackIntegration?.teamName} isReadOnly className="bg-white/[0.07]" />
-        </FormControl>
+        <Field>
+          <FieldLabel htmlFor="slack-integration-workspace">Connected Slack workspace</FieldLabel>
+          <Input id="slack-integration-workspace" value={slackIntegration?.teamName} readOnly />
+        </Field>
       )}
-      <div className="mt-6 flex items-center space-x-4">
+      <DialogFooter>
+        {onBack && (
+          <Button type="button" variant="ghost" className="mr-auto" onClick={onBack}>
+            <ChevronLeft />
+            Back
+          </Button>
+        )}
+        <DialogClose asChild>
+          <Button type="button" variant="ghost">
+            Cancel
+          </Button>
+        </DialogClose>
         <Button
           type="submit"
-          isLoading={isSubmitting || isConnectLoading}
+          variant="org"
+          isPending={isSubmitting || isConnectLoading}
           isDisabled={!isDirty || isConnectLoading || isSubmitting}
         >
           {slackIntegration ? "Save" : "Connect Slack"}
         </Button>
-        <Button variant="outline_bg" onClick={onClose}>
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
