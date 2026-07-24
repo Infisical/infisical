@@ -2,9 +2,11 @@ import { Knex } from "knex";
 
 import { IdentityAuthMethod, OrgMembershipStatus, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { applyJitter } from "@app/lib/dates";
+import { delay } from "@app/lib/delay";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
@@ -85,7 +87,12 @@ type TIdentityAccessTokenServiceFactoryDep = {
     | "setItemWithExpiry"
     | "setItemWithExpiryNX"
     | "incrementSeededWithExpiry"
+    | "deleteItem"
   >;
+};
+
+type TTrustedIpsCachePayload = {
+  accessTokenTrustedIps: TIp[] | null;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
@@ -103,6 +110,25 @@ export const identityAccessTokenServiceFactory = ({
       ttlSeconds,
       usesRemaining
     );
+  };
+
+  // Delayed re-delete: a request that missed cache before this delete can still
+  // write a stale allowlist back. Second delete ~1s later helps with race conditions, but still best effort.
+  const TRUSTED_IPS_CACHE_REDELETE_DELAY_MS = 1000;
+
+  const invalidateTrustedIpsCache = async (identityId: string, authMethod: IdentityAuthMethod | string) => {
+    const key = KeyStorePrefixes.IdentityTrustedIps(identityId, authMethod);
+    try {
+      await keyStore.deleteItem(key);
+    } catch (error) {
+      logger.warn(error, `identity-trusted-ips: failed to invalidate cache [identityId=${identityId}]`);
+    }
+
+    void delay(TRUSTED_IPS_CACHE_REDELETE_DELAY_MS)
+      .then(() => keyStore.deleteItem(key))
+      .catch((error) => {
+        logger.warn(error, `identity-trusted-ips: failed delayed re-delete [identityId=${identityId}]`);
+      });
   };
 
   // On revoke, bump this identity's version number. Every cached "allowed" answer
@@ -446,8 +472,16 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     if (ipAddress) {
-      const trustedIps = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
-      if (hasNonWildcardTrustedIps(trustedIps as TIp[] | null | undefined)) {
+      const { accessTokenTrustedIps: trustedIps } = await withCache<TTrustedIpsCachePayload>({
+        keyStore,
+        key: KeyStorePrefixes.IdentityTrustedIps(token.identityId, source.authMethod),
+        ttlSeconds: KeyStoreTtls.IdentityTrustedIpsInSeconds,
+        fetcher: async () => {
+          const ips = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
+          return { accessTokenTrustedIps: (ips as TIp[] | null | undefined) ?? null };
+        }
+      });
+      if (hasNonWildcardTrustedIps(trustedIps)) {
         checkIPAgainstBlocklist({
           ipAddress,
           trustedIps: trustedIps as TIp[]
@@ -732,6 +766,7 @@ export const identityAccessTokenServiceFactory = ({
     revokeAllTokensForClientSecret,
     revokeTokensForIdentityAuthMethod,
     markPerTokenRevocation,
+    invalidateTrustedIpsCache,
     fnValidateIdentityAccessTokenFast
   };
 };

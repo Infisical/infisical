@@ -81,7 +81,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -519,6 +519,7 @@ export const identityLdapAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
     return { ...identityLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -732,6 +733,7 @@ export const identityLdapAuthServiceFactory = ({
       lockoutCounterResetSeconds
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
     return { ...updatedLdapAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -892,6 +894,7 @@ export const identityLdapAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.LDAP_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.LDAP_AUTH);
 
     return revokedIdentityLdapAuth;
   };

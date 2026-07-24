@@ -104,7 +104,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -1042,6 +1042,7 @@ export const identityKubernetesAuthServiceFactory = ({
       return doc;
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.KUBERNETES_AUTH);
     return {
       ...identityKubernetesAuth,
       caCert: caCert ?? "",
@@ -1395,6 +1396,7 @@ export const identityKubernetesAuthServiceFactory = ({
         }).toString()
       : "";
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.KUBERNETES_AUTH);
     return {
       ...updatedKubernetesAuth,
       orgId: identityMembershipOrg.scopeOrgId,
@@ -1577,6 +1579,7 @@ export const identityKubernetesAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.KUBERNETES_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.KUBERNETES_AUTH);
 
     return revokedIdentityKubernetesAuth;
   };

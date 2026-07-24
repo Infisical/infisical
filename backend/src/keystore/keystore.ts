@@ -73,6 +73,8 @@ export const KeyStorePrefixes = {
   IdentityRevocationVersion: (identityId: string) => `identity-revocation-version:${identityId}` as const,
   IdentityRevocationVerdict: (identityId: string, fingerprint: string) =>
     `identity-revocation-verdict:${identityId}:${fingerprint}` as const,
+  IdentityTrustedIps: (identityId: string, authMethod: string) =>
+    `identity-trusted-ips:${identityId}:${authMethod}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
@@ -169,6 +171,7 @@ export const KeyStoreTtls = {
   IdentityRevocationVerdictBaseInSeconds: 600, // 10 minutes
   IdentityRevocationVerdictJitterInSeconds: 120, // +/- 2 minutes
   IdentityRevocationVersionInSeconds: 604800, // 7 days
+  IdentityTrustedIpsInSeconds: 300, // 5 minutes
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
 

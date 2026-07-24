@@ -59,7 +59,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -358,6 +358,7 @@ export const identityAzureAuthServiceFactory = ({
 
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AZURE_AUTH);
     return { ...identityAzureAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -456,6 +457,7 @@ export const identityAzureAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AZURE_AUTH);
     return {
       ...updatedAzureAuth,
       orgId: identityMembershipOrg.scopeOrgId
@@ -603,6 +605,7 @@ export const identityAzureAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.AZURE_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.AZURE_AUTH);
 
     return revokedIdentityAzureAuth;
   };
