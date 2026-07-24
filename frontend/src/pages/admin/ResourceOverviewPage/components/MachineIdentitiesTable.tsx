@@ -88,6 +88,7 @@ const IdentityPanelTable = ({
     <>
       <div className="flex gap-2">
         <Input
+          aria-label="Search machine identities"
           value={searchIdentityFilter}
           onChange={(e) => setSearchIdentityFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -179,7 +180,8 @@ export const MachineIdentitiesTable = () => {
     "removeServerAdmin"
   ] as const);
 
-  const { mutate: deleteIdentitySuperAdminAccess } = useAdminRemoveIdentitySuperAdminAccess();
+  const { mutateAsync: deleteIdentitySuperAdminAccess } =
+    useAdminRemoveIdentitySuperAdminAccess();
 
   const handleRemoveServerAdmin = async () => {
     const { id } = popUp?.removeServerAdmin?.data as {

@@ -11,7 +11,6 @@ import {
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -264,6 +263,11 @@ export const DeleteActionModal = ({
     setIsPending(true);
     try {
       await onDeleteApproved();
+      onChange?.(false);
+      setConfirmation("");
+      onClose?.();
+    } catch {
+      // MutationCache reports request errors globally; keep the dialog and confirmation available.
     } finally {
       setIsPending(false);
     }
@@ -273,6 +277,7 @@ export const DeleteActionModal = ({
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
+        if (isPending && !open) return;
         onChange?.(open);
         if (!open) {
           setConfirmation("");
@@ -281,43 +286,52 @@ export const DeleteActionModal = ({
       }}
     >
       <AlertDialogContent>
-        <AlertDialogHeader className="text-left">
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{subTitle}</AlertDialogDescription>
-        </AlertDialogHeader>
-        {formContent}
-        <label className="flex flex-col gap-2 text-sm" htmlFor={confirmationInputId}>
-          {deletionMessage || (
-            <span>
-              Type <strong>{deleteKey}</strong> to perform this action
-            </span>
-          )}
-          <InputGroup>
-            <InputGroupInput
-              id={confirmationInputId}
-              name={confirmationInputId}
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              placeholder={`Type ${deleteKey} here`}
-              autoComplete="new-password"
-              data-1p-ignore
-              data-lpignore="true"
-              spellCheck={false}
-            />
-          </InputGroup>
-        </label>
-        {children}
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="danger"
-            isPending={isPending}
-            isDisabled={confirmation !== deleteKey || isDisabled}
-            onClick={handleAction}
-          >
-            {buttonText}
-          </AlertDialogAction>
-        </AlertDialogFooter>
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleAction();
+          }}
+        >
+          <AlertDialogHeader className="text-left">
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            <AlertDialogDescription>{subTitle}</AlertDialogDescription>
+          </AlertDialogHeader>
+          {formContent}
+          <label className="flex flex-col gap-2 text-sm" htmlFor={confirmationInputId}>
+            {deletionMessage || (
+              <span>
+                Type <strong>{deleteKey}</strong> to perform this action
+              </span>
+            )}
+            <InputGroup>
+              <InputGroupInput
+                id={confirmationInputId}
+                name={confirmationInputId}
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                placeholder={`Type ${deleteKey} here`}
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
+                spellCheck={false}
+              />
+            </InputGroup>
+          </label>
+          {children}
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+            <V3Button
+              type="submit"
+              variant="danger"
+              size="sm"
+              isPending={isPending}
+              isDisabled={confirmation !== deleteKey || isDisabled}
+            >
+              {buttonText}
+            </V3Button>
+          </AlertDialogFooter>
+        </form>
       </AlertDialogContent>
     </AlertDialog>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   faEllipsisV,
@@ -71,6 +71,7 @@ type AddEmailDomainFormData = z.infer<typeof AddEmailDomainSchema>;
 
 const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
   const createEmailDomain = useAdminCreateEmailDomain();
+  const organizationSelectId = useId();
 
   const {
     handleSubmit,
@@ -116,8 +117,9 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
         name="organization"
         render={({ field, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Organization</FieldLabel>
+            <FieldLabel htmlFor={organizationSelectId}>Organization</FieldLabel>
             <FilterableSelect<OrganizationWithProjects>
+              inputId={organizationSelectId}
               isLoading={searchOrgFilter !== debouncedSearchTerm || isPending}
               placeholder="Search organizations..."
               options={organizations}
@@ -243,6 +245,7 @@ export const EmailDomainsTable = () => {
         </Button>
       </div>
       <Input
+        aria-label="Search email domains"
         value={searchFilter}
         onChange={(e) => setSearchFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}

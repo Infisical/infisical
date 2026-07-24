@@ -188,6 +188,7 @@ const ViewMembersModalContent = ({
   return (
     <>
       <Input
+        aria-label="Search organization members"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -195,15 +196,15 @@ const ViewMembersModalContent = ({
       />
       <TableContainer
         className={twMerge(
-          "mt-4 flex flex-1 flex-col bg-mineshaft-700",
+          "mt-4 flex flex-1 flex-col bg-container",
           Boolean(filteredMembers.length) && "rounded-b-none"
         )}
       >
-        <Table className="overflow-y-auto bg-mineshaft-700">
+        <Table className="overflow-y-auto bg-container">
           <THead className="sticky top-0 z-50">
             <Tr>
-              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
+              <Th className="w-1/3 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Name
                   <IconButton
                     variant="plain"
@@ -221,8 +222,8 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
+              <Th className="w-1/3 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Email
                   <IconButton
                     variant="plain"
@@ -240,13 +241,13 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/4 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
+              <Th className="w-1/4 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Role
                 </div>
               </Th>
-              <Th className="w-5 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5" />
+              <Th className="w-5 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5" />
               </Th>
             </Tr>
           </THead>
@@ -261,7 +262,7 @@ const ViewMembersModalContent = ({
                   <Td className="max-w-0">
                     <div className="flex items-center">
                       <p className="truncate">
-                        {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                        {name ?? <span className="text-muted">Not Set</span>}
                       </p>
                     </div>
                   </Td>
@@ -272,7 +273,7 @@ const ViewMembersModalContent = ({
                         status !== OrgMembershipStatus.Accepted && (
                           <Button
                             isDisabled={resendOrgInvite.isPending}
-                            className="ml-2 h-7 border-mineshaft-600 bg-mineshaft-800/50 font-normal"
+                            className="ml-2 font-normal"
                             colorSchema="primary"
                             variant="outline_bg"
                             size="xs"
@@ -345,7 +346,7 @@ const ViewMembersModalContent = ({
         </Table>
         {!filteredMembers.length && (
           <EmptyState
-            className="my-auto bg-mineshaft-700"
+            className="my-auto bg-container"
             title={
               members.length
                 ? "No organization users match search..."
@@ -357,7 +358,7 @@ const ViewMembersModalContent = ({
       </TableContainer>
       {Boolean(filteredMembers.length) && (
         <Pagination
-          className="rounded-b-md border border-t-0 bg-mineshaft-700"
+          className="rounded-b-md border border-t-0 border-border bg-container"
           count={filteredMembers.length}
           page={page}
           perPage={perPage}
@@ -489,6 +490,7 @@ const OrganizationsPanelTable = ({
   return (
     <>
       <Input
+        aria-label="Search organizations"
         value={searchOrganizationsFilter}
         onChange={(e) => setSearchOrganizationsFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}

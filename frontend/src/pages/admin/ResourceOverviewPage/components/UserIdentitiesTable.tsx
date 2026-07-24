@@ -121,6 +121,7 @@ const UserPanelTable = ({
     <>
       <div className="flex gap-2">
         <Input
+          aria-label="Search users"
           value={searchUserFilter}
           onChange={(e) => setSearchUserFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -162,6 +163,7 @@ const UserPanelTable = ({
               <Tr>
                 <Th className="w-5">
                   <Checkbox
+                    aria-label="Select all users on this page"
                     id="member-page-select"
                     isChecked={isPageSelected || isPageIndeterminate}
                     isIndeterminate={isPageIndeterminate}
@@ -197,6 +199,7 @@ const UserPanelTable = ({
                     <Tr key={`user-${id}`} className="w-full">
                       <Td>
                         <Checkbox
+                          aria-label={`Select user ${username || email}`}
                           id={`select-user-${id}`}
                           isChecked={isSelected}
                           onClick={(e) => {

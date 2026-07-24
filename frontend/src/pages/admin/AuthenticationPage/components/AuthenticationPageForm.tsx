@@ -154,6 +154,7 @@ export const AuthenticationPageForm = () => {
                     </FieldContent>
                     <Switch
                       id={id}
+                      aria-label={label}
                       variant="neutral"
                       checked={field.value}
                       onCheckedChange={field.onChange}

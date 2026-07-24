@@ -236,6 +236,7 @@ export const GeneralPageForm = () => {
                     </FieldContent>
                     <Switch
                       id={`trust-${label.toLowerCase()}-emails`}
+                      aria-label={`Trust ${label} emails`}
                       variant="neutral"
                       checked={field.value}
                       onCheckedChange={field.onChange}

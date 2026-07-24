@@ -6,7 +6,6 @@ import {
   Alert,
   AlertDescription,
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -36,6 +35,7 @@ export const CachingPageForm = () => {
 
   const [type, setType] = useState<CacheType | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const confirmationInputId = useId();
 
@@ -44,7 +44,9 @@ export const CachingPageForm = () => {
     isFetching,
     refetch
   } = useGetInvalidatingCacheStatus(shouldPoll);
-  const isInvalidating = Boolean(shouldPoll && (isFetching || invalidationStatus));
+  const isInvalidating = Boolean(
+    isSubmitting || (shouldPoll && (isFetching || invalidationStatus))
+  );
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "invalidateCache"
@@ -53,14 +55,21 @@ export const CachingPageForm = () => {
   const handleInvalidateCacheSubmit = async () => {
     if (!type || isInvalidating) return;
 
-    await invalidateCache({ type });
-    createNotification({
-      text: `Began invalidating ${type} cache`,
-      type: "success"
-    });
-    setShouldPoll(true);
-    setConfirmation("");
-    handlePopUpClose("invalidateCache");
+    setIsSubmitting(true);
+    try {
+      await invalidateCache({ type });
+      createNotification({
+        text: `Began invalidating ${type} cache`,
+        type: "success"
+      });
+      setShouldPoll(true);
+      setConfirmation("");
+      handlePopUpClose("invalidateCache");
+    } catch {
+      // MutationCache reports request errors globally; keep the dialog and confirmation available.
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -114,44 +123,55 @@ export const CachingPageForm = () => {
       <AlertDialog
         open={popUp.invalidateCache.isOpen}
         onOpenChange={(isOpen) => {
+          if (isSubmitting && !isOpen) return;
           handlePopUpToggle("invalidateCache", isOpen);
           if (!isOpen) setConfirmation("");
         }}
       >
         <AlertDialogContent>
-          <AlertDialogHeader className="text-left">
-            <AlertDialogTitle>Invalidate {type} cache?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action is permanent and may take several minutes to complete.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Field>
-            <FieldLabel htmlFor={confirmationInputId}>Type confirm to continue</FieldLabel>
-            <Input
-              id={confirmationInputId}
-              name={confirmationInputId}
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              autoComplete="new-password"
-              data-1p-ignore
-              data-lpignore="true"
-              spellCheck={false}
-            />
-          </Field>
-          <Alert variant="danger" className="items-center [&>svg]:translate-y-0">
-            <TriangleAlertIcon />
-            <AlertDescription className="text-current">This cannot be undone.</AlertDescription>
-          </Alert>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isDisabled={confirmation !== "confirm" || isInvalidating}
-              onClick={handleInvalidateCacheSubmit}
-            >
-              Invalidate cache
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleInvalidateCacheSubmit();
+            }}
+          >
+            <AlertDialogHeader className="text-left">
+              <AlertDialogTitle>Invalidate {type} cache?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action is permanent and may take several minutes to complete.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Field>
+              <FieldLabel htmlFor={confirmationInputId}>Type confirm to continue</FieldLabel>
+              <Input
+                id={confirmationInputId}
+                name={confirmationInputId}
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
+                spellCheck={false}
+              />
+            </Field>
+            <Alert variant="danger" className="items-center [&>svg]:translate-y-0">
+              <TriangleAlertIcon />
+              <AlertDescription className="text-current">This cannot be undone.</AlertDescription>
+            </Alert>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <Button
+                type="submit"
+                variant="danger"
+                size="sm"
+                isPending={isSubmitting}
+                isDisabled={confirmation !== "confirm" || isInvalidating}
+              >
+                Invalidate cache
+              </Button>
+            </AlertDialogFooter>
+          </form>
         </AlertDialogContent>
       </AlertDialog>
     </>

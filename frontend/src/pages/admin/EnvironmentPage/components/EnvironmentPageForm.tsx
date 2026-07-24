@@ -204,6 +204,7 @@ export const EnvironmentPageForm = () => {
               <Search />
             </InputGroupAddon>
             <InputGroupInput
+              aria-label="Search environment variables"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search keys and descriptions"

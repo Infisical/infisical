@@ -115,6 +115,7 @@ const ServerAdminsPanelTable = ({
     <>
       <div className="flex items-center gap-x-2">
         <Input
+          aria-label="Search server admins"
           value={searchUserFilter}
           onChange={(e) => setSearchUserFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -136,6 +137,7 @@ const ServerAdminsPanelTable = ({
               <Tr>
                 <Th className="w-5">
                   <Checkbox
+                    aria-label="Select all server admins on this page"
                     id="member-page-select"
                     isChecked={isPageSelected || isPageIndeterminate}
                     isIndeterminate={isPageIndeterminate}
@@ -171,6 +173,7 @@ const ServerAdminsPanelTable = ({
                     <Tr key={`user-${id}`} className="w-full">
                       <Td>
                         <Checkbox
+                          aria-label={`Select user ${username || email}`}
                           id={`select-user-${id}`}
                           isChecked={isSelected}
                           onClick={(e) => {

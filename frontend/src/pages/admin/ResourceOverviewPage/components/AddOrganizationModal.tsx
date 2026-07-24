@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -67,6 +67,7 @@ const AddOrgSchema = z.object({
 type FormData = z.infer<typeof AddOrgSchema>;
 
 const Content = ({ onClose }: ContentProps) => {
+  const adminSelectId = useId();
   const createOrg = useServerAdminCreateOrganization();
 
   const {
@@ -132,8 +133,9 @@ const Content = ({ onClose }: ContentProps) => {
       <Controller
         render={({ field, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Assign organization admins</FieldLabel>
+            <FieldLabel htmlFor={adminSelectId}>Assign organization admins</FieldLabel>
             <CreatableSelect
+              inputId={adminSelectId}
               /* eslint-disable-next-line react/no-unstable-nested-components */
               noOptionsMessage={() => (
                 <p>Invite new users to this organization by typing out their email address.</p>

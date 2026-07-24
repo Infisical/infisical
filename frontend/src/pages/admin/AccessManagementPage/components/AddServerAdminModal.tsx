@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,6 +55,7 @@ type FormData = z.infer<typeof AddServerAdminSchema>;
 
 const Content = ({ onClose }: ContentProps) => {
   const grantAdmin = useAdminGrantServerAdminAccess();
+  const userSelectId = useId();
 
   const {
     handleSubmit,
@@ -91,8 +92,9 @@ const Content = ({ onClose }: ContentProps) => {
       <Controller
         render={({ field, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>User</FieldLabel>
+            <FieldLabel htmlFor={userSelectId}>User</FieldLabel>
             <FilterableSelect
+              inputId={userSelectId}
               isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
               className="w-full"
               placeholder="Search users..."
