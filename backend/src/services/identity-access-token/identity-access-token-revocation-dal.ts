@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TIdentityAccessTokenRevocations } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -11,8 +13,9 @@ export type TIdentityAccessTokenRevocationDALFactory = ReturnType<typeof identit
 // revoke-all sentinels, random UUID for scoped markers. `revokedAt` is populated
 // for every marker except per-token revocations so runtime validation can compare
 // the JWT iat against the exact revocation time. `scope` is null for legacy
-// (per-token / identity-wide) markers and holds the scope key (clientSecretId or
-// IdentityAuthMethod string) for scoped markers.
+// (per-token / identity-wide) markers and holds the scope key (clientSecretId,
+// IdentityAuthMethod string, or orgId for membership deactivate/removal) for
+// scoped markers.
 type TInsertRevocationInput = {
   id: string;
   identityId: string;
@@ -26,9 +29,9 @@ const REVOCATION_PRUNE_BATCH_SIZE = 10000;
 const MAX_RETRY_ON_FAILURE = 3;
 
 export const identityAccessTokenRevocationDALFactory = (db: TDbClient) => {
-  const insertRevocation = async (row: TInsertRevocationInput) => {
+  const insertRevocation = async (row: TInsertRevocationInput, tx?: Knex) => {
     try {
-      await db(TableName.IdentityAccessTokenRevocation)
+      await (tx ?? db)(TableName.IdentityAccessTokenRevocation)
         .insert(row)
         .onConflict(["id"])
         .merge({

@@ -155,4 +155,10 @@ export type TRevocationMarker = {
 };
 
 // Reason a token is denied. Cached so a hit can build the error without hitting PG.
-export type TRevocationDenyReason = "token" | "identity" | "client-secret" | "auth-method";
+export type TRevocationDenyReason =
+  | "token"
+  | "identity"
+  | "client-secret"
+  | "auth-method"
+  | "org-membership"
+  | "org-membership-inactive";

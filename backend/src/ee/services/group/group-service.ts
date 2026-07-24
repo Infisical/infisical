@@ -17,6 +17,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -93,6 +94,7 @@ type TGroupServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -113,7 +115,8 @@ export const groupServiceFactory = ({
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
-  usageMeteringService
+  usageMeteringService,
+  identityAccessTokenService
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -1227,6 +1230,9 @@ export const groupServiceFactory = ({
       userIds: [],
       identityIds: [identityId]
     });
+
+    // Losing a group can remove the identity's effective org access.
+    await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
 
     // The identity may have left a secret-manager or PAM project it only reached through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
