@@ -67,6 +67,7 @@ export const ProjectSubmenuView = ({
                 size="lg"
                 scope={sidebarScope}
                 asChild
+                closeOnMobile
                 isActive={isActive}
                 tooltip={sub.label}
               >
