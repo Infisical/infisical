@@ -94,7 +94,7 @@ export const PolicyTemplateSelect = ({ projectType }: Props) => {
       isMulti
       value={value}
       options={options}
-      placeholder="Select policy templates..."
+      placeholder="Select additional privileges..."
       getOptionValue={(option) => option.id}
       getOptionLabel={(option) => option.name}
       components={{ Option: TemplateOptionRow }}
