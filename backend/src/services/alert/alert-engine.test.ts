@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
+
 import { TAlertPayload } from "./alert-channel-types";
 import { alertEngineFactory, TAlertEngineDep } from "./alert-engine";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
@@ -169,8 +171,9 @@ describe("alert engine", () => {
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
     });
 
-    await engine.runAlert(makeAlert());
+    const outcome = await engine.runAlert(makeAlert());
 
+    expect(outcome).toBe(AlertDispatchOutcome.Dispatched);
     expect(sentMail).toHaveLength(1);
     expect(sentMail[0].recipients).toEqual(["user@example.com"]);
     expect(historyWrites).toHaveLength(1);
@@ -354,8 +357,11 @@ describe("alert engine", () => {
       recentlyAlerted: [{ channelId: "c-email", targetId: "t1" }]
     });
 
-    await engine.runAlert(makeAlert());
+    const outcome = await engine.runAlert(makeAlert());
 
+    // The outcome feeds the dispatched/no-op ratio metric, so it has to name the stage that
+    // discarded the work rather than just reporting "nothing happened".
+    expect(outcome).toBe(AlertDispatchOutcome.AllDeduped);
     expect(sentMail).toHaveLength(0);
     expect(historyWrites).toHaveLength(0);
   });
@@ -386,8 +392,21 @@ describe("alert engine", () => {
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: false }]
     });
 
-    await engine.runAlert(makeAlert());
+    const outcome = await engine.runAlert(makeAlert());
 
+    expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
+    expect(historyWrites).toHaveLength(0);
+  });
+
+  test("reports no due targets when nothing matches the condition", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: [],
+      channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }]
+    });
+
+    const outcome = await engine.runAlert(makeAlert());
+
+    expect(outcome).toBe(AlertDispatchOutcome.NoDueTargets);
     expect(historyWrites).toHaveLength(0);
   });
 });

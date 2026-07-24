@@ -1,6 +1,7 @@
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
+import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TAlertDALFactory } from "./alert-dal";
@@ -56,8 +57,24 @@ export const alertQueueServiceFactory = ({
       async (job) => {
         const { alertId, scheduledAt } = job.data;
         const alert = await alertDAL.findActiveById(alertId);
-        if (!alert || !alert.enabled) return;
-        await alertEngine.runAlert(alert, { asOf: scheduledAt ? new Date(scheduledAt) : new Date() });
+
+        if (!alert) {
+          recordAlertDispatchOutcomeMetric({ resourceType: "unknown", outcome: AlertDispatchOutcome.AlertNotFound });
+          return;
+        }
+
+        if (!alert.enabled) {
+          recordAlertDispatchOutcomeMetric({
+            resourceType: alert.resourceType,
+            outcome: AlertDispatchOutcome.AlertDisabled
+          });
+          return;
+        }
+
+        const outcome = await alertEngine.runAlert(alert, {
+          asOf: scheduledAt ? new Date(scheduledAt) : new Date()
+        });
+        recordAlertDispatchOutcomeMetric({ resourceType: alert.resourceType, outcome });
       },
       { concurrency: ALERT_DISPATCH_CONCURRENCY }
     );

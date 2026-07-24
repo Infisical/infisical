@@ -2,6 +2,7 @@ import pLimit from "p-limit";
 
 import { TAlerts } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
+import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
@@ -47,11 +48,11 @@ export const alertEngineFactory = ({
   kmsService,
   smtpService
 }: TAlertEngineDep) => {
-  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }) => {
+  const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }): Promise<AlertDispatchOutcome> => {
     const provider = alertProviderRegistry.get(alert.resourceType);
     if (!provider) {
       logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
-      return;
+      return AlertDispatchOutcome.NoProvider;
     }
 
     const targets = await provider.findDueTargets({
@@ -62,10 +63,10 @@ export const alertEngineFactory = ({
       condition: alert.condition,
       asOf: opts?.asOf ?? new Date()
     });
-    if (targets.length === 0) return;
+    if (targets.length === 0) return AlertDispatchOutcome.NoDueTargets;
 
     const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
-    if (channels.length === 0) return;
+    if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
 
     const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
     const candidateIds = targets.map((target) => provider.targetId(target));
@@ -86,7 +87,7 @@ export const alertEngineFactory = ({
         return { channel, dueTargets };
       })
       .filter((work) => work.dueTargets.length > 0);
-    if (channelWork.length === 0) return;
+    if (channelWork.length === 0) return AlertDispatchOutcome.AllDeduped;
 
     const alertContext: TAlertContext = {
       id: alert.id,
@@ -202,6 +203,8 @@ export const alertEngineFactory = ({
     }
 
     await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
+
+    return AlertDispatchOutcome.Dispatched;
   };
 
   return { runAlert };
