@@ -2950,7 +2950,7 @@ export const registerRoutes = async (
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
     scepEnrollmentConfigDAL,
-    appConnectionDAL,
+    appConnectionService,
     certificateProfileDAL,
     certificateAuthorityDAL,
     certificateAuthoritySecretDAL,

@@ -45,6 +45,8 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        actorRootOrgId: req.permission.rootOrgId,
+        actorParentOrgId: req.permission.parentOrgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId,

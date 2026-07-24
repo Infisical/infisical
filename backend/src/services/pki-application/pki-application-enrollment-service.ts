@@ -13,8 +13,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
@@ -76,6 +76,8 @@ type TSetScepEnrollmentDTO = {
     validationConnectionId?: string;
     signRaWithCa?: boolean;
   };
+  actorRootOrgId: string;
+  actorParentOrgId: string;
 } & TProjectPermission;
 
 type TClearMethodEnrollmentDTO = {
@@ -98,7 +100,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
@@ -121,7 +123,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   estEnrollmentConfigDAL,
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
-  appConnectionDAL,
+  appConnectionService,
   certificateProfileDAL,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
@@ -643,7 +645,9 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    actorRootOrgId,
+    actorParentOrgId
   }: TSetScepEnrollmentDTO) => {
     const { junction } = await $assertEditEnrollment(
       applicationId,
@@ -667,10 +671,18 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           message: "A Microsoft Intune connection is required for Microsoft Intune SCEP validation."
         });
       }
-      const connection = await appConnectionDAL.findById(config.validationConnectionId);
-      if (!connection || connection.orgId !== actorOrgId || connection.app !== AppConnection.MicrosoftIntune) {
-        throw new BadRequestError({ message: "The selected Microsoft Intune connection could not be found." });
-      }
+      const connection = await appConnectionService.validateAppConnectionUsageById(
+        AppConnection.MicrosoftIntune,
+        { connectionId: config.validationConnectionId, projectId },
+        {
+          id: actorId,
+          type: actor,
+          orgId: actorOrgId,
+          authMethod: actorAuthMethod,
+          rootOrgId: actorRootOrgId,
+          parentOrgId: actorParentOrgId
+        }
+      );
       validationConnectionId = connection.id;
       validationConnectionName = connection.name;
     }

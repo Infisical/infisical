@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { AppConnection } from "../app-connection-enums";
@@ -71,7 +72,7 @@ export const getMicrosoftEntraToken = async (
 export const discoverScepValidationServiceUri = async (graphAccessToken: string) => {
   try {
     const { data } = await request.get<TMicrosoftGraphServicePrincipalEndpointsResponse>(
-      `https://graph.microsoft.com/v1.0/servicePrincipals/appId=${INTUNE_WELL_KNOWN_APP_ID}/endpoints`,
+      `https://graph.microsoft.com/v1.0/servicePrincipals(appId='${INTUNE_WELL_KNOWN_APP_ID}')/endpoints`,
       {
         headers: {
           Authorization: `Bearer ${graphAccessToken}`,
@@ -122,7 +123,7 @@ export const intuneValidateScepRequest = async ({
   certificateRequest: string;
 }): Promise<{ allowed: boolean; errorDescription?: string }> => {
   try {
-    const { data } = await request.post<TIntuneScepValidationResponse>(
+    const { data } = await safeRequest.post<TIntuneScepValidationResponse>(
       `${serviceUri}/ScepActions/validateRequest`,
       {
         request: {
@@ -167,7 +168,7 @@ export const intuneSendSuccessNotification = async ({
     issuingCertificateAuthority: string;
   };
 }) => {
-  await request.post(
+  await safeRequest.post(
     `${serviceUri}/ScepActions/successNotification`,
     { notification: { ...notification, callerInfo: INTUNE_CALLER_INFO } },
     { headers: intuneScepActionHeaders(intuneAccessToken) }
@@ -188,7 +189,7 @@ export const intuneSendFailureNotification = async ({
     errorDescription: string;
   };
 }) => {
-  await request.post(
+  await safeRequest.post(
     `${serviceUri}/ScepActions/failureNotification`,
     { notification: { ...notification, callerInfo: INTUNE_CALLER_INFO } },
     { headers: intuneScepActionHeaders(intuneAccessToken) }

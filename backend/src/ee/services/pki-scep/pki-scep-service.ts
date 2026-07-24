@@ -478,6 +478,31 @@ export const pkiScepServiceFactory = ({
     }
 
     if (result.status === "pending") {
+      if (scepConfig.challengeType === ScepChallengeType.MICROSOFT_INTUNE) {
+        const failReason =
+          "Certificate issuance requires approval and cannot complete synchronously for Microsoft Intune.";
+        void logEnrollmentEvent({ status: "failure", failReason });
+
+        await validationHandler
+          .reportFailure?.({
+            transactionId: parsed.transactionId,
+            csrDer,
+            error: failReason,
+            validationConnectionId: scepConfig.validationConnectionId
+          })
+          .catch((reportErr) =>
+            logger.error(reportErr, `Failed to report SCEP pending as failure [transactionId=${parsed.transactionId}]`)
+          );
+
+        return buildCertRepFailure({
+          raCertDer,
+          raPrivateKeyDer,
+          transactionId: parsed.transactionId,
+          recipientNonce: parsed.senderNonce,
+          failInfo: ScepFailInfo.BadRequest
+        });
+      }
+
       void logEnrollmentEvent({ status: "pending" });
 
       return buildCertRepPending({
