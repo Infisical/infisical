@@ -1,12 +1,7 @@
 import { useState } from "react";
-import {
-  faCertificate,
-  faClockRotateLeft,
-  faEdit,
-  faEllipsisV,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { MoreHorizontalIcon, PencilIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
@@ -16,23 +11,31 @@ import {
 } from "@app/components/utilities/certificateDisplayUtils";
 import {
   DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Pagination,
   Table,
   TableContainer,
   TBody,
   Td,
   Th,
   THead,
-  Tooltip,
   Tr
 } from "@app/components/v2";
-import { Badge, CopyButton } from "@app/components/v3";
+import {
+  Badge,
+  CopyButton,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  IconButton,
+  Pagination,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   useClearDefaultCertificate,
   useListPkiSyncCertificates,
@@ -182,13 +185,13 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="text-lg font-medium text-mineshaft-100">Certificates</h3>
           <IconButton
-            variant="plain"
-            colorSchema="secondary"
+            variant="ghost-muted"
+            size="xs"
             isDisabled={!canEdit}
-            ariaLabel="Edit certificates"
+            aria-label="Edit certificates"
             onClick={() => setIsManageModalOpen(true)}
           >
-            <FontAwesomeIcon icon={faEdit} />
+            <PencilIcon />
           </IconButton>
         </div>
 
@@ -285,13 +288,15 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         <Td className="max-w-0">
                           {syncCert.externalIdentifier ? (
                             <div className="flex items-center gap-1">
-                              <Tooltip
-                                content={syncCert.externalIdentifier}
-                                className="max-w-none whitespace-nowrap"
-                              >
-                                <span className="truncate text-xs text-bunker-300">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="truncate text-xs text-bunker-300">
+                                    {syncCert.externalIdentifier}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-none whitespace-nowrap">
                                   {syncCert.externalIdentifier}
-                                </span>
+                                </TooltipContent>
                               </Tooltip>
                               <CopyButton
                                 value={syncCert.externalIdentifier}
@@ -305,8 +310,11 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         <Td>
                           {syncCert.lastSyncMessage &&
                           syncCert.syncStatus === CertificateSyncStatus.Failed ? (
-                            <Tooltip content={syncCert.lastSyncMessage}>
-                              <Badge variant="danger">Failed</Badge>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="danger">Failed</Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{syncCert.lastSyncMessage}</TooltipContent>
                             </Tooltip>
                           ) : (
                             <Badge variant={getSyncStatusVariant(syncCert.syncStatus)}>
@@ -325,22 +333,24 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         </Td>
                         <Td className="flex items-center justify-end gap-2 pr-4">
                           {hasAutoRenewal && daysUntilRenewal !== null && (
-                            <Tooltip content={`Auto-renews in ${daysUntilRenewal}d`}>
-                              <div className="text-primary-500">
-                                <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
-                              </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="text-primary-500">
+                                  <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>Auto-renews in {daysUntilRenewal}d</TooltipContent>
                             </Tooltip>
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
                                 size="xs"
-                                variant="plain"
-                                colorSchema="secondary"
-                                ariaLabel="Certificate actions"
+                                variant="ghost-muted"
+                                aria-label="Certificate actions"
                                 isDisabled={!canEdit}
                               >
-                                <FontAwesomeIcon icon={faEllipsisV} />
+                                <MoreHorizontalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -360,9 +370,10 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                                 onClick={() =>
                                   handleDeleteClick(syncCert.certificateId, originalDisplayName)
                                 }
-                                icon={<FontAwesomeIcon icon={faTrash} className="text-red-500" />}
+                                variant="danger"
                               >
-                                <span className="text-red-500">Remove from Sync</span>
+                                <Trash2Icon />
+                                Remove from Sync
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -373,10 +384,14 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                 </TBody>
               </Table>
               {syncCertificates.length === 0 && (
-                <EmptyState
-                  title="No certificates are part of this certificate sync"
-                  icon={faCertificate}
-                />
+                <Empty className="rounded-none border-0 py-12">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <ScrollTextIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>No certificates are part of this certificate sync</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
               )}
             </TableContainer>
             {/* Pagination */}

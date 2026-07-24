@@ -1,10 +1,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AlertTriangleIcon } from "lucide-react";
+import { AlertTriangleIcon, PencilIcon } from "lucide-react";
 
-import { IconButton, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -30,21 +27,27 @@ export const PkiSyncSourceSection = ({ pkiSync, onEditSource }: Props) => {
           <h3 className="font-medium text-mineshaft-100">Source</h3>
           <div>
             {!subscriberId && (
-              <Tooltip content="The PKI subscriber for this sync has been deleted. Configure a new source or remove this sync.">
-                <Badge variant="danger" className="mr-1">
-                  <AlertTriangleIcon />
-                  Source Deleted
-                </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="danger" className="mr-1">
+                    <AlertTriangleIcon />
+                    Source Deleted
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  The PKI subscriber for this sync has been deleted. Configure a new source or
+                  remove this sync.
+                </TooltipContent>
               </Tooltip>
             )}
             <IconButton
-              variant="plain"
-              colorSchema="secondary"
+              variant="ghost-muted"
+              size="xs"
               isDisabled={!canEdit}
-              ariaLabel="Edit sync source"
+              aria-label="Edit sync source"
               onClick={onEditSource}
             >
-              <FontAwesomeIcon icon={faEdit} />
+              <PencilIcon />
             </IconButton>
           </div>
         </div>

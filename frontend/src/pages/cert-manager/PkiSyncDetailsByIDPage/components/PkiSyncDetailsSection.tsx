@@ -1,12 +1,10 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
-import { useMemo } from "react";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { PencilIcon } from "lucide-react";
 
 import { PkiSyncStatusBadge } from "@app/components/pki-syncs";
-import { IconButton } from "@app/components/v2";
-import { PkiSyncStatus, TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
+import { IconButton } from "@app/components/v3";
+import { TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({
   label,
@@ -31,21 +29,7 @@ type Props = {
 };
 
 export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, subscriber } = pkiSync;
-
-  const failureMessage = useMemo(() => {
-    if (syncStatus === PkiSyncStatus.Failed) {
-      if (lastSyncMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-        } catch {
-          return lastSyncMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [syncStatus, lastSyncMessage]);
+  const { syncStatus, lastSyncedAt, name, description, subscriber } = pkiSync;
 
   const { canEdit } = usePkiSyncPermissions(pkiSync);
 
@@ -54,13 +38,13 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Details</h3>
         <IconButton
-          variant="plain"
-          colorSchema="secondary"
+          variant="ghost-muted"
+          size="xs"
           isDisabled={!canEdit}
-          ariaLabel="Edit sync details"
+          aria-label="Edit sync details"
           onClick={onEditDetails}
         >
-          <FontAwesomeIcon icon={faEdit} />
+          <PencilIcon />
         </IconButton>
       </div>
       <div className="pt-2">
@@ -79,11 +63,6 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
         {lastSyncedAt && (
           <GenericFieldLabel label="Last Synced">
             {format(new Date(lastSyncedAt), "yyyy-MM-dd, h:mm aaa")}
-          </GenericFieldLabel>
-        )}
-        {syncStatus === PkiSyncStatus.Failed && failureMessage && (
-          <GenericFieldLabel labelClassName="text-red" label="Last Sync Error">
-            <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">{failureMessage}</p>
           </GenericFieldLabel>
         )}
       </div>

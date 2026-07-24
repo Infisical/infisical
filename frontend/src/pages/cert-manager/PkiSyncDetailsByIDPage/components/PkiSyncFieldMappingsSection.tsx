@@ -1,8 +1,6 @@
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PencilIcon } from "lucide-react";
 
-import { IconButton } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, IconButton } from "@app/components/v3";
 import { PkiSync, TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({
@@ -39,13 +37,13 @@ export const PkiSyncFieldMappingsSection = ({ pkiSync, onEditMappings }: Props) 
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <h3 className="text-lg font-medium text-mineshaft-100">Field Mappings</h3>
           <IconButton
-            variant="plain"
-            colorSchema="secondary"
+            variant="ghost-muted"
+            size="xs"
             isDisabled={!canEdit}
-            ariaLabel="Edit field mappings"
+            aria-label="Edit field mappings"
             onClick={onEditMappings}
           >
-            <FontAwesomeIcon icon={faEdit} />
+            <PencilIcon />
           </IconButton>
         </div>
         <div className="pt-1">

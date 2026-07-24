@@ -25,7 +25,7 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
 
   return (
     <div className="flex max-h-full w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
+      <div className="flex flex-col items-start gap-1 border-b border-mineshaft-400 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-lg font-medium text-mineshaft-100">Sync Logs</h3>
         {subscription.auditLogs && (
           <p className="text-xs text-bunker-300">

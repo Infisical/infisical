@@ -1,4 +1,4 @@
-import { Tag } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -51,9 +51,9 @@ export const AwsElasticLoadBalancerPkiSyncDestinationSection = ({ pkiSync }: Pro
         ) : (
           <div className="flex flex-wrap gap-1">
             {listeners.map((listener) => (
-              <Tag key={listener.listenerArn} size="xs">
+              <Badge key={listener.listenerArn} variant="neutral">
                 {listener.protocol}:{listener.port}
-              </Tag>
+              </Badge>
             ))}
           </div>
         )}

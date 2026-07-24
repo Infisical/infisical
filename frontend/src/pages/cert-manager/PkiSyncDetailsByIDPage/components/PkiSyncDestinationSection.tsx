@@ -1,9 +1,8 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { ReactNode } from "react";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PencilIcon } from "lucide-react";
 
-import { IconButton } from "@app/components/v2";
+import { IconButton } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSync, TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
 
@@ -85,13 +84,13 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Destination Configuration</h3>
         <IconButton
-          variant="plain"
-          colorSchema="secondary"
+          variant="ghost-muted"
+          size="xs"
           isDisabled={!canEdit}
-          ariaLabel="Edit destination"
+          aria-label="Edit destination"
           onClick={onEditDestination}
         >
-          <FontAwesomeIcon icon={faEdit} />
+          <PencilIcon />
         </IconButton>
       </div>
       <div className="flex w-full flex-wrap gap-8 pt-2">
