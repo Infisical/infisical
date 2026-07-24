@@ -60,6 +60,7 @@ import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { LiteLLMConnectionForm } from "./LiteLLMConnectionForm";
+import { MicrosoftIntuneConnectionForm } from "./MicrosoftIntuneConnectionForm";
 import { MongoDBConnectionForm } from "./MongoDBConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
@@ -325,6 +326,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureEntraId:
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.MicrosoftIntune:
+        return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Doppler:
@@ -632,6 +635,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.MicrosoftIntune:
+        return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

@@ -6,6 +6,7 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 const ApiEnrollmentSchema = z.object({
   id: z.string().uuid(),
@@ -36,7 +37,9 @@ const ScepEnrollmentStateSchema = z.object({
   scepEndpointUrl: z.string(),
   challengeEndpointUrl: z.string().nullable(),
   raCertificatePem: z.string(),
-  raCertExpiresAt: z.date()
+  raCertExpiresAt: z.date(),
+  validationConnectionId: z.string().uuid().nullable(),
+  signRaWithCa: z.boolean()
 });
 
 const EnrollmentStateSchema = z.object({
@@ -46,6 +49,8 @@ const EnrollmentStateSchema = z.object({
   est: EstEnrollmentStateSchema.nullable(),
   acme: AcmeEnrollmentStateSchema.nullable(),
   scep: ScepEnrollmentStateSchema.nullable(),
+  raCaSigningSupported: z.boolean(),
+  caType: z.nativeEnum(CaType),
   estConfigured: z.boolean(),
   acmeConfigured: z.boolean(),
   scepConfigured: z.boolean()

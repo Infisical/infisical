@@ -15,6 +15,8 @@ import {
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -48,10 +50,11 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { convertRawCertsToPkcs7 } from "../certificate-est/certificate-est-fns";
 import { TLicenseServiceFactory } from "../license/license-service";
-import { getScepChallengeValidator, ScepChallengeType } from "./challenge";
+import { getScepValidationHandler, ScepChallengeType } from "./challenge";
 import { TScepDynamicChallengeDALFactory } from "./pki-scep-dynamic-challenge-dal";
 import {
   evaluateScepRenewalAuthorization,
+  extractScepChallengePassword,
   getScepCapabilities,
   isSignerCertIssuedByCa,
   ScepRenewalDenyReason,
@@ -82,7 +85,8 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
@@ -110,6 +114,7 @@ export const pkiScepServiceFactory = ({
   certificateBodyDAL,
   projectDAL,
   kmsService,
+  appConnectionDAL,
   licenseService,
   certificatePolicyDAL,
   certificatePolicyService,
@@ -356,42 +361,48 @@ export const pkiScepServiceFactory = ({
     }
 
     const csrObj = new x509.Pkcs10CertificateRequest(parsed.csr);
-    const challengePasswordOid = "1.2.840.113549.1.9.7"; // PKCS#9 challengePassword
-    const challengeAttr = csrObj.attributes.find((attr) => attr.type === challengePasswordOid);
+    const challengePassword = extractScepChallengePassword(csrObj);
 
-    let challengePassword = "";
-    if (challengeAttr && challengeAttr.values && challengeAttr.values.length > 0) {
-      // The challengePassword is typically a UTF8String or PrintableString
-      // @peculiar/x509 returns ASN.1 ArrayBuffer values
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
-      const raw = challengeAttr.values[0] as any;
-      if (raw instanceof ArrayBuffer || raw instanceof Uint8Array) {
-        // The value is DER-encoded ASN.1 string
-        // Strip the tag+length to get the actual string bytes
-        const buf = Buffer.from(raw);
-        // ASN.1 string: tag (1 byte) + length (1+ bytes) + value
-        let offset = 1; // skip tag
-        // eslint-disable-next-line no-bitwise
-        if (buf[offset] & 0x80) {
-          // eslint-disable-next-line no-bitwise
-          const numLenBytes = buf[offset] & 0x7f;
-          offset += 1 + numLenBytes;
-        } else {
-          offset += 1;
+    const logEnrollmentEvent = (outcome: {
+      status: "success" | "pending" | "failure";
+      failReason?: string;
+      issuedCertificateId?: string;
+      issuedSerialNumber?: string;
+    }) =>
+      auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: profile.id } },
+        event: {
+          type: EventType.SCEP_ENROLLMENT,
+          metadata: {
+            profileId: profile.id,
+            profileSlug: profile.slug,
+            transactionId: parsed.transactionId,
+            csrSubject: csrObj.subject,
+            challengeType: scepConfig.challengeType as ScepChallengeType,
+            clientIp,
+            ...outcome
+          }
         }
-        challengePassword = buf.subarray(offset).toString("utf-8");
-      } else if (typeof raw === "string") {
-        challengePassword = raw;
-      } else {
-        challengePassword = String(raw);
-      }
-    }
+      });
 
-    const challengeValidator = getScepChallengeValidator(scepConfig.challengeType as ScepChallengeType, {
+    const validationHandler = getScepValidationHandler(scepConfig.challengeType as ScepChallengeType, {
       scepEnrollmentConfigDAL,
-      scepDynamicChallengeDAL
+      scepDynamicChallengeDAL,
+      appConnectionDAL,
+      kmsService
     });
-    const isValid = await challengeValidator.validate(challengePassword, scepConfig.id);
+
+    const csrDer = Buffer.from(parsed.csr);
+    const validationResult = await validationHandler.validateRequest({
+      challengePassword,
+      transactionId: parsed.transactionId,
+      csrDer,
+      scepConfigId: scepConfig.id,
+      validationConnectionId: scepConfig.validationConnectionId
+    });
+    const isValid = validationResult.allowed;
+    const denyReason = validationResult.allowed ? undefined : validationResult.error?.slice(0, 500);
 
     if (!isValid) {
       // Many SCEP clients (including sscep) send PKCSReq for both initial enrollment
@@ -425,26 +436,7 @@ export const pkiScepServiceFactory = ({
         }
       }
 
-      void auditLogService.createAuditLog({
-        projectId: profile.projectId,
-        actor: {
-          type: ActorType.SCEP_ACCOUNT,
-          metadata: { profileId: profile.id }
-        },
-        event: {
-          type: EventType.SCEP_ENROLLMENT,
-          metadata: {
-            profileId: profile.id,
-            profileSlug: profile.slug,
-            transactionId: parsed.transactionId,
-            csrSubject: csrObj.subject,
-            challengeType: scepConfig.challengeType as ScepChallengeType,
-            status: "failure" as const,
-            failReason: "Invalid challenge password",
-            clientIp
-          }
-        }
-      });
+      void logEnrollmentEvent({ status: "failure", failReason: denyReason || "Invalid challenge password" });
 
       return buildCertRepFailure({
         raCertDer,
@@ -456,37 +448,62 @@ export const pkiScepServiceFactory = ({
     }
 
     const { ttl } = await resolveIssuanceParams(profile);
-    const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
+    const csrPem = derToPem(csrDer, "CERTIFICATE REQUEST");
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const result = await issueOrQueueCertificate({
-      profile,
-      project,
-      caType,
-      parsed,
-      csrPem,
-      ttl,
-      applicationId
-    });
-
-    const auditMetadata = {
-      profileId: profile.id,
-      profileSlug: profile.slug,
-      transactionId: parsed.transactionId,
-      csrSubject: csrObj.subject,
-      challengeType: scepConfig.challengeType as ScepChallengeType,
-      clientIp
-    };
+    let result: TIssuanceResult;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      result = await issueOrQueueCertificate({
+        profile,
+        project,
+        caType,
+        parsed,
+        csrPem,
+        ttl,
+        applicationId
+      });
+    } catch (err) {
+      // Notify the validator that post-validation issuance failed.
+      await validationHandler
+        .reportFailure?.({
+          transactionId: parsed.transactionId,
+          csrDer,
+          error: err instanceof Error ? err.message : "Certificate issuance failed",
+          validationConnectionId: scepConfig.validationConnectionId
+        })
+        .catch((reportErr) =>
+          logger.error(reportErr, `Failed to report SCEP issuance failure [transactionId=${parsed.transactionId}]`)
+        );
+      throw err;
+    }
 
     if (result.status === "pending") {
-      void auditLogService.createAuditLog({
-        projectId: profile.projectId,
-        actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: profile.id } },
-        event: {
-          type: EventType.SCEP_ENROLLMENT,
-          metadata: { ...auditMetadata, status: "pending" as const }
-        }
-      });
+      if (scepConfig.challengeType === ScepChallengeType.MICROSOFT_INTUNE) {
+        const failReason =
+          "Certificate issuance requires approval and cannot complete synchronously for Microsoft Intune.";
+        void logEnrollmentEvent({ status: "failure", failReason });
+
+        await validationHandler
+          .reportFailure?.({
+            transactionId: parsed.transactionId,
+            csrDer,
+            error: failReason,
+            validationConnectionId: scepConfig.validationConnectionId
+          })
+          .catch((reportErr) =>
+            logger.error(reportErr, `Failed to report SCEP pending as failure [transactionId=${parsed.transactionId}]`)
+          );
+
+        return buildCertRepFailure({
+          raCertDer,
+          raPrivateKeyDer,
+          transactionId: parsed.transactionId,
+          recipientNonce: parsed.senderNonce,
+          failInfo: ScepFailInfo.BadRequest
+        });
+      }
+
+      void logEnrollmentEvent({ status: "pending" });
 
       return buildCertRepPending({
         raCertDer,
@@ -496,18 +513,46 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    void auditLogService.createAuditLog({
-      projectId: profile.projectId,
-      actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: profile.id } },
-      event: {
-        type: EventType.SCEP_ENROLLMENT,
-        metadata: {
-          ...auditMetadata,
-          status: "success" as const,
-          issuedCertificateId: result.certificateId,
-          issuedSerialNumber: result.serialNumber
-        }
+    const { issuedCertDer } = result;
+    const notifyIssued = () =>
+      validationHandler.reportIssued?.({
+        transactionId: parsed.transactionId,
+        csrDer,
+        certificateDer: issuedCertDer,
+        validationConnectionId: scepConfig.validationConnectionId
+      });
+
+    if (scepConfig.challengeType === ScepChallengeType.MICROSOFT_INTUNE) {
+      try {
+        await notifyIssued();
+      } catch (reportErr) {
+        logger.error(
+          reportErr,
+          `Failed to report SCEP issuance success to Intune [transactionId=${parsed.transactionId}]`
+        );
+        void logEnrollmentEvent({
+          status: "failure",
+          failReason: "Failed to notify Microsoft Intune of the issued certificate."
+        });
+
+        return buildCertRepFailure({
+          raCertDer,
+          raPrivateKeyDer,
+          transactionId: parsed.transactionId,
+          recipientNonce: parsed.senderNonce,
+          failInfo: ScepFailInfo.BadRequest
+        });
       }
+    } else {
+      await notifyIssued()?.catch((reportErr) =>
+        logger.error(reportErr, `Failed to report SCEP issuance success [transactionId=${parsed.transactionId}]`)
+      );
+    }
+
+    void logEnrollmentEvent({
+      status: "success",
+      issuedCertificateId: result.certificateId,
+      issuedSerialNumber: result.serialNumber
     });
 
     return buildCertRepSuccess({

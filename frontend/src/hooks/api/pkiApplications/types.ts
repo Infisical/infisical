@@ -1,3 +1,6 @@
+import { CaType } from "@app/hooks/api/ca/enums";
+import { ScepChallengeType } from "@app/hooks/api/certificateProfiles/types";
+
 /**
  * Mirror of backend's `ResourcePermissionSub` for type-safe `permission.can(...)` checks
  * on the application's resource ability. Keep in sync with
@@ -85,7 +88,7 @@ export type TPkiApplicationMember = {
   details?: TPkiApplicationMemberDetails | null;
 };
 
-export type ScepChallengeType = "static" | "dynamic";
+export { ScepChallengeType };
 
 export type TPkiApplicationEnrollmentState = {
   applicationId: string;
@@ -113,7 +116,11 @@ export type TPkiApplicationEnrollmentState = {
     challengeEndpointUrl: string | null;
     raCertificatePem: string;
     raCertExpiresAt: string;
+    validationConnectionId: string | null;
+    signRaWithCa: boolean;
   } | null;
+  raCaSigningSupported: boolean;
+  caType: CaType;
   estConfigured: boolean;
   acmeConfigured: boolean;
   scepConfigured: boolean;
@@ -226,4 +233,6 @@ export type TSetScepEnrollmentDTO = {
   allowCertBasedRenewal?: boolean;
   dynamicChallengeExpiryMinutes?: number;
   dynamicChallengeMaxPending?: number;
+  validationConnectionId?: string;
+  signRaWithCa?: boolean;
 };

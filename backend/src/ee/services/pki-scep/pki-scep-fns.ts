@@ -3,19 +3,57 @@ import RE2 from "re2";
 
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import { TCaSigner } from "@app/services/certificate-authority/ca-signer";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { getCaCertChains } from "@app/services/certificate-authority/certificate-authority-fns";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaCertChains, getCaSigner } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 const RA_CERT_VALIDITY_YEARS = 10;
 
-export const generateRaCertificate = async (
-  slug: string
+// PKCS#9 challengePassword attribute OID.
+const CHALLENGE_PASSWORD_OID = "1.2.840.113549.1.9.7";
+
+// @peculiar/x509 returns the challengePassword as a DER-encoded ASN.1 string; strip the tag and length
+// prefix (short- and long-form) to recover the UTF-8 value.
+export const decodeAsn1ChallengePasswordValue = (raw: ArrayBuffer | Uint8Array | string): string => {
+  if (raw instanceof ArrayBuffer || raw instanceof Uint8Array) {
+    const buf = Buffer.from(raw);
+    let offset = 1; // skip the ASN.1 tag byte
+    // eslint-disable-next-line no-bitwise
+    if (buf[offset] & 0x80) {
+      // Long-form length: the low 7 bits give the count of subsequent length bytes.
+      // eslint-disable-next-line no-bitwise
+      const numLenBytes = buf[offset] & 0x7f;
+      offset += 1 + numLenBytes;
+    } else {
+      offset += 1;
+    }
+    return buf.subarray(offset).toString("utf-8");
+  }
+  if (typeof raw === "string") return raw;
+  return String(raw);
+};
+
+export const extractScepChallengePassword = (csrObj: x509.Pkcs10CertificateRequest): string => {
+  const challengeAttr = csrObj.attributes.find((attr) => attr.type === CHALLENGE_PASSWORD_OID);
+  if (!challengeAttr?.values?.length) return "";
+  return decodeAsn1ChallengePasswordValue(challengeAttr.values[0] as unknown as ArrayBuffer | Uint8Array | string);
+};
+
+const buildRaCertificate = async (
+  slug: string,
+  issuer?: { signer: TCaSigner; caCertificate: x509.X509Certificate }
 ): Promise<{
   privateKeyDer: ArrayBuffer;
   certificatePem: string;
@@ -35,20 +73,41 @@ export const generateRaCertificate = async (
   const now = new Date();
   const notAfter = new Date(now);
   notAfter.setFullYear(notAfter.getFullYear() + RA_CERT_VALIDITY_YEARS);
+  const serialNumber = crypto.randomBytes(16).toString("hex");
+  const subjectName = `CN=Infisical SCEP RA - ${slug}`;
 
-  const cert = await x509.X509CertificateGenerator.createSelfSigned({
-    serialNumber: crypto.randomBytes(16).toString("hex"),
-    name: `CN=Infisical SCEP RA - ${slug}`,
-    notBefore: now,
-    notAfter,
-    signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    keys: keyPair,
-    extensions: [
-      // eslint-disable-next-line no-bitwise
-      new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
-      new x509.BasicConstraintsExtension(false, undefined, true)
-    ]
-  });
+  let cert: x509.X509Certificate;
+  if (issuer) {
+    cert = await issuer.signer.createCertificate({
+      serialNumber,
+      subject: subjectName,
+      issuer: issuer.caCertificate.subject,
+      notBefore: now,
+      notAfter,
+      publicKey: keyPair.publicKey,
+      extensions: [
+        // eslint-disable-next-line no-bitwise
+        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
+        new x509.BasicConstraintsExtension(false, undefined, true),
+        await x509.AuthorityKeyIdentifierExtension.create(issuer.caCertificate, false),
+        await x509.SubjectKeyIdentifierExtension.create(keyPair.publicKey)
+      ]
+    });
+  } else {
+    cert = await x509.X509CertificateGenerator.createSelfSigned({
+      serialNumber,
+      name: subjectName,
+      notBefore: now,
+      notAfter,
+      signingAlgorithm: { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      keys: keyPair,
+      extensions: [
+        // eslint-disable-next-line no-bitwise
+        new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment, true),
+        new x509.BasicConstraintsExtension(false, undefined, true)
+      ]
+    });
+  }
 
   const privateKeyDer = await crypto.nativeCrypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
@@ -57,6 +116,131 @@ export const generateRaCertificate = async (
     certificatePem: cert.toString("pem"),
     expiresAt: notAfter
   };
+};
+
+type TGenerateScepRaCertificateDeps = {
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  kmsService: Parameters<typeof getCaCertChains>[0]["kmsService"] &
+    Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">;
+  hsmConnectorService: THsmConnectorServiceFactory;
+};
+
+// Whether Infisical can CA-sign the SCEP RA for a CA type so it chains to the CA (RFC 8894).
+export const SCEP_RA_CA_SIGNING_SUPPORTED_BY_CA_TYPE: Record<CaType, boolean> = {
+  [CaType.INTERNAL]: true,
+  [CaType.AWS_PCA]: false,
+  [CaType.ADCS]: false,
+  [CaType.AZURE_AD_CS]: false,
+  [CaType.VENAFI_TPP]: false,
+  [CaType.ACME]: false,
+  [CaType.DIGICERT]: false,
+  [CaType.GODADDY]: false,
+  [CaType.AWS_ACM_PUBLIC_CA]: false
+};
+
+export const isScepRaCaSigningSupported = (caType: CaType): boolean =>
+  SCEP_RA_CA_SIGNING_SUPPORTED_BY_CA_TYPE[caType] ?? false;
+
+export const resolveScepRaSigning = async ({
+  caId,
+  requestedSignRaWithCa,
+  certificateAuthorityDAL
+}: {
+  caId?: string | null;
+  requestedSignRaWithCa?: boolean;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+}): Promise<{ signRaWithCa: boolean; raCaSigningSupported: boolean; caType: CaType }> => {
+  const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId) : null;
+  const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
+  const raCaSigningSupported = isScepRaCaSigningSupported(caType);
+  if (requestedSignRaWithCa === true && !raCaSigningSupported) {
+    throw new BadRequestError({
+      message: `CA-signed SCEP RA certificates are not supported for '${caType}' certificate authorities.`
+    });
+  }
+  return { signRaWithCa: requestedSignRaWithCa ?? false, raCaSigningSupported, caType };
+};
+
+const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGenerateScepRaCertificateDeps) => {
+  const { signer } = await getCaSigner({
+    caId,
+    certificateAuthorityDAL: deps.certificateAuthorityDAL,
+    certificateAuthoritySecretDAL: deps.certificateAuthoritySecretDAL,
+    projectDAL: deps.projectDAL,
+    kmsService: deps.kmsService,
+    hsmConnectorService: deps.hsmConnectorService
+  });
+
+  const chains = await getCaCertChains({
+    caId,
+    certificateAuthorityDAL: deps.certificateAuthorityDAL,
+    certificateAuthorityCertDAL: deps.certificateAuthorityCertDAL,
+    projectDAL: deps.projectDAL,
+    kmsService: deps.kmsService
+  });
+  const activeChain = chains[chains.length - 1];
+  if (!activeChain) {
+    throw new BadRequestError({ message: "Certificate Authority has no active certificate to sign the SCEP RA cert" });
+  }
+  const caCertificate = new x509.X509Certificate(activeChain.certificate);
+
+  return buildRaCertificate(slug, { signer, caCertificate });
+};
+
+const generateScepRaCertificate = async ({
+  slug,
+  caId,
+  signRaWithCa,
+  deps
+}: {
+  slug: string;
+  caId?: string | null;
+  signRaWithCa: boolean;
+  deps: TGenerateScepRaCertificateDeps;
+}) => {
+  if (!caId || !signRaWithCa) {
+    return buildRaCertificate(slug);
+  }
+
+  const ca = await deps.certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+  const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
+  if (!isScepRaCaSigningSupported(caType)) {
+    logger.warn(
+      `SCEP RA CA-signing requested for unsupported CA type '${caType}'; using a self-signed RA [caId=${caId}]`
+    );
+    return buildRaCertificate(slug);
+  }
+
+  return buildCaSignedRaCertificate(slug, caId, deps);
+};
+
+export const generateAndEncryptScepRaCertificate = async ({
+  slug,
+  caId,
+  signRaWithCa,
+  projectId,
+  deps
+}: {
+  slug: string;
+  caId?: string | null;
+  signRaWithCa: boolean;
+  projectId: string;
+  deps: TGenerateScepRaCertificateDeps;
+}): Promise<{ certificatePem: string; expiresAt: Date; encryptedPrivateKey: Buffer }> => {
+  const raCert = await generateScepRaCertificate({ slug, caId, signRaWithCa, deps });
+
+  const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+    projectId,
+    projectDAL: deps.projectDAL,
+    kmsService: deps.kmsService
+  });
+  const kmsEncryptor = await deps.kmsService.encryptWithKmsKey({ kmsId: certificateManagerKmsId });
+  const { cipherTextBlob } = await kmsEncryptor({ plainText: Buffer.from(raCert.privateKeyDer) });
+
+  return { certificatePem: raCert.certificatePem, expiresAt: raCert.expiresAt, encryptedPrivateKey: cipherTextBlob };
 };
 
 export const isSignerCertIssuedByCa = async ({

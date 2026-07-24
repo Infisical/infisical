@@ -52,7 +52,7 @@ For self-hosted Infisical instances, replace `app.infisical.com` with your insta
 
 ## Challenge Types
 
-Infisical supports two challenge authentication modes for SCEP enrollment:
+Infisical supports three challenge authentication modes for SCEP enrollment:
 
 <Tabs>
   <Tab title="Static Challenge">
@@ -62,6 +62,18 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
 
     - The challenge password must be at least 8 characters.
     - The password is hashed before storage and cannot be retrieved after creation.
+  </Tab>
+  <Tab title="Microsoft Intune">
+    The challenge password is validated directly with Microsoft Intune instead of against a password stored in Infisical. Intune generates a unique challenge for each device it enrolls, and Infisical asks Intune to confirm that the challenge is valid before issuing the certificate.
+
+    Use this mode when devices are managed by Microsoft Intune. It removes the need to distribute a shared password and lets Intune track certificate issuance per device.
+
+    - Requires a **Microsoft Intune** [App Connection](/integrations/app-connections/microsoft-intune) with permission to validate SCEP requests.
+    - Infisical reports issuance success and failure back to Intune for each request.
+
+    <Warning>
+      **Do not attach an approval policy to a profile used with Microsoft Intune.** Intune SCEP issues synchronously, so a pending (approval-gated) response makes the device give up and re-enroll instead of installing the certificate.
+    </Warning>
   </Tab>
   <Tab title="Dynamic Challenge">
     One-time-use challenge passwords are generated on demand via an authenticated API endpoint. Each challenge can only be used once and expires after a configurable time period.
@@ -111,6 +123,7 @@ Infisical supports two challenge authentication modes for SCEP enrollment:
     - **Challenge Password** (static only): A shared secret that SCEP clients must include in their certificate signing request (CSR) to authenticate with Infisical's SCEP server. Must be at least 8 characters.
     - **Challenge Expiry** (dynamic only): How long each generated challenge remains valid, in minutes.
     - **Max Pending Challenges** (dynamic only): Maximum number of unused challenges that can exist at once.
+    - **Sign RA certificate with the CA**: Choose whether the RA certificate is self-signed or signed by this profile's CA. Signing it with the CA makes it chain to your CA root, which strict clients such as Apple (macOS and iOS) and Microsoft Intune require. Currently only internal CAs can sign the RA. Other CAs use a self-signed RA.
     - **Include CA Cert in Response**: When enabled, the CA certificate chain is included alongside the RA certificate in the GetCACert response. Most SCEP clients expect this to be enabled (default: enabled).
     - **Allow Certificate-Based Renewal**: When enabled, devices that already hold a valid certificate issued by the same CA can renew their certificate without providing the challenge password (default: enabled).
 
@@ -269,7 +282,7 @@ Infisical's SCEP server supports the following algorithms for the CMS message ex
 
 <AccordionGroup>
   <Accordion title="What is the RA certificate?">
-    The RA (Registration Authority) certificate is automatically generated when you create a SCEP-enabled certificate profile. It is used to encrypt and sign the SCEP message exchange between the client and server. The RA certificate has a 10-year validity and is separate from your CA certificate.
+    The RA (Registration Authority) certificate is Infisical's identity for the SCEP message exchange. It is generated automatically when SCEP enrollment is enabled on a profile, and Infisical holds its private key. It is either self-signed or signed by the profile's CA, controlled by the **Sign RA certificate with the CA** option (see above). Strict clients such as Microsoft Intune and Apple require a CA-signed RA, which currently only internal CAs support.
   </Accordion>
   <Accordion title="When should I use static vs. dynamic challenges?">
     Use **static challenges** for simple setups where a shared password is acceptable, such as network devices or test environments.

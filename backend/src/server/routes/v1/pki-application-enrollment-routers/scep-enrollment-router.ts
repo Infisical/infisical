@@ -26,7 +26,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         includeCaCertInResponse: z.boolean().optional().default(true),
         allowCertBasedRenewal: z.boolean().optional().default(true),
         dynamicChallengeExpiryMinutes: z.number().int().min(5).max(1440).optional(),
-        dynamicChallengeMaxPending: z.number().int().min(1).max(1000).optional()
+        dynamicChallengeMaxPending: z.number().int().min(1).max(1000).optional(),
+        validationConnectionId: z.string().uuid().optional(),
+        signRaWithCa: z.boolean().optional()
       }),
       response: {
         200: z.object({
@@ -43,6 +45,8 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        actorRootOrgId: req.permission.rootOrgId,
+        actorParentOrgId: req.permission.parentOrgId,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId,
@@ -56,7 +60,12 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
           metadata: {
             applicationId: req.params.applicationId,
             profileId: req.params.profileId,
-            challengeType: result.scep.challengeType
+            challengeType: result.scep.challengeType,
+            signRaWithCa: result.signRaWithCa,
+            ...(result.validationConnection && {
+              validationConnectionId: result.validationConnection.id,
+              validationConnectionName: result.validationConnection.name ?? undefined
+            })
           }
         }
       });

@@ -1,0 +1,16 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Microsoft Intune">
+  <defs>
+    <linearGradient id="intuneBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2E8CE6"/>
+      <stop offset="1" stop-color="#1B5FB3"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="12" fill="url(#intuneBg)"/>
+  <path d="M32 14 L46 20 V32 C46 41 40 47 32 50 C24 47 18 41 18 32 V20 Z" fill="#FFFFFF" fill-opacity="0.16"/>
+  <rect x="24" y="24" width="16" height="20" rx="2" fill="#FFFFFF"/>
+  <rect x="27" y="28" width="10" height="2" rx="1" fill="#1B5FB3"/>
+  <rect x="27" y="32" width="10" height="2" rx="1" fill="#1B5FB3"/>
+  <rect x="27" y="36" width="6" height="2" rx="1" fill="#1B5FB3"/>
+  <circle cx="41" cy="41" r="6" fill="#0F4C92" stroke="#FFFFFF" stroke-width="1.5"/>
+  <path d="M38.5 41 L40.3 42.8 L43.6 39.4" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

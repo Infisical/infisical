@@ -199,6 +199,11 @@ import {
 } from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getLiteLLMConnectionListItem, LiteLLMConnectionMethod, validateLiteLLMConnectionCredentials } from "./litellm";
+import {
+  getMicrosoftIntuneConnectionListItem,
+  MicrosoftIntuneConnectionMethod,
+  validateMicrosoftIntuneConnectionCredentials
+} from "./microsoft-intune";
 import { getMongoDBConnectionListItem, MongoDBConnectionMethod, validateMongoDBConnectionCredentials } from "./mongodb";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
@@ -325,7 +330,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.GoDaddy,
   AppConnection.SSH,
   AppConnection.WinRM,
-  AppConnection.NutanixPrismCentral
+  AppConnection.NutanixPrismCentral,
+  AppConnection.MicrosoftIntune
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -390,6 +396,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getCircleCIConnectionListItem(),
     getCloud66ConnectionListItem(),
     getAzureEntraIdConnectionListItem(),
+    getMicrosoftIntuneConnectionListItem(),
     getVenafiConnectionListItem(),
     getVenafiTppConnectionListItem(),
     getExternalInfisicalConnectionListItem(),
@@ -634,6 +641,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloud66]: validateCloud66ConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.MicrosoftIntune]: validateMicrosoftIntuneConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
       validateVenafiTppConnectionCredentials(
@@ -722,6 +730,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Key & Secret";
     case AzureDnsConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
+    case MicrosoftIntuneConnectionMethod.ClientSecret:
       return "Client Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -909,6 +918,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.CircleCI]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloud66]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureEntraId]: platformManagedCredentialsNotSupported,
+  [AppConnection.MicrosoftIntune]: platformManagedCredentialsNotSupported,
   [AppConnection.Venafi]: platformManagedCredentialsNotSupported,
   [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
