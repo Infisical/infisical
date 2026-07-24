@@ -285,7 +285,7 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
               </SheetTitle>
             </SheetHeader>
             <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto px-4">
-              <FieldGroup className="mb-auto">
+              <FieldGroup className="mb-auto p-4">
                 <Controller
                   control={control}
                   name="url"

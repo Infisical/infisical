@@ -1,6 +1,7 @@
 import { BanIcon, CheckIcon, CopyIcon } from "lucide-react";
 
 import {
+  DetailGroup,
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -57,7 +58,7 @@ export const IdentityUniversalAuthContent = ({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <DetailGroup className="grid grid-cols-2 gap-x-6 gap-y-5">
       <IdentityAuthAccessTokenFields
         accessTokenPeriod={data.accessTokenPeriod}
         accessTokenTTL={data.accessTokenTTL}
@@ -106,6 +107,6 @@ export const IdentityUniversalAuthContent = ({
         clientSecrets={clientSecrets}
         identityId={identityId}
       />
-    </div>
+    </DetailGroup>
   );
 };

@@ -1,19 +1,35 @@
 import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
+import type { ComponentProps } from "react";
+import {
+  Controller,
+  type ControllerRenderProps,
+  type FieldError as ReactHookFormFieldError,
+  useForm
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   TextArea
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   MachineIdentityAuthMethod,
@@ -48,7 +64,7 @@ type Props = {
 };
 
 export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
   const { mutateAsync: createTemplate } = useCreateIdentityAuthTemplate();
@@ -148,160 +164,176 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
     reset();
   };
 
+  const renderField = <
+    TName extends "name" | "url" | "bindDN" | "bindPass" | "searchBase"
+  >(
+    id: string,
+    label: string,
+    field: ControllerRenderProps<FormData, TName>,
+    error: ReactHookFormFieldError | undefined,
+    inputProps?: ComponentProps<typeof Input>
+  ) => (
+    <Field data-invalid={Boolean(error)}>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Input {...field} {...inputProps} id={id} aria-invalid={Boolean(error)} />
+      <FieldError errors={[error]} />
+    </Field>
+  );
+
   return (
-    <Modal
-      isOpen={popUp.createTemplate.isOpen || popUp.editTemplate.isOpen}
-      onOpenChange={handleClose}
+    <Sheet
+      open={popUp.createTemplate.isOpen || popUp.editTemplate.isOpen}
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
     >
-      <ModalContent
-        title={
-          isEdit ? "Edit Machine Identity Auth Template" : "Create Machine Identity Auth Template"
-        }
-        subTitle={
-          isEdit ? "Update the authentication template" : "Create a new authentication template"
-        }
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Template Name"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="My Template" />
-              </FormControl>
+      <SheetContent className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>
+            {isEdit
+              ? "Edit Machine Identity Auth Template"
+              : "Create Machine Identity Auth Template"}
+          </SheetTitle>
+          <SheetDescription>
+            {isEdit
+              ? "Update the authentication template"
+              : "Create a new authentication template"}
+          </SheetDescription>
+        </SheetHeader>
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={handleSubmit(onFormSubmit)}
+        >
+          <FieldGroup className="min-h-0 flex-1 overflow-y-auto p-4">
+            <Controller
+              control={control}
+              name="name"
+              render={({ field, fieldState: { error } }) =>
+                renderField("identity-auth-template-name", "Template Name", field, error, {
+                  placeholder: "My Template"
+                })
+              }
+            />
+
+            <Controller
+              control={control}
+              name="method"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="identity-auth-template-method">
+                    Authentication Method
+                  </FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id="identity-auth-template-method"
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue placeholder="Select auth method..." />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {authMethods.map(({ label, value }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+
+            {selectedMethod === "ldap" && (
+              <>
+                <Controller
+                  control={control}
+                  name="url"
+                  render={({ field, fieldState: { error } }) =>
+                  renderField("identity-auth-template-url", "LDAP URL", field, error, {
+                    placeholder: "ldaps://domain-or-ip:636"
+                  })
+                  }
+                />
+
+                <Controller
+                  control={control}
+                  name="bindDN"
+                  render={({ field, fieldState: { error } }) =>
+                  renderField("identity-auth-template-bind-dn", "Bind DN", field, error, {
+                    placeholder: "cn=infisical,ou=Users,dc=example,dc=com"
+                  })
+                  }
+                />
+
+                <Controller
+                  control={control}
+                  name="bindPass"
+                  render={({ field, fieldState: { error } }) =>
+                  renderField("identity-auth-template-bind-pass", "Bind Pass", field, error, {
+                    placeholder: "********",
+                    type: "password"
+                  })
+                  }
+                />
+
+                <Controller
+                  control={control}
+                  name="searchBase"
+                  render={({ field, fieldState: { error } }) =>
+                  renderField(
+                    "identity-auth-template-search-base",
+                    "Search Base / DN",
+                    field,
+                    error,
+                    { placeholder: "ou=machines,dc=acme,dc=com" }
+                  )
+                  }
+                />
+
+                <Controller
+                  control={control}
+                  name="ldapCaCertificate"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field data-invalid={Boolean(error)}>
+                      <FieldLabel htmlFor="identity-auth-template-ca-certificate">
+                        CA Certificate (optional)
+                      </FieldLabel>
+                      <TextArea
+                        {...field}
+                        id="identity-auth-template-ca-certificate"
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        aria-invalid={Boolean(error)}
+                        aria-describedby="identity-auth-template-ca-certificate-description"
+                      />
+                      <p
+                        id="identity-auth-template-ca-certificate-description"
+                        className="text-xs text-muted"
+                      >
+                        An optional PEM-encoded CA certificate used by the TLS client for secure
+                        communication with the LDAP server.
+                      </p>
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
+                />
+              </>
             )}
-          />
-
-          <Controller
-            control={control}
-            name="method"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Authentication Method"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Select
-                  {...field}
-                  className="w-full"
-                  position="popper"
-                  placeholder="Select auth method..."
-                  dropdownContainerClassName="max-w-none"
-                  onValueChange={(value) => field.onChange(value)}
-                >
-                  {authMethods.map(({ label, value }) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-          />
-
-          {/* LDAP Configuration Fields */}
-          {selectedMethod === "ldap" && (
-            <>
-              <Controller
-                control={control}
-                name="url"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="LDAP URL"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="ldaps://domain-or-ip:636" type="text" />
-                  </FormControl>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="bindDN"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Bind DN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="cn=infisical,ou=Users,dc=example,dc=com" />
-                  </FormControl>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="bindPass"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Bind Pass"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="********" type="password" />
-                  </FormControl>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="searchBase"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Search Base / DN"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                    isRequired
-                  >
-                    <Input {...field} placeholder="ou=machines,dc=acme,dc=com" />
-                  </FormControl>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="ldapCaCertificate"
-                render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="CA Certificate"
-                    isOptional
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    tooltipText="An optional PEM-encoded CA cert for the LDAP server. This is used by the TLS client for secure communication with the LDAP server."
-                  >
-                    <TextArea {...field} placeholder="-----BEGIN CERTIFICATE----- ..." />
-                  </FormControl>
-                )}
-              />
-            </>
-          )}
-
-          <div className="mt-8 flex items-center">
+          </FieldGroup>
+          <SheetFooter className="border-t">
+            <Button variant="ghost" onClick={handleClose}>
+              Cancel
+            </Button>
             <Button
-              className="mr-4"
-              size="sm"
               type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
+              variant={isSubOrganization ? "sub-org" : "org"}
+              isPending={isSubmitting}
             >
               {isEdit ? "Update Template" : "Create Template"}
             </Button>
-            <Button colorSchema="secondary" variant="plain" onClick={handleClose}>
-              Cancel
-            </Button>
-          </div>
+          </SheetFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </SheetContent>
+    </Sheet>
   );
 };

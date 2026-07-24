@@ -61,7 +61,7 @@ function SheetContent({
           onPointerDownOutside?.(e);
         }}
         className={cn(
-          "fixed z-50 flex thin-scrollbar flex-col gap-4 border-border bg-popover text-foreground shadow-lg outline-0 transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
+          "fixed z-50 flex thin-scrollbar flex-col border-border bg-popover text-foreground shadow-lg outline-0 transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-md",
           side === "left" &&
@@ -88,7 +88,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 border-border p-4", className)}
+      className={cn("flex flex-col gap-1.5 border-b border-border p-4", className)}
       {...props}
     />
   );
@@ -98,7 +98,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex gap-2 border-border p-4", className)}
+      className={cn("mt-auto flex justify-end gap-2 border-border p-4", className)}
       {...props}
     />
   );

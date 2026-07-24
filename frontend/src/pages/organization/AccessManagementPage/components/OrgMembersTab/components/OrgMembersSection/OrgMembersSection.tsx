@@ -155,8 +155,8 @@ export const OrgMembersSection = () => {
     <>
       <div
         className={twMerge(
-          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
-          selectedMemberIds.length > 0 && "h-16"
+          "h-0 shrink-0 overflow-hidden transition-all",
+          selectedMemberIds.length > 0 && "mb-2 h-16"
         )}
       >
         <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
@@ -219,9 +219,7 @@ export const OrgMembersSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <UserPlusIcon />
-                  {isSubOrganization
-                    ? "Add Users to Sub-Organization"
-                    : "Invite Users to Organization"}
+                  {isSubOrganization ? "Add" : "Invite"}
                 </Button>
               )}
             </OrgPermissionCan>

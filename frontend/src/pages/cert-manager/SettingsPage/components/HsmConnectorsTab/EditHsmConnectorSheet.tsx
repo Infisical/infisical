@@ -190,7 +190,7 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={form.handleSubmit(onSubmit)}>
           <div className="flex min-h-0 flex-1 overflow-hidden">
             <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              <FieldGroup>
+              <FieldGroup className="p-4">
                 <Controller
                   name="name"
                   control={form.control}

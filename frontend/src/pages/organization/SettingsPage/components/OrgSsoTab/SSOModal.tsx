@@ -281,7 +281,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                 }
                 isConnected={Boolean(data)}
               />
-              <FieldGroup>
+              <FieldGroup className="p-4">
                 <Controller
                   control={control}
                   name="authProvider"
