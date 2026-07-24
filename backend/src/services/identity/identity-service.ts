@@ -21,6 +21,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -54,6 +55,10 @@ type TIdentityServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
+  >;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -72,7 +77,8 @@ export const identityServiceFactory = ({
   membershipRoleDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
-  alertService
+  alertService,
+  identityAccessTokenService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -381,7 +387,6 @@ export const identityServiceFactory = ({
         throw new BadRequestError({ message: "Identity has delete protection" });
 
       const deletedIdentity = await identityDAL.transaction(async (tx) => {
-        const deleted = await identityDAL.deleteById(id, tx);
         await alertService.deleteAlertsForResource(
           {
             orgId: identityOrgMembership.scopeOrgId,
@@ -390,8 +395,10 @@ export const identityServiceFactory = ({
           },
           tx
         );
-        return deleted;
+        await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: id, tx });
+        return identityDAL.deleteById(id, tx);
       });
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
       usageMeteringService.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
@@ -425,8 +432,13 @@ export const identityServiceFactory = ({
         tx
       );
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
+
+      await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
+
       return doc;
     });
+
+    await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
     usageMeteringService.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);

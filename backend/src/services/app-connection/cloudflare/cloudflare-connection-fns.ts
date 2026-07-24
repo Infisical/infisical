@@ -14,6 +14,9 @@ import {
   TCloudflareZone
 } from "./cloudflare-connection-types";
 
+const CLOUDFLARE_ZONES_PER_PAGE = 50;
+const CLOUDFLARE_MAX_PAGES = 100;
+
 export const getCloudflareConnectionListItem = () => {
   return {
     name: "Cloudflare" as const,
@@ -72,20 +75,40 @@ export const listCloudflareZones = async (appConnection: TCloudflareConnection):
     credentials: { apiToken }
   } = appConnection;
 
-  const { data } = await request.get<{ result: { name: string; id: string }[] }>(
-    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`,
-    {
+  const zones: TCloudflareZone[] = [];
+
+  let page = 1;
+  let totalPages = 1;
+
+  // Cloudflare defaults to 20 results per page and caps per_page at 50 for the zones endpoint
+  while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await request.get<{
+      result: { name: string; id: string }[];
+      result_info?: { total_pages?: number };
+    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
+      },
+      params: {
+        page,
+        per_page: CLOUDFLARE_ZONES_PER_PAGE
       }
-    }
-  );
+    });
 
-  return data.result.map((a) => ({
-    name: a.name,
-    id: a.id
-  }));
+    zones.push(
+      ...data.result.map((a) => ({
+        name: a.name,
+        id: a.id
+      }))
+    );
+
+    totalPages = data.result_info?.total_pages ?? 1;
+    page += 1;
+  }
+
+  return zones;
 };
 
 export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {

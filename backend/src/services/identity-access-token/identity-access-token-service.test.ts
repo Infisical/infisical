@@ -67,7 +67,8 @@ const createService = ({
   );
   const identityAccessTokenRevocationDAL = {
     findActiveRevocationsForToken: vi.fn().mockResolvedValue(activeRevocations),
-    insertRevocation: vi.fn()
+    insertRevocation: vi.fn(),
+    deleteRevocationsByScope: vi.fn()
   };
   const identityDAL = {
     getTrustedIpsByAuthMethod: vi.fn().mockResolvedValue(trustedIps),
@@ -235,12 +236,34 @@ describe("identityAccessTokenServiceFactory", () => {
 
     await service.revokeAllTokensForIdentity("identity-id");
 
-    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith({
-      id: "identity-id",
-      identityId: "identity-id",
-      revokedAt: new Date(NOW_SECONDS * 1000),
-      expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
-    });
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith(
+      {
+        id: "identity-id",
+        identityId: "identity-id",
+        revokedAt: new Date(NOW_SECONDS * 1000),
+        expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+      },
+      undefined
+    );
+  });
+
+  test("insertIdentityWideRevocationMarker writes the sentinel in the caller tx without bumping", async () => {
+    const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
+    const tx = {} as unknown as Parameters<typeof service.insertIdentityWideRevocationMarker>[0]["tx"];
+
+    await service.insertIdentityWideRevocationMarker({ identityId: "identity-id", tx });
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith(
+      {
+        id: "identity-id",
+        identityId: "identity-id",
+        revokedAt: new Date(NOW_SECONDS * 1000),
+        expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+      },
+      tx
+    );
+    // The bump runs post-commit in the caller, never inside the marker insert.
+    expect(keyStore.incrementSeededWithExpiry).not.toHaveBeenCalled();
   });
 
   test("writes per-token revocation to PG for exact legacy tokens", async () => {
@@ -753,8 +776,8 @@ describe("identityAccessTokenServiceFactory", () => {
     );
   });
 
-  test("serves a cached allow verdict without hitting the revocation DAL", async () => {
-    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+  test("serves a cached allow verdict without hitting the revocation DAL or membership", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL, orgDAL } = createService();
     keyStore.getItem.mockImplementation(async (key: string) => {
       if (key.startsWith("identity-revocation-version:")) return "5";
       if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ v: 5 });
@@ -765,6 +788,7 @@ describe("identityAccessTokenServiceFactory", () => {
       identityId: "identity-id"
     });
     expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).not.toHaveBeenCalled();
+    expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
   });
 
   test("serves a cached deny verdict without hitting the revocation DAL", async () => {
@@ -782,7 +806,7 @@ describe("identityAccessTokenServiceFactory", () => {
   });
 
   test("re-queries the primary when the cached allow version is stale", async () => {
-    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    const { service, keyStore, identityAccessTokenRevocationDAL, orgDAL } = createService();
     // Live version advanced past the version the cached allow was stamped with.
     keyStore.getItem.mockImplementation(async (key: string) => {
       if (key.startsWith("identity-revocation-version:")) return "6";
@@ -794,11 +818,142 @@ describe("identityAccessTokenServiceFactory", () => {
       identityId: "identity-id"
     });
     expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalledTimes(1);
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).toHaveBeenCalledWith(
+      expect.objectContaining({ scopes: expect.arrayContaining(["org-id"]) as unknown as string[] })
+    );
+    expect(orgDAL.findEffectiveOrgMembership).toHaveBeenCalled();
     // Re-stamp the allow with the current live version.
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       expect.stringContaining("identity-revocation-verdict:identity-id:"),
       expect.any(Number),
       JSON.stringify({ v: 6 })
+    );
+  });
+
+  test("denies via a version-current cached membership deny without a membership re-read", async () => {
+    const { service, keyStore, orgDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "5";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ deny: "org-membership", v: 5 });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "not a member"
+    );
+    expect(orgDAL.findEffectiveOrgMembership).not.toHaveBeenCalled();
+  });
+
+  test("caches a cold-path membership deny stamped with the live version", async () => {
+    const { service, keyStore } = createService({ membership: null });
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "7";
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "not a member"
+    );
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      expect.stringContaining("identity-revocation-verdict:identity-id:"),
+      expect.any(Number),
+      JSON.stringify({ deny: "org-membership", v: 7 })
+    );
+  });
+
+  test("re-checks a stale cached membership deny and allows once membership is restored", async () => {
+    // Deny was stamped at v5; restoring the membership bumped the version to 6.
+    const { service, keyStore, orgDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "6";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ deny: "org-membership", v: 5 });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(orgDAL.findEffectiveOrgMembership).toHaveBeenCalled();
+    // Re-stamped as an allow under the live version.
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      expect.stringContaining("identity-revocation-verdict:identity-id:"),
+      expect.any(Number),
+      JSON.stringify({ v: 6 })
+    );
+  });
+
+  test("re-checks an unstamped legacy cached membership deny instead of trusting it", async () => {
+    const { service, keyStore, orgDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "5";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ deny: "org-membership" });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(orgDAL.findEffectiveOrgMembership).toHaveBeenCalled();
+  });
+
+  test("serves a cached revocation deny regardless of a version mismatch", async () => {
+    const { service, keyStore, identityAccessTokenRevocationDAL } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-revocation-version:")) return "9";
+      if (key.startsWith("identity-revocation-verdict:")) return JSON.stringify({ deny: "auth-method", v: 5 });
+      return null;
+    });
+
+    await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).rejects.toThrow(
+      "auth method has been revoked"
+    );
+    expect(identityAccessTokenRevocationDAL.findActiveRevocationsForToken).not.toHaveBeenCalled();
+  });
+
+  test("removeOrgMembershipRevocationMarkers deletes the org-scoped markers in the caller tx without bumping", async () => {
+    const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
+    const tx = {} as unknown as Parameters<typeof service.removeOrgMembershipRevocationMarkers>[0]["tx"];
+
+    await service.removeOrgMembershipRevocationMarkers({ identityId: "identity-id", orgId: "org-id", tx });
+
+    expect(identityAccessTokenRevocationDAL.deleteRevocationsByScope).toHaveBeenCalledWith(
+      { identityId: "identity-id", scope: "org-id" },
+      tx
+    );
+    // The bump is a separate post-commit step, never triggered by the marker removal.
+    expect(keyStore.incrementSeededWithExpiry).not.toHaveBeenCalled();
+  });
+
+  test("insertOrgMembershipRevocationMarker writes an org-scoped marker in the caller tx without bumping", async () => {
+    const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
+    const tx = {} as unknown as Parameters<typeof service.insertOrgMembershipRevocationMarker>[0]["tx"];
+
+    await service.insertOrgMembershipRevocationMarker({ identityId: "identity-id", orgId: "org-id", tx });
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).toHaveBeenCalledWith(
+      {
+        id: expect.any(String) as unknown as string,
+        identityId: "identity-id",
+        scope: "org-id",
+        revokedAt: new Date(NOW_SECONDS * 1000),
+        expiresAt: new Date((NOW_SECONDS + MAX_AGE) * 1000)
+      },
+      tx
+    );
+    // The bump is a separate post-commit step, never triggered by the marker insert.
+    expect(keyStore.incrementSeededWithExpiry).not.toHaveBeenCalled();
+  });
+
+  test("bumpIdentityRevocationVersion bumps the identity version without writing a marker", async () => {
+    const { service, identityAccessTokenRevocationDAL, keyStore } = createService();
+
+    await service.bumpIdentityRevocationVersion({ identityId: "identity-id" });
+
+    expect(identityAccessTokenRevocationDAL.insertRevocation).not.toHaveBeenCalled();
+    expect(keyStore.incrementSeededWithExpiry).toHaveBeenCalledWith(
+      "identity-revocation-version:identity-id",
+      expect.any(Number),
+      expect.any(Number)
     );
   });
 

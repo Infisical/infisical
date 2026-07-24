@@ -8,7 +8,8 @@ import {
   computeTokenAuthRevokeMarkerExpiry,
   evaluateRevocationMarkers,
   hasLegacyTokenWithoutExpExceededMaxAge,
-  IDENTITY_REVOCATION_MARKER_SKEW_SECONDS
+  IDENTITY_REVOCATION_MARKER_SKEW_SECONDS,
+  isMembershipDenyReason
 } from "./identity-access-token-fns";
 
 const MAX_AGE = 7_776_000;
@@ -326,5 +327,41 @@ describe("evaluateRevocationMarkers", () => {
         markers: [{ id: "uuid", identityId: "identity-id", createdAt: revokedAt, revokedAt, scope: "universal-auth" }]
       })
     ).toBe("auth-method");
+  });
+
+  test("denies org-scoped membership markers only for matching orgId", () => {
+    const revokedAt = new Date((NOW + 10) * 1000);
+    expect(
+      evaluateRevocationMarkers({
+        ...base,
+        orgId: "org-id",
+        markers: [{ id: "uuid", identityId: "identity-id", createdAt: revokedAt, revokedAt, scope: "org-id" }]
+      })
+    ).toBe("org-membership");
+    expect(
+      evaluateRevocationMarkers({
+        ...base,
+        orgId: "other-org",
+        markers: [{ id: "uuid", identityId: "identity-id", createdAt: revokedAt, revokedAt, scope: "org-id" }]
+      })
+    ).toBeNull();
+    expect(
+      evaluateRevocationMarkers({
+        ...base,
+        orgId: "org-id",
+        markers: [{ id: "uuid", identityId: "identity-id", createdAt: new Date((NOW - 10) * 1000), scope: "org-id" }]
+      })
+    ).toBeNull();
+  });
+});
+
+describe("isMembershipDenyReason", () => {
+  test("marks only the membership-derived reasons as reversible", () => {
+    expect(isMembershipDenyReason("org-membership")).toBe(true);
+    expect(isMembershipDenyReason("org-membership-inactive")).toBe(true);
+    expect(isMembershipDenyReason("token")).toBe(false);
+    expect(isMembershipDenyReason("identity")).toBe(false);
+    expect(isMembershipDenyReason("client-secret")).toBe(false);
+    expect(isMembershipDenyReason("auth-method")).toBe(false);
   });
 });

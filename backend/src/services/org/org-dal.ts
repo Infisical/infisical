@@ -837,14 +837,39 @@ export const orgDALFactory = (db: TDbClient) => {
     acceptAnyStatus?: boolean;
     tx?: Knex;
   }): Promise<TMemberships | null> => {
-    const list = await findEffectiveOrgMemberships(dto);
-    const directMembership = list.find((membership) =>
-      dto.actorType === ActorType.USER
-        ? membership.actorUserId === dto.actorId
-        : membership.actorIdentityId === dto.actorId
-    );
+    try {
+      const conn = dto.tx ?? db.replicaNode();
+      const status = dto.status ?? OrgMembershipStatus.Accepted;
+      const anyStatus = dto.acceptAnyStatus === true;
+      const actorColumn =
+        dto.actorType === ActorType.USER
+          ? (`${TableName.Membership}.actorUserId` as const)
+          : (`${TableName.Membership}.actorIdentityId` as const);
 
-    return directMembership ?? list[0] ?? null;
+      const directQuery = conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(actorColumn, dto.actorId)
+        .select(selectAllTableCols(TableName.Membership))
+        .first();
+
+      if (!anyStatus) {
+        void directQuery.where((qb) => {
+          void qb.where(`${TableName.Membership}.status`, status).orWhereNull(`${TableName.Membership}.status`);
+        });
+      }
+
+      const direct = (await directQuery) as TMemberships | undefined;
+      if (direct) {
+        return direct;
+      }
+
+      // Direct miss: fall back to group membership.
+      const list = await findEffectiveOrgMemberships(dto);
+      return list[0] ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective org membership" });
+    }
   };
 
   const findMembershipWithScimFilter = async (
