@@ -99,11 +99,20 @@ export type BillingV2EntitlementDim = {
   used: number;
   limit: number | null;
   committed: number | null;
+  // Whether this customer can commit this dimension annually, per their pinned plan version (from the
+  // subscription read, NOT the catalog). Grandfather-safe; the UI gates the commit action on this.
+  commitAvailable: boolean;
   committedRate?: number;
   onDemandRate?: number;
   rate?: number;
   freeBand?: number;
   onDemandAmount: number;
+  // Annual-commitment lifecycle, present only for a real per_resource commitment. canDecreaseNow is
+  // false until the final window before renewal (a decrease is rejected until then); renewalDate and
+  // decreaseAllowedFrom are formatted display dates.
+  canDecreaseNow?: boolean;
+  renewalDate?: string | null;
+  decreaseAllowedFrom?: string | null;
 };
 
 export type BillingV2Entitlement = {
@@ -184,6 +193,7 @@ export type BillingV2Overview = {
   trialedProductKeys: string[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;
+  checkoutFrozen: boolean;
 };
 
 export type TGetBillingV2OverviewDTO = {
@@ -202,15 +212,14 @@ export type TCreateBillingV2PortalSessionDTO = {
   returnPath?: string;
 };
 
-export type TCreateBillingV2CheckoutSessionDTO = {
+export type TBuyBillingV2ProductDTO = {
   orgId: string;
   actor: OrgServiceActor;
   productId: string;
   // Which plan tier of the product to purchase; defaults to the first paid self-serve plan.
   plan?: string;
   cadence?: "monthly" | "annual";
-  // Per-dimension committed quantities; required for an annual per_resource line.
-  commitments?: Record<string, number>;
+  quantities?: Record<string, number>;
   email?: string;
   returnPath?: string;
 };
@@ -230,8 +239,11 @@ export type BillingV2PreviewLine = {
 export type BillingV2Preview = {
   currency: string;
   prorationAmount: number;
+  additionalCharges: number;
+  totalDueNow: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
+  prorationDate?: number | null;
   lines: BillingV2PreviewLine[];
 };
 
@@ -248,22 +260,10 @@ export type TPreviewBillingV2ChangeDTO = {
   // Plan tier of the product being added; defaults to the first paid self-serve plan.
   plan?: string;
   cadence?: "monthly" | "annual";
-  // Initial per-dimension commitments for an annual add.
-  commitments?: Record<string, number>;
+  quantities?: Record<string, number>;
   removeProductId?: string;
   // Per_resource commitment quantity changes to preview against the existing subscription.
   commitmentChanges?: BillingV2CommitmentChange[];
-};
-
-export type TAddBillingV2ProductDTO = {
-  orgId: string;
-  actor: OrgServiceActor;
-  productId: string;
-  // Plan tier to add; defaults to the first paid self-serve plan.
-  plan?: string;
-  cadence?: "monthly" | "annual";
-  // Per-dimension committed quantities; required for an annual per_resource line.
-  commitments?: Record<string, number>;
 };
 
 export type TRemoveBillingV2ProductDTO = {
@@ -272,8 +272,9 @@ export type TRemoveBillingV2ProductDTO = {
   productId: string;
 };
 
-// Apply one or more previewed per_resource commitment changes. The service loops the single-dimension
-// apply per change; each prorates at commit time on the server (no client-supplied timestamp).
+// Start / change annual commitments across dimensions in one atomic call. Increase is charged now; a
+// decrease is rejected by the server unless the dimension's decrease window is open. The change always
+// prices at the current server time; a client-supplied proration instant is never accepted.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;

@@ -9,12 +9,13 @@ import {
   BillingV2CatalogProduct,
   BillingV2Dim,
   BillingV2Plan,
-  useAddBillingV2Product,
-  useCreateBillingV2CheckoutSession,
+  useBuyBillingV2Product,
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
 import { fmtMoney } from "../billing-v2-format";
+import { ChargeBreakdown } from "./ChargeBreakdown";
+import { CommitmentTerms } from "./CommitmentTerms";
 import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
 
 type Props = {
@@ -22,16 +23,12 @@ type Props = {
   prod: BillingV2CatalogProduct;
   plan: BillingV2Plan;
   hasActiveSubscription: boolean;
-  billingEmail?: string;
   returnPath: string;
   renewsOn: string | null;
   onBack: () => void;
   onDone: () => void;
 };
 
-// A per_resource dimension that can be committed annually. Commitment mode is prepaid annual units
-// with monthly on-demand overage, so it requires BOTH cadences priced: the annual per-unit rate for
-// the commitment and a monthly rate for the overage. A single-cadence dimension is not committable.
 const isCommittable = (dim: BillingV2Dim): boolean =>
   dim.annual > 0 && dim.monthly > 0 && !dim.meteredAnnual;
 
@@ -42,6 +39,15 @@ const monthlyHeadline = (plan: BillingV2Plan): number => {
   }
   const dim = plan.dims.find((d) => d.monthly > 0);
   return dim ? dim.monthly : 0;
+};
+
+// The plan's annual headline price (base fee, else the first priced dimension's annual rate).
+const annualHeadline = (plan: BillingV2Plan): number => {
+  if (plan.base) {
+    return plan.base.annual;
+  }
+  const dim = plan.dims.find((d) => d.annual > 0);
+  return dim ? dim.annual : 0;
 };
 
 type CadenceOptionProps = {
@@ -69,59 +75,59 @@ const CadenceOption = ({ active, title, subtitle, badge, onClick }: CadenceOptio
   </button>
 );
 
-// Activate a product on the chosen plan. Monthly is usage-based (rate only, no commitment); yearly
-// asks for a committed quantity per per_resource dimension. The cost is previewed before confirming;
-// an existing subscription is updated in place, a brand-new customer goes through Stripe Checkout.
 export const ActivateView = ({
   orgId,
   prod,
   plan,
   hasActiveSubscription,
-  billingEmail,
   returnPath,
   renewsOn,
   onBack,
   onDone
 }: Props) => {
   const committable = useMemo(() => plan.dims.filter(isCommittable), [plan.dims]);
-  const supportsAnnual = committable.length > 0 || Boolean(plan.base && plan.base.annual > 0);
+  const supportsAnnual =
+    plan.dims.some((d) => d.annual > 0) || Boolean(plan.base && plan.base.annual > 0);
   const supportsMonthly =
     plan.dims.some((d) => d.monthly > 0) || Boolean(plan.base && plan.base.monthly > 0);
 
-  const [cadence, setCadence] = useState<BillingV2Cadence>(supportsMonthly ? "monthly" : "annual");
+  const [cadence, setCadence] = useState<BillingV2Cadence>(() => {
+    if (plan.trialable && supportsMonthly) {
+      return "monthly";
+    }
+    return supportsAnnual ? "annual" : "monthly";
+  });
   const [commitments, setCommitments] = useState<Record<string, number>>(() =>
     Object.fromEntries(committable.map((dim) => [dim.key, Math.max(dim.included, 1)]))
   );
+  const [acknowledged, setAcknowledged] = useState(false);
+  const needsCommitmentAck = cadence === "annual" && committable.length > 0;
 
   const preview = usePreviewBillingV2Change();
-  const addProduct = useAddBillingV2Product();
-  const checkout = useCreateBillingV2CheckoutSession();
+  const buyProduct = useBuyBillingV2Product();
 
-  const commitmentsForCadence = cadence === "annual" ? commitments : undefined;
-  const commitmentsKey = JSON.stringify(commitmentsForCadence ?? {});
+  // Yearly sends the buyer-chosen commitment quantities; monthly sends nothing (the server seeds the
+  // recurring quantities from present usage).
+  const quantitiesForCadence = cadence === "annual" ? commitments : undefined;
+  const quantitiesKey = JSON.stringify(quantitiesForCadence ?? {});
 
-  // A brand-new customer has no subscription yet, so the preview endpoint (which prorates against a
-  // live subscription) would fail. Compute the figures locally in that case and let Stripe Checkout
-  // confirm the exact amount; an existing subscription re-prices via the debounced preview below.
-  const localRecurring =
-    cadence === "annual"
-      ? (plan.base?.annual ?? 0) +
-        committable.reduce((sum, dim) => sum + (commitments[dim.key] ?? 0) * dim.annual, 0)
-      : monthlyHeadline(plan);
+  // The plan's headline price for the chosen cadence, shown on the static product row.
+  const localRecurring = cadence === "annual" ? annualHeadline(plan) : monthlyHeadline(plan);
 
-  // A preview is fresh only once priced for the current cadence + commitments; until then the cost
-  // rows show skeletons. A new customer prices locally, so never calculates.
+  // The preview prices the purchase for the current cadence + quantities whether or not a live
+  // subscription exists (it prices a first purchase too), so every activation waits on it. Until it is
+  // fresh for the current selection the cost rows render as skeletons.
   const previewFresh =
     !preview.isPending &&
     Boolean(preview.data) &&
     preview.variables?.cadence === cadence &&
-    JSON.stringify(preview.variables?.commitments ?? {}) === commitmentsKey;
-  const isCalculating = hasActiveSubscription && !previewFresh;
+    JSON.stringify(preview.variables?.quantities ?? {}) === quantitiesKey;
+  const isCalculating = !previewFresh;
 
-  // Debounced re-price on cadence/commitment changes so a burst of stepper clicks makes one request.
-  // Skipped without a live subscription or when the current combo is already priced.
+  // Debounced re-price on cadence/quantity changes so a burst of stepper clicks makes one request;
+  // skipped when the current selection is already priced.
   useEffect(() => {
-    if (!hasActiveSubscription || previewFresh) {
+    if (previewFresh) {
       return undefined;
     }
     const timeout = setTimeout(() => {
@@ -130,38 +136,46 @@ export const ActivateView = ({
         addProductId: prod.id,
         plan: plan.tier,
         cadence,
-        commitments: commitmentsForCadence
+        quantities: quantitiesForCadence
       });
     }, 400);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, prod.id, plan.tier, cadence, commitmentsKey, hasActiveSubscription]);
+  }, [orgId, prod.id, plan.tier, cadence, quantitiesKey]);
 
-  // With a live subscription the change is prorated onto the shared billing date; a new customer pays
-  // the first period in full at checkout.
-  let dueToday = localRecurring;
-  if (hasActiveSubscription) {
-    dueToday = preview.data ? Math.max(preview.data.prorationAmount, 0) : 0;
+  // Both figures come from the preview. "Charged today" differs by path: adding to a live subscription
+  // is invoice-now, so the card is charged totalDueNow (this change plus any earlier unbilled mid-cycle
+  // changes it settles); a first purchase goes through Stripe Checkout, which collects the whole first
+  // invoice up front (nextInvoiceTotal) — for a yearly commitment that is the full annual amount, not
+  // the $0 prorationAmount a first purchase reports.
+  let dueToday = 0;
+  if (preview.data) {
+    dueToday = hasActiveSubscription
+      ? Math.max(preview.data.totalDueNow, 0)
+      : preview.data.nextInvoiceTotal;
   }
-  const recurring = hasActiveSubscription
-    ? (preview.data?.nextRecurringTotal ?? 0)
-    : localRecurring;
+  const recurring = preview.data?.nextRecurringTotal ?? 0;
+  // Only the invoice-now (existing-subscription) path settles earlier pending charges; disclose the
+  // split when there are any. A first purchase via Checkout has none.
+  const additionalCharges = preview.data?.additionalCharges ?? 0;
+  const showChargeBreakdown = hasActiveSubscription && !isCalculating && additionalCharges !== 0;
   const period = cadence === "annual" ? "year" : "month";
-  const pending = addProduct.isPending || checkout.isPending;
+  const pending = buyProduct.isPending;
 
-  let chargedNote = "Billed at checkout";
-  if (hasActiveSubscription) {
-    chargedNote = isCalculating ? "Calculating…" : "Prorated onto your shared billing date";
+  let chargedNote = "Calculating…";
+  if (!isCalculating) {
+    chargedNote = hasActiveSubscription
+      ? "Prorated onto your shared billing date"
+      : "Due today at checkout";
   }
-  // Without a live subscription there is no preview to wait on, so the CTA is enabled immediately.
-  const activateDisabled = pending || isCalculating;
+  // The CTA waits until the preview has priced the current selection, and an annual commitment also
+  // requires the customer to acknowledge the commitment terms.
+  const activateDisabled = pending || isCalculating || (needsCommitmentAck && !acknowledged);
 
   // Savings badge on the yearly option: how much cheaper the annual rate is vs paying monthly.
   const savingsPct = useMemo(() => {
     const monthly = monthlyHeadline(plan);
-    const annual = plan.base
-      ? plan.base.annual
-      : (plan.dims.find((d) => d.annual > 0)?.annual ?? 0);
+    const annual = annualHeadline(plan);
     if (monthly <= 0 || annual <= 0) {
       return null;
     }
@@ -171,32 +185,19 @@ export const ActivateView = ({
 
   const handleActivate = async () => {
     try {
-      if (hasActiveSubscription) {
-        await addProduct.mutateAsync({
-          orgId,
-          productId: prod.id,
-          plan: plan.tier,
-          cadence,
-          commitments: commitmentsForCadence
-        });
-        createNotification({
-          type: "success",
-          text: `${prod.name} activated. It may take a moment to update here.`
-        });
-        onDone();
-        return;
-      }
-      const result = await checkout.mutateAsync({
+      const result = await buyProduct.mutateAsync({
         orgId,
         productId: prod.id,
         plan: plan.tier,
         cadence,
-        commitments: commitmentsForCadence,
-        email: billingEmail,
+        quantities: quantitiesForCadence,
         returnPath
       });
       if (result.outcome === "subscription_updated") {
-        createNotification({ type: "success", text: `${prod.name} activated.` });
+        createNotification({
+          type: "success",
+          text: `${prod.name} activated. It may take a moment to update here.`
+        });
         onDone();
         return;
       }
@@ -206,7 +207,7 @@ export const ActivateView = ({
       }
       createNotification({ type: "error", text: "Failed to start checkout." });
     } catch {
-      createNotification({ type: "error", text: `Failed to activate ${prod.name}.` });
+      // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
     }
   };
 
@@ -272,7 +273,7 @@ export const ActivateView = ({
             ))
           : null}
 
-        {cadence === "monthly" && (
+        {(cadence === "monthly" || committable.length === 0) && (
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="flex min-w-0 items-center gap-3">
               <ProductIcon product={prod} size={36} />
@@ -284,9 +285,13 @@ export const ActivateView = ({
               </div>
             </div>
             <span className="shrink-0 text-sm font-semibold text-foreground tabular-nums">
-              {fmtMoney(monthlyHeadline(plan))} / month
+              {fmtMoney(localRecurring)} / {period}
             </span>
           </div>
+        )}
+
+        {needsCommitmentAck && (
+          <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
         )}
 
         <CostSummary>
@@ -304,6 +309,14 @@ export const ActivateView = ({
             isCalculating={isCalculating}
           />
         </CostSummary>
+
+        {showChargeBreakdown && (
+          <ChargeBreakdown
+            prorationAmount={preview.data?.prorationAmount ?? 0}
+            additionalCharges={additionalCharges}
+            totalDueNow={preview.data?.totalDueNow ?? 0}
+          />
+        )}
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

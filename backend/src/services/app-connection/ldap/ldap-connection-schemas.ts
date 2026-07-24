@@ -76,7 +76,8 @@ export const ValidateLdapConnectionCredentialsSchema = z.discriminatedUnion("met
 
 export const CreateLdapConnectionSchema = ValidateLdapConnectionCredentialsSchema.and(
   GenericCreateAppConnectionFieldsSchema(AppConnection.LDAP, {
-    supportsGateways: true
+    supportsGateways: true,
+    supportsCredentialRotation: true
   })
 );
 
@@ -88,7 +89,8 @@ export const UpdateLdapConnectionSchema = z
   })
   .and(
     GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP, {
-      supportsGateways: true
+      supportsGateways: true,
+      supportsCredentialRotation: true
     })
   );
 

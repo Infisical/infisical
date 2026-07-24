@@ -6,10 +6,9 @@ import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
-  TAddSubscriptionItemsPayload,
+  TBuyProductPayload,
   TCancelTrialPayload,
-  TChangeCommitmentPayload,
-  TCreateCheckoutPayload,
+  TChangeCommitmentsPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TLicenseClientBackend,
@@ -134,13 +133,6 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.fetchBillingProfile(orgId);
   };
 
-  const createCheckout = async (orgId: string, payload: TCreateCheckoutPayload) => {
-    if (!backend) {
-      throw new Error("license client backend is not configured");
-    }
-    return backend.createCheckoutSession(orgId, payload);
-  };
-
   const createPortal = async (orgId: string, payload: TCreatePortalPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -155,25 +147,25 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.previewSubscriptionChange(orgId, payload);
   };
 
-  const addSubscriptionItems = async (orgId: string, payload: TAddSubscriptionItemsPayload) => {
+  const buyProduct = async (orgId: string, payload: TBuyProductPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.addSubscriptionItems(orgId, payload);
+    return backend.buyProduct(orgId, payload);
   };
 
-  const removeSubscriptionItem = async (orgId: string, productId: string) => {
+  const removeProduct = async (orgId: string, productId: string) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.removeSubscriptionItem(orgId, productId);
+    return backend.removeProduct(orgId, productId);
   };
 
-  const changeCommitment = async (orgId: string, payload: TChangeCommitmentPayload) => {
+  const changeCommitments = async (orgId: string, payload: TChangeCommitmentsPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.changeCommitment(orgId, payload);
+    return backend.changeCommitments(orgId, payload);
   };
 
   const startTrial = async (orgId: string, payload: TStartTrialPayload) => {
@@ -221,12 +213,11 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     getSubscription,
     getCloudPlan,
     getBillingProfile,
-    createCheckout,
     createPortal,
     previewSubscriptionChange,
-    addSubscriptionItems,
-    removeSubscriptionItem,
-    changeCommitment,
+    buyProduct,
+    removeProduct,
+    changeCommitments,
     startTrial,
     cancelTrial,
     getTrials,

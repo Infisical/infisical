@@ -1,22 +1,17 @@
-/* eslint-disable no-nested-ternary */
 import { BsSlack } from "react-icons/bs";
-import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Spinner,
-  Td,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+  IconButton,
+  TableCell,
+  TableRow
+} from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetSlackIntegrationChannels } from "@app/hooks/api";
 import {
   ProjectWorkflowIntegrationConfig,
@@ -24,9 +19,10 @@ import {
 } from "@app/hooks/api/workflowIntegrations/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { NotificationChannelsCell } from "./NotificationChannelsCell";
+
 type Props = {
   slackConfig?: ProjectWorkflowIntegrationConfig | null;
-  isSlackConfigLoading: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIntegration", "editIntegration"]>,
     data?: {
@@ -36,7 +32,13 @@ type Props = {
   ) => void;
 };
 
-export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackConfig }: Props) => {
+const getChannelNames = (channels: string, channelIdToName: Record<string, string>) =>
+  channels
+    .split(", ")
+    .map((channelId) => channelIdToName[channelId])
+    .filter(Boolean);
+
+export const SlackConfigRow = ({ handlePopUpOpen, slackConfig }: Props) => {
   const { data: slackChannels, isPending: isSlackChannelsLoading } = useGetSlackIntegrationChannels(
     slackConfig?.integrationId
   );
@@ -48,123 +50,80 @@ export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackCon
     return null;
   }
 
-  const isLoadingConfig = isSlackChannelsLoading || isSlackConfigLoading;
-
   return (
-    <Tr>
-      <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis">
+    <TableRow>
+      <TableCell>
         <div className="flex items-center gap-2">
           <BsSlack />
           Slack
         </div>
-      </Td>
-      <Td>
-        {slackConfig.isAccessRequestNotificationEnabled &&
-        !isLoadingConfig &&
-        slackConfig.accessRequestChannels.length > 0 ? (
-          <p>
-            {slackConfig.accessRequestChannels
-              .split(", ")
-              .map((channel) => slackChannelIdToName[channel])
-              .join(", ")}
-          </p>
-        ) : isLoadingConfig ? (
-          <Spinner size="xs" />
-        ) : (
-          <Badge variant="neutral">
-            <BanIcon />
-            Disabled
-          </Badge>
-        )}
-      </Td>
-      <Td>
-        {slackConfig.isSecretRequestNotificationEnabled &&
-        !isLoadingConfig &&
-        slackConfig.secretRequestChannels.length > 0 ? (
-          <p>
-            {slackConfig.secretRequestChannels
-              .split(", ")
-              .map((channel) => slackChannelIdToName[channel])
-              .join(", ")}
-          </p>
-        ) : isLoadingConfig ? (
-          <Spinner size="xs" />
-        ) : (
-          <Badge variant="neutral">
-            <BanIcon />
-            Disabled
-          </Badge>
-        )}
-      </Td>
-      <Td>
-        {slackConfig.isSecretSyncErrorNotificationEnabled &&
-        !isLoadingConfig &&
-        slackConfig.secretSyncErrorChannels.length > 0 ? (
-          <p>
-            {slackConfig.secretSyncErrorChannels
-              .split(", ")
-              .map((channel) => slackChannelIdToName[channel])
-              .join(", ")}
-          </p>
-        ) : isLoadingConfig ? (
-          <Spinner size="xs" />
-        ) : (
-          <Badge variant="neutral">
-            <BanIcon />
-            Disabled
-          </Badge>
-        )}
-      </Td>
-      <Td>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
-              <FontAwesomeIcon size="sm" icon={faEllipsis} />
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-1">
-            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-
-                    handlePopUpOpen("editIntegration", {
-                      integration: WorkflowIntegrationPlatform.SLACK
-                    });
-                  }}
-                >
-                  Edit
-                </DropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-            <OrgPermissionCan I={OrgPermissionActions.Delete} an={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-
-                    handlePopUpOpen("removeIntegration", {
-                      integrationId: slackConfig.integrationId,
-                      integration: WorkflowIntegrationPlatform.SLACK
-                    });
-                  }}
-                >
-                  Delete
-                </DropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </Td>
-    </Tr>
+      </TableCell>
+      <NotificationChannelsCell
+        isLoading={isSlackChannelsLoading}
+        isEnabled={slackConfig.isAccessRequestNotificationEnabled}
+        channelNames={getChannelNames(slackConfig.accessRequestChannels, slackChannelIdToName)}
+      />
+      <NotificationChannelsCell
+        isLoading={isSlackChannelsLoading}
+        isEnabled={slackConfig.isSecretRequestNotificationEnabled}
+        channelNames={getChannelNames(slackConfig.secretRequestChannels, slackChannelIdToName)}
+      />
+      <NotificationChannelsCell
+        isLoading={isSlackChannelsLoading}
+        isEnabled={slackConfig.isSecretSyncErrorNotificationEnabled}
+        channelNames={getChannelNames(slackConfig.secretSyncErrorChannels, slackChannelIdToName)}
+      />
+      <TableCell>
+        <div className="flex items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton variant="ghost" size="xs" aria-label="Actions for Slack integration">
+                <MoreHorizontal />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Settings}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed}
+                    onClick={() =>
+                      handlePopUpOpen("editIntegration", {
+                        integration: WorkflowIntegrationPlatform.SLACK
+                      })
+                    }
+                  >
+                    <Pencil />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={ProjectPermissionSub.Settings}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    variant="danger"
+                    isDisabled={!isAllowed}
+                    onClick={() =>
+                      handlePopUpOpen("removeIntegration", {
+                        integrationId: slackConfig.integrationId,
+                        integration: WorkflowIntegrationPlatform.SLACK
+                      })
+                    }
+                  >
+                    <Trash2 />
+                    Remove
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 };

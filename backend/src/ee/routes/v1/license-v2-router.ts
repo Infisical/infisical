@@ -91,6 +91,7 @@ const BillingV2EntitlementDimSchema = z.object({
   used: z.number(),
   limit: z.number().nullable(),
   committed: z.number().nullable(),
+  commitAvailable: z.boolean(),
   // Rates in dollars. per_resource dims: committedRate (annual) + onDemandRate (monthly overage);
   // metered dims: rate (per-unit) + freeBand (included). onDemandAmount is the computed monthly
   // overage cost.
@@ -98,7 +99,10 @@ const BillingV2EntitlementDimSchema = z.object({
   onDemandRate: z.number().optional(),
   rate: z.number().optional(),
   freeBand: z.number().optional(),
-  onDemandAmount: z.number()
+  onDemandAmount: z.number(),
+  canDecreaseNow: z.boolean().optional(),
+  renewalDate: z.string().nullable().optional(),
+  decreaseAllowedFrom: z.string().nullable().optional()
 });
 
 const BillingV2EntitlementSchema = z.object({
@@ -163,7 +167,8 @@ const BillingV2OverviewSchema = z.object({
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
   trialedProductKeys: z.string().array(),
-  onDemandAmount: z.number()
+  onDemandAmount: z.number(),
+  checkoutFrozen: z.boolean()
 });
 
 const BillingV2PreviewLineSchema = z.object({
@@ -175,8 +180,11 @@ const BillingV2PreviewLineSchema = z.object({
 const BillingV2PreviewSchema = z.object({
   currency: z.string(),
   prorationAmount: z.number(),
+  additionalCharges: z.number(),
+  totalDueNow: z.number(),
   nextInvoiceTotal: z.number(),
   nextRecurringTotal: z.number(),
+  prorationDate: z.number().nullish(),
   lines: BillingV2PreviewLineSchema.array()
 });
 
@@ -184,11 +192,10 @@ const BillingV2PreviewSchema = z.object({
 // subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
 const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
 
-// Per-dimension committed quantities (annual per_resource) and a single commitment quantity change.
-const BillingV2CommitmentsSchema = z.record(z.string().trim(), z.number().int().min(0));
+const BillingV2QuantitiesSchema = z.record(z.string().trim(), z.number().int().min(0));
 const BillingV2CommitmentChangeSchema = z.object({
   dimensionKey: z.string().trim(),
-  quantity: z.number().int().min(1)
+  quantity: z.number().int().min(0)
 });
 
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
@@ -296,45 +303,6 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:organizationId/billing/v2/checkout-session",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({ organizationId: z.string().trim() }),
-      body: z.object({
-        productId: z.string().trim(),
-        plan: z.string().trim().optional(),
-        cadence: z.enum(["monthly", "annual"]).optional(),
-        commitments: BillingV2CommitmentsSchema.optional(),
-        email: z.string().trim().email().optional(),
-        returnPath: ReturnPathSchema
-      }),
-      response: {
-        200: z.object({
-          outcome: z.enum(["checkout_created", "subscription_updated"]),
-          checkoutUrl: z.string().optional(),
-          subscriptionId: z.string().optional()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.licenseV2.checkoutSession({
-        orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
-        productId: req.body.productId,
-        plan: req.body.plan,
-        cadence: req.body.cadence,
-        commitments: req.body.commitments,
-        email: req.body.email,
-        returnPath: req.body.returnPath
-      });
-    }
-  });
-
-  server.route({
-    method: "POST",
     url: "/:organizationId/billing/v2/payment-method",
     config: {
       rateLimit: writeLimit
@@ -369,7 +337,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
           addProductId: z.string().trim().optional(),
           plan: z.string().trim().optional(),
           cadence: z.enum(["monthly", "annual"]).optional(),
-          commitments: BillingV2CommitmentsSchema.optional(),
+          quantities: BillingV2QuantitiesSchema.optional(),
           removeProductId: z.string().trim().optional(),
           commitmentChanges: BillingV2CommitmentChangeSchema.array().optional()
         })
@@ -388,7 +356,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         addProductId: req.body.addProductId,
         plan: req.body.plan,
         cadence: req.body.cadence,
-        commitments: req.body.commitments,
+        quantities: req.body.quantities,
         removeProductId: req.body.removeProductId,
         commitmentChanges: req.body.commitmentChanges
       });
@@ -397,7 +365,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:organizationId/billing/v2/subscription/items",
+    url: "/:organizationId/billing/v2/subscription/products",
     config: {
       rateLimit: writeLimit
     },
@@ -407,28 +375,38 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         productId: z.string().trim(),
         plan: z.string().trim().optional(),
         cadence: z.enum(["monthly", "annual"]).optional(),
-        commitments: BillingV2CommitmentsSchema.optional()
+        quantities: BillingV2QuantitiesSchema.optional(),
+        returnPath: ReturnPathSchema
       }),
       response: {
-        200: BillingV2MutationResultSchema
+        200: z.object({
+          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          checkoutUrl: z.string().optional(),
+          subscriptionId: z.string().optional()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.addProduct({
+      // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
+      // authenticated user (JWT-only route) rather than trusting a client-supplied value.
+      const email = req.auth.authMode === AuthMode.JWT ? (req.auth.user.email ?? undefined) : undefined;
+      return server.services.licenseV2.buyProduct({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         productId: req.body.productId,
         plan: req.body.plan,
         cadence: req.body.cadence,
-        commitments: req.body.commitments
+        quantities: req.body.quantities,
+        email,
+        returnPath: req.body.returnPath
       });
     }
   });
 
   server.route({
     method: "DELETE",
-    url: "/:organizationId/billing/v2/subscription/items/:productId",
+    url: "/:organizationId/billing/v2/subscription/products/:productId",
     config: {
       rateLimit: writeLimit
     },
@@ -448,8 +426,10 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     }
   });
 
+  // Start / change annual commitments across dimensions in one atomic call. Increase is charged now; a
+  // decrease is rejected unless the dimension's window is open (server-enforced).
   server.route({
-    method: "POST",
+    method: "PUT",
     url: "/:organizationId/billing/v2/subscription/commitments",
     config: {
       rateLimit: writeLimit
@@ -457,7 +437,6 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        // One or more per_resource commitment changes; the service applies them per dimension
         changes: BillingV2CommitmentChangeSchema.array().min(1).max(20)
       }),
       response: {
@@ -466,7 +445,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.changeCommitment({
+      return server.services.licenseV2.changeCommitments({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
         changes: req.body.changes
