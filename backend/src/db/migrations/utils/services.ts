@@ -129,6 +129,7 @@ export const getMigrationEncryptionServices = async ({
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore,
     envConfig
   });
 
