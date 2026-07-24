@@ -40,7 +40,8 @@ export type TCreateChannelInTxInput = {
   recipients?: TChannelRecipientInput[];
   orgId: string;
   projectId?: string | null;
-  createdByUserId?: string | null;
+  createdByActorId: string;
+  createdByActorType: string;
 };
 
 export type TUpdateChannelInTxInput = {
@@ -206,7 +207,8 @@ export const alertChannelServiceFactory = ({
         enabled: input.enabled ?? true,
         orgId: input.orgId,
         projectId: input.projectId ?? null,
-        createdByUserId: input.createdByUserId ?? null
+        createdByActorId: input.createdByActorId,
+        createdByActorType: input.createdByActorType
       },
       tx
     );

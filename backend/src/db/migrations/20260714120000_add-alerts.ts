@@ -17,15 +17,14 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("enabled").notNullable().defaultTo(true);
       t.uuid("orgId").notNullable();
       t.string("projectId").nullable();
-      t.uuid("createdByUserId").nullable();
+      t.uuid("createdByActorId").notNullable();
+      t.string("createdByActorType").notNullable();
       t.timestamps(true, true, true);
 
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      t.foreign("createdByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.index("orgId");
       t.index("projectId");
-      t.index("createdByUserId");
       t.index(["resourceType", "triggerType", "enabled"]);
     });
 
@@ -49,15 +48,14 @@ export async function up(knex: Knex): Promise<void> {
       t.boolean("enabled").notNullable().defaultTo(true);
       t.uuid("orgId").notNullable();
       t.string("projectId").nullable();
-      t.uuid("createdByUserId").nullable();
+      t.uuid("createdByActorId").notNullable();
+      t.string("createdByActorType").notNullable();
       t.timestamps(true, true, true);
 
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      t.foreign("createdByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
       t.index("orgId");
       t.index("projectId");
-      t.index("createdByUserId");
     });
 
     await createOnUpdateTrigger(knex, TableName.AlertChannel);

@@ -10,6 +10,7 @@ const decryptor = ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherText
 const cipher = { encryptor, decryptor } as never;
 const encConfig = (config: unknown) => Buffer.from(JSON.stringify(config));
 const tx = {} as Knex;
+const CREATOR = { createdByActorId: "11111111-1111-1111-1111-111111111111", createdByActorType: "user" };
 
 type TRow = {
   id: string;
@@ -19,7 +20,8 @@ type TRow = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
-  createdByUserId: string | null;
+  createdByActorId: string;
+  createdByActorType: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -38,7 +40,7 @@ const buildService = (opts?: { seed?: TRow[] }) => {
           id: `ch-${counter}`,
           enabled: true,
           projectId: null,
-          createdByUserId: null,
+          ...CREATOR,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...data
@@ -96,7 +98,7 @@ const seedRow = (
   enabled: true,
   orgId: "org-1",
   projectId: null,
-  createdByUserId: null,
+  ...CREATOR,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...over
@@ -110,7 +112,8 @@ describe("alert channel service", () => {
         name: "Ops webhook",
         channelType: AlertChannelType.WEBHOOK,
         config: { url: "https://example.com/hook", signingSecret: "s3cr3t" },
-        orgId: "org-1"
+        orgId: "org-1",
+        ...CREATOR
       },
       encryptor as never,
       tx
@@ -127,7 +130,7 @@ describe("alert channel service", () => {
     const { service } = buildService();
     await expect(
       service.createChannelInTx(
-        { name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, orgId: "org-1" },
+        { name: "Team email", channelType: AlertChannelType.EMAIL, config: {}, orgId: "org-1", ...CREATOR },
         encryptor as never,
         tx
       )
@@ -140,7 +143,8 @@ describe("alert channel service", () => {
           channelType: AlertChannelType.WEBHOOK,
           config: { url: "https://example.com/hook" },
           recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
-          orgId: "org-1"
+          orgId: "org-1",
+          ...CREATOR
         },
         encryptor as never,
         tx
@@ -156,7 +160,8 @@ describe("alert channel service", () => {
         channelType: AlertChannelType.EMAIL,
         config: {},
         recipients: [{ principalType: AlertPrincipalType.USER, principalId: "user-1" }],
-        orgId: "org-1"
+        orgId: "org-1",
+        ...CREATOR
       },
       encryptor as never,
       tx

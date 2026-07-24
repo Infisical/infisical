@@ -34,7 +34,8 @@ const makeAlert = () => ({
   enabled: true,
   orgId: "org-1",
   projectId: null,
-  createdByUserId: null,
+  createdByActorId: "11111111-1111-1111-1111-111111111111",
+  createdByActorType: "user",
   createdAt: new Date(),
   updatedAt: new Date()
 });

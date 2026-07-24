@@ -19,7 +19,8 @@ export const AlertsSchema = z.object({
   enabled: z.boolean().default(true),
   orgId: z.string().uuid(),
   projectId: z.string().nullable().optional(),
-  createdByUserId: z.string().uuid().nullable().optional(),
+  createdByActorId: z.string().uuid(),
+  createdByActorType: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

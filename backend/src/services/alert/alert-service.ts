@@ -163,7 +163,8 @@ export const alertServiceFactory = ({
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
           projectId: dto.projectId,
-          createdByUserId: dto.actorId
+          createdByActorId: dto.actorId,
+          createdByActorType: dto.actor
         },
         tx
       );
@@ -179,7 +180,8 @@ export const alertServiceFactory = ({
             recipients: channelInput.recipients,
             orgId: dto.actorOrgId,
             projectId: dto.projectId ?? null,
-            createdByUserId: dto.actorId
+            createdByActorId: dto.actorId,
+            createdByActorType: dto.actor
           },
           cipher.encryptor,
           tx
@@ -303,7 +305,8 @@ export const alertServiceFactory = ({
             recipients: channelInput.recipients,
             orgId: alert.orgId,
             projectId: alert.projectId,
-            createdByUserId: alert.createdByUserId
+            createdByActorId: alert.createdByActorId,
+            createdByActorType: alert.createdByActorType
           },
           cipher.encryptor,
           tx
