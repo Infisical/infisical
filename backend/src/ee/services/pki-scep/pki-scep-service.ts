@@ -513,23 +513,47 @@ export const pkiScepServiceFactory = ({
       });
     }
 
+    const { issuedCertDer } = result;
+    const notifyIssued = () =>
+      validationHandler.reportIssued?.({
+        transactionId: parsed.transactionId,
+        csrDer,
+        certificateDer: issuedCertDer,
+        validationConnectionId: scepConfig.validationConnectionId
+      });
+
+    if (scepConfig.challengeType === ScepChallengeType.MICROSOFT_INTUNE) {
+      try {
+        await notifyIssued();
+      } catch (reportErr) {
+        logger.error(
+          reportErr,
+          `Failed to report SCEP issuance success to Intune [transactionId=${parsed.transactionId}]`
+        );
+        void logEnrollmentEvent({
+          status: "failure",
+          failReason: "Failed to notify Microsoft Intune of the issued certificate."
+        });
+
+        return buildCertRepFailure({
+          raCertDer,
+          raPrivateKeyDer,
+          transactionId: parsed.transactionId,
+          recipientNonce: parsed.senderNonce,
+          failInfo: ScepFailInfo.BadRequest
+        });
+      }
+    } else {
+      await notifyIssued()?.catch((reportErr) =>
+        logger.error(reportErr, `Failed to report SCEP issuance success [transactionId=${parsed.transactionId}]`)
+      );
+    }
+
     void logEnrollmentEvent({
       status: "success",
       issuedCertificateId: result.certificateId,
       issuedSerialNumber: result.serialNumber
     });
-
-    // Notify the validator of the issued cert.
-    await validationHandler
-      .reportIssued?.({
-        transactionId: parsed.transactionId,
-        csrDer,
-        certificateDer: result.issuedCertDer,
-        validationConnectionId: scepConfig.validationConnectionId
-      })
-      .catch((reportErr) =>
-        logger.error(reportErr, `Failed to report SCEP issuance success [transactionId=${parsed.transactionId}]`)
-      );
 
     return buildCertRepSuccess({
       issuedCertDer: result.issuedCertDer,
