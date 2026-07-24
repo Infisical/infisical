@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
 import { PkiSyncEditFields } from "@app/components/pki-syncs/types";
-import { Button, ModalClose } from "@app/components/v2";
+import { Button, DialogClose } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { TPkiSync, useUpdatePkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -88,16 +88,14 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <FormProvider {...formMethods}>{Component}</FormProvider>
       <div className="flex w-full justify-between gap-4 pt-4">
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            Cancel
-          </Button>
-        </ModalClose>
+        <DialogClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </DialogClose>
         <Button
-          isLoading={isSubmitting}
+          isPending={isSubmitting}
           isDisabled={!isDirty || isSubmitting}
           type="submit"
-          colorSchema="secondary"
+          variant="project"
         >
           Update PKI Sync
         </Button>

@@ -1,25 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { faSearch, faX } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { SearchIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
-  EmptyState,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   Input,
-  Modal,
-  ModalContent,
   Pagination,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody as TBody,
+  TableCell as Td,
+  TableHead as Th,
+  TableHeader as THead,
+  TableRow as Tr,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CertStatus,
@@ -283,8 +291,12 @@ export const CertificateManagementModal = ({
   const isLoading = addCertificatesToSync.isPending || removeCertificatesFromSync.isPending;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <ModalContent title={title} subTitle={subtitle} className="max-w-4xl">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{subtitle}</DialogDescription>
+        </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-3">
             <div className="relative">
@@ -297,23 +309,22 @@ export const CertificateManagementModal = ({
                 }}
                 className="pl-9"
               />
-              <FontAwesomeIcon
-                icon={faSearch}
-                className="absolute top-1/2 left-3 h-3 w-3 -translate-y-1/2 transform text-bunker-300"
-              />
+              <SearchIcon className="absolute top-1/2 left-3 size-3 -translate-y-1/2 text-muted" />
               {searchTerm && (
-                <button
-                  type="button"
+                <IconButton
+                  aria-label="Clear certificate search"
+                  size="xs"
+                  variant="ghost-muted"
                   onClick={clearSearch}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 transform text-bunker-300 hover:text-bunker-100"
+                  className="absolute top-1/2 right-1.5 -translate-y-1/2"
                 >
-                  <FontAwesomeIcon icon={faX} className="h-3 w-3" />
-                </button>
+                  <XIcon />
+                </IconButton>
               )}
             </div>
           </div>
 
-          <TableContainer>
+          <>
             <Table>
               <THead>
                 <Tr>
@@ -387,8 +398,13 @@ export const CertificateManagementModal = ({
                       </Td>
                       <Td className="max-w-0">
                         {isTruncated ? (
-                          <Tooltip content={originalDisplayName} className="max-w-lg">
-                            <div className="truncate">{displayName}</div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="truncate">{displayName}</div>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-lg">
+                              {originalDisplayName}
+                            </TooltipContent>
                           </Tooltip>
                         ) : (
                           <div className="truncate">{displayName}</div>
@@ -420,13 +436,18 @@ export const CertificateManagementModal = ({
               </TBody>
             </Table>
             {allCertificates.length === 0 && (
-              <EmptyState title="No certificates found">
-                {searchTerm
-                  ? "No certificates match your search criteria."
-                  : "No certificates available for sync."}
-              </EmptyState>
+              <Empty className="rounded-t-none border-t-0">
+                <EmptyHeader>
+                  <EmptyTitle>No certificates found</EmptyTitle>
+                  <EmptyDescription>
+                    {searchTerm
+                      ? "No certificates match your search criteria."
+                      : "No certificates available for sync."}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
-          </TableContainer>
+          </>
 
           {totalPages > 1 && (
             <div className="mt-4 flex justify-center">
@@ -441,20 +462,19 @@ export const CertificateManagementModal = ({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline_bg" onClick={onClose}>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button
-            variant="solid"
-            colorSchema="primary"
+            variant="project"
             onClick={handleSaveCertificates}
-            isLoading={isLoading}
+            isPending={isLoading}
           >
             {saveButtonText}
           </Button>
-        </div>
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

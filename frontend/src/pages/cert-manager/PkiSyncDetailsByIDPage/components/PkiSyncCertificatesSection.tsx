@@ -10,16 +10,14 @@ import {
   getCertificateDisplayName
 } from "@app/components/utilities/certificateDisplayUtils";
 import {
-  DeleteActionModal,
-  Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   CopyButton,
   DropdownMenu,
@@ -31,7 +29,14 @@ import {
   EmptyMedia,
   EmptyTitle,
   IconButton,
+  Input,
   Pagination,
+  Table,
+  TableBody as TBody,
+  TableCell as Td,
+  TableHead as Th,
+  TableHeader as THead,
+  TableRow as Tr,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -87,6 +92,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
     id: string;
     displayName: string;
   } | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -131,6 +137,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
 
   const handleDeleteClick = (certificateId: string, displayName: string) => {
     setCertificateToDelete({ id: certificateId, displayName });
+    setDeleteConfirmation("");
     setIsDeleteModalOpen(true);
   };
 
@@ -197,7 +204,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
 
         <div>
           <div className="space-y-4">
-            <TableContainer>
+            <>
               <Table>
                 <THead>
                   <Tr>
@@ -384,7 +391,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                 </TBody>
               </Table>
               {syncCertificates.length === 0 && (
-                <Empty className="rounded-none border-0 py-12">
+                <Empty className="rounded-t-none border-t-0 py-12">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <ScrollTextIcon />
@@ -393,7 +400,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                   </EmptyHeader>
                 </Empty>
               )}
-            </TableContainer>
+            </>
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center">
@@ -419,22 +426,47 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
         }}
       />
 
-      <DeleteActionModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setCertificateToDelete(null);
-        }}
-        title="Remove Certificate from Sync"
-        subTitle={`Are you sure you want to remove "${certificateToDelete?.displayName}" from this PKI sync?`}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
-          if (certificateToDelete) {
-            await handleRemoveCertificate(certificateToDelete.id);
+      <AlertDialog
+        open={isDeleteModalOpen}
+        onOpenChange={(isOpen) => {
+          setIsDeleteModalOpen(isOpen);
+          if (!isOpen) {
+            setCertificateToDelete(null);
+            setDeleteConfirmation("");
           }
         }}
-        buttonText="Remove Certificate"
-      />
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Certificate from Sync</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove “{certificateToDelete?.displayName}” from this PKI sync? Type confirm to
+              continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            aria-label="Type confirm to remove certificate"
+            value={deleteConfirmation}
+            onChange={(event) => setDeleteConfirmation(event.target.value)}
+            placeholder="confirm"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isDisabled={deleteConfirmation !== "confirm"}
+              isPending={removeCertificatesFromSync.isPending}
+              onClick={async () => {
+                if (certificateToDelete) {
+                  await handleRemoveCertificate(certificateToDelete.id);
+                }
+              }}
+            >
+              Remove Certificate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

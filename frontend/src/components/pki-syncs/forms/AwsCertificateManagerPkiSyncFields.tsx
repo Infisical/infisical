@@ -1,6 +1,19 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 
-import { FormControl, Select, SelectItem } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -23,26 +36,33 @@ export const AwsCertificateManagerPkiSyncFields = () => {
         name="destinationConfig.region"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="AWS Region"
-            tooltipText="Select the AWS region where your Certificate Manager certificates should be stored."
-          >
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              className="w-full border border-mineshaft-500 capitalize"
-              position="popper"
-              placeholder="Select an AWS region"
-            >
-              {AWS_REGIONS.map(({ name, slug }) => (
-                <SelectItem value={slug} key={slug}>
-                  {name}
-                </SelectItem>
-              ))}
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel>
+              AWS Region
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Select the AWS region where your Certificate Manager certificates should be
+                  stored.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                <SelectValue placeholder="Select an AWS region" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {AWS_REGIONS.map(({ name, slug }) => (
+                  <SelectItem value={slug} key={slug}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
     </>
