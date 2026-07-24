@@ -27,10 +27,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
+  Label,
+  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -106,9 +104,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   }, [triggerSyncMutation, id, destination, projectId]);
 
   const handleAutoSyncChange = useCallback(
-    async (value: string) => {
-      const isAutoSyncEnabled = value === "enabled";
-
+    async (isAutoSyncEnabled: boolean) => {
       if (isAutoSyncEnabled === pkiSync.isAutoSyncEnabled) return;
 
       await updatePkiSyncMutation.mutateAsync({
@@ -130,20 +126,18 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
       <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:justify-end">
         {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge pkiSync={pkiSync} />}
         <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
-        <Select
-          value={pkiSync.isAutoSyncEnabled ? "enabled" : "disabled"}
-          onValueChange={handleAutoSyncChange}
-          disabled={!canEditSync || updatePkiSyncMutation.isPending}
-        >
-          <SelectTrigger aria-label="Auto-sync setting">
-            <RefreshCwIcon className={pkiSync.isAutoSyncEnabled ? "text-success" : "text-muted"} />
+        <div className="flex items-center gap-2">
+          <Switch
+            id="pki-auto-sync"
+            variant="success"
+            checked={pkiSync.isAutoSyncEnabled}
+            onCheckedChange={handleAutoSyncChange}
+            disabled={!canEditSync || updatePkiSyncMutation.isPending}
+          />
+          <Label htmlFor="pki-auto-sync" className="whitespace-nowrap">
             Auto-Sync {pkiSync.isAutoSyncEnabled ? "Enabled" : "Disabled"}
-          </SelectTrigger>
-          <SelectContent position="popper" align="end" sideOffset={4}>
-            <SelectItem value="enabled">Enabled</SelectItem>
-            <SelectItem value="disabled">Disabled</SelectItem>
-          </SelectContent>
-        </Select>
+          </Label>
+        </div>
         <ButtonGroup className="w-full sm:w-fit">
           <Button
             variant="outline"
