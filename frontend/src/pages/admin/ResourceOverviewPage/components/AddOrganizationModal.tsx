@@ -1,11 +1,23 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { CreatableSelect } from "@app/components/v2/CreatableSelect";
+import {
+  Button,
+  CreatableSelect,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useAdminGetUsers, useServerAdminCreateOrganization } from "@app/hooks/api";
 import { User } from "@app/hooks/api/users/types";
@@ -55,6 +67,7 @@ const AddOrgSchema = z.object({
 type FormData = z.infer<typeof AddOrgSchema>;
 
 const Content = ({ onClose }: ContentProps) => {
+  const adminSelectId = useId();
   const createOrg = useServerAdminCreateOrganization();
 
   const {
@@ -98,30 +111,40 @@ const Content = ({ onClose }: ContentProps) => {
   const { append } = useFieldArray<FormData>({ control, name: "invitees" });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Name">
-            <Input autoFocus value={value} onChange={onChange} placeholder="My Organization" />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="new-organization-name">Name</FieldLabel>
+            <Input
+              id="new-organization-name"
+              autoFocus
+              value={value}
+              onChange={onChange}
+              placeholder="My Organization"
+              isError={Boolean(error)}
+            />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
         control={control}
         name="name"
       />
       <Controller
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Assign Organization Admins"
-          >
+          <Field>
+            <FieldLabel htmlFor={adminSelectId}>Assign organization admins</FieldLabel>
             <CreatableSelect
+              inputId={adminSelectId}
               /* eslint-disable-next-line react/no-unstable-nested-components */
               noOptionsMessage={() => (
                 <p>Invite new users to this organization by typing out their email address.</p>
               )}
               onCreateOption={(inputValue) =>
-                append({ id: `${inputValue}_${Math.random()}`, email: inputValue })
+                append({
+                  id: `${inputValue}_${Math.random()}`,
+                  email: inputValue
+                })
               }
               formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
               isValidNewOption={(input) =>
@@ -158,34 +181,36 @@ const Content = ({ onClose }: ContentProps) => {
                 if (!value) setDebouncedSearchTerm("");
               }}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
         control={control}
         name="invitees"
       />
-      <div className="flex w-full gap-4 pt-4">
-        <Button
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-          colorSchema="secondary"
-        >
-          Add Organization
-        </Button>
-        <Button onClick={() => onClose()} variant="plain" colorSchema="secondary">
+      <DialogFooter>
+        <Button variant="ghost" type="button" onClick={() => onClose()}>
           Cancel
         </Button>
-      </div>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
+          Add organization
+        </Button>
+      </DialogFooter>
     </form>
   );
 };
 
 export const AddOrganizationModal = ({ isOpen, onOpenChange }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent bodyClassName="overflow-visible" title="Add Organization">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="text-left">
+          <DialogTitle>Add Organization</DialogTitle>
+          <DialogDescription>
+            Create an organization and assign its initial admins.
+          </DialogDescription>
+        </DialogHeader>
         <Content onClose={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

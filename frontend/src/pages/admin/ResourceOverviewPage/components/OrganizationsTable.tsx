@@ -22,30 +22,7 @@ import { CircleQuestionMarkIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Pagination } from "@app/components/v3";
 import { useUser } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import {
@@ -66,6 +43,30 @@ import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgMembershipStatus } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import {
+  EmptyState,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "@app/pages/admin/components/AdminTable";
+import {
+  Button,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Input,
+  Modal,
+  ModalContent,
+  Tooltip
+} from "@app/pages/admin/components/AdminV3Adapters";
 import { AddOrganizationModal } from "@app/pages/admin/ResourceOverviewPage/components/AddOrganizationModal";
 
 enum MembersOrderBy {
@@ -187,6 +188,7 @@ const ViewMembersModalContent = ({
   return (
     <>
       <Input
+        aria-label="Search organization members"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -194,15 +196,15 @@ const ViewMembersModalContent = ({
       />
       <TableContainer
         className={twMerge(
-          "mt-4 flex flex-1 flex-col border border-mineshaft-500 bg-mineshaft-700",
+          "mt-4 flex flex-1 flex-col bg-container",
           Boolean(filteredMembers.length) && "rounded-b-none"
         )}
       >
-        <Table className="overflow-y-auto bg-mineshaft-700">
+        <Table className="overflow-y-auto bg-container">
           <THead className="sticky top-0 z-50">
             <Tr>
-              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
+              <Th className="w-1/3 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Name
                   <IconButton
                     variant="plain"
@@ -220,8 +222,8 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
+              <Th className="w-1/3 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Email
                   <IconButton
                     variant="plain"
@@ -239,13 +241,13 @@ const ViewMembersModalContent = ({
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/4 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5">
+              <Th className="w-1/4 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5">
                   Role
                 </div>
               </Th>
-              <Th className="w-5 border-none bg-mineshaft-700 p-0">
-                <div className="flex h-12 w-full items-center border-b-2 border-mineshaft-500 px-3 py-2.5" />
+              <Th className="w-5 border-none bg-container p-0">
+                <div className="flex h-12 w-full items-center border-b border-border px-3 py-2.5" />
               </Th>
             </Tr>
           </THead>
@@ -260,7 +262,7 @@ const ViewMembersModalContent = ({
                   <Td className="max-w-0">
                     <div className="flex items-center">
                       <p className="truncate">
-                        {name ?? <span className="text-mineshaft-400">Not Set</span>}
+                        {name ?? <span className="text-muted">Not Set</span>}
                       </p>
                     </div>
                   </Td>
@@ -271,7 +273,7 @@ const ViewMembersModalContent = ({
                         status !== OrgMembershipStatus.Accepted && (
                           <Button
                             isDisabled={resendOrgInvite.isPending}
-                            className="ml-2 h-7 border-mineshaft-600 bg-mineshaft-800/50 font-normal"
+                            className="ml-2 font-normal"
                             colorSchema="primary"
                             variant="outline_bg"
                             size="xs"
@@ -305,12 +307,7 @@ const ViewMembersModalContent = ({
                     <div className="flex justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <IconButton
-                            ariaLabel="Options"
-                            colorSchema="secondary"
-                            className="w-6"
-                            variant="plain"
-                          >
+                          <IconButton ariaLabel="Options" size="xs" variant="plain">
                             <FontAwesomeIcon icon={faEllipsisV} />
                           </IconButton>
                         </DropdownMenuTrigger>
@@ -331,7 +328,9 @@ const ViewMembersModalContent = ({
                           <DropdownMenuItem
                             icon={<FontAwesomeIcon icon={faUserXmark} />}
                             onClick={() =>
-                              handlePopUpOpen("deleteUser", { userId: member.user.id })
+                              handlePopUpOpen("deleteUser", {
+                                userId: member.user.id
+                              })
                             }
                           >
                             Delete User
@@ -347,7 +346,7 @@ const ViewMembersModalContent = ({
         </Table>
         {!filteredMembers.length && (
           <EmptyState
-            className="my-auto bg-mineshaft-700"
+            className="my-auto bg-container"
             title={
               members.length
                 ? "No organization users match search..."
@@ -359,7 +358,7 @@ const ViewMembersModalContent = ({
       </TableContainer>
       {Boolean(filteredMembers.length) && (
         <Pagination
-          className="rounded-b-md border border-t-0 bg-mineshaft-700"
+          className="rounded-b-md border border-t-0 border-border bg-container"
           count={filteredMembers.length}
           page={page}
           perPage={perPage}
@@ -393,8 +392,8 @@ const ViewMembersModal = ({
         }}
         title="Organization Members"
         subTitle="View the members of the organization."
-        className="h-full max-w-4xl"
-        bodyClassName="flex flex-col h-full"
+        className="max-h-[calc(100vh-2rem)] sm:max-w-4xl"
+        bodyClassName="flex flex-col overflow-hidden"
       >
         <ViewMembersModalContent popUp={popUp} handlePopUpOpen={handlePopUpOpen} />
       </ModalContent>
@@ -491,6 +490,7 @@ const OrganizationsPanelTable = ({
   return (
     <>
       <Input
+        aria-label="Search organizations"
         value={searchOrganizationsFilter}
         onChange={(e) => setSearchOrganizationsFilter(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -528,7 +528,11 @@ const OrganizationsPanelTable = ({
                       <Td className="w-1/3">
                         <button
                           type="button"
-                          onClick={() => handlePopUpOpen("viewMembers", { organization: org })}
+                          onClick={() =>
+                            handlePopUpOpen("viewMembers", {
+                              organization: org
+                            })
+                          }
                           className="flex items-center hover:underline"
                         >
                           <Tooltip className="text-center" content="View Members">
@@ -556,15 +560,15 @@ const OrganizationsPanelTable = ({
                         {org.projects.length} {org.projects.length === 1 ? "Project" : "Projects"}
                       </Td>
                       <Td>
-                        <div className="flex justify-end gap-x-1">
+                        <div className="flex items-center justify-end gap-1">
                           {isMember && (
                             <Tooltip
                               className="text-center"
                               content="You are a member of this organization"
                             >
-                              <div>
+                              <div className="flex size-7 items-center justify-center">
                                 <FontAwesomeIcon
-                                  className="text-mineshaft-400"
+                                  className="text-muted"
                                   icon={faUserCheck}
                                   size="sm"
                                 />
@@ -573,12 +577,7 @@ const OrganizationsPanelTable = ({
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
-                              >
+                              <IconButton ariaLabel="Options" size="xs" variant="plain">
                                 <FontAwesomeIcon icon={faEllipsisV} />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -700,7 +699,7 @@ export const OrganizationsTable = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-mineshaft-100">Organizations</p>

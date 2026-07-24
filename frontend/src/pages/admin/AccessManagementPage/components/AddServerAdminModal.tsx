@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  FilterableSelect
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useAdminGetUsers, useAdminGrantServerAdminAccess } from "@app/hooks/api";
 import { User } from "@app/hooks/api/users/types";
@@ -43,6 +55,7 @@ type FormData = z.infer<typeof AddServerAdminSchema>;
 
 const Content = ({ onClose }: ContentProps) => {
   const grantAdmin = useAdminGrantServerAdminAccess();
+  const userSelectId = useId();
 
   const {
     handleSubmit,
@@ -75,11 +88,13 @@ const Content = ({ onClose }: ContentProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
       <Controller
         render={({ field, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="User">
+          <Field>
+            <FieldLabel htmlFor={userSelectId}>User</FieldLabel>
             <FilterableSelect
+              inputId={userSelectId}
               isLoading={searchUserFilter !== debouncedSearchTerm || isPending}
               className="w-full"
               placeholder="Search users..."
@@ -93,38 +108,34 @@ const Content = ({ onClose }: ContentProps) => {
                 if (!value) setDebouncedSearchTerm("");
               }}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
         control={control}
         name="user"
       />
-      <div className="flex w-full gap-4 pt-4">
-        <Button
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-          colorSchema="secondary"
-        >
-          Grant
-        </Button>
-        <Button onClick={() => onClose()} variant="plain" colorSchema="secondary">
+      <DialogFooter>
+        <Button variant="ghost" type="button" onClick={() => onClose()}>
           Cancel
         </Button>
-      </div>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
+          Grant
+        </Button>
+      </DialogFooter>
     </form>
   );
 };
 
 export const AddServerAdminModal = ({ isOpen, onOpenChange }: Props) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title="Grant Server Admin"
-        subTitle="Grant server admin status to a user"
-      >
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="text-left">
+          <DialogTitle>Grant Server Admin</DialogTitle>
+          <DialogDescription>Grant server admin status to a user.</DialogDescription>
+        </DialogHeader>
         <Content onClose={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

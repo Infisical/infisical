@@ -1,18 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Control, Controller, useForm, useWatch } from "react-hook-form";
-import {
-  faChevronRight,
-  faExclamationTriangle,
-  faMagnifyingGlass
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Search, TriangleAlert } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, SecretInput, Tooltip } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Field,
+  FieldError,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetEnvOverrides, useUpdateServerConfig } from "@app/hooks/api";
 
 type TForm = Record<string, string>;
@@ -34,55 +49,34 @@ export const GroupContainer = ({
   control: Control<TForm, any, TForm>;
   search: string;
 }) => {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div
-      key={group.name}
-      className="overflow-clip border border-b-0 border-mineshaft-600 bg-mineshaft-800 first:rounded-t-md last:rounded-b-md last:border-b"
-    >
-      <div
-        className="flex h-14 cursor-pointer items-center px-5 py-4 text-sm text-gray-300"
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            setOpen((o) => !o);
-          }
-        }}
-      >
-        <FontAwesomeIcon
-          className={`mr-8 transition-transform duration-100 ${open || search ? "rotate-90" : ""}`}
-          icon={faChevronRight}
-        />
-
-        <div className="grow text-base select-none">{group.name}</div>
-      </div>
-
-      {(open || search) && (
-        <div className="flex flex-col">
+    <AccordionItem value={group.name}>
+      <AccordionTrigger>{group.name}</AccordionTrigger>
+      <AccordionContent>
+        <div className="flex flex-col divide-y divide-border">
           {group.fields.map((field) => (
             <div
               key={field.key}
-              className="flex items-center justify-between gap-4 border-t border-mineshaft-500 bg-mineshaft-700/50 p-4"
+              className="flex flex-col justify-between gap-4 py-4 first:pt-0 last:pb-0 md:flex-row md:items-center"
             >
               <div className="flex max-w-lg flex-col">
-                <span className="text-sm">
+                <span className="text-sm font-medium text-foreground">
                   <HighlightText text={field.key} highlight={search} />
                 </span>
-                <span className="text-sm text-mineshaft-400">
+                <span className="text-sm text-label">
                   <HighlightText text={field.description} highlight={search} />
                 </span>
               </div>
 
-              <div className="flex grow items-center justify-end gap-2">
+              <div className="flex grow items-center justify-end gap-3">
                 {field.hasEnvEntry && (
-                  <Tooltip
-                    content="Setting this value will override an existing environment variable"
-                    className="text-center"
-                  >
-                    <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow" />
+                  <Tooltip>
+                    <TooltipTrigger aria-label="Environment variable override warning">
+                      <TriangleAlert className="size-4 text-warning" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Setting this value overrides an existing environment variable.
+                    </TooltipContent>
                   </Tooltip>
                 )}
 
@@ -90,25 +84,18 @@ export const GroupContainer = ({
                   control={control}
                   name={field.key}
                   render={({ field: formGenField, fieldState: { error } }) => (
-                    <FormControl
-                      isError={Boolean(error)}
-                      errorText={error?.message}
-                      className="mb-0 w-full max-w-sm"
-                    >
-                      <SecretInput
-                        {...formGenField}
-                        autoComplete="off"
-                        containerClassName="text-bunker-300 hover:border-mineshaft-400 border border-mineshaft-600 bg-bunker-600 px-2 py-1.5"
-                      />
-                    </FormControl>
+                    <Field className="w-full max-w-sm">
+                      <SecretInput {...formGenField} autoComplete="off" aria-label={field.key} />
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
                   )}
                 />
               </div>
             </div>
           ))}
         </div>
-      )}
-    </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 };
 
@@ -194,45 +181,45 @@ export const EnvironmentPageForm = () => {
   );
 
   return (
-    <form
-      className="flex flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-      onSubmit={handleSubmit(onSubmit)}
-    >
-      <div className="flex w-full flex-row items-center justify-between">
-        <div>
-          <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Overrides</p>
-            <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides" />
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Overrides
+          <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides" />
+        </CardTitle>
+        <CardDescription>
+          Override specific environment variables. Saved values may take up to five minutes to
+          propagate to every container.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+          <div className="flex justify-end">
+            <Button variant="neutral" type="submit" isPending={isSubmitting} isDisabled={!isDirty}>
+              Save
+            </Button>
           </div>
-          <p className="text-sm text-bunker-300">
-            Override specific environment variables. After saving, it may take up to 5 minutes for
-            variables to propagate throughout every container.
-          </p>
-        </div>
-
-        <div className="flex flex-row gap-2">
-          <Button
-            type="submit"
-            variant="outline_bg"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
+          <InputGroup>
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Search environment variables"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search keys and descriptions"
+            />
+          </InputGroup>
+          <Accordion
+            type="multiple"
+            value={search ? filteredData.map((group) => group!.name) : undefined}
           >
-            Save
-          </Button>
-        </div>
-      </div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search for keys, descriptions, and values..."
-        className="flex-1"
-      />
-      <div className="flex flex-col">
-        {filteredData.map((group) => (
-          <GroupContainer group={group!} control={control} search={search} />
-        ))}
-      </div>
-    </form>
+            {filteredData.map((group) => (
+              <GroupContainer key={group!.name} group={group!} control={control} search={search} />
+            ))}
+          </Accordion>
+        </form>
+      </CardContent>
+    </Card>
   );
 };

@@ -1,6 +1,16 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useGetAdminIntegrationsConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
@@ -51,27 +61,29 @@ export const IntegrationsPageForm = () => {
   ];
 
   return (
-    <div className="mb-6 min-h-64 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4">
-        <div className="text-xl font-medium text-mineshaft-100">Integrations</div>
-        <div className="text-sm text-mineshaft-300">
+    <Card className="min-h-64">
+      <CardHeader>
+        <CardTitle>Integrations</CardTitle>
+        <CardDescription>
           Configure your instance-wide settings to enable integration with third-party services.
-        </div>
-      </div>
-      <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
-        <TabList>
-          {tabSections.map((section) => (
-            <Tab value={section.key} key={`integration-tab-${section.key}`}>
-              {section.label}
-            </Tab>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+          <TabsList variant="admin">
+            {tabSections.map((section) => (
+              <TabsTrigger value={section.key} key={`integration-tab-${section.key}`}>
+                {section.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {tabSections.map(({ key, component: Component }) => (
+            <TabsContent value={key} key={`integration-tab-panel-${key}`}>
+              <Component adminIntegrationsConfig={adminIntegrationsConfig!} />
+            </TabsContent>
           ))}
-        </TabList>
-        {tabSections.map(({ key, component: Component }) => (
-          <TabPanel value={key} key={`integration-tab-panel-${key}`}>
-            <Component adminIntegrationsConfig={adminIntegrationsConfig!} />
-          </TabPanel>
-        ))}
-      </Tabs>
-    </div>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 };
