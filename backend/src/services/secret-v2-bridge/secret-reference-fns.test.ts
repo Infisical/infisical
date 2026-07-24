@@ -7,13 +7,19 @@ const secretStore: Record<string, Record<string, Record<string, string>>> = {
     "/": {
       DB_URL: "postgres://${dev.common.DB_USER}@${dev.common.DB_HOST}/app",
       DD_API_KEY_POINTER: "${dev.common.POINTER}",
-      DYNAMIC_PATH: "${dev.common.${dev.common.VENDOR}.API_KEY}"
+      DYNAMIC_PATH: "${dev.common.${dev.common.VENDOR}.API_KEY}",
+      DYNAMIC_PATH_MISSING: "${dev.common.${dev.common.UNKNOWN_VENDOR}.API_KEY}",
+      DYNAMIC_KEY: "${dev.common.ENDPOINT_${dev.common.REGION}}"
     },
     "/common": {
       DB_USER: "app",
       DB_HOST: "db.internal",
       VENDOR: "datadog",
-      POINTER: "${dev.common.datadog.API_KEY}"
+      UNKNOWN_VENDOR: "newrelic",
+      REGION: "US_EAST_1",
+      ENDPOINT_US_EAST_1: "us-east-1-endpoint",
+      POINTER: "${dev.common.datadog.API_KEY}",
+      SELF_REF: "${dev.common.SELF_REF}"
     },
     "/common/datadog": {
       API_KEY: "dd-api-key-value"
@@ -70,10 +76,9 @@ describe("expandSecretReferences", () => {
     ).resolves.toBe("dd-api-key-value");
   });
 
-  test("does not resolve a reference nested inside another reference's path", async () => {
+  test("resolves a reference nested inside another reference's path", async () => {
     const { expandSecretReferences } = buildExpander();
 
-    // The inner reference is substituted, but the resulting outer reference is not re-evaluated
     await expect(
       expandSecretReferences({
         value: secretStore.dev["/"].DYNAMIC_PATH,
@@ -81,6 +86,45 @@ describe("expandSecretReferences", () => {
         secretPath: "/",
         secretKey: "DYNAMIC_PATH"
       })
-    ).resolves.toBe("${dev.common.datadog.API_KEY}");
+    ).resolves.toBe("dd-api-key-value");
+  });
+
+  test("resolves a reference whose key is built from another reference", async () => {
+    const { expandSecretReferences } = buildExpander();
+
+    await expect(
+      expandSecretReferences({
+        value: secretStore.dev["/"].DYNAMIC_KEY,
+        environment: "dev",
+        secretPath: "/",
+        secretKey: "DYNAMIC_KEY"
+      })
+    ).resolves.toBe("us-east-1-endpoint");
+  });
+
+  test("leaves a nested reference untouched when it resolves to a missing secret", async () => {
+    const { expandSecretReferences } = buildExpander();
+
+    await expect(
+      expandSecretReferences({
+        value: secretStore.dev["/"].DYNAMIC_PATH_MISSING,
+        environment: "dev",
+        secretPath: "/",
+        secretKey: "DYNAMIC_PATH_MISSING"
+      })
+    ).resolves.toBe("${dev.common.newrelic.API_KEY}");
+  });
+
+  test("stops expanding self-referencing values instead of looping", async () => {
+    const { expandSecretReferences } = buildExpander();
+
+    await expect(
+      expandSecretReferences({
+        value: secretStore.dev["/common"].SELF_REF,
+        environment: "dev",
+        secretPath: "/common",
+        secretKey: "SELF_REF"
+      })
+    ).resolves.toBe("${dev.common.SELF_REF}");
   });
 });

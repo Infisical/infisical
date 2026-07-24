@@ -20,6 +20,19 @@ const INTERPOLATION_TEST_REGEX = new RE2(INTERPOLATION_PATTERN_STRING);
 
 export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REGEX.test(value);
 
+const matchSecretReferences = (value?: string) => {
+  const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+  const refs: string[] = [];
+  let match;
+
+  // eslint-disable-next-line no-cond-assign
+  while ((match = matchRegex.exec(value || "")) !== null) {
+    refs.push(match[0]);
+  }
+
+  return refs;
+};
+
 /**
  * Grabs and processes nested secret references from a string
  *
@@ -225,8 +238,18 @@ export const expandSecretReferencesFactory = ({
     const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
 
     const currentSecretId = createSecretId(dto.environment, dto.secretPath, dto.secretKey);
-    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
+    const createRootFrame = (value: string) => ({
+      ...dto,
+      value,
+      depth: 0,
+      trace: stackTrace,
+      visitedSecrets: new Set<string>([currentSecretId])
+    });
+
+    const stack = [createRootFrame(dto.value)];
     let expandedValue = dto.value;
+    let refsBeforePass = new Set(matchSecretReferences(expandedValue));
+    let pass = 0;
 
     // Ensure the secret can actually be read before we expand it
     const currentSecret = await fetchSecret(dto.environment, dto.secretPath, dto.secretKey);
@@ -241,17 +264,7 @@ export const expandSecretReferencesFactory = ({
     while (stack.length) {
       const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
 
-      // eslint-disable-next-line no-continue
-      if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
-
-      const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
-      const refs = [];
-      let match;
-
-      // eslint-disable-next-line no-cond-assign
-      while ((match = matchRegex.exec(value || "")) !== null) {
-        refs.push(match[0]);
-      }
+      const refs = depth > MAX_SECRET_REFERENCE_DEPTH ? [] : matchSecretReferences(value);
 
       if (refs.length > 0) {
         // Batch-resolve all cross-project slugs from this value's refs in one query
@@ -466,6 +479,20 @@ export const expandSecretReferencesFactory = ({
             );
           }
           // when the referenced secret does not exist, leave the literal ${REF} untouched
+        }
+      }
+
+      // A pass only resolves the references present when the pass started. Substituting a reference
+      // can form a new one - e.g. ${dev.common.${dev.common.VENDOR}.API_KEY} becomes
+      // ${dev.common.datadog.API_KEY} - so the fully expanded value is re-scanned and, if it holds
+      // references that were not there before, another pass runs over it.
+      if (!stack.length && pass < MAX_SECRET_REFERENCE_DEPTH) {
+        const resolvedRefs = refsBeforePass;
+        const refsAfterPass = matchSecretReferences(expandedValue);
+        if (refsAfterPass.some((ref) => !resolvedRefs.has(ref))) {
+          refsBeforePass = new Set(refsAfterPass);
+          pass += 1;
+          stack.push(createRootFrame(expandedValue));
         }
       }
     }
