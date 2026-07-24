@@ -483,7 +483,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     page,
     setPerPage
   } = usePagination<OrgIdentityOrderBy>(OrgIdentityOrderBy.Name, {
-    initPerPage: getUserTablePreference("identityTable", PreferenceKey.PerPage, 20)
+    initPerPage: getUserTablePreference("identityTable", PreferenceKey.PerPage, 10)
   });
 
   const handlePerPageChange = (newPerPage: number) => {
@@ -589,7 +589,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                 )}
                 aria-hidden
               />
-              {isSubOrganization ? "Sub-Organization" : "Organization"}
+              {isSubOrganization ? "Sub-Org" : "Org"}
               {renderTabCount(orgScopeCount)}
             </TabsTrigger>
             <TabsTrigger value="project">
@@ -600,7 +600,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
             <TabsTrigger value="all">All{renderTabCount(allScopeCount)}</TabsTrigger>
           </TabsList>
         </Tabs>
-        <InputGroup className="w-1/2">
+        <InputGroup className="w-full max-w-[480px] dashboard:w-auto dashboard:max-w-[640px] dashboard:flex-1">
           <InputGroupAddon>
             <SearchIcon />
           </InputGroupAddon>

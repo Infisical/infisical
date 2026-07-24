@@ -1,6 +1,13 @@
 import { BanIcon } from "lucide-react";
 
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, PageLoader } from "@app/components/v3";
+import {
+  DetailGroup,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader
+} from "@app/components/v3";
 import { useGetIdentityGcpAuth } from "@app/hooks/api";
 
 import { IdentityAuthAccessTokenFields, IdentityAuthFieldDisplay } from "../helpers";
@@ -27,7 +34,7 @@ export const IdentityGcpAuthContent = ({ identityId }: ViewAuthMethodProps) => {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <DetailGroup className="grid grid-cols-2 gap-x-6 gap-y-5">
       <IdentityAuthAccessTokenFields
         accessTokenTTL={data.accessTokenTTL}
         accessTokenMaxTTL={data.accessTokenMaxTTL}
@@ -59,6 +66,6 @@ export const IdentityGcpAuthContent = ({ identityId }: ViewAuthMethodProps) => {
           </IdentityAuthFieldDisplay>
         </>
       )}
-    </div>
+    </DetailGroup>
   );
 };

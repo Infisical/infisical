@@ -240,7 +240,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
               </SheetTitle>
             </SheetHeader>
             <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
-              <FieldGroup>
+              <FieldGroup className="p-4">
                 <Controller
                   control={control}
                   name="configurationType"

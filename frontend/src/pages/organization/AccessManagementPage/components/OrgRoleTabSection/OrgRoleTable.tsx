@@ -253,7 +253,7 @@ export const OrgRoleTable = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  Add {isSubOrganization ? "Sub-" : ""}Organization Role
+                  Create
                 </Button>
               )}
             </OrgPermissionCan>

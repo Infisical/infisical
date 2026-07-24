@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ChevronDownIcon,
   EditIcon,
@@ -55,6 +56,7 @@ enum TemplatesOrderBy {
 }
 
 type Props = {
+  onEmptyStateChange?: (isEmpty: boolean) => void;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
       ["deleteTemplate", "createTemplate", "editTemplate", "viewUsages"]
@@ -63,7 +65,7 @@ type Props = {
   ) => void;
 };
 
-export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
+export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange }: Props) => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const {
@@ -120,6 +122,12 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const isFiltered = debouncedSearch.trim().length > 0;
+  const isEmpty =
+    subscription.machineIdentityAuthTemplates && !isPending && !isFiltered && totalCount === 0;
+
+  useEffect(() => {
+    onEmptyStateChange?.(isEmpty);
+  }, [isEmpty, onEmptyStateChange]);
 
   const renderContent = () => {
     if (!subscription.machineIdentityAuthTemplates) {

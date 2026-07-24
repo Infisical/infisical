@@ -1007,7 +1007,7 @@ export const CreatePolicyModal = ({
               </div>
 
               {step === 0 && (
-                <FieldGroup>
+                <FieldGroup className="p-4">
                   <Controller
                     control={control}
                     name="name"

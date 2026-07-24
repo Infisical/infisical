@@ -383,7 +383,7 @@ export const ShareSecretsSheet = ({
         </SheetHeader>
 
         <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
-          <FieldGroup>
+          <FieldGroup className="p-4">
             <div>
               <p className="text-xs font-semibold tracking-widest text-muted uppercase">
                 Environments &amp; Folders

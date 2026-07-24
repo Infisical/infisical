@@ -27,15 +27,11 @@ import {
   FieldGroup,
   FieldLabel,
   FieldTitle,
+  FilterableSelect,
   IconButton,
   Input,
   RadioGroup,
   RadioGroupItem,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Tabs,
   TabsContent,
   TabsList,
@@ -201,6 +197,12 @@ const buildSchema = (maxAccessTokenTTL: number) =>
 
 export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 
+type ConfigurationOption = {
+  group: "Configuration" | "Templates";
+  label: string;
+  value: string;
+};
+
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["upgradePlan"]>,
@@ -234,7 +236,9 @@ export const IdentityLdapAuthForm = ({
   const { mutateAsync: addMutateAsync } = useAddIdentityLdapAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
-  const { data: templates } = useGetAvailableTemplates(MachineIdentityAuthMethod.LDAP);
+  const { data: templates, isPending: isTemplatesPending } = useGetAvailableTemplates(
+    MachineIdentityAuthMethod.LDAP
+  );
   const { permission } = useOrgPermission();
 
   const canAttachTemplates = permission.can(
@@ -254,8 +258,9 @@ export const IdentityLdapAuthForm = ({
     reset,
     watch,
     setValue,
+    clearErrors,
     trigger,
-    formState: { isSubmitting }
+    formState: { errors, isSubmitting }
   } = useForm<FormData>({
     resolver,
     defaultValues: {
@@ -277,6 +282,27 @@ export const IdentityLdapAuthForm = ({
   });
 
   const scope = watch("scope");
+  const templateId = watch("templateId");
+
+  const configurationOptions = useMemo<ConfigurationOption[]>(
+    () => [
+      {
+        group: "Configuration",
+        label: "Custom configuration",
+        value: "custom"
+      },
+      ...(templates ?? []).map((template) => ({
+        group: "Templates" as const,
+        label: template.name,
+        value: template.id
+      }))
+    ],
+    [templates]
+  );
+
+  const selectedConfiguration = configurationOptions.find(
+    ({ value }) => value === (scope === "template" ? templateId : "custom")
+  );
 
   const lockoutEnabledWatch = watch("lockoutEnabled");
   const lockoutThresholdWatch = watch("lockoutThreshold");
@@ -503,69 +529,49 @@ export const IdentityLdapAuthForm = ({
               <Controller
                 control={control}
                 name="scope"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
-                    <FieldLabel htmlFor="ldap-scope">Configuration Type</FieldLabel>
-                    <Select
-                      value={value}
-                      onValueChange={(val) => {
-                        onChange(val);
-                        setValue("templateId", data?.templateId || "");
-                        setValue("url", data?.url || "");
-                        setValue("bindDN", data?.bindDN || "");
-                        setValue("bindPass", data?.bindPass || "");
-                        setValue("searchBase", data?.searchBase || "");
-                        setValue("ldapCaCertificate", data?.ldapCaCertificate || "");
-                      }}
-                    >
-                      <SelectTrigger id="ldap-scope" className="w-full" isError={Boolean(error)}>
-                        <SelectValue placeholder="Select configuration type" />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        <SelectItem value="template">Use Template</SelectItem>
-                        <SelectItem value="custom">Custom Configuration</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FieldError>{error?.message}</FieldError>
-                  </Field>
-                )}
-              />
-            )}
+                    <FieldLabel htmlFor="ldap-configuration">Configuration</FieldLabel>
+                    <FilterableSelect<ConfigurationOption>
+                      inputId="ldap-configuration"
+                      value={selectedConfiguration}
+                      options={configurationOptions}
+                      groupBy="group"
+                      getOptionLabel={(option) => option.label}
+                      getOptionValue={(option) => option.value}
+                      placeholder="Select or search configurations..."
+                      isLoading={isTemplatesPending}
+                      isError={Boolean(error || errors.templateId)}
+                      onChange={(option) => {
+                        const selectedOption = option as ConfigurationOption | null;
+                        if (!selectedOption) return;
 
-            {scope === "template" && (
-              <Controller
-                control={control}
-                name="templateId"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="ldap-template">Template</FieldLabel>
-                    <Select
-                      value={value}
-                      onValueChange={(val) => {
-                        onChange(val);
-                        const tmp = templates?.find((t) => t.id === val);
-                        if (!tmp) return;
-                        setValue("url", tmp.templateFields.url);
-                        setValue("bindDN", tmp.templateFields.bindDN);
-                        setValue("bindPass", tmp.templateFields.bindPass);
-                        setValue("searchBase", tmp.templateFields.searchBase);
-                        setValue("ldapCaCertificate", tmp.templateFields.ldapCaCertificate);
+                        if (selectedOption.value === "custom") {
+                          onChange("custom");
+                          setValue("templateId", "");
+                          clearErrors("templateId");
+                          setValue("url", data?.url || "");
+                          setValue("bindDN", data?.bindDN || "");
+                          setValue("bindPass", data?.bindPass || "");
+                          setValue("searchBase", data?.searchBase || "");
+                          setValue("ldapCaCertificate", data?.ldapCaCertificate || "");
+                          return;
+                        }
+
+                        const template = templates?.find(({ id }) => id === selectedOption.value);
+                        if (!template) return;
+
+                        onChange("template");
+                        setValue("templateId", template.id);
+                        clearErrors("templateId");
+                        setValue("url", template.templateFields.url);
+                        setValue("bindDN", template.templateFields.bindDN);
+                        setValue("bindPass", template.templateFields.bindPass);
+                        setValue("searchBase", template.templateFields.searchBase);
+                        setValue("ldapCaCertificate", template.templateFields.ldapCaCertificate);
                       }}
-                    >
-                      <SelectTrigger id="ldap-template" className="w-full" isError={Boolean(error)}>
-                        <SelectValue placeholder="Select a template" />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {templates?.map((template) => {
-                          return (
-                            <SelectItem value={template.id} key={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FieldError>{error?.message}</FieldError>
+                    />
+                    <FieldError>{error?.message || errors.templateId?.message}</FieldError>
                   </Field>
                 )}
               />

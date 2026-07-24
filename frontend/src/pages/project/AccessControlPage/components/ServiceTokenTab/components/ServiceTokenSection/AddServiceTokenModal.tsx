@@ -345,7 +345,7 @@ const ServiceTokenForm = () => {
                     <FieldLegend className="mb-4" variant="label">
                       Permissions
                     </FieldLegend>
-                    <FieldGroup>
+                    <FieldGroup className="p-4">
                       {permissionOptions.map(({ label, value: optionValue }) => (
                         <Field key={optionValue} orientation="horizontal">
                           <Checkbox

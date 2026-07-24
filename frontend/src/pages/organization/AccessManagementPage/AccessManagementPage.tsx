@@ -7,7 +7,8 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Button, PageHeader } from "@app/components/v2";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -133,24 +134,20 @@ export const AccessManagementPage = () => {
           <OrgPermissionGuardBanner />
         ) : (
           <Tabs value={activeTab} onValueChange={updateSelectedTab}>
-            <TabList>
+            <TabsList variant={isSubOrganization ? "sub-org" : "org"}>
               {visibleTabSections.map(({ key, label }) => (
-                <Tab
-                  variant={isSubOrganization ? "namespace" : "org"}
-                  value={key}
-                  key={`org-access-tab-${key}`}
-                >
+                <TabsTrigger value={key} key={`org-access-tab-${key}`}>
                   {label}
-                </Tab>
+                </TabsTrigger>
               ))}
-            </TabList>
+            </TabsList>
             {isSelectedTabRestricted ? (
               <OrgPermissionGuardBanner />
             ) : (
               visibleTabSections.map(({ key, component: Component }) => (
-                <TabPanel value={key} key={`org-access-tab-panel-${key}`}>
+                <TabsContent value={key} key={`org-access-tab-panel-${key}`}>
                   <Component />
-                </TabPanel>
+                </TabsContent>
               ))
             )}
           </Tabs>
