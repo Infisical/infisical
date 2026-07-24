@@ -9,11 +9,11 @@ export const EnvironmentPage = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="bg-bunker-800">
+    <div className="bg-background text-foreground">
       <Helmet>
         <title>{t("common.head-title", { title: "Admin" })}</title>
       </Helmet>
-      <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+      <div className="mx-auto flex flex-col justify-between">
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
             scope="instance"

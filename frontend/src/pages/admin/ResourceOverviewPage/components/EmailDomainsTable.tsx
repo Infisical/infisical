@@ -13,30 +13,20 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
+  Badge,
+  Button as DialogButton,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   FilterableSelect,
-  FormControl,
-  IconButton,
-  Input,
-  Modal,
-  ModalContent,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  Input as DialogInput,
+  Pagination
+} from "@app/components/v3";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -50,6 +40,27 @@ import {
   useAdminGetOrganizations
 } from "@app/hooks/api";
 import { OrganizationWithProjects } from "@app/hooks/api/admin/types";
+import {
+  EmptyState,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "@app/pages/admin/components/AdminTable";
+import {
+  Button,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Input
+} from "@app/pages/admin/components/AdminV3Adapters";
 
 const AddEmailDomainSchema = z.object({
   organization: z.object({ id: z.string(), name: z.string() }),
@@ -64,10 +75,12 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
   const {
     handleSubmit,
     control,
-    register,
     formState: { isSubmitting, errors }
   } = useForm<AddEmailDomainFormData>({
-    resolver: zodResolver(AddEmailDomainSchema)
+    resolver: zodResolver(AddEmailDomainSchema),
+    defaultValues: {
+      domain: ""
+    }
   });
 
   const [searchOrgFilter, setSearchOrgFilter] = useState("");
@@ -83,7 +96,10 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
   const onSubmit = async ({ organization, domain }: AddEmailDomainFormData) => {
     try {
       await createEmailDomain.mutateAsync({ orgId: organization.id, domain });
-      createNotification({ text: "Email domain added successfully", type: "success" });
+      createNotification({
+        text: "Email domain added successfully",
+        type: "success"
+      });
       onClose();
     } catch (err: any) {
       createNotification({
@@ -94,12 +110,13 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
       <Controller
         control={control}
         name="organization"
         render={({ field, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Organization">
+          <Field>
+            <FieldLabel>Organization</FieldLabel>
             <FilterableSelect<OrganizationWithProjects>
               isLoading={searchOrgFilter !== debouncedSearchTerm || isPending}
               placeholder="Search organizations..."
@@ -113,29 +130,34 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
                 if (!value) setDebouncedSearchTerm("");
               }}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
-      <FormControl
-        isError={Boolean(errors.domain)}
-        errorText={errors.domain?.message}
-        label="Domain"
-      >
-        <Input {...register("domain")} placeholder="company.com" />
-      </FormControl>
-      <div className="flex w-full gap-4 pt-4">
-        <Button
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-          colorSchema="secondary"
-        >
-          Add Domain
-        </Button>
-        <Button onClick={onClose} variant="plain" colorSchema="secondary">
+      <Controller
+        control={control}
+        name="domain"
+        render={({ field }) => (
+          <Field>
+            <FieldLabel htmlFor="verified-email-domain">Domain</FieldLabel>
+            <DialogInput
+              id="verified-email-domain"
+              placeholder="company.com"
+              isError={Boolean(errors.domain)}
+              {...field}
+            />
+            <FieldError>{errors.domain?.message}</FieldError>
+          </Field>
+        )}
+      />
+      <DialogFooter>
+        <DialogButton variant="ghost" type="button" onClick={onClose}>
           Cancel
-        </Button>
-      </div>
+        </DialogButton>
+        <DialogButton variant="neutral" type="submit" isPending={isSubmitting}>
+          Add domain
+        </DialogButton>
+      </DialogFooter>
     </form>
   );
 };
@@ -148,11 +170,14 @@ const AddEmailDomainModal = ({
   onOpenChange: (isOpen: boolean) => void;
 }) => {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent bodyClassName="overflow-visible" title="Add Verified Email Domain">
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="text-left">
+          <DialogTitle>Add Verified Email Domain</DialogTitle>
+        </DialogHeader>
         <AddEmailDomainContent onClose={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -192,14 +217,16 @@ export const EmailDomainsTable = () => {
   const { mutateAsync: deleteEmailDomain } = useAdminDeleteEmailDomain();
 
   const handleDelete = async () => {
-    const { emailDomainId } = popUp?.deleteEmailDomain?.data as { emailDomainId: string };
+    const { emailDomainId } = popUp?.deleteEmailDomain?.data as {
+      emailDomainId: string;
+    };
     await deleteEmailDomain(emailDomainId);
     createNotification({ text: "Email domain deleted", type: "success" });
     handlePopUpClose("deleteEmailDomain");
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-mineshaft-100">Email Domains</p>
@@ -253,12 +280,7 @@ export const EmailDomainsTable = () => {
                       <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton
-                              ariaLabel="Options"
-                              colorSchema="secondary"
-                              className="w-6"
-                              variant="plain"
-                            >
+                            <IconButton ariaLabel="Options" size="xs" variant="plain">
                               <FontAwesomeIcon icon={faEllipsisV} />
                             </IconButton>
                           </DropdownMenuTrigger>

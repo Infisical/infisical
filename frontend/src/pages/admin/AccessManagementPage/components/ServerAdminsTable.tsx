@@ -15,29 +15,7 @@ import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  Checkbox,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Pagination } from "@app/components/v3";
 import { useSubscription, useUser } from "@app/context";
 import {
   getUserTablePreference,
@@ -54,6 +32,29 @@ import {
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AddServerAdminModal } from "@app/pages/admin/AccessManagementPage/components/AddServerAdminModal";
+import {
+  EmptyState,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "@app/pages/admin/components/AdminTable";
+import {
+  Button,
+  Checkbox,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Input,
+  Tooltip
+} from "@app/pages/admin/components/AdminV3Adapters";
 
 const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions from user";
 
@@ -192,12 +193,7 @@ const ServerAdminsPanelTable = ({
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
-                              >
+                              <IconButton ariaLabel="Options" size="xs" variant="plain">
                                 <FontAwesomeIcon icon={faEllipsisV} />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -205,7 +201,10 @@ const ServerAdminsPanelTable = ({
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("removeUser", { username, id });
+                                  handlePopUpOpen("removeUser", {
+                                    username,
+                                    id
+                                  });
                                 }}
                                 icon={<FontAwesomeIcon icon={faUserXmark} />}
                               >
@@ -232,7 +231,10 @@ const ServerAdminsPanelTable = ({
                                     });
                                     return;
                                   }
-                                  handlePopUpOpen("removeServerAdmin", { username, id });
+                                  handlePopUpOpen("removeServerAdmin", {
+                                    username,
+                                    id
+                                  });
                                 }}
                               >
                                 Remove Server Admin
@@ -314,7 +316,10 @@ export const ServerAdminsTable = () => {
   };
 
   const handleRemoveServerAdminAccess = async () => {
-    const { id } = popUp?.removeServerAdmin?.data as { id: string; username: string };
+    const { id } = popUp?.removeServerAdmin?.data as {
+      id: string;
+      username: string;
+    };
 
     await removeAdminAccess(id);
     createNotification({
@@ -370,7 +375,7 @@ export const ServerAdminsTable = () => {
           </Button>
         </div>
       </div>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+      <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
         <ServerAdminsPanelTable
           handlePopUpOpen={handlePopUpOpen}
           users={users}

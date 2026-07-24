@@ -3,7 +3,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Switch } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldTitle,
+  Switch
+} from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { useUpdateServerConfig } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -19,6 +33,20 @@ const formSchema = z.object({
 });
 
 type TAuthForm = z.infer<typeof formSchema>;
+
+const loginMethods: Array<{
+  id: string;
+  label: string;
+  name: keyof TAuthForm;
+}> = [
+  { id: "email-enabled", label: "Email", name: "isEmailEnabled" },
+  { id: "google-enabled", label: "Google SSO", name: "isGoogleEnabled" },
+  { id: "enable-github", label: "GitHub SSO", name: "isGithubEnabled" },
+  { id: "enable-gitlab", label: "GitLab SSO", name: "isGitlabEnabled" },
+  { id: "enable-saml", label: "SAML SSO", name: "isSamlEnabled" },
+  { id: "enable-oidc", label: "OIDC SSO", name: "isOidcEnabled" },
+  { id: "enable-ldap", label: "LDAP", name: "isLdapEnabled" }
+];
 
 export const AuthenticationPageForm = () => {
   const { config } = useServerConfig();
@@ -102,143 +130,50 @@ export const AuthenticationPageForm = () => {
   };
 
   return (
-    <form
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-      onSubmit={handleSubmit(onAuthFormSubmit)}
-    >
-      <div className="flex flex-col justify-start">
-        <div className="mb-2 text-xl font-medium text-mineshaft-100">Login Methods</div>
-        <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
-          Select the login methods you wish to allow for all users of this instance.
-        </div>
-        <Controller
-          control={control}
-          name="isEmailEnabled"
-          render={({ field, fieldState: { error } }) => {
-            return (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  id="email-enabled"
-                  onCheckedChange={(value) => field.onChange(value)}
-                  isChecked={field.value}
-                >
-                  <p className="w-24">Email</p>
-                </Switch>
-              </FormControl>
-            );
-          }}
-        />
-        <Controller
-          control={control}
-          name="isGoogleEnabled"
-          render={({ field, fieldState: { error } }) => {
-            return (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  id="google-enabled"
-                  onCheckedChange={(value) => field.onChange(value)}
-                  isChecked={field.value}
-                >
-                  <p className="w-24">Google SSO</p>
-                </Switch>
-              </FormControl>
-            );
-          }}
-        />
-        <Controller
-          control={control}
-          name="isGithubEnabled"
-          render={({ field, fieldState: { error } }) => {
-            return (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  id="enable-github"
-                  onCheckedChange={(value) => field.onChange(value)}
-                  isChecked={field.value}
-                >
-                  <p className="w-24">Github SSO</p>
-                </Switch>
-              </FormControl>
-            );
-          }}
-        />
-        <Controller
-          control={control}
-          name="isGitlabEnabled"
-          render={({ field, fieldState: { error } }) => {
-            return (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  id="enable-gitlab"
-                  onCheckedChange={(value) => field.onChange(value)}
-                  isChecked={field.value}
-                >
-                  <p className="w-24">Gitlab SSO</p>
-                </Switch>
-              </FormControl>
-            );
-          }}
-        />
-        <Controller
-          control={control}
-          name="isSamlEnabled"
-          render={({ field, fieldState: { error } }) => {
-            return (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  id="enable-saml"
-                  onCheckedChange={(value) => field.onChange(value)}
-                  isChecked={field.value}
-                >
-                  <p className="w-24">SAML SSO</p>
-                </Switch>
-              </FormControl>
-            );
-          }}
-        />
-        <Controller
-          control={control}
-          name="isOidcEnabled"
-          render={({ field, fieldState: { error } }) => {
-            return (
-              <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Switch
-                  id="enable-oidc"
-                  onCheckedChange={(value) => field.onChange(value)}
-                  isChecked={field.value}
-                >
-                  <p className="w-24">OIDC SSO</p>
-                </Switch>
-              </FormControl>
-            );
-          }}
-        />
-      </div>
-      <Controller
-        control={control}
-        name="isLdapEnabled"
-        render={({ field, fieldState: { error } }) => {
-          return (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                id="enable-ldap"
-                onCheckedChange={(value) => field.onChange(value)}
-                isChecked={field.value}
-              >
-                <p className="w-24">LDAP</p>
-              </Switch>
-            </FormControl>
-          );
-        }}
-      />
-      <Button
-        className="mt-2"
-        type="submit"
-        isLoading={isSubmitting}
-        isDisabled={isSubmitting || !isDirty}
-      >
-        Save
-      </Button>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle>Login Methods</CardTitle>
+        <CardDescription>
+          Select the login methods available to all users of this instance.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onAuthFormSubmit)}>
+          <FieldGroup>
+            {loginMethods.map(({ id, label, name }) => (
+              <Controller
+                key={name}
+                control={control}
+                name={name}
+                render={({ field, fieldState: { error } }) => (
+                  <Field orientation="horizontal">
+                    <FieldContent>
+                      <FieldTitle>{label}</FieldTitle>
+                      <FieldDescription>Allow users to authenticate with {label}.</FieldDescription>
+                      <FieldError>{error?.message}</FieldError>
+                    </FieldContent>
+                    <Switch
+                      id={id}
+                      variant="neutral"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </Field>
+                )}
+              />
+            ))}
+          </FieldGroup>
+          <Button
+            variant="neutral"
+            className="mt-6"
+            type="submit"
+            isPending={isSubmitting}
+            isDisabled={!isDirty}
+          >
+            Save
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
