@@ -1,10 +1,18 @@
+import { REQUEST_RETRY_CONFIG } from "@app/lib/config/request";
+
 import { AlertChannelType, SlackChannelConfigSchema, TAlertPayload } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
-import { isAxiosErrorRetryable } from "./alert-channel-retry-fns";
 import { buildSlackPayload } from "./alert-channel-slack-fns";
 import { buildWebhookPayload } from "./alert-channel-webhook-fns";
+
+// logger is `export let logger` assigned by initLogger(), which unit tests don't run, so the
+// delivery-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
+vi.mock("@app/lib/logger", () => ({
+  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
+  initLogger: () => {}
+}));
 
 const samplePayload = (): TAlertPayload => ({
   alert: {
@@ -209,21 +217,33 @@ describe("sendEmailNotification (directed)", () => {
     const result = await sendEmailNotification({ ...baseCtx(), config: {} });
     expect(result.success).toBe(false);
   });
-});
 
-describe("isAxiosErrorRetryable", () => {
-  test("retries on 429 (rate limit) so a short backoff can recover", () => {
-    expect(isAxiosErrorRetryable({ response: { status: 429 } })).toBe(true);
-  });
+  // SMTP has no client-level retry, so the channel retries on the same terms as the shared axios
+  // client the HTTP channels dispatch through: one initial attempt plus REQUEST_RETRY_CONFIG.retries.
+  test("retries a transient SMTP failure as many times as an outbound request would", async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const ctx = {
+      ...baseCtx(),
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        ...baseCtx().deps,
+        smtpService: {
+          sendMail: async () => {
+            attempts += 1;
+            throw new Error("connection timeout");
+          }
+        }
+      }
+    };
 
-  test("retries on 5xx and network/timeout errors", () => {
-    expect(isAxiosErrorRetryable({ response: { status: 503 } })).toBe(true);
-    expect(isAxiosErrorRetryable({ code: "ECONNRESET" })).toBe(true);
-    expect(isAxiosErrorRetryable({ message: "socket hang up timeout" })).toBe(true);
-  });
+    const pending = sendEmailNotification(ctx);
+    await vi.runAllTimersAsync();
+    const result = await pending;
+    vi.useRealTimers();
 
-  test("does not retry on other 4xx client errors", () => {
-    expect(isAxiosErrorRetryable({ response: { status: 400 } })).toBe(false);
-    expect(isAxiosErrorRetryable({ response: { status: 404 } })).toBe(false);
+    expect(attempts).toBe(1 + REQUEST_RETRY_CONFIG.retries);
+    expect(result.success).toBe(false);
   });
 });

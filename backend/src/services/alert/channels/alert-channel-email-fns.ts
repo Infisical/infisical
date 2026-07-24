@@ -1,6 +1,6 @@
+import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { RETRYABLE_NETWORK_ERRORS } from "../alert-channel-constants";
 import {
   EmailChannelConfigSchema,
   TAlertChannelSendContext,

@@ -1,9 +1,9 @@
 import { AxiosError } from "axios";
 
+import { REQUEST_RETRY_CONFIG } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 
-import { ALERT_CHANNEL_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "../alert-channel-constants";
 import { TChannelResult } from "../alert-channel-types";
 
 export const deliverWithRetry = async (
@@ -11,10 +11,10 @@ export const deliverWithRetry = async (
   isRetryable: (err: unknown) => boolean,
   ctx: { channelId: string; channelLabel: string }
 ): Promise<TChannelResult> => {
-  const { maxRetries, delayMs } = ALERT_CHANNEL_RETRY_CONFIG;
+  const { retries, retryDelay } = REQUEST_RETRY_CONFIG;
   let lastError: Error | undefined;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
       // eslint-disable-next-line no-await-in-loop
       await fn();
@@ -31,12 +31,13 @@ export const deliverWithRetry = async (
         return { success: false, error: lastError.message };
       }
 
+      const delayMs = attempt < retries ? retryDelay(attempt + 1) : 0;
       logger.info(
-        { channelId: ctx.channelId, attempt, maxRetries, statusCode, error: lastError.message },
-        `Alert ${ctx.channelLabel} delivery failed, ${attempt < maxRetries ? `retrying in ${delayMs}ms` : "no more retries"} [channelId=${ctx.channelId}]`
+        { channelId: ctx.channelId, attempt: attempt + 1, retries, statusCode, error: lastError.message },
+        `Alert ${ctx.channelLabel} delivery failed, ${attempt < retries ? `retrying in ${Math.round(delayMs)}ms` : "no more retries"} [channelId=${ctx.channelId}]`
       );
 
-      if (attempt < maxRetries) {
+      if (attempt < retries) {
         // eslint-disable-next-line no-await-in-loop
         await delay(delayMs);
       }
@@ -44,14 +45,4 @@ export const deliverWithRetry = async (
   }
 
   return { success: false, error: lastError?.message };
-};
-
-export const isAxiosErrorRetryable = (err: unknown): boolean => {
-  const axiosErr = err as AxiosError;
-  const status = axiosErr.response?.status;
-  if (status === 429) return true;
-  if (status && status >= 500) return true;
-  if (axiosErr.code && RETRYABLE_NETWORK_ERRORS.includes(axiosErr.code)) return true;
-  if (axiosErr.message?.toLowerCase().includes("timeout")) return true;
-  return false;
 };

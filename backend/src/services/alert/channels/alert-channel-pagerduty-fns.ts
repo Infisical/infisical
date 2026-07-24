@@ -1,3 +1,6 @@
+import { AxiosError } from "axios";
+
+import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
 import {
@@ -8,7 +11,6 @@ import {
   TAlertPayload,
   TChannelResult
 } from "../alert-channel-types";
-import { deliverWithRetry, isAxiosErrorRetryable } from "./alert-channel-retry-fns";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
 const PAGERDUTY_TIMEOUT = 7 * 1000;
@@ -82,21 +84,21 @@ export const sendPagerDutyNotification = async (ctx: TAlertChannelSendContext): 
     return { success: false, error: "Invalid PagerDuty integration key" };
   }
 
-  const results = await Promise.all(
-    ctx.payload.items.map((item) =>
-      deliverWithRetry(
-        () => triggerPagerDutyEvent(buildPagerDutyEvent(ctx.payload, item, config.integrationKey)),
-        isAxiosErrorRetryable,
-        { channelId: ctx.channelId, channelLabel: "PagerDuty" }
-      )
-    )
+  const targetResults = await Promise.all(
+    ctx.payload.items.map(async (item) => {
+      try {
+        await triggerPagerDutyEvent(buildPagerDutyEvent(ctx.payload, item, config.integrationKey));
+        return { targetId: item.id, success: true };
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        logger.info(
+          { channelId: ctx.channelId, statusCode: (err as AxiosError).response?.status, error },
+          `Alert PagerDuty delivery failed [channelId=${ctx.channelId}] [targetId=${item.id}]`
+        );
+        return { targetId: item.id, success: false, error };
+      }
+    })
   );
-
-  const targetResults = ctx.payload.items.map((item, index) => ({
-    targetId: item.id,
-    success: results[index].success,
-    error: results[index].error
-  }));
 
   const errors = targetResults.filter((result) => !result.success && result.error).map((result) => result.error);
   if (errors.length > 0) {

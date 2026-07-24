@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse, CreateAxiosDefaults } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosResponse, CreateAxiosDefaults } from "axios";
 import axiosRetry, { IAxiosRetryConfig } from "axios-retry";
 
 import { CustomLogger, logger } from "../logger/logger";
@@ -25,16 +25,23 @@ export function axiosResponseInterceptor(response: AxiosResponse, customLogger: 
   return response;
 }
 
+export const isRetryableRequestError = (error: AxiosError): boolean =>
+  error.response?.status === 429 || axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
+
+export const REQUEST_RETRY_CONFIG = {
+  retries: 3,
+  // eslint-disable-next-line
+  retryDelay: axiosRetry.exponentialDelay
+};
+
 export function createRequestClient(defaults: CreateAxiosDefaults = {}, retry: IAxiosRetryConfig = {}): AxiosInstance {
   const client = axios.create({ ...defaults, maxRedirects: 0 });
 
   client.interceptors.response.use((response) => axiosResponseInterceptor(response, logger));
 
   axiosRetry(client, {
-    retries: 3,
-    // eslint-disable-next-line
-    retryDelay: axiosRetry.exponentialDelay,
-    retryCondition: (err) => axiosRetry.isNetworkError(err) || axiosRetry.isRetryableError(err),
+    ...REQUEST_RETRY_CONFIG,
+    retryCondition: isRetryableRequestError,
     ...retry
   });
 
