@@ -50,6 +50,9 @@ const buildProvider = (opts?: {
   abilityRules?: { action: string; subject: string; conditions?: Record<string, unknown> }[];
   inOrg?: boolean;
   inProject?: boolean;
+  // Owning project of the bound identity: null for an org-level identity, a project id when the
+  // identity was created in project scope.
+  ownerProjectId?: string | null;
   projectType?: string | null;
 }) => {
   const dal = {
@@ -64,7 +67,8 @@ const buildProvider = (opts?: {
       opts?.onFind?.(args);
       return opts?.secrets ?? [];
     },
-    isIdentityInOrg: async () => opts?.inOrg ?? true,
+    findIdentityInOrg: async () =>
+      (opts?.inOrg ?? true) ? { projectId: opts?.ownerProjectId ?? null } : undefined,
     isIdentityInProject: async () => opts?.inProject ?? true,
     getProjectType: async () => opts?.projectType ?? null
   };
@@ -353,5 +357,29 @@ describe("identity credential alert provider", () => {
     await expect(
       provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-1", resourceId: "ident-1" })
     ).rejects.toThrow();
+  });
+
+  // A project-owned identity keeps its project's permission boundary: its client secret metadata is
+  // gated by that project's identity permission, which an org-scoped alert never evaluates. Org
+  // membership alone must not be enough to bind it.
+  test("assertResourceInScope rejects a project-owned identity on an org-scoped alert", async () => {
+    const provider = buildProvider({ inOrg: true, ownerProjectId: "proj-1" });
+    await expect(provider.assertResourceInScope({ orgId: "org-1", resourceId: "ident-1" })).rejects.toThrow(
+      /belongs to a project/
+    );
+  });
+
+  test("assertResourceInScope rejects a project-owned identity on another project's alert", async () => {
+    const provider = buildProvider({ inOrg: true, inProject: true, ownerProjectId: "proj-1" });
+    await expect(
+      provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-2", resourceId: "ident-1" })
+    ).rejects.toThrow(/belongs to a project/);
+  });
+
+  test("assertResourceInScope allows a project-owned identity on its own project's alert", async () => {
+    const provider = buildProvider({ inOrg: true, inProject: true, ownerProjectId: "proj-1" });
+    await expect(
+      provider.assertResourceInScope({ orgId: "org-1", projectId: "proj-1", resourceId: "ident-1" })
+    ).resolves.toBeUndefined();
   });
 });

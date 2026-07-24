@@ -65,7 +65,12 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
             "projectMembership.actorIdentityId"
           )
           .where("projectMembership.scope", AccessScope.Project)
-          .where("projectMembership.scopeProjectId", projectId);
+          .where("projectMembership.scopeProjectId", projectId)
+          .where((bd) =>
+            void bd.whereNull(`${TableName.Identity}.projectId`).orWhere(`${TableName.Identity}.projectId`, projectId)
+          );
+      } else {
+        void query.whereNull(`${TableName.Identity}.projectId`);
       }
 
       if (identityId) {
@@ -87,14 +92,22 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  const isIdentityInOrg = async (identityId: string, orgId: string, tx?: Knex): Promise<boolean> => {
+  const findIdentityInOrg = async (
+    identityId: string,
+    orgId: string,
+    tx?: Knex
+  ): Promise<{ projectId: string | null } | undefined> => {
     try {
       const row = (await (tx || db.replicaNode())(TableName.Membership)
-        .where({ actorIdentityId: identityId, scopeOrgId: orgId, scope: AccessScope.Organization })
-        .first()) as { id: string } | undefined;
-      return Boolean(row);
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Membership}.actorIdentityId`, identityId)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .select(db.ref("projectId").withSchema(TableName.Identity))
+        .first()) as { projectId: string | null } | undefined;
+      return row;
     } catch (error) {
-      throw new DatabaseError({ error, name: "IsIdentityInOrg" });
+      throw new DatabaseError({ error, name: "FindIdentityInOrg" });
     }
   };
 
@@ -121,5 +134,5 @@ export const identityCredentialAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findExpiringUaClientSecrets, isIdentityInOrg, isIdentityInProject, getProjectType };
+  return { findExpiringUaClientSecrets, findIdentityInOrg, isIdentityInProject, getProjectType };
 };

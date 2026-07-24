@@ -184,9 +184,15 @@ export const identityCredentialAlertProviderFactory = ({
   }): Promise<void> => {
     if (!input.resourceId) return;
 
-    const inOrg = await identityCredentialAlertDAL.isIdentityInOrg(input.resourceId, input.orgId);
-    if (!inOrg) {
+    const identity = await identityCredentialAlertDAL.findIdentityInOrg(input.resourceId, input.orgId);
+    if (!identity) {
       throw new NotFoundError({ message: `Identity '${input.resourceId}' was not found in this organization` });
+    }
+
+    if (identity.projectId && identity.projectId !== input.projectId) {
+      throw new ForbiddenRequestError({
+        message: `Identity '${input.resourceId}' belongs to a project. Create this alert within that project so its identity permissions are enforced.`
+      });
     }
 
     if (input.projectId) {
