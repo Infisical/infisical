@@ -1,3 +1,6 @@
+import { webcrypto, X509Certificate as NodeX509Certificate } from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
 import { describe, expect, it } from "vitest";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
@@ -5,8 +8,37 @@ import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   buildCrlDistributionPointUrls,
   createDistinguishedName,
+  extractDnParts,
   signatureAlgorithmToAlgCfg
 } from "./certificate-authority-fns";
+
+x509.cryptoProvider.set(webcrypto as Crypto);
+
+/**
+ * Renders the subject exactly as a standard RFC 4514 / RFC 2253 parser (OpenSSL, Go, AD, browsers)
+ * reads it. `@peculiar/x509` and node both list RDNs in raw DER (root-first) order; RFC 4514 §2.1
+ * reverses that for display. Building a real certificate and reading it back this way is what would
+ * have caught the DN ordering bug that asserting `createDistinguishedName`'s raw output hid.
+ */
+const readSubjectAsStandardParser = async (dn: string): Promise<string> => {
+  const alg = {
+    name: "RSASSA-PKCS1-v1_5",
+    hash: "SHA-256",
+    publicExponent: new Uint8Array([1, 0, 1]),
+    modulusLength: 2048
+  };
+  const keys = await webcrypto.subtle.generateKey(alg, false, ["sign", "verify"]);
+  const cert = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: "01",
+    name: dn,
+    notBefore: new Date("2020-01-01"),
+    notAfter: new Date("2030-01-01"),
+    signingAlgorithm: alg,
+    keys
+  });
+  // node lists RDNs root-first; reverse to the leaf-first order every standard tool displays.
+  return new NodeX509Certificate(cert.toString("pem")).subject.split("\n").reverse().join(",");
+};
 
 // Helper to access properties on the union return type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,29 +275,55 @@ describe("buildCrlDistributionPointUrls", () => {
 });
 
 describe("createDistinguishedName", () => {
-  it("should build a DN with only the standard attributes", () => {
-    const dn = createDistinguishedName({ commonName: "example.com", organization: "Acme" });
-    expect(dn).toBe("O=Acme, CN=example.com");
+  // These assertions read the ENCODED certificate the way any standard parser does, rather than the
+  // raw peculiar toString(), so they verify the DN a consumer actually sees (see helper above).
+  it("orders standard attributes most-specific to least-specific (RFC 4514)", async () => {
+    const dn = createDistinguishedName({
+      commonName: "example.com",
+      ou: "Eng",
+      organization: "Acme",
+      locality: "SF",
+      province: "CA",
+      country: "US"
+    });
+    expect(await readSubjectAsStandardParser(dn)).toBe("CN=example.com,OU=Eng,O=Acme,L=SF,ST=CA,C=US");
   });
 
-  it("should emit one DC RDN per domain component, in the given order, after the CN", () => {
+  it("keeps a minimal O + CN name canonical", async () => {
+    const dn = createDistinguishedName({ commonName: "example.com", organization: "Acme" });
+    expect(await readSubjectAsStandardParser(dn)).toBe("CN=example.com,O=Acme");
+  });
+
+  it("encodes DC components so a standard parser reads CN first then DCs in domain order", async () => {
     const dn = createDistinguishedName({
       commonName: "auth-AD-MANAGER02-CA",
       domainComponents: ["app", "example", "auth"]
     });
-    expect(dn).toBe("CN=auth-AD-MANAGER02-CA, DC=app, DC=example, DC=auth");
+    // NOT the reversed "DC=auth,DC=example,DC=app" that the previous (buggy) encoding produced.
+    expect(await readSubjectAsStandardParser(dn)).toBe("CN=auth-AD-MANAGER02-CA,DC=app,DC=example,DC=auth");
   });
 
-  it("should skip empty domain component values", () => {
-    const dn = createDistinguishedName({
-      commonName: "host",
-      domainComponents: ["app", "", "auth"]
-    });
-    expect(dn).toBe("CN=host, DC=app, DC=auth");
+  it("skips empty domain component values while preserving order", async () => {
+    const dn = createDistinguishedName({ commonName: "host", domainComponents: ["app", "", "auth"] });
+    expect(await readSubjectAsStandardParser(dn)).toBe("CN=host,DC=app,DC=auth");
   });
 
-  it("should omit DC RDNs when no domain components are provided", () => {
+  it("omits DC RDNs when no domain components are provided", async () => {
     const dn = createDistinguishedName({ commonName: "host" });
-    expect(dn).toBe("CN=host");
+    expect(await readSubjectAsStandardParser(dn)).toBe("CN=host");
+  });
+
+  it("round-trips through extractDnParts, preserving domain component order", () => {
+    const parts = {
+      commonName: "leaf",
+      organization: "Acme",
+      ou: "Eng",
+      country: "US",
+      province: "CA",
+      locality: "SF",
+      domainComponents: ["app", "example", "auth"]
+    };
+    const parsed = extractDnParts(new x509.Name(createDistinguishedName(parts)));
+    expect(parsed).toMatchObject(parts);
   });
 });

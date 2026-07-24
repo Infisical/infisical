@@ -44,27 +44,42 @@ export const assertCaInProfileProject = (ca: { projectId: string }, profile: { p
 };
 
 /**
- * Create an RFC 4514 Distinguished Name string from parts.
- * Uses x509 library's Name class to handle all escaping automatically.
+ * Create a Distinguished Name string from parts, using x509.Name for RFC 4514 escaping.
+ *
+ * IMPORTANT: `x509.Name` encodes the supplied array **directly** as the DER `RDNSequence` and does
+ * NOT apply RFC 4514 §2.1's sequence<->string reversal in `toString()`. X.500/RFC 4514 define the
+ * RDNSequence as ordered from ROOT (least specific) to LEAF (most specific), and every compliant
+ * parser (OpenSSL, Go crypto/x509, Windows/AD, browsers) reverses it back to leaf-first for display.
+ *
+ * So to make the issued certificate read correctly everywhere, we build the RDNs in the natural
+ * leaf->root reading order and reverse once, producing a root-first RDNSequence. This matters most
+ * for `domainComponents`: they are multi-valued and their order encodes the domain hierarchy
+ * (e.g. app.example.auth). Emitting them in the wrong order silently yields a different domain
+ * (auth.example.app) - see `extractDnParts` for the matching inverse.
+ *
+ * The returned string is therefore in root-first order (e.g. "DC=auth, DC=example, DC=app, CN=..."),
+ * which is intentional: every caller feeds it straight back into `@peculiar/x509` to build a cert or
+ * CSR, and only then does a standard parser present it in the intended leaf-first form.
  */
 export const createDistinguishedName = (parts: TDNParts) => {
-  // Build JSON array for x509.Name - the library handles all RFC 4514 escaping
-  const jsonName: Array<{ [type: string]: string[] }> = [];
-  if (parts.country) jsonName.push({ C: [parts.country] });
-  if (parts.organization) jsonName.push({ O: [parts.organization] });
-  if (parts.ou) jsonName.push({ OU: [parts.ou] });
-  if (parts.province) jsonName.push({ ST: [parts.province] });
-  if (parts.commonName) jsonName.push({ CN: [parts.commonName] });
-  if (parts.locality) jsonName.push({ L: [parts.locality] });
-  // DC is multi-valued and ordered; emit one RDN per value in the given order (after CN, AD-style).
+  // Build leaf (most specific) -> root (least specific); reversed below into RDNSequence order.
+  const rdns: Array<{ [type: string]: string[] }> = [];
+  if (parts.commonName) rdns.push({ CN: [parts.commonName] });
+  if (parts.ou) rdns.push({ OU: [parts.ou] });
+  if (parts.organization) rdns.push({ O: [parts.organization] });
+  if (parts.locality) rdns.push({ L: [parts.locality] });
+  if (parts.province) rdns.push({ ST: [parts.province] });
+  if (parts.country) rdns.push({ C: [parts.country] });
+  // DC is multi-valued and its order encodes the domain hierarchy; given here in natural leaf->root
+  // order (app.example.auth), it ends up root-first in the RDNSequence after the reverse below.
   if (parts.domainComponents) {
     for (const dc of parts.domainComponents) {
-      if (dc) jsonName.push({ DC: [dc] });
+      if (dc) rdns.push({ DC: [dc] });
     }
   }
 
-  // Create Name object from JSON and convert to properly escaped string
-  const name = new x509.Name(jsonName);
+  // Reverse into the root-first RDNSequence order the encoder expects (see doc comment above).
+  const name = new x509.Name(rdns.reverse());
   return name.toString();
 };
 
@@ -83,8 +98,11 @@ const getNameField = (name: x509.Name, field: string): string | undefined => {
  * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
  */
 export const extractDnParts = (name: x509.Name): TDNParts => {
-  // DC is multi-valued (ordered); keep all values rather than the last-wins single-value helper.
-  const domainComponents = name.getField("DC");
+  // DC is multi-valued and ordered; keep all values rather than the last-wins single-value helper.
+  // `getField` returns them in DER RDNSequence (root-first) order, so reverse to recover the natural
+  // leaf->root order used by TDNParts and produced by createDistinguishedName, keeping
+  // extract -> create round-trips domain-order stable (and correct for external CSRs/certs).
+  const domainComponents = [...name.getField("DC")].reverse();
   return {
     country: getNameField(name, "C"),
     organization: getNameField(name, "O"),
