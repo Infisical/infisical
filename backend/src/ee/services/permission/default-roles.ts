@@ -1163,7 +1163,12 @@ const buildPamResourceConnectorPermissionRules = () => {
 const buildPamResourceAuditorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
-    [ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionPamResourceActions.ViewAuditLogs],
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ResourcePermissionPamResourceActions.ViewAuditLogs
+    ],
     ResourcePermissionSub.PamResource
   );
   return rules;

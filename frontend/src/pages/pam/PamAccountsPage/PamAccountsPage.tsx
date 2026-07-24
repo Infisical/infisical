@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
@@ -40,20 +40,23 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { useOrganization } from "@app/context";
 import {
   PamAccountType,
+  PamResourcePermissionActions,
+  TAccessiblePamAccount,
   useDeletePamAccount,
   useDeletePamFolder,
-  useListPamAccountTemplates,
+  useGetPamAccessCapabilities,
+  useListPamAccountTypes,
   useListPamFoldersAdmin
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
+import { LaunchSessionSheet } from "../components/LaunchSessionSheet";
+import { RequestAccessSheet } from "../components/RequestAccessSheet";
 import { PamDocsUrls } from "../pam-docs-urls";
-import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { AccountDetailSheet } from "./components/AccountDetailSheet";
 import { CreateAccountSheet } from "./components/CreateAccountSheet";
 import { CreateFolderModal } from "./components/CreateFolderModal";
@@ -66,18 +69,33 @@ const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
   const { t } = useTranslation();
-  const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedAccountType, setSelectedAccountType] = useState<string>("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
 
+  // Every role sees the same folder/account structure; permissions only disable actions on a row,
+  // never hide it. Capabilities just drive the create affordances and the empty-state copy.
+  const { data: capabilities } = useGetPamAccessCapabilities();
+
+  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403).
   const { data: folders = [], isLoading: isLoadingFolders } = useListPamFoldersAdmin();
-  const { data: templates = [] } = useListPamAccountTemplates();
+
+  // Folders where the user can create accounts — gates the "Add Account" affordance.
+  const { data: creatableFolders = [] } = useListPamFoldersAdmin({
+    filterByAction: PamResourcePermissionActions.CreateAccounts
+  });
+  const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
+
+  // Both admin and regular users filter by account type for a consistent view
+  const { data: accountTypes = [] } = useListPamAccountTypes();
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
+
+  // For regular users - request access flow
+  const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
 
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "createAccount",
@@ -89,10 +107,12 @@ export const PamAccountsPage = () => {
   const accountSheet = usePamSheetState("accountId");
   const folderSheet = usePamSheetState("folderId");
 
+  const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
+
   const query = searchInput.trim();
   // Active filters force-open every folder so matches surface; otherwise folders load lazily on open
-  const filterActive = Boolean(query || selectedTemplateId);
-  const hasActiveFilters = Boolean(query || selectedFolderId || selectedTemplateId);
+  const filterActive = Boolean(query || selectedAccountType);
+  const hasActiveFilters = Boolean(query || selectedFolderId || selectedAccountType);
 
   const toggleFolder = useCallback((folderId: string) => {
     setExpandedFolders((prev) => {
@@ -107,9 +127,15 @@ export const PamAccountsPage = () => {
     setResultCounts((prev) => (prev[folderId] === count ? prev : { ...prev, [folderId]: count }));
   }, []);
 
+  // Reset result counts when filters change so folder groups recompute counts for new filter
+  useEffect(() => {
+    setResultCounts({});
+  }, [query, selectedAccountType]);
+
   const visibleFolders = selectedFolderId
     ? folders.filter((folder) => folder.id === selectedFolderId)
     : folders;
+  const folderDropdownOptions = folders;
 
   const isFolderOpen = (folderId: string) =>
     filterActive || folderId === selectedFolderId || expandedFolders.has(folderId);
@@ -118,6 +144,21 @@ export const PamAccountsPage = () => {
   const filterHasMatches = visibleFolders.some((f) => (resultCounts[f.id] ?? 0) > 0);
   const showNoMatches = filterActive && filterSettled && !filterHasMatches;
   const showEmpty = !isLoadingFolders && (visibleFolders.length === 0 || showNoMatches);
+
+  // Compute empty state messages to avoid nested ternaries
+  let emptyTitle: string;
+  let emptyDescription: string;
+  if (hasActiveFilters) {
+    emptyTitle = "No accounts match your filters";
+    emptyDescription = "Try adjusting your search or filters.";
+  } else if (canManage) {
+    emptyTitle = "No accounts yet";
+    emptyDescription =
+      "Create your first account to get started. You'll need at least one account template.";
+  } else {
+    emptyTitle = "No accounts available";
+    emptyDescription = "Ask your PAM admin to grant you access to a folder or account.";
+  }
 
   const handleDelete = () => {
     const { accountId, accountType } = popUp.deleteAccount.data as {
@@ -157,7 +198,7 @@ export const PamAccountsPage = () => {
       </Helmet>
       <PageHeader
         title="Accounts"
-        description="Onboard and configure privileged accounts."
+        description="Access and manage privileged accounts."
         scope={ProjectType.PAM}
         icon={FolderOpen}
       />
@@ -168,41 +209,50 @@ export const PamAccountsPage = () => {
             Accounts
             <DocumentationLinkBadge href={PamDocsUrls.accounts.overview} />
           </CardTitle>
-          <CardDescription>Onboard accounts and manage who can access them.</CardDescription>
-          <CardAction>
-            <ButtonGroup>
-              <Button
-                variant="pam"
-                className="rounded-r-none"
-                onClick={() => handlePopUpOpen("createAccount")}
-              >
-                <Plus />
-                Add Account
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
+          <CardDescription>
+            Launch sessions for accounts you have access to, or manage account settings.
+          </CardDescription>
+          {canManage && (
+            <CardAction>
+              <ButtonGroup>
+                {creatableFolders.length > 0 && (
+                  <Button
                     variant="pam"
-                    aria-label="More create options"
-                    className="border-l-transparent"
+                    className={capabilities?.isProductAdmin ? "rounded-r-none" : ""}
+                    onClick={() => handlePopUpOpen("createAccount")}
                   >
-                    <ChevronDown />
-                  </IconButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={4}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <DropdownMenuLabel>New</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
-                    <FolderPlus />
-                    Add Folder
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ButtonGroup>
-          </CardAction>
+                    <Plus />
+                    Add Account
+                  </Button>
+                )}
+                {capabilities?.isProductAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton
+                        variant="pam"
+                        aria-label="More create options"
+                        className={creatableFolders.length > 0 ? "border-l-transparent" : ""}
+                      >
+                        <ChevronDown />
+                      </IconButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      sideOffset={4}
+                      className="min-w-48"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel>New</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
+                        <FolderPlus />
+                        Add Folder
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </ButtonGroup>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent className="flex items-center gap-3">
           <InputGroup className="flex-1">
@@ -226,7 +276,7 @@ export const PamAccountsPage = () => {
             </SelectTrigger>
             <SelectContent position="popper">
               <SelectItem value="all">All folders</SelectItem>
-              {folders.map((folder) => (
+              {folderDropdownOptions.map((folder) => (
                 <SelectItem key={folder.id} value={folder.id}>
                   {folder.name}
                 </SelectItem>
@@ -235,21 +285,23 @@ export const PamAccountsPage = () => {
           </Select>
 
           <Select
-            value={selectedTemplateId}
-            onValueChange={(val) => setSelectedTemplateId(val === "all" ? "" : val)}
+            value={selectedAccountType}
+            onValueChange={(val) => setSelectedAccountType(val === "all" ? "" : val)}
           >
             <SelectTrigger>
-              {!selectedTemplateId && <Layers className="mr-1.5 size-4 text-muted" />}
-              <SelectValue placeholder="All templates" />
+              {!selectedAccountType && <Layers className="mr-1.5 size-4 text-muted" />}
+              <SelectValue placeholder="All types" />
             </SelectTrigger>
-            <SelectContent position="popper">
-              <SelectItem value="all">All templates</SelectItem>
-              {templates.map((tpl) => (
-                <SelectItem key={tpl.id} value={tpl.id}>
-                  <span className="flex items-center gap-1.5">
-                    <AccountPlatformIcon accountType={tpl.type} size={16} />
-                    {tpl.name}
-                  </span>
+            <SelectContent position="popper" align="end" sideOffset={4}>
+              <SelectItem value="all">All types</SelectItem>
+              {accountTypes.map((meta) => (
+                <SelectItem key={meta.type} value={meta.type}>
+                  <img
+                    src={`/images/integrations/${meta.icon}`}
+                    alt={meta.name}
+                    className="mr-1.5 inline-block size-4 rounded-sm"
+                  />
+                  {meta.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -270,14 +322,8 @@ export const PamAccountsPage = () => {
           <CardContent>
             <Empty className="border">
               <EmptyHeader>
-                <EmptyTitle>
-                  {hasActiveFilters ? "No results match your filters" : "No accounts yet"}
-                </EmptyTitle>
-                <EmptyDescription>
-                  {hasActiveFilters
-                    ? "Try adjusting your search or filters."
-                    : "Create your first account to get started. You'll need at least one account template."}
-                </EmptyDescription>
+                <EmptyTitle>{emptyTitle}</EmptyTitle>
+                <EmptyDescription>{emptyDescription}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </CardContent>
@@ -299,16 +345,14 @@ export const PamAccountsPage = () => {
                   isOpen={isFolderOpen(folder.id)}
                   onToggle={() => toggleFolder(folder.id)}
                   search={searchInput}
-                  templateId={selectedTemplateId}
+                  accountType={selectedAccountType}
                   filterActive={filterActive}
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
-                  onDeleteAccount={(target) => handlePopUpOpen("deleteAccount", target)}
-                  onLaunchAccount={(accountId, accountType) => {
-                    window.open(
-                      `/organizations/${currentOrg.id}/pam/accounts/${accountType}/${accountId}/access`,
-                      "_blank"
-                    );
-                  }}
+                  onLaunchAccount={setLaunchAccount}
+                  onRequestAccess={setRequestAccount}
+                  onDeleteAccount={(accountId, accountName, accountType) =>
+                    handlePopUpOpen("deleteAccount", { accountId, accountName, accountType })
+                  }
                   onOpenFolder={(tab) => folderSheet.openSheet(folder.id, tab)}
                   onFolderAddAccount={() =>
                     handlePopUpOpen("createAccount", { folderId: folder.id })
@@ -328,6 +372,8 @@ export const PamAccountsPage = () => {
         )}
       </Card>
 
+      {/* Modals and sheets are rendered for every role; their contents are permission-gated
+          internally, and the actions that open them are disabled when the user lacks access. */}
       <CreateAccountSheet
         isOpen={popUp.createAccount.isOpen}
         defaultFolderId={(popUp.createAccount.data as { folderId?: string } | undefined)?.folderId}
@@ -389,6 +435,23 @@ export const PamAccountsPage = () => {
         onConfirm={handleDeleteFolder}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("deleteFolder");
+        }}
+      />
+
+      {/* Shared components */}
+      <LaunchSessionSheet
+        account={launchAccount}
+        isOpen={launchAccount !== null}
+        onOpenChange={(open) => {
+          if (!open) setLaunchAccount(null);
+        }}
+      />
+
+      <RequestAccessSheet
+        account={requestAccount}
+        isOpen={!!requestAccount}
+        onOpenChange={(open) => {
+          if (!open) setRequestAccount(null);
         }}
       />
     </div>

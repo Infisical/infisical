@@ -2,6 +2,7 @@ import z from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -32,7 +33,11 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
           .enum(["true", "false"])
           .optional()
           .transform((v) => v === "true")
-          .describe("Count only accounts that can launch a session toward each folder's accountCount")
+          .describe("Count only accounts that can launch a session toward each folder's accountCount"),
+        filterByAction: z
+          .nativeEnum(ResourcePermissionPamResourceActions)
+          .optional()
+          .describe("Filter folders to only those where the caller has this specific permission action")
       }),
       response: {
         200: z.object({
@@ -51,6 +56,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalPamProjectId,
         search: req.query.search,
         onlyAccessible: req.query.onlyAccessible,
+        filterByAction: req.query.filterByAction,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,

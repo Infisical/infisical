@@ -1,34 +1,30 @@
 import { useEffect, useMemo } from "react";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 
-import { HighlightText } from "@app/components/v2/HighlightText";
-import { Badge, TableCell, TableRow } from "@app/components/v3";
+import { TableCell, TableRow } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   PamAccountType,
+  TAccessiblePamAccount,
   TPamFolderWithCount,
-  useListPamAccountsAdmin,
-  usePamAccountTypeMap
+  useListPamAccountsAdmin
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { AccountAccessibilityBadge } from "../../components/AccountAccessibilityBadge";
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
-import { AccountActionsMenu } from "./AccountActionsMenu";
+import { FolderAccountRow } from "./FolderAccountRow";
 import { FolderActionsMenu } from "./FolderActionsMenu";
-
-type DeleteTarget = { accountId: string; accountName: string; accountType: PamAccountType };
 
 type Props = {
   folder: TPamFolderWithCount;
   isOpen: boolean;
   onToggle: () => void;
   search: string;
-  templateId: string;
+  accountType: string;
   filterActive: boolean;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
-  onDeleteAccount: (target: DeleteTarget) => void;
-  onLaunchAccount: (accountId: string, accountType: PamAccountType) => void;
+  onLaunchAccount: (account: TAccessiblePamAccount) => void;
+  onRequestAccess: (account: TAccessiblePamAccount) => void;
+  onDeleteAccount: (accountId: string, accountName: string, accountType: PamAccountType) => void;
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
@@ -40,17 +36,17 @@ export const FolderAccountRows = ({
   isOpen,
   onToggle,
   search,
-  templateId,
+  accountType,
   filterActive,
   onOpenAccount,
-  onDeleteAccount,
   onLaunchAccount,
+  onRequestAccess,
+  onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
   onFolderDelete,
   onResultCount
 }: Props) => {
-  const { map } = usePamAccountTypeMap();
   // Only fetch this folder's accounts once it's open (lazy load per folder)
   const { data, isLoading } = useListPamAccountsAdmin({ folderId: folder.id }, { enabled: isOpen });
   const accounts = data ?? [];
@@ -58,15 +54,15 @@ export const FolderAccountRows = ({
   const q = search.trim().toLowerCase();
   const hasQuery = q.length > 0;
 
-  // Client-side filtering keeps search/template instant once a folder's accounts are loaded
+  // Client-side filtering keeps search/type instant once a folder's accounts are loaded
   const accountsToShow = useMemo(() => {
     let list = accounts;
-    if (templateId) list = list.filter((a) => a.templateId === templateId);
+    if (accountType) list = list.filter((a) => a.accountType === accountType);
     if (hasQuery) {
       list = list.filter((a) => `${a.name} ${a.description ?? ""}`.toLowerCase().includes(q));
     }
     return list;
-  }, [accounts, templateId, q, hasQuery]);
+  }, [accounts, accountType, q, hasQuery]);
 
   useEffect(() => {
     if (isOpen && !isLoading) onResultCount(folder.id, accountsToShow.length);
@@ -126,43 +122,17 @@ export const FolderAccountRows = ({
 
       {isOpen &&
         !isLoading &&
-        accountsToShow.map((account) => {
-          const accountType = account.accountType as PamAccountType;
-          return (
-            <TableRow
-              key={account.id}
-              className="cursor-pointer"
-              onClick={() => onOpenAccount(account.id)}
-            >
-              <TableCell>
-                <div className="flex items-center gap-2.5 pl-[26px]">
-                  <AccountPlatformIcon accountType={accountType} size={20} />
-                  <span className="font-medium text-foreground">
-                    <HighlightText text={account.name} highlight={search} />
-                  </span>
-                  <Badge variant="neutral">{map[accountType]?.name ?? account.accountType}</Badge>
-                  <AccountAccessibilityBadge issues={account.accessibilityIssues} />
-                </div>
-              </TableCell>
-              <TableCell className="w-20">
-                <div className="flex items-center justify-end gap-1">
-                  <AccountActionsMenu
-                    accountId={account.id}
-                    onOpenTab={(tab) => onOpenAccount(account.id, tab)}
-                    onDelete={() =>
-                      onDeleteAccount({
-                        accountId: account.id,
-                        accountName: account.name,
-                        accountType
-                      })
-                    }
-                    onLaunch={() => onLaunchAccount(account.id, accountType)}
-                  />
-                </div>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        accountsToShow.map((account) => (
+          <FolderAccountRow
+            key={account.id}
+            account={account}
+            search={search}
+            onOpenAccount={onOpenAccount}
+            onLaunchAccount={onLaunchAccount}
+            onRequestAccess={onRequestAccess}
+            onDeleteAccount={onDeleteAccount}
+          />
+        ))}
     </>
   );
 };

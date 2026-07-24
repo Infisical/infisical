@@ -2,7 +2,6 @@ import {
   ClipboardList,
   FileText,
   FolderOpen,
-  KeyRound,
   Radar,
   Shield,
   ShieldCheck,
@@ -19,20 +18,15 @@ export const PamNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Submenu) =>
   const { data: capabilities } = useGetPamAccessCapabilities();
   const { data: accessRequestCount } = useGetPamAccessRequestCount();
   const isProductAdmin = Boolean(capabilities?.isProductAdmin);
-  const isResourceAdmin = Boolean(capabilities?.isResourceAdmin);
   const canViewSessions = Boolean(capabilities?.canViewSessions);
   const canViewAuditLogs = Boolean(capabilities?.canViewAuditLogs);
   const isApprover = Boolean(accessRequestCount?.isApprover);
   const pendingCount = accessRequestCount?.pendingCount ?? 0;
 
-  const accessItems: NavItem[] = [
-    { label: "My Access", icon: KeyRound, pathSuffix: "access", exactPath: true }
-  ];
+  // Accounts is visible to all users - regular users see only their accessible accounts
+  const accessItems: NavItem[] = [{ label: "Accounts", icon: FolderOpen, pathSuffix: "accounts" }];
 
   const manageItems: NavItem[] = [
-    ...(isProductAdmin || isResourceAdmin
-      ? [{ label: "Accounts", icon: FolderOpen, pathSuffix: "accounts" }]
-      : []),
     ...(isProductAdmin
       ? [{ label: "Account Templates", icon: ClipboardList, pathSuffix: "templates" }]
       : []),

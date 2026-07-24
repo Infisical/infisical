@@ -41,8 +41,8 @@ import {
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
-import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { useAccountSheetDetails } from "./accountSheetDetails";
+import { PamDetailSheet } from "./PamDetailSheet";
 
 // Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
 // without "No expiry" since every approved access must be time-boxed.

@@ -27,8 +27,8 @@ import { useOrganization } from "@app/context";
 import { TAccessiblePamAccount } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { useAccountSheetDetails } from "./accountSheetDetails";
+import { PamDetailSheet } from "./PamDetailSheet";
 
 type Props = {
   account: TAccessiblePamAccount | null;

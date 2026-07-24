@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import {
@@ -26,17 +25,21 @@ type Props = {
 };
 
 export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }: Props) => {
-  // Defer the permission fetch until the menu is first opened to avoid a request per row
-  const [hasOpened, setHasOpened] = useState(false);
-  const { can, isLoading } = usePamFolderActions(folder.id, hasOpened);
+  // Eagerly fetch permissions so we can hide the menu if user has no actions
+  const { can, isLoading } = usePamFolderActions(folder.id, true);
 
   const tabs = visiblePamTabs(PAM_FOLDER_TABS, can);
   const canCreateAccounts = can(PamResourcePermissionActions.CreateAccounts);
   const canDelete = can(PamResourcePermissionActions.DeleteFolder);
   const hasAnyAction = tabs.length > 0 || canCreateAccounts || canDelete;
 
+  // Hide the menu entirely while loading or if user has no folder management permissions
+  if (isLoading || !hasAnyAction) {
+    return null;
+  }
+
   return (
-    <DropdownMenu onOpenChange={(open) => open && setHasOpened(true)}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <IconButton
           variant="ghost"
@@ -49,10 +52,6 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        {isLoading && <DropdownMenuItem isDisabled>Checking access&hellip;</DropdownMenuItem>}
-        {!isLoading && !hasAnyAction && (
-          <DropdownMenuItem isDisabled>No actions available</DropdownMenuItem>
-        )}
         {tabs.map((tab) => (
           <DropdownMenuItem key={tab.value} onClick={() => onOpenTab(tab.value)}>
             <tab.icon />

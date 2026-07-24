@@ -28,6 +28,7 @@ import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enum
 import {
   checkAccountAccess,
   checkFolderPermission,
+  getAccountPermissionRulesMap,
   getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
@@ -200,22 +201,34 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       search
     });
 
+    const accountsRequiringApproval = accounts.filter(
+      (a) => resolveAccessControls(a.templatePolicies).requiresApproval
+    );
+    const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
     const folderIdsRequiringApproval = [
-      ...new Set(
-        accounts
-          .filter((a) => resolveAccessControls(a.templatePolicies).requiresApproval && a.folderId)
-          .map((a) => a.folderId!)
-      )
+      ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
-    const foldersWithApprovalPolicy =
-      await deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval);
+
+    const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
+      // Resolve every account's effective permissions in one membership fetch
+      getAccountPermissionRulesMap(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
+        ctx
+      )
+    ]);
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval } = resolveAccessControls(a.templatePolicies);
+      const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
+      const statusEntry = accessStatusMap.get(a.id);
       return {
         id: a.id,
         name: a.name,
@@ -231,6 +244,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         recordingConnectionId: a.recordingConnectionId,
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
+        requiresApproval,
+        requireReason,
+        accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+        grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+        permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
       };
