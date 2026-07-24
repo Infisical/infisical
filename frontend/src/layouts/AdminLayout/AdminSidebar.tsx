@@ -26,7 +26,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger
+  SidebarTrigger,
+  useSidebar
 } from "@app/components/v3/generic/Sidebar";
 
 type AdminSubmenuItem = {
@@ -80,6 +81,7 @@ const adminNavItems: AdminNavItem[] = [
 const AdminSubmenuView = ({ submenu, onBack }: { submenu: AdminSubmenu; onBack: () => void }) => {
   const { pathname } = useLocation();
   const searchParams = useSearch({ strict: false }) as Record<string, string>;
+  const { setOpenMobile } = useSidebar();
   const isOnPage = pathname.startsWith(submenu.link);
   const currentTab = searchParams?.selectedTab;
 
@@ -103,7 +105,11 @@ const AdminSubmenuView = ({ submenu, onBack }: { submenu: AdminSubmenu; onBack: 
           return (
             <SidebarMenuItem key={sub.label}>
               <SidebarMenuButton size="lg" asChild isActive={isActive} tooltip={sub.label}>
-                <Link to={submenu.link} search={{ selectedTab: sub.tab }}>
+                <Link
+                  to={submenu.link}
+                  search={{ selectedTab: sub.tab }}
+                  onClick={() => setOpenMobile(false)}
+                >
                   <sub.icon className="size-4" />
                   <span>{sub.label}</span>
                 </Link>
@@ -118,6 +124,7 @@ const AdminSubmenuView = ({ submenu, onBack }: { submenu: AdminSubmenu; onBack: 
 
 const AdminNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: AdminSubmenu) => void }) => {
   const matchRoute = useMatchRoute();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <SidebarMenu>
@@ -144,7 +151,7 @@ const AdminNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: AdminSubmenu) =>
         return (
           <SidebarMenuItem key={item.link}>
             <SidebarMenuButton asChild isActive={isActive} size="lg" tooltip={item.label}>
-              <Link to={item.link}>
+              <Link to={item.link} onClick={() => setOpenMobile(false)}>
                 <item.icon className="size-4" />
                 <span>{item.label}</span>
               </Link>

@@ -1,7 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@app/components/v3";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
 import type { OrgNavItem } from "./types";
@@ -18,6 +18,7 @@ export const OrgNavLink = ({
 }) => {
   const { currentOrg } = useOrganization();
   const { pathname, search: locationSearch } = useLocation();
+  const { setOpenMobile } = useSidebar();
   const orgId = currentOrg.id;
 
   const pathMatch =
@@ -53,6 +54,7 @@ export const OrgNavLink = ({
           params={{ orgId } as any}
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           search={item.search as any}
+          onClick={() => setOpenMobile(false)}
         >
           <item.icon className="size-4" />
           <span>{item.label}</span>
