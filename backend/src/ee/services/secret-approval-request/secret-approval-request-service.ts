@@ -1689,31 +1689,35 @@ export const secretApprovalRequestServiceFactory = ({
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
-    await triggerWorkflowIntegrationNotification({
-      input: {
-        projectId,
-        notification: {
-          type: TriggerFeature.SECRET_APPROVAL,
-          payload: {
-            userEmail: user.email as string,
-            environment: env.name,
-            secretPath,
-            projectId,
-            projectName: project.name,
-            requestId: secretApprovalRequest.id,
-            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))],
-            approvalUrl
+    // Skip only the Slack/Teams workflow notification if any lookup missed;
+    // sendApprovalEmailsFn + telemetry below still run so approvers get pinged.
+    if (user && env && project) {
+      await triggerWorkflowIntegrationNotification({
+        input: {
+          projectId,
+          notification: {
+            type: TriggerFeature.SECRET_APPROVAL,
+            payload: {
+              userEmail: user.email as string,
+              environment: env.name,
+              secretPath,
+              projectId,
+              projectName: project.name,
+              requestId: secretApprovalRequest.id,
+              secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))],
+              approvalUrl
+            }
           }
+        },
+        dependencies: {
+          projectDAL,
+          projectSlackConfigDAL,
+          kmsService,
+          projectMicrosoftTeamsConfigDAL,
+          microsoftTeamsService
         }
-      },
-      dependencies: {
-        projectDAL,
-        projectSlackConfigDAL,
-        kmsService,
-        projectMicrosoftTeamsConfigDAL,
-        microsoftTeamsService
-      }
-    });
+      });
+    }
 
     await sendApprovalEmailsFn({
       projectDAL,
@@ -1727,7 +1731,7 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
@@ -2168,31 +2172,35 @@ export const secretApprovalRequestServiceFactory = ({
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
 
-    await triggerWorkflowIntegrationNotification({
-      input: {
-        projectId,
-        notification: {
-          type: TriggerFeature.SECRET_APPROVAL,
-          payload: {
-            userEmail: user.email as string,
-            environment: env.name,
-            secretPath,
-            projectId,
-            projectName: project.name,
-            requestId: secretApprovalRequest.id,
-            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
-            approvalUrl
+    // Skip only the Slack/Teams workflow notification if any lookup missed;
+    // sendApprovalEmailsFn + telemetry below still run so approvers get pinged.
+    if (user && env) {
+      await triggerWorkflowIntegrationNotification({
+        input: {
+          projectId,
+          notification: {
+            type: TriggerFeature.SECRET_APPROVAL,
+            payload: {
+              userEmail: user.email as string,
+              environment: env.name,
+              secretPath,
+              projectId,
+              projectName: project.name,
+              requestId: secretApprovalRequest.id,
+              secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
+              approvalUrl
+            }
           }
+        },
+        dependencies: {
+          projectDAL,
+          kmsService,
+          projectSlackConfigDAL,
+          microsoftTeamsService,
+          projectMicrosoftTeamsConfigDAL
         }
-      },
-      dependencies: {
-        projectDAL,
-        kmsService,
-        projectSlackConfigDAL,
-        microsoftTeamsService,
-        projectMicrosoftTeamsConfigDAL
-      }
-    });
+      });
+    }
 
     await sendApprovalEmailsFn({
       projectDAL,
@@ -2206,7 +2214,7 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
