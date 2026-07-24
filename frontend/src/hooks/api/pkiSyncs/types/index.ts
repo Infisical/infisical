@@ -7,6 +7,7 @@ import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
 import { TChefPkiSync } from "./chef-sync";
 import { TCloudflareCustomCertificatePkiSync } from "./cloudflare-custom-certificate-sync";
 import { TF5BigIpPkiSync } from "./f5-big-ip-sync";
+import { TKempLoadMasterPkiSync } from "./kemp-loadmaster-sync";
 import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
 import { TNutanixPrismCentralPkiSync } from "./nutanix-prism-central-sync";
@@ -35,6 +36,7 @@ export type TPkiSync =
   | TCloudflareCustomCertificatePkiSync
   | TNetScalerPkiSync
   | TF5BigIpPkiSync
+  | TKempLoadMasterPkiSync
   | TLinuxServerPkiSync
   | TWindowsServerPkiSync
   | TNutanixPrismCentralPkiSync;
@@ -58,6 +60,7 @@ type TCreatePkiSyncDTOBase = {
     updateExistingCertificates?: boolean;
     preserveSecretOnRenewal?: boolean;
     includeRootCa?: boolean;
+    caCertificateNameSchema?: string;
     exportFormat?: PkiSyncExportFormat;
     includePrivateKey?: boolean;
     fieldMappings?: {
@@ -91,6 +94,7 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     }>;
     zoneId?: string;
     vserverName?: string;
+    virtualServiceId?: string;
     partition?: string;
     profileType?: string;
     profileName?: string;
@@ -139,6 +143,7 @@ export * from "./chef-sync";
 export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
+export * from "./kemp-loadmaster-sync";
 export * from "./linux-server-sync";
 export * from "./netscaler-sync";
 export * from "./nutanix-prism-central-sync";

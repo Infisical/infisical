@@ -63,7 +63,7 @@ import {
 import { EXTERNAL_INFISICAL_SYNC_LIST_OPTION, ExternalInfisicalSyncFns } from "./external-infisical";
 import { FLYIO_SYNC_LIST_OPTION, FlyioSyncFns } from "./flyio";
 import { GCP_SYNC_LIST_OPTION } from "./gcp";
-import { GcpSyncFns } from "./gcp/gcp-sync-fns";
+import { gcpPreSaveTransformDestinationConfig, GcpSyncFns } from "./gcp/gcp-sync-fns";
 import { GITLAB_SYNC_LIST_OPTION, GitLabSyncFns } from "./gitlab";
 import { HASURA_CLOUD_SYNC_LIST_OPTION } from "./hasura-cloud/hasura-cloud-sync-constants";
 import { HasuraCloudSyncFns } from "./hasura-cloud/hasura-cloud-sync-fns";
@@ -152,7 +152,8 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 };
 
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
-  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig
+  [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
+  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (

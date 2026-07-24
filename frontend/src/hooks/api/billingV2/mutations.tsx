@@ -11,11 +11,10 @@ import {
   BillingV2TrialCancelResult,
   BillingV2TrialResult,
   TAddBillingV2PaymentMethodDTO,
-  TAddBillingV2ProductDTO,
   TBillingV2LifecycleDTO,
+  TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
-  TCreateBillingV2CheckoutSessionDTO,
   TCreateBillingV2PortalSessionDTO,
   TPreviewBillingV2ChangeDTO,
   TRemoveBillingV2ProductDTO,
@@ -37,23 +36,28 @@ export const useCreateBillingV2PortalSession = () => {
   });
 };
 
-export const useCreateBillingV2CheckoutSession = () => {
+// Buy/add one product. The server self-selects appending to a live subscription vs opening a hosted
+// Checkout, so the caller never branches on subscription state. Commitment is a separate step.
+export const useBuyBillingV2Product = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       orgId,
       productId,
       plan,
       cadence,
-      commitments,
-      email,
+      quantities,
       returnPath
-    }: TCreateBillingV2CheckoutSessionDTO) => {
+    }: TBuyBillingV2ProductDTO) => {
       const { data } = await apiRequest.post<BillingV2CheckoutResult>(
-        `/api/v1/organizations/${orgId}/billing/v2/checkout-session`,
-        { productId, plan, cadence, commitments, email, returnPath }
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/products`,
+        { productId, plan, cadence, quantities, returnPath }
       );
 
       return data;
+    },
+    onSuccess: (_data, { orgId }) => {
+      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
     }
   });
 };
@@ -82,7 +86,7 @@ export const usePreviewBillingV2Change = () => {
       addProductId,
       plan,
       cadence,
-      commitments,
+      quantities,
       removeProductId,
       commitmentChanges
     }: TPreviewBillingV2ChangeDTO) => {
@@ -90,7 +94,7 @@ export const usePreviewBillingV2Change = () => {
         data: { preview }
       } = await apiRequest.post<{ preview: BillingV2Preview }>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/preview`,
-        { addProductId, plan, cadence, commitments, removeProductId, commitmentChanges }
+        { addProductId, plan, cadence, quantities, removeProductId, commitmentChanges }
       );
 
       return preview;
@@ -98,35 +102,12 @@ export const usePreviewBillingV2Change = () => {
   });
 };
 
-export const useAddBillingV2Product = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      orgId,
-      productId,
-      plan,
-      cadence,
-      commitments
-    }: TAddBillingV2ProductDTO) => {
-      const { data } = await apiRequest.post<BillingV2MutationResult>(
-        `/api/v1/organizations/${orgId}/billing/v2/subscription/items`,
-        { productId, plan, cadence, commitments }
-      );
-
-      return data;
-    },
-    onSuccess: (_data, { orgId }) => {
-      queryClient.invalidateQueries({ queryKey: billingV2Keys.overview(orgId) });
-    }
-  });
-};
-
-// Apply one or more previewed per_resource commitment changes (the backend loops per dimension).
+// Start / change annual commitments across dimensions in one atomic call.
 export const useChangeBillingV2Commitment = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ orgId, changes }: TChangeBillingV2CommitmentDTO) => {
-      const { data } = await apiRequest.post<BillingV2MutationResult>(
+      const { data } = await apiRequest.put<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
         { changes }
       );
@@ -181,7 +162,7 @@ export const useRemoveBillingV2Product = () => {
   return useMutation({
     mutationFn: async ({ orgId, productId }: TRemoveBillingV2ProductDTO) => {
       const { data } = await apiRequest.delete<BillingV2MutationResult>(
-        `/api/v1/organizations/${orgId}/billing/v2/subscription/items/${encodeURIComponent(productId)}`
+        `/api/v1/organizations/${orgId}/billing/v2/subscription/products/${encodeURIComponent(productId)}`
       );
 
       return data;

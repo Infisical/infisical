@@ -14,6 +14,7 @@ export type TGcpSync = TRootSecretSync & {
         scope: GcpSyncScope.Global;
         projectId: string;
         locationId?: string;
+        userReplicaLocationIds?: string[];
       }
     | {
         scope: GcpSyncScope.Region;

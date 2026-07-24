@@ -1,6 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import { CertificateThumbprintAlgorithm, normalizeThumbprint } from "./certificate-fns";
+import { buildCertificateBundle, CertificateThumbprintAlgorithm, normalizeThumbprint } from "./certificate-fns";
 
 describe("normalizeThumbprint", () => {
   const sha1Hex = "a".repeat(40);
@@ -29,5 +29,15 @@ describe("normalizeThumbprint", () => {
 
   test("throws on invalid digest length", () => {
     expect(() => normalizeThumbprint("abc123")).toThrow(BadRequestError);
+  });
+});
+
+describe("buildCertificateBundle", () => {
+  test("bundles cert + key when no chain is present", () => {
+    expect(buildCertificateBundle("CERT", "KEY")).toBe("CERT\nKEY\n");
+  });
+
+  test("includes the chain between the leaf and the key when present", () => {
+    expect(buildCertificateBundle("CERT", "KEY", "CHAIN")).toBe("CERT\nCHAIN\nKEY\n");
   });
 });

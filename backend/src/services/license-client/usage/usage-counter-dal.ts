@@ -65,28 +65,44 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Distinct users + machine identities that belong to a project of the given type, either through a
-  // direct membership or through a group assigned to the project. Project memberships (user, identity,
-  // and group actors) all live in the unified `memberships` table with scope = project; the group's
-  // members are then resolved through the user/identity group-membership tables. When orgId is given
-  // the count is scoped to that org (cloud); when omitted it spans the whole instance (self-hosted).
-  // The four sources are UNION-ed (not UNION ALL) with a per-kind prefix so an identity in several
-  // projects, or reachable via both a direct and a group membership, is only counted once.
   const countProjectIdentities = async (projectType: ProjectType, orgId?: string): Promise<number> => {
-    // The live project ids for this type, resolved once per source. Scoping happens here on
-    // projects.orgId (indexed via projects_orgid_type_idx) rather than on memberships.scopeOrgId:
-    // leading with the org's handful of typed projects lets each source drive off the small project set
-    // and probe memberships through the partial (scopeProjectId, actor*) unique indexes as an
-    // index-only scan, instead of scanning every project-scope membership row in the org. Self-hosted
-    // passes no orgId and counts the whole instance. A fresh builder per call keeps knex from
-    // mutating a shared subquery.
+    const scopedOrgIds = () => {
+      const qb = db.replicaNode()(TableName.Organization).select(`${TableName.Organization}.id`);
+      if (orgId) {
+        void qb.where((bd) => {
+          void bd.where(`${TableName.Organization}.id`, orgId).orWhere(`${TableName.Organization}.rootOrgId`, orgId);
+        });
+      }
+      return qb;
+    };
+
     const typedProjectIds = () => {
       const qb = db
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.type`, projectType)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .select(`${TableName.Project}.id`);
-      if (orgId) void qb.where(`${TableName.Project}.orgId`, orgId);
+      if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, scopedOrgIds());
+      return qb;
+    };
+
+    const orgMemberUserIds = () => {
+      const qb = db
+        .replicaNode()(TableName.Membership)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .where(`${TableName.Users}.isAccepted`, true)
+        .select(`${TableName.Membership}.actorUserId`);
+      if (orgId) void qb.whereIn(`${TableName.Membership}.scopeOrgId`, scopedOrgIds());
+      return qb;
+    };
+
+    // Identities that actually belong to the org / child orgs (licenseDAL identity scope).
+    const orgIdentityIds = () => {
+      const qb = db.replicaNode()(TableName.Identity).select(`${TableName.Identity}.id`);
+      if (orgId) void qb.whereIn(`${TableName.Identity}.orgId`, scopedOrgIds());
       return qb;
     };
 
@@ -97,6 +113,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
       .whereNotNull(`${TableName.Membership}.actorUserId`)
       .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+      .whereIn(`${TableName.Membership}.actorUserId`, orgMemberUserIds())
       .select(db.raw("'u' as kind"))
       .select(`${TableName.Membership}.actorUserId as entityId`);
 
@@ -108,6 +125,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
             .where(`${TableName.Membership}.scope`, AccessScope.Project)
             .whereNotNull(`${TableName.Membership}.actorIdentityId`)
             .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+            .whereIn(`${TableName.Membership}.actorIdentityId`, orgIdentityIds())
             .select(db.raw("'i' as kind"))
             .select(`${TableName.Membership}.actorIdentityId as entityId`),
         // A group assigned to a project (membership with actorGroupId) brings its members into it. A
@@ -123,6 +141,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
             .where(`${TableName.Membership}.scope`, AccessScope.Project)
             .where(`${TableName.UserGroupMembership}.isPending`, false)
             .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+            .whereIn(`${TableName.UserGroupMembership}.userId`, orgMemberUserIds())
             .select(db.raw("'u' as kind"))
             .select(`${TableName.UserGroupMembership}.userId as entityId`),
         (qb) =>
@@ -135,6 +154,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
             )
             .where(`${TableName.Membership}.scope`, AccessScope.Project)
             .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+            .whereIn(`${TableName.IdentityGroupMembership}.identityId`, orgIdentityIds())
             .select(db.raw("'i' as kind"))
             .select(`${TableName.IdentityGroupMembership}.identityId as entityId`)
       ],

@@ -1,39 +1,46 @@
-import { useEffect } from "react";
+import { RefObject, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link } from "@tanstack/react-router";
+import { ChevronLeft, Info } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  FormControl,
-  Input,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldTitle,
+  FilterableSelect,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SheetClose,
+  SheetFooter,
   Switch
-} from "@app/components/v2";
+} from "@app/components/v3";
 import { useProject } from "@app/context";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext";
 import {
   useGetSlackIntegrationChannels,
   useGetWorkflowIntegrations,
   useGetWorkspaceWorkflowIntegrationConfig,
   useUpdateProjectWorkflowIntegrationConfig
 } from "@app/hooks/api";
-import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+import {
+  SlackIntegrationChannel,
+  WorkflowIntegrationPlatform
+} from "@app/hooks/api/workflowIntegrations/types";
 
 const formSchema = z.object({
-  slackIntegrationId: z.string(),
+  slackIntegrationId: z.string().min(1, "Select a Slack integration"),
   isSecretRequestNotificationEnabled: z.boolean(),
   secretRequestChannels: z.string().array(),
   isAccessRequestNotificationEnabled: z.boolean(),
@@ -44,85 +51,70 @@ const formSchema = z.object({
 
 type TSlackConfigForm = z.infer<typeof formSchema>;
 
-type TChannelSelectorProps = {
+type Props = {
+  onClose: () => void;
+  onBack?: () => void;
+  menuContainer: RefObject<HTMLDivElement | null>;
+};
+
+type TChannelsFieldProps = {
+  inputId: string;
   value: string[];
   onChange: (value: string[]) => void;
   error?: { message?: string };
-  slackChannelIdToName: Record<string, string>;
-  sortedSlackChannels?: { id: string; name: string }[];
-  keyPrefix: string;
+  channels?: SlackIntegrationChannel[];
+  isLoading: boolean;
+  menuContainer: RefObject<HTMLDivElement | null>;
 };
 
-const ChannelSelector = ({
+const ChannelsField = ({
+  inputId,
   value,
   onChange,
   error,
-  slackChannelIdToName,
-  sortedSlackChannels,
-  keyPrefix
-}: TChannelSelectorProps) => (
-  <FormControl label="Slack channels" isError={Boolean(error)} errorText={error?.message}>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Input
-          isReadOnly
-          value={value
-            ?.filter(Boolean)
-            .map((entry) => slackChannelIdToName[entry])
-            .join(", ")}
-          className="text-left"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        style={{
-          width: "var(--radix-dropdown-menu-trigger-width)",
-          maxHeight: "350px",
-          overflowY: "auto"
-        }}
-        side="bottom"
-        align="start"
-      >
-        {sortedSlackChannels?.map((slackChannel) => {
-          const isChecked = value?.includes(slackChannel.id);
-          return (
-            <DropdownMenuItem
-              onClick={(evt) => {
-                evt.preventDefault();
-                onChange(
-                  isChecked
-                    ? value?.filter((el: string) => el !== slackChannel.id)
-                    : [...(value || []), slackChannel.id]
-                );
-              }}
-              key={`${keyPrefix}-slack-channel-${slackChannel.id}`}
-              iconPos="right"
-              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-            >
-              {slackChannel.name}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </FormControl>
+  channels,
+  isLoading,
+  menuContainer
+}: TChannelsFieldProps) => (
+  <Field>
+    <FieldLabel htmlFor={inputId}>Slack channels</FieldLabel>
+    <FilterableSelect
+      isMulti
+      inputId={inputId}
+      options={channels}
+      value={(channels ?? []).filter((channel) => value?.includes(channel.id))}
+      onChange={(selected) =>
+        onChange((selected as readonly SlackIntegrationChannel[]).map((channel) => channel.id))
+      }
+      getOptionValue={(option) => option.id}
+      getOptionLabel={(option) => option.name}
+      placeholder="Select channels..."
+      isLoading={isLoading}
+      isError={Boolean(error)}
+      menuPortalTarget={menuContainer.current}
+      menuPosition="fixed"
+      menuPlacement="bottom"
+      closeMenuOnSelect={false}
+      hideSelectedOptions={false}
+    />
+    <FieldError>{error?.message}</FieldError>
+  </Field>
 );
 
-type Props = {
-  onClose: () => void;
-};
-
-export const SlackIntegrationForm = ({ onClose }: Props) => {
+export const SlackIntegrationForm = ({ onClose, onBack, menuContainer }: Props) => {
   const { currentProject } = useProject();
   const { data: slackConfig } = useGetWorkspaceWorkflowIntegrationConfig({
     projectId: currentProject?.id ?? "",
     integration: WorkflowIntegrationPlatform.SLACK
   });
-  const { data: workflowIntegrations } = useGetWorkflowIntegrations(currentProject?.orgId);
+  const { data: workflowIntegrations, isPending: isWorkflowIntegrationsLoading } =
+    useGetWorkflowIntegrations(currentProject?.orgId);
   const { mutateAsync: updateProjectSlackConfig } = useUpdateProjectWorkflowIntegrationConfig();
 
   const slackIntegrations = workflowIntegrations?.filter(
     (integration) => integration.integration === WorkflowIntegrationPlatform.SLACK
   );
+  const hasSlackIntegrations = !!slackIntegrations?.length;
 
   const {
     control,
@@ -133,6 +125,7 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
   } = useForm<TSlackConfigForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      slackIntegrationId: "",
       isAccessRequestNotificationEnabled: false,
       accessRequestChannels: [],
       isSecretRequestNotificationEnabled: false,
@@ -159,7 +152,7 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
 
     createNotification({
       type: "success",
-      text: "Successfully created slack integration"
+      text: "Saved Slack integration settings"
     });
 
     onClose();
@@ -170,13 +163,15 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
   const accessRequestNotifState = watch("isAccessRequestNotificationEnabled");
   const secretSyncErrorNotifState = watch("isSecretSyncErrorNotificationEnabled");
 
-  const { data: slackChannels } = useGetSlackIntegrationChannels(selectedSlackIntegrationId);
+  const { data: slackChannels, isPending: isSlackChannelsLoading } = useGetSlackIntegrationChannels(
+    selectedSlackIntegrationId || undefined
+  );
   const slackChannelIdToName = Object.fromEntries(
     (slackChannels || []).map((channel) => [channel.id, channel.name])
   );
-  const sortedSlackChannels = slackChannels?.sort((a, b) =>
-    a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-  );
+  const sortedSlackChannels = slackChannels
+    ?.slice()
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
   useEffect(() => {
     if (slackConfig && slackConfig.integration === WorkflowIntegrationPlatform.SLACK) {
@@ -218,161 +213,201 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
   }, [slackConfig, slackChannels]);
 
   return (
-    <form onSubmit={handleSubmit(handleIntegrationSave)}>
-      <div className="flex w-full flex-col justify-start">
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
-          {(isAllowed) => (
-            <Controller
-              control={control}
-              name="slackIntegrationId"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Slack Integration"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
+    <form
+      onSubmit={handleSubmit(handleIntegrationSave)}
+      className="flex min-h-0 flex-1 flex-col"
+      autoComplete="off"
+    >
+      <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4">
+        {!isWorkflowIntegrationsLoading && !hasSlackIntegrations ? (
+          <Alert>
+            <Info />
+            <AlertTitle>No Slack integrations connected</AlertTitle>
+            <AlertDescription>
+              <p>
+                Connect a Slack workspace to your organization before configuring project
+                notifications.
+              </p>
+              <Button asChild variant="outline" size="sm" className="mt-2">
+                <Link
+                  to="/organizations/$orgId/integrations"
+                  params={{ orgId: currentProject.orgId }}
+                  search={{ selectedTab: "workflow-integrations" }}
                 >
-                  <Select
-                    {...field}
-                    isDisabled={!isAllowed}
-                    placeholder="None"
-                    onValueChange={(val) => {
-                      onChange(val);
-                    }}
+                  Go to organization integrations
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Controller
+            control={control}
+            name="slackIntegrationId"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="slack-integration">Slack integration</FieldLabel>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger
+                    id="slack-integration"
                     className="w-full"
-                    defaultValue={slackConfig?.integrationId}
+                    aria-invalid={Boolean(error)}
                   >
+                    <SelectValue
+                      placeholder={
+                        isWorkflowIntegrationsLoading ? "Loading..." : "Select an integration"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
                     {slackIntegrations?.map((slackIntegration) => (
-                      <SelectItem
-                        value={slackIntegration.id}
-                        key={`slack-integration-${slackIntegration.id}`}
-                      >
+                      <SelectItem value={slackIntegration.id} key={slackIntegration.id}>
                         {slackIntegration.slug}
                       </SelectItem>
                     ))}
-                  </Select>
-                </FormControl>
+                  </SelectContent>
+                </Select>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
+            )}
+          />
+        )}
+        {!!selectedSlackIntegrationId && (
+          <>
+            <Controller
+              control={control}
+              name="isSecretRequestNotificationEnabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="items-center!">
+                  <FieldContent>
+                    <FieldTitle>Secret approval requests</FieldTitle>
+                    <FieldDescription>
+                      Send a notification when a secret approval request is opened.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    variant="project"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Secret approval request notifications"
+                  />
+                </Field>
               )}
             />
-          )}
-        </ProjectPermissionCan>
+            {secretRequestNotifState && (
+              <Controller
+                control={control}
+                name="secretRequestChannels"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <ChannelsField
+                    inputId="secret-request-channels"
+                    value={value}
+                    onChange={onChange}
+                    error={error}
+                    channels={sortedSlackChannels}
+                    isLoading={isSlackChannelsLoading}
+                    menuContainer={menuContainer}
+                  />
+                )}
+              />
+            )}
+            <Controller
+              control={control}
+              name="isAccessRequestNotificationEnabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="items-center!">
+                  <FieldContent>
+                    <FieldTitle>Access requests</FieldTitle>
+                    <FieldDescription>
+                      Send a notification when an access request is opened.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    variant="project"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Access request notifications"
+                  />
+                </Field>
+              )}
+            />
+            {accessRequestNotifState && (
+              <Controller
+                control={control}
+                name="accessRequestChannels"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <ChannelsField
+                    inputId="access-request-channels"
+                    value={value}
+                    onChange={onChange}
+                    error={error}
+                    channels={sortedSlackChannels}
+                    isLoading={isSlackChannelsLoading}
+                    menuContainer={menuContainer}
+                  />
+                )}
+              />
+            )}
+            <Controller
+              control={control}
+              name="isSecretSyncErrorNotificationEnabled"
+              render={({ field }) => (
+                <Field orientation="horizontal" className="items-center!">
+                  <FieldContent>
+                    <FieldTitle>Secret sync errors</FieldTitle>
+                    <FieldDescription>
+                      Send a notification when a secret sync fails.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Switch
+                    variant="project"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    aria-label="Secret sync error notifications"
+                  />
+                </Field>
+              )}
+            />
+            {secretSyncErrorNotifState && (
+              <Controller
+                control={control}
+                name="secretSyncErrorChannels"
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <ChannelsField
+                    inputId="secret-sync-error-channels"
+                    value={value}
+                    onChange={onChange}
+                    error={error}
+                    channels={sortedSlackChannels}
+                    isLoading={isSlackChannelsLoading}
+                    menuContainer={menuContainer}
+                  />
+                )}
+              />
+            )}
+          </>
+        )}
       </div>
-      {selectedSlackIntegrationId && (
-        <>
-          <h2 className="mb-2 flex-1 text-sm text-mineshaft-400">Configure Events</h2>
-          <Controller
-            control={control}
-            name="isSecretRequestNotificationEnabled"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  className="mt-3 mb-2"
-                >
-                  <Switch
-                    id="secret-approval-notification"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Secret Approval Requests</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-          {secretRequestNotifState && (
-            <Controller
-              control={control}
-              name="secretRequestChannels"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <ChannelSelector
-                  value={value}
-                  onChange={onChange}
-                  error={error}
-                  slackChannelIdToName={slackChannelIdToName}
-                  sortedSlackChannels={sortedSlackChannels}
-                  keyPrefix="secret-requests"
-                />
-              )}
-            />
-          )}
-          <Controller
-            control={control}
-            name="isAccessRequestNotificationEnabled"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message} className="mb-2">
-                  <Switch
-                    id="access-request-notification"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Access Requests</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-          {accessRequestNotifState && (
-            <Controller
-              control={control}
-              name="accessRequestChannels"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <ChannelSelector
-                  value={value}
-                  onChange={onChange}
-                  error={error}
-                  slackChannelIdToName={slackChannelIdToName}
-                  sortedSlackChannels={sortedSlackChannels}
-                  keyPrefix="access-requests"
-                />
-              )}
-            />
-          )}
-          <Controller
-            control={control}
-            name="isSecretSyncErrorNotificationEnabled"
-            render={({ field, fieldState: { error } }) => {
-              return (
-                <FormControl isError={Boolean(error)} errorText={error?.message} className="mb-2">
-                  <Switch
-                    id="secret-sync-error-notification"
-                    onCheckedChange={(value) => field.onChange(value)}
-                    isChecked={field.value}
-                  >
-                    <p className="w-full">Secret Sync Errors</p>
-                  </Switch>
-                </FormControl>
-              );
-            }}
-          />
-          {secretSyncErrorNotifState && (
-            <Controller
-              control={control}
-              name="secretSyncErrorChannels"
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <ChannelSelector
-                  value={value}
-                  onChange={onChange}
-                  error={error}
-                  slackChannelIdToName={slackChannelIdToName}
-                  sortedSlackChannels={sortedSlackChannels}
-                  keyPrefix="secret-sync-errors"
-                />
-              )}
-            />
-          )}
-          <Button
-            colorSchema="secondary"
-            className="mt-4"
-            type="submit"
-            isDisabled={!isDirty}
-            isLoading={isSubmitting}
-          >
-            Save
+      <SheetFooter className="justify-end border-t">
+        {onBack && (
+          <Button type="button" variant="ghost" className="mr-auto" onClick={onBack}>
+            <ChevronLeft />
+            Back
           </Button>
-        </>
-      )}
+        )}
+        <SheetClose asChild>
+          <Button type="button" variant="ghost">
+            Cancel
+          </Button>
+        </SheetClose>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={isSubmitting}
+          isDisabled={!isDirty || isSubmitting || !hasSlackIntegrations}
+        >
+          Save
+        </Button>
+      </SheetFooter>
     </form>
   );
 };

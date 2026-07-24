@@ -292,14 +292,12 @@ export const Navbar = () => {
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Mfa
-          email={user.email as string}
-          method={requiredMfaMethod}
-          successCallback={mfaSuccessCallback}
-          closeMfa={() => toggleShowMfa.off()}
-        />
-      </div>
+      <Mfa
+        email={user.email as string}
+        method={requiredMfaMethod}
+        successCallback={mfaSuccessCallback}
+        closeMfa={() => toggleShowMfa.off()}
+      />
     );
   }
 

@@ -1,20 +1,17 @@
-import { faAws, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { faCheck, faCopy, faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { KeyRound, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions/OrgPermissionCan";
 import {
+  CopyButton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@app/components/v2/Dropdown";
-import { IconButton } from "@app/components/v2/IconButton";
-import { Td, Tr } from "@app/components/v2/Table";
+  DropdownMenuTrigger,
+  IconButton,
+  TableCell,
+  TableRow
+} from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
-import { useToggle } from "@app/hooks";
 import { ExternalKmsProvider, KmsListEntry } from "@app/hooks/api/kms/types";
 import { SubscriptionPlan } from "@app/hooks/api/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -36,119 +33,71 @@ type Props = {
 };
 
 export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) => {
-  const [isKmsIdCopied, { timedToggle: toggleKmsIdCopied }] = useToggle(false);
-  const [isKmsAliasCopied, { timedToggle: toggleKmsAliasCopied }] = useToggle(false);
+  const providerIcon =
+    kms.externalKms.provider === ExternalKmsProvider.Aws
+      ? "/images/integrations/Amazon Web Services.png"
+      : "/images/integrations/Google Cloud Platform.png";
+
+  const handleEdit = (popUpName: "editExternalKmsDetails" | "editExternalKmsCredentials") => {
+    if (subscription && !subscription.externalKms) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true
+      });
+      return;
+    }
+
+    handlePopUpOpen(popUpName, {
+      kmsId: kms.id,
+      name: kms.name,
+      provider: kms.externalKms.provider
+    });
+  };
 
   return (
-    <Tr key={kms.id}>
-      <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis hover:overflow-auto hover:break-all">
-        {kms.externalKms.provider === ExternalKmsProvider.Aws && <FontAwesomeIcon icon={faAws} />}
-        {kms.externalKms.provider === ExternalKmsProvider.Gcp && (
-          <FontAwesomeIcon icon={faGoogle} />
-        )}
-        <div className="ml-2">{kms.externalKms.provider.toUpperCase()}</div>
-      </Td>
-      <Td>
-        <div className="group flex items-center gap-2">
-          {kms.name}
-          <IconButton
-            size="xs"
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="relative rounded-md opacity-0 group-hover:opacity-100"
-            onClick={() => {
-              if (isKmsAliasCopied) {
-                return;
-              }
-              navigator.clipboard.writeText(kms.name);
-              createNotification({
-                text: "KMS alias copied to clipboard",
-                type: "success"
-              });
-              toggleKmsAliasCopied(2000);
-            }}
-          >
-            <FontAwesomeIcon icon={isKmsAliasCopied ? faCheck : faCopy} />
-          </IconButton>
+    <TableRow key={kms.id}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <img src={providerIcon} alt="" className="size-5 object-contain" />
+          <span className="font-medium text-foreground">
+            {kms.externalKms.provider.toUpperCase()}
+          </span>
         </div>
-      </Td>
-      <Td>
-        <div className="group flex items-center gap-2">
-          {kms.id}
-          <IconButton
-            size="xs"
-            ariaLabel="copy icon"
-            colorSchema="secondary"
-            className="relative rounded-md opacity-0 group-hover:opacity-100"
-            onClick={() => {
-              if (isKmsIdCopied) {
-                return;
-              }
-              navigator.clipboard.writeText(kms.id);
-              createNotification({
-                text: "KMS ID copied to clipboard",
-                type: "success"
-              });
-              toggleKmsIdCopied(2000);
-            }}
-          >
-            <FontAwesomeIcon icon={isKmsIdCopied ? faCheck : faCopy} />
-          </IconButton>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-foreground">{kms.name}</span>
+          <CopyButton value={kms.name} ariaLabel={`Copy KMS alias ${kms.name}`} />
         </div>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1.5">
+          <span className="max-w-80 truncate font-mono text-xs">{kms.id}</span>
+          <CopyButton value={kms.id} ariaLabel={`Copy KMS ID ${kms.id}`} />
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
-              <FontAwesomeIcon size="sm" icon={faEllipsis} />
-            </div>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="ghost" size="xs" aria-label={`Actions for KMS ${kms.name}`}>
+              <MoreHorizontal />
+            </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-1">
+          <DropdownMenuContent align="end" className="w-48">
             <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Kms}>
               {(isAllowed) => (
                 <>
                   <DropdownMenuItem
-                    disabled={!isAllowed}
-                    className={twMerge(
-                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (subscription && !subscription?.externalKms) {
-                        handlePopUpOpen("upgradePlan", {
-                          isEnterpriseFeature: true
-                        });
-                        return;
-                      }
-
-                      handlePopUpOpen("editExternalKmsDetails", {
-                        kmsId: kms.id,
-                        provider: kms.externalKms.provider
-                      });
-                    }}
+                    isDisabled={!isAllowed}
+                    onClick={() => handleEdit("editExternalKmsDetails")}
                   >
+                    <Pencil />
                     Edit Details
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    disabled={!isAllowed}
-                    className={twMerge(
-                      !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (subscription && !subscription?.externalKms) {
-                        handlePopUpOpen("upgradePlan", {
-                          isEnterpriseFeature: true
-                        });
-                        return;
-                      }
-
-                      handlePopUpOpen("editExternalKmsCredentials", {
-                        kmsId: kms.id,
-                        provider: kms.externalKms.provider
-                      });
-                    }}
+                    isDisabled={!isAllowed}
+                    onClick={() => handleEdit("editExternalKmsCredentials")}
                   >
+                    <KeyRound />
                     Edit Credentials
                   </DropdownMenuItem>
                 </>
@@ -157,26 +106,24 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
             <OrgPermissionCan I={OrgPermissionActions.Delete} an={OrgPermissionSubjects.Kms}>
               {(isAllowed) => (
                 <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  variant="danger"
+                  isDisabled={!isAllowed}
+                  onClick={() =>
                     handlePopUpOpen("removeExternalKms", {
                       name: kms.name,
                       kmsId: kms.id,
                       provider: kms.externalKms.provider
-                    });
-                  }}
+                    })
+                  }
                 >
+                  <Trash2 />
                   Delete
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

@@ -23,6 +23,7 @@ import { TAzureDNSConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AzureDNSConnectionMethod } from "@app/hooks/api/appConnections/types/azure-dns-connection";
 
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
@@ -45,28 +46,45 @@ const formSchema = z.discriminatedUnion("method", [
       tenantId: z.string().trim().min(1, "Tenant ID required"),
       clientId: z.string().trim().min(1, "Client ID required"),
       clientSecret: z.string().trim().min(1, "Client Secret required"),
-      subscriptionId: z.string().trim().min(1, "Subscription ID required")
+      subscriptionId: z.string().trim().min(1, "Subscription ID required"),
+      clientSecretKeyId: z.string().trim().optional()
     })
   })
 ]);
 
 type FormData = z.infer<typeof formSchema>;
 
+const defaultRotation = {
+  rotationInterval: 30,
+  rotateAtUtc: {
+    hours: 0,
+    minutes: 0
+  }
+};
+
 export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: appConnection ?? {
-      app: AppConnection.AzureDNS,
-      method: AzureDNSConnectionMethod.ClientSecret,
-      credentials: {
-        tenantId: "",
-        clientId: "",
-        clientSecret: "",
-        subscriptionId: ""
-      }
-    }
+    defaultValues: appConnection
+      ? {
+          ...appConnection,
+          isAutoRotationEnabled: appConnection.isAutoRotationEnabled,
+          rotation: appConnection.rotation ?? defaultRotation
+        }
+      : {
+          app: AppConnection.AzureDNS,
+          method: AzureDNSConnectionMethod.ClientSecret,
+          isAutoRotationEnabled: false,
+          rotation: defaultRotation,
+          credentials: {
+            tenantId: "",
+            clientId: "",
+            clientSecret: "",
+            subscriptionId: ""
+          }
+        }
   });
 
   const { handleSubmit, control } = form;
@@ -181,6 +199,37 @@ export const AzureDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Field>
           )}
         />
+        <CredentialRotationForm>
+          <Controller
+            name="credentials.clientSecretKeyId"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="credentials.clientSecretKeyId">
+                  Client Secret Key ID
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The Key ID of the client secret provided above. Found in Azure Portal under
+                      App Registrations &gt; Certificates &amp; Secrets. Required so Infisical can
+                      revoke the original secret after rotation.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  id="credentials.clientSecretKeyId"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </CredentialRotationForm>
         <AppConnectionFormFooter
           submitLabel={isUpdate ? "Update Credentials" : "Connect to Azure DNS"}
         />

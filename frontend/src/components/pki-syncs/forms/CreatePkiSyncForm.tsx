@@ -17,6 +17,7 @@ import {
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
 
+import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
 import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
@@ -109,6 +110,9 @@ export const CreatePkiSyncForm = ({
               ? PkiSyncExportFormat.Pkcs12
               : PkiSyncExportFormat.Pem,
           includePrivateKey: true
+        }),
+        ...(destination === PkiSync.KempLoadMaster && {
+          caCertificateNameSchema: KEMP_DEFAULT_CA_NAME_SCHEMA
         }),
         ...((destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && {
           fieldMappings: {

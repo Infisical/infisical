@@ -20,8 +20,8 @@ import { cn } from "@app/components/v3/utils";
 import { BillingV2CatalogProduct, BillingV2EntitlementDim } from "@app/hooks/api";
 
 import {
-  dimAnnualCommitted,
   dimBarSegments,
+  dimCommitted,
   dimHasCeiling,
   dimMonthlyRate,
   dimOnDemandQuantity,
@@ -133,7 +133,7 @@ export const DimensionRateLegend = ({
 }) => {
   const entries = dims.filter(
     (dim) =>
-      dimAnnualCommitted(dim) && (dim.committedRate !== undefined || dim.onDemandRate !== undefined)
+      dimCommitted(dim) && (dim.committedRate !== undefined || dim.onDemandRate !== undefined)
   );
   if (entries.length === 0) {
     return null;
@@ -172,7 +172,7 @@ type DimensionMeterProps = {
 // on-demand overflow with a rate legend; a capped dimension a single used/limit fill; an uncapped
 // one just its cost line, no bar.
 export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) => {
-  const committed = dimAnnualCommitted(dim);
+  const committed = dimCommitted(dim);
   const { committedPct, onDemandPct } = dimBarSegments(dim);
   const onDemandQty = dimOnDemandQuantity(dim);
   const monthlyRate = dimMonthlyRate(dim);

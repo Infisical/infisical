@@ -122,7 +122,7 @@ const buildRevalidationRequest = ({
   notAfter?: Date | null;
   altNames?: TAltNameEntry[] | null;
   profileDefaults: Parameters<typeof applyProfileDefaults>[1];
-  ttl: string;
+  ttl?: string;
 }): TCertificateRequest => {
   const reconstructedRequest: TCertificateRequest = csr
     ? applyProfileDefaults(extractCertificateRequestFromCSR(csr), profileDefaults)
@@ -152,7 +152,7 @@ const buildRevalidationRequest = ({
   if (notAfter) {
     mappedRequest.notBefore = notBefore || undefined;
     mappedRequest.notAfter = notAfter;
-  } else {
+  } else if (ttl) {
     mappedRequest.validity = { ttl };
   }
 
@@ -626,7 +626,7 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
     altNames: TAltNameEntry[] | null,
-    ttl: string
+    ttl?: string
   ): Promise<TCertificateIssuanceResponse | null> => {
     if (!profile.caId) {
       return null;
@@ -682,6 +682,8 @@ export const certificateApprovalServiceFactory = (
       });
     }
 
+    const effectiveTtl = ttl || "1y";
+
     const mappedReconstructedRequest = buildRevalidationRequest({
       csr: certRequest.csr,
       commonName: certRequest.commonName,
@@ -698,7 +700,7 @@ export const certificateApprovalServiceFactory = (
       notAfter: certRequest.notAfter,
       altNames,
       profileDefaults: profile.defaults,
-      ttl
+      ttl: effectiveTtl
     });
 
     const revalidationResult = await certificatePolicyService.validateCertificateRequest(
@@ -718,7 +720,7 @@ export const certificateApprovalServiceFactory = (
       profileId: profile.id,
       caId: profile.caId || "",
       caType,
-      ttl: ttl || "1y",
+      ttl: effectiveTtl,
       signatureAlgorithm: certRequest.signatureAlgorithm || "",
       keyAlgorithm: certRequest.keyAlgorithm || "",
       commonName: certRequest.commonName || "",
@@ -1018,9 +1020,6 @@ export const certificateApprovalServiceFactory = (
       throw new BadRequestError({ message: "Certificate request is missing profile ID" });
     }
     const { ttl } = certRequest;
-    if (!ttl) {
-      throw new BadRequestError({ message: "Certificate request is missing TTL" });
-    }
     const altNames = certRequest.altNames as TAltNameEntry[] | null;
 
     await certificateRequestDAL.updateById(certificateRequestId, {
@@ -1039,10 +1038,14 @@ export const certificateApprovalServiceFactory = (
         certificateRequestId,
         targetProfile,
         altNames,
-        ttl
+        ttl || undefined
       );
       if (externalCaResult) {
         return externalCaResult;
+      }
+
+      if (!ttl) {
+        throw new BadRequestError({ message: "Certificate request is missing TTL" });
       }
 
       if (certRequest.csr) {

@@ -8,7 +8,7 @@ import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 
 import { SecretSyncError } from "../secret-sync-errors";
-import { TSecretMap } from "../secret-sync-types";
+import { TPreSaveTransformDestinationConfigFn, TSecretMap } from "../secret-sync-types";
 import {
   GCPLatestSecretVersionAccess,
   GCPSecret,
@@ -16,9 +16,23 @@ import {
   TGcpSyncWithCredentials
 } from "./gcp-sync-types";
 
-const getGlobalReplication = (locationId?: string) => {
-  if (locationId) {
-    return { userManaged: { replicas: [{ location: locationId }] } };
+export const gcpPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async ({
+  destinationConfig
+}) => {
+  if (!destinationConfig) return destinationConfig;
+  if (destinationConfig.scope !== GcpSyncScope.Global) return destinationConfig;
+  if (!destinationConfig.locationId) return destinationConfig;
+
+  const { locationId, ...rest } = destinationConfig;
+  return rest;
+};
+
+const getGlobalReplication = (userReplicaLocationIds?: string[], locationId?: string) => {
+  // eslint-disable-next-line no-nested-ternary
+  const locations = userReplicaLocationIds ?? (locationId ? [locationId] : []);
+
+  if (locations.length) {
+    return { userManaged: { replicas: locations.map((location) => ({ location })) } };
   }
   return { automatic: {} };
 };
@@ -130,7 +144,7 @@ export const GcpSyncFns = {
             {
               replication:
                 destinationConfig.scope === GcpSyncScope.Global
-                  ? getGlobalReplication(destinationConfig.locationId)
+                  ? getGlobalReplication(destinationConfig.userReplicaLocationIds, destinationConfig.locationId)
                   : undefined
             },
             {

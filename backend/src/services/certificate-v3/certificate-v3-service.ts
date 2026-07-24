@@ -129,7 +129,7 @@ import {
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
+    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find" | "getRequestEnrollmentTypeByCertId"
   >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
@@ -1993,6 +1993,11 @@ export const certificateV3ServiceFactory = ({
       mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
     }
 
+    const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    if (preflightCa) {
+      assertCaInProfileProject(preflightCa, profile);
+    }
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest
@@ -2007,26 +2012,20 @@ export const certificateV3ServiceFactory = ({
     // ACM pre-flight validation runs before the approval branch so bad inputs (e.g., a TTL that
     // isn't ACM's fixed 198 days) are rejected at submit time rather than after the approver has
     // already approved a request that's guaranteed to fail downstream.
-    if (profile.caId) {
-      const preflightCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-      if (preflightCa) {
-        assertCaInProfileProject(preflightCa, profile);
-      }
-      if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
-        validateAcmIssuanceInputs({
-          csr: certificateOrder.csr,
-          keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
-          ttl: certificateOrder.validity?.ttl,
-          notBefore: certificateOrder.notBefore,
-          notAfter: certificateOrder.notAfter,
-          organization: certificateRequest.organization,
-          organizationalUnit: certificateRequest.organizationalUnit,
-          country: certificateRequest.country,
-          state: certificateRequest.state,
-          locality: certificateRequest.locality
-        });
-      }
+    if (preflightCa?.externalCa?.type === CaType.AWS_ACM_PUBLIC_CA) {
+      validateAcmIssuanceInputs({
+        csr: certificateOrder.csr,
+        keyAlgorithm: certificateOrder.keyAlgorithm,
+        altNames: certificateOrder.altNames,
+        ttl: certificateOrder.validity?.ttl,
+        notBefore: certificateOrder.notBefore,
+        notAfter: certificateOrder.notAfter,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality
+      });
     }
 
     const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
@@ -2355,13 +2354,13 @@ export const certificateV3ServiceFactory = ({
         if (!profile) {
           throw new NotFoundError({ message: "Certificate profile not found" });
         }
+      }
 
-        if (profile.enrollmentType !== EnrollmentType.API) {
-          throw new ForbiddenRequestError({
-            message:
-              "Certificate is not eligible for renewal: Only certificates issued from an API enrollment profile can be renewed through this endpoint"
-          });
-        }
+      const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(originalCert.id, tx);
+      if (enrollmentType && enrollmentType !== EnrollmentType.API) {
+        throw new ForbiddenRequestError({
+          message: `Certificate is not eligible for renewal: ${enrollmentType.toUpperCase()} certificates cannot be renewed`
+        });
       }
 
       const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
@@ -2957,9 +2956,10 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== EnrollmentType.API) {
+    const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certificate.id);
+    if (enrollmentType && enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
+        message: `Certificate is not eligible for auto-renewal: ${enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
       });
     }
 
@@ -3088,12 +3088,6 @@ export const certificateV3ServiceFactory = ({
     const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    if (profile.enrollmentType !== EnrollmentType.API) {
-      throw new ForbiddenRequestError({
-        message: `Certificate is not eligible for auto-renewal: ${profile.enrollmentType.toUpperCase()} certificates cannot be auto-renewed`
-      });
     }
 
     await certificateDAL.transaction(async (tx) => {

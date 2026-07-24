@@ -1,7 +1,5 @@
-import { ChangeEvent, useRef, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faUpload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileSaver from "file-saver";
 import { z } from "zod";
@@ -10,13 +8,28 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  FormControl,
-  IconButton,
-  Modal,
-  ModalContent,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  FileDropzone,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -81,25 +94,30 @@ const BackupConfirmationModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Create KMS backup">
-        <p className="mb-6 text-bunker-300">
-          In case of interruptions with your configured external KMS, you can load a backup to set
-          the project&apos;s KMS back to the default Infisical KMS.
-        </p>
-        <Button onClick={downloadKmsBackup} isLoading={isGeneratingBackup}>
-          Generate
-        </Button>
-        <Button
-          onClick={() => onOpenChange(false)}
-          colorSchema="secondary"
-          variant="plain"
-          className="ml-4"
-        >
-          Cancel
-        </Button>
-      </ModalContent>
-    </Modal>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create KMS Backup</DialogTitle>
+          <DialogDescription>
+            In case of interruptions with your configured external KMS, you can load a backup to set
+            the project&apos;s KMS back to the default Infisical KMS.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="project"
+            onClick={downloadKmsBackup}
+            isPending={isGeneratingBackup}
+            isDisabled={isGeneratingBackup}
+          >
+            Generate
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -114,10 +132,19 @@ const LoadBackupModal = ({
   org?: Organization;
   workspace: Project;
 }) => {
-  const fileUploadRef = useRef<HTMLInputElement>(null);
   const { mutateAsync: loadKmsBackup, isPending } = useLoadProjectKmsBackup(project.id);
   const [backupContent, setBackupContent] = useState("");
-  const [backupFileName, setBackupFileName] = useState("");
+  const [backupFiles, setBackupFiles] = useState<File[]>([]);
+
+  const handleOpenChange = (state: boolean) => {
+    // Clear on every open-change (open and close), not only close: a FileReader
+    // read can finish after the dialog closes and repopulate backupContent, so
+    // clearing on reopen recovers from that stale state (Continue would otherwise
+    // be enabled with no filename shown).
+    setBackupContent("");
+    setBackupFiles([]);
+    onOpenChange(state);
+  };
 
   const uploadKmsBackup = async () => {
     if (!project || !org) {
@@ -130,7 +157,7 @@ const LoadBackupModal = ({
       type: "success"
     });
 
-    onOpenChange(false);
+    handleOpenChange(false);
   };
 
   const parseFile = (file?: File) => {
@@ -156,60 +183,48 @@ const LoadBackupModal = ({
     }
   };
 
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    parseFile(e.target?.files?.[0]);
-    setBackupFileName(e.target?.files?.[0]?.name || "");
-  };
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onOpenChange={(state: boolean) => {
-        setBackupContent("");
-        setBackupFileName("");
-        onOpenChange(state);
-      }}
-    >
-      <ModalContent title="Load KMS backup">
-        <p className="mb-6 text-bunker-300">
-          By loading a backup, the project&apos;s KMS will be switched to the default Infisical KMS.
-        </p>
-        <div className="flex justify-center">
-          <input
-            id="fileSelect"
-            className="hidden"
-            type="file"
-            accept=".txt"
-            onChange={handleFileUpload}
-            ref={fileUploadRef}
-          />
-          <IconButton
-            className="p-10"
-            ariaLabel="upload-backup"
-            colorSchema="secondary"
-            onClick={() => {
-              fileUploadRef?.current?.click();
-            }}
-          >
-            <FontAwesomeIcon icon={faUpload} size="3x" />
-          </IconButton>
-        </div>
-        {backupFileName && (
-          <div className="mt-2 flex justify-center px-4 text-center">{backupFileName}</div>
-        )}
-        {backupContent && (
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Load KMS Backup</DialogTitle>
+          <DialogDescription>
+            By loading a backup, the project&apos;s KMS will be switched to the default Infisical
+            KMS.
+          </DialogDescription>
+        </DialogHeader>
+        <FileDropzone
+          accept=".txt"
+          description=".infisical.txt backup file"
+          files={backupFiles}
+          accentClassName="text-project"
+          activeFrameClassName="text-project"
+          activeEmptyClassName="bg-project/10"
+          onFilesSelect={(files) => {
+            const file = files[0];
+            parseFile(file);
+            setBackupFiles(file ? [file] : []);
+          }}
+          onFileRemove={() => {
+            setBackupFiles([]);
+            setBackupContent("");
+          }}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
+            variant="project"
             onClick={uploadKmsBackup}
-            className="mt-10 w-fit"
-            disabled={isPending}
-            isLoading={isPending}
+            isPending={isPending}
+            isDisabled={!backupContent || isPending}
           >
             Continue
           </Button>
-        )}
-      </ModalContent>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -254,73 +269,82 @@ export const EncryptionTab = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex justify-between">
-        <h2 className="mb-2 flex-1 text-xl font-medium text-mineshaft-100">Key Management</h2>
-        {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
-          <div className="space-x-2">
-            <Button colorSchema="secondary" onClick={() => handlePopUpOpen("loadBackup")}>
-              Load Backup
-            </Button>
-            <Button
-              colorSchema="secondary"
-              onClick={() => {
-                handlePopUpOpen("createBackupConfirmation");
-              }}
-            >
-              Create Backup
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <p className="mb-4 text-gray-400">
-        Select which Key Management System to use for encrypting your project data
-      </p>
-      <div className="mb-6 max-w-md">
-        <form onSubmit={handleSubmit(onUpdateProjectKms)}>
-          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Kms}>
-            {(isAllowed) => (
-              <Controller
-                render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                  <FormControl errorText={error?.message} isError={Boolean(error)}>
-                    <Select
-                      {...field}
-                      isDisabled={!isAllowed || isUpdatingProjectKms}
-                      onValueChange={onChange}
-                      isLoading={isUpdatingProjectKms}
-                      className="w-3/4 bg-mineshaft-600"
-                    >
-                      <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
-                        Default Infisical KMS
-                      </SelectItem>
-                      {externalKmsList?.map((kms) => (
-                        <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                          {kms.name}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-                control={control}
-                name="kmsKeyId"
-              />
-            )}
-          </ProjectPermissionCan>
-          <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Project}>
-            {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                isDisabled={!isAllowed || isSubmitting || !isDirty}
-                isLoading={isSubmitting}
-              >
-                Save
+    <>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Key Management</CardTitle>
+          <CardDescription>
+            Select which Key Management System to use for encrypting your project data
+          </CardDescription>
+          {kmsKeyId !== INTERNAL_KMS_KEY_ID && (
+            <CardAction className="flex gap-2">
+              <Button variant="outline" onClick={() => handlePopUpOpen("loadBackup")}>
+                Load Backup
               </Button>
-            )}
-          </ProjectPermissionCan>
-        </form>
-      </div>
+              <Button variant="outline" onClick={() => handlePopUpOpen("createBackupConfirmation")}>
+                Create Backup
+              </Button>
+            </CardAction>
+          )}
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onUpdateProjectKms)}>
+            <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Kms}>
+              {(isAllowed) => (
+                <Controller
+                  control={control}
+                  name="kmsKeyId"
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
+                    <Field className="max-w-md">
+                      <FieldLabel htmlFor="kmsKeyId">Key Management System</FieldLabel>
+                      <Select
+                        value={value}
+                        onValueChange={onChange}
+                        disabled={!isAllowed || isUpdatingProjectKms}
+                      >
+                        <SelectTrigger
+                          id="kmsKeyId"
+                          className="w-full"
+                          aria-label="Key Management System"
+                        >
+                          <SelectValue placeholder="Select a KMS" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                            Default Infisical KMS
+                          </SelectItem>
+                          {externalKmsList?.map((kms) => (
+                            <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                              {kms.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError>{error?.message}</FieldError>
+                    </Field>
+                  )}
+                />
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Project}
+            >
+              {(isAllowed) => (
+                <Button
+                  className="mt-4"
+                  variant="project"
+                  type="submit"
+                  isDisabled={!isAllowed || isSubmitting || !isDirty}
+                  isPending={isSubmitting}
+                >
+                  Save
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </form>
+        </CardContent>
+      </Card>
       <BackupConfirmationModal
         isOpen={popUp.createBackupConfirmation.isOpen}
         onOpenChange={(state: boolean) => handlePopUpToggle("createBackupConfirmation", state)}
@@ -333,6 +357,6 @@ export const EncryptionTab = () => {
         org={currentOrg}
         workspace={currentProject}
       />
-    </div>
+    </>
   );
 };
