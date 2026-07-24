@@ -1,59 +1,28 @@
 import { useEffect, useState } from "react";
-import ReactCodeInput from "react-code-input";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
-import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
-import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
-import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Card, CardContent, CardHeader, CardTitle, FieldError } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  useClientResendDelay,
+  VerificationCodeForm,
+  VerificationCodeHeader,
+  VerificationCodeResend
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
 
-const codeInputStyle = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "55px",
-    borderRadius: "6px",
-    fontSize: "24px",
-    height: "55px",
-    paddingLeft: "7",
-    backgroundColor: "transparent",
-    color: "#ebebeb",
-    border: "1px solid #2b2c30",
-    textAlign: "center",
-    outlineColor: "#2d2f33",
-    borderColor: "#2b2c30"
-  }
-} as const;
-
-const codeInputStylePhone = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "40px",
-    borderRadius: "6px",
-    fontSize: "24px",
-    height: "40px",
-    paddingLeft: "7",
-    backgroundColor: "transparent",
-    color: "#ebebeb",
-    border: "1px solid #2b2c30",
-    textAlign: "center",
-    outlineColor: "#2d2f33",
-    borderColor: "#2b2c30"
-  }
-} as const;
+const CLIENT_RESEND_DELAY_SECONDS = 20;
 
 export const SignupSsoPage = () => {
   const { t } = useTranslation();
@@ -73,7 +42,9 @@ export const SignupSsoPage = () => {
     isEmailVerified?: boolean;
   };
 
-  const { mutateAsync: sendEmailVerificationCode } = useSendEmailVerificationCode();
+  const { mutateAsync: sendEmailVerificationCode, isPending: isResending } =
+    useSendEmailVerificationCode();
+  const resendDelay = useClientResendDelay(CLIENT_RESEND_DELAY_SECONDS);
 
   useEffect(() => {
     SecurityClient.setSignupToken(token);
@@ -112,6 +83,7 @@ export const SignupSsoPage = () => {
   const handleResendCode = async () => {
     try {
       await sendEmailVerificationCode(token);
+      resendDelay.restartDelay();
       createNotification({
         text: "Successfully resent code",
         type: "success"
@@ -125,8 +97,14 @@ export const SignupSsoPage = () => {
   };
 
   return (
-    <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-linear-to-tr from-card via-bunker-900 to-card px-4">
-      <AuthPageBackground />
+    <AuthPageLayout
+      variant="focused"
+      headerAction={
+        <Button asChild variant="outline" size="sm">
+          <Link to="/login">Log In</Link>
+        </Button>
+      }
+    >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -134,82 +112,35 @@ export const SignupSsoPage = () => {
         <meta property="og:title" content={t("signup.og-title") as string} />
         <meta name="og:description" content={t("signup.og-description") as string} />
       </Helmet>
-      <AuthPageHeader>
-        <Button asChild>
-          <Link to="/login">Log In</Link>
-        </Button>
-      </AuthPageHeader>
-      <div className="relative z-10 my-auto flex flex-col items-center py-10">
-        <form className="w-full" onSubmit={(e) => e.preventDefault()}>
-          <div className="mx-auto flex w-full flex-col items-center justify-center">
-            <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
-              <CardHeader className="mb-2 gap-2">
-                <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-[1.55rem] font-medium text-transparent">
-                  We&apos;ve sent a verification code to
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-md my-1 flex justify-center font-medium text-foreground">
-                  {decoded.email}
-                </p>
-                <div className="mx-auto hidden w-max min-w-[20rem] md:block">
-                  <ReactCodeInput
-                    name=""
-                    inputMode="tel"
-                    type="text"
-                    fields={6}
-                    onChange={setCode}
-                    {...codeInputStyle}
-                    className="code-input-v3 mt-6 mb-2"
-                  />
-                </div>
-                <div className="mx-auto mt-4 block w-max md:hidden">
-                  <ReactCodeInput
-                    name=""
-                    inputMode="tel"
-                    type="text"
-                    fields={6}
-                    onChange={setCode}
-                    {...codeInputStylePhone}
-                    className="code-input-v3 mt-2 mb-2"
-                  />
-                </div>
-                {completeAccountSignup.isError && (
-                  <FieldError>Oops. Your code is wrong. Please try again.</FieldError>
-                )}
-                <div className="mt-4 w-full">
-                  <Button
-                    type="submit"
-                    onClick={handleSubmit}
-                    variant="project"
-                    size="lg"
-                    isFullWidth
-                    isPending={completeAccountSignup.isPending}
-                    isDisabled={completeAccountSignup.isPending}
-                  >
-                    Verify
-                  </Button>
-                </div>
-                <div className="mt-6 flex flex-col items-center gap-2 text-xs text-label">
-                  <div className="flex flex-row items-baseline gap-1">
-                    <button
-                      disabled={completeAccountSignup.isPending}
-                      onClick={handleResendCode}
-                      type="button"
-                    >
-                      <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
-                        Don&apos;t see the code? Resend
-                      </span>
-                    </button>
-                  </div>
-                  <p className="text-label">Make sure to check your spam inbox.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </form>
+      <div className="mx-auto flex w-full flex-col items-center justify-center">
+        <AuthPagePanel>
+          <VerificationCodeHeader
+            title="We've sent a verification code to"
+            recipient={decoded.email}
+          />
+          <CardContent>
+            <VerificationCodeForm
+              name="signup-sso-verification-code"
+              value={code}
+              onChange={setCode}
+              onSubmit={handleSubmit}
+              isPending={completeAccountSignup.isPending}
+              error={
+                completeAccountSignup.isError
+                  ? "Oops. Your code is wrong. Please try again."
+                  : undefined
+              }
+            >
+              <VerificationCodeResend
+                isDisabled={completeAccountSignup.isPending}
+                isResending={isResending}
+                remainingSeconds={resendDelay.remainingSeconds}
+                onResend={handleResendCode}
+              />
+            </VerificationCodeForm>
+          </CardContent>
+        </AuthPagePanel>
       </div>
-      <AuthPageFooter />
-    </div>
+    </AuthPageLayout>
   );
 };

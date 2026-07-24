@@ -5,10 +5,10 @@ import { z } from "zod";
 
 import {
   Button,
-  Card,
   CardContent,
   CardHeader,
   CardTitle,
+  Field,
   FieldError,
   TextArea
 } from "@app/components/v3";
@@ -17,6 +17,7 @@ import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { EmailServiceSetupModal } from "../v2";
+import { AuthPagePanel } from "./AuthPagePanel";
 
 /**
  * This is the last step of the signup flow. People can optionally invite their teammates here.
@@ -75,14 +76,14 @@ export default function TeamInviteStep(): JSX.Element {
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-md items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
+          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
             {t("signup.step5-invite-team")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-y-4">
-          <div className="w-full">
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={Boolean(validationError)}>
             <TextArea
               className="min-h-20"
               value={emails}
@@ -91,9 +92,10 @@ export default function TeamInviteStep(): JSX.Element {
                 if (validationError) setValidationError("");
               }}
               placeholder="email1@example.com, email2@example.com"
+              isError={Boolean(validationError)}
             />
             {validationError && <FieldError>{validationError}</FieldError>}
-          </div>
+          </Field>
           <Button
             onClick={() => {
               if (serverDetails?.emailConfigured) {
@@ -120,7 +122,7 @@ export default function TeamInviteStep(): JSX.Element {
             {t("signup.step5-skip") ?? "Skip"}
           </Button>
         </CardContent>
-      </Card>
+      </AuthPagePanel>
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}

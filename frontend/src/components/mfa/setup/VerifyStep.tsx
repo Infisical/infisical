@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 
 import { createNotification } from "@app/components/notifications";
 import { ContentLoader } from "@app/components/v2";
-import { Button, Input } from "@app/components/v3";
+import { Button, Input, VerificationCodeForm } from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useEnrollMfa, useGetUserTotpRegistration } from "@app/hooks/api/users";
 import { useRegisterPasskey } from "@app/hooks/api/webauthn";
@@ -63,20 +63,14 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
           </code>
         </p>
       )}
-      <Input
+      <VerificationCodeForm
+        name="totp-enrollment-code"
         value={totp}
-        onChange={(e) => setTotp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        placeholder="Enter 6-digit code"
-        maxLength={6}
-      />
-      <Button
-        variant="org"
+        onChange={(value) => setTotp(value.replace(/\D/g, "").slice(0, 6))}
+        onSubmit={handleVerify}
+        submitLabel="Verify code"
         isPending={isVerifying}
-        isDisabled={totp.trim().length !== 6}
-        onClick={handleVerify}
-      >
-        Verify Code
-      </Button>
+      />
     </div>
   );
 };

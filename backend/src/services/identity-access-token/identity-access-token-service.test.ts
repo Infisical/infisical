@@ -57,7 +57,8 @@ const createService = ({
     incrementBy: vi.fn(),
     setItemWithExpiry: vi.fn(),
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
-    incrementSeededWithExpiry: vi.fn().mockResolvedValue(1)
+    incrementSeededWithExpiry: vi.fn().mockResolvedValue(1),
+    deleteItem: vi.fn().mockResolvedValue(1)
   };
   // getItemPrimary shares the getItem mock so tests that stub getItem by key also
   // cover the primary-pinned version reads.
@@ -340,8 +341,17 @@ describe("identityAccessTokenServiceFactory", () => {
     await expect(service.fnValidateIdentityAccessTokenFast(createTokenClaims(), "10.0.0.1")).resolves.toMatchObject({
       identityId: "identity-id"
     });
-    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
+    );
     expect(keyStore.incrementBy).not.toHaveBeenCalled();
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-trusted-ips:identity-id:universal-auth",
+      300,
+      expect.any(String)
+    );
   });
 
   test("rejects exhausted Redis usage counters", async () => {

@@ -100,11 +100,21 @@ export type BillingV2EntitlementDim = {
   used: number;
   limit: number | null;
   committed: number | null;
+  // Whether this customer can commit this dimension annually, per their pinned plan version (from the
+  // subscription read, NOT the catalog). Grandfather-safe: a later catalog price won't flip it on for a
+  // customer on an older version. Gate the commit action on this for products the customer owns.
+  commitAvailable: boolean;
   committedRate?: number;
   onDemandRate?: number;
   rate?: number;
   freeBand?: number;
   onDemandAmount: number;
+  // Annual-commitment lifecycle. canDecreaseNow is false until the final window before renewal, so the
+  // UI locks the commitment stepper's floor to the current committed quantity until then. renewalDate
+  // and decreaseAllowedFrom are formatted display dates.
+  canDecreaseNow?: boolean;
+  renewalDate?: string | null;
+  decreaseAllowedFrom?: string | null;
 };
 
 export type BillingV2Entitlement = {
@@ -177,6 +187,8 @@ export type BillingV2Overview = {
   entitlements: Record<string, BillingV2Entitlement>;
   // Product keys whose one-per-product trial is used up (any outcome); gates the trial CTA.
   trialedProductKeys: string[];
+  // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
+  checkoutFrozen: boolean;
 };
 
 export type BillingV2CheckoutResult = {
@@ -190,14 +202,15 @@ export type TCreateBillingV2PortalSessionDTO = {
   returnPath?: string;
 };
 
-export type TCreateBillingV2CheckoutSessionDTO = {
+// Buy/add one product. The server self-selects append vs Checkout. quantities are buyer-entered
+// per-dimension values; the server fills any non-entered per_resource dim. Commitment is a separate
+// step (useChangeBillingV2Commitment).
+export type TBuyBillingV2ProductDTO = {
   orgId: string;
   productId: string;
   plan?: string;
   cadence?: BillingV2Cadence;
-  // Per-dimension committed quantities; required for an annual per_resource line.
-  commitments?: Record<string, number>;
-  email?: string;
+  quantities?: Record<string, number>;
   returnPath?: string;
 };
 
@@ -212,11 +225,15 @@ export type BillingV2PreviewLine = {
   proration: boolean;
 };
 
-// prorationAmount is signed: positive is charged now (an add), negative is a credit toward the next
-// invoice (a removal). The server prorates at commit time, so no proration timestamp is echoed back.
+// prorationAmount is this change's cost (signed: positive is charged now, negative a credit).
+// additionalCharges are earlier mid-cycle changes still unbilled that an invoice-now apply settles in
+// the same charge; totalDueNow (= prorationAmount + additionalCharges) is what actually hits the card
+// and is the figure to show as "charged now".
 export type BillingV2Preview = {
   currency: string;
   prorationAmount: number;
+  additionalCharges: number;
+  totalDueNow: number;
   nextInvoiceTotal: number;
   nextRecurringTotal: number;
   lines: BillingV2PreviewLine[];
@@ -237,20 +254,12 @@ export type TPreviewBillingV2ChangeDTO = {
   addProductId?: string;
   plan?: string;
   cadence?: BillingV2Cadence;
-  // Initial per-dimension commitments for an annual add.
-  commitments?: Record<string, number>;
+  // Buyer-entered per-dimension quantities for the add (e.g. annual commitment amounts); the server
+  // fills any non-entered per_resource dim, so the previewed charge matches the buy.
+  quantities?: Record<string, number>;
   removeProductId?: string;
   // Per_resource commitment quantity changes to preview against the existing subscription.
   commitmentChanges?: BillingV2CommitmentChange[];
-};
-
-export type TAddBillingV2ProductDTO = {
-  orgId: string;
-  productId: string;
-  plan?: string;
-  cadence?: BillingV2Cadence;
-  // Per-dimension committed quantities; required for an annual per_resource line.
-  commitments?: Record<string, number>;
 };
 
 export type TRemoveBillingV2ProductDTO = {
@@ -258,8 +267,9 @@ export type TRemoveBillingV2ProductDTO = {
   productId: string;
 };
 
-// Apply one or more previewed per_resource commitment changes; the backend loops the per-dimension
-// apply and the server prorates at commit time (no client-supplied proration timestamp).
+// Start / change annual commitments across dimensions in one atomic call. An increase is charged now;
+// a decrease is rejected server-side unless the dimension's window is open. The change always prices
+// at the current server time.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   changes: BillingV2CommitmentChange[];

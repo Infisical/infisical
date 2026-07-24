@@ -1,21 +1,38 @@
-import { BsMicrosoftTeams, BsSlack } from "react-icons/bs";
-import { faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Plus, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
-  DeleteActionModal,
-  EmptyState,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+  Skeleton,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectWorkflowIntegration,
@@ -23,141 +40,171 @@ import {
 } from "@app/hooks/api";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
-import { AddWorkflowIntegrationModal } from "./components/AddWorkflowIntegrationModal";
-import { EditWorkflowIntegrationModal } from "./components/EditWorkflowIntegrationModal";
+import { AddWorkflowIntegrationSheet } from "./components/AddWorkflowIntegrationSheet";
+import { EditWorkflowIntegrationSheet } from "./components/EditWorkflowIntegrationSheet";
 import { MicrosoftTeamsConfigRow } from "./components/MicrosoftTeamsConfigRow";
 import { SlackConfigRow } from "./components/SlackConfigRow";
+import { WORKFLOW_INTEGRATION_PLATFORM_LABELS } from "./constants";
 
-export const renderProvider = (integration: WorkflowIntegrationPlatform) => {
-  if (integration === WorkflowIntegrationPlatform.SLACK) {
-    return <BsSlack />;
-  }
+export const WorkflowIntegrationTab = withProjectPermission(
+  () => {
+    const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
+      "addWorkflowIntegration",
+      "removeIntegration",
+      "editIntegration"
+    ] as const);
 
-  if (integration === WorkflowIntegrationPlatform.MICROSOFT_TEAMS) {
-    return <BsMicrosoftTeams />;
-  }
+    const { currentProject } = useProject();
+    const { data: slackConfig, isPending: isSlackConfigLoading } =
+      useGetWorkspaceWorkflowIntegrationConfig({
+        projectId: currentProject?.id ?? "",
+        integration: WorkflowIntegrationPlatform.SLACK
+      });
 
-  return null;
-};
+    const { data: microsoftTeamsConfig, isPending: isMicrosoftTeamsConfigLoading } =
+      useGetWorkspaceWorkflowIntegrationConfig({
+        projectId: currentProject?.id ?? "",
+        integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+      });
 
-export const WorkflowIntegrationTab = () => {
-  const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "addWorkflowIntegration",
-    "removeIntegration",
-    "editIntegration"
-  ] as const);
+    const { mutateAsync: deleteIntegration } = useDeleteProjectWorkflowIntegration();
 
-  const { currentProject } = useProject();
-  const { data: slackConfig, isPending: isSlackConfigLoading } =
-    useGetWorkspaceWorkflowIntegrationConfig({
-      projectId: currentProject?.id ?? "",
-      integration: WorkflowIntegrationPlatform.SLACK
-    });
+    const isConfigLoading = isSlackConfigLoading || isMicrosoftTeamsConfigLoading;
+    const hasConfiguredIntegration = !!slackConfig || !!microsoftTeamsConfig;
 
-  const { data: microsoftTeamsConfig, isPending: isMicrosoftTeamsConfigLoading } =
-    useGetWorkspaceWorkflowIntegrationConfig({
-      projectId: currentProject?.id ?? "",
-      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
-    });
+    const removeIntegrationData = popUp.removeIntegration.data as
+      | { integration: WorkflowIntegrationPlatform; integrationId: string }
+      | undefined;
+    const removeIntegrationLabel = removeIntegrationData
+      ? WORKFLOW_INTEGRATION_PLATFORM_LABELS[removeIntegrationData.integration]
+      : "workflow";
 
-  const { mutateAsync: deleteIntegration } = useDeleteProjectWorkflowIntegration();
+    const handleRemoveIntegration = async () => {
+      if (!currentProject.id || !removeIntegrationData) {
+        return;
+      }
 
-  const handleRemoveIntegration = async (
-    integrationType: WorkflowIntegrationPlatform,
-    integrationId: string
-  ) => {
-    if (!currentProject.id) {
-      return;
-    }
+      await deleteIntegration({
+        projectId: currentProject.id,
+        integration: removeIntegrationData.integration,
+        integrationId: removeIntegrationData.integrationId
+      });
 
-    await deleteIntegration({
-      projectId: currentProject?.id ?? "",
-      integration: integrationType,
-      integrationId
-    });
+      handlePopUpClose("removeIntegration");
+      createNotification({
+        type: "success",
+        text: `Removed ${removeIntegrationLabel} integration from this project`
+      });
+    };
 
-    createNotification({
-      type: "success",
-      text: `Successfully removed ${integrationType.replace("-", " ").replace(/\b\w/g, (char) => char.toUpperCase())} integration`
-    });
-  };
-
-  return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Workflow Integrations</p>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Settings}>
-          {(isAllowed) => (
-            <Button
-              onClick={() => {
-                handlePopUpOpen("addWorkflowIntegration");
-              }}
-              isDisabled={!isAllowed}
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Workflow Integrations</CardTitle>
+          <CardDescription>
+            Send notifications for access requests, secret approval requests, and secret sync errors
+            to Slack or Microsoft Teams.
+          </CardDescription>
+          <CardAction>
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Edit}
+              a={ProjectPermissionSub.Settings}
             >
-              Add
-            </Button>
+              {(isAllowed) => (
+                <Button
+                  variant="project"
+                  size="sm"
+                  onClick={() => handlePopUpOpen("addWorkflowIntegration")}
+                  isDisabled={!isAllowed}
+                >
+                  <Plus />
+                  Add integration
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {!isConfigLoading && !hasConfiguredIntegration ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No workflow integrations configured</EmptyTitle>
+                <EmptyDescription>
+                  Add a workflow integration to send this project&apos;s notifications to Slack or
+                  Microsoft Teams.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/5">Provider</TableHead>
+                  <TableHead>Access request notifications</TableHead>
+                  <TableHead>Secret request notifications</TableHead>
+                  <TableHead>Secret sync error notifications</TableHead>
+                  <TableHead className="w-px text-right" aria-label="Actions" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isConfigLoading &&
+                  Array.from({ length: 2 }).map((_, idx) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableRow key={`workflow-integration-skeleton-${idx}`}>
+                      <TableCell colSpan={5}>
+                        <Skeleton className="h-5 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!isConfigLoading && (
+                  <>
+                    <SlackConfigRow handlePopUpOpen={handlePopUpOpen} slackConfig={slackConfig} />
+                    <MicrosoftTeamsConfigRow
+                      handlePopUpOpen={handlePopUpOpen}
+                      microsoftTeamsConfig={microsoftTeamsConfig}
+                    />
+                  </>
+                )}
+              </TableBody>
+            </Table>
           )}
-        </OrgPermissionCan>
-      </div>
-      <p className="mb-4 text-gray-400">
-        Connect Infisical to other platforms for notification and workflow integrations.
-      </p>
-      <TableContainer>
-        {!!slackConfig || !!microsoftTeamsConfig ? (
-          <Table>
-            <THead>
-              <Tr>
-                <Td>Provider</Td>
-                <Td>Access Request Notifications Destination</Td>
-                <Td>Secret Request Notifications Destination</Td>
-                <Td>Secret Sync Error Notifications Destination</Td>
-              </Tr>
-            </THead>
-            <TBody>
-              <SlackConfigRow
-                handlePopUpOpen={handlePopUpOpen}
-                isSlackConfigLoading={isSlackConfigLoading}
-                slackConfig={slackConfig}
-              />
-              <MicrosoftTeamsConfigRow
-                handlePopUpOpen={handlePopUpOpen}
-                isMicrosoftTeamsConfigLoading={isMicrosoftTeamsConfigLoading}
-                microsoftTeamsConfig={microsoftTeamsConfig}
-              />
-            </TBody>
-          </Table>
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <EmptyState
-              title="No project workflow integrations configured. Add a new workflow integration to get started"
-              icon={faGear}
-            />
-          </div>
-        )}
-      </TableContainer>
-      <AddWorkflowIntegrationModal
-        isOpen={popUp.addWorkflowIntegration.isOpen}
-        onToggle={(state) => handlePopUpToggle("addWorkflowIntegration", state)}
-      />
-      <DeleteActionModal
-        isOpen={popUp.removeIntegration.isOpen}
-        title="Are you sure you want to remove this integration?"
-        onChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
-          await handleRemoveIntegration(
-            popUp.removeIntegration.data?.integration,
-            popUp.removeIntegration.data?.integrationId
-          );
-          handlePopUpClose("removeIntegration");
-        }}
-      />
-      <EditWorkflowIntegrationModal
-        isOpen={popUp.editIntegration.isOpen}
-        onClose={() => handlePopUpClose("editIntegration")}
-        integration={popUp.editIntegration.data?.integration}
-      />
-    </div>
-  );
-};
+        </CardContent>
+        <AddWorkflowIntegrationSheet
+          isOpen={popUp.addWorkflowIntegration.isOpen}
+          onOpenChange={(state) => handlePopUpToggle("addWorkflowIntegration", state)}
+        />
+        <EditWorkflowIntegrationSheet
+          isOpen={popUp.editIntegration.isOpen}
+          onClose={() => handlePopUpClose("editIntegration")}
+          integration={popUp.editIntegration.data?.integration}
+        />
+        <AlertDialog
+          open={popUp.removeIntegration.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("removeIntegration", isOpen)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogMedia>
+                <Trash2 />
+              </AlertDialogMedia>
+              <AlertDialogTitle>
+                Remove {removeIntegrationLabel} integration from this project?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This project will stop sending notifications to {removeIntegrationLabel}. You can
+                add the integration again later.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="danger" onClick={handleRemoveIntegration}>
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Card>
+    );
+  },
+  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Settings }
+);

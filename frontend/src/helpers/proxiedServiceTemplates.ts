@@ -451,6 +451,23 @@ export const PROXIED_SERVICE_TEMPLATES: ProxiedServiceTemplate[] = [
     hostPattern: "*.atlassian.net",
     seed: { basicAuth: { withPassword: true } }
   },
+  {
+    key: "google-workspace",
+    name: "Google Workspace",
+    image: "Google Workspace.svg",
+    category: ProxiedServiceTemplateCategory.Productivity,
+    description: "Gmail, Calendar, Sheets, and Drive.",
+    hostPattern:
+      "gmail.googleapis.com/*, sheets.googleapis.com/*, www.googleapis.com/calendar/*, www.googleapis.com/drive/*, www.googleapis.com/upload/drive/*",
+    aliases: ["workspace", "gsuite", "gmail", "calendar", "sheets", "drive", "gdrive"],
+    seed: {
+      substitutions: bearerSubstitution(
+        "GOOGLE_ACCESS_TOKEN",
+        () => `ya29.${randomToken(60, BASE64URL)}`,
+        [ProxiedServiceSubstitutionSurface.Header]
+      )
+    }
+  },
 
   // ---- Communication (email) ----
   {

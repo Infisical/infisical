@@ -1983,7 +1983,7 @@ export const projectServiceFactory = ({
       actionProjectType: ActionProjectType.Any
     });
 
-    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId);
+    const kmsKeyId = await kmsService.getProjectSecretManagerKmsKeyId(projectId, undefined, true);
     const kmsKey = await kmsService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };

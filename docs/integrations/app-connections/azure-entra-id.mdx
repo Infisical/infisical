@@ -25,6 +25,8 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
   <Note>
     After adding the permission, an admin must **Grant admin consent** for the permission to take effect.
   </Note>
+
+  <Note>If you want to configure automatic client secret rotation for this App Connection, you also need to grant either `Application.ReadWrite.OwnedBy` or `Application.ReadWrite.All` permissions.</Note>
 </Accordion>
 
 ## Setup Azure Entra ID Connection in Infisical
@@ -51,6 +53,10 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
         Click **Connect** to create the connection.
 
         ![Fill in Azure Entra ID Connection Details](/images/app-connections/azure/entra-id/create-app-connection.png)
+
+        <Tip>
+            You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
+        </Tip>
       </Step>
       <Step title="Connection Created">
         Your **Azure Entra ID Connection** is now available for use with features such as the Azure Entra ID SCIM Secret Sync.
@@ -98,3 +104,33 @@ Infisical's Azure Entra ID Connection lets you authenticate with Microsoft Entra
     ```
   </Tab>
 </Tabs>
+
+## Automatic Credential Rotation
+
+Infisical can automatically rotate the Client Secret of your Azure application on a recurring schedule. When enabled, Infisical will immediately generate a new Client Secret on connection creation and revoke the original one, ensuring that no external party retains access using the credentials you provided.
+
+<Steps>
+    <Step title="Locate the Key ID of your Client Secret">
+        Before enabling rotation, you'll need the **Key ID** of the Client Secret you are using to authenticate. Navigate to your App Registration in the Azure Portal, then go to **Certificates & secrets**. Copy the **Secret ID** (Key ID) of the secret you are providing to Infisical.
+
+        ![Azure Client Secret Key ID](/images/app-connections/azure/entra-id/credential-rotation-key-id.png)
+    </Step>
+    <Step title="Enable Automatic Credential Rotation">
+        When creating or editing your connection, toggle on the **Automatic Credential Rotation** switch.
+
+        ![Enable Automatic Credential Rotation](/images/app-connections/azure/entra-id/credential-rotation-toggle.png)
+    </Step>
+    <Step title="Provide the Client Secret Key ID">
+        Enter the **Key ID** you copied in the previous step into the **Client Secret Key ID** field. Infisical uses this to revoke your original secret after generating a new one.
+
+        ![Client Secret Key ID Field](/images/app-connections/azure/entra-id/credential-rotation-key-id-field.png)
+    </Step>
+    <Step title="Configure the Rotation Schedule">
+        Set the **Rotation Interval** (in days) to define how often the credential should be rotated, and set **Rotate At** to the local time of day at which the rotation should occur.
+
+        - **Rotation Interval** - How many days between each rotation.
+        - **Rotate At** - The local time of day at which the rotation will be triggered.
+
+        ![Rotation Schedule](/images/app-connections/azure/entra-id/credential-rotation-schedule.png)
+    </Step>
+</Steps>

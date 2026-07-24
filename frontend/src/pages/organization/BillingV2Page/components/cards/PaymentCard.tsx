@@ -30,9 +30,6 @@ export const PaymentCard = ({ overview, canManage, onUpdate }: PaymentCardProps)
     <CardContent>
       {overview.payment ? (
         <div className="flex items-center gap-3.5">
-          <div className="flex h-[30px] w-[46px] shrink-0 items-center justify-center rounded-sm border border-border bg-container text-[10px] font-bold tracking-wide text-foreground">
-            {overview.payment.brand.toUpperCase()}
-          </div>
           <div>
             <div className="text-sm font-medium text-foreground">
               {overview.payment.brand.toUpperCase()} ending in {overview.payment.last4}
