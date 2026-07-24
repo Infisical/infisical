@@ -23,14 +23,12 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
 
   const createWithTargets = async (
     alertId: string,
-    options: { status: string; error?: string },
+    options: { status: string },
     deliveries: TAlertTargetDelivery[]
   ): Promise<TAlertHistory> => {
     try {
       return await db.transaction(async (tx) => {
-        const [history] = await tx(TableName.AlertHistory)
-          .insert({ alertId, status: options.status, error: options.error })
-          .returning("*");
+        const [history] = await tx(TableName.AlertHistory).insert({ alertId, status: options.status }).returning("*");
 
         if (deliveries.length > 0) {
           await tx(TableName.AlertHistoryTarget).insert(

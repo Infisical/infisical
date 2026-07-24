@@ -92,9 +92,15 @@ export const sendPagerDutyNotification = async (ctx: TAlertChannelSendContext): 
     )
   );
 
-  const errors = results.filter((result) => !result.success && result.error).map((result) => result.error);
+  const targetResults = ctx.payload.items.map((item, index) => ({
+    targetId: item.id,
+    success: results[index].success,
+    error: results[index].error
+  }));
+
+  const errors = targetResults.filter((result) => !result.success && result.error).map((result) => result.error);
   if (errors.length > 0) {
-    return { success: false, error: errors.join("; ") };
+    return { success: false, error: errors.join("; "), targetResults };
   }
-  return { success: true };
+  return { success: true, targetResults };
 };

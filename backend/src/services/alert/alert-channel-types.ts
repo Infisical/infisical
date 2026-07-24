@@ -38,7 +38,9 @@ export type TAlertPayload = {
   items: TAlertItem[];
 };
 
-export type TChannelResult = { success: boolean; error?: string };
+export type TChannelTargetResult = { targetId: string; success: boolean; error?: string };
+
+export type TChannelResult = { success: boolean; error?: string; targetResults?: TChannelTargetResult[] };
 
 export type TAlertRecipient = {
   userId?: string;

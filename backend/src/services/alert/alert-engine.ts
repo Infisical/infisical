@@ -8,7 +8,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
-import { AlertChannelType, TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
+import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetResult } from "./alert-channel-types";
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
@@ -16,6 +16,15 @@ import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, TAlertContext } from "./ale
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
 const ALERT_DELIVERY_CONCURRENCY = 10;
+
+type TChannelDispatchResult = {
+  channelId: string;
+  channelType: string;
+  targetIds: string[];
+  success: boolean;
+  error?: string;
+  targetResults?: TChannelTargetResult[];
+};
 
 export type TAlertEngineDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId">;
@@ -119,7 +128,7 @@ export const alertEngineFactory = ({
     const sendLimit = pLimit(ALERT_DELIVERY_CONCURRENCY);
 
     const channelResults = await Promise.all(
-      channelWork.map(async ({ channel, dueTargets }) => {
+      channelWork.map(async ({ channel, dueTargets }): Promise<TChannelDispatchResult> => {
         const targetIds = dueTargets.map((target) => provider.targetId(target));
         const base = { channelId: channel.id, channelType: channel.channelType, targetIds };
         const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
@@ -170,14 +179,15 @@ export const alertEngineFactory = ({
       })
     );
 
-    const deliveries = channelResults.flatMap((result) =>
-      result.targetIds.map((targetId) => ({
+    const deliveries = channelResults.flatMap((result) => {
+      const perTarget = new Map<string, boolean>((result.targetResults ?? []).map((t) => [t.targetId, t.success]));
+      return result.targetIds.map((targetId) => ({
         targetId,
         channelId: result.channelId,
         channelType: result.channelType,
-        status: result.success ? AlertRunStatus.SUCCESS : AlertRunStatus.FAILED
-      }))
-    );
+        status: (perTarget.get(targetId) ?? result.success) ? AlertRunStatus.SUCCESS : AlertRunStatus.FAILED
+      }));
+    });
 
     const errors = channelResults
       .filter((result) => !result.success && result.error)
@@ -191,7 +201,7 @@ export const alertEngineFactory = ({
       logger.error(`Alert delivery failed on one or more channels [alertId=${alert.id}]: ${errorText}`);
     }
 
-    await alertHistoryDAL.createWithTargets(alert.id, { status, error: errorText }, deliveries);
+    await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
   };
 
   return { runAlert };

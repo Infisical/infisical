@@ -12,7 +12,6 @@ export const AlertHistorySchema = z.object({
   alertId: z.string().uuid(),
   triggeredAt: z.date().nullable().optional(),
   status: z.string(),
-  error: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

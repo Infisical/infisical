@@ -106,7 +106,6 @@ export async function up(knex: Knex): Promise<void> {
       // generated Insert type treat it as optional (matching pki_alert_history).
       t.timestamp("triggeredAt").defaultTo(knex.fn.now());
       t.string("status").notNullable();
-      t.text("error").nullable();
       t.timestamps(true, true, true);
 
       t.foreign("alertId").references("id").inTable(TableName.Alert).onDelete("CASCADE");

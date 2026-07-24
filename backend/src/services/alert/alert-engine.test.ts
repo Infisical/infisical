@@ -12,10 +12,21 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
-// Stub outbound HTTP so PagerDuty/Slack/webhook sends resolve without a real network call.
+// Stub outbound HTTP so PagerDuty/Slack/webhook sends resolve without a real network call. When
+// failForTargetId is set, the matching PagerDuty event (keyed by dedup_key `${alertId}:${targetId}`)
+// rejects, so a test can drive a single-target failure.
+const httpControl = vi.hoisted(() => ({ failForTargetId: null as string | null }));
+
 vi.mock("@app/lib/validator", async (importActual) => ({
   ...(await importActual<typeof import("@app/lib/validator")>()),
-  safeRequest: { post: async () => ({ data: {} }) }
+  safeRequest: {
+    post: async (_url: string, body: { dedup_key?: string }) => {
+      if (httpControl.failForTargetId && body?.dedup_key === `alert-1:${httpControl.failForTargetId}`) {
+        throw new Error("pagerduty rejected event");
+      }
+      return { data: {} };
+    }
+  }
 }));
 
 type TTarget = { id: string };
@@ -168,6 +179,37 @@ describe("alert engine", () => {
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS },
       { targetId: "t2", channelId: "c-email", channelType: "email", status: AlertRunStatus.SUCCESS }
     ]);
+  });
+
+  test("records PagerDuty status per target so one failed event does not mark the rest failed", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }, { id: "t2" }, { id: "t3" }],
+      channels: [
+        {
+          id: "c-pd",
+          channelType: "pagerduty",
+          encryptedConfig: encConfig({ integrationKey: "a".repeat(32) }),
+          enabled: true
+        }
+      ]
+    });
+
+    httpControl.failForTargetId = "t2";
+    try {
+      await engine.runAlert(makeAlert());
+    } finally {
+      httpControl.failForTargetId = null;
+    }
+
+    expect(historyWrites).toHaveLength(1);
+    const byTarget = Object.fromEntries(historyWrites[0].deliveries.map((d) => [d.targetId, d.status]));
+    // Only the target whose event failed is recorded FAILED; the others stay SUCCESS so they dedup
+    // and are not re-sent next run.
+    expect(byTarget).toEqual({
+      t1: AlertRunStatus.SUCCESS,
+      t2: AlertRunStatus.FAILED,
+      t3: AlertRunStatus.SUCCESS
+    });
   });
 
   test("dedups a target already delivered on the same channel within the window", async () => {
