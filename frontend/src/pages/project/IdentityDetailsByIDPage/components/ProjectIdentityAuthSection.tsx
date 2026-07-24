@@ -48,7 +48,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
             ) && (
               <CardAction>
                 <ProjectPermissionCan
-                  I={ProjectPermissionIdentityActions.Edit}
+                  I={ProjectPermissionIdentityActions.EditAuth}
                   a={subject(ProjectPermissionSub.Identity, {
                     identityId: identity.id
                   })}
@@ -92,7 +92,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
               </EmptyHeader>
               <EmptyContent>
                 <ProjectPermissionCan
-                  I={ProjectPermissionIdentityActions.Edit}
+                  I={ProjectPermissionIdentityActions.EditAuth}
                   a={subject(ProjectPermissionSub.Identity, {
                     identityId: identity.id
                   })}
