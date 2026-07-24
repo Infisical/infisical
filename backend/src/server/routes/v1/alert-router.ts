@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
@@ -87,6 +88,22 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        ...(alert.projectId ? { projectId: alert.projectId } : { orgId: alert.orgId }),
+        event: {
+          type: EventType.CREATE_ALERT,
+          metadata: {
+            alertId: alert.id,
+            name: alert.name,
+            resourceType: alert.resourceType,
+            resourceId: alert.resourceId,
+            eventType: alert.eventType
+          }
+        }
+      });
+
       return { alert };
     }
   });
@@ -169,6 +186,21 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        ...(alert.projectId ? { projectId: alert.projectId } : { orgId: alert.orgId }),
+        event: {
+          type: EventType.UPDATE_ALERT,
+          metadata: {
+            alertId: alert.id,
+            name: alert.name,
+            resourceType: alert.resourceType,
+            eventType: alert.eventType
+          }
+        }
+      });
+
       return { alert };
     }
   });
@@ -191,6 +223,21 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        ...(alert.projectId ? { projectId: alert.projectId } : { orgId: alert.orgId }),
+        event: {
+          type: EventType.DELETE_ALERT,
+          metadata: {
+            alertId: alert.id,
+            name: alert.name,
+            resourceType: alert.resourceType,
+            eventType: alert.eventType
+          }
+        }
+      });
+
       return { alert };
     }
   });

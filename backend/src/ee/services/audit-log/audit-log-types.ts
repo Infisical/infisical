@@ -932,7 +932,12 @@ export enum EventType {
 
   // Project Grants
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
-  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
+
+  // Alerts
+  CREATE_ALERT = "create-alert",
+  UPDATE_ALERT = "update-alert",
+  DELETE_ALERT = "delete-alert"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7455,7 +7460,41 @@ interface DeleteProjectFolderGrantEvent {
   };
 }
 
+interface CreateAlertEvent {
+  type: EventType.CREATE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    resourceId?: string | null;
+    eventType: string;
+  };
+}
+
+interface UpdateAlertEvent {
+  type: EventType.UPDATE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+  };
+}
+
+interface DeleteAlertEvent {
+  type: EventType.DELETE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+  };
+}
+
 export type Event =
+  | CreateAlertEvent
+  | UpdateAlertEvent
+  | DeleteAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

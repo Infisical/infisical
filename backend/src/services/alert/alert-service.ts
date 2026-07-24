@@ -361,7 +361,16 @@ export const alertServiceFactory = ({
     return $assembleResponse(updated, channels);
   };
 
-  const deleteAlert = async (dto: TDeleteAlertDTO): Promise<{ id: string }> => {
+  const deleteAlert = async (
+    dto: TDeleteAlertDTO
+  ): Promise<{
+    id: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+    orgId: string;
+    projectId: string | null;
+  }> => {
     const alert = await alertDAL.findActiveById(dto.alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
 
@@ -382,7 +391,14 @@ export const alertServiceFactory = ({
       await alertDAL.deleteById(alert.id, tx);
     });
 
-    return { id: alert.id };
+    return {
+      id: alert.id,
+      name: alert.name,
+      resourceType: alert.resourceType,
+      eventType: alert.eventType,
+      orgId: alert.orgId,
+      projectId: alert.projectId ?? null
+    };
   };
 
   const deleteAlertsForResource = async (
