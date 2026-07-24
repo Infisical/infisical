@@ -64,6 +64,8 @@ export const alertQueueServiceFactory = ({
 
     cronJob.register({
       name: CronJobName.DailyAlertProcessing,
+      // Cadence is coupled to ALERT_SCAN_LEAD_* (alert-types.ts): providers scan one period ahead to
+      // guarantee "at least alertBefore" lead. If this pattern changes, revisit that constant.
       pattern: appCfg.isDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 60 * 60 * 24,
       enabled: !appCfg.isSecondaryInstance,

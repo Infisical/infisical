@@ -11,6 +11,8 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import {
+  ALERT_SCAN_LEAD_DAYS,
+  ALERT_SCAN_LEAD_INTERVAL,
   AlertPermissionAction,
   DEFAULT_DEDUP_WINDOW_HOURS,
   IResourceAlertProvider,
@@ -133,6 +135,7 @@ export const identityCredentialAlertProviderFactory = ({
       projectId: input.projectId,
       identityId: input.resourceId,
       alertBeforeInterval: intervalSql,
+      leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf
     });
 
@@ -265,7 +268,11 @@ export const identityCredentialAlertProviderFactory = ({
       const parsed = IdentityCredentialConditionSchema.safeParse(condition);
       if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
       if (parsed.data.dailyReminder) return DAILY_REPEAT_DEDUP_WINDOW_HOURS;
-      return Math.max(DEFAULT_DEDUP_WINDOW_HOURS, parseAlertBefore(parsed.data.alertBefore).days * 24);
+      // Span the widened scan window (alertBefore + the scan lead) so a target still fires only once.
+      return Math.max(
+        DEFAULT_DEDUP_WINDOW_HOURS,
+        (parseAlertBefore(parsed.data.alertBefore).days + ALERT_SCAN_LEAD_DAYS) * 24
+      );
     },
     assertPermission,
     assertResourceInScope

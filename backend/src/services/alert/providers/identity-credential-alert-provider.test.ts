@@ -44,6 +44,7 @@ const buildProvider = (opts?: {
     projectId?: string | null;
     identityId?: string | null;
     alertBeforeInterval: string;
+    leadInterval: string;
     asOf: Date;
   }) => void;
   abilityRules?: { action: string; subject: string; conditions?: Record<string, unknown> }[];
@@ -57,6 +58,7 @@ const buildProvider = (opts?: {
       projectId?: string | null;
       identityId?: string | null;
       alertBeforeInterval: string;
+      leadInterval: string;
       asOf: Date;
     }) => {
       opts?.onFind?.(args);
@@ -90,7 +92,13 @@ describe("identity credential alert provider", () => {
 
   test("findDueTargets converts alertBefore to a postgres interval and tags credential type", async () => {
     let seenArgs:
-      | { alertBeforeInterval: string; projectId?: string | null; identityId?: string | null; asOf: Date }
+      | {
+          alertBeforeInterval: string;
+          leadInterval: string;
+          projectId?: string | null;
+          identityId?: string | null;
+          asOf: Date;
+        }
       | undefined;
     const provider = buildProvider({
       secrets: [sampleSecret()],
@@ -109,6 +117,7 @@ describe("identity credential alert provider", () => {
     });
 
     expect(seenArgs?.alertBeforeInterval).toBe("30 days");
+    expect(seenArgs?.leadInterval).toBe("1 day");
     expect(seenArgs?.identityId).toBe("ident-1");
     expect(seenArgs?.asOf).toBe(asOf);
     expect(targets).toHaveLength(1);
@@ -191,10 +200,10 @@ describe("identity credential alert provider", () => {
     expect(url).toBe("https://app.infisical.com/organizations/org-1/identities/ident-1");
   });
 
-  test("dedup window spans the lead time (30d -> 720h) with a 24h floor", () => {
+  test("dedup window spans alertBefore + the scan lead (30d -> 744h, 1d -> 48h) with a 24h floor", () => {
     const provider = buildProvider();
-    expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(720);
-    expect(provider.dedupWindowHours?.({ alertBefore: "1d" })).toBe(24);
+    expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(744);
+    expect(provider.dedupWindowHours?.({ alertBefore: "1d" })).toBe(48);
     expect(provider.dedupWindowHours?.({ alertBefore: "bad" })).toBe(24);
   });
 

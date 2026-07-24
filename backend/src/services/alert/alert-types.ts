@@ -36,6 +36,11 @@ export type TAlertPermissionInput = {
 
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
 
+// Providers scan this many days ahead of `alertBefore` so alerts fire at LEAST `alertBefore` before
+// expiry despite the coarse daily poll. Keep >= the DailyAlertProcessing cadence (alert-queue.ts).
+export const ALERT_SCAN_LEAD_DAYS = 1;
+export const ALERT_SCAN_LEAD_INTERVAL = "1 day";
+
 export const MAX_CHANNELS_PER_ALERT = 10;
 export const MAX_RECIPIENTS_PER_CHANNEL = 20;
 
