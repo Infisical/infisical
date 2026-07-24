@@ -133,7 +133,9 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
           disabled={!canEditSync || updatePkiSyncMutation.isPending}
         >
           <SelectTrigger aria-label="Auto-sync setting">
-            <RefreshCwIcon />
+            <RefreshCwIcon
+              className={pkiSync.isAutoSyncEnabled ? "text-success" : "text-muted"}
+            />
             Auto-Sync {pkiSync.isAutoSyncEnabled ? "Enabled" : "Disabled"}
           </SelectTrigger>
           <SelectContent position="popper" align="end" sideOffset={4}>
