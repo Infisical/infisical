@@ -136,7 +136,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
             <RefreshCwIcon />
             Auto-Sync {pkiSync.isAutoSyncEnabled ? "Enabled" : "Disabled"}
           </SelectTrigger>
-          <SelectContent align="end">
+          <SelectContent position="popper" align="end" sideOffset={4}>
             <SelectItem value="enabled">Enabled</SelectItem>
             <SelectItem value="disabled">Disabled</SelectItem>
           </SelectContent>
