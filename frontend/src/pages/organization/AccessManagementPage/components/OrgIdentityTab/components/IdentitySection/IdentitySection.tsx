@@ -117,7 +117,7 @@ const ConfirmDeleteDialog = ({
             isPending={isPending}
             onClick={(event) => {
               event.preventDefault();
-              void onConfirm();
+              onConfirm();
             }}
           >
             Delete
@@ -136,8 +136,7 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
   const [wizardStep, setWizardStep] = useState(IdentityWizardSteps.CreateIdentity);
   const [areAuthTemplatesEmpty, setAreAuthTemplatesEmpty] = useState(false);
 
-  const { mutateAsync: deleteMutateAsync, isPending: isDeletingIdentity } =
-    useDeleteOrgIdentity();
+  const { mutateAsync: deleteMutateAsync, isPending: isDeletingIdentity } = useDeleteOrgIdentity();
   const { mutateAsync: deleteTemplateMutateAsync, isPending: isDeletingTemplate } =
     useDeleteIdentityAuthTemplate();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -295,8 +294,8 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
           ""
         }
         templateName={
-          (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template
-            ?.name || ""
+          (popUp?.viewUsages?.data as { template: { id: string; name: string } })?.template?.name ||
+          ""
         }
       />
       <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
@@ -349,14 +348,14 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
                       Create a new machine identity specifically for this sub-organization. This
                       machine identity will be managed at the sub-organization level.
                       <p className="mt-2">
-                        This method is recommended for autonomous teams that need to manage
-                        machine identity authentication.
+                        This method is recommended for autonomous teams that need to manage machine
+                        identity authentication.
                       </p>
                     </li>
                     <li>
                       <strong className="font-medium text-mineshaft-100">Assign Existing</strong>{" "}
-                      Assign an existing machine identity from your parent organization. The
-                      machine identity will continue to be managed at its original scope.
+                      Assign an existing machine identity from your parent organization. The machine
+                      identity will continue to be managed at its original scope.
                       <p className="mt-2">
                         This method is recommended for organizations that need to maintain
                         centralized control.
@@ -407,10 +406,10 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
   );
 };
 
-export const IdentitySection = withPermission(
-  () => <IdentitySectionContent />,
-  { action: OrgPermissionIdentityActions.Read, subject: OrgPermissionSubjects.Identity }
-);
+export const IdentitySection = withPermission(() => <IdentitySectionContent />, {
+  action: OrgPermissionIdentityActions.Read,
+  subject: OrgPermissionSubjects.Identity
+});
 
 export const IdentityAuthTemplatesSection = withPermission(
   () => <IdentitySectionContent view="templates" />,

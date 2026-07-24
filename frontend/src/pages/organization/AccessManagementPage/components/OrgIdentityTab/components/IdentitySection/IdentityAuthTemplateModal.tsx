@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 import {
   Controller,
   type ControllerRenderProps,
@@ -164,9 +163,7 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
     reset();
   };
 
-  const renderField = <
-    TName extends "name" | "url" | "bindDN" | "bindPass" | "searchBase"
-  >(
+  const renderField = <TName extends "name" | "url" | "bindDN" | "bindPass" | "searchBase">(
     id: string,
     label: string,
     field: ControllerRenderProps<FormData, TName>,
@@ -195,15 +192,10 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
               : "Create Machine Identity Auth Template"}
           </SheetTitle>
           <SheetDescription>
-            {isEdit
-              ? "Update the authentication template"
-              : "Create a new authentication template"}
+            {isEdit ? "Update the authentication template" : "Create a new authentication template"}
           </SheetDescription>
         </SheetHeader>
-        <form
-          className="flex min-h-0 flex-1 flex-col"
-          onSubmit={handleSubmit(onFormSubmit)}
-        >
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit(onFormSubmit)}>
           <FieldGroup className="min-h-0 flex-1 overflow-y-auto p-4">
             <Controller
               control={control}
@@ -250,9 +242,9 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                   control={control}
                   name="url"
                   render={({ field, fieldState: { error } }) =>
-                  renderField("identity-auth-template-url", "LDAP URL", field, error, {
-                    placeholder: "ldaps://domain-or-ip:636"
-                  })
+                    renderField("identity-auth-template-url", "LDAP URL", field, error, {
+                      placeholder: "ldaps://domain-or-ip:636"
+                    })
                   }
                 />
 
@@ -260,9 +252,9 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                   control={control}
                   name="bindDN"
                   render={({ field, fieldState: { error } }) =>
-                  renderField("identity-auth-template-bind-dn", "Bind DN", field, error, {
-                    placeholder: "cn=infisical,ou=Users,dc=example,dc=com"
-                  })
+                    renderField("identity-auth-template-bind-dn", "Bind DN", field, error, {
+                      placeholder: "cn=infisical,ou=Users,dc=example,dc=com"
+                    })
                   }
                 />
 
@@ -270,10 +262,10 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                   control={control}
                   name="bindPass"
                   render={({ field, fieldState: { error } }) =>
-                  renderField("identity-auth-template-bind-pass", "Bind Pass", field, error, {
-                    placeholder: "********",
-                    type: "password"
-                  })
+                    renderField("identity-auth-template-bind-pass", "Bind Pass", field, error, {
+                      placeholder: "********",
+                      type: "password"
+                    })
                   }
                 />
 
@@ -281,13 +273,13 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
                   control={control}
                   name="searchBase"
                   render={({ field, fieldState: { error } }) =>
-                  renderField(
-                    "identity-auth-template-search-base",
-                    "Search Base / DN",
-                    field,
-                    error,
-                    { placeholder: "ou=machines,dc=acme,dc=com" }
-                  )
+                    renderField(
+                      "identity-auth-template-search-base",
+                      "Search Base / DN",
+                      field,
+                      error,
+                      { placeholder: "ou=machines,dc=acme,dc=com" }
+                    )
                   }
                 />
 

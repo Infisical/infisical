@@ -1,5 +1,10 @@
 import { type ReactNode, useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
+import {
+  components as ReactSelectComponents,
+  type OptionProps,
+  type SingleValueProps
+} from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   BadgeCheckIcon,
@@ -10,11 +15,6 @@ import {
   KeyRoundIcon,
   NetworkIcon
 } from "lucide-react";
-import {
-  components as ReactSelectComponents,
-  type OptionProps,
-  type SingleValueProps
-} from "react-select";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -192,14 +192,18 @@ const AuthMethodOption = (props: OptionProps<TIdentityAuthMethodSelectOption>) =
   );
 };
 
-const AuthMethodSingleValue = (props: SingleValueProps<TIdentityAuthMethodSelectOption>) => (
-  <ReactSelectComponents.SingleValue {...props}>
-    <span className="flex min-w-0 items-center gap-2">
-      {props.data.icon}
-      <span className="truncate">{props.data.label}</span>
-    </span>
-  </ReactSelectComponents.SingleValue>
-);
+const AuthMethodSingleValue = (props: SingleValueProps<TIdentityAuthMethodSelectOption>) => {
+  const { data } = props;
+
+  return (
+    <ReactSelectComponents.SingleValue {...props}>
+      <span className="flex min-w-0 items-center gap-2">
+        {data.icon}
+        <span className="truncate">{data.label}</span>
+      </span>
+    </ReactSelectComponents.SingleValue>
+  );
+};
 
 const schema = z
   .object({
@@ -446,7 +450,7 @@ export const IdentityAuthMethodModalContent = ({
         defaultValue={IdentityAuthMethod.UNIVERSAL_AUTH}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
           const authMethodOptions = identityAuthMethods.map((authMethod) => {
-            const isConfigured = isAlreadyConfigured(authMethod.value);
+            const isConfigured = Boolean(isAlreadyConfigured(authMethod.value));
 
             return {
               ...authMethod,

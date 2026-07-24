@@ -65,10 +65,7 @@ type Props = {
   ) => void;
 };
 
-export const IdentityAuthTemplatesTable = ({
-  handlePopUpOpen,
-  onEmptyStateChange
-}: Props) => {
+export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange }: Props) => {
   const { currentOrg, isSubOrganization } = useOrganization();
 
   const {
