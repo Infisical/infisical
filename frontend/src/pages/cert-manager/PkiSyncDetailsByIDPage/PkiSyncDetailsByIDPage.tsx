@@ -135,7 +135,7 @@ const PageContent = () => {
                 {pkiSync.lastSyncedAt && (
                   <p>{format(new Date(pkiSync.lastSyncedAt), "MMM d, yyyy 'at' h:mm aaa")}</p>
                 )}
-                <p className="whitespace-pre-wrap break-words">
+                <p className="break-words whitespace-pre-wrap">
                   {formatSyncErrorMessage(pkiSync.lastSyncMessage)}
                 </p>
               </AlertDescription>
