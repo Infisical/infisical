@@ -20,19 +20,8 @@ export enum AlertPrincipalType {
   Group = "group"
 }
 
-export enum AlertTimeUnit {
-  Days = "d",
-  Weeks = "w",
-  Months = "m",
-  Years = "y"
-}
-
-export const ALERT_TIME_UNIT_LABELS: Record<AlertTimeUnit, string> = {
-  [AlertTimeUnit.Days]: "days",
-  [AlertTimeUnit.Weeks]: "weeks",
-  [AlertTimeUnit.Months]: "months",
-  [AlertTimeUnit.Years]: "years"
-};
+export const MIN_ALERT_BEFORE_DAYS = 1;
+export const MAX_ALERT_BEFORE_DAYS = 90;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"
@@ -184,12 +173,11 @@ export const alertFormSchema = z.object({
   description: z.string().max(1000).optional(),
   resourceType: z.nativeEnum(AlertResourceType),
   eventType: z.nativeEnum(AlertEventType),
-  alertBeforeValue: z
+  alertBeforeDays: z
     .number({ invalid_type_error: "Enter a number" })
     .int("Must be a whole number")
-    .min(1, "Must be at least 1")
-    .max(3650, "Too large"),
-  alertBeforeUnit: z.nativeEnum(AlertTimeUnit),
+    .min(MIN_ALERT_BEFORE_DAYS, `Must be at least ${MIN_ALERT_BEFORE_DAYS} day`)
+    .max(MAX_ALERT_BEFORE_DAYS, `Must be at most ${MAX_ALERT_BEFORE_DAYS} days`),
   dailyReminder: z.boolean().default(false),
   enabled: z.boolean().default(true),
   channels: z.array(channelFormSchema).min(1, "At least one channel is required")

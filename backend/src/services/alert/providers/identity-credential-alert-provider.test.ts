@@ -85,10 +85,23 @@ const buildProvider = (opts?: {
 const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
 
 describe("identity credential alert provider", () => {
-  test("condition schema accepts alertBefore formats and rejects junk", () => {
+  test("condition schema accepts 1d-90d and rejects everything else", () => {
     const provider = buildProvider();
+    expect(provider.conditionSchema.safeParse({ alertBefore: "1d" }).success).toBe(true);
     expect(provider.conditionSchema.safeParse({ alertBefore: "30d" }).success).toBe(true);
-    expect(provider.conditionSchema.safeParse({ alertBefore: "2w" }).success).toBe(true);
+    expect(provider.conditionSchema.safeParse({ alertBefore: "90d" }).success).toBe(true);
+
+    // Out of range.
+    expect(provider.conditionSchema.safeParse({ alertBefore: "0d" }).success).toBe(false);
+    expect(provider.conditionSchema.safeParse({ alertBefore: "91d" }).success).toBe(false);
+    expect(provider.conditionSchema.safeParse({ alertBefore: "3650d" }).success).toBe(false);
+
+    // Units other than days are no longer accepted.
+    expect(provider.conditionSchema.safeParse({ alertBefore: "2w" }).success).toBe(false);
+    expect(provider.conditionSchema.safeParse({ alertBefore: "3m" }).success).toBe(false);
+    expect(provider.conditionSchema.safeParse({ alertBefore: "1y" }).success).toBe(false);
+
+    expect(provider.conditionSchema.safeParse({ alertBefore: "30" }).success).toBe(false);
     expect(provider.conditionSchema.safeParse({ alertBefore: "nope" }).success).toBe(false);
     expect(provider.conditionSchema.safeParse({}).success).toBe(false);
   });
@@ -206,8 +219,11 @@ describe("identity credential alert provider", () => {
   test("dedup window spans alertBefore + the scan lead (30d -> 744h, 1d -> 48h) with a 24h floor", () => {
     const provider = buildProvider();
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(744);
+    expect(provider.dedupWindowHours?.({ alertBefore: "90d" })).toBe(2184);
     expect(provider.dedupWindowHours?.({ alertBefore: "1d" })).toBe(48);
+    // Falls back to the default when the condition can't be parsed.
     expect(provider.dedupWindowHours?.({ alertBefore: "bad" })).toBe(24);
+    expect(provider.dedupWindowHours?.({ alertBefore: "91d" })).toBe(24);
   });
 
   test("assertPermission allows read but denies create when only read is granted (org scope)", async () => {

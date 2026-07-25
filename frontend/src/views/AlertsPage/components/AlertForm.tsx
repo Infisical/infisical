@@ -32,12 +32,12 @@ import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_EVENT_TYPE_LABELS,
   ALERT_RESOURCE_TYPE_LABELS,
-  ALERT_TIME_UNIT_LABELS,
   AlertChannelType,
   AlertEventType,
   alertFormSchema,
   AlertResourceType,
-  AlertTimeUnit,
+  MAX_ALERT_BEFORE_DAYS,
+  MIN_ALERT_BEFORE_DAYS,
   TAlert,
   TAlertChannelInput,
   TAlertForm,
@@ -71,10 +71,11 @@ const FixedField = ({ label, children }: { label: string; children: ReactNode })
   </div>
 );
 
-const parseAlertBefore = (alertBefore?: string): { value: number; unit: AlertTimeUnit } => {
-  const match = alertBefore?.match(/^(\d+)([dwmy])$/);
-  if (match) return { value: parseInt(match[1], 10), unit: match[2] as AlertTimeUnit };
-  return { value: 7, unit: AlertTimeUnit.Days };
+const DEFAULT_ALERT_BEFORE_DAYS = 7;
+
+const parseAlertBeforeDays = (alertBefore?: string): number => {
+  const match = alertBefore?.match(/^(\d+)d$/);
+  return match ? parseInt(match[1], 10) : DEFAULT_ALERT_BEFORE_DAYS;
 };
 
 const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
@@ -99,15 +100,12 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
       description: "",
       resourceType: AlertResourceType.IdentityAuthentication,
       eventType: AlertEventType.IdentityAuthenticationExpiry,
-      alertBeforeValue: 7,
-      alertBeforeUnit: AlertTimeUnit.Days,
+      alertBeforeDays: DEFAULT_ALERT_BEFORE_DAYS,
       dailyReminder: false,
       enabled: true,
       channels: []
     };
   }
-
-  const { value, unit } = parseAlertBefore(alert.condition?.alertBefore);
 
   return {
     name: alert.name,
@@ -115,8 +113,7 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
     resourceType:
       (alert.resourceType as AlertResourceType) ?? AlertResourceType.IdentityAuthentication,
     eventType: (alert.eventType as AlertEventType) ?? AlertEventType.IdentityAuthenticationExpiry,
-    alertBeforeValue: value,
-    alertBeforeUnit: unit,
+    alertBeforeDays: parseAlertBeforeDays(alert.condition?.alertBefore),
     dailyReminder: alert.condition?.dailyReminder ?? false,
     enabled: alert.enabled,
     channels: alert.channels.map(toChannelForm)
@@ -209,8 +206,10 @@ export const AlertForm = ({
       : "Watches every machine identity authentication in this organization";
 
   const onSubmit = async (data: TAlertForm) => {
-    const alertBefore = `${data.alertBeforeValue}${data.alertBeforeUnit}`;
-    const condition = { alertBefore, dailyReminder: data.dailyReminder };
+    const condition = {
+      alertBefore: `${data.alertBeforeDays}d`,
+      dailyReminder: data.dailyReminder
+    };
     const channels = data.channels.map(toChannelInput);
     try {
       if (isEditing && alert) {
@@ -250,6 +249,7 @@ export const AlertForm = ({
     <FormProvider {...formMethods}>
       <form
         onSubmit={handleSubmit(onSubmit)}
+        noValidate
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         <div className="flex flex-col gap-8 p-4">
@@ -261,7 +261,7 @@ export const AlertForm = ({
                 <Input
                   id="alert-name"
                   autoFocus
-                  placeholder="ci-bot-secret-expiry"
+                  placeholder="Secret Expiration Alert"
                   isError={Boolean(errors.name)}
                   {...register("name")}
                 />
@@ -354,37 +354,27 @@ export const AlertForm = ({
             />
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel>Alert before</FieldLabel>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3">
-                  <Input
-                    id="alert-alert-before"
-                    type="number"
-                    min={1}
-                    className="w-24"
-                    isError={Boolean(errors.alertBeforeValue)}
-                    {...register("alertBeforeValue", { valueAsNumber: true })}
-                  />
-                  <Controller
-                    control={control}
-                    name="alertBeforeUnit"
-                    render={({ field: { value, onChange } }) => (
-                      <Select value={value} onValueChange={onChange}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          {Object.values(AlertTimeUnit).map((unit) => (
-                            <SelectItem key={unit} value={unit}>
-                              {ALERT_TIME_UNIT_LABELS[unit]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-                <FieldError errors={[errors.alertBeforeValue, errors.alertBeforeUnit]} />
+              <FieldLabel htmlFor="alert-alert-before">Condition</FieldLabel>
+              <div className="grid grid-cols-[auto_auto_1fr] items-center gap-x-3 gap-y-1 text-sm text-muted">
+                <span>Alert me</span>
+                <Input
+                  id="alert-alert-before"
+                  type="number"
+                  min={MIN_ALERT_BEFORE_DAYS}
+                  max={MAX_ALERT_BEFORE_DAYS}
+                  className="w-20 text-center"
+                  isError={Boolean(errors.alertBeforeDays)}
+                  {...register("alertBeforeDays", { valueAsNumber: true })}
+                />
+                <span>days before the credential expires. (1-90)</span>
+                {errors.alertBeforeDays && (
+                  <div className="col-start-2 flex w-0 justify-self-center">
+                    <FieldError
+                      errors={[errors.alertBeforeDays]}
+                      className="shrink-0 -translate-x-1/2 whitespace-nowrap"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

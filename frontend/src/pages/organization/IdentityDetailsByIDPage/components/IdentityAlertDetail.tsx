@@ -32,14 +32,11 @@ type Props = {
   identityName: string;
 };
 
-const TIME_UNIT_WORD: Record<string, string> = { d: "day", w: "week", m: "month", y: "year" };
-
 const formatCondition = (alertBefore?: string): string => {
-  const match = alertBefore?.match(/^(\d+)([dwmy])$/);
+  const match = alertBefore?.match(/^(\d+)d$/);
   if (!match) return "";
-  const amount = parseInt(match[1], 10);
-  const word = TIME_UNIT_WORD[match[2]] ?? match[2];
-  return `alert ${amount} ${word}${amount === 1 ? "" : "s"} before`;
+  const days = parseInt(match[1], 10);
+  return `alert ${days} day${days === 1 ? "" : "s"} before`;
 };
 
 export const IdentityAlertDetail = ({ identityId, identityName }: Props) => {

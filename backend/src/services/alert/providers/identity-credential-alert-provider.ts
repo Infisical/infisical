@@ -25,10 +25,25 @@ import { TExpiringUaClientSecret, TIdentityCredentialAlertDALFactory } from "./i
 export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
 export const IDENTITY_AUTHENTICATION_EXPIRY_EVENT = "identity.authentication.expiry";
 
-const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
+const alertBeforeRegex = new RE2("^\\d+d$");
+export const MIN_ALERT_BEFORE_DAYS = 1;
+export const MAX_ALERT_BEFORE_DAYS = 90;
+
+const alertBeforeDays = (alertBefore: string): number => parseInt(alertBefore.slice(0, -1), 10);
+
+const isValidAlertBefore = (alertBefore: string): boolean => {
+  if (!alertBeforeRegex.test(alertBefore)) return false;
+  const days = alertBeforeDays(alertBefore);
+  return days >= MIN_ALERT_BEFORE_DAYS && days <= MAX_ALERT_BEFORE_DAYS;
+};
 
 const IdentityCredentialConditionSchema = z.object({
-  alertBefore: z.string().refine((v) => alertBeforeRegex.test(v), "Must be in format like '30d', '1w', '3m', '1y'"),
+  alertBefore: z
+    .string()
+    .refine(
+      isValidAlertBefore,
+      `Must be a whole number of days from ${MIN_ALERT_BEFORE_DAYS}d to ${MAX_ALERT_BEFORE_DAYS}d, e.g. '30d'`
+    ),
   dailyReminder: z.boolean().optional()
 });
 
@@ -36,25 +51,10 @@ const DAILY_REPEAT_DEDUP_WINDOW_HOURS = 20;
 
 type TIdentityCredentialTarget = { credentialType: "ua-client-secret" } & TExpiringUaClientSecret;
 
-const UNIT_TO_INTERVAL_WORD: Record<string, string> = { d: "days", w: "weeks", m: "months", y: "years" };
-const UNIT_TO_UNIT_WORD: Record<string, string> = { d: "day", w: "week", m: "month", y: "year" };
-const UNIT_TO_DAYS: Record<string, number> = { d: 1, w: 7, m: 30, y: 365 };
-
-const parseAlertBefore = (alertBefore: string) => {
-  const amount = parseInt(alertBefore.slice(0, -1), 10);
-  const unit = alertBefore.slice(-1);
-  return {
-    intervalSql: `${amount} ${UNIT_TO_INTERVAL_WORD[unit]}`,
-    days: amount * (UNIT_TO_DAYS[unit] ?? 1)
-  };
-};
-
-// "1d" -> "1 day", "30d" -> "30 days", "1w" -> "1 week"
+// "1d" -> "1 day", "30d" -> "30 days"
 const humanizeAlertBefore = (alertBefore: string): string => {
-  const amount = parseInt(alertBefore.slice(0, -1), 10);
-  const unit = alertBefore.slice(-1);
-  const word = UNIT_TO_UNIT_WORD[unit] ?? unit;
-  return `${amount} ${word}${amount === 1 ? "" : "s"}`;
+  const days = alertBeforeDays(alertBefore);
+  return `${days} day${days === 1 ? "" : "s"}`;
 };
 
 const daysUntil = (date: Date): number => Math.ceil((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -128,13 +128,12 @@ export const identityCredentialAlertProviderFactory = ({
 
   const findDueTargets = async (input: TFindDueTargetsInput): Promise<TIdentityCredentialTarget[]> => {
     const { alertBefore } = IdentityCredentialConditionSchema.parse(input.condition);
-    const { intervalSql } = parseAlertBefore(alertBefore);
 
     const uaSecrets = await identityCredentialAlertDAL.findExpiringUaClientSecrets({
       orgId: input.orgId,
       projectId: input.projectId,
       identityId: input.resourceId,
-      alertBeforeInterval: intervalSql,
+      alertBeforeInterval: `${alertBeforeDays(alertBefore)} days`,
       leadInterval: ALERT_SCAN_LEAD_INTERVAL,
       asOf: input.asOf
     });
@@ -277,7 +276,7 @@ export const identityCredentialAlertProviderFactory = ({
       // Span the widened scan window (alertBefore + the scan lead) so a target still fires only once.
       return Math.max(
         DEFAULT_DEDUP_WINDOW_HOURS,
-        (parseAlertBefore(parsed.data.alertBefore).days + ALERT_SCAN_LEAD_DAYS) * 24
+        (alertBeforeDays(parsed.data.alertBefore) + ALERT_SCAN_LEAD_DAYS) * 24
       );
     },
     assertPermission,
