@@ -55,7 +55,10 @@ export const PkiSyncRemoveCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
           <AlertDialogAction
             variant="danger"
             isPending={triggerRemoveCertificates.isPending}
-            onClick={handleTriggerRemoveCertificates}
+            onClick={async (event) => {
+              event.preventDefault();
+              await handleTriggerRemoveCertificates();
+            }}
           >
             Remove Certificates
           </AlertDialogAction>

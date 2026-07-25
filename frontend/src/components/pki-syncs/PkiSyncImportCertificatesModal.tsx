@@ -56,7 +56,10 @@ export const PkiSyncImportCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
           <AlertDialogAction
             variant="project"
             isPending={triggerImportCertificates.isPending}
-            onClick={handleTriggerImportCertificates}
+            onClick={async (event) => {
+              event.preventDefault();
+              await handleTriggerImportCertificates();
+            }}
           >
             Import Certificates
           </AlertDialogAction>

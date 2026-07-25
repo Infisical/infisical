@@ -452,7 +452,8 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
               variant="danger"
               isDisabled={deleteConfirmation !== "confirm"}
               isPending={removeCertificatesFromSync.isPending}
-              onClick={async () => {
+              onClick={async (event) => {
+                event.preventDefault();
                 if (certificateToDelete) {
                   await handleRemoveCertificate(certificateToDelete.id);
                 }
