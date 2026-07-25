@@ -204,7 +204,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
 
         <div>
           <div className="space-y-4">
-            <Table>
+            <Table containerClassName={syncCertificates.length === 0 ? "hidden" : undefined}>
               <THead>
                 <Tr>
                   <Th className="w-3/16">SAN / CN</Th>
@@ -390,7 +390,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
               </TBody>
             </Table>
             {syncCertificates.length === 0 && (
-              <Empty className="rounded-t-none border-t-0 py-12">
+              <Empty className="border py-12">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <ScrollTextIcon />
