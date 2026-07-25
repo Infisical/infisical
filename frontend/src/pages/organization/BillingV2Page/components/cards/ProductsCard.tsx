@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode } from "react";
-import { ArrowBigUpDashIcon, DollarSign, Package, RefreshCw } from "lucide-react";
+import { ArrowBigUpDashIcon, DollarSign, Package, RefreshCw, Sparkles } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -39,6 +39,7 @@ type ActiveProductCardProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   readOnly?: boolean;
+  selfServe: boolean;
   onManage: (id: string) => void;
   onSetCommitment: (id: string) => void;
 };
@@ -48,12 +49,13 @@ const ActiveProductCard = ({
   prod,
   entitlement,
   readOnly,
+  selfServe,
   onManage,
   onSetCommitment
 }: ActiveProductCardProps) => {
   // "Commit annually and save" nudge: shown when the org holds this product monthly but hasn't set the
-  // available commitment. Clicking opens the set-commitment flow.
-  const commitNudge = readOnly ? null : commitSavingsNudge(entitlement);
+  // available commitment. Clicking opens the set-commitment flow. Hidden for enterprise-managed orgs.
+  const commitNudge = readOnly || !selfServe ? null : commitSavingsNudge(entitlement);
   // Every deprecation is presented as a retiring plan for now (see asPlanDeprecation).
   const deprecation = !entitlement?.planTier?.includes("enterprise")
     ? asPlanDeprecation(entitlement?.deprecation)
@@ -146,8 +148,7 @@ const ActiveProductCard = ({
           )}
           {!hasPrice && <span className="text-sm text-muted">Included</span>}
         </div>
-        {!readOnly && (
-          // A retiring plan nudges the customer toward the replacement; everything else opens Manage.
+        {!readOnly && selfServe && (
           <Button
             variant="outline"
             size="sm"
@@ -174,12 +175,11 @@ const ActiveProductCard = ({
             </span>
             <span>
               Commit annually and save{" "}
-              <span className="font-medium text-foreground">~{commitNudge.savingsPct}%</span> —{" "}
-              {commitNudge.qty.toLocaleString()} {commitNudge.label} would be{" "}
+              <span className="font-medium text-foreground">~{commitNudge.savingsPct}%</span> —
+              would be{" "}
               <span className="font-medium text-foreground">
                 {fmtMoney(commitNudge.annualCommitted)} / yr
-              </span>{" "}
-              instead of {fmtMoney(commitNudge.monthlyAnnualized)}.
+              </span>
             </span>
           </span>
           <Button
@@ -199,19 +199,23 @@ const ActiveProductCard = ({
 type AvailableProductTileProps = {
   prod: BillingV2CatalogProduct;
   readOnly?: boolean;
+  // This product's one-per-product trial is already used up, so it can only be activated, not trialed.
+  trialUsed?: boolean;
   onManage: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-// Compact tile for a product the org doesn't hold yet: tagline plus an activate / contact action.
+// Compact tile for a product the org doesn't hold yet: tagline plus an activate / trial / contact action.
 const AvailableProductTile = ({
   prod,
   readOnly,
+  trialUsed,
   onManage,
   onContact
 }: AvailableProductTileProps) => {
   const selfServe = prod.plans.some((plan) => plan.selfServe);
   const salesLed = prod.plans.some((plan) => plan.salesLed);
+  const offersTrial = !trialUsed && prod.plans.some((plan) => plan.selfServe && plan.trialable);
 
   let action = null;
   if (!readOnly) {
@@ -223,8 +227,8 @@ const AvailableProductTile = ({
           style={{ "--product-color": prod.color } as CSSProperties}
           onClick={() => onManage(prod.id)}
         >
-          <ArrowBigUpDashIcon />
-          Activate
+          {offersTrial ? <Sparkles /> : <ArrowBigUpDashIcon />}
+          {offersTrial ? "Start a free trial" : "Activate"}
         </Button>
       );
     } else if (salesLed) {
@@ -336,6 +340,7 @@ export const ProductsCard = ({
                   prod={prod}
                   entitlement={overview.entitlements[prod.id]}
                   readOnly={readOnly}
+                  selfServe={overview.selfServe}
                   onManage={onManage}
                   onSetCommitment={onSetCommitment}
                 />
@@ -354,6 +359,7 @@ export const ProductsCard = ({
                           key={prod.id}
                           prod={prod}
                           readOnly={readOnly}
+                          trialUsed={overview.trialedProductKeys.includes(prod.id)}
                           onManage={onManage}
                           onContact={onContact}
                         />

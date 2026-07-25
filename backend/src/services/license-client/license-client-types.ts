@@ -24,6 +24,7 @@ const entitlementProductSchema = z
 // cloud/self-hosted version skew doesn't break reads.
 export const entitlementsResponseSchema = z
   .object({
+    slug: z.string().nullish(),
     features: z.record(z.string(), entitlementFeatureSchema),
     products: z.array(entitlementProductSchema).default([])
   })
@@ -203,10 +204,11 @@ const subscriptionBillingSchema = z
 export const subscriptionResponseSchema = z
   .object({
     status: z.string(),
-    // Mutating billing actions are frozen server-side (DISABLE_CHECKOUT); the client disables controls
-    // ahead of a 503 rather than discovering it on submit.
+    // checkoutFrozen: mutating billing actions are frozen server-side (DISABLE_CHECKOUT); the client
+    // disables controls ahead of a 503. selfServe: false for an enterprise-managed org (its mutations
+    // 403 with not_self_serve), true for paygo. Defaults true so paygo and older servers are unchanged.
     capabilities: z
-      .object({ checkoutFrozen: z.boolean().default(false) })
+      .object({ checkoutFrozen: z.boolean().default(false), selfServe: z.boolean().default(true) })
       .passthrough()
       .nullish(),
     // Per-line billing: there is no subscription-level cadence/period/total (a subscription can mix
@@ -391,7 +393,11 @@ export type TCreatePortalPayload = {
 
 // Start / change annual commitments across dimensions (PUT /subscription/commitments), all-or-nothing.
 // The license server prices at its current time; the app never forwards a client-supplied instant.
+// productId is required: it names the product so the server can resolve the trialing plan and
+// create/attach the subscription when there isn't one yet (a trialing org) instead of having to infer
+// it. Not trialing the named product → product_not_trialing.
 export type TChangeCommitmentsPayload = {
+  productId: string;
   dimensions: TCommitmentChange[];
 };
 
@@ -404,13 +410,12 @@ export type TStartTrialPayload = {
   returnUrl?: string;
 };
 
-// The trial is always granted immediately (our-side, no Stripe subscription, no upfront charge), so
-// outcome is always "trial_started". cardSetupUrl is a best-effort setup-mode Checkout to add a card;
-// omitted when there's no customer / the portal isn't configured / the session couldn't open. The
-// card never gates the trial — at trial end a worker converts (card on file) or expires to free.
+// Card-first trial. "trial_started" (HTTP 200): a card is already on file, the trial is granted now.
+// "awaiting_card" (HTTP 402): no card, NOT granted; card_setup_url is a setup-mode Checkout, and
+// completing it grants the trial via webhook. Abandoning it grants nothing. Retry is safe.
 const trialResultSchema = z
   .object({
-    outcome: z.literal("trial_started"),
+    outcome: z.enum(["trial_started", "awaiting_card"]),
     card_setup_url: z
       .string()
       .url()
@@ -420,7 +425,7 @@ const trialResultSchema = z
       .optional()
   })
   .passthrough();
-export type TTrialResult = { outcome: "trial_started"; cardSetupUrl?: string };
+export type TTrialResult = { outcome: "trial_started" | "awaiting_card"; cardSetupUrl?: string };
 export { trialResultSchema };
 
 export type TCancelTrialPayload = {
@@ -453,7 +458,9 @@ export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
   // Ask the license server to recompute/bust its cached entitlements after a license change.
   refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
-  fetchCatalog: () => Promise<TCatalogResponse>;
+  // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the
+  // arg and hits its single-tenant /v1/products.
+  fetchCatalog: (orgId: string) => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;

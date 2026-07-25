@@ -1,8 +1,18 @@
 import { useState } from "react";
-import { ArrowRight, CalendarX2Icon, Check, EditIcon, PlusIcon, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarX2Icon,
+  Check,
+  EditIcon,
+  Info,
+  PlusIcon,
+  Sparkles
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -12,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
   Sheet,
@@ -20,6 +31,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -57,9 +69,42 @@ import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";
 // prefix/metered carry the usage-based framing for metered dims; absent for per_unit and base prices.
 type PriceLine = { amount: string; unit: string; prefix?: string; metered?: boolean };
 
-const dimPriceLine = (dim: BillingV2Dim, cadence: BillingV2Cadence, unit: string): PriceLine => {
+// The plan's headline price for a cadence: a base fee, else the first priced dimension's rate.
+const planHeadlinePrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): number => {
+  if (plan.base) {
+    return unitPrice(plan.base, cadence);
+  }
+  const dim = plan.dims.find((d) => unitPrice(d, cadence) > 0);
+  return dim ? unitPrice(dim, cadence) : 0;
+};
+
+// How much cheaper the annual rate is than paying monthly for a year (0 when either is missing).
+const annualSavingsPct = (plan: BillingV2Plan): number => {
+  const monthly = planHeadlinePrice(plan, "monthly");
+  const annual = planHeadlinePrice(plan, "annual");
+  if (monthly <= 0 || annual <= 0) {
+    return 0;
+  }
+  const pct = Math.round((1 - annual / (monthly * 12)) * 100);
+  return pct > 0 ? pct : 0;
+};
+
+const dimPriceLine = (
+  dim: BillingV2Dim,
+  cadence: BillingV2Cadence,
+  variant: "headline" | "usage"
+): PriceLine => {
   const metered = isMeteredCadence(dim, cadence);
-  const line: PriceLine = { amount: fmtMoney(unitPrice(dim, cadence), 2), unit, metered };
+  // A yearly commitment is always divisible by 12, so a per_resource annual price is shown as its
+  // per-month equivalent (÷12); metered rates are usage-based consumption prices, shown as-is. The
+  // card's cadence toggle is what tells the customer this is billed annually.
+  const perMonth = cadence === "annual" && !metered;
+  const amount = perMonth ? unitPrice(dim, cadence) / 12 : unitPrice(dim, cadence);
+  const unit =
+    variant === "headline"
+      ? `/ ${dim.noun} / ${perMonth ? "month" : cadenceWord(cadence)}`
+      : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cadence)}`;
+  const line: PriceLine = { amount: fmtMoney(amount, 2), unit, metered };
   if (metered && dim.included > 0) {
     line.prefix = `First ${dim.included.toLocaleString()} ${pluralizeUnit(dim.noun)} included, then`;
   }
@@ -94,12 +139,18 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
     ? cadence
     : ((["monthly", "annual"] as const).find(pricesCadence) ?? cadence);
 
+  // A yearly base fee is shown as its per-month equivalent (÷12), the same treatment the per_resource
+  // dims get; the card's cadence toggle communicates that it is billed annually.
+  const annual = cad === "annual";
   let headline: PriceLine | null = plan.base
-    ? { amount: fmtMoney(unitPrice(plan.base, cad)), unit: `/ ${cadenceWord(cad)}` }
+    ? {
+        amount: fmtMoney(annual ? unitPrice(plan.base, cad) / 12 : unitPrice(plan.base, cad)),
+        unit: annual ? "/ month" : `/ ${cadenceWord(cad)}`
+      }
     : null;
   let usageDims = dims;
   if (!headline && dims.length > 0) {
-    headline = dimPriceLine(dims[0], cad, `/ ${dims[0].noun} / ${cadenceWord(cad)}`);
+    headline = dimPriceLine(dims[0], cad, "headline");
     usageDims = dims.slice(1);
   }
 
@@ -109,14 +160,14 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
 
   const usageLines = usageDims.map((dim) => ({
     key: dim.key,
-    line: dimPriceLine(dim, cad, `per ${dim.noun} / ${cadenceWordShort(cad)}`)
+    line: dimPriceLine(dim, cad, "usage")
   }));
 
   return (
-    <div className="flex flex-col gap-3.5">
+    <div className="flex flex-col gap-3">
       <PriceLineView line={headline} headline />
       {usageLines.length > 0 && (
-        <div className="flex flex-col gap-2 border-t border-border pt-3.5">
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
           <span className="text-[10px] font-medium tracking-wide text-muted uppercase">
             Plus per-unit usage
           </span>
@@ -139,21 +190,6 @@ const renderCompareCell = (value: string | boolean | number | undefined) => {
   return value;
 };
 
-const PlanBadge = ({ plan, isCurrent }: { plan: BillingV2Plan; isCurrent: boolean }) => {
-  if (isCurrent) {
-    return (
-      <Badge variant="success">
-        <Check className="text-success" />
-        Current plan
-      </Badge>
-    );
-  }
-  if (plan.salesLed) {
-    return <Badge variant="info">Sales-led</Badge>;
-  }
-  return <Badge variant="info">Self-serve</Badge>;
-};
-
 type PlanCardProps = {
   plan: BillingV2Plan;
   cadence: BillingV2Cadence;
@@ -164,8 +200,10 @@ type PlanCardProps = {
   canChangeCommitment: boolean;
   // Whether a commitment already exists, so the CTA reads "Change" vs "Set" commitment.
   hasCommitment: boolean;
+  // false for an enterprise-managed org: self-serve CTAs (activate/trial/commit) render disabled; the
+  // sales-led "Contact sales" CTA stays enabled.
+  selfServe: boolean;
   onActivate: (planTier: string) => void;
-  onStartTrial: (planTier: string) => void;
   onChangeCommitment: () => void;
   onContact: () => void;
 };
@@ -178,8 +216,8 @@ const PlanCard = ({
   trialUsed,
   canChangeCommitment,
   hasCommitment,
+  selfServe,
   onActivate,
-  onStartTrial,
   onChangeCommitment,
   onContact
 }: PlanCardProps) => {
@@ -188,10 +226,24 @@ const PlanCard = ({
   // hasn't used its one-time trial for this product yet.
   const offersTrial = plan.selfServe && plan.trialable && !entitled && !trialUsed;
 
+  // Each card carries its own billing-cadence toggle. It defaults to the passed cadence (annual for a
+  // new product, so the discounted per-month rate leads), clamped to what the plan actually prices.
+  const supportsAnnual =
+    plan.dims.some((d) => d.annual > 0) || Boolean(plan.base && plan.base.annual > 0);
+  const supportsMonthly =
+    plan.dims.some((d) => d.monthly > 0) || Boolean(plan.base && plan.base.monthly > 0);
+  const [cardCadence, setCardCadence] = useState<BillingV2Cadence>(() => {
+    if (cadence === "annual" && supportsAnnual) return "annual";
+    if (cadence === "monthly" && supportsMonthly) return "monthly";
+    return supportsAnnual ? "annual" : "monthly";
+  });
+  const showCadenceToggle = supportsMonthly && supportsAnnual;
+  const savingsPct = annualSavingsPct(plan);
+
   let cta = null;
   if (plan.salesLed && !isCurrent) {
     cta = (
-      <Button variant="org" size="sm" className="mt-auto self-start" onClick={onContact}>
+      <Button variant="org" size="sm" className="w-full justify-center" onClick={onContact}>
         Contact sales
         <ArrowRight />
       </Button>
@@ -201,7 +253,8 @@ const PlanCard = ({
       <Button
         variant="success"
         size="sm"
-        className="mt-auto self-start"
+        className="w-full justify-center"
+        isDisabled={!selfServe}
         onClick={onChangeCommitment}
       >
         {hasCommitment ? "Change commitment" : "Set commitment"}
@@ -209,20 +262,25 @@ const PlanCard = ({
       </Button>
     );
   } else if (plan.selfServe && !entitled) {
+    // Both trial and paid activation open the purchase sheet; it hosts the actual Start-trial / Pay
+    // action (and, for a trial, the confirmation dialog). The label just sets expectations here.
     cta = offersTrial ? (
       <Button
         variant="org"
         size="sm"
-        className="mt-auto self-start"
-        onClick={() => onStartTrial(plan.tier)}
+        className="w-full justify-center"
+        isDisabled={!selfServe}
+        onClick={() => onActivate(plan.tier)}
       >
-        Start free trial
+        <Sparkles />
+        Start a free trial
       </Button>
     ) : (
       <Button
         variant="org"
         size="sm"
-        className="mt-auto self-start"
+        className="w-full justify-center"
+        isDisabled={!selfServe}
         onClick={() => onActivate(plan.tier)}
       >
         <PlusIcon />
@@ -233,23 +291,55 @@ const PlanCard = ({
 
   return (
     <div
-      className={`flex flex-col gap-3.5 rounded-xl border p-[18px] ${
+      className={`flex flex-col gap-5 rounded-xl border p-5 ${
         isCurrent ? "border-success/40 bg-success/5" : "border-border bg-card"
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[15px] font-medium text-foreground">{plan.name}</span>
-        <PlanBadge plan={plan} isCurrent={isCurrent} />
-      </div>
-      {isCustom ? (
-        <div className="flex items-baseline">
-          <span className="text-2xl font-medium text-foreground">Custom</span>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[15px] font-medium text-foreground">{plan.name}</span>
+          {isCurrent && (
+            <Badge variant="success">
+              <Check className="text-success" />
+              Current plan
+            </Badge>
+          )}
         </div>
-      ) : (
-        <PlanPricing plan={plan} cadence={cadence} />
-      )}
-      {plan.feature && <div className="text-xs text-accent">{plan.feature}</div>}
+        {/* Reserve two lines so the CTA (and everything below it) lines up across the card row. */}
+        <p className="min-h-10 text-sm leading-5 text-muted">{plan.feature}</p>
+      </div>
+
       {cta}
+
+      {/* Cadence + price sit at the bottom so they align across cards of unequal description length. */}
+      <div className="mt-auto flex flex-col gap-2.5">
+        {!isCustom && (showCadenceToggle || cardCadence === "annual") && (
+          <div className="flex items-center gap-2">
+            {showCadenceToggle && (
+              <Switch
+                variant="org"
+                size="sm"
+                className="shrink-0"
+                checked={cardCadence === "annual"}
+                onCheckedChange={(value) => setCardCadence(value ? "annual" : "monthly")}
+              />
+            )}
+            <span className="text-xs font-medium whitespace-nowrap text-foreground">
+              {cardCadence === "annual" ? "Billed annually" : "Billed monthly"}
+            </span>
+            {cardCadence === "annual" && savingsPct > 0 && (
+              <Badge variant="success" className="shrink-0">
+                Save {savingsPct}%
+              </Badge>
+            )}
+          </div>
+        )}
+        {isCustom ? (
+          <span className="text-2xl font-medium text-foreground">Custom</span>
+        ) : (
+          <PlanPricing plan={plan} cadence={cardCadence} />
+        )}
+      </div>
     </div>
   );
 };
@@ -354,6 +444,9 @@ type ProductSheetProps = {
   renewsOn: string | null;
   // This product's one-per-product trial is already used up (backend-computed from trial history).
   trialUsed: boolean;
+  // capabilities.selfServe: false for an enterprise-managed org. Self-serve CTAs render disabled and a
+  // notice points to sales; the sales-led "Contact sales" path stays available.
+  selfServe: boolean;
   onClose: () => void;
   onRemove: (prodId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
@@ -370,6 +463,7 @@ export const ProductSheet = ({
   returnPath,
   renewsOn,
   trialUsed,
+  selfServe,
   onClose,
   onRemove,
   onContact
@@ -393,13 +487,13 @@ export const ProductSheet = ({
   // A trialing product is canceled (trial → free), not removed like a paid product line.
   const isTrialing = Boolean(entitlement?.isTrialing);
   const selfServePlan = prod.plans.find((plan) => plan.selfServe && !plan.salesLed);
-  // The active product's plan-card price renders in its billing cadence. A new product defaults to
-  // yearly, EXCEPT when a self-serve trial is on offer: a trial is monthly/usage-based, so show monthly
-  // there. PlanPricing still falls back to monthly for a monthly-only plan.
   const trialAvailable =
     !entitled && !trialUsed && prod.plans.some((plan) => plan.selfServe && plan.trialable);
-  const displayCadence: BillingV2Cadence =
-    entitlement?.cadence ?? (trialAvailable ? "monthly" : "annual");
+  // The plan-card price always leads with the best (annual) rate shown as a per-month figure (÷12, see
+  // PlanPricing) with a "billed annually" note, even for a trialable plan. An entitled product shows
+  // its own cadence. PlanPricing falls back to monthly for a monthly-only plan. The trial's
+  // monthly-first default lives in the purchase sheet (ActivateView), not on this card.
+  const displayCadence: BillingV2Cadence = entitlement?.cadence ?? "annual";
   // Offer the commitment flow when the org already has a commitment (to change it) OR its pinned plan
   // version lets it commit a dimension it hasn't set yet (start from zero, e.g. a monthly subscriber
   // committing annually). Uses the SAME predicate the commitment view filters on (dimCommitManageable),
@@ -432,15 +526,16 @@ export const ProductSheet = ({
         productId: prod.id,
         plan: trialConfirmTier
       });
-      // The trial is already active. Redirect to the card-setup checkout when the server returns one so
-      // it can convert at trial end; otherwise nudge the user to add a card before then.
-      if (result.cardSetupUrl) {
+      // Card-first: awaiting_card means no card is on file and the trial is NOT granted yet. Send the
+      // customer to the card-setup checkout; completing it grants the trial via webhook.
+      if (result.outcome === "awaiting_card" && result.cardSetupUrl) {
         window.location.href = result.cardSetupUrl;
         return;
       }
+      // trial_started: a card is on file and the trial is active now.
       createNotification({
         type: "success",
-        text: `Your ${prod.name} trial has started. Add a card before it ends to keep the product.`
+        text: `Your ${prod.name} trial has started.`
       });
       onClose();
     } catch {
@@ -477,7 +572,7 @@ export const ProductSheet = ({
           }
         }}
       >
-        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-3xl">
+        <SheetContent side="right" className="flex w-full flex-col p-0 sm:max-w-4xl">
           {view === "activate" && activatePlanObj && (
             <ActivateView
               orgId={orgId}
@@ -486,6 +581,13 @@ export const ProductSheet = ({
               hasActiveSubscription={hasActiveSubscription}
               returnPath={returnPath}
               renewsOn={renewsOn}
+              selfServe={selfServe}
+              // A trial is offered for this plan when the product's trial is unused and the plan itself
+              // is self-serve + trialable. ActivateView shows Start-trial vs Pay off this.
+              trialAvailable={
+                trialAvailable && activatePlanObj.selfServe && activatePlanObj.trialable
+              }
+              onStartTrial={() => setTrialConfirmTier(activatePlanObj.tier)}
               onBack={() => setView("plans")}
               onDone={onClose}
             />
@@ -497,6 +599,7 @@ export const ProductSheet = ({
               prod={prod}
               entitlement={entitlement}
               renewsOn={renewsOn}
+              selfServe={selfServe}
               onBack={() => setView("plans")}
               onDone={onClose}
             />
@@ -521,6 +624,17 @@ export const ProductSheet = ({
                   <CurrentUsageCard entitlement={entitlement} color={prod.color} />
                 )}
 
+                {!selfServe && (
+                  <Alert variant="info">
+                    <Info />
+                    <AlertTitle>Billing is managed by our team</AlertTitle>
+                    <AlertDescription>
+                      Your plan is on a custom agreement, so self-serve changes are disabled.
+                      Contact sales to adjust products, commitments, or your subscription.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className={`grid gap-3.5 ${gridCols}`}>
                   {plans.map((plan) => (
                     <PlanCard
@@ -532,8 +646,8 @@ export const ProductSheet = ({
                       isCurrent={entitled && plan.tier === currentTier}
                       canChangeCommitment={showChangeCommitment}
                       hasCommitment={hasCommitment}
+                      selfServe={selfServe}
                       onActivate={openActivate}
-                      onStartTrial={setTrialConfirmTier}
                       onChangeCommitment={() => setView("commitment")}
                       onContact={() => onContact(prod)}
                     />
@@ -552,11 +666,19 @@ export const ProductSheet = ({
                 {entitled ? (
                   <>
                     {isTrialing ? (
-                      <Button variant="danger" onClick={() => setShowCancelTrial(true)}>
+                      <Button
+                        variant="danger"
+                        isDisabled={!selfServe}
+                        onClick={() => setShowCancelTrial(true)}
+                      >
                         Cancel trial
                       </Button>
                     ) : (
-                      <Button variant="danger" onClick={() => onRemove(prod.id)}>
+                      <Button
+                        variant="danger"
+                        isDisabled={!selfServe}
+                        onClick={() => onRemove(prod.id)}
+                      >
                         Remove product
                       </Button>
                     )}
@@ -595,7 +717,7 @@ export const ProductSheet = ({
             </AlertDialogMedia>
             <AlertDialogTitle>Start your {prod.name} trial</AlertDialogTitle>
             <AlertDialogDescription>
-              Your 30-day trial is free. After it ends, your subscription continues automatically
+              Your 14-day trial is free. After it ends, your subscription continues automatically
               and you&apos;ll be billed monthly based on usage. Cancel before the trial ends to
               avoid charges.
             </AlertDialogDescription>

@@ -105,11 +105,11 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     await invalidateEntitlements(org.id);
   };
 
-  const getCatalog = async () => {
+  const getCatalog = async (orgId: string) => {
     if (!backend) {
       return null;
     }
-    return backend.fetchCatalog();
+    return backend.fetchCatalog(orgId);
   };
 
   const getSubscription = async (orgId: string) => {

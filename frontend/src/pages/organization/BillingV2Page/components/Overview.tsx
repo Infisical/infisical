@@ -56,7 +56,7 @@ export const Overview = ({
     );
   }
 
-  const { mode, checkoutFrozen } = overview;
+  const { mode, checkoutFrozen, selfServe } = overview;
   const isManaged = mode === "managed";
   // Managed plans and read-only billing roles cannot mutate the subscription. A frozen checkout
   // (server DISABLE_CHECKOUT) disables every mutation path too, so treat it as read-only for the
@@ -75,10 +75,25 @@ export const Overview = ({
       </Alert>
     ) : null;
 
+  // An enterprise-managed org (billing_method enterprise_*) sees the surface but self-serve is off; the
+  // per-product controls render disabled and this points them to sales. Distinct from checkoutFrozen.
+  const enterpriseNotice =
+    !selfServe && !isManaged ? (
+      <Alert variant="info">
+        <TriangleAlert />
+        <AlertTitle>Billing is managed by our team</AlertTitle>
+        <AlertDescription>
+          Your organization is on a custom agreement, so self-serve changes are disabled. Contact
+          sales to adjust products, commitments, or your subscription.
+        </AlertDescription>
+      </Alert>
+    ) : null;
+
   if (subState === "no-subscription") {
     return (
       <div className="flex flex-col gap-4">
         {frozenNotice}
+        {enterpriseNotice}
         <Banner
           mode={mode}
           subState={subState}
@@ -103,6 +118,7 @@ export const Overview = ({
   return (
     <div className="flex flex-col gap-4">
       {frozenNotice}
+      {enterpriseNotice}
       <Banner
         mode={mode}
         subState={subState}

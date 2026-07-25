@@ -25,6 +25,12 @@ type Props = {
   hasActiveSubscription: boolean;
   returnPath: string;
   renewsOn: string | null;
+  // false for an enterprise-managed org: the activate button is disabled (a mutation would 403).
+  selfServe: boolean;
+  // This plan offers an unused self-serve trial. In the monthly cadence the primary CTA becomes
+  // "Start free trial" (which opens the confirmation dialog) instead of a paid activation.
+  trialAvailable: boolean;
+  onStartTrial: () => void;
   onBack: () => void;
   onDone: () => void;
 };
@@ -82,6 +88,9 @@ export const ActivateView = ({
   hasActiveSubscription,
   returnPath,
   renewsOn,
+  selfServe,
+  trialAvailable,
+  onStartTrial,
   onBack,
   onDone
 }: Props) => {
@@ -102,6 +111,9 @@ export const ActivateView = ({
   );
   const [acknowledged, setAcknowledged] = useState(false);
   const needsCommitmentAck = cadence === "annual" && committable.length > 0;
+  // A trial is monthly/usage-based, so it only applies to the monthly cadence. Switching to yearly is
+  // a paid annual purchase, not a trial, so the CTA flips back to Pay.
+  const trialFlow = trialAvailable && cadence === "monthly";
 
   const preview = usePreviewBillingV2Change();
   const buyProduct = useBuyBillingV2Product();
@@ -148,8 +160,10 @@ export const ActivateView = ({
   // changes it settles); a first purchase goes through Stripe Checkout, which collects the whole first
   // invoice up front (nextInvoiceTotal) — for a yearly commitment that is the full annual amount, not
   // the $0 prorationAmount a first purchase reports.
+  // A trial collects nothing today (the card, if any, is only set up), so due-today is 0 regardless of
+  // the previewed purchase amount.
   let dueToday = 0;
-  if (preview.data) {
+  if (!trialFlow && preview.data) {
     dueToday = hasActiveSubscription
       ? Math.max(preview.data.totalDueNow, 0)
       : preview.data.nextInvoiceTotal;
@@ -163,14 +177,19 @@ export const ActivateView = ({
   const pending = buyProduct.isPending;
 
   let chargedNote = "Calculating…";
-  if (!isCalculating) {
+  if (trialFlow) {
+    chargedNote = "Free during your trial";
+  } else if (!isCalculating) {
     chargedNote = hasActiveSubscription
       ? "Prorated onto your shared billing date"
       : "Due today at checkout";
   }
-  // The CTA waits until the preview has priced the current selection, and an annual commitment also
-  // requires the customer to acknowledge the commitment terms.
-  const activateDisabled = pending || isCalculating || (needsCommitmentAck && !acknowledged);
+  // The paid CTA waits until the preview has priced the current selection, and an annual commitment
+  // also requires the customer to acknowledge the terms. The trial CTA has nothing to price, so it
+  // only waits on selfServe. An enterprise-managed org (selfServe false) can never submit either.
+  const primaryDisabled = trialFlow
+    ? !selfServe
+    : !selfServe || pending || isCalculating || (needsCommitmentAck && !acknowledged);
 
   // Savings badge on the yearly option: how much cheaper the annual rate is vs paying monthly.
   const savingsPct = useMemo(() => {
@@ -211,6 +230,20 @@ export const ActivateView = ({
     }
   };
 
+  let primaryLabel = "Start a free trial";
+  if (!trialFlow) {
+    primaryLabel = isCalculating
+      ? "Activate"
+      : `Activate · pay ${fmtMoney(dueToday, dueToday ? 2 : 0)} today`;
+  }
+
+  let recurringNote: string | undefined;
+  if (trialFlow) {
+    recurringNote = "Billed monthly after your trial ends";
+  } else if (renewsOn) {
+    recurringNote = `Billed on ${renewsOn}`;
+  }
+
   return (
     <>
       <SheetHeader className="flex-row items-center gap-3.5 border-b pr-12">
@@ -223,7 +256,7 @@ export const ActivateView = ({
         </div>
       </SheetHeader>
 
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
+      <div className="flex flex-col gap-4 overflow-y-auto p-5">
         {supportsMonthly && supportsAnnual && (
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-foreground">Billing cadence</span>
@@ -261,7 +294,7 @@ export const ActivateView = ({
                     {dim.label} · committed for the year
                   </div>
                   <div className="mt-0.5 text-xs text-muted">
-                    {fmtMoney(dim.annual)} / {dim.noun} / yr committed
+                    {fmtMoney(dim.annual / 12, 2)} / {dim.noun} / mo · billed annually
                   </div>
                 </div>
                 <Stepper
@@ -284,27 +317,28 @@ export const ActivateView = ({
                 {plan.feature && <div className="mt-0.5 text-xs text-muted">{plan.feature}</div>}
               </div>
             </div>
-            <span className="shrink-0 text-sm font-semibold text-foreground tabular-nums">
-              {fmtMoney(localRecurring)} / {period}
-            </span>
+            <div className="flex shrink-0 flex-col items-end">
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                {fmtMoney(cadence === "annual" ? localRecurring / 12 : localRecurring)} / mo
+              </span>
+              {cadence === "annual" && (
+                <span className="text-[11px] text-muted">billed annually</span>
+              )}
+            </div>
           </div>
-        )}
-
-        {needsCommitmentAck && (
-          <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
         )}
 
         <CostSummary>
           <CostSummaryRow
-            label="Charged today"
+            label={trialFlow ? "Due today" : "Charged today"}
             note={chargedNote}
             value={fmtMoney(dueToday, dueToday ? 2 : 0)}
-            isCalculating={isCalculating}
+            isCalculating={!trialFlow && isCalculating}
             valueClassName="text-base"
           />
           <CostSummaryRow
             label={cadence === "annual" ? "Annual commitment" : "Monthly total"}
-            note={renewsOn ? `Billed on ${renewsOn}` : undefined}
+            note={recurringNote}
             value={`${fmtMoney(recurring)} / ${period}`}
             isCalculating={isCalculating}
           />
@@ -317,6 +351,10 @@ export const ActivateView = ({
             totalDueNow={preview.data?.totalDueNow ?? 0}
           />
         )}
+
+        {needsCommitmentAck && (
+          <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
+        )}
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">
@@ -326,13 +364,11 @@ export const ActivateView = ({
         </Button>
         <Button
           variant="org"
-          onClick={handleActivate}
-          isDisabled={activateDisabled}
+          onClick={trialFlow ? onStartTrial : handleActivate}
+          isDisabled={primaryDisabled}
           isPending={pending}
         >
-          {isCalculating
-            ? "Activate"
-            : `Activate · pay ${fmtMoney(dueToday, dueToday ? 2 : 0)} today`}
+          {primaryLabel}
         </Button>
       </SheetFooter>
     </>
