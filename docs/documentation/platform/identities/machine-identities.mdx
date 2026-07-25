@@ -15,6 +15,7 @@ Key Features:
 
 - Role Assignment: Identities must be assigned [roles](/documentation/platform/access-controls/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
 - Auth/Token Configuration: Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
+- Expiry Alerting: Identities with expiring credentials can notify your team ahead of time via [Credential Expiry Alerts](#credential-expiry-alerts).
 
 ## Scopes
 
@@ -85,6 +86,91 @@ Once revoked, the token is rejected on subsequent authenticated requests and can
   If you need a revocation to take effect with no propagation delay even under those conditions, rotate the underlying credential (delete the Universal Auth client secret) or delete the identity, both of which invalidate the affected tokens regardless of cache state.
 </Note>
 
+## Credential Expiry Alerts
+
+A machine identity whose credential expires unnoticed takes your workload down with it. Expiry alerts watch the credentials attached to an identity and notify your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
+
+Alerts currently cover **Universal Auth client secrets that have a TTL**. A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
+
+<Note>
+  The alert watches the **client secret**, not the access tokens minted from it. Access tokens are
+  short-lived by design and are renewed programmatically. See
+  [Universal Auth](/documentation/platform/identities/universal-auth) for the difference between
+  Client Secret TTL, Access Token TTL, and Access Token Max TTL.
+</Note>
+
+### Create an Alert
+
+Open the machine identity you want to monitor and find the **Alert** row in its details. Click the bell icon to create one.
+
+| Field | Description |
+|-------|-------------|
+| **Name** | A name for the alert, e.g. `ua-secret-expiry` |
+| **Description** | Optional context about this alert |
+| **Condition** | How many days before expiration to notify, as a whole number from `1` to `90` |
+| **Daily Reminder** | If enabled, repeats the alert every day from the threshold until the credential expires |
+| **Enabled** | Turn the alert off without deleting it |
+
+With **Daily Reminder** off, each credential triggers the alert once. Turn it on for credentials you cannot afford to miss, and you will get one notification per day until the credential expires or is rotated.
+
+### Notification Channels
+
+An alert delivers through one or more channels, up to 10 per alert. Add at least one.
+
+| Channel | Configuration |
+|---------|---------------|
+| **Email** | Pick recipients from the organization's users and groups, up to 20 per channel. Group membership is expanded at send time. |
+| **Slack** | An [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL. Must be an HTTPS `hooks.slack.com` URL. |
+| **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (32-character hex string). Triggers one incident per expiring credential, deduplicated by credential. |
+| **Webhook** | Any HTTPS endpoint, with an optional signing secret for verification. |
+
+### Webhook Payload
+
+Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents with the type `com.infisical.identity.authentication.expiration`. Every credential due for this run is listed in `data.items`:
+
+```json
+{
+  "specversion": "1.0",
+  "type": "com.infisical.identity.authentication.expiration",
+  "source": "/alerts/1bd09748-1d5b-4642-8034-f4ca88f59996",
+  "id": "3f2a91c4-7e6b-4d18-9a55-08c1d4e2b7f0",
+  "time": "2026-08-16T00:00:04.512Z",
+  "datacontenttype": "application/json",
+  "subject": "identity.authentication.expiry",
+  "data": {
+    "alert": {
+      "id": "1bd09748-1d5b-4642-8034-f4ca88f59996",
+      "name": "ua-secret-expiry",
+      "resourceType": "identity.authentication",
+      "condition": "7d"
+    },
+    "items": [
+      {
+        "id": "ua-client-secret:cff39386-bbe5-44eb-aecf-e2445167b497",
+        "title": "ci-deploy-bot",
+        "fields": [
+          { "label": "Secret Name", "value": "github-actions" },
+          { "label": "Secret Type", "value": "Universal Auth Client Secret" },
+          { "label": "Expires", "value": "August 23, 2026 at 04:15 PM UTC" }
+        ]
+      }
+    ],
+    "metadata": {
+      "totalItems": 1,
+      "viewUrl": "https://app.infisical.com/organizations/18b65352-ad1e-43d5-830f-65c72245c3a3/identities/c6002a8c-4571-4660-b169-f891f4734851"
+    }
+  }
+}
+```
+
+When a signing secret is set, Infisical signs the request and sends it in the `x-infisical-signature` header:
+
+```
+x-infisical-signature: t=1786924804512,v1=9f8c1d...e3
+```
+
+`t` is a Unix timestamp in **milliseconds**, and `v1` is `HMAC-SHA256("<t>.<raw-request-body>", <signing-secret>)` as a hex digest. Recompute it over the raw body rather than a re-serialized copy, then compare against `v1` before trusting the payload and reject stale timestamps.
+
 ## FAQ
 
 <AccordionGroup>
@@ -110,5 +196,11 @@ You can learn more about how to do this in the CLI quickstart [here](/cli/usage)
   - You have insufficient organization permissions to create, read, update, delete identities.
   - The identity you are trying to read, update, or delete is more privileged than yourself.
   - The role you are trying to create an identity for or update an identity to is more privileged than yours.
+</Accordion>
+<Accordion title="Why didn't I get an alert for a credential expiring in a few hours?">
+  Expiry alerts run once a day, so a credential whose entire lifetime is shorter than the gap between two runs can expire before an alert is ever due. Alerts are meant for credentials with TTLs measured in days.
+</Accordion>
+<Accordion title="What happens to an alert after I rotate the credential?">
+  The new client secret is evaluated on its own TTL, and the old one drops out of the alert once it is revoked or expires. No change to the alert is needed.
 </Accordion>
 </AccordionGroup>
