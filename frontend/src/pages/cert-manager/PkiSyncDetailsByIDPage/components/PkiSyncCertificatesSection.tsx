@@ -296,7 +296,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                           <div className="flex items-center gap-1">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="truncate text-xs text-bunker-300">
+                                <span className="truncate text-xs text-muted">
                                   {syncCert.externalIdentifier}
                                 </span>
                               </TooltipTrigger>
@@ -310,7 +310,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                             />
                           </div>
                         ) : (
-                          <span className="text-xs text-bunker-400">-</span>
+                          <span className="text-xs text-muted">-</span>
                         )}
                       </Td>
                       <Td>
@@ -329,9 +329,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         )}
                       </Td>
                       <Td>
-                        <span
-                          className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
-                        >
+                        <span className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}>
                           {syncCert.certificateNotAfter
                             ? new Date(syncCert.certificateNotAfter).toLocaleDateString()
                             : "Unknown"}
@@ -341,7 +339,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         {hasAutoRenewal && daysUntilRenewal !== null && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="text-primary-500">
+                              <div className="text-project">
                                 <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
                               </div>
                             </TooltipTrigger>

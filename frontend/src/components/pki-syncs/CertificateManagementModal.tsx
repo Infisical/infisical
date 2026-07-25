@@ -374,9 +374,7 @@ export const CertificateManagementModal = ({
                 return (
                   <Tr
                     key={cert.id}
-                    className={`cursor-pointer hover:bg-mineshaft-700 ${
-                      cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
-                    }`}
+                    className={cannotBeAdded && !isAlreadySynced ? "opacity-50" : undefined}
                     onClick={() => {
                       if (!cannotBeAdded || isAlreadySynced) {
                         handleToggleSelection(cert.id);
@@ -410,17 +408,17 @@ export const CertificateManagementModal = ({
                       )}
                     </Td>
                     <Td className="max-w-0">
-                      <div className="font-mono text-xs text-bunker-300" title={cert.serialNumber}>
+                      <div className="font-mono text-xs text-muted" title={cert.serialNumber}>
                         {truncatedSerial}
                       </div>
                     </Td>
                     <Td className="max-w-0">
-                      <span className="text-sm text-bunker-300">
+                      <span className="text-sm text-muted">
                         {new Date(cert.notBefore).toLocaleDateString()}
                       </span>
                     </Td>
                     <Td className="max-w-0">
-                      <span className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}>
+                      <span className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}>
                         {new Date(cert.notAfter).toLocaleDateString()}
                       </span>
                     </Td>
