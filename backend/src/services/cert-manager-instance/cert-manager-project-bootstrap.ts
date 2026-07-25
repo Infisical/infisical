@@ -48,8 +48,8 @@ const PRESET_POLICIES: Omit<TCertificatePolicyInsert, "projectId">[] = [
       allowed: [CertExtendedKeyUsageType.SERVER_AUTH]
     },
     algorithms: {
-      signature: [...ALGORITHM_FAMILIES.ECDSA.signature],
-      keyAlgorithm: [...ALGORITHM_FAMILIES.ECDSA.key]
+      signature: [...ALGORITHM_FAMILIES.ECDSA.signature, ...ALGORITHM_FAMILIES.RSA.signature],
+      keyAlgorithm: [...ALGORITHM_FAMILIES.ECDSA.key, ...ALGORITHM_FAMILIES.RSA.key]
     },
     validity: { max: "365d" }
   },
