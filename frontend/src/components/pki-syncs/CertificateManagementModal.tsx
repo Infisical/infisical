@@ -324,7 +324,7 @@ export const CertificateManagementModal = ({
             </div>
           </div>
 
-          <Table>
+          <Table containerClassName={allCertificates.length === 0 ? "hidden" : undefined}>
             <THead>
               <Tr>
                 <Th className="w-12">
@@ -430,7 +430,7 @@ export const CertificateManagementModal = ({
             </TBody>
           </Table>
           {allCertificates.length === 0 && (
-            <Empty className="rounded-t-none border-t-0">
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>No certificates found</EmptyTitle>
                 <EmptyDescription>
