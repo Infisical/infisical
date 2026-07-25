@@ -410,10 +410,7 @@ export const CertificateManagementModal = ({
                       )}
                     </Td>
                     <Td className="max-w-0">
-                      <div
-                        className="font-mono text-xs text-bunker-300"
-                        title={cert.serialNumber}
-                      >
+                      <div className="font-mono text-xs text-bunker-300" title={cert.serialNumber}>
                         {truncatedSerial}
                       </div>
                     </Td>
@@ -423,9 +420,7 @@ export const CertificateManagementModal = ({
                       </span>
                     </Td>
                     <Td className="max-w-0">
-                      <span
-                        className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
-                      >
+                      <span className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}>
                         {new Date(cert.notAfter).toLocaleDateString()}
                       </span>
                     </Td>
