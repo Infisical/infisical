@@ -26,25 +26,30 @@ export const alertRecipientResolverFactory = ({
   orgDAL,
   projectDAL
 }: TAlertRecipientResolverDep) => {
-  const resolveInScopeUserIds = async (
+  const resolveInScope = async (
     scope: TResolveScope,
     userIds: string[],
     groupIds: string[]
-  ): Promise<Set<string>> => {
-    if (userIds.length === 0) return new Set();
+  ): Promise<{ userIds: Set<string>; groupIds: Set<string> }> => {
+    if (userIds.length === 0) return { userIds: new Set(), groupIds: new Set() };
 
     if (scope.projectId) {
-      const { effectiveUserIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
+      const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
         orgId: scope.orgId,
         projectId: scope.projectId,
         userIds,
         groupIds
       });
-      return new Set(effectiveUserIds);
+      return { userIds: new Set(effectiveUserIds), groupIds: new Set(effectiveGroupIds) };
     }
 
     const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: scope.orgId });
-    return new Set(memberships.map((membership) => membership.actorUserId).filter((id): id is string => Boolean(id)));
+    return {
+      userIds: new Set(
+        memberships.map((membership) => membership.actorUserId).filter((id): id is string => Boolean(id))
+      ),
+      groupIds: new Set(groupIds)
+    };
   };
 
   const resolveMany = async (
@@ -71,7 +76,11 @@ export const alertRecipientResolverFactory = ({
       });
     }
 
-    const inScopeUserIds = await resolveInScopeUserIds(scope, [...allUserIds], [...allGroupIds]);
+    const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolveInScope(
+      scope,
+      [...allUserIds],
+      [...allGroupIds]
+    );
     const usersById = new Map<string, Awaited<ReturnType<typeof userDAL.find>>[number]>();
     if (inScopeUserIds.size > 0) {
       const users = await userDAL.find({ $in: { id: [...inScopeUserIds] } });
@@ -88,7 +97,9 @@ export const alertRecipientResolverFactory = ({
             userIds.add(recipient.principalId);
             break;
           case AlertPrincipalType.GROUP:
-            (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
+            if (inScopeGroupIds.has(recipient.principalId)) {
+              (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
+            }
             break;
           default:
             logger.warn(`Unknown alert recipient principal type '${recipient.principalType}'`);
