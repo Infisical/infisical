@@ -71,13 +71,27 @@ A proxied service maps a host to the secret the proxy applies. In the same folde
 
 The proxy and the agent authenticate as **two separate machine identities with opposite access**. That split is the whole security model: the proxy can read your secrets, the agent never can.
 
+<Note>
+  The two templates have similar names but are for different identities: use **Agent Proxy Policies** for the proxy (this step) and **Agent Policies** for the agent (next step). Pick the one that matches the identity you are creating.
+</Note>
+
 **The proxy identity reads the secrets.**
 
 <Steps>
   <Step title="Create the identity">
-    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent-proxy`) and create it.
+    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent-proxy`), leave the **Role** as **No Access**, select the **Agent Proxy Policies** template under **Additional Privileges**, and create it.
 
-    ![The create machine identity prompt with the name agent-proxy](/images/platform/agent-proxy/quickstart-create-identity.png)
+    ![Creating the agent-proxy identity with the Agent Proxy Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-identity.png)
+
+    <Note>
+      **Agent Proxy Policies** grants the proxy these permissions, project-wide:
+
+      - `Read Value` and `Describe Secret` on **Secrets**: fetch real secret values
+      - `Lease` on **Dynamic Secrets**: mint credentials for brokered [dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets)
+      - `Report Usage` on **Proxied Services**: report service usage back to Infisical
+
+      This template is the identity's entire access, so its project **Role** stays **No Access**. For a production deployment, grant these scoped to your services' environments and paths with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or a conditional [additional privilege](/documentation/platform/access-controls/additional-privileges). See [Permissions](/documentation/platform/agent-proxy/security#permissions).
+    </Note>
   </Step>
   <Step title="Generate a Client Secret">
     Open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
@@ -90,17 +104,6 @@ The proxy and the agent authenticate as **two separate machine identities with o
 
     Save the **Client ID** and the **Client Secret**; you will pass both to the proxy in step 5.
   </Step>
-  <Step title="Grant it read access to the secrets">
-    Grant it `Read Value` and `Describe Secret` on **Secrets** for the secrets your services reference. The quickest way is an [additional privilege](/documentation/platform/access-controls/additional-privileges) directly on the identity: open it and click **Add Additional Privileges**.
-
-    ![The Add Additional Privileges button on the machine identity page](/images/platform/agent-proxy/quickstart-add-additional-privileges.png)
-
-    Add a **Secrets** policy allowing both `Read Value` and `Describe Secret`. A [custom role](/documentation/platform/access-controls/role-based-access-controls) with the same policy, assigned to the identity, works too.
-
-    If you plan to broker [dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets) later, also allow `Manage Leases` on **Dynamic Secrets** while you are here. Only the proxy identity gets it; the agent identity never should.
-
-    ![The proxy identity's additional privileges: Read Value and Describe Secret on Secrets, and Manage Leases on Dynamic Secrets](/images/platform/agent-proxy/quickstart-proxy-identity-role.png)
-  </Step>
 </Steps>
 
 ## 4. Create the agent identity
@@ -109,17 +112,20 @@ The proxy and the agent authenticate as **two separate machine identities with o
 
 <Steps>
   <Step title="Create the identity">
-    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent`) and create it.
+    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent`), leave the **Role** as **No Access**, select the **Agent Policies** template under **Additional Privileges**, and create it.
 
-    ![The create machine identity prompt with the name agent](/images/platform/agent-proxy/quickstart-create-agent-identity.png)
+    ![Creating the agent identity with the Agent Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-agent-identity.png)
+
+    <Note>
+      **Agent Policies** grants the agent one permission, project-wide:
+
+      - `Proxy` on **Proxied Services**: route traffic and have credentials applied, with no secret read access
+
+      This template is the identity's entire access, so its project **Role** stays **No Access**. For a production deployment, grant it scoped to your services' environments and paths with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or a conditional [additional privilege](/documentation/platform/access-controls/additional-privileges). See [Permissions](/documentation/platform/agent-proxy/security#permissions).
+    </Note>
   </Step>
   <Step title="Generate a Client Secret">
     Open the identity and add a **Client Secret** under Universal Auth, exactly as in the previous step. Save the **Client ID** and the **Client Secret**; you will pass both to the agent in step 6.
-  </Step>
-  <Step title="Grant it the Proxy permission">
-    Grant it only `Proxy` on **Proxied Services**, scoped to the environment and path where your services live, the same way you granted the proxy identity's permissions.
-
-    ![The agent identity's additional privilege with only the Proxy action on Proxied Services](/images/platform/agent-proxy/quickstart-agent-identity-role.png)
   </Step>
 </Steps>
 

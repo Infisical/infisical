@@ -92,7 +92,7 @@ export default function InitialSignupStep({
           <CardDescription className="ml-0.5 text-base">
             Create your Infisical account
           </CardDescription>
-          <CardAction className="-mr-2">
+          <CardAction>
             <RegionSelect compact />
           </CardAction>
         </CardHeader>

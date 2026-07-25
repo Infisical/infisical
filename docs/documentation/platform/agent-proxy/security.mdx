@@ -38,12 +38,12 @@ Proxied services have their own project-level permission subject. Alongside the 
 
 ### Roles
 
-Grant each identity the minimum permissions it needs with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or an [additional privilege](/documentation/platform/access-controls/additional-privileges), scoped to the environments and paths its services live in. This is the minimum each identity needs:
+Grant each identity the minimum permissions it needs with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or an [additional privilege](/documentation/platform/access-controls/additional-privileges), scoped to the environments and paths its services live in. The **Agent Proxy Policies** and **Agent Policies** templates (offered under Additional Privileges when creating an identity) apply these permissions in a single step and are the fastest way to get started, but they grant them project-wide. For production use, prefer a custom role or additional privilege scoped with conditions to the environments and paths your services occupy. This is the minimum each identity needs:
 
 | Identity | Minimum permissions | Notes |
 | --- | --- | --- |
 | **Agent** | `Proxy` on **Proxied Services**, scoped to the environments and paths where its services live | This alone lets it route traffic and have credentials applied. It does not need to read any secret. |
-| **Agent Proxy** | `Read Value` and `Describe Secret` on **Secrets**, covering every secret the services reference; plus `Manage Leases` on **Dynamic Secrets** for any dynamic secret a service brokers | This is the identity that actually fetches the real values and mints leases. `Describe Secret` determines whether a secret is visible to the identity at all, `Read Value` reveals its value, and `Manage Leases` lets it mint a brokered dynamic secret. It needs no proxied-service permission. |
+| **Agent Proxy** | `Read Value` and `Describe Secret` on **Secrets**, covering every secret the services reference; `Manage Leases` on **Dynamic Secrets** for any dynamic secret a service brokers; and `Report Usage` on **Proxied Services** | This is the identity that fetches the real values, mints leases, and records service usage. `Describe Secret` determines whether a secret is visible to the identity at all, `Read Value` reveals its value, `Manage Leases` lets it mint a brokered dynamic secret, and `Report Usage` lets it stamp a service's "last used" time. It never holds `Proxy`; routing traffic is the agent's job alone. |
 
 <Note>
   An agent identity should be scoped to just the **Proxy** permission, with no secret read access. If an agent also needs real values in its environment, grant its identity **Read Value** on those specific secrets. Avoid granting folder-wide read access to an agent identity: that would also expose the brokered secrets and defeat the purpose of brokering them.
@@ -52,6 +52,8 @@ Grant each identity the minimum permissions it needs with a [custom role](/docum
 The key thing to get right for the Agent Proxy: it needs **Read Value on every secret referenced by every service any of its agents use**, across the relevant environments and paths. If a referenced secret comes from a [secret import](/documentation/platform/agent-proxy/proxied-services#using-secrets-from-other-folders-and-environments), the read permission has to cover the secret's real location (the import source), not just the folder it is imported into. If a grant is missing, that credential is skipped.
 
 For a service that brokers a [dynamic secret](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets), the Agent Proxy identity needs `Manage Leases` on that dynamic secret. The agent identity must **not** have `Manage Leases` on it, or `agent-proxy connect` refuses to start.
+
+The Agent Proxy also records each time it brokers a service, which surfaces as a "last used" time on the proxied service. This is why it needs `Report Usage`. Usage is always reported by the Agent Proxy identity, never the agent's: the agent runs in an untrusted environment, so letting it report would allow a compromised agent to forge usage. The proxy is the trusted observer.
 
 ## Next steps
 

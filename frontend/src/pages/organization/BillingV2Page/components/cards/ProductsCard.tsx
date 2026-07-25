@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { DollarSign, Package, RefreshCw } from "lucide-react";
+import { CSSProperties, ReactNode } from "react";
+import { ArrowBigUpDashIcon, DollarSign, Package, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -217,7 +217,13 @@ const AvailableProductTile = ({
   if (!readOnly) {
     if (selfServe) {
       action = (
-        <Button variant="org" size="sm" onClick={() => onManage(prod.id)}>
+        <Button
+          variant="product"
+          size="sm"
+          style={{ "--product-color": prod.color } as CSSProperties}
+          onClick={() => onManage(prod.id)}
+        >
+          <ArrowBigUpDashIcon />
           Activate
         </Button>
       );

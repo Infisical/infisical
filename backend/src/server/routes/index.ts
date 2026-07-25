@@ -524,6 +524,7 @@ import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
+import { updateCheckServiceFactory } from "@app/services/update-check/update-check-queue";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userActivationDALFactory } from "@app/services/user-activation/user-activation-dal";
@@ -910,6 +911,14 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
+  const identityAccessTokenService = identityAccessTokenServiceFactory({
+    identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL,
+    identityDAL,
+    orgDAL,
+    keyStore
+  });
+
   const membershipIdentityService = membershipIdentityServiceFactory({
     identityDAL,
     membershipIdentityDAL,
@@ -922,7 +931,8 @@ export const registerRoutes = async (
     applicationMembershipCleanupService,
     projectDAL,
     keyStore,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -968,6 +978,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore,
     envConfig
   });
 
@@ -1086,7 +1097,8 @@ export const registerRoutes = async (
     oidcConfigDAL,
     membershipGroupDAL,
     membershipRoleDAL,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1140,6 +1152,10 @@ export const registerRoutes = async (
     telemetryDAL,
     cronJob,
     telemetryService
+  });
+  const updateCheckService = updateCheckServiceFactory({
+    cronJob,
+    keyStore
   });
 
   const scimService = scimServiceFactory({
@@ -2475,15 +2491,8 @@ export const registerRoutes = async (
     orgDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
-    usageMeteringService
-  });
-
-  const identityAccessTokenService = identityAccessTokenServiceFactory({
-    identityAccessTokenDAL,
-    identityAccessTokenRevocationDAL,
-    identityDAL,
-    orgDAL,
-    keyStore
+    usageMeteringService,
+    identityAccessTokenService
   });
 
   const identityV2Service = identityV2ServiceFactory({
@@ -2997,7 +3006,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     dynamicSecretDAL,
-    projectDAL
+    projectDAL,
+    keyStore
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({
@@ -3846,6 +3856,7 @@ export const registerRoutes = async (
   // Register all cron jobs (synchronous registrations) before starting the scheduler
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
+  updateCheckService.init();
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
@@ -3994,6 +4005,7 @@ export const registerRoutes = async (
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
+    updateCheck: updateCheckService,
     secretSharing: secretSharingService,
     userActivation: userActivationService,
     userEngagement: userEngagementService,

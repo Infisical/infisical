@@ -65,7 +65,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -488,6 +488,7 @@ export const identityTlsCertAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...identityTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -597,6 +598,7 @@ export const identityTlsCertAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
     return { ...updatedTlsCertAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -757,6 +759,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.TLS_CERT_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TLS_CERT_AUTH);
 
     return revokedIdentityTlsCertAuth;
   };
