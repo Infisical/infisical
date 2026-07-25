@@ -584,7 +584,10 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
-  can([ProjectPermissionProxiedServiceActions.Read], ProjectPermissionSub.ProxiedServices);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
 
   can(
     [
@@ -730,7 +733,10 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
-  can(ProjectPermissionProxiedServiceActions.Read, ProjectPermissionSub.ProxiedServices);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);

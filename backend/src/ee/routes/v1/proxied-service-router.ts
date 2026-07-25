@@ -205,7 +205,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     method: "POST",
     url: "/:serviceId/report-usage",
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: true,
       tags: [ApiDocsTags.ProxiedServices],
