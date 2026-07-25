@@ -126,7 +126,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
       <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:justify-end">
         {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge pkiSync={pkiSync} />}
         <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:mr-2">
           <Switch
             id="pki-auto-sync"
             variant="success"
@@ -135,7 +135,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
             disabled={!canEditSync || updatePkiSyncMutation.isPending}
           />
           <Label htmlFor="pki-auto-sync" className="whitespace-nowrap">
-            Auto-Sync {pkiSync.isAutoSyncEnabled ? "Enabled" : "Disabled"}
+            Auto-Sync
           </Label>
         </div>
         <ButtonGroup className="w-full sm:w-fit">
@@ -147,7 +147,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
             onClick={handleTriggerSync}
           >
             <RefreshCwIcon />
-            Trigger Sync
+            Sync now
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
