@@ -19,7 +19,7 @@ const GenericFieldLabel = ({
 }) => (
   <div className="mb-4">
     <p className={`text-sm font-medium text-mineshaft-300 ${labelClassName || ""}`}>{label}</p>
-    <div className={`text-sm text-mineshaft-300 ${truncate ? "truncate" : ""}`}>{children}</div>
+    <div className={`text-sm text-mineshaft-400 ${truncate ? "truncate" : ""}`}>{children}</div>
   </div>
 );
 
