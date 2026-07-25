@@ -31,6 +31,16 @@ import {
   PkiSyncOptionsSection
 } from "./components";
 
+const formatSyncErrorMessage = (message?: string | null) => {
+  if (!message) return "An unknown error occurred.";
+
+  try {
+    return JSON.stringify(JSON.parse(message), null, 2);
+  } catch {
+    return message;
+  }
+};
+
 const PageContent = () => {
   const { syncId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
@@ -110,7 +120,7 @@ const PageContent = () => {
                 <h1 className="text-2xl leading-tight font-medium break-words text-white sm:text-3xl">
                   {pkiSync.name}
                 </h1>
-                <p className="mt-1 text-sm leading-snug text-bunker-300 sm:text-base">
+                <p className="mt-1 text-sm leading-snug text-muted sm:text-base">
                   {destinationDetails.name} PKI Sync
                 </p>
               </div>
@@ -125,7 +135,9 @@ const PageContent = () => {
                 {pkiSync.lastSyncedAt && (
                   <p>{format(new Date(pkiSync.lastSyncedAt), "MMM d, yyyy 'at' h:mm aaa")}</p>
                 )}
-                <p>{pkiSync.lastSyncMessage || "An unknown error occurred."}</p>
+                <p className="whitespace-pre-wrap break-words">
+                  {formatSyncErrorMessage(pkiSync.lastSyncMessage)}
+                </p>
               </AlertDescription>
             </Alert>
           )}

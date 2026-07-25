@@ -107,16 +107,23 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
     async (isAutoSyncEnabled: boolean) => {
       if (isAutoSyncEnabled === pkiSync.isAutoSyncEnabled) return;
 
-      await updatePkiSyncMutation.mutateAsync({
-        syncId: id,
-        projectId,
-        destination,
-        isAutoSyncEnabled
-      });
-      createNotification({
-        text: `Auto-sync ${isAutoSyncEnabled ? "enabled" : "disabled"} successfully`,
-        type: "success"
-      });
+      try {
+        await updatePkiSyncMutation.mutateAsync({
+          syncId: id,
+          projectId,
+          destination,
+          isAutoSyncEnabled
+        });
+        createNotification({
+          text: `Auto-sync ${isAutoSyncEnabled ? "enabled" : "disabled"} successfully`,
+          type: "success"
+        });
+      } catch {
+        createNotification({
+          text: "Failed to update auto-sync setting",
+          type: "error"
+        });
+      }
     },
     [updatePkiSyncMutation, id, projectId, destination, pkiSync.isAutoSyncEnabled]
   );
