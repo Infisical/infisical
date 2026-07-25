@@ -4,14 +4,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  PageLoader,
-  Separator
-} from "@app/components/v3";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -69,7 +62,6 @@ const Page = () => {
             gatewayName={gateway.name}
             authMethod={gateway.authMethod}
           />
-          <Separator />
           <GatewayConnectedResourcesSection gatewayId={gatewayId} />
         </div>
       </div>

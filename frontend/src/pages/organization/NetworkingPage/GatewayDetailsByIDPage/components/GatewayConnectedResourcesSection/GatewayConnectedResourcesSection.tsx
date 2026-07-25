@@ -7,6 +7,11 @@ import {
   AccordionItem,
   AccordionTrigger,
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -64,17 +69,14 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const total = totalCountOf(resources);
 
   return (
-    <section className="min-w-0 space-y-4" aria-labelledby="gateway-connected-resources-title">
-      <div>
-        <h2
-          id="gateway-connected-resources-title"
-          className="text-base font-medium text-foreground"
-        >
-          Connected Resources
-        </h2>
-        <p className="mt-1 text-sm text-muted">Resources currently routing through this gateway</p>
-      </div>
-      <div>
+    <Card className="min-w-0" aria-labelledby="gateway-connected-resources-title">
+      <CardHeader>
+        <CardTitle>
+          <h2 id="gateway-connected-resources-title">Connected Resources</h2>
+        </CardTitle>
+        <CardDescription>Resources currently routing through this gateway</CardDescription>
+      </CardHeader>
+      <CardContent>
         {isPending && (
           <div className="space-y-2" aria-label="Loading connected resources">
             <Skeleton className="h-10 w-full" />
@@ -100,7 +102,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">App Connections</span>
                   <Badge variant="neutral">{resources?.appConnections.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.appConnections.map((c) => (
                       <ResourceRow
@@ -124,7 +126,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Dynamic Secrets</span>
                   <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.dynamicSecrets.map((d) => (
                       <ResourceRow
@@ -150,7 +152,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Kubernetes Auth</span>
                   <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.kubernetesAuths.map((a) => (
                       <ResourceRow
@@ -172,7 +174,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">MCP Servers</span>
                   <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.mcpServers.map((s) => (
                       <ResourceRow
@@ -194,7 +196,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">PKI Discovery</span>
                   <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.pkiDiscoveryConfigs.map((c) => (
                       <ResourceRow
@@ -211,7 +213,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
             )}
           </Accordion>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 };

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { ExternalLinkIcon } from "lucide-react";
 
 import {
   Badge,
@@ -11,10 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
+  TabsContent
 } from "@app/components/v3";
 import { useGetRelays } from "@app/hooks/api/relays/queries";
 
@@ -56,38 +52,21 @@ export const AwsStartCommandContent = ({ gatewayId, gatewayName }: Props) => {
 
   return (
     <div className="min-w-0 space-y-4">
-      <Tabs defaultValue="cli" className="min-w-0">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList variant="filled">
-            <TabsTrigger value="cli">CLI</TabsTrigger>
-            <TabsTrigger value="systemd">System service</TabsTrigger>
-          </TabsList>
-          <a
-            href="https://infisical.com/docs/cli/overview"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-label underline underline-offset-4 hover:text-foreground"
-          >
-            Installation guide
-            <ExternalLinkIcon className="size-3" />
-          </a>
-        </div>
-        <TabsContent value="cli" className="min-w-0">
-          <CodeBlock value={cliCommand} label={commandLabel} />
-        </TabsContent>
-        <TabsContent value="systemd" className="min-w-0 space-y-4">
-          <CodeBlock
-            value={systemdInstallCommand}
-            label={
-              <span className="flex flex-wrap items-center gap-2">
-                <span>Install service</span>
-                <Badge variant="info">AWS Auth</Badge>
-              </span>
-            }
-          />
-          <CodeBlock value={startServiceCommand} label="Start service" />
-        </TabsContent>
-      </Tabs>
+      <TabsContent value="cli" className="mt-0 min-w-0">
+        <CodeBlock value={cliCommand} label={commandLabel} />
+      </TabsContent>
+      <TabsContent value="systemd" className="mt-0 min-w-0 space-y-4">
+        <CodeBlock
+          value={systemdInstallCommand}
+          label={
+            <span className="flex flex-wrap items-center gap-2">
+              <span>Install service</span>
+              <Badge variant="info">AWS Auth</Badge>
+            </span>
+          }
+        />
+        <CodeBlock value={startServiceCommand} label="Start service" />
+      </TabsContent>
       <Field>
         <Select
           value={relay.id}

@@ -3,7 +3,19 @@ import { RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  Tabs,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -21,6 +33,7 @@ type Props = {
 };
 
 export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Props) => {
+  const [deploymentMethod, setDeploymentMethod] = useState("cli");
   const [mintedEnrollment, setMintedEnrollment] = useState<
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
   >(null);
@@ -28,6 +41,8 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
   const enrollment = mintedEnrollment?.gatewayId === gatewayId ? mintedEnrollment : null;
 
   if (authMethod.method === "identity") return null;
+
+  const showDeploymentControls = authMethod.method === "aws" || Boolean(enrollment);
 
   const handleGenerate = async () => {
     try {
@@ -39,69 +54,81 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
   };
 
   return (
-    <section className="min-w-0 space-y-4" aria-label="Gateway deployment">
-      {authMethod.method === "token" && !enrollment && (
-        <div>
-          <h2 className="text-base font-medium text-foreground">Deployment</h2>
-          <p className="mt-1 text-sm text-muted">Run this gateway on a target host.</p>
-        </div>
-      )}
-
-      {authMethod.method === "aws" && (
-        <OrgPermissionCan
-          I={OrgGatewayPermissionActions.EditGateways}
-          a={OrgPermissionSubjects.Gateway}
-        >
-          <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
-        </OrgPermissionCan>
-      )}
-
-      {authMethod.method === "token" && !enrollment && (
-        <OrgPermissionCan
-          I={OrgGatewayPermissionActions.EditGateways}
-          a={OrgPermissionSubjects.Gateway}
-        >
-          {(isAllowed) => (
-            <Button
-              variant="neutral"
-              size="sm"
-              isPending={isMinting}
-              isDisabled={!isAllowed || isMinting}
-              onClick={handleGenerate}
-            >
-              <RocketIcon className="size-4" />
-              Generate deploy command
-            </Button>
+    <Tabs value={deploymentMethod} onValueChange={setDeploymentMethod} className="min-w-0">
+      <Card className="min-w-0" aria-labelledby="gateway-deployment-title">
+        <CardHeader>
+          <CardTitle>
+            <h2 id="gateway-deployment-title">Deployment</h2>
+            <DocumentationLinkBadge href="https://infisical.com/docs/cli/overview" />
+          </CardTitle>
+          <CardDescription>Run this gateway on a target host.</CardDescription>
+          {showDeploymentControls && (
+            <CardAction>
+              <TabsList variant="filled">
+                <TabsTrigger value="cli">CLI</TabsTrigger>
+                <TabsTrigger value="systemd">System service</TabsTrigger>
+              </TabsList>
+            </CardAction>
           )}
-        </OrgPermissionCan>
-      )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {authMethod.method === "aws" && (
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.EditGateways}
+              a={OrgPermissionSubjects.Gateway}
+            >
+              <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+            </OrgPermissionCan>
+          )}
 
-      {authMethod.method === "token" && enrollment && (
-        <>
-          <EnrollmentTokenContent
-            gatewayName={gatewayName}
-            enrollmentToken={enrollment.token}
-            expiresAt={enrollment.expiresAt}
-          />
-          <OrgPermissionCan
-            I={OrgGatewayPermissionActions.EditGateways}
-            a={OrgPermissionSubjects.Gateway}
-          >
-            {(isAllowed) => (
-              <Button
-                variant="neutral"
-                size="sm"
-                isPending={isMinting}
-                isDisabled={!isAllowed || isMinting}
-                onClick={handleGenerate}
+          {authMethod.method === "token" && !enrollment && (
+            <OrgPermissionCan
+              I={OrgGatewayPermissionActions.EditGateways}
+              a={OrgPermissionSubjects.Gateway}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="neutral"
+                  size="sm"
+                  isPending={isMinting}
+                  isDisabled={!isAllowed || isMinting}
+                  onClick={handleGenerate}
+                >
+                  <RocketIcon className="size-4" />
+                  Generate deploy command
+                </Button>
+              )}
+            </OrgPermissionCan>
+          )}
+
+          {authMethod.method === "token" && enrollment && (
+            <>
+              <EnrollmentTokenContent
+                gatewayName={gatewayName}
+                enrollmentToken={enrollment.token}
+                expiresAt={enrollment.expiresAt}
+              />
+              <OrgPermissionCan
+                I={OrgGatewayPermissionActions.EditGateways}
+                a={OrgPermissionSubjects.Gateway}
               >
-                <RefreshCwIcon className="size-4" />
-                Regenerate command
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </>
-      )}
-    </section>
+                {(isAllowed) => (
+                  <Button
+                    variant="neutral"
+                    size="sm"
+                    isPending={isMinting}
+                    isDisabled={!isAllowed || isMinting}
+                    onClick={handleGenerate}
+                  >
+                    <RefreshCwIcon className="size-4" />
+                    Regenerate command
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </Tabs>
   );
 };
