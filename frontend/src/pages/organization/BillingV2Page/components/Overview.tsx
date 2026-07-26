@@ -81,10 +81,10 @@ export const Overview = ({
     !selfServe && !isManaged ? (
       <Alert variant="info">
         <TriangleAlert />
-        <AlertTitle>Billing is managed by our team</AlertTitle>
+        <AlertTitle>Managed Billing</AlertTitle>
         <AlertDescription>
-          Your organization is on a custom agreement, so self-serve changes are disabled. Contact
-          sales to adjust products, commitments, or your subscription.
+          Contact your Infisical account manager to adjust products, commitments, or your
+          subscription.
         </AlertDescription>
       </Alert>
     ) : null;

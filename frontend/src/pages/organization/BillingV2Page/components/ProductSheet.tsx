@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowRight,
-  CalendarX2Icon,
-  Check,
-  EditIcon,
-  Info,
-  PlusIcon,
-  Sparkles
-} from "lucide-react";
+import { ArrowRight, CalendarX2Icon, Check, EditIcon, Info, Sparkles } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -272,7 +264,6 @@ const PlanCard = ({
         isDisabled={!selfServe}
         onClick={() => onActivate(plan.tier)}
       >
-        <Sparkles />
         Start a free trial
       </Button>
     ) : (
@@ -283,7 +274,6 @@ const PlanCard = ({
         isDisabled={!selfServe}
         onClick={() => onActivate(plan.tier)}
       >
-        <PlusIcon />
         Activate
       </Button>
     );
@@ -528,8 +518,15 @@ export const ProductSheet = ({
       });
       // Card-first: awaiting_card means no card is on file and the trial is NOT granted yet. Send the
       // customer to the card-setup checkout; completing it grants the trial via webhook.
-      if (result.outcome === "awaiting_card" && result.cardSetupUrl) {
-        window.location.href = result.cardSetupUrl;
+      if (result.outcome === "awaiting_card") {
+        if (result.cardSetupUrl) {
+          window.location.href = result.cardSetupUrl;
+        } else {
+          createNotification({
+            type: "error",
+            text: "Failed to complete trial setup. Missing payment details. Please try again!"
+          });
+        }
         return;
       }
       // trial_started: a card is on file and the trial is active now.
@@ -627,10 +624,10 @@ export const ProductSheet = ({
                 {!selfServe && (
                   <Alert variant="info">
                     <Info />
-                    <AlertTitle>Billing is managed by our team</AlertTitle>
+                    <AlertTitle>Managed Billing</AlertTitle>
                     <AlertDescription>
-                      Your plan is on a custom agreement, so self-serve changes are disabled.
-                      Contact sales to adjust products, commitments, or your subscription.
+                      Contact your Infisical account manager to adjust products, commitments, or
+                      your subscription.
                     </AlertDescription>
                   </Alert>
                 )}

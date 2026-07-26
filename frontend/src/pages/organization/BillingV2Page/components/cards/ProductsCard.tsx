@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode } from "react";
-import { ArrowBigUpDashIcon, DollarSign, Package, RefreshCw, Sparkles } from "lucide-react";
+import { DollarSign, Package, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -227,7 +227,6 @@ const AvailableProductTile = ({
           style={{ "--product-color": prod.color } as CSSProperties}
           onClick={() => onManage(prod.id)}
         >
-          {offersTrial ? <Sparkles /> : <ArrowBigUpDashIcon />}
           {offersTrial ? "Start a free trial" : "Activate"}
         </Button>
       );

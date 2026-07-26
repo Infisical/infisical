@@ -290,11 +290,9 @@ export const ActivateView = ({
                 className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-4"
               >
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-foreground">
-                    {dim.label} · committed for the year
-                  </div>
+                  <div className="text-sm font-medium text-foreground">{dim.label}</div>
                   <div className="mt-0.5 text-xs text-muted">
-                    {fmtMoney(dim.annual / 12, 2)} / {dim.noun} / mo · billed annually
+                    {fmtMoney(dim.annual / 12, 2)} / {dim.noun} / month · billed annually
                   </div>
                 </div>
                 <Stepper
@@ -337,7 +335,7 @@ export const ActivateView = ({
             valueClassName="text-base"
           />
           <CostSummaryRow
-            label={cadence === "annual" ? "Annual commitment" : "Monthly total"}
+            label={cadence === "annual" ? "New yearly total" : "New monthly total"}
             note={recurringNote}
             value={`${fmtMoney(recurring)} / ${period}`}
             isCalculating={isCalculating}
