@@ -20,6 +20,19 @@ export const alertDALFactory = (db: TDbClient) => {
         .where(`${TableName.Alert}.triggerType`, AlertTriggerType.Scheduled)
         .where(`${TableName.Alert}.enabled`, true)
         .whereNull(`${TableName.Project}.deleteAfter`)
+        .whereExists(
+          (qb) =>
+            void qb
+              .select(db.raw("1"))
+              .from(TableName.AlertChannelMembership)
+              .join(
+                TableName.AlertChannel,
+                `${TableName.AlertChannelMembership}.channelId`,
+                `${TableName.AlertChannel}.id`
+              )
+              .whereRaw(`"${TableName.AlertChannelMembership}"."alertId" = "${TableName.Alert}"."id"`)
+              .where(`${TableName.AlertChannel}.enabled`, true)
+        )
         .select(selectAllTableCols(TableName.Alert))
         .orderBy(`${TableName.Alert}.createdAt`, "asc");
 
