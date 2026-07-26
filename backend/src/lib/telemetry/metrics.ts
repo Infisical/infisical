@@ -603,8 +603,13 @@ export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: strin
 };
 
 export enum AlertDispatchOutcome {
-  // Notifications were dispatched to at least one channel.
-  Dispatched = "dispatched",
+  // Every channel the run touched delivered.
+  DeliverySuccess = "delivery_success",
+  // Some channels delivered and at least one did not, so a notification was dropped on the failed
+  // channels only. Dedup is per (channel, target), so the next run retries just those channels.
+  DeliveryPartial = "delivery_partial",
+  // No channel delivered: the whole run dropped.
+  DeliveryFailed = "delivery_failed",
   // The alert row is gone by the time the job runs: deleted, or its project soft-deleted.
   AlertNotFound = "alert_not_found",
   // The alert still exists but was disabled between being enqueued and the job running.
@@ -621,7 +626,7 @@ export enum AlertDispatchOutcome {
 
 export const alertDispatchOutcomeCounter = infisicalCoreMeter.createCounter("infisical.alert.dispatch.outcome.count", {
   description:
-    "Alert dispatch jobs by alert resource type and outcome. Watch dispatched / total: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead.",
+    "Alert dispatch jobs by alert resource type and outcome. Alarm on delivery_failed + delivery_partial: both mean a channel could not be reached, so a notification was dropped. Watch the delivery_* share of total separately: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead.",
   unit: "{job}"
 });
 

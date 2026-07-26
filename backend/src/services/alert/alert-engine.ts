@@ -213,7 +213,10 @@ export const alertEngineFactory = ({
 
     await alertHistoryDAL.createWithTargets(alert.id, { status }, deliveries);
 
-    return AlertDispatchOutcome.Dispatched;
+    if (status === AlertRunStatus.SUCCESS) return AlertDispatchOutcome.DeliverySuccess;
+    return status === AlertRunStatus.PARTIAL
+      ? AlertDispatchOutcome.DeliveryPartial
+      : AlertDispatchOutcome.DeliveryFailed;
   };
 
   return { runAlert };

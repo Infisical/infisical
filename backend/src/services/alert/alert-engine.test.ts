@@ -187,7 +187,7 @@ describe("alert engine", () => {
 
     const outcome = await engine.runAlert(makeAlert());
 
-    expect(outcome).toBe(AlertDispatchOutcome.Dispatched);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(sentMail).toHaveLength(1);
     expect(sentMail[0].recipients).toEqual(["user@example.com"]);
     expect(historyWrites).toHaveLength(1);
@@ -269,13 +269,40 @@ describe("alert engine", () => {
       failEmail: true
     });
 
-    await engine.runAlert(makeAlert());
+    const outcome = await engine.runAlert(makeAlert());
 
+    // The run must not report success: a dropped notification has to be visible in telemetry.
+    expect(outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
     expect(sentMail).toHaveLength(0);
     expect(historyWrites).toHaveLength(1);
     expect(historyWrites[0].status).toBe(AlertRunStatus.FAILED);
     expect(historyWrites[0].deliveries).toEqual([
       { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.FAILED }
+    ]);
+  });
+
+  test("reports a partial run distinctly so one broken channel is not masked by a healthy one", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        { id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
+        {
+          id: "c-slack",
+          channelType: "slack",
+          encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/x" }),
+          enabled: true
+        }
+      ],
+      failEmail: true
+    });
+
+    const outcome = await engine.runAlert(makeAlert());
+
+    expect(outcome).toBe(AlertDispatchOutcome.DeliveryPartial);
+    expect(historyWrites[0].status).toBe(AlertRunStatus.PARTIAL);
+    expect(historyWrites[0].deliveries).toEqual([
+      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.FAILED },
+      { targetId: "t1", channelId: "c-slack", channelType: "slack", status: AlertRunStatus.SUCCESS }
     ]);
   });
 
@@ -309,8 +336,9 @@ describe("alert engine", () => {
       recipients: [] // group emptied / user deleted at runtime
     });
 
-    await engine.runAlert(makeAlert());
+    const outcome = await engine.runAlert(makeAlert());
 
+    expect(outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
     // No send is attempted with an undefined recipient.
     expect(sentMail).toHaveLength(0);
     expect(historyWrites).toHaveLength(1);
