@@ -199,7 +199,7 @@ export const KeyStoreTtls = {
   LicenseCloudPlanInSeconds: 300, // 5 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   LicenseEntitlementsInSeconds: 1800, // 30 minutes
-  LicenseUsageLastReportedInSeconds: 7776000, // 90 days (~3 billing cycles) so orphaned meter keys self-clean
+  LicenseUsageLastReportedInSeconds: 604800, // 7 days
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes

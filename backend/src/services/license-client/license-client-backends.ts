@@ -77,7 +77,9 @@ const BILLING_ERROR_MESSAGES: Record<string, string> = {
   plan_cadence_not_offered: "Your current plan version doesn't offer this billing option.",
   product_already_held: "You already have this product. Remove it before adding it again.",
   past_due: "There's an unpaid invoice on your account. Resolve payment before making changes.",
-  resubscribe_cooldown: "This product was removed recently. Please wait a bit before resubscribing."
+  resubscribe_cooldown: "This product was removed recently. Please wait a bit before resubscribing.",
+  not_self_serve: "Billing for this organization is managed by our team. Contact sales to make changes.",
+  product_not_trialing: "Start this product's trial or activate it before setting an annual commitment."
 };
 
 const throwIfResponseError = async (res: Response): Promise<void> => {
@@ -139,8 +141,8 @@ export const licenseServerBackend = (
     await throwIfResponseError(res);
   },
 
-  fetchCatalog: async (): Promise<TCatalogResponse> => {
-    const url = new URL(PRODUCTS_PATH, serverUrl);
+  fetchCatalog: async (orgId: string): Promise<TCatalogResponse> => {
+    const url = new URL(orgScoped(orgId, "/products"), serverUrl);
     const res = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
@@ -286,8 +288,6 @@ export const licenseServerBackend = (
     return checkoutResultSchema.parse(body);
   },
 
-  // Start a plan-scoped self-serve trial. The wire request/response use snake_case; map to camelCase.
-  // The trial is granted immediately; cardSetupUrl (when present) is a best-effort card-setup checkout.
   startTrial: async (orgId: string, payload: TStartTrialPayload): Promise<TTrialResult> => {
     const url = new URL(orgScoped(orgId, "/billing/trial"), serverUrl);
     const res = await fetch(url, {
@@ -302,7 +302,9 @@ export const licenseServerBackend = (
       }),
       redirect: "manual"
     });
-    await throwIfResponseError(res);
+    if (res.status !== 402) {
+      await throwIfResponseError(res);
+    }
     const body: unknown = await res.json();
     const parsed = trialResultSchema.parse(body);
     return { outcome: parsed.outcome, cardSetupUrl: parsed.card_setup_url };
