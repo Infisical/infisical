@@ -29,6 +29,7 @@ export const snapshotDALFactory = (db: TDbClient) => {
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(selectAllTableCols(TableName.Snapshot))
         .select(
           db.ref("id").withSchema(TableName.Environment).as("envId"),
@@ -66,6 +67,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(TableName.SnapshotSecret, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecret}.snapshotId`)
         .leftJoin(
           TableName.SecretVersion,
@@ -161,6 +164,8 @@ export const snapshotDALFactory = (db: TDbClient) => {
         .where(`${TableName.Snapshot}.id`, snapshotId)
         .join(TableName.Environment, `${TableName.Snapshot}.envId`, `${TableName.Environment}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .leftJoin(TableName.SnapshotSecretV2, `${TableName.Snapshot}.id`, `${TableName.SnapshotSecretV2}.snapshotId`)
         .leftJoin(
           TableName.SecretVersionV2,
