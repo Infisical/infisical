@@ -23,6 +23,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -102,6 +104,7 @@ type TGroupServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -123,7 +126,8 @@ export const groupServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   usageMeteringService,
-  identityAccessTokenService
+  identityAccessTokenService,
+  alertChannelRecipientDAL
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -575,6 +579,11 @@ export const groupServiceFactory = ({
     const [deletedGroup] = await groupDAL.delete({
       id: groupId,
       orgId: actorOrgId
+    });
+
+    await alertChannelRecipientDAL.deleteByPrincipals({
+      principalType: AlertPrincipalType.GROUP,
+      principalIds: [groupId]
     });
 
     return deletedGroup;

@@ -613,7 +613,7 @@ export enum AlertDispatchOutcome {
   NoProvider = "no_provider",
   // Nothing matched the alert condition in this run.
   NoDueTargets = "no_due_targets",
-  // Targets matched, but the alert has no enabled channels to notify.
+  // The alert has no enabled channels, so the run is skipped before scanning for targets.
   NoChannels = "no_channels",
   // Targets matched, but every one had already been alerted inside the dedup window.
   AllDeduped = "all_deduped"

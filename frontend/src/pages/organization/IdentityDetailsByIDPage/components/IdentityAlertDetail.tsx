@@ -12,10 +12,7 @@ export const IdentityAlertDetail = ({ identityId, identityName }: Props) => (
     identityId={identityId}
     identityName={identityName}
     renderPermissionGate={(render) => (
-      <OrgPermissionCan
-        I={OrgPermissionIdentityActions.Edit}
-        a={OrgPermissionSubjects.Identity}
-      >
+      <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
         {render}
       </OrgPermissionCan>
     )}

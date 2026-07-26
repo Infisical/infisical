@@ -1163,7 +1163,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     usageMeteringService,
-    identityAccessTokenService
+    identityAccessTokenService,
+    alertChannelRecipientDAL
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1288,7 +1289,8 @@ export const registerRoutes = async (
     totpConfigDAL,
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const totpService = totpServiceFactory({

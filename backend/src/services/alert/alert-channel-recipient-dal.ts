@@ -35,6 +35,24 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Prunes recipient rows for principals that no longer exist anywhere (a hard-deleted user or group).
+  // principalId carries no FK, so nothing cascades these away on its own.
+  const deleteByPrincipals = async (
+    { principalType, principalIds }: { principalType: AlertPrincipalType; principalIds: string[] },
+    tx?: Knex
+  ): Promise<number> => {
+    try {
+      if (!principalIds.length) return 0;
+
+      return await (tx || db)(TableName.AlertChannelRecipient)
+        .where(`${TableName.AlertChannelRecipient}.principalType`, principalType)
+        .whereIn(`${TableName.AlertChannelRecipient}.principalId`, principalIds)
+        .del();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteByPrincipals" });
+    }
+  };
+
   const deleteUsersRecipientsByScope = async (
     { userIds, orgId, projectId }: { userIds: string[]; orgId?: string; projectId?: string },
     tx?: Knex
@@ -60,6 +78,7 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     ...alertChannelRecipientOrm,
     findByChannelIds,
     deleteByChannelId,
+    deleteByPrincipals,
     deleteUsersRecipientsByScope
   };
 };

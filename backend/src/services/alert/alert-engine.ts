@@ -55,7 +55,10 @@ export const alertEngineFactory = ({
       return AlertDispatchOutcome.NoProvider;
     }
 
-    const targets = await provider.findDueTargets({
+    const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
+    if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
+
+    const dueTargets = await provider.findDueTargets({
       orgId: alert.orgId,
       projectId: alert.projectId,
       resourceId: alert.resourceId,
@@ -63,30 +66,32 @@ export const alertEngineFactory = ({
       condition: alert.condition,
       asOf: opts?.asOf ?? new Date()
     });
-    if (targets.length === 0) return AlertDispatchOutcome.NoDueTargets;
+    if (dueTargets.length === 0) return AlertDispatchOutcome.NoDueTargets;
 
-    const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
-    if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
+    const targets = dueTargets.map((target) => ({ target, id: provider.targetId(target) }));
 
     const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
-    const candidateIds = targets.map((target) => provider.targetId(target));
-    const recentlyAlerted = await alertHistoryDAL.findRecentlyAlertedTargets(alert.id, candidateIds, window);
+    const recentlyAlerted = await alertHistoryDAL.findRecentlyAlertedTargets(
+      alert.id,
+      targets.map((target) => target.id),
+      window
+    );
     const alertedSet = new Set(recentlyAlerted.map((row) => `${row.channelId}:${row.targetId}`));
 
     const channelWork = channels
       .map((channel) => {
         const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
-        const dueTargets = targets.filter((target) => !alertedSet.has(`${channel.id}:${provider.targetId(target)}`));
+        const due = targets.filter((target) => !alertedSet.has(`${channel.id}:${target.id}`));
         const cap = definition?.maxTargetsPerRun;
-        if (cap && dueTargets.length > cap) {
+        if (cap && due.length > cap) {
           logger.info(
-            `Alert ${channel.channelType} channel capped at ${cap} targets this run; ${dueTargets.length - cap} deferred to the next run [alertId=${alert.id}] [channelId=${channel.id}]`
+            `Alert ${channel.channelType} channel capped at ${cap} targets this run; ${due.length - cap} deferred to the next run [alertId=${alert.id}] [channelId=${channel.id}]`
           );
-          return { channel, dueTargets: dueTargets.slice(0, cap) };
+          return { channel, due: due.slice(0, cap) };
         }
-        return { channel, dueTargets };
+        return { channel, due };
       })
-      .filter((work) => work.dueTargets.length > 0);
+      .filter((work) => work.due.length > 0);
     if (channelWork.length === 0) return AlertDispatchOutcome.AllDeduped;
 
     const alertContext: TAlertContext = {
@@ -129,8 +134,8 @@ export const alertEngineFactory = ({
     const sendLimit = pLimit(ALERT_DELIVERY_CONCURRENCY);
 
     const channelResults = await Promise.all(
-      channelWork.map(async ({ channel, dueTargets }): Promise<TChannelDispatchResult> => {
-        const targetIds = dueTargets.map((target) => provider.targetId(target));
+      channelWork.map(async ({ channel, due }): Promise<TChannelDispatchResult> => {
+        const targetIds = due.map((target) => target.id);
         const base = { channelId: channel.id, channelType: channel.channelType, targetIds };
         const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
         if (!definition) return { ...base, success: false, error: "Unknown channel type" };
@@ -143,7 +148,11 @@ export const alertEngineFactory = ({
           return { ...base, success: false, error: "Failed to decrypt channel config" };
         }
 
-        const payload = provider.buildPayload(alertContext, dueTargets, viewUrl);
+        const payload = provider.buildPayload(
+          alertContext,
+          due.map((target) => target.target),
+          viewUrl
+        );
 
         try {
           if (definition.directed) {

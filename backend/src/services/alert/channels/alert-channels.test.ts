@@ -1,5 +1,3 @@
-import { REQUEST_RETRY_CONFIG } from "@app/lib/config/request";
-
 import { AlertChannelType, SlackChannelConfigSchema, TAlertPayload } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
@@ -218,10 +216,10 @@ describe("sendEmailNotification (directed)", () => {
     expect(result.success).toBe(false);
   });
 
-  // SMTP has no client-level retry, so the channel retries on the same terms as the shared axios
-  // client the HTTP channels dispatch through: one initial attempt plus REQUEST_RETRY_CONFIG.retries.
-  test("retries a transient SMTP failure as many times as an outbound request would", async () => {
-    vi.useFakeTimers();
+  // SMTP submission has no idempotency key, so a retry across an ambiguous failure would deliver the
+  // same alert twice. The send is attempted once and the failure is surfaced instead, matching every
+  // other email path on the platform; the engine records it so the next run retries the target.
+  test("attempts a failing send once and reports the error rather than retrying", async () => {
     let attempts = 0;
     const ctx = {
       ...baseCtx(),
@@ -238,12 +236,10 @@ describe("sendEmailNotification (directed)", () => {
       }
     };
 
-    const pending = sendEmailNotification(ctx);
-    await vi.runAllTimersAsync();
-    const result = await pending;
-    vi.useRealTimers();
+    const result = await sendEmailNotification(ctx);
 
-    expect(attempts).toBe(1 + REQUEST_RETRY_CONFIG.retries);
+    expect(attempts).toBe(1);
     expect(result.success).toBe(false);
+    expect(result.error).toBe("connection timeout");
   });
 });

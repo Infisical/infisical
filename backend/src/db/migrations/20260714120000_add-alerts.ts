@@ -23,7 +23,8 @@ export async function up(knex: Knex): Promise<void> {
 
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
-      t.index("orgId");
+      // No standalone orgId index: alert_unique_scope_resource_event below has orgId as its leftmost
+      // column, so it already serves the orgId FK and every org-scoped lookup.
       t.index("projectId");
       t.index(["resourceType", "triggerType", "enabled"]);
     });
@@ -72,8 +73,11 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamps(true, true, true);
 
       t.foreign("channelId").references("id").inTable(TableName.AlertChannel).onDelete("CASCADE");
-      t.index("channelId");
+      // The unique index below is leftmost on channelId, so it already covers the channelId FK.
       t.unique(["channelId", "principalType", "principalId"]);
+      // Serves principal-side cleanup: pruning a user's rows when they leave, and a group's rows when
+      // the group is deleted. Neither can use the channelId-leading index.
+      t.index(["principalType", "principalId"]);
     });
 
     await createOnUpdateTrigger(knex, TableName.AlertChannelRecipient);
@@ -91,7 +95,8 @@ export async function up(knex: Knex): Promise<void> {
 
       t.foreign("alertId").references("id").inTable(TableName.Alert).onDelete("CASCADE");
       t.foreign("channelId").references("id").inTable(TableName.AlertChannel).onDelete("CASCADE");
-      t.index("alertId");
+      // The unique index below is leftmost on alertId, so it already covers the alertId FK. channelId
+      // needs its own index for the other FK.
       t.index("channelId");
       t.unique(["alertId", "channelId"]);
     });

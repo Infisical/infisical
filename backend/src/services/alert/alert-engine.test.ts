@@ -53,11 +53,14 @@ const makeAlert = () => ({
   updatedAt: new Date()
 });
 
-const makeProvider = (targets: TTarget[]): IResourceAlertProvider<TTarget> => ({
+const makeProvider = (targets: TTarget[], onFindDueTargets?: () => void): IResourceAlertProvider<TTarget> => ({
   resourceType: RESOURCE_TYPE,
   eventTypes: ["test.resource.expiration"],
   conditionSchema: z.any(),
-  findDueTargets: async () => targets,
+  findDueTargets: async () => {
+    onFindDueTargets?.();
+    return targets;
+  },
   assertPermission: async () => undefined,
   assertResourceInScope: async () => undefined,
   targetId: (target) => target.id,
@@ -101,7 +104,12 @@ const buildEngine = (opts: {
   failEmailFor?: string;
 }) => {
   const registry = alertProviderRegistryFactory();
-  registry.register(makeProvider(opts.targets) as IResourceAlertProvider);
+  let findDueTargetsCalls = 0;
+  registry.register(
+    makeProvider(opts.targets, () => {
+      findDueTargetsCalls += 1;
+    }) as IResourceAlertProvider
+  );
 
   const sentMail: Array<{ recipients: string[] }> = [];
   const historyWrites: Array<{ deliveries: TDelivery[]; status: string }> = [];
@@ -161,7 +169,13 @@ const buildEngine = (opts: {
     }
   } as unknown as TAlertEngineDep);
 
-  return { engine, sentMail, historyWrites, getPeakConcurrentSends: () => peakConcurrentSends };
+  return {
+    engine,
+    sentMail,
+    historyWrites,
+    getPeakConcurrentSends: () => peakConcurrentSends,
+    getFindDueTargetsCalls: () => findDueTargetsCalls
+  };
 };
 
 describe("alert engine", () => {
@@ -386,8 +400,8 @@ describe("alert engine", () => {
     expect(getPeakConcurrentSends()).toBeGreaterThan(1);
   });
 
-  test("writes no history when there are no enabled channels", async () => {
-    const { engine, historyWrites } = buildEngine({
+  test("writes no history and skips the resource scan when there are no enabled channels", async () => {
+    const { engine, historyWrites, getFindDueTargetsCalls } = buildEngine({
       targets: [{ id: "t1" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: false }]
     });
@@ -396,6 +410,8 @@ describe("alert engine", () => {
 
     expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
     expect(historyWrites).toHaveLength(0);
+    // The scan is the expensive part of a run; a channel-less alert must not pay for it daily.
+    expect(getFindDueTargetsCalls()).toBe(0);
   });
 
   test("reports no due targets when nothing matches the condition", async () => {

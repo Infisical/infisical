@@ -9,6 +9,8 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
@@ -72,6 +74,7 @@ type TUserServiceFactoryDep = {
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -88,7 +91,8 @@ export const userServiceFactory = ({
   totpConfigDAL,
   webAuthnCredentialDAL,
   mfaRecoveryCodeService,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -565,6 +569,11 @@ export const userServiceFactory = ({
     });
 
     const user = await userDAL.deleteById(userId);
+
+    await alertChannelRecipientDAL.deleteByPrincipals({
+      principalType: AlertPrincipalType.USER,
+      principalIds: [userId]
+    });
 
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];

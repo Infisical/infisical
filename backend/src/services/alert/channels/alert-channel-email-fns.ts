@@ -1,4 +1,4 @@
-import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
+import { logger } from "@app/lib/logger";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
 import {
@@ -7,15 +7,6 @@ import {
   TAlertPayload,
   TChannelResult
 } from "../alert-channel-types";
-import { deliverWithRetry } from "./alert-channel-retry-fns";
-
-const isEmailErrorRetryable = (err: unknown): boolean => {
-  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
-  if (RETRYABLE_NETWORK_ERRORS.some((code) => msg.includes(code.toLowerCase()))) return true;
-  if (msg.includes("timeout") || msg.includes("connection")) return true;
-  if (["421", "450", "451", "452"].some((code) => msg.includes(code))) return true;
-  return false;
-};
 
 const buildSubstitutions = (payload: TAlertPayload) => ({
   alertName: payload.alert.name,
@@ -33,11 +24,11 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
 
 const sendEmail = async (
   smtpService: TAlertChannelSendContext["deps"]["smtpService"],
-  recipients: string[],
+  recipient: string,
   payload: TAlertPayload
 ): Promise<void> => {
   await smtpService.sendMail({
-    recipients,
+    recipients: [recipient],
     subjectLine: `Infisical ${payload.resourceKind} ${payload.eventLabel} Alert`,
     substitutions: buildSubstitutions(payload),
     template: SmtpTemplates.AlertNotification
@@ -47,13 +38,17 @@ const sendEmail = async (
 export const sendEmailNotification = async (ctx: TAlertChannelSendContext): Promise<TChannelResult> => {
   EmailChannelConfigSchema.parse(ctx.config);
 
-  if (!ctx.recipient?.email) {
+  const recipient = ctx.recipient?.email;
+  if (!recipient) {
     return { success: false, error: "No recipient for email channel" };
   }
-  const recipients = [ctx.recipient.email];
 
-  return deliverWithRetry(() => sendEmail(ctx.deps.smtpService, recipients, ctx.payload), isEmailErrorRetryable, {
-    channelId: ctx.channelId,
-    channelLabel: "email"
-  });
+  try {
+    await sendEmail(ctx.deps.smtpService, recipient, ctx.payload);
+    return { success: true };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    logger.info({ channelId: ctx.channelId, error }, `Alert email delivery failed [channelId=${ctx.channelId}]`);
+    return { success: false, error };
+  }
 };

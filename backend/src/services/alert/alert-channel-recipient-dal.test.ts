@@ -1,6 +1,7 @@
 import { TableName } from "@app/db/schemas";
 
 import { alertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
+import { AlertPrincipalType } from "./alert-types";
 
 // Records query-builder calls so we can assert the scope cleanup filters correctly without a DB.
 const buildDAL = () => {
@@ -58,5 +59,29 @@ describe("alert channel recipient dal — scope cleanup", () => {
     expect(await dal.deleteUsersRecipientsByScope({ userIds: [], orgId: "org-1" })).toBe(0);
     expect(await dal.deleteUsersRecipientsByScope({ userIds: ["u1"] })).toBe(0);
     expect(calls.channelWhere).toHaveLength(0);
+  });
+});
+
+describe("alert channel recipient dal — deleted principal cleanup", () => {
+  test("prunes a hard-deleted group's rows everywhere, with no channel scoping", async () => {
+    const { dal, calls } = buildDAL();
+
+    const deleted = await dal.deleteByPrincipals({
+      principalType: AlertPrincipalType.GROUP,
+      principalIds: ["g1"]
+    });
+
+    expect(deleted).toBe(2);
+    expect(calls.recipientWhere).toContainEqual([`${TableName.AlertChannelRecipient}.principalType`, "group"]);
+    expect(calls.recipientWhereIn).toContainEqual([`${TableName.AlertChannelRecipient}.principalId`, ["g1"]]);
+    // The principal no longer exists anywhere, so its rows are pruned across every org and project.
+    expect(calls.channelWhere).toHaveLength(0);
+  });
+
+  test("no-op on an empty principal list", async () => {
+    const { dal, calls } = buildDAL();
+
+    expect(await dal.deleteByPrincipals({ principalType: AlertPrincipalType.USER, principalIds: [] })).toBe(0);
+    expect(calls.recipientWhere).toHaveLength(0);
   });
 });

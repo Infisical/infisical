@@ -26,8 +26,8 @@ export const IDENTITY_AUTHENTICATION_RESOURCE_TYPE = "identity.authentication";
 export const IDENTITY_AUTHENTICATION_EXPIRY_EVENT = "identity.authentication.expiry";
 
 const alertBeforeRegex = new RE2("^\\d+d$");
-export const MIN_ALERT_BEFORE_DAYS = 1;
-export const MAX_ALERT_BEFORE_DAYS = 90;
+const MIN_ALERT_BEFORE_DAYS = 1;
+const MAX_ALERT_BEFORE_DAYS = 90;
 
 const alertBeforeDays = (alertBefore: string): number => parseInt(alertBefore.slice(0, -1), 10);
 

@@ -28,7 +28,7 @@ export function axiosResponseInterceptor(response: AxiosResponse, customLogger: 
 export const isRetryableRequestError = (error: AxiosError): boolean =>
   error.response?.status === 429 || axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
 
-export const REQUEST_RETRY_CONFIG = {
+const REQUEST_RETRY_CONFIG = {
   retries: 3,
   // eslint-disable-next-line
   retryDelay: axiosRetry.exponentialDelay
