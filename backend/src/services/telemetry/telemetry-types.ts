@@ -21,6 +21,7 @@ import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { WebhookType } from "@app/services/webhook/webhook-types";
+import { Integrations } from "@app/services/integration-auth/integration-list";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
 
@@ -422,7 +423,7 @@ export type TIntegrationCreatedEvent = {
   properties: {
     projectId: string;
     integrationId: string;
-    integration: string; // TODO: fix type
+    integration: Integrations;
     environment: string;
     secretPath: string;
     url?: string;
