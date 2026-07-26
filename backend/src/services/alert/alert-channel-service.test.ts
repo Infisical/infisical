@@ -62,7 +62,6 @@ const buildService = (opts?: { seed?: TRow[] }) => {
         data.forEach((r) => recipients.set(r.channelId, [...(recipients.get(r.channelId) ?? []), r]));
         return data;
       },
-      findByChannelId: async (channelId: string) => recipients.get(channelId) ?? [],
       findByChannelIds: async (ids: string[]) => ids.flatMap((id) => recipients.get(id) ?? []),
       deleteByChannelId: async (channelId: string) => {
         recipients.delete(channelId);
@@ -167,7 +166,7 @@ describe("alert channel service", () => {
       tx
     );
     const [detail] = await service.getDetailsForChannels([channel], { decryptor: decryptor as never });
-    expect(detail.directed).toBe(true);
+    expect(detail.channelType).toBe(AlertChannelType.EMAIL);
     expect(detail.recipients).toEqual([{ principalType: "user", principalId: "user-1" }]);
     expect(recipients.get(channel.id)).toHaveLength(1);
   });

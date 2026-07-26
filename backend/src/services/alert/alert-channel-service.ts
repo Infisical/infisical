@@ -30,8 +30,9 @@ export type TAlertChannelServiceFactoryDep = {
 
 export type TAlertChannelServiceFactory = ReturnType<typeof alertChannelServiceFactory>;
 
-// Everything the transaction-aware primitives need to write a channel inline, without the standalone
-// endpoint's org/project Settings permission check or reusable-name-uniqueness check.
+// Everything the transaction-aware primitives need to write a channel inline. Channels are only ever
+// created through their owning alert, so authorization is the alert's (the caller has already run the
+// provider's assertPermission) and channel names are not required to be unique.
 export type TCreateChannelInTxInput = {
   name: string;
   channelType: AlertChannelType | string;
@@ -293,13 +294,11 @@ export const alertChannelServiceFactory = ({
     });
 
     return channels.map((channel) => {
-      const definition = ALERT_CHANNEL_REGISTRY[channel.channelType as AlertChannelType];
       const config = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, cipher.decryptor);
       return {
         id: channel.id,
         name: channel.name,
         channelType: channel.channelType,
-        directed: Boolean(definition?.directed),
         enabled: channel.enabled,
         config: $redactConfig(channel.channelType, config),
         recipients: recipientsByChannel.get(channel.id) ?? []

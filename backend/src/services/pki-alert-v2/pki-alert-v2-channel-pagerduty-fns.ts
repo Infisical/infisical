@@ -4,8 +4,9 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
+import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
 
-import { PKI_ALERT_RETRY_CONFIG, RETRYABLE_NETWORK_ERRORS } from "./pki-alert-v2-constants";
+import { PKI_ALERT_RETRY_CONFIG } from "./pki-alert-v2-constants";
 import {
   getRevocationReasonLabel,
   pagerDutyIntegrationKeyRegex,

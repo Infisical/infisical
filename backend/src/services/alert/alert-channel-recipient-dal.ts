@@ -12,18 +12,6 @@ export type TAlertChannelRecipientDALFactory = ReturnType<typeof alertChannelRec
 export const alertChannelRecipientDALFactory = (db: TDbClient) => {
   const alertChannelRecipientOrm = ormify(db, TableName.AlertChannelRecipient);
 
-  const findByChannelId = async (channelId: string, tx?: Knex): Promise<TAlertChannelRecipients[]> => {
-    try {
-      const recipients = await (tx || db.replicaNode())(TableName.AlertChannelRecipient)
-        .where(`${TableName.AlertChannelRecipient}.channelId`, channelId)
-        .select(selectAllTableCols(TableName.AlertChannelRecipient));
-
-      return recipients as TAlertChannelRecipients[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindByChannelId" });
-    }
-  };
-
   const findByChannelIds = async (channelIds: string[], tx?: Knex): Promise<TAlertChannelRecipients[]> => {
     try {
       if (!channelIds.length) return [];
@@ -70,7 +58,6 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
 
   return {
     ...alertChannelRecipientOrm,
-    findByChannelId,
     findByChannelIds,
     deleteByChannelId,
     deleteUsersRecipientsByScope

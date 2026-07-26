@@ -20,9 +20,6 @@ type TChannelRow = {
   updatedAt: Date;
 };
 
-// Email is the only directed channel type; mirror the registry so response assembly reports `directed` correctly.
-const isDirected = (channelType: AlertChannelType | string) => channelType === AlertChannelType.EMAIL;
-
 const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
@@ -179,7 +176,6 @@ const buildService = (opts?: {
           id: c.id,
           name: c.name,
           channelType: c.channelType,
-          directed: isDirected(c.channelType),
           enabled: c.enabled,
           config: {},
           recipients: c.recipients ?? []
@@ -234,8 +230,9 @@ describe("alert service", () => {
     expect(alert.id).toBe("alert-1");
     expect(alert.orgId).toBe("org-1");
     expect(alert.channels).toHaveLength(2);
-    expect(alert.channels.find((c) => c.channelType === AlertChannelType.EMAIL)?.directed).toBe(true);
-    expect(alert.channels.find((c) => c.channelType === AlertChannelType.WEBHOOK)?.directed).toBe(false);
+    expect(alert.channels.map((c) => c.channelType).sort()).toEqual(
+      [AlertChannelType.EMAIL, AlertChannelType.WEBHOOK].sort()
+    );
     expect(memberships.get("alert-1")).toHaveLength(2);
     expect(permissionCalls[0].action).toBe("create");
   });

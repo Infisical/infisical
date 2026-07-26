@@ -25,7 +25,7 @@ import {
   useDeleteAlert,
   useListAlerts
 } from "@app/hooks/api/alerts";
-import { AddAlertModal } from "@app/views/AlertsPage/components/AddAlertModal";
+import { AddAlertModal } from "@app/views/Alerts";
 
 type Props = {
   identityId: string;

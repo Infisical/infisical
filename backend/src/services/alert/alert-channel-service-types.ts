@@ -10,7 +10,6 @@ export type TAlertChannelEmbedded = {
   id: string;
   name: string;
   channelType: string;
-  directed: boolean;
   enabled: boolean;
   config: Record<string, unknown>;
   recipients: { principalType: string; principalId: string }[];

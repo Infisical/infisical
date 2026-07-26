@@ -79,8 +79,9 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.AlertChannelRecipient);
   }
 
-  // Many-to-many between alerts and channels. The count of rows for a channel powers the "used by N
-  // alerts" column in the UI.
+  // Many-to-many between alerts and channels. Channels are currently only ever created inline by their
+  // owning alert, so in practice every channel has exactly one membership row; the join table exists so
+  // a channel can later be shared across alerts without a schema change.
   if (!(await knex.schema.hasTable(TableName.AlertChannelMembership))) {
     await knex.schema.createTable(TableName.AlertChannelMembership, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());

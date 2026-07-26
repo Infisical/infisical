@@ -49,7 +49,6 @@ const AlertResponseSchema = z.object({
       id: z.string().uuid(),
       name: z.string(),
       channelType: z.string(),
-      directed: z.boolean(),
       enabled: z.boolean(),
       config: z.record(z.unknown()),
       recipients: z.array(z.object({ principalType: z.string(), principalId: z.string() }))
