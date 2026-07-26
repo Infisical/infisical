@@ -1057,6 +1057,7 @@ export const registerRoutes = async (
     cronJob,
     queueService,
     alertDAL,
+    alertHistoryDAL,
     alertProviderRegistry,
     alertEngine
   });

@@ -1,7 +1,12 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { AlertPermissionAction, TAlertContext } from "../alert-types";
+import {
+  ALERT_HISTORY_RETENTION_DAYS,
+  AlertPermissionAction,
+  MAX_DEDUP_WINDOW_HOURS,
+  TAlertContext
+} from "../alert-types";
 import { TExpiringUaClientSecret } from "./identity-credential-alert-dal";
 import {
   IDENTITY_AUTHENTICATION_EXPIRY_EVENT,
@@ -219,11 +224,18 @@ describe("identity credential alert provider", () => {
   test("dedup window spans alertBefore + the scan lead (30d -> 744h, 1d -> 48h) with a 24h floor", () => {
     const provider = buildProvider();
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(744);
-    expect(provider.dedupWindowHours?.({ alertBefore: "90d" })).toBe(2184);
     expect(provider.dedupWindowHours?.({ alertBefore: "1d" })).toBe(48);
     // Falls back to the default when the condition can't be parsed.
     expect(provider.dedupWindowHours?.({ alertBefore: "bad" })).toBe(24);
     expect(provider.dedupWindowHours?.({ alertBefore: "91d" })).toBe(24);
+  });
+
+  test("dedup window never outruns history retention, so it can't read rows the prune has deleted", () => {
+    const provider = buildProvider();
+    // 90d + the 1d scan lead would be 2184h, past the 90-day retention: capped so the dedup lookup
+    // always lands on rows that still exist.
+    expect(provider.dedupWindowHours?.({ alertBefore: "90d" })).toBe(MAX_DEDUP_WINDOW_HOURS);
+    expect(MAX_DEDUP_WINDOW_HOURS).toBeLessThan(ALERT_HISTORY_RETENTION_DAYS * 24);
   });
 
   test("assertPermission allows read but denies create when only read is granted (org scope)", async () => {

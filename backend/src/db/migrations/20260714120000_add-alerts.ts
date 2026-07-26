@@ -119,6 +119,9 @@ export async function up(knex: Knex): Promise<void> {
       // status column (success | partial | failed) is audit-only; per-(channel, target) success
       // filtering happens on alert_history_target, so status is not part of this index.
       t.index(["alertId", "triggeredAt"]);
+      // Serves the retention sweep, which selects the oldest expired runs across every alert. The
+      // index above is leftmost on alertId, so it can't answer an alert-agnostic triggeredAt range.
+      t.index("triggeredAt");
     });
 
     await createOnUpdateTrigger(knex, TableName.AlertHistory);

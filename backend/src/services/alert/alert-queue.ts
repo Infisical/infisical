@@ -6,12 +6,15 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertEngine } from "./alert-engine";
+import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
+import { ALERT_HISTORY_RETENTION_DAYS } from "./alert-types";
 
 type TAlertQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
   queueService: TQueueServiceFactory;
   alertDAL: Pick<TAlertDALFactory, "findEnabledByResourceType" | "findActiveById">;
+  alertHistoryDAL: Pick<TAlertHistoryDALFactory, "deleteExpiredHistory">;
   alertProviderRegistry: TAlertProviderRegistry;
   alertEngine: Pick<TAlertEngine, "runAlert">;
 };
@@ -22,6 +25,7 @@ export const alertQueueServiceFactory = ({
   cronJob,
   queueService,
   alertDAL,
+  alertHistoryDAL,
   alertProviderRegistry,
   alertEngine
 }: TAlertQueueServiceFactoryDep) => {
@@ -49,6 +53,15 @@ export const alertQueueServiceFactory = ({
         )
       );
     }
+  };
+
+  const pruneExpiredHistory = async () => {
+    const before = new Date(Date.now() - ALERT_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const { deleted, hasMore } = await alertHistoryDAL.deleteExpiredHistory({ before });
+
+    logger.info(
+      `cron[daily-alert-processing]: pruned alert history older than ${ALERT_HISTORY_RETENTION_DAYS} days [deleted=${deleted}] [hasMore=${hasMore}]`
+    );
   };
 
   const init = () => {
@@ -86,8 +99,6 @@ export const alertQueueServiceFactory = ({
 
     cronJob.register({
       name: CronJobName.DailyAlertProcessing,
-      // Cadence is coupled to ALERT_SCAN_LEAD_* (alert-types.ts): providers scan one period ahead to
-      // guarantee "at least alertBefore" lead. If this pattern changes, revisit that constant.
       pattern: appCfg.isDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
       runHashTtlS: 60 * 60 * 24,
       enabled: !appCfg.isSecondaryInstance,
@@ -95,6 +106,8 @@ export const alertQueueServiceFactory = ({
         logger.info("cron[daily-alert-processing]: enqueueing enabled alerts");
         await enqueueEnabledAlerts();
         logger.info("cron[daily-alert-processing]: enqueue complete");
+
+        await pruneExpiredHistory();
       }
     });
   };

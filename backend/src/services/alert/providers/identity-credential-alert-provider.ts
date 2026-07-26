@@ -16,6 +16,7 @@ import {
   AlertPermissionAction,
   DEFAULT_DEDUP_WINDOW_HOURS,
   IResourceAlertProvider,
+  MAX_DEDUP_WINDOW_HOURS,
   TAlertContext,
   TAlertPermissionInput,
   TFindDueTargetsInput
@@ -273,10 +274,9 @@ export const identityCredentialAlertProviderFactory = ({
       const parsed = IdentityCredentialConditionSchema.safeParse(condition);
       if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
       if (parsed.data.dailyReminder) return DAILY_REPEAT_DEDUP_WINDOW_HOURS;
-      // Span the widened scan window (alertBefore + the scan lead) so a target still fires only once.
-      return Math.max(
-        DEFAULT_DEDUP_WINDOW_HOURS,
-        (alertBeforeDays(parsed.data.alertBefore) + ALERT_SCAN_LEAD_DAYS) * 24
+      return Math.min(
+        MAX_DEDUP_WINDOW_HOURS,
+        Math.max(DEFAULT_DEDUP_WINDOW_HOURS, (alertBeforeDays(parsed.data.alertBefore) + ALERT_SCAN_LEAD_DAYS) * 24)
       );
     },
     assertPermission,

@@ -44,6 +44,10 @@ export const ALERT_SCAN_LEAD_INTERVAL = "1 day";
 export const MAX_CHANNELS_PER_ALERT = 10;
 export const MAX_RECIPIENTS_PER_CHANNEL = 20;
 
+export const ALERT_HISTORY_RETENTION_DAYS = 90;
+
+export const MAX_DEDUP_WINDOW_HOURS = (ALERT_HISTORY_RETENTION_DAYS - 1) * 24;
+
 export type TAlertContext = {
   id: string;
   name: string;

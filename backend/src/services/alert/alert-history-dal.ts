@@ -18,6 +18,10 @@ export type TAlertTargetDelivery = {
 
 export type TRecentlyAlertedTarget = { channelId: string; targetId: string };
 
+const ALERT_HISTORY_PRUNE_BATCH_SIZE = 5_000;
+const ALERT_HISTORY_PRUNE_MAX_BATCHES = 20;
+const ALERT_HISTORY_PRUNE_TIMEOUT_MS = 30_000;
+
 export const alertHistoryDALFactory = (db: TDbClient) => {
   const alertHistoryOrm = ormify(db, TableName.AlertHistory);
 
@@ -79,9 +83,49 @@ export const alertHistoryDALFactory = (db: TDbClient) => {
     }
   };
 
+  const deleteExpiredHistory = async ({
+    before,
+    batchSize = ALERT_HISTORY_PRUNE_BATCH_SIZE,
+    maxBatches = ALERT_HISTORY_PRUNE_MAX_BATCHES
+  }: {
+    before: Date;
+    batchSize?: number;
+    maxBatches?: number;
+  }): Promise<{ deleted: number; hasMore: boolean }> => {
+    try {
+      let deleted = 0;
+
+      for (let batch = 0; batch < maxBatches; batch += 1) {
+        // eslint-disable-next-line no-await-in-loop -- batches must run serially to stay paced
+        const removed = await db.transaction(async (tx): Promise<number> => {
+          await tx.raw(`SET LOCAL statement_timeout = ${ALERT_HISTORY_PRUNE_TIMEOUT_MS}`);
+
+          return tx(TableName.AlertHistory)
+            .whereIn(
+              "id",
+              tx(TableName.AlertHistory)
+                .select("id")
+                .where("triggeredAt", "<", before)
+                .orderBy("triggeredAt", "asc")
+                .limit(batchSize)
+            )
+            .del();
+        });
+
+        deleted += removed;
+        if (removed < batchSize) return { deleted, hasMore: false };
+      }
+
+      return { deleted, hasMore: true };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "DeleteExpiredHistory" });
+    }
+  };
+
   return {
     ...alertHistoryOrm,
     createWithTargets,
-    findRecentlyAlertedTargets
+    findRecentlyAlertedTargets,
+    deleteExpiredHistory
   };
 };
