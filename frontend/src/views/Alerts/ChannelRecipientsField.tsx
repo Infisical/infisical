@@ -27,6 +27,24 @@ const userLabel = (user: {
   return user.email || user.username || name || "Unknown user";
 };
 
+const buildOptions = (
+  users: { user: { id: string; firstName?: string; lastName?: string; username?: string } }[],
+  groups: { id: string; name: string }[]
+): RecipientOption[] => [
+  ...users.map((membership) => ({
+    principalType: AlertPrincipalType.User,
+    principalId: membership.user.id,
+    label: userLabel(membership.user),
+    groupLabel: "Users" as const
+  })),
+  ...groups.map((group) => ({
+    principalType: AlertPrincipalType.Group,
+    principalId: group.id,
+    label: group.name,
+    groupLabel: "Groups" as const
+  }))
+];
+
 const formatOptionLabel = (option: RecipientOption) => (
   <span className="flex items-center gap-2">
     {option.principalType === AlertPrincipalType.Group ? (
@@ -89,44 +107,22 @@ const OrgRecipientSelect = ({ orgId, ...props }: SelectProps & { orgId: string }
   const { data: users = [] } = useGetOrgUsers(orgId);
   const { data: groups = [] } = useGetOrganizationGroups(orgId);
 
-  const options: RecipientOption[] = [
-    ...users.map((membership) => ({
-      principalType: AlertPrincipalType.User,
-      principalId: membership.user.id,
-      label: userLabel(membership.user),
-      groupLabel: "Users" as const
-    })),
-    ...groups.map((group) => ({
-      principalType: AlertPrincipalType.Group,
-      principalId: group.id,
-      label: group.name,
-      groupLabel: "Groups" as const
-    }))
-  ];
-
-  return <RecipientSelect options={options} {...props} />;
+  return <RecipientSelect options={buildOptions(users, groups)} {...props} />;
 };
 
 const ProjectRecipientSelect = ({ projectId, ...props }: SelectProps & { projectId: string }) => {
   const { data: users = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const options: RecipientOption[] = [
-    ...users.map((membership) => ({
-      principalType: AlertPrincipalType.User,
-      principalId: membership.user.id,
-      label: userLabel(membership.user),
-      groupLabel: "Users" as const
-    })),
-    ...groups.map((membership) => ({
-      principalType: AlertPrincipalType.Group,
-      principalId: membership.group.id,
-      label: membership.group.name,
-      groupLabel: "Groups" as const
-    }))
-  ];
-
-  return <RecipientSelect options={options} {...props} />;
+  return (
+    <RecipientSelect
+      options={buildOptions(
+        users,
+        groups.map((membership) => membership.group)
+      )}
+      {...props}
+    />
+  );
 };
 
 type Props = SelectProps & { projectId?: string };

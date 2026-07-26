@@ -368,6 +368,17 @@ export const alertServiceFactory = ({
     return $assembleResponse(updated, channels);
   };
 
+  const $deleteAlerts = async (alertIds: string[], tx: Knex): Promise<number> => {
+    if (alertIds.length === 0) return 0;
+
+    const channels = await alertChannelDAL.findByAlertIds(alertIds, tx);
+    await alertDAL.delete({ $in: { id: alertIds } }, tx);
+    if (channels.length > 0) {
+      await alertChannelDAL.delete({ $in: { id: [...new Set(channels.map((channel) => channel.id))] } }, tx);
+    }
+    return alertIds.length;
+  };
+
   const deleteAlert = async (
     dto: TDeleteAlertDTO
   ): Promise<{
@@ -389,14 +400,7 @@ export const alertServiceFactory = ({
       dto
     );
 
-    await alertDAL.transaction(async (tx) => {
-      const channels = await alertChannelDAL.findByAlertId(alert.id, {}, tx);
-      for (const channel of channels) {
-        // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
-        await alertChannelService.deleteChannelInTx(channel.id, tx);
-      }
-      await alertDAL.deleteById(alert.id, tx);
-    });
+    await alertDAL.transaction((tx) => $deleteAlerts([alert.id], tx));
 
     return {
       id: alert.id,
@@ -414,17 +418,10 @@ export const alertServiceFactory = ({
   ): Promise<number> => {
     const run = async (trx: Knex) => {
       const alerts = await alertDAL.find({ orgId, resourceType, resourceId }, { tx: trx });
-      if (alerts.length === 0) return 0;
-
-      const alertIds = alerts.map((alert) => alert.id);
-      // Capture the owned channels before deleting the alerts, since that cascades the membership rows.
-      const channels = await alertChannelDAL.findByAlertIds(alertIds, trx);
-
-      await alertDAL.delete({ $in: { id: alertIds } }, trx);
-      if (channels.length > 0) {
-        await alertChannelDAL.delete({ $in: { id: [...new Set(channels.map((channel) => channel.id))] } }, trx);
-      }
-      return alertIds.length;
+      return $deleteAlerts(
+        alerts.map((alert) => alert.id),
+        trx
+      );
     };
 
     return tx ? run(tx) : alertDAL.transaction(run);

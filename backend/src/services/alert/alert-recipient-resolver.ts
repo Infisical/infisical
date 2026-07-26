@@ -5,6 +5,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";
+import { resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType } from "./alert-types";
 
 type TAlertRecipientResolverDep = {
@@ -26,32 +27,6 @@ export const alertRecipientResolverFactory = ({
   orgDAL,
   projectDAL
 }: TAlertRecipientResolverDep) => {
-  const resolveInScope = async (
-    scope: TResolveScope,
-    userIds: string[],
-    groupIds: string[]
-  ): Promise<{ userIds: Set<string>; groupIds: Set<string> }> => {
-    if (userIds.length === 0) return { userIds: new Set(), groupIds: new Set() };
-
-    if (scope.projectId) {
-      const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
-        orgId: scope.orgId,
-        projectId: scope.projectId,
-        userIds,
-        groupIds
-      });
-      return { userIds: new Set(effectiveUserIds), groupIds: new Set(effectiveGroupIds) };
-    }
-
-    const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: scope.orgId });
-    return {
-      userIds: new Set(
-        memberships.map((membership) => membership.actorUserId).filter((id): id is string => Boolean(id))
-      ),
-      groupIds: new Set(groupIds)
-    };
-  };
-
   const resolveMany = async (
     rowsByChannel: Map<string, TResolvableRecipient[]>,
     scope: TResolveScope
@@ -76,10 +51,9 @@ export const alertRecipientResolverFactory = ({
       });
     }
 
-    const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolveInScope(
-      scope,
-      [...allUserIds],
-      [...allGroupIds]
+    const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolvePrincipalsInScope(
+      { orgDAL, projectDAL },
+      { orgId: scope.orgId, projectId: scope.projectId, userIds: [...allUserIds], groupIds: [...allGroupIds] }
     );
     const usersById = new Map<string, Awaited<ReturnType<typeof userDAL.find>>[number]>();
     if (inScopeUserIds.size > 0) {

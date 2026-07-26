@@ -38,10 +38,12 @@ import {
   AlertResourceType,
   MAX_ALERT_BEFORE_DAYS,
   MIN_ALERT_BEFORE_DAYS,
+  parseAlertBeforeDays,
   TAlert,
   TAlertChannelInput,
   TAlertForm,
   TChannelForm,
+  toAlertBefore,
   useCreateAlert,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
@@ -72,11 +74,6 @@ const FixedField = ({ label, children }: { label: string; children: ReactNode })
 );
 
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
-
-const parseAlertBeforeDays = (alertBefore?: string): number => {
-  const match = alertBefore?.match(/^(\d+)d$/);
-  return match ? parseInt(match[1], 10) : DEFAULT_ALERT_BEFORE_DAYS;
-};
 
 const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   id: channel.id,
@@ -113,7 +110,8 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
     resourceType:
       (alert.resourceType as AlertResourceType) ?? AlertResourceType.IdentityAuthentication,
     eventType: (alert.eventType as AlertEventType) ?? AlertEventType.IdentityAuthenticationExpiry,
-    alertBeforeDays: parseAlertBeforeDays(alert.condition?.alertBefore),
+    alertBeforeDays:
+      parseAlertBeforeDays(alert.condition?.alertBefore) ?? DEFAULT_ALERT_BEFORE_DAYS,
     dailyReminder: alert.condition?.dailyReminder ?? false,
     enabled: alert.enabled,
     channels: alert.channels.map(toChannelForm)
@@ -207,7 +205,7 @@ export const AlertForm = ({
 
   const onSubmit = async (data: TAlertForm) => {
     const condition = {
-      alertBefore: `${data.alertBeforeDays}d`,
+      alertBefore: toAlertBefore(data.alertBeforeDays),
       dailyReminder: data.dailyReminder
     };
     const channels = data.channels.map(toChannelInput);

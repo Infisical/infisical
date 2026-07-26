@@ -368,12 +368,18 @@ describe("alert service", () => {
     );
   });
 
-  test("deletes an alert after checking Delete permission", async () => {
-    const { service, permissionCalls } = buildService();
+  test("deletes an alert and its owned channels after checking Delete permission", async () => {
+    const { service, permissionCalls, alerts, channels } = buildService();
     await service.createAlert(validCreate);
+    expect(channels.size).toBe(2);
+
     const result = await service.deleteAlert({ alertId: "alert-1", ...actor });
+
     expect(result.id).toBe("alert-1");
     expect(permissionCalls.some((c) => c.action === "delete")).toBe(true);
+    expect(alerts.size).toBe(0);
+    // Same reaping as deleteAlertsForResource: no channel is left dangling.
+    expect(channels.size).toBe(0);
   });
 
   test("deleteAlertsForResource reaps a resource's alerts and their owned channels", async () => {

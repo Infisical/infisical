@@ -17,6 +17,7 @@ import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { TAlertChannelEmbedded, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
+import { resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType } from "./alert-types";
 import { ALERT_CHANNEL_REGISTRY } from "./channels/alert-channel-registry";
 
@@ -83,48 +84,24 @@ export const alertChannelServiceFactory = ({
     ];
     if (userIds.length === 0 && groupIds.length === 0) return;
 
-    if (projectId) {
-      const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
-        orgId,
-        projectId,
-        userIds,
-        groupIds
+    const inScope = await resolvePrincipalsInScope(
+      { orgDAL, projectDAL, groupDAL },
+      { orgId, projectId, userIds, groupIds }
+    );
+    const scopeLabel = projectId ? "project" : "organization";
+
+    const missingUsers = userIds.filter((id) => !inScope.userIds.has(id));
+    if (missingUsers.length) {
+      throw new BadRequestError({
+        message: `Some users are not members of the ${scopeLabel}: ${missingUsers.join(", ")}`
       });
-      const projectUserIds = new Set(effectiveUserIds);
-      const missingUsers = userIds.filter((id) => !projectUserIds.has(id));
-      if (missingUsers.length) {
-        throw new BadRequestError({ message: `Some users are not members of the project: ${missingUsers.join(", ")}` });
-      }
-      const projectGroupIds = new Set(effectiveGroupIds);
-      const missingGroups = groupIds.filter((id) => !projectGroupIds.has(id));
-      if (missingGroups.length) {
-        throw new BadRequestError({
-          message: `Some groups are not members of the project: ${missingGroups.join(", ")}`
-        });
-      }
-      return;
     }
 
-    if (userIds.length) {
-      const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: orgId });
-      const orgUserIds = new Set(memberships.map((m) => m.actorUserId));
-      const missingUsers = userIds.filter((id) => !orgUserIds.has(id));
-      if (missingUsers.length) {
-        throw new BadRequestError({
-          message: `Some users are not members of the organization: ${missingUsers.join(", ")}`
-        });
-      }
-    }
-
-    if (groupIds.length) {
-      const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId });
-      const orgGroupIds = new Set(orgGroups.map((g) => g.id));
-      const missingGroups = groupIds.filter((id) => !orgGroupIds.has(id));
-      if (missingGroups.length) {
-        throw new BadRequestError({
-          message: `Some groups are not part of the organization: ${missingGroups.join(", ")}`
-        });
-      }
+    const missingGroups = groupIds.filter((id) => !inScope.groupIds.has(id));
+    if (missingGroups.length) {
+      throw new BadRequestError({
+        message: `Some groups are not members of the ${scopeLabel}: ${missingGroups.join(", ")}`
+      });
     }
   };
 
