@@ -8,10 +8,12 @@ import {
   isWindowsRotatableType,
   ROTATABLE_ACCOUNT_TYPES,
   SQL_ROTATABLE_ACCOUNT_TYPES,
+  WINDOWS_ROTATABLE_ACCOUNT_TYPES
+} from "../pam-account/pam-account-schemas";
+import type {
   TRotatableType,
   TSqlRotatableType,
-  TWindowsRotatableType,
-  WINDOWS_ROTATABLE_ACCOUNT_TYPES
+  TWindowsRotatableType
 } from "../pam-account/pam-account-schemas";
 
 // Rotatable-account-type sets and guards live with the central account-type config; re-exported here so the
@@ -22,11 +24,9 @@ export {
   isWindowsRotatableType,
   ROTATABLE_ACCOUNT_TYPES,
   SQL_ROTATABLE_ACCOUNT_TYPES,
-  TRotatableType,
-  TSqlRotatableType,
-  TWindowsRotatableType,
   WINDOWS_ROTATABLE_ACCOUNT_TYPES
 };
+export type { TRotatableType, TSqlRotatableType, TWindowsRotatableType };
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
