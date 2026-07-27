@@ -41,6 +41,7 @@ export const SurfaceSelect = ({ value, onChange, isDisabled }: Props) => {
                   {SURFACE_LABELS[surface]}
                   <XIcon
                     className="size-3 cursor-pointer"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!isDisabled) toggle(surface);
