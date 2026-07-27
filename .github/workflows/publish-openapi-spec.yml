@@ -6,6 +6,11 @@ name: "Publish OpenAPI Spec"
 # This job exists because of GitHub's cache scoping: a PR can read caches written on
 # the default branch, but caches a PR writes are visible only to that PR. Baselines
 # therefore have to be produced by a run on main.
+#
+# The cache path below MUST stay identical to the one the checker restores, because
+# actions/cache folds the path into the cache version. A mismatched path misses even
+# on an exact key match, and it misses silently: the checker just rebuilds the
+# baseline every time and this job's work is thrown away.
 
 on:
   push:
@@ -39,7 +44,7 @@ jobs:
         id: probe
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: spec.json
+          path: base-spec.json
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
 
@@ -51,13 +56,13 @@ jobs:
         if: steps.probe.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-openapi-spec
         with:
-          output: spec.json
+          output: base-spec.json
 
       - name: Publish spec
         if: steps.probe.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: spec.json
+          path: base-spec.json
           key: ${{ steps.key.outputs.key }}
 
       - name: Cleanup

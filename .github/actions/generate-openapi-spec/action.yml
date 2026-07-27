@@ -55,8 +55,9 @@ runs:
       shell: bash
       run: |
         docker run --name "${{ inputs.container-name }}" -d -p ${{ inputs.port }}:4000 \
-          -e DB_CONNECTION_URI="postgres://infisical:infisical@172.17.0.1:5432/${OPENAPI_SPEC_DB}?sslmode=disable" \
-          -e REDIS_URL=redis://172.17.0.1:6379 \
+          --add-host=host.docker.internal:host-gateway \
+          -e DB_CONNECTION_URI="postgres://infisical:infisical@host.docker.internal:5432/${OPENAPI_SPEC_DB}?sslmode=disable" \
+          -e REDIS_URL=redis://host.docker.internal:6379 \
           -e JWT_AUTH_SECRET=something-random \
           -e ENCRYPTION_KEY=4bnfe4e407b8921c104518903515b218 \
           -e TELEMETRY_ENABLED=false \

@@ -207,14 +207,16 @@ jobs:
 
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
-            const existing = (await github.rest.issues.listComments({ owner, repo, issue_number }))
-              .data.find((c) => c.body?.startsWith(marker));
 
-            // Comment only when something breaks, so the bot stays quiet on the large
-            // majority of PRs. The full changelog is always in the job summary.
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            });
+            const existing = comments.find((c) => c.body?.startsWith(marker));
+
             if (!breaking) {
-              // A previous push did break something and this one fixed it. Replace the
-              // stale warning instead of leaving it to be read as still current.
               if (existing) {
                 const head = context.payload.pull_request.head.sha.slice(0, 7);
                 await github.rest.issues.updateComment({
