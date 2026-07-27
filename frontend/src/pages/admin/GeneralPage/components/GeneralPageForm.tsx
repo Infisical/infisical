@@ -8,9 +8,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
@@ -108,12 +105,6 @@ export const GeneralPageForm = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Instance Settings</CardTitle>
-        <CardDescription>
-          Configure signups, authentication defaults, trusted identities, and instance notices.
-        </CardDescription>
-      </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <FieldGroup>

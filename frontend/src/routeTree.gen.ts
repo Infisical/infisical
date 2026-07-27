@@ -45,6 +45,7 @@ import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
+import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
 import { Route as adminIntegrationsPageRouteImport } from './pages/admin/IntegrationsPage/route'
 import { Route as adminEnvironmentPageRouteImport } from './pages/admin/EnvironmentPage/route'
@@ -661,6 +662,12 @@ const authProviderErrorPageRouteRoute = authProviderErrorPageRouteImport.update(
     getParentRoute: () => RestrictLoginSignupLoginRoute,
   } as any,
 )
+
+const adminWelcomePageRouteRoute = adminWelcomePageRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => AuthenticateInjectOrgDetailsAdminRoute,
+} as any)
 
 const userPersonalSettingsPageRouteRoute =
   userPersonalSettingsPageRouteImport.update({
@@ -2975,6 +2982,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/personal-settings/'
       preLoaderRoute: typeof userPersonalSettingsPageRouteImport
       parentRoute: typeof userLayoutImport
+    }
+    '/_authenticate/_inject-org-details/admin/welcome': {
+      id: '/_authenticate/_inject-org-details/admin/welcome'
+      path: '/welcome'
+      fullPath: '/admin/welcome'
+      preLoaderRoute: typeof adminWelcomePageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsAdminImport
     }
     '/_restrict-login-signup/login/provider/error': {
       id: '/_restrict-login-signup/login/provider/error'
@@ -6088,11 +6102,13 @@ const adminLayoutRouteWithChildren = adminLayoutRoute._addFileChildren(
 )
 
 interface AuthenticateInjectOrgDetailsAdminRouteChildren {
+  adminWelcomePageRouteRoute: typeof adminWelcomePageRouteRoute
   adminLayoutRoute: typeof adminLayoutRouteWithChildren
 }
 
 const AuthenticateInjectOrgDetailsAdminRouteChildren: AuthenticateInjectOrgDetailsAdminRouteChildren =
   {
+    adminWelcomePageRouteRoute: adminWelcomePageRouteRoute,
     adminLayoutRoute: adminLayoutRouteWithChildren,
   }
 
@@ -6289,6 +6305,7 @@ export interface FileRoutesByFullPath {
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/admin': typeof adminLayoutRouteWithChildren
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
+  '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6584,6 +6601,7 @@ export interface FileRoutesByTo {
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
   '/shared/secret/$secretId': typeof publicViewSharedSecretByIDPageRouteRoute
   '/admin': typeof adminGeneralPageRouteRoute
+  '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6865,6 +6883,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin': typeof AuthenticateInjectOrgDetailsAdminRouteWithChildren
   '/_authenticate/personal-settings/_layout': typeof userLayoutRouteWithChildren
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
+  '/_authenticate/_inject-org-details/admin/welcome': typeof adminWelcomePageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
@@ -7173,6 +7192,7 @@ export interface FileRouteTypes {
     | '/shared/secret/$secretId'
     | '/admin'
     | '/personal-settings/'
+    | '/admin/welcome'
     | '/login/provider/error'
     | '/integrations'
     | '/pam/access'
@@ -7467,6 +7487,7 @@ export interface FileRouteTypes {
     | '/secret-request/secret/$secretRequestId'
     | '/shared/secret/$secretId'
     | '/admin'
+    | '/admin/welcome'
     | '/login/provider/error'
     | '/integrations'
     | '/pam/access'
@@ -7746,6 +7767,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin'
     | '/_authenticate/personal-settings/_layout'
     | '/_authenticate/personal-settings/_layout/'
+    | '/_authenticate/_inject-org-details/admin/welcome'
     | '/_restrict-login-signup/login/provider/error'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
@@ -8233,6 +8255,7 @@ export const routeTree = rootRoute
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details",
       "children": [
+        "/_authenticate/_inject-org-details/admin/welcome",
         "/_authenticate/_inject-org-details/admin/_admin-layout"
       ]
     },
@@ -8246,6 +8269,10 @@ export const routeTree = rootRoute
     "/_authenticate/personal-settings/_layout/": {
       "filePath": "user/PersonalSettingsPage/route.tsx",
       "parent": "/_authenticate/personal-settings/_layout"
+    },
+    "/_authenticate/_inject-org-details/admin/welcome": {
+      "filePath": "admin/WelcomePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/admin"
     },
     "/_restrict-login-signup/login/provider/error": {
       "filePath": "auth/ProviderErrorPage/route.tsx",

@@ -4,6 +4,7 @@ const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
 const adminRoute = route("/admin", [
+  route("/welcome", "admin/WelcomePage/route.tsx"),
   layout("admin-layout", "admin/layout.tsx", [
     index("admin/GeneralPage/route.tsx"),
     route("/encryption", "admin/EncryptionPage/route.tsx"),

@@ -19,11 +19,11 @@ export const SignUpPage = () => {
     SecurityClient.setToken(result.token);
     await selectOrganization({ organizationId: result.organization.id });
     localStorage.setItem("orgData.id", result.organization.id);
-    navigate({ to: "/admin" });
+    navigate({ to: "/admin/welcome" });
   };
 
   return (
-    <AuthPageLayout variant="focused">
+    <AuthPageLayout>
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
