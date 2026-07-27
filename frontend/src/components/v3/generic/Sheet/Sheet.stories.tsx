@@ -67,7 +67,7 @@ export const Default: Story = {
             View and update metadata for the selected secret. Changes apply on save.
           </SheetDescription>
         </SheetHeader>
-        <div className="px-4 text-sm text-foreground">
+        <div className="p-4 text-sm text-foreground">
           <p>
             Place primary content here — the body grows to fill available height between the header
             and footer.
@@ -104,7 +104,7 @@ export const LeftSide: Story = {
           <SheetTitle>Filters</SheetTitle>
           <SheetDescription>Narrow the list of secrets by tag and environment.</SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-3 px-4 text-sm text-foreground">
+        <div className="flex flex-col gap-3 p-4 text-sm text-foreground">
           <div className="flex items-center justify-between">
             <span>Production</span>
             <span className="text-accent">12</span>
@@ -149,7 +149,7 @@ export const BottomSheet: Story = {
           <SheetTitle>Quick actions</SheetTitle>
           <SheetDescription>Choose an action to apply to the selected secret.</SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-2 px-4">
+        <div className="flex flex-col gap-2 p-4">
           <SheetClose asChild>
             <Button variant="ghost">Copy value</Button>
           </SheetClose>
@@ -225,7 +225,7 @@ export const WithForm: Story = {
             Update your display name and contact email. Changes apply immediately.
           </SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-4 px-4">
+        <div className="flex flex-col gap-4 p-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="sheet-name">Name</Label>
             <Input id="sheet-name" defaultValue="Scott Wilson" />
@@ -256,7 +256,7 @@ export const ScrollableContent: Story = {
     docs: {
       description: {
         story:
-          "For long bodies, anchor the header and footer while the middle scrolls — common for activity feeds, audit log details, and changelogs. Wrap the scroll region between two `Separator`s in a single flex column so the rules sit flush against the scrolling content; without the wrapper, `SheetContent`'s gap would push padding between them."
+          "For long bodies, anchor the header and footer while the middle scrolls — common for activity feeds, audit log details, and changelogs. Wrap the scroll region between two `Separator`s in a single flex column so the rules sit flush against the scrolling content."
       }
     }
   },
@@ -272,7 +272,7 @@ export const ScrollableContent: Story = {
         </SheetHeader>
         <div className="flex min-h-0 flex-1 flex-col">
           <Separator />
-          <div className="flex thin-scrollbar flex-1 flex-col gap-3 overflow-y-auto px-4 text-sm text-foreground">
+          <div className="flex thin-scrollbar flex-1 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
             {Array.from({ length: 12 }).map((_, i) => (
               // eslint-disable-next-line react/no-array-index-key
               <div key={i} className="flex flex-col gap-1 border-b border-border pb-3">

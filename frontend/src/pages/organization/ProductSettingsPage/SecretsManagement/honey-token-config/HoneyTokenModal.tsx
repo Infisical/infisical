@@ -219,8 +219,8 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
-            <FieldGroup className="p-4">
+          <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
+            <FieldGroup>
               <Controller
                 control={control}
                 name="connectionId"

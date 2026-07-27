@@ -273,7 +273,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
 
           {step === 1 ? (
             <>
-              <div className="flex min-h-0 flex-1 flex-col gap-5 px-4 pt-3">
+              <div className="flex min-h-0 flex-1 flex-col gap-5 p-4">
                 <Controller
                   control={control}
                   name="folderId"
@@ -415,7 +415,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
             </>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-              <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4 pt-3">
+              <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
                 {selectedTemplate && (
                   <div className="flex items-center gap-3 rounded-md border border-border bg-container p-3">
                     <AccountPlatformIcon accountType={selectedTemplate.type} size={28} />

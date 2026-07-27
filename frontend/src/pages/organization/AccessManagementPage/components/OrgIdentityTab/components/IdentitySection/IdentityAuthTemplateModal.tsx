@@ -313,15 +313,15 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
             )}
           </FieldGroup>
           <SheetFooter className="border-t">
-            <Button variant="ghost" onClick={handleClose}>
-              Cancel
-            </Button>
             <Button
               type="submit"
               variant={isSubOrganization ? "sub-org" : "org"}
               isPending={isSubmitting}
             >
               {isEdit ? "Update Template" : "Create Template"}
+            </Button>
+            <Button variant="ghost" onClick={handleClose}>
+              Cancel
             </Button>
           </SheetFooter>
         </form>

@@ -210,30 +210,7 @@ export const IdentityAuthMethodSheet = ({
           <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
             <Content identityId={identityId} isLockedOut={isLockedOut} onMutated={onMutated} />
           </div>
-          <SheetFooter className="border-t">
-            <VariablePermissionCan
-              type={projectId ? "project" : "org"}
-              I={
-                projectId
-                  ? ProjectPermissionIdentityActions.Delete
-                  : OrgPermissionIdentityActions.Delete
-              }
-              a={
-                projectId
-                  ? subject(ProjectPermissionSub.Identity, { identityId })
-                  : OrgPermissionSubjects.Identity
-              }
-            >
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed}
-                  variant="danger"
-                  onClick={() => handlePopUpOpen("revokeAuthMethod")}
-                >
-                  Remove
-                </Button>
-              )}
-            </VariablePermissionCan>
+          <SheetFooter className="justify-between border-t">
             <VariablePermissionCan
               type={projectId ? "project" : "org"}
               I={
@@ -261,6 +238,29 @@ export const IdentityAuthMethodSheet = ({
                   }
                 >
                   Edit
+                </Button>
+              )}
+            </VariablePermissionCan>
+            <VariablePermissionCan
+              type={projectId ? "project" : "org"}
+              I={
+                projectId
+                  ? ProjectPermissionIdentityActions.Delete
+                  : OrgPermissionIdentityActions.Delete
+              }
+              a={
+                projectId
+                  ? subject(ProjectPermissionSub.Identity, { identityId })
+                  : OrgPermissionSubjects.Identity
+              }
+            >
+              {(isAllowed) => (
+                <Button
+                  isDisabled={!isAllowed}
+                  variant="danger"
+                  onClick={() => handlePopUpOpen("revokeAuthMethod")}
+                >
+                  Remove
                 </Button>
               )}
             </VariablePermissionCan>

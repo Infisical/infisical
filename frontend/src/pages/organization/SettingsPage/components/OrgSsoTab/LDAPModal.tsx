@@ -284,8 +284,8 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
               </SheetTitle>
             </SheetHeader>
-            <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto px-4">
-              <FieldGroup className="mb-auto p-4">
+            <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
+              <FieldGroup className="mb-auto">
                 <Controller
                   control={control}
                   name="url"

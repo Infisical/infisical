@@ -11,23 +11,14 @@ import {
   BracesIcon,
   CheckIcon,
   FileKeyIcon,
+  GlobeIcon,
   KeyIcon,
-  KeyRoundIcon,
   NetworkIcon
 } from "lucide-react";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import {
-  Badge,
-  Field,
-  FieldError,
-  FieldLabel,
-  FilterableSelect,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
-} from "@app/components/v3";
+import { Badge, Field, FieldError, FieldLabel, FilterableSelect } from "@app/components/v3";
 import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
@@ -92,7 +83,7 @@ const getProviderIcon = (fileName: string) => (
 
 const commonIdentityAuthMethods: TIdentityAuthMethodOption[] = [
   {
-    icon: <KeyRoundIcon className="size-4 text-accent" />,
+    icon: <GlobeIcon className="size-4 text-accent" />,
     label: "Universal Auth",
     value: IdentityAuthMethod.UNIVERSAL_AUTH
   },
@@ -161,7 +152,10 @@ const otherIdentityAuthMethods: TIdentityAuthMethodOption[] = [
   }
 ].sort((a, b) => a.label.localeCompare(b.label));
 
-const identityAuthMethods = [...commonIdentityAuthMethods, ...otherIdentityAuthMethods];
+export const identityAuthMethodOptions = [
+  ...commonIdentityAuthMethods,
+  ...otherIdentityAuthMethods
+];
 
 const AuthMethodOption = (props: OptionProps<TIdentityAuthMethodSelectOption>) => {
   const { data, isDisabled, isSelected } = props;
@@ -182,14 +176,7 @@ const AuthMethodOption = (props: OptionProps<TIdentityAuthMethodSelectOption>) =
     </ReactSelectComponents.Option>
   );
 
-  return isDisabled ? (
-    <Tooltip>
-      <TooltipTrigger asChild>{option}</TooltipTrigger>
-      <TooltipContent side="right">Authentication method already configured</TooltipContent>
-    </Tooltip>
-  ) : (
-    option
-  );
+  return option;
 };
 
 const AuthMethodSingleValue = (props: SingleValueProps<TIdentityAuthMethodSelectOption>) => {
@@ -229,7 +216,7 @@ export const IdentityAuthMethodModalContent = ({
       let authMethod = initialAuthMethod;
 
       if (!authMethod) {
-        const firstAuthMethodNotConfiguredAuthMethod = identityAuthMethods.find(
+        const firstAuthMethodNotConfiguredAuthMethod = identityAuthMethodOptions.find(
           ({ value }) => !identity?.authMethods?.includes(value)
         );
 
@@ -449,7 +436,7 @@ export const IdentityAuthMethodModalContent = ({
         name="authMethod"
         defaultValue={IdentityAuthMethod.UNIVERSAL_AUTH}
         render={({ field: { onChange, value }, fieldState: { error } }) => {
-          const authMethodOptions = identityAuthMethods.map((authMethod) => {
+          const authMethodOptions = identityAuthMethodOptions.map((authMethod) => {
             const isConfigured = Boolean(isAlreadyConfigured(authMethod.value));
 
             return {

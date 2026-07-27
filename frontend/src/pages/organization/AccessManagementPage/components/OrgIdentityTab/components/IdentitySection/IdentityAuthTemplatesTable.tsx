@@ -123,7 +123,7 @@ export const IdentityAuthTemplatesTable = ({ handlePopUpOpen, onEmptyStateChange
 
   const isFiltered = debouncedSearch.trim().length > 0;
   const isEmpty =
-    subscription.machineIdentityAuthTemplates && !isPending && !isFiltered && totalCount === 0;
+    !subscription.machineIdentityAuthTemplates || (!isPending && !isFiltered && totalCount === 0);
 
   useEffect(() => {
     onEmptyStateChange?.(isEmpty);

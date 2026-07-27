@@ -98,7 +98,7 @@ export const CreateTemplateModal = ({ isOpen, onOpenChange, onCreated }: Props) 
         </SheetHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 flex-col gap-4 px-4">
+          <div className="flex flex-1 flex-col gap-4 p-4">
             <Field>
               <FieldLabel htmlFor="template-name">Name</FieldLabel>
               <FieldContent>
