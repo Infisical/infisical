@@ -737,13 +737,17 @@ export const secretApprovalRequestServiceFactory = ({
         // el.secret is the commit's referenced secret in its current DB state (undefined if since deleted)
         const hasUpdateConflict = (el: (typeof secretUpdationCommits)[number]) => {
           if (!el.secretId || !el.secret) return true; // referenced secret was deleted (or recreated)
+          // the key the request was created (and reviewed) against; undefined if that secret version was pruned
+          const reviewedKey = el.secretVersion?.key;
+          // the referenced secret was renamed after the request was created: the approved change no longer applies
+          if (reviewedKey && el.secret.key !== reviewedKey) return true;
           // whoever currently holds the commit's key must be the referenced secret itself
           const secretWithSameKey = updationSecretsGroupByKey[el.key]?.[0];
           if (secretWithSameKey) return secretWithSameKey.id !== el.secretId;
-          // the key is free: fine for a rename, a conflict for a plain update whose secret was renamed externally.
-          // rename intent is inferred from the secret version the commit was based on (falls back to the live key if that version was pruned)
-          const isRename = el.key !== el.secret.key;
-          return !isRename;
+          // the key is free: only a rename (commit key differs from the reviewed key) may claim it.
+          // without the reviewed key we cannot tell a rename from external drift, so treat it as a conflict
+          if (!reviewedKey) return true;
+          return el.key === reviewedKey;
         };
 
         secretUpdationCommits.filter(hasUpdateConflict).forEach((el) => {
