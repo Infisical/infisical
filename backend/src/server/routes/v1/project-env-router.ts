@@ -138,9 +138,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: z.string().trim().min(1).max(255).describe(ENVIRONMENTS.CREATE.name),
         position: z.number().min(1).optional().describe(ENVIRONMENTS.CREATE.position),
-        slug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.CREATE.slug),
-        // TEMPORARY: exercises the breaking-API check. Revert before merging.
-        __breakingCheckProbe: z.string()
+        slug: slugSchema({ max: 64 }).describe(ENVIRONMENTS.CREATE.slug)
       }),
       response: {
         200: z.object({
