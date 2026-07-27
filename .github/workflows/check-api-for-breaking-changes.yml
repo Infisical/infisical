@@ -80,7 +80,7 @@ jobs:
 
       - name: Restore baseline spec
         id: baseline-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: base-spec.json
           key: ${{ steps.baseline.outputs.key }}
@@ -106,7 +106,7 @@ jobs:
 
       - name: Cache baseline spec
         if: steps.baseline-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         continue-on-error: true
         with:
           path: base-spec.json
@@ -119,28 +119,23 @@ jobs:
           port: "4000"
           container-name: infisical-api-head
 
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          go-version: "1.21.5"
-
-      - name: Restore oasdiff
-        id: oasdiff-cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: ~/go/bin/oasdiff
-          key: oasdiff-${{ runner.os }}-${{ env.OASDIFF_VERSION }}
-
       - name: Install oasdiff
-        if: steps.oasdiff-cache.outputs.cache-hit != 'true'
-        run: go install github.com/oasdiff/oasdiff@${{ env.OASDIFF_VERSION }}
+        run: |
+          set -euo pipefail
 
-      - name: Cache oasdiff
-        if: steps.oasdiff-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        continue-on-error: true
-        with:
-          path: ~/go/bin/oasdiff
-          key: oasdiff-${{ runner.os }}-${{ env.OASDIFF_VERSION }}
+          VERSION="${OASDIFF_VERSION#v}"
+          TARBALL="oasdiff_${VERSION}_linux_amd64.tar.gz"
+          BASE="https://github.com/oasdiff/oasdiff/releases/download/${OASDIFF_VERSION}"
+
+          curl -fsSL -o "$TARBALL" "$BASE/$TARBALL"
+          curl -fsSL -o oasdiff-checksums.txt "$BASE/checksums.txt"
+          grep " $TARBALL\$" oasdiff-checksums.txt | sha256sum -c -
+
+          tar -xzf "$TARBALL" oasdiff
+          sudo install -m 0755 oasdiff /usr/local/bin/oasdiff
+          rm -f "$TARBALL" oasdiff-checksums.txt oasdiff
+
+          oasdiff --version
 
       - name: Check for breaking changes
         id: breaking
