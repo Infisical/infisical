@@ -10,7 +10,7 @@
 # SCOPE: this is an internal CI build cache, not a supported Infisical artifact. It is
 # published publicly only so CI and local dev can pull it instead of recompiling. It is
 # not part of any public API, carries no support or compatibility guarantee, and its tags
-# may change or be deleted at any time. It is NOT the FIPS product image — that is
+# may change or be deleted at any time. It is NOT the FIPS product image. That one is
 # infisical/infisical-fips, built from Dockerfile.fips.standalone-infisical.
 #
 # THIRD-PARTY CONTENTS: includes Oracle Instant Client, redistributed under the Oracle
