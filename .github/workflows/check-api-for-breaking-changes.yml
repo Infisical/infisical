@@ -1,100 +1,243 @@
 name: "Check API For Breaking Changes"
 
+# Diffs the PR's OpenAPI spec against the spec of the main commit the PR is merged
+# onto, so the result describes what this PR changed and nothing else.
+#
+# The baseline used to be live production (app.infisical.com). Production tracks the
+# last deploy rather than main, so every breaking change legitimately merged to main
+# re-fired on every open PR until the next deploy. Unrelated PRs failed with identical
+# errors and the check stopped being believed.
+#
+# This check is advisory. It reports what the PR changes and comments when something
+# breaks, but it never fails the job. Making it blocking is a separate decision, and
+# one worth taking only once the reports have been observed to be trustworthy.
+
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
     paths:
       - "backend/src/server/routes/**"
       - "backend/src/ee/routes/**"
+      # So changes to the check itself are exercised by the check.
+      - ".github/workflows/check-api-for-breaking-changes.yml"
+      - ".github/actions/generate-openapi-spec/**"
+
+concurrency:
+  group: check-api-breaking-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  OASDIFF_VERSION: v1.26.0
 
 jobs:
   check-be-api-changes:
     name: Check API Changes
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
-      # uncomment this when testing locally using nektos/act
+        with:
+          fetch-depth: 2
+
       - uses: KengoTODA/actions-setup-docker-compose@17da3fa4493b7303eff3e8f4f84a07ed6ed2e7a7 # v1, Feb 6, 2026
         if: ${{ env.ACT }}
         name: Install `docker compose` for local simulations
         with:
           version: "2.14.2"
-      - name: 📦Build the latest image
-        run: docker build --tag infisical-api .
-        working-directory: backend
+
+      - name: Resolve baseline
+        id: baseline
+        run: |
+          set -euo pipefail
+
+          # A merge commit lists itself plus two parents. Anything else means we were
+          # handed the PR head directly (conflicting PR, or a rerun quirk).
+          if [ "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 3 ]; then
+            BASE_SHA="$(git rev-parse HEAD^1)"
+          else
+            echo "::notice::HEAD is not a merge commit, falling back to the PR base SHA."
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          fi
+
+          if [ -z "$BASE_SHA" ]; then
+            echo "::error::Could not determine the baseline commit for this PR."
+            exit 1
+          fi
+
+          # The shallow checkout usually already carries this tree; fetch only if not.
+          if ! git rev-parse -q --verify "$BASE_SHA:backend" > /dev/null; then
+            git fetch --depth 1 origin "$BASE_SHA"
+          fi
+
+          echo "sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "key=openapi-spec-v1-$(git rev-parse "$BASE_SHA:backend")" >> "$GITHUB_OUTPUT"
+          echo "Baseline commit: $BASE_SHA"
+
+      - name: Restore baseline spec
+        id: baseline-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: base-spec.json
+          key: ${{ steps.baseline.outputs.key }}
+
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
-      - name: Start the server
-        run: |
-          echo "SECRET_SCANNING_GIT_APP_ID=793712" >> .env
-          echo "SECRET_SCANNING_PRIVATE_KEY=some-random" >> .env
-          echo "SECRET_SCANNING_WEBHOOK_SECRET=some-random" >> .env
 
-          echo "Examining built image:"
-          docker image inspect infisical-api | grep -A 5 "Entrypoint"
-          
-          docker run --name infisical-api -d -p 4000:4000 \
-            -e DB_CONNECTION_URI=$DB_CONNECTION_URI \
-            -e REDIS_URL=$REDIS_URL \
-            -e JWT_AUTH_SECRET=$JWT_AUTH_SECRET \
-            -e ENCRYPTION_KEY=$ENCRYPTION_KEY \
-            -e TELEMETRY_ENABLED=false \
-            --env-file .env \
-            infisical-api
-          
-          echo "Container status right after creation:"
-          docker ps -a | grep infisical-api
-        env:
-          REDIS_URL: redis://172.17.0.1:6379
-          DB_CONNECTION_URI: postgres://infisical:infisical@172.17.0.1:5432/infisical?sslmode=disable
-          JWT_AUTH_SECRET: something-random
-          ENCRYPTION_KEY: 4bnfe4e407b8921c104518903515b218
+      - name: Checkout baseline source
+        if: steps.baseline-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4 Nov 14, 2025
+        with:
+          ref: ${{ steps.baseline.outputs.sha }}
+          path: base-src
+
+      - name: Build baseline spec
+        if: steps.baseline-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-openapi-spec
+        with:
+          source-path: base-src
+          output: base-spec.json
+          port: "4001"
+          container-name: infisical-api-base
+
+      - name: Cache baseline spec
+        if: steps.baseline-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        continue-on-error: true
+        with:
+          path: base-spec.json
+          key: ${{ steps.baseline.outputs.key }}
+
+      - name: Build PR spec
+        uses: ./.github/actions/generate-openapi-spec
+        with:
+          output: head-spec.json
+          port: "4000"
+          container-name: infisical-api-head
+
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: "1.21.5"
-      - name: Wait for container to be stable and check logs
+
+      - name: Restore oasdiff
+        id: oasdiff-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/go/bin/oasdiff
+          key: oasdiff-${{ runner.os }}-${{ env.OASDIFF_VERSION }}
+
+      - name: Install oasdiff
+        if: steps.oasdiff-cache.outputs.cache-hit != 'true'
+        run: go install github.com/oasdiff/oasdiff@${{ env.OASDIFF_VERSION }}
+
+      - name: Cache oasdiff
+        if: steps.oasdiff-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        continue-on-error: true
+        with:
+          path: ~/go/bin/oasdiff
+          key: oasdiff-${{ runner.os }}-${{ env.OASDIFF_VERSION }}
+
+      - name: Check for breaking changes
+        id: breaking
         run: |
-          SECONDS=0
-          HEALTHY=0
-          while [ $SECONDS -lt 60 ]; do
-            # Check if container is running
-            if docker ps | grep infisical-api; then
-              # Try to access the API endpoint
-              if curl -s -f http://localhost:4000/api/docs/json > /dev/null 2>&1; then
-                echo "API endpoint is responding. Container seems healthy."
-                HEALTHY=1
-                break
-              fi
-            else
-              echo "Container is not running!"
-              docker ps -a | grep infisical-api
-              break
-            fi
-            
-            echo "Waiting for container to be healthy... ($SECONDS seconds elapsed)"
-            sleep 5
-            SECONDS=$((SECONDS+5))
-          done
-          
-          if [ $HEALTHY -ne 1 ]; then
-            echo "Container did not become healthy in time"
-            echo "Container status:"
-            docker ps -a | grep infisical-api
-            echo "Container logs (if any):"
-            docker logs infisical-api || echo "No logs available"
-            echo "Container inspection:"
-            docker inspect infisical-api | grep -A 5 "State"
-            exit 1
+          set +e
+          oasdiff breaking base-spec.json head-spec.json --fail-on ERR --color never > breaking.txt
+          CODE=$?
+          set -e
+
+          cat breaking.txt
+
+          if [ "$CODE" != "0" ] && [ "$CODE" != "1" ]; then
+            echo "::error::oasdiff failed to run (exit $CODE)."
+            exit "$CODE"
           fi
-      - name: Install openapi-diff
-        run: go install github.com/oasdiff/oasdiff@latest
-      - name: Running OpenAPI Spec diff action
-        run: oasdiff breaking https://app.infisical.com/api/docs/json http://localhost:4000/api/docs/json --fail-on ERR
-      - name: cleanup
-        if: always()
+
+          if [ "$CODE" = "1" ]; then
+            echo "breaking=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "breaking=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Summarize API changes
         run: |
-          docker compose -f "docker-compose.dev.yml" down
-          docker stop infisical-api || true
-          docker rm infisical-api || true
+          oasdiff changelog base-spec.json head-spec.json --format markdown > changelog.md || true
+
+          {
+            echo "## API changes"
+            echo
+            echo "Baseline: \`${{ steps.baseline.outputs.sha }}\` (the main commit this PR is merged onto)"
+            echo
+
+            if [ "${{ steps.breaking.outputs.breaking }}" = "true" ]; then
+              echo "> [!WARNING]"
+              echo "> This PR contains breaking API changes. This check is advisory and does"
+              echo "> not block the merge, so please confirm they are intentional."
+              echo
+              echo '```'
+              cat breaking.txt
+              echo '```'
+              echo
+            fi
+
+            echo "<details><summary>Full API changelog</summary>"
+            echo
+            # Empty only when oasdiff itself failed; it prints "No changes detected"
+            # rather than nothing when the specs match.
+            if [ -s changelog.md ]; then cat changelog.md; else echo "_Changelog unavailable._"; fi
+            echo
+            echo "</details>"
+          } > summary.md
+
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on the PR
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- openapi-breaking-check -->";
+            const breaking = "${{ steps.breaking.outputs.breaking }}" === "true";
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const existing = (await github.rest.issues.listComments({ owner, repo, issue_number }))
+              .data.find((c) => c.body?.startsWith(marker));
+
+            // Comment only when something breaks, so the bot stays quiet on the large
+            // majority of PRs. The full changelog is always in the job summary.
+            if (!breaking) {
+              // A previous push did break something and this one fixed it. Replace the
+              // stale warning instead of leaving it to be read as still current.
+              if (existing) {
+                const head = context.payload.pull_request.head.sha.slice(0, 7);
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body: `${marker}\n## API changes\n\nThe breaking changes reported earlier are resolved as of \`${head}\`.`
+                });
+              }
+              return;
+            }
+
+            let body = marker + "\n" + fs.readFileSync("summary.md", "utf8");
+            if (body.length > 60000) {
+              body = body.slice(0, 60000) + "\n\n_Truncated. See the job summary for the full diff._";
+            }
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.dev.yml down || true
