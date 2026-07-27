@@ -13,7 +13,6 @@ import {
 import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretPersonalOverridePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -376,7 +375,8 @@ export const secretV2BridgeServiceFactory = ({
     const { secretName, type, ...inputSecretData } = inputSecret;
 
     if (type === SecretType.Personal) {
-      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Create, {
+      // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName,
@@ -586,7 +586,8 @@ export const secretV2BridgeServiceFactory = ({
         folderId
       });
 
-      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Edit, {
+      // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName: inputSecret.secretName,
@@ -919,7 +920,8 @@ export const secretV2BridgeServiceFactory = ({
         folderId
       });
 
-      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Delete, {
+      // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName: inputSecret.secretName,

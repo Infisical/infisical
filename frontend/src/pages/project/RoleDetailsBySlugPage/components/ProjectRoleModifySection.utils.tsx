@@ -109,8 +109,7 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.PersonalOverride]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -1208,9 +1207,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
-          const canPersonalOverride = action.includes(
-            ProjectPermissionSecretActions.PersonalOverride
-          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1221,7 +1217,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
-            [ProjectPermissionSecretActions.PersonalOverride]: canPersonalOverride,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -2132,12 +2127,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         description: "Create new secrets in the project",
         value: ProjectPermissionSecretActions.Create
-      },
-      {
-        label: "Personal Override",
-        description:
-          "Create, modify, and delete personal secret overrides. Does not grant access to shared secrets.",
-        value: ProjectPermissionSecretActions.PersonalOverride
       }
     ]
   },

@@ -131,9 +131,10 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       sec.overrideAction = "modified";
       sec.isOverrideEmpty = personalSecret.isEmpty;
       // NOTE: do not force `secretValueHidden = false` here. It reflects whether the SHARED value is
-      // readable; a user with only the personal-override permission can read their override but not the
-      // shared value. Keep the shared entry's real value so the shared row renders the no-access state
-      // instead of attempting a forbidden fetch. Override display is gated on the override's own fields.
+      // readable; a user who can only describe the secret (without read value) can read their override
+      // but not the shared value. Keep the shared entry's real value so the shared row renders the
+      // no-access state instead of attempting a forbidden fetch. Override display is gated on the
+      // override's own fields.
     }
   });
 
