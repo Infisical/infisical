@@ -24,8 +24,7 @@ export enum ProjectPermissionSecretActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Subscribe = "subscribe",
-  PersonalOverride = "personal-override"
+  Subscribe = "subscribe"
 }
 
 export enum ProjectPermissionDynamicSecretActions {
