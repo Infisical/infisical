@@ -89,7 +89,7 @@ import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secre
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
-import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
+import { hasSecretUpdateCommitConflict, sendApprovalEmailsFn } from "./secret-approval-request-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
@@ -734,21 +734,8 @@ export const secretApprovalRequestServiceFactory = ({
           }))
         );
         const updationSecretsGroupByKey = groupBy(secrets, (i) => i.key);
-        // el.secret is the commit's referenced secret in its current DB state (undefined if since deleted)
-        const hasUpdateConflict = (el: (typeof secretUpdationCommits)[number]) => {
-          if (!el.secretId || !el.secret) return true; // referenced secret was deleted (or recreated)
-          // the key the request was created (and reviewed) against; undefined if that secret version was pruned
-          const reviewedKey = el.secretVersion?.key;
-          // the referenced secret was renamed after the request was created: the approved change no longer applies
-          if (reviewedKey && el.secret.key !== reviewedKey) return true;
-          // whoever currently holds the commit's key must be the referenced secret itself
-          const secretWithSameKey = updationSecretsGroupByKey[el.key]?.[0];
-          if (secretWithSameKey) return secretWithSameKey.id !== el.secretId;
-          // the key is free: only a rename (commit key differs from the reviewed key) may claim it.
-          // without the reviewed key we cannot tell a rename from external drift, so treat it as a conflict
-          if (!reviewedKey) return true;
-          return el.key === reviewedKey;
-        };
+        const hasUpdateConflict = (el: (typeof secretUpdationCommits)[number]) =>
+          hasSecretUpdateCommitConflict(el, updationSecretsGroupByKey[el.key]?.[0]);
 
         secretUpdationCommits.filter(hasUpdateConflict).forEach((el) => {
           conflicts.push({ op: SecretOperations.Update, secretId: el.id });
