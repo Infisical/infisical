@@ -182,6 +182,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     connectionDetails: Record<string, unknown>;
     targetUsername: string;
     newPassword: string;
+    rotatedAt: Date;
     connectAuth: { username: string; password: string };
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
@@ -196,6 +197,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     connectionDetails,
     targetUsername,
     newPassword,
+    rotatedAt,
     connectAuth,
     gatewayId,
     gatewayPoolId
@@ -240,6 +242,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
         // Only terminal states are written: a crash mid-sync leaves the prior status (self-corrects on the next
         // rotation) rather than a "pending" that could stick forever.
         limit(async () => {
+          const current = await pamAccountDAL.findById(accountId);
+          if (current?.lastRotatedAt && new Date(current.lastRotatedAt).getTime() > rotatedAt.getTime()) return;
           try {
             const depData = dep.data as { runAsAccount?: string; resolvedIp?: string };
             const runAsAccount = depData?.runAsAccount ?? targetUsername;
@@ -646,6 +650,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       connectionDetails,
       targetUsername,
       newPassword,
+      rotatedAt: now,
       // For self-rotation the account's old password is now dead, so connect with the new one; a delegated
       // rotator authenticates with its own (unchanged) password.
       connectAuth: isDelegated ? auth : { username: auth.username, password: newPassword },
