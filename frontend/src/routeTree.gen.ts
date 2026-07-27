@@ -31,6 +31,8 @@ import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/publ
 import { Route as publicViewSecretRequestByIDPageRouteImport } from './pages/public/ViewSecretRequestByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
+import { Route as authLoginSamlPageRouteImport } from './pages/auth/LoginSamlPage/route'
+import { Route as authLoginOidcPageRouteImport } from './pages/auth/LoginOidcPage/route'
 import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
 import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
@@ -559,6 +561,18 @@ const authSignUpSsoPageRouteRoute = authSignUpSsoPageRouteImport.update({
 const authSelectOrgPageRouteRoute = authSelectOrgPageRouteImport.update({
   id: '/select-organization',
   path: '/select-organization',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authLoginSamlPageRouteRoute = authLoginSamlPageRouteImport.update({
+  id: '/saml',
+  path: '/saml',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authLoginOidcPageRouteRoute = authLoginOidcPageRouteImport.update({
+  id: '/oidc',
+  path: '/oidc',
   getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
 
@@ -2891,6 +2905,20 @@ declare module '@tanstack/react-router' {
       path: '/ldap'
       fullPath: '/login/ldap'
       preLoaderRoute: typeof authLoginLdapPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/_restrict-login-signup/login/oidc': {
+      id: '/_restrict-login-signup/login/oidc'
+      path: '/oidc'
+      fullPath: '/login/oidc'
+      preLoaderRoute: typeof authLoginOidcPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/_restrict-login-signup/login/saml': {
+      id: '/_restrict-login-signup/login/saml'
+      path: '/saml'
+      fullPath: '/login/saml'
+      preLoaderRoute: typeof authLoginSamlPageRouteImport
       parentRoute: typeof RestrictLoginSignupLoginImport
     }
     '/_restrict-login-signup/login/select-organization': {
@@ -6163,6 +6191,8 @@ interface RestrictLoginSignupLoginRouteChildren {
   authLoginPageRouteRoute: typeof authLoginPageRouteRoute
   authAdminLoginPageRouteRoute: typeof authAdminLoginPageRouteRoute
   authLoginLdapPageRouteRoute: typeof authLoginLdapPageRouteRoute
+  authLoginOidcPageRouteRoute: typeof authLoginOidcPageRouteRoute
+  authLoginSamlPageRouteRoute: typeof authLoginSamlPageRouteRoute
   authSelectOrgPageRouteRoute: typeof authSelectOrgPageRouteRoute
   authProviderErrorPageRouteRoute: typeof authProviderErrorPageRouteRoute
 }
@@ -6172,6 +6202,8 @@ const RestrictLoginSignupLoginRouteChildren: RestrictLoginSignupLoginRouteChildr
     authLoginPageRouteRoute: authLoginPageRouteRoute,
     authAdminLoginPageRouteRoute: authAdminLoginPageRouteRoute,
     authLoginLdapPageRouteRoute: authLoginLdapPageRouteRoute,
+    authLoginOidcPageRouteRoute: authLoginOidcPageRouteRoute,
+    authLoginSamlPageRouteRoute: authLoginSamlPageRouteRoute,
     authSelectOrgPageRouteRoute: authSelectOrgPageRouteRoute,
     authProviderErrorPageRouteRoute: authProviderErrorPageRouteRoute,
   }
@@ -6250,6 +6282,8 @@ export interface FileRoutesByFullPath {
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/login/oidc': typeof authLoginOidcPageRouteRoute
+  '/login/saml': typeof authLoginSamlPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
@@ -6544,6 +6578,8 @@ export interface FileRoutesByTo {
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/login/oidc': typeof authLoginOidcPageRouteRoute
+  '/login/saml': typeof authLoginSamlPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
@@ -6820,6 +6856,8 @@ export interface FileRoutesById {
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/_restrict-login-signup/login/oidc': typeof authLoginOidcPageRouteRoute
+  '/_restrict-login-signup/login/saml': typeof authLoginSamlPageRouteRoute
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
@@ -7128,6 +7166,8 @@ export interface FileRouteTypes {
     | '/admin/signup'
     | '/login/admin'
     | '/login/ldap'
+    | '/login/oidc'
+    | '/login/saml'
     | '/login/select-organization'
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
@@ -7421,6 +7461,8 @@ export interface FileRouteTypes {
     | '/admin/signup'
     | '/login/admin'
     | '/login/ldap'
+    | '/login/oidc'
+    | '/login/saml'
     | '/login/select-organization'
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
@@ -7695,6 +7737,8 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/admin'
     | '/_restrict-login-signup/login/ldap'
+    | '/_restrict-login-signup/login/oidc'
+    | '/_restrict-login-signup/login/saml'
     | '/_restrict-login-signup/login/select-organization'
     | '/_restrict-login-signup/signup/sso'
     | '/secret-request/secret/$secretRequestId'
@@ -8106,6 +8150,8 @@ export const routeTree = rootRoute
         "/_restrict-login-signup/login/",
         "/_restrict-login-signup/login/admin",
         "/_restrict-login-signup/login/ldap",
+        "/_restrict-login-signup/login/oidc",
+        "/_restrict-login-signup/login/saml",
         "/_restrict-login-signup/login/select-organization",
         "/_restrict-login-signup/login/provider/error"
       ]
@@ -8152,6 +8198,14 @@ export const routeTree = rootRoute
     },
     "/_restrict-login-signup/login/ldap": {
       "filePath": "auth/LoginLdapPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/login/oidc": {
+      "filePath": "auth/LoginOidcPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/login/saml": {
+      "filePath": "auth/LoginSamlPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
     },
     "/_restrict-login-signup/login/select-organization": {

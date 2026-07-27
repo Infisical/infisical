@@ -9,6 +9,7 @@ import { FEATURE_MAPPINGS } from "./feature-mapping";
 // imported from license-fns) to avoid a license-service <-> license-fns import cycle.
 export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlementsResponse): TFeatureSet => {
   const plan = JSON.parse(JSON.stringify(base)) as Record<string, unknown> & { rateLimits: Record<string, unknown> };
+  plan.slug = entitlements?.slug;
 
   FEATURE_MAPPINGS.forEach((mapping) => {
     if (mapping.v1Field === null) {

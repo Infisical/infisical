@@ -12,7 +12,6 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
-import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   TCreateFolderDTO,
   TDeleteFolderDTO,
@@ -181,12 +180,6 @@ export const useGetOrCreateFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
@@ -216,12 +209,6 @@ export const useCreateFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
@@ -256,12 +243,6 @@ export const useUpdateFolder = () => {
       });
       queryClient.invalidateQueries({
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
@@ -299,12 +280,6 @@ export const useDeleteFolder = () => {
         queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: path })
       });
       queryClient.invalidateQueries({
@@ -339,20 +314,6 @@ export const useUpdateFolderBatch = () => {
             projectId,
             environment: folder.environment,
             path: folder.path
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({
-            projectId,
-            environment: folder.environment,
-            directory: folder.path
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({
-            projectId,
-            environment: folder.environment,
-            directory: folder.path
           })
         });
         queryClient.invalidateQueries({
@@ -397,12 +358,6 @@ export const useMoveFolder = () => {
         });
         queryClient.invalidateQueries({
           queryKey: folderQueryKeys.getSecretFolders({ projectId, environment, path })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({ projectId, environment, directory: path })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({ projectId, environment, directory: path })
         });
         queryClient.invalidateQueries({
           queryKey: commitKeys.count({ projectId, environment, directory: path })

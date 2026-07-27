@@ -6,7 +6,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { executeWithPotentialGateway } from "@app/services/app-connection/shared/sql";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 
-import { PAM_ROTATION_APP_MAP, ROTATABLE_ACCOUNT_TYPES } from "../pam-rotation-fns";
+import { PAM_ROTATION_APP_MAP, TSqlRotatableType } from "../pam-rotation-fns";
 
 // Must stay well under the per-account rotation lock TTL so a hung query can't let the lock expire mid-rotation.
 export const SQL_QUERY_TIMEOUT = 30 * 1000;
@@ -29,7 +29,7 @@ export type TPamRotationGatewayDeps = {
 // Delegates to executeWithPotentialGateway so rotation reuses the one gateway/SSRF path every other SQL path uses.
 export const withPamSqlClient = async <T>(
   input: {
-    accountType: (typeof ROTATABLE_ACCOUNT_TYPES)[number];
+    accountType: TSqlRotatableType;
     connectionDetails: TPamSqlConnectionDetails;
     auth: { username: string; password: string };
     gatewayId?: string | null;

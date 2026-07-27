@@ -187,7 +187,9 @@ export const unixDiscoveryFactory: TPamDiscoveryFactory = ({
 
     return {
       accounts: discovered.slice(0, MAX_ACCOUNTS_PER_SCAN),
-      machineErrors: results.flatMap((r) => (r.error ? [r.error] : []))
+      machineErrors: results.flatMap((r) => (r.error ? [r.error] : [])),
+      dependencies: [],
+      scannedDependencyMachines: []
     };
   };
 

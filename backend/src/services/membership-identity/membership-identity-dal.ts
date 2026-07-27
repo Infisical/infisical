@@ -493,5 +493,16 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findIdentities, getIdentityById, listAvailableIdentities };
+  // Row-locked read for transactions that must decide on the membership's
+  // current state before mutating it (e.g. the isActive revoke/restore hooks)
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      const doc = await tx(TableName.Membership).where({ id }).forUpdate().first();
+      return doc ? MembershipsSchema.parse(doc) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdForUpdate" });
+    }
+  };
+
+  return { ...orm, findIdentities, getIdentityById, listAvailableIdentities, findByIdForUpdate };
 };

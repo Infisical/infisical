@@ -1,17 +1,78 @@
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { PamAccountType } from "../pam/pam-enums";
+import {
+  isRotatableAccountType,
+  isSqlRotatableType,
+  isWindowsRotatableType,
+  ROTATABLE_ACCOUNT_TYPES,
+  SQL_ROTATABLE_ACCOUNT_TYPES,
+  TRotatableType,
+  TSqlRotatableType,
+  TWindowsRotatableType,
+  WINDOWS_ROTATABLE_ACCOUNT_TYPES
+} from "../pam-account/pam-account-schemas";
 
-export const ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.MsSQL] as const;
+// Rotatable-account-type sets and guards live with the central account-type config; re-exported here so the
+// rotation module's existing consumers keep importing them from one place.
+export {
+  isRotatableAccountType,
+  isSqlRotatableType,
+  isWindowsRotatableType,
+  ROTATABLE_ACCOUNT_TYPES,
+  SQL_ROTATABLE_ACCOUNT_TYPES,
+  TRotatableType,
+  TSqlRotatableType,
+  TWindowsRotatableType,
+  WINDOWS_ROTATABLE_ACCOUNT_TYPES
+};
 
-export const isRotatableAccountType = (
-  accountType: PamAccountType | string
-): accountType is (typeof ROTATABLE_ACCOUNT_TYPES)[number] =>
-  (ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+// Strip a domain qualifier (DOMAIN\user or user@domain) to the bare sAMAccountName. Case is preserved; callers
+// that need a case-insensitive comparison lowercase the result themselves.
+export const toBareAccountName = (username: string): string => {
+  if (username.includes("\\")) return username.split("\\").pop() ?? username;
+  if (username.includes("@")) return username.split("@")[0];
+  return username;
+};
+
+// Rotation talks to the target through a gateway tunnel; a transient tunnel/TLS/auth blip is not a real failure,
+// so the probe throws on those and we retry, short-circuiting on a definitive result. Last error propagates.
+export const GATEWAY_RETRY_ATTEMPTS = 3;
+
+export const withGatewayRetry = async (
+  probe: () => Promise<boolean>,
+  label = "operation",
+  { maxAttempts = GATEWAY_RETRY_ATTEMPTS, baseDelayMs = 500 }: { maxAttempts?: number; baseDelayMs?: number } = {}
+): Promise<boolean> => {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await probe();
+    } catch (err) {
+      lastErr = err;
+      logger.warn(
+        { err },
+        `PAM rotation ${label} attempt failed [attempt=${attempt}/${maxAttempts}] [error=${
+          err instanceof Error ? err.message : String(err)
+        }]`
+      );
+      // eslint-disable-next-line no-await-in-loop
+      if (attempt < maxAttempts) await sleep(baseDelayMs * attempt);
+    }
+  }
+  throw lastErr;
+};
 
 // PamAccountType -> AppConnection, so we can reuse the per-dialect ALTER statement map keyed by AppConnection.
 export const PAM_ROTATION_APP_MAP: Record<
-  (typeof ROTATABLE_ACCOUNT_TYPES)[number],
+  TSqlRotatableType,
   AppConnection.Postgres | AppConnection.MySql | AppConnection.MsSql
 > = {
   [PamAccountType.Postgres]: AppConnection.Postgres,

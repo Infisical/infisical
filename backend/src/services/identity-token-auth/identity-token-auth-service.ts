@@ -58,7 +58,10 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "markPerTokenRevocation"
+    | "issueIdentityAccessToken"
+    | "revokeTokensForIdentityAuthMethod"
+    | "markPerTokenRevocation"
+    | "invalidateTrustedIpsCache"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -172,6 +175,7 @@ export const identityTokenAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TOKEN_AUTH);
     return { ...identityTokenAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -270,6 +274,7 @@ export const identityTokenAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TOKEN_AUTH);
     return {
       ...updatedTokenAuth,
       orgId: identityMembershipOrg.scopeOrgId
@@ -428,6 +433,7 @@ export const identityTokenAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.TOKEN_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.TOKEN_AUTH);
 
     return revokedIdentityTokenAuth;
   };

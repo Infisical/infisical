@@ -2,6 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { dashboardKeys } from "../dashboard/queries";
+import { commitKeys } from "../folderCommits/queries";
+import { secretKeys } from "../secrets/queries";
+import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretApprovalRequestKeys } from "./queries";
 import {
   TPerformSecretApprovalRequestMerge,
@@ -60,12 +64,36 @@ export const usePerformSecretApprovalRequestMerge = () => {
       });
       return data;
     },
-    onSuccess: (_, { id, projectId }) => {
+    onSuccess: (_, { id, projectId, environment, secretPath }) => {
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) });
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
       queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
+      });
     }
   });
 };
