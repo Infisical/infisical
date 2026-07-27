@@ -1,4 +1,3 @@
-import { useEffect, useMemo } from "react";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 
 import { TableCell, TableRow } from "@app/components/v3";
@@ -6,6 +5,7 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
   PamAccountType,
   TAccessiblePamAccount,
+  TPamAccountListItem,
   TPamFolderWithCount,
   useListPamAccounts
 } from "@app/hooks/api/pam";
@@ -19,8 +19,11 @@ type Props = {
   isOpen: boolean;
   onToggle: () => void;
   search: string;
-  accountType: string;
-  filterActive: boolean;
+  /**
+   * Pre-filtered accounts for this folder, supplied by the page's single server-side filter query.
+   * When omitted (no active filter) the folder fetches its own accounts lazily on open.
+   */
+  accounts?: TPamAccountListItem[];
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;
   onRequestAccess: (account: TAccessiblePamAccount) => void;
@@ -28,7 +31,6 @@ type Props = {
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
-  onResultCount: (folderId: string, count: number) => void;
 };
 
 export const FolderAccountRows = ({
@@ -36,45 +38,28 @@ export const FolderAccountRows = ({
   isOpen,
   onToggle,
   search,
-  accountType,
-  filterActive,
+  accounts: providedAccounts,
   onOpenAccount,
   onLaunchAccount,
   onRequestAccess,
   onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
-  onFolderDelete,
-  onResultCount
+  onFolderDelete
 }: Props) => {
-  // Only fetch this folder's accounts once it's open (lazy load per folder)
-  const { data, isLoading } = useListPamAccounts({ folderId: folder.id }, { enabled: isOpen });
-  const accounts = data ?? [];
+  const isFiltering = providedAccounts !== undefined;
 
-  const q = search.trim().toLowerCase();
-  const hasQuery = q.length > 0;
+  // Only fetch this folder's accounts once it's open (lazy load per folder), and never while the
+  // page is filtering — the matches already arrived in the page's single filtered request.
+  const { data, isLoading: isFetching } = useListPamAccounts(
+    { folderId: folder.id },
+    { enabled: isOpen && !isFiltering }
+  );
 
-  // Client-side filtering keeps search/type instant once a folder's accounts are loaded
-  const accountsToShow = useMemo(() => {
-    let list = accounts;
-    if (accountType) list = list.filter((a) => a.accountType === accountType);
-    if (hasQuery) {
-      list = list.filter((a) => `${a.name} ${a.description ?? ""}`.toLowerCase().includes(q));
-    }
-    return list;
-  }, [accounts, accountType, q, hasQuery]);
+  const accountsToShow = providedAccounts ?? data ?? [];
+  const isLoading = !isFiltering && isFetching;
 
-  useEffect(() => {
-    if (isOpen && !isLoading) onResultCount(folder.id, accountsToShow.length);
-  }, [isOpen, isLoading, accountsToShow.length, folder.id, onResultCount]);
-
-  // While filtering, hide folders with no matching accounts
-  if (filterActive && isOpen && !isLoading && accountsToShow.length === 0) {
-    return null;
-  }
-
-  let count = folder.accountCount;
-  if (isOpen && !isLoading) count = filterActive ? accountsToShow.length : accounts.length;
+  const count = isOpen && !isLoading ? accountsToShow.length : folder.accountCount;
 
   return (
     <>

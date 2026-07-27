@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, FolderOpen, FolderPlus, Layers, Plus, Search } from "lucide-react";
@@ -47,9 +47,11 @@ import {
   PamAccountType,
   PamResourcePermissionActions,
   TAccessiblePamAccount,
+  TPamAccountListItem,
   useDeletePamAccount,
   useDeletePamFolder,
   useGetPamAccessCapabilities,
+  useListPamAccounts,
   useListPamAccountTypes,
   useListPamFolders
 } from "@app/hooks/api/pam";
@@ -76,7 +78,6 @@ export const PamAccountsPage = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [resultCounts, setResultCounts] = useState<Record<string, number>>({});
 
   // Every role sees the same folder/account structure; permissions only disable actions on a row,
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
@@ -114,9 +115,29 @@ export const PamAccountsPage = () => {
   const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
 
   const query = searchInput.trim();
-  // Active filters force-open every folder so matches surface; otherwise folders load lazily on open
   const filterActive = Boolean(query || selectedAccountType);
   const hasActiveFilters = Boolean(query || selectedFolderId || selectedAccountType);
+
+  // Filtering is done server-side in a single request across every folder the caller can read, so
+  // searching doesn't have to open (and fetch) each folder just to filter its rows in the client.
+  const { data: matches = [], isLoading: isLoadingMatches } = useListPamAccounts(
+    {
+      search: query || undefined,
+      accountType: selectedAccountType || undefined,
+      folderId: selectedFolderId || undefined
+    },
+    { enabled: filterActive }
+  );
+
+  // Group the flat match list back under its folder so the tree layout is unchanged while filtering.
+  const matchesByFolder = useMemo(() => {
+    const grouped: Record<string, TPamAccountListItem[]> = {};
+    matches.forEach((account) => {
+      if (!account.folderId) return;
+      grouped[account.folderId] = [...(grouped[account.folderId] ?? []), account];
+    });
+    return grouped;
+  }, [matches]);
 
   const toggleFolder = useCallback((folderId: string) => {
     setExpandedFolders((prev) => {
@@ -127,27 +148,20 @@ export const PamAccountsPage = () => {
     });
   }, []);
 
-  const handleResultCount = useCallback((folderId: string, count: number) => {
-    setResultCounts((prev) => (prev[folderId] === count ? prev : { ...prev, [folderId]: count }));
-  }, []);
-
-  // Reset result counts when filters change so folder groups recompute counts for new filter
-  useEffect(() => {
-    setResultCounts({});
-  }, [query, selectedAccountType]);
-
-  const visibleFolders = selectedFolderId
+  const allFolders = selectedFolderId
     ? folders.filter((folder) => folder.id === selectedFolderId)
     : folders;
+  // While filtering, only folders with matches are worth rendering.
+  const visibleFolders = filterActive
+    ? allFolders.filter((folder) => (matchesByFolder[folder.id]?.length ?? 0) > 0)
+    : allFolders;
   const folderDropdownOptions = folders;
 
   const isFolderOpen = (folderId: string) =>
     filterActive || folderId === selectedFolderId || expandedFolders.has(folderId);
 
-  const filterSettled = visibleFolders.every((f) => resultCounts[f.id] !== undefined);
-  const filterHasMatches = visibleFolders.some((f) => (resultCounts[f.id] ?? 0) > 0);
-  const showNoMatches = filterActive && filterSettled && !filterHasMatches;
-  const showEmpty = !isLoadingFolders && (visibleFolders.length === 0 || showNoMatches);
+  const showEmpty =
+    !isLoadingFolders && !(filterActive && isLoadingMatches) && visibleFolders.length === 0;
 
   // Compute empty state messages to avoid nested ternaries
   let emptyTitle: string;
@@ -371,8 +385,7 @@ export const PamAccountsPage = () => {
                   isOpen={isFolderOpen(folder.id)}
                   onToggle={() => toggleFolder(folder.id)}
                   search={searchInput}
-                  accountType={selectedAccountType}
-                  filterActive={filterActive}
+                  accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
                   onRequestAccess={setRequestAccount}
@@ -390,7 +403,6 @@ export const PamAccountsPage = () => {
                       accountCount: folder.accountCount
                     })
                   }
-                  onResultCount={handleResultCount}
                 />
               ))}
             </TableBody>

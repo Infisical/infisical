@@ -183,7 +183,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   const checkFolder = (folderId: string, projectId: string, ctx: TActorContext) =>
     checkFolderPermission(permissionService, folderId, projectId, ctx);
 
-  const list = async ({ projectId, folderId, templateId, search, ...ctx }: TListPamAccountsDTO & TActorContext) => {
+  const list = async ({
+    projectId,
+    folderId,
+    templateId,
+    accountType,
+    search,
+    ...ctx
+  }: TListPamAccountsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
@@ -198,6 +205,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const { accounts } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
       folderId,
       templateId,
+      accountType,
       search
     });
 

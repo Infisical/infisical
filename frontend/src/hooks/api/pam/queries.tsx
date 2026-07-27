@@ -180,6 +180,7 @@ export type TAccessiblePamFolder = {
 type TListPamAccountsParams = {
   folderId?: string;
   templateId?: string;
+  accountType?: string;
   search?: string;
 };
 

@@ -350,7 +350,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
         templateId: z.string().uuid().optional().describe("Filter accounts by template ID"),
-        search: z.string().optional().describe("Filter accounts by name")
+        accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type"),
+        search: z.string().trim().optional().describe("Filter accounts by name")
       }),
       response: {
         200: z.object({ accounts: z.array(PamAccountListItemSchema) })
@@ -363,6 +364,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
         templateId: req.query.templateId,
+        accountType: req.query.accountType,
         search: req.query.search,
         actorId: req.permission.id,
         actor: req.permission.type,
