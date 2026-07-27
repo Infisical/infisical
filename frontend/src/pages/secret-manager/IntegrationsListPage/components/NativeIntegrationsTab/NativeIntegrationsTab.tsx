@@ -20,6 +20,7 @@ import { TIntegration } from "@app/hooks/api/integrations/types";
 import { redirectForProviderAuth } from "../../IntegrationsListPage.utils";
 import { CloudIntegrationSection } from "../CloudIntegrationSection";
 import { IntegrationsTable } from "./IntegrationsTable";
+import { NativeIntegrationsDeprecationModal } from "./NativeIntegrationsDeprecationModal";
 
 enum IntegrationView {
   List = "list",
@@ -249,6 +250,7 @@ export const NativeIntegrationsTab = () => {
           );
         }}
       />
+      <NativeIntegrationsDeprecationModal />
     </>
   );
 };
