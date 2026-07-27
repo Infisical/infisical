@@ -21,7 +21,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
@@ -35,7 +34,6 @@ import {
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { emitPamSessionEndedEvent } from "../pam-session/pam-session-fns";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
@@ -71,7 +69,6 @@ type TPamWebAccessServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
@@ -107,8 +104,7 @@ export const pamWebAccessServiceFactory = ({
   kmsService,
   userDAL,
   mfaSessionService,
-  orgDAL,
-  telemetryService
+  orgDAL
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -365,8 +361,6 @@ export const pamWebAccessServiceFactory = ({
                 metadata: { sessionId, accountId: session.accountId ?? undefined, accountName }
               }
             });
-
-            void emitPamSessionEndedEvent({ telemetryService, userDAL, session: updated, orgId });
           }
         } catch (err) {
           logger.error(err, `Failed to end session in DB [sessionId=${sessionId}]`);

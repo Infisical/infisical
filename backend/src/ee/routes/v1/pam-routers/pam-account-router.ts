@@ -557,8 +557,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           properties: {
             accountType: result.accountType,
             orgId: req.permission.orgId,
-            hasRotationAccount: Boolean(result.rotationAccountId),
-            rotationEnabled: result.rotationEnabled
+            enabled: Boolean(result.rotationAccountId)
           }
         })
         .catch(() => {});

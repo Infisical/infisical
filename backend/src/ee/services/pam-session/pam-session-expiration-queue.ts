@@ -1,29 +1,19 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPamSessionDALFactory } from "./pam-session-dal";
-import { emitPamSessionEndedEvent } from "./pam-session-fns";
 
 type TPamSessionExpirationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   pamSessionDAL: Pick<TPamSessionDALFactory, "endSessionById">;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
-  userDAL: Pick<TUserDALFactory, "findById">;
-  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPamSessionExpirationServiceFactory = ReturnType<typeof pamSessionExpirationServiceFactory>;
 
 export const pamSessionExpirationServiceFactory = ({
   queueService,
-  pamSessionDAL,
-  projectDAL,
-  userDAL,
-  telemetryService
+  pamSessionDAL
 }: TPamSessionExpirationServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -39,12 +29,6 @@ export const pamSessionExpirationServiceFactory = ({
         const updated = await pamSessionDAL.endSessionById(sessionId);
         if (updated) {
           logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired [sessionId=${sessionId}]`);
-
-          // Session rows carry no orgId; PAM is one project per org, so resolve it from the project.
-          const project = await projectDAL.findById(updated.projectId);
-          if (project?.orgId) {
-            void emitPamSessionEndedEvent({ telemetryService, userDAL, session: updated, orgId: project.orgId });
-          }
         } else {
           logger.info(
             { sessionId },
