@@ -244,9 +244,12 @@ export const reminderServiceFactory = ({
           const secretPath = reminder.folderId ? folderPathById.get(reminder.folderId) : undefined;
           let secretUrl: string | undefined;
           if (reminder.organizationId && reminder.projectId && reminder.envSlug) {
-            const query = new URLSearchParams({ secretPath: secretPath || "/" });
+            const query = new URLSearchParams({
+              secretPath: secretPath || "/",
+              environments: JSON.stringify([reminder.envSlug])
+            });
             if (reminder.secretKey) query.set("search", reminder.secretKey);
-            secretUrl = `${appCfg.SITE_URL}/organizations/${reminder.organizationId}/projects/secret-management/${reminder.projectId}/secrets/${reminder.envSlug}?${query.toString()}`;
+            secretUrl = `${appCfg.SITE_URL}/organizations/${reminder.organizationId}/projects/secret-management/${reminder.projectId}/overview?${query.toString()}`;
           }
 
           await smtpService.sendMail({
