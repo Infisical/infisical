@@ -1089,7 +1089,8 @@ export type TPamAccountRotationConfiguredEvent = {
   properties: {
     accountType: string;
     orgId: string;
-    enabled: boolean;
+    hasRotationAccount: boolean;
+    scheduledRotationEnabled: boolean;
   };
 };
 

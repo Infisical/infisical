@@ -499,7 +499,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       await pamAccountDAL.updateById(accountId, { rotationAccountId }, tx);
       await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
     });
-    return { rotationAccountId, accountType: account.accountType };
+    return {
+      rotationAccountId,
+      accountType: account.accountType,
+      // Binding a rotator does not by itself schedule anything -- the template still has to have
+      // rotation switched on with an interval -- so report both to tell scheduled from on-demand.
+      scheduledRotationEnabled: getRotationConfig(account.templateSettings)?.enabled ?? false
+    };
   };
 
   // performRotation already records the failure; report the outcome (never throw) so the caller can audit it.
