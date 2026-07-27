@@ -30,10 +30,6 @@ import {
   DropdownMenuItem as V3DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
   IconButton as V3IconButton,
   InputGroup,
   InputGroupAddon,
@@ -377,29 +373,6 @@ export const ModalContent = ({
     {children}
     {footerContent && <DialogFooter>{footerContent}</DialogFooter>}
   </DialogContent>
-);
-
-export const FormControl = ({
-  label,
-  errorText,
-  tooltipText,
-  className,
-  isError,
-  children
-}: {
-  label?: ReactNode;
-  errorText?: ReactNode;
-  tooltipText?: ReactNode;
-  className?: string;
-  isError?: boolean;
-  children: ReactNode;
-}) => (
-  <Field className={className} data-invalid={isError}>
-    {label && <FieldLabel>{label}</FieldLabel>}
-    {children}
-    {tooltipText && <FieldDescription>{tooltipText}</FieldDescription>}
-    {errorText && <FieldError>{errorText}</FieldError>}
-  </Field>
 );
 
 export { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuTrigger };
