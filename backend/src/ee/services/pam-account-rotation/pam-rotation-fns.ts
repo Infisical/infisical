@@ -2,6 +2,7 @@ import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { PamAccountType } from "../pam/pam-enums";
+import type { TRotatableType, TSqlRotatableType, TWindowsRotatableType } from "../pam-account/pam-account-schemas";
 import {
   isRotatableAccountType,
   isSqlRotatableType,
@@ -9,11 +10,6 @@ import {
   ROTATABLE_ACCOUNT_TYPES,
   SQL_ROTATABLE_ACCOUNT_TYPES,
   WINDOWS_ROTATABLE_ACCOUNT_TYPES
-} from "../pam-account/pam-account-schemas";
-import type {
-  TRotatableType,
-  TSqlRotatableType,
-  TWindowsRotatableType
 } from "../pam-account/pam-account-schemas";
 
 // Rotatable-account-type sets and guards live with the central account-type config; re-exported here so the
