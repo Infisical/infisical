@@ -5,7 +5,6 @@ import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "../dashboard/queries";
 import { commitKeys } from "../folderCommits/queries";
 import { secretKeys } from "../secrets/queries";
-import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import { secretApprovalRequestKeys } from "./queries";
 import {
   TPerformSecretApprovalRequestMerge,
@@ -81,12 +80,6 @@ export const usePerformSecretApprovalRequestMerge = () => {
       });
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({ environment, projectId, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({ environment, projectId, directory: secretPath })
       });
       queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
