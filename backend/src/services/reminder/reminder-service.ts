@@ -224,10 +224,16 @@ export const reminderServiceFactory = ({
     const folderPathById = new Map<string, string>();
     for (const [projectId, folderIdSet] of folderIdsByProjectId) {
       const folderIds = [...folderIdSet];
-      const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
-      folders.forEach((folder, idx) => {
-        if (folder?.path) folderPathById.set(folderIds[idx], folder.path);
-      });
+      // Resolving folder paths only enriches the email. A failure here must not abort the whole
+      // daily reminder batch, so degrade gracefully and let the email send without the path/link.
+      try {
+        const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds);
+        folders.forEach((folder, idx) => {
+          if (folder?.path) folderPathById.set(folderIds[idx], folder.path);
+        });
+      } catch (error) {
+        logger.error(error, `Failed to resolve secret paths for reminder emails [projectId=${projectId}]`);
+      }
     }
 
     for (const reminder of remindersToSend) {
