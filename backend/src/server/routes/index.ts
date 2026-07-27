@@ -1881,7 +1881,10 @@ export const registerRoutes = async (
 
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
-    pamSessionDAL
+    pamSessionDAL,
+    projectDAL,
+    userDAL,
+    telemetryService
   });
 
   const pamAccessRequestService = pamAccessRequestServiceFactory({
@@ -1983,7 +1986,8 @@ export const registerRoutes = async (
     pamSessionExpirationService,
     pamAccessRequestService,
     mfaSessionService,
-    orgDAL
+    orgDAL,
+    telemetryService
   });
 
   const pamSessionChunkService = pamSessionChunkServiceFactory({
@@ -2007,7 +2011,8 @@ export const registerRoutes = async (
     kmsService,
     userDAL,
     mfaSessionService,
-    orgDAL
+    orgDAL,
+    telemetryService
   });
 
   const gitHubAppService = gitHubAppServiceFactory({

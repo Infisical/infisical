@@ -168,12 +168,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.PamSessionStarted,
-            distinctId: result.actorEmail || getTelemetryDistinctId(req),
+            distinctId: result.actorUsername || result.actorEmail || getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
             properties: {
               accountType: result.accountType,
-              orgId: req.permission.orgId,
-              accessMethod: result.accessMethod
+              orgId: req.permission.orgId
             }
           })
           .catch(() => {});
@@ -204,8 +203,14 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, accountId, accountName, accountType, actorEmail, durationMs, alreadyEnded } =
-        await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.permission.id);
+      // Telemetry (PAM Session Ended) is emitted inside the service so every end path — this gateway
+      // route, the web-access websocket cleanup, and the expiration queue — reports through one place.
+      const { projectId, accountId, accountName, alreadyEnded } =
+        await server.services.pamSession.endSessionFromGateway(
+          req.params.sessionId,
+          req.permission.id,
+          req.permission.orgId
+        );
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
@@ -221,19 +226,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
-
-        void server.services.telemetry
-          .sendPostHogEvents({
-            event: PostHogEventTypes.PamSessionEnded,
-            distinctId: actorEmail || getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
-            properties: {
-              accountType,
-              orgId: req.permission.orgId,
-              durationMs
-            }
-          })
-          .catch(() => {});
       }
 
       return { message: "Session ended" };

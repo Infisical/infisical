@@ -18,6 +18,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -70,7 +71,7 @@ import { getAzureAccessTokens } from "./azure/azure-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
-import { sendPamSessionCancellationSignal } from "./pam-session-fns";
+import { emitPamSessionEndedEvent, sendPamSessionCancellationSignal } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -99,6 +100,7 @@ type TPamSessionServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -121,6 +123,7 @@ export const pamSessionServiceFactory = ({
   pamSessionExpirationService,
   mfaSessionService,
   orgDAL,
+  telemetryService,
   pamAccessRequestService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -321,8 +324,14 @@ export const pamSessionServiceFactory = ({
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
+    // Resolve the actor's telemetry distinctId (username) for the session-start event. This route is
+    // gateway-authenticated, so getTelemetryDistinctId(req) can't derive the user; username also stays
+    // consistent with other PAM events (actorEmail differs from username for SCIM users).
+    let actorUsername: string | undefined;
     if (sessionStarted) {
       await pamSessionDAL.activateSession(sessionId);
+      const actor = session.userId ? await userDAL.findById(session.userId) : undefined;
+      actorUsername = actor?.username;
     }
 
     const templateSettingsParsed = account.templateSettings
@@ -423,13 +432,13 @@ export const pamSessionServiceFactory = ({
       accountName: session.accountName,
       accountType: session.accountType,
       actorEmail: session.actorEmail,
-      accessMethod: session.accessMethod ?? PamAccessMethod.Cli,
+      actorUsername,
       sessionStarted
     };
   };
 
   // Called by the gateway
-  const endSessionFromGateway = async (sessionId: string, gatewayId: string) => {
+  const endSessionFromGateway = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
@@ -437,18 +446,14 @@ export const pamSessionServiceFactory = ({
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
 
-    // Only report duration for sessions that actually reached Active; otherwise createdAt would
-    // fold "Starting" wait time into the reported session length and skew duration metrics.
-    const endTime = updatedSession?.endedAt ?? new Date();
-    const durationMs = session.startedAt ? Math.max(0, endTime.getTime() - session.startedAt.getTime()) : undefined;
+    if (updatedSession) {
+      void emitPamSessionEndedEvent({ telemetryService, userDAL, session: updatedSession, orgId });
+    }
 
     return {
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,
-      accountType: session.accountType,
-      actorEmail: session.actorEmail,
-      durationMs,
       alreadyEnded: !updatedSession
     };
   };

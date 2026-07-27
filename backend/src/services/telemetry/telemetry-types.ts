@@ -1039,16 +1039,24 @@ export type TPamSessionStartedEvent = {
   properties: {
     accountType: string;
     orgId: string;
-    accessMethod: string;
   };
 };
 
 export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded | PostHogEventTypes.PamSessionTerminated;
+  event: PostHogEventTypes.PamSessionEnded;
   properties: {
     accountType: string;
     orgId: string;
     durationMs?: number;
+    accessMethod: string;
+  };
+};
+
+export type TPamSessionTerminatedEvent = {
+  event: PostHogEventTypes.PamSessionTerminated;
+  properties: {
+    accountType: string;
+    orgId: string;
   };
 };
 
@@ -1087,7 +1095,10 @@ export type TPamAccountRotationConfiguredEvent = {
   properties: {
     accountType: string;
     orgId: string;
-    enabled: boolean;
+    // Whether a rotation account is now bound (i.e. the account can be rotated on demand).
+    hasRotationAccount: boolean;
+    // Whether scheduled rotation is enabled on the account's template (independent of binding).
+    rotationEnabled: boolean;
   };
 };
 
@@ -2056,6 +2067,7 @@ export type TPostHogEvent = {
   | TPamAccountAccessedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
+  | TPamSessionTerminatedEvent
   | TPamProductMemberEvent
   | TPamFolderMemberEvent
   | TPamAccountMemberEvent
