@@ -197,6 +197,14 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Datadog API Key",
+      slug: "datadog-api-key",
+      path: "/documentation/platform/secret-rotation/datadog-api-key",
+      description: "Learn how to automatically rotate Datadog API keys.",
+      category: "Monitoring",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "LiteLLM API Key",
       slug: "litellm-api-key",
       path: "/documentation/platform/secret-rotation/litellm-api-key",
@@ -211,6 +219,15 @@ export const RotationsBrowser = () => {
       description:
         "Learn how to automatically rotate OpenAI API keys.",
       category: "AI & LLM",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Snowflake User Key Pair",
+      slug: "snowflake-user-key-pair",
+      path: "/documentation/platform/secret-rotation/snowflake-user-key-pair",
+      description:
+        "Learn how to automatically rotate Snowflake user key pairs.",
+      category: "Databases",
       rotationType: "Dual-Phase",
     },
   ].sort(function (a, b) {

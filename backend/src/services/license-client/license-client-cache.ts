@@ -62,6 +62,7 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
   // its Stripe webhook, so a stale read here is what otherwise makes a removed product linger.
   const invalidateEntitlements = async (orgId: string): Promise<void> => {
     try {
+      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
       await keyStore.deleteItem(KeyStorePrefixes.LicenseEntitlements(orgId));
     } catch (error) {
       logger.error(error, `license-client: failed to invalidate entitlements [orgId=${orgId}]`);

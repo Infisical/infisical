@@ -2,7 +2,8 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   listSnowflakeDatabases,
-  listSnowflakeSchemas
+  listSnowflakeSchemas,
+  listSnowflakeUsers
 } from "@app/services/app-connection/snowflake/snowflake-connection-fns";
 import { TSnowflakeConnection } from "@app/services/app-connection/snowflake/snowflake-connection-types";
 
@@ -23,8 +24,14 @@ export const snowflakeConnectionService = (getAppConnection: TGetAppConnectionFu
     return listSnowflakeSchemas(appConnection.credentials, database);
   };
 
+  const listUsers = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Snowflake, connectionId, actor);
+    return listSnowflakeUsers(appConnection.credentials);
+  };
+
   return {
     listDatabases,
-    listSchemas
+    listSchemas,
+    listUsers
   };
 };

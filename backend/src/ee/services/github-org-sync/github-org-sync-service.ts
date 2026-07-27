@@ -13,6 +13,8 @@ import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -83,6 +85,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -96,7 +99,8 @@ export const githubOrgSyncServiceFactory = ({
   licenseService,
   orgMembershipDAL,
   membershipRoleDAL,
-  membershipGroupDAL
+  membershipGroupDAL,
+  usageMeteringService
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -422,6 +426,10 @@ export const githubOrgSyncServiceFactory = ({
           );
         });
       }
+
+      // Group membership changes cascade into the group-expanded project identity meters.
+      usageMeteringService.emit(orgId, SecretIdentities.key);
+      usageMeteringService.emit(orgId, PamIdentities.key);
     }
   };
 
@@ -837,6 +845,12 @@ export const githubOrgSyncServiceFactory = ({
         }
       }
     });
+
+    if (createdTeams.size || updatedTeams.size) {
+      // Team membership changes cascade into the group-expanded project identity meters.
+      usageMeteringService.emit(orgPermission.orgId, SecretIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, PamIdentities.key);
+    }
 
     const syncDuration = Date.now() - startTime;
 

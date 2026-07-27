@@ -28,6 +28,5 @@ export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "environmentsUsed",
   "workspaceLimit",
   "memberLimit",
-  "enterpriseCertificateSyncs",
   "pkiLegacyTemplates"
 ]);

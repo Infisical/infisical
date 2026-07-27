@@ -11,7 +11,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
@@ -302,6 +302,7 @@ export const projectMembershipServiceFactory = ({
       });
     }
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return orgMembers;
   };
 
@@ -410,6 +411,7 @@ export const projectMembershipServiceFactory = ({
       : await membershipUserDAL.transaction(performDelete);
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return memberships;
   };
 
@@ -437,6 +439,15 @@ export const projectMembershipServiceFactory = ({
 
     const actorMembership = projectMembers.find((member) => member.userId === actorId);
     if (!actorMembership) {
+      const [groupMembership] = await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(
+        [actorId],
+        project.id
+      );
+      if (groupMembership) {
+        throw new BadRequestError({
+          message: "You have access to this project through a group rather than a direct membership."
+        });
+      }
       throw new BadRequestError({ message: "You are not a member of this project" });
     }
 
@@ -491,6 +502,7 @@ export const projectMembershipServiceFactory = ({
     }
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return deletedMembership;
   };
 

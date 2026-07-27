@@ -713,6 +713,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
             templateId: item.templateId,
             connectionDetails: details.connectionDetails,
             credentials: details.credentials,
+            // the scan already reached these accounts; skip the per-account connection test
+            skipConnectionTest: true,
             ...ctx
           });
 

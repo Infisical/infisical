@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { SessionStorageKeys } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { consumeLoginRedirectUrl } from "@app/helpers/sessionStorage";
 import { adminQueryKeys } from "@app/hooks/api/admin/queries";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { UserAgentType } from "@app/hooks/api/auth/types";
@@ -156,6 +157,13 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         await context.queryClient.refetchQueries({ queryKey: adminQueryKeys.serverConfig() });
 
         createNotification({ text: "Successfully logged in", type: "success" });
+
+        // Check for a stored redirect URL from before login (e.g., deep links like /pam/access)
+        const loginRedirectUrl = consumeLoginRedirectUrl();
+        if (loginRedirectUrl) {
+          window.location.assign(loginRedirectUrl);
+          return { autoSelectErrorMessage: undefined };
+        }
 
         throw redirect({
           to: "/organizations/$orgId/projects",

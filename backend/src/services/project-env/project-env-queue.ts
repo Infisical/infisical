@@ -29,7 +29,7 @@ const CRON_HANDLER_TIMEOUT_MS = 5 * 60 * 1000;
 type TProjectEnvQueueFactoryDep = {
   projectEnvDAL: Pick<
     TProjectEnvDALFactory,
-    | "findByIdIncludingExpired"
+    | "findByIdWithOrgIncludingExpired"
     | "findExpiredForHardDelete"
     | "hardDeleteIfExpired"
     | "transaction"
@@ -87,7 +87,7 @@ export const projectEnvQueueFactory = ({
 
     try {
       // Read via primary (not replica) to defeat replica-lag races against a recent restore commit.
-      const fresh = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdIncludingExpired(envId, tx));
+      const fresh = await projectEnvDAL.transaction((tx) => projectEnvDAL.findByIdWithOrgIncludingExpired(envId, tx));
       if (!fresh || !fresh.deleteAfter || new Date(fresh.deleteAfter).getTime() > Date.now()) {
         logger.info(
           `project-env-hard-delete: skipping (gone/restored/not-yet-expired) [envId=${envId}] [projectId=${projectId}]`
@@ -119,6 +119,7 @@ export const projectEnvQueueFactory = ({
       }
 
       await auditLogService.createAuditLog({
+        orgId: fresh.orgId,
         projectId,
         actor: { type: ActorType.PLATFORM, metadata: {} },
         event: {

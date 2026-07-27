@@ -15,6 +15,7 @@ export enum GatewayProxyProtocol {
   Pkcs11 = "pkcs11",
   Adcs = "adcs",
   Discovery = "discovery",
+  ConnectionTest = "connection-test",
   WinRm = "winrm"
 }
 

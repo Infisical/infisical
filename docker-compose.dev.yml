@@ -53,6 +53,7 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    profiles: [clickhouse]
 
   redis-commander:
     container_name: infisical-dev-redis-commander
@@ -100,8 +101,6 @@ services:
       db:
         condition: service_started
       redis:
-        condition: service_started
-      clickhouse:
         condition: service_started
     env_file:
       - .env

@@ -84,6 +84,9 @@ export type TFeatureSet = {
   pkiAcme: true;
   pkiScep: false;
   pkiPqc: false;
+  // PKI code signing capability. null (default) is ignored (no restriction); an explicit boolean gates
+  // code signer creation.
+  pkiCodeSigning: null;
   kmsPqc: false;
   enforceMfa: false;
   projectTemplates: false;
@@ -104,6 +107,13 @@ export type TFeatureSet = {
   honeyTokens: false;
   honeyTokenLimit: 0;
   secretsBrokering: true;
+  secretSyncLimit: null;
+  maxInternalCas: null;
+  maxPamAccounts: null;
+  pam: null;
+  certManager: null;
+  secretsTemporaryAccess: null;
+  enterprisePamAccount: null;
 };
 
 export type TOrgPlansTableDTO = {

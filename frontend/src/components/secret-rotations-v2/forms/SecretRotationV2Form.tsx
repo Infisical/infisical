@@ -78,7 +78,7 @@ export const SecretRotationV2Form = ({
 
   const formMethods = useForm<TSecretRotationV2Form>({
     resolver: zodResolver(SecretRotationV2FormSchema(Boolean(secretRotation))),
-    defaultValues: secretRotation
+    defaultValues: (secretRotation
       ? {
           ...secretRotation,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
@@ -96,7 +96,7 @@ export const SecretRotationV2Form = ({
           secretPath,
           ...((rotationOption?.template as object) ?? {}), // can't infer type since we don't know which specific type it is
           ...(initialFormData as object)
-        },
+        }) as Partial<TSecretRotationV2Form>,
     reValidateMode: "onChange"
   });
 

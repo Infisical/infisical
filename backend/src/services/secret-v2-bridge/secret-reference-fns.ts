@@ -126,7 +126,7 @@ export const expandSecretReferencesFactory = ({
   kmsService,
   crossProjectSecretDAL
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[] }>> = {};
+  const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
   let crossProjectAllowedCache: boolean | undefined;
   const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
@@ -159,42 +159,54 @@ export const expandSecretReferencesFactory = ({
   const getCacheUniqueKey = (environment: string, secretPath: string, srcProjectId?: string) =>
     srcProjectId ? `${srcProjectId}:${environment}-${secretPath}` : `${environment}-${secretPath}`;
 
-  const fetchSecret = async (environment: string, secretPath: string, secretKey: string) => {
+  const fetchSecret = async (
+    environment: string,
+    secretPath: string,
+    secretKey: string
+  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
 
     if (secretCache?.[cacheKey]) {
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+      const cachedSecret = secretCache[cacheKey][secretKey];
+      if (cachedSecret) return { ...cachedSecret };
+      return { value: "", tags: [], exists: false };
     }
 
     try {
       const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
-      if (!folder) return { value: "", tags: [] };
+      if (!folder) return { value: "", tags: [], exists: false };
       // When userId is provided, findByFolderId returns both shared and personal secrets.
       // Personal overrides will take precedence over shared secrets in the reduce below.
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId });
 
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[] }>>((prev, secret) => {
-        // When userId is set, personal overrides (userId !== null) should take precedence
-        // over shared secrets for the same key. We skip overwriting if a personal override
-        // is already stored and the current secret is a shared one.
-        if (userId && prev[secret.key] && !secret.userId) {
-          return prev;
-        }
+      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
+        (prev, secret) => {
+          // When userId is set, personal overrides (userId !== null) should take precedence
+          // over shared secrets for the same key. We skip overwriting if a personal override
+          // is already stored and the current secret is a shared one.
+          if (userId && prev[secret.key] && !secret.userId) {
+            return prev;
+          }
 
-        // eslint-disable-next-line no-param-reassign
-        prev[secret.key] = {
-          value: decryptSecret(secret.encryptedValue) || "",
-          tags: secret.tags?.map((el) => el.slug)
-        };
-        return prev;
-      }, {});
+          // eslint-disable-next-line no-param-reassign
+          prev[secret.key] = {
+            value: decryptSecret(secret.encryptedValue) || "",
+            tags: secret.tags?.map((el) => el.slug),
+            exists: true
+          };
+          return prev;
+        },
+        {}
+      );
 
       secretCache[cacheKey] = decryptedSecret;
 
-      return secretCache[cacheKey][secretKey] || { value: "", tags: [] };
+      const fetchedSecret = secretCache[cacheKey][secretKey];
+      if (fetchedSecret) return { ...fetchedSecret };
+      return { value: "", tags: [], exists: false };
     } catch (error) {
       secretCache[cacheKey] = {};
-      return { value: "", tags: [] };
+      return { value: "", tags: [], exists: false };
     }
   };
 
@@ -268,6 +280,7 @@ export const expandSecretReferencesFactory = ({
           let referencedSecretKey = "";
           let referencedSecretEnvironmentSlug = "";
           let referencedSecretValue = "";
+          let referencedSecretExists = false;
           let referencedProjectSlug: string | undefined;
           let isCrossProjectRef = false;
 
@@ -285,6 +298,7 @@ export const expandSecretReferencesFactory = ({
             secretCache[cacheKey][secretKey] = referredValue;
 
             referencedSecretValue = referredValue.value;
+            referencedSecretExists = referredValue.exists;
             referencedSecretKey = secretKey;
             referencedSecretPath = secretPath;
             referencedSecretEnvironmentSlug = environment;
@@ -310,16 +324,20 @@ export const expandSecretReferencesFactory = ({
 
             const crossProjCacheKey = getCacheUniqueKey(crossProjEnv, crossProjPath, sourceProjectId);
 
-            let crossProjSecretData: { value: string; tags: string[] };
+            let crossProjSecretData: { value: string; tags: string[]; exists: boolean };
             if (secretCache?.[crossProjCacheKey]) {
-              crossProjSecretData = secretCache[crossProjCacheKey][crossProjKey] || { value: "", tags: [] };
+              crossProjSecretData = secretCache[crossProjCacheKey][crossProjKey] || {
+                value: "",
+                tags: [],
+                exists: false
+              };
             } else {
               try {
                 // eslint-disable-next-line no-await-in-loop
                 const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath);
                 if (!sourceFolder) {
                   secretCache[crossProjCacheKey] = {};
-                  crossProjSecretData = { value: "", tags: [] };
+                  crossProjSecretData = { value: "", tags: [], exists: false };
                 } else {
                   // Verify that a folder grant exists: source folder → current target project
                   // eslint-disable-next-line no-await-in-loop
@@ -331,13 +349,13 @@ export const expandSecretReferencesFactory = ({
 
                   if (!grant) {
                     secretCache[crossProjCacheKey] = {};
-                    crossProjSecretData = { value: "", tags: [] };
+                    crossProjSecretData = { value: "", tags: [], exists: false };
                   } else {
                     // eslint-disable-next-line no-await-in-loop
                     const sourceDecrypt = await getProjectDecryptor(sourceProjectId);
                     if (!sourceDecrypt) {
                       secretCache[crossProjCacheKey] = {};
-                      crossProjSecretData = { value: "", tags: [] };
+                      crossProjSecretData = { value: "", tags: [], exists: false };
                       // eslint-disable-next-line no-continue
                       continue;
                     }
@@ -348,23 +366,23 @@ export const expandSecretReferencesFactory = ({
                       folderId: sourceFolder.id
                     });
 
-                    const crossProjDecrypted = sourceSecrets.reduce<Record<string, { value: string; tags: string[] }>>(
-                      (prev, secret) => {
-                        // Only shared secrets (no personal overrides) from source project
-                        if (!secret.userId) {
-                          // eslint-disable-next-line no-param-reassign
-                          prev[secret.key] = {
-                            value: sourceDecrypt(secret.encryptedValue) || "",
-                            tags: secret.tags?.map((el) => el.slug) || []
-                          };
-                        }
-                        return prev;
-                      },
-                      {}
-                    );
+                    const crossProjDecrypted = sourceSecrets.reduce<
+                      Record<string, { value: string; tags: string[]; exists: boolean }>
+                    >((prev, secret) => {
+                      // Only shared secrets (no personal overrides) from source project
+                      if (!secret.userId) {
+                        // eslint-disable-next-line no-param-reassign
+                        prev[secret.key] = {
+                          value: sourceDecrypt(secret.encryptedValue) || "",
+                          tags: secret.tags?.map((el) => el.slug) || [],
+                          exists: true
+                        };
+                      }
+                      return prev;
+                    }, {});
 
                     secretCache[crossProjCacheKey] = crossProjDecrypted;
-                    crossProjSecretData = crossProjDecrypted[crossProjKey] || { value: "", tags: [] };
+                    crossProjSecretData = crossProjDecrypted[crossProjKey] || { value: "", tags: [], exists: false };
                   }
                 }
               } catch (error) {
@@ -373,11 +391,12 @@ export const expandSecretReferencesFactory = ({
                   `Failed to expand cross-project reference [slug=${crossProjSlug}] [env=${crossProjEnv}] [path=${crossProjPath}] [key=${crossProjKey}]`
                 );
                 secretCache[crossProjCacheKey] = {};
-                crossProjSecretData = { value: "", tags: [] };
+                crossProjSecretData = { value: "", tags: [], exists: false };
               }
             }
 
             referencedSecretValue = crossProjSecretData.value;
+            referencedSecretExists = crossProjSecretData.exists;
             referencedSecretKey = crossProjKey;
             referencedSecretPath = crossProjPath;
             referencedSecretEnvironmentSlug = crossProjEnv;
@@ -399,6 +418,7 @@ export const expandSecretReferencesFactory = ({
             secretCache[cacheKey][secretReferenceKey] = referedValue;
 
             referencedSecretValue = referedValue.value;
+            referencedSecretExists = referedValue.exists;
             referencedSecretKey = secretReferenceKey;
             referencedSecretPath = secretReferencePath;
             referencedSecretEnvironmentSlug = secretReferenceEnvironment;
@@ -439,10 +459,13 @@ export const expandSecretReferencesFactory = ({
             stack.push({ ...node, visitedSecrets: newVisitedSecrets });
           }
 
-          expandedValue = expandedValue.replaceAll(
-            interpolationSyntax,
-            () => referencedSecretValue // prevents special characters from triggering replacement patterns
-          );
+          if (referencedSecretExists) {
+            expandedValue = expandedValue.replaceAll(
+              interpolationSyntax,
+              () => referencedSecretValue // prevents special characters from triggering replacement patterns
+            );
+          }
+          // when the referenced secret does not exist, leave the literal ${REF} untouched
         }
       }
     }

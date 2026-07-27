@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 
 import {
   TAddIdentitiesToGroup,
@@ -300,8 +300,9 @@ export const addUsersToGroupByUserIds = async ({
       );
     }
 
-    // These users may now be in a secret-manager project through this group.
+    // These users may now be in a secret-manager or PAM project through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -374,8 +375,9 @@ export const addIdentitiesToGroup = async ({
       tx
     );
 
-    // These identities may now be in a secret-manager project through this group.
+    // These identities may now be in a secret-manager or PAM project through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -527,8 +529,9 @@ export const removeUsersFromGroupByUserIds = async ({
       );
     }
 
-    // These users may have left a secret-manager project they only reached through this group.
+    // These users may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
   };
 
@@ -606,8 +609,9 @@ export const removeIdentitiesFromGroup = async ({
       tx
     );
 
-    // These identities may have left a secret-manager project they only reached through this group.
+    // These identities may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, PamIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };

@@ -34,7 +34,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { MaxActiveCerts } from "@app/services/license-client";
+import { ActiveCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
@@ -2216,7 +2216,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2679,7 +2679,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(createSignedCert);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
 
     return {
       certificate: leafCert,

@@ -1,7 +1,14 @@
 import { TLicenseDALFactory } from "@app/ee/services/license/license-dal";
 
 import { TFeatureCounterFn, TLimitFeatureDescriptor } from "../feature";
-import { MaxActiveCerts, MaxIdentities, MaxInternalCas, MaxPamResources, SecretIdentities } from "../features";
+import {
+  ActiveCerts,
+  IdentitiesMeter,
+  InternalCas,
+  PamIdentities,
+  SecretIdentities,
+  UserIdentities
+} from "../features";
 import { TUsageCounterDALFactory } from "./usage-counter-dal";
 
 export type TMeteredFeature = {
@@ -10,7 +17,7 @@ export type TMeteredFeature = {
 };
 
 type TBuildMeteredFeaturesDep = {
-  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities">;
+  licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;
   usageCounterDAL: TUsageCounterDALFactory;
   // Cloud meters per org; self-hosted meters the whole instance (a single license covers the DB).
   isCloud: boolean;
@@ -23,12 +30,20 @@ export const buildMeteredFeatures = ({
   usageCounterDAL,
   isCloud
 }: TBuildMeteredFeaturesDep): TMeteredFeature[] => [
-  { feature: MaxIdentities, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(orgId) },
-  { feature: MaxInternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
-  { feature: MaxActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
-  { feature: MaxPamResources, count: (orgId) => usageCounterDAL.countPamResources(orgId) },
+  { feature: IdentitiesMeter, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(orgId) },
+  { feature: InternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
+  { feature: ActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
   {
     feature: SecretIdentities,
     count: (orgId) => usageCounterDAL.countSecretManagementIdentities(isCloud ? orgId : undefined)
+  },
+  {
+    feature: PamIdentities,
+    count: (orgId) => usageCounterDAL.countPamIdentities(isCloud ? orgId : undefined)
+  },
+  {
+    // Human users only (org members), never machine identities. Legacy per-user plans.
+    feature: UserIdentities,
+    count: (orgId) => licenseDAL.countOfOrgMembers(isCloud ? orgId : null)
   }
 ];

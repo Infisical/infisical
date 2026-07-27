@@ -1,4 +1,4 @@
-import { ChangeEvent, DragEvent, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ClipboardPasteIcon,
@@ -8,10 +8,8 @@ import {
   InfoIcon,
   MessageSquareIcon,
   TagsIcon,
-  UploadIcon,
   WrapTextIcon
 } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -23,14 +21,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
   Field,
   FieldContent,
   FieldLabel,
+  FileDropzone,
   IconButton,
   Input,
   Switch,
@@ -88,7 +82,6 @@ const ImportSecretsContent = ({
   const { permission } = useProjectPermission();
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [selectedEnvs, setSelectedEnvs] = useState<{ name: string; slug: string }[]>([]);
-  const [isDragActive, setDragActive] = useToggle();
   const [isImporting, setIsImporting] = useToggle();
   const [isPasteOpen, setIsPasteOpen] = useState(false);
   const [csvData, setCsvData] = useState<CsvData | null>(null);
@@ -156,31 +149,6 @@ const ImportSecretsContent = ({
     },
     [handleParsedSecrets]
   );
-
-  const handleDrag = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive.on();
-    } else if (e.type === "dragleave") {
-      setDragActive.off();
-    }
-  };
-
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!e.dataTransfer) return;
-    e.dataTransfer.dropEffect = "copy";
-    setDragActive.off();
-    parseFile(e.dataTransfer.files[0]);
-  };
-
-  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    parseFile(e.target?.files?.[0]);
-    e.target.value = "";
-  };
 
   const handleImport = async () => {
     if (!activeSecrets || !selectedEnvs.length) return;
@@ -449,36 +417,12 @@ const ImportSecretsContent = ({
             })}
           >
             {(isAllowed) => (
-              <Empty
-                className={twMerge(
-                  "relative cursor-pointer border transition-colors duration-75",
-                  isDragActive && "bg-container-hover"
-                )}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <UploadIcon />
-                  </EmptyMedia>
-                  <EmptyTitle>
-                    {isDragActive ? "Drop your file here" : "Upload your secrets"}
-                  </EmptyTitle>
-                  <EmptyDescription>
-                    Drag and drop your .env, .json, .yml, .csv, .pfx, .pem, or .crt files here, or
-                    click to browse
-                  </EmptyDescription>
-                </EmptyHeader>
-                <input
-                  type="file"
-                  disabled={!isAllowed}
-                  className="absolute top-0 left-0 h-full w-full cursor-pointer opacity-0"
-                  accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
-                  onChange={handleFileUpload}
-                />
-              </Empty>
+              <FileDropzone
+                isDisabled={!isAllowed}
+                accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
+                description=".env, .json, .yml, .csv, .pfx, .pem, or .crt"
+                onFilesSelect={(files) => parseFile(files[0])}
+              />
             )}
           </ProjectPermissionCan>
 

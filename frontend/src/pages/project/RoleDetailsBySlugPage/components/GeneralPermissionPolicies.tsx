@@ -43,6 +43,11 @@ export type TPermissionAction = {
 
 type AnyPermissionSubject = ProjectPermissionSub | OrgPermissionSubjects;
 
+export enum PermissionScope {
+  Project = "project",
+  Organization = "org"
+}
+
 type Props<T extends AnyPermissionSubject> = {
   title: string;
   description: string;
@@ -55,6 +60,7 @@ type Props<T extends AnyPermissionSubject> = {
   isOpen?: boolean;
   onShowAccessTree?: (subject: string) => void;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
+  subjectScope: PermissionScope;
 };
 
 type ActionsMultiSelectProps = {
@@ -65,6 +71,7 @@ type ActionsMultiSelectProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
+  subjectScope: PermissionScope;
 };
 
 const ActionsMultiSelect = ({
@@ -73,7 +80,8 @@ const ActionsMultiSelect = ({
   actions,
   isDisabled,
   control,
-  menuPortalContainerRef
+  menuPortalContainerRef,
+  subjectScope
 }: ActionsMultiSelectProps) => {
   const { setValue, trigger } = useFormContext();
 
@@ -123,12 +131,14 @@ const ActionsMultiSelect = ({
           return legacyActionsState.memberGrantPrivileges;
         }
         if (
+          subjectScope === PermissionScope.Project &&
           subject === ProjectPermissionSub.Identity &&
           value === ProjectPermissionIdentityActions.GrantPrivileges
         ) {
           return legacyActionsState.identityGrantPrivileges;
         }
         if (
+          subjectScope === PermissionScope.Project &&
           subject === ProjectPermissionSub.Groups &&
           value === ProjectPermissionGroupActions.GrantPrivileges
         ) {
@@ -137,7 +147,7 @@ const ActionsMultiSelect = ({
 
         return true;
       }),
-    [actions, subject, legacyActionsState]
+    [actions, subject, legacyActionsState, subjectScope]
   );
 
   const actionOptions = useMemo(
@@ -203,7 +213,8 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   isDisabled,
   isOpen = false,
   onShowAccessTree,
-  menuPortalContainerRef
+  menuPortalContainerRef,
+  subjectScope
 }: Props<T>) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { control, watch, trigger } = useFormContext<any>();
@@ -339,6 +350,7 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
                         isDisabled={isDisabled}
                         control={control}
                         menuPortalContainerRef={menuPortalContainerRef}
+                        subjectScope={subjectScope}
                       />
                     </div>
                     {!isDisabled && (fields.length > 1 || isConditional || !!onRemoveLastRule) && (

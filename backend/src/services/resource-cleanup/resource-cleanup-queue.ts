@@ -81,6 +81,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
     const lightCleanupTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
     const dailyNotificationTimeoutMs = devMode ? 5 * 60_000 : 15 * 60_000;
     const frequentCleanupTimeoutMs = devMode ? 5 * 60_000 : 10 * 60_000;
+    const isClickHouseAuditLogEnabled = appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED;
 
     cronJob.register({
       name: CronJobName.DailyResourceCleanup,
@@ -136,7 +137,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
       runHashTtlS: 3 * 24 * 60 * 60,
       handlerTimeoutMs: heavyCleanupTimeoutMs,
       leaseDurationMs: heavyCleanupTimeoutMs,
-      enabled: !appCfg.isSecondaryInstance,
+      enabled: !appCfg.isSecondaryInstance && !isClickHouseAuditLogEnabled,
       handler: async () => {
         logger.info(`cron[${CronJobName.DailyAuditLogCleanup}]: task started`);
         await auditLogDAL.pruneAuditLog();

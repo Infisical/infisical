@@ -1,0 +1,292 @@
+import qs from "qs";
+
+import { SecretType } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
+
+type TRawSecretWithId = {
+  id: string;
+  secretKey: string;
+  secretValue: string;
+  version: number;
+};
+
+type TMetadataSearchResult = {
+  secretId: string;
+  secretKey: string;
+  environment: string;
+  secretPath: string;
+  metadata: { key: string; value: string }[];
+}[];
+
+// distinctive keys so the org-wide search only ever matches the secrets seeded by this spec
+const ENV_KEY = "e2e-search-env";
+const TEAM_KEY = "e2e-search-team";
+const TEST_PATH = "/";
+
+const createSecretWithMetadata = async (dto: {
+  key: string;
+  metadata: { key: string; value: string; isEncrypted?: boolean }[];
+}) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v3/secrets/raw/${dto.key}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.projectV3.id,
+      environment: seedData1.environment.slug,
+      type: SecretType.Shared,
+      secretPath: TEST_PATH,
+      secretKey: dto.key,
+      secretValue: "test-value",
+      secretMetadata: dto.metadata
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  const payload = JSON.parse(res.payload);
+  expect(payload).toHaveProperty("secret");
+  return payload.secret as TRawSecretWithId;
+};
+
+const deleteSecret = async (dto: { key: string }) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v3/secrets/raw/${dto.key}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    },
+    body: {
+      workspaceId: seedData1.projectV3.id,
+      environment: seedData1.environment.slug,
+      secretPath: TEST_PATH
+    }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+const searchSecretMetadata = async (dto: { operator: "and" | "or"; filters: { key: string; value: string }[] }) => {
+  const queryString = qs.stringify({
+    projectId: seedData1.projectV3.id,
+    operator: dto.operator,
+    filters: dto.filters.map((filter) => ({ ...filter, operator: "is" }))
+  });
+  const res = await testServer.inject({
+    method: "GET",
+    url: `/api/v1/dashboard/secrets-by-metadata?${queryString}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  return JSON.parse(res.payload).secrets as TMetadataSearchResult;
+};
+
+describe("Dashboard - search secrets by metadata", async () => {
+  const secretKeys = {
+    a: "E2E_METADATA_SEARCH_A",
+    b: "E2E_METADATA_SEARCH_B",
+    c: "E2E_METADATA_SEARCH_C"
+  };
+
+  let secretAId = "";
+  let secretBId = "";
+  let secretCId = "";
+
+  beforeAll(async () => {
+    // A -> env=prod, team=backend | B -> env=prod, team=frontend | C -> env=staging, team=backend
+    const [secretA, secretB, secretC] = await Promise.all([
+      createSecretWithMetadata({
+        key: secretKeys.a,
+        metadata: [
+          { key: ENV_KEY, value: "prod" },
+          { key: TEAM_KEY, value: "backend" }
+        ]
+      }),
+      createSecretWithMetadata({
+        key: secretKeys.b,
+        metadata: [
+          { key: ENV_KEY, value: "prod" },
+          { key: TEAM_KEY, value: "frontend" }
+        ]
+      }),
+      createSecretWithMetadata({
+        key: secretKeys.c,
+        metadata: [
+          { key: ENV_KEY, value: "staging" },
+          { key: TEAM_KEY, value: "backend" }
+        ]
+      })
+    ]);
+
+    secretAId = secretA.id;
+    secretBId = secretB.id;
+    secretCId = secretC.id;
+  });
+
+  afterAll(() => Promise.all(Object.values(secretKeys).map((key) => deleteSecret({ key }))));
+
+  test("OR operator returns secrets matching any condition", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "or",
+      filters: [
+        { key: ENV_KEY, value: "prod" },
+        { key: TEAM_KEY, value: "backend" }
+      ]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // A (env=prod & team=backend), B (env=prod), C (team=backend) all match at least one condition
+    expect(matchedIds).toEqual(expect.arrayContaining([secretAId, secretBId, secretCId]));
+
+    // B only matched env=prod, so it should not carry the team=backend pair
+    const secretB = secrets.find((secret) => secret.secretId === secretBId);
+    expect(secretB?.metadata).toEqual(expect.arrayContaining([{ key: ENV_KEY, value: "prod" }]));
+    expect(secretB?.metadata).toEqual(expect.not.arrayContaining([{ key: TEAM_KEY, value: "frontend" }]));
+  });
+
+  test("AND operator returns only secrets matching every condition", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "and",
+      filters: [
+        { key: ENV_KEY, value: "prod" },
+        { key: TEAM_KEY, value: "backend" }
+      ]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // only A has BOTH env=prod and team=backend
+    expect(matchedIds).toEqual(expect.arrayContaining([secretAId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretBId, secretCId]));
+
+    const secretA = secrets.find((secret) => secret.secretId === secretAId);
+    expect(secretA?.metadata).toEqual(
+      expect.arrayContaining([
+        { key: ENV_KEY, value: "prod" },
+        { key: TEAM_KEY, value: "backend" }
+      ])
+    );
+
+    // enriched fields used by the dashboard UI to group + render + navigate
+    expect(secretA?.secretKey).toBe(secretKeys.a);
+    expect(secretA?.environment).toBe(seedData1.environment.slug);
+    expect(secretA?.secretPath).toBe(TEST_PATH);
+  });
+
+  test("single condition returns only exact matches", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "and",
+      filters: [{ key: ENV_KEY, value: "staging" }]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // only C has env=staging
+    expect(matchedIds).toEqual(expect.arrayContaining([secretCId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretAId, secretBId]));
+  });
+});
+
+// distinctive keys so the org-wide search only ever matches the secrets seeded by this block
+const ENC_ENV_KEY = "e2e-search-enc-env";
+const ENC_TEAM_KEY = "e2e-search-enc-team";
+
+describe("Dashboard - search secrets by encrypted metadata", async () => {
+  const secretKeys = {
+    d: "E2E_METADATA_SEARCH_ENC_D",
+    e: "E2E_METADATA_SEARCH_ENC_E",
+    f: "E2E_METADATA_SEARCH_ENC_F"
+  };
+
+  let secretDId = "";
+  let secretEId = "";
+  let secretFId = "";
+
+  beforeAll(async () => {
+    // D -> env=prod, team=payments (both encrypted)
+    // E -> env=prod (plaintext) + team=payments (encrypted) — mixed, exercises the and-across-storage path
+    // F -> env=staging, team=billing (both encrypted)
+    const [secretD, secretE, secretF] = await Promise.all([
+      createSecretWithMetadata({
+        key: secretKeys.d,
+        metadata: [
+          { key: ENC_ENV_KEY, value: "prod", isEncrypted: true },
+          { key: ENC_TEAM_KEY, value: "payments", isEncrypted: true }
+        ]
+      }),
+      createSecretWithMetadata({
+        key: secretKeys.e,
+        metadata: [
+          { key: ENC_ENV_KEY, value: "prod", isEncrypted: false },
+          { key: ENC_TEAM_KEY, value: "payments", isEncrypted: true }
+        ]
+      }),
+      createSecretWithMetadata({
+        key: secretKeys.f,
+        metadata: [
+          { key: ENC_ENV_KEY, value: "staging", isEncrypted: true },
+          { key: ENC_TEAM_KEY, value: "billing", isEncrypted: true }
+        ]
+      })
+    ]);
+
+    secretDId = secretD.id;
+    secretEId = secretE.id;
+    secretFId = secretF.id;
+  });
+
+  afterAll(() => Promise.all(Object.values(secretKeys).map((key) => deleteSecret({ key }))));
+
+  test("OR matches encrypted values by decrypting server-side", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "or",
+      filters: [
+        { key: ENC_ENV_KEY, value: "prod" },
+        { key: ENC_TEAM_KEY, value: "payments" }
+      ]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // D and E both hold env=prod / team=payments; F (staging/billing) matches neither
+    expect(matchedIds).toEqual(expect.arrayContaining([secretDId, secretEId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretFId]));
+
+    // the decrypted value is surfaced in the response, not the ciphertext
+    const secretD = secrets.find((secret) => secret.secretId === secretDId);
+    expect(secretD?.metadata).toEqual(expect.arrayContaining([{ key: ENC_ENV_KEY, value: "prod" }]));
+  });
+
+  test("AND matches every condition, including across mixed plaintext + encrypted rows", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "and",
+      filters: [
+        { key: ENC_ENV_KEY, value: "prod" },
+        { key: ENC_TEAM_KEY, value: "payments" }
+      ]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // D (both encrypted) and E (env plaintext + team encrypted) satisfy both conditions; F does not
+    expect(matchedIds).toEqual(expect.arrayContaining([secretDId, secretEId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretFId]));
+
+    const secretE = secrets.find((secret) => secret.secretId === secretEId);
+    expect(secretE?.metadata).toEqual(
+      expect.arrayContaining([
+        { key: ENC_ENV_KEY, value: "prod" },
+        { key: ENC_TEAM_KEY, value: "payments" }
+      ])
+    );
+  });
+
+  test("does not match a non-matching encrypted value", async () => {
+    const secrets = await searchSecretMetadata({
+      operator: "and",
+      filters: [{ key: ENC_TEAM_KEY, value: "billing" }]
+    });
+
+    const matchedIds = secrets.map((secret) => secret.secretId);
+    // only F has team=billing
+    expect(matchedIds).toEqual(expect.arrayContaining([secretFId]));
+    expect(matchedIds).toEqual(expect.not.arrayContaining([secretDId, secretEId]));
+  });
+});

@@ -38,7 +38,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -733,6 +733,9 @@ export const orgServiceFactory = ({
 
     await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
 
+    // The PAM bootstrap above seeds the creator as a project member, which changes the pam_identities meter.
+    usageMeteringService.emit(organization.id, PamIdentities.key);
+
     return organization;
   };
 
@@ -1206,8 +1209,9 @@ export const orgServiceFactory = ({
       approvalPolicyDAL
     });
 
-    // Removing an org member cascades their project + group memberships, changing the meter.
+    // Removing an org member cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, SecretIdentities.key);
+    usageMeteringService.emit(orgId, PamIdentities.key);
     return deletedMembership;
   };
 
@@ -1247,8 +1251,9 @@ export const orgServiceFactory = ({
       approvalPolicyDAL
     });
 
-    // Removing org members cascades their project + group memberships, changing the meter.
+    // Removing org members cascades their project + group memberships, changing the identity meters.
     usageMeteringService.emit(orgId, SecretIdentities.key);
+    usageMeteringService.emit(orgId, PamIdentities.key);
     return deletedMemberships;
   };
 

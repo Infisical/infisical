@@ -36,7 +36,7 @@ describe("classifyUnlicensedCompare", () => {
       name: "all-default features + paid v1 skips and warns",
       features: {
         environment_limit: { value: 3, source: "default" },
-        max_identities: { value: 5, source: "default" }
+        identities: { value: 5, source: "default" }
       },
       slug: "enterprise",
       wantSkip: true,

@@ -42,6 +42,11 @@ import {
   TConvexAccessKeyRotationOption
 } from "./convex-access-key-rotation";
 import {
+  TDatadogApiKeyRotation,
+  TDatadogApiKeyRotationGeneratedCredentialsResponse,
+  TDatadogApiKeyRotationOption
+} from "./datadog-api-key-rotation";
+import {
   TDatadogApplicationKeySecretRotation,
   TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse,
   TDatadogApplicationKeySecretRotationOption
@@ -105,6 +110,11 @@ import {
   TSalesforceOauthCredentialsRotationOption
 } from "./salesforce-oauth-credentials-rotation";
 import {
+  TSnowflakeUserKeyPairRotation,
+  TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse,
+  TSnowflakeUserKeyPairRotationOption
+} from "./snowflake-user-key-pair-rotation";
+import {
   TSupabaseApiKeyRotation,
   TSupabaseApiKeyRotationGeneratedCredentialsResponse,
   TSupabaseApiKeyRotationOption
@@ -143,8 +153,10 @@ export type TSecretRotationV2 = (
   | TSupabaseApiKeyRotation
   | TSalesforceOauthCredentialsRotation
   | TDatadogApplicationKeySecretRotation
+  | TDatadogApiKeyRotation
   | TConvexAccessKeyRotation
   | TFireworksApiKeyRotation
+  | TSnowflakeUserKeyPairRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -169,8 +181,10 @@ export type TSecretRotationV2Option =
   | TSupabaseApiKeyRotationOption
   | TSalesforceOauthCredentialsRotationOption
   | TDatadogApplicationKeySecretRotationOption
+  | TDatadogApiKeyRotationOption
   | TConvexAccessKeyRotationOption
-  | TFireworksApiKeyRotationOption;
+  | TFireworksApiKeyRotationOption
+  | TSnowflakeUserKeyPairRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -199,8 +213,10 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TSupabaseApiKeyRotationGeneratedCredentialsResponse
   | TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse
   | TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse
+  | TDatadogApiKeyRotationGeneratedCredentialsResponse
   | TConvexAccessKeyRotationGeneratedCredentialsResponse
-  | TFireworksApiKeyRotationGeneratedCredentialsResponse;
+  | TFireworksApiKeyRotationGeneratedCredentialsResponse
+  | TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -277,8 +293,10 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationOption;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationOption;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationOption;
+  [SecretRotation.DatadogApiKey]: TDatadogApiKeyRotationOption;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationOption;
   [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationOption;
+  [SecretRotation.SnowflakeUserKeyPair]: TSnowflakeUserKeyPairRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -304,8 +322,10 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.SupabaseApiKey]: TSupabaseApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.SalesforceOauthCredentials]: TSalesforceOauthCredentialsRotationGeneratedCredentialsResponse;
   [SecretRotation.DatadogApplicationKeySecret]: TDatadogApplicationKeySecretRotationGeneratedCredentialsResponse;
+  [SecretRotation.DatadogApiKey]: TDatadogApiKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.ConvexAccessKey]: TConvexAccessKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.FireworksApiKey]: TFireworksApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.SnowflakeUserKeyPair]: TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

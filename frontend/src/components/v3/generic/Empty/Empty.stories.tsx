@@ -27,6 +27,16 @@ import {
  * at the page level the frame-less look is intentional. When nesting `Empty` inside a
  * `Card`, `Sheet`, or `Dialog`, add `className="border"` to activate the dashed frame
  * so the empty state reads as visually distinct from its container.
+ *
+ * **`frame` prop** — an alternate, SVG-drawn frame for surfaces that want a more
+ * deliberate dashed (or solid) boundary than the CSS border gives — e.g. a
+ * drag-and-drop target. `stroke-dasharray` allows precise control over dash and
+ * gap length, something `border-style: dashed` doesn't offer, without losing the
+ * rounded corners the way `border-image` would. Opt-in and independent from
+ * `className="border"`; `frame="none"` consumers render byte-for-byte unchanged.
+ * Recolor with `frameClassName` (defaults to `text-border`). The framed variant
+ * also adds a small outer margin and a hover tint, since it's meant for
+ * interactive surfaces (see `FileDropzone`) rather than static empty states.
  */
 const meta = {
   title: "Generic/Empty",
@@ -231,5 +241,41 @@ export const InsideCard: Story = {
         </Empty>
       </CardContent>
     </Card>
+  )
+};
+
+export const WithFrame: Story = {
+  name: "Variant: Frame (Dashed / Solid)",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Pass `frame="dashed"` or `frame="solid"` for an SVG-drawn frame — used by `FileDropzone` for its passive (dashed) and drag-active (solid, recolored via `frameClassName`) states. Prefer this over `className="border"` when the dash proportions need to stand out, such as an interactive drop target.'
+      }
+    }
+  },
+  render: () => (
+    <div className="flex flex-wrap gap-4">
+      <Empty frame="dashed" className="w-72">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UploadIcon />
+          </EmptyMedia>
+          <EmptyTitle>Dashed frame</EmptyTitle>
+          <EmptyDescription>frame=&quot;dashed&quot;</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+      <Empty frame="solid" frameClassName="text-info" className="w-72 bg-info/10">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UploadIcon />
+          </EmptyMedia>
+          <EmptyTitle>Solid frame</EmptyTitle>
+          <EmptyDescription>
+            frame=&quot;solid&quot; frameClassName=&quot;text-info&quot;
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </div>
   )
 };

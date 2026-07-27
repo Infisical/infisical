@@ -376,6 +376,18 @@ export const secretSyncServiceFactory = ({
       "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
+    // secretSyncLimit is uncapped by default (null); only enforce a cap when the plan configures a
+    // numeric limit. Counted org-wide right before creation.
+    const plan = await licenseService.getPlan(actor.orgId);
+    if (typeof plan.secretSyncLimit === "number") {
+      const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.orgId);
+      if (currentSecretSyncCount >= plan.secretSyncLimit) {
+        throw new BadRequestError({
+          message: "Failed to create secret sync due to plan limit reached. Upgrade plan to add more secret syncs."
+        });
+      }
+    }
+
     const { permission: projectPermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,

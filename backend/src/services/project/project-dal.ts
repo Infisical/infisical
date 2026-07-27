@@ -177,6 +177,34 @@ export const projectDALFactory = (db: TDbClient) => {
     return totalDeleted;
   };
 
+  // Hands a project's envs to the paced env hard-delete worker: marks them deleteAfter = now,
+  // collapsing any restore grace. Returns rows marked.
+  const softDeleteProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const now = new Date();
+      const marked = await (tx || db)(TableName.Environment)
+        .where({ projectId })
+        .andWhere((qb) => void qb.whereNull("deleteAfter").orWhere("deleteAfter", ">", now))
+        .update({
+          deleteAfter: now,
+          softDeletedAt: db.raw(`COALESCE("softDeletedAt", ?)`, [now]) as unknown as Date
+        });
+      return marked;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Soft delete project environments" });
+    }
+  };
+
+  // Counts ALL env rows (any soft-delete state). Primary-backed so a stale replica cannot end the drain early.
+  const countProjectEnvironments = async (projectId: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db)(TableName.Environment).where({ projectId }).count().first();
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count project environments" });
+    }
+  };
+
   const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
     try {
       const identityGroupSubquery = db
@@ -791,8 +819,19 @@ export const projectDALFactory = (db: TDbClient) => {
       })
       .select("scopeProjectId");
 
+    const directMembershipSubQuery = db(TableName.Membership)
+      .where(`${TableName.Membership}.scope`, AccessScope.Project)
+      .where(
+        dto.actor === ActorType.IDENTITY
+          ? `${TableName.Membership}.actorIdentityId`
+          : `${TableName.Membership}.actorUserId`,
+        dto.actorId
+      )
+      .select("scopeProjectId");
+
     // Get the SQL strings for the subqueries
     const membershipSQL = membershipSubQuery.toQuery();
+    const directMembershipSQL = directMembershipSubQuery.toQuery();
 
     const query = db
       .replicaNode()(TableName.Project)
@@ -800,7 +839,7 @@ export const projectDALFactory = (db: TDbClient) => {
       .whereNull(`${TableName.Project}.deleteAfter`)
       .select(selectAllTableCols(TableName.Project))
       .select(db.raw("COUNT(*) OVER() AS count"))
-      .select<(TProjects & { isMember: boolean; count: number })[]>(
+      .select<(TProjects & { isMember: boolean; isDirectMember: boolean; count: number })[]>(
         db.raw(
           `
                   CASE
@@ -809,6 +848,15 @@ export const projectDALFactory = (db: TDbClient) => {
                   END as "isMember"
                 `,
           [db.raw(membershipSQL)]
+        ),
+        db.raw(
+          `
+                  CASE
+                    WHEN ${TableName.Project}.id IN (?) THEN TRUE
+                    ELSE FALSE
+                  END as "isDirectMember"
+                `,
+          [db.raw(directMembershipSQL)]
         )
       )
       .limit(limit)
@@ -961,6 +1009,8 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
+    softDeleteProjectEnvironments,
+    countProjectEnvironments,
     findUserProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,

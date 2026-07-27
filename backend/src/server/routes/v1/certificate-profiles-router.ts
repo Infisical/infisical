@@ -16,11 +16,21 @@ import {
   CertKeyAlgorithm,
   CertKeyUsageType,
   CertSignatureAlgorithm,
+  CertSubjectAlternativeNameType,
   domainComponentSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { ExternalConfigUnionSchema } from "@app/services/certificate-profile/certificate-profile-external-config-schemas";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+const SubjectAltNameDefaultsSchema = z
+  .array(
+    z.object({
+      type: z.nativeEnum(CertSubjectAlternativeNameType),
+      value: z.string().trim().min(1)
+    })
+  )
+  .optional();
 
 const CertificateProfileDefaultsResponseSchema = z
   .object({
@@ -41,6 +51,7 @@ const CertificateProfileDefaultsResponseSchema = z
     country: z.string().optional(),
     state: z.string().optional(),
     locality: z.string().optional(),
+    subjectAltNames: SubjectAltNameDefaultsSchema,
     domainComponents: z.array(z.string()).optional()
   })
   .nullish();
@@ -125,6 +136,7 @@ export const registerCertificateProfilesRouter = async (
               country: z.string().optional(),
               state: z.string().optional(),
               locality: z.string().optional(),
+              subjectAltNames: SubjectAltNameDefaultsSchema,
               domainComponents: z.array(domainComponentSchema).optional()
             })
             .nullish()
@@ -609,6 +621,7 @@ export const registerCertificateProfilesRouter = async (
               country: z.string().optional(),
               state: z.string().optional(),
               locality: z.string().optional(),
+              subjectAltNames: SubjectAltNameDefaultsSchema,
               domainComponents: z.array(domainComponentSchema).optional()
             })
             .nullish()
