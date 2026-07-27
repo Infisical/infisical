@@ -36,6 +36,7 @@ import { TOctopusDeploySync } from "./octopus-deploy-sync";
 import { TOnaSync } from "./ona-sync";
 import { TOvhSync } from "./ovh-sync";
 import { TQoverySync } from "./qovery-sync";
+import { TSpaceliftSync } from "./spacelift-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
 import { TRundeckSync } from "./rundeck-sync";
@@ -106,7 +107,8 @@ export type TSecretSync =
   | TTriggerDevSync
   | THasuraCloudSync
   | TQoverySync
-  | TCloud66Sync;
+  | TCloud66Sync
+  | TSpaceliftSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

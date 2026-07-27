@@ -3047,6 +3047,11 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    SPACELIFT: {
+      apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
+      apiKeyId: "The API Key ID used to authenticate with Spacelift.",
+      apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
   }
 };
@@ -3393,6 +3398,10 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    SPACELIFT: {
+      contextId: "The ID of the Spacelift context to sync secrets to.",
+      contextName: "The name of the Spacelift context to sync secrets to."
     }
   }
 };

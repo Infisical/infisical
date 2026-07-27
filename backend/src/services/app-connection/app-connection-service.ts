@@ -107,6 +107,7 @@ import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
 import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-connection-schema";
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
+import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
@@ -1410,6 +1411,7 @@ export const appConnectionServiceFactory = ({
       connectAppConnectionById,
       gatewayV2Service,
       gatewayPoolService
-    )
+    ),
+    spacelift: spaceliftConnectionService(connectAppConnectionById)
   };
 };

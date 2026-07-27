@@ -6,7 +6,7 @@ import { safeRequest } from "@app/lib/validator";
 
 import { AppConnection } from "../app-connection-enums";
 import { SpaceliftConnectionMethod } from "./spacelift-connection-enums";
-import { TSpaceliftConnectionConfig } from "./spacelift-connection-types";
+import { TSpaceliftConnection, TSpaceliftConnectionConfig } from "./spacelift-connection-types";
 
 const SPACELIFT_ALLOWED_DOMAIN_SUFFIXES = ["spacelift.io"];
 
@@ -91,4 +91,53 @@ export const validateSpaceliftConnectionCredentials = async (config: TSpaceliftC
   }
 
   return config.credentials;
+};
+
+type TSpaceliftContext = {
+  id: string;
+  name: string;
+};
+
+export const listSpaceliftContexts = async (appConnection: TSpaceliftConnection): Promise<TSpaceliftContext[]> => {
+  const instanceUrl = removeTrailingSlash(appConnection.credentials.apiUrl);
+  const { apiKeyId, apiKeySecret } = appConnection.credentials;
+
+  const { data: authData } = await safeRequest.post<{
+    data?: { apiKeyUser?: { jwt: string } };
+    errors?: { message: string }[];
+  }>(`${instanceUrl}/graphql`, {
+    query: `mutation GetSpaceliftToken($id: ID!, $secret: String!) { apiKeyUser(id: $id, secret: $secret) { jwt } }`,
+    variables: { id: apiKeyId, secret: apiKeySecret }
+  });
+
+  if (authData.errors?.length || !authData.data?.apiKeyUser?.jwt) {
+    throw new BadRequestError({
+      message: "Failed to authenticate with Spacelift"
+    });
+  }
+
+  const jwt = authData.data.apiKeyUser.jwt;
+
+  const { data: contextData } = await safeRequest.post<{
+    data?: { contexts?: TSpaceliftContext[] };
+    errors?: { message: string }[];
+  }>(
+    `${instanceUrl}/graphql`,
+    {
+      query: `{ contexts { id name } }`
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${jwt}`
+      }
+    }
+  );
+
+  if (contextData.errors?.length) {
+    throw new BadRequestError({
+      message: `Failed to list Spacelift contexts: ${contextData.errors[0].message}`
+    });
+  }
+
+  return contextData.data?.contexts ?? [];
 };

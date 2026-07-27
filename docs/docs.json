@@ -732,6 +732,7 @@
                           "integrations/secret-syncs/octopus-deploy",
                           "integrations/secret-syncs/rundeck",
                           "integrations/secret-syncs/teamcity",
+                          "integrations/secret-syncs/spacelift",
                           "integrations/secret-syncs/terraform-cloud",
                           "integrations/secret-syncs/travis-ci"
                         ]
@@ -3393,6 +3394,19 @@
                       "api-reference/endpoints/secret-syncs/snowflake/delete",
                       "api-reference/endpoints/secret-syncs/snowflake/sync-secrets",
                       "api-reference/endpoints/secret-syncs/snowflake/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Spacelift",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/spacelift/list",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-id",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-name",
+                      "api-reference/endpoints/secret-syncs/spacelift/create",
+                      "api-reference/endpoints/secret-syncs/spacelift/update",
+                      "api-reference/endpoints/secret-syncs/spacelift/delete",
+                      "api-reference/endpoints/secret-syncs/spacelift/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/spacelift/remove-secrets"
                     ]
                   },
                   {

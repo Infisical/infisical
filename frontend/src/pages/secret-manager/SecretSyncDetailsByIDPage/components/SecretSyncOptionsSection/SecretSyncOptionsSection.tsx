@@ -98,6 +98,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Rundeck:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
+    case SecretSync.Spacelift:
       AdditionalSyncOptionsComponent = null;
       break;
     default:

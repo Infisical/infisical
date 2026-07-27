@@ -152,6 +152,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Rundeck:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
+    case SecretSync.Spacelift:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

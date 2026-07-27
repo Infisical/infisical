@@ -300,6 +300,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Cloud 66.png",
     category: "HOSTING",
     description: "Environment variables for Cloud 66 stacks."
+  },
+  [SecretSync.Spacelift]: {
+    name: "Spacelift",
+    image: "Spacelift.png",
+    category: "INFRASTRUCTURE",
+    description: "Environment variables for Spacelift contexts."
   }
 };
 
@@ -357,7 +363,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.TriggerDev]: AppConnection.TriggerDev,
   [SecretSync.HasuraCloud]: AppConnection.HasuraCloud,
   [SecretSync.Qovery]: AppConnection.Qovery,
-  [SecretSync.Cloud66]: AppConnection.Cloud66
+  [SecretSync.Cloud66]: AppConnection.Cloud66,
+  [SecretSync.Spacelift]: AppConnection.Spacelift
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

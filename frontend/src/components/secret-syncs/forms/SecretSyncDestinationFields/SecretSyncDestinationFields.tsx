@@ -16,6 +16,7 @@ import { ChecklySyncFields } from "./ChecklySyncFields";
 import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
 import { Cloud66SyncFields } from "./Cloud66SyncFields";
+import { SpaceliftSyncFields } from "./SpaceliftSyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
@@ -151,6 +152,8 @@ export const SecretSyncDestinationFields = () => {
       return <QoverySyncFields />;
     case SecretSync.Cloud66:
       return <Cloud66SyncFields />;
+    case SecretSync.Spacelift:
+      return <SpaceliftSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

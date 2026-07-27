@@ -47,6 +47,7 @@ import { TriggerDevSyncDestinationCol } from "./TriggerDevSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
+import { SpaceliftSyncDestinationCol } from "./SpaceliftSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -148,6 +149,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <QoverySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Cloud66:
       return <Cloud66SyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Spacelift:
+      return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`
