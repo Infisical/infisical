@@ -115,6 +115,7 @@ import { pamAccountRotationQueueServiceFactory } from "@app/ee/services/pam-acco
 import { pamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-template/pam-account-template-dal";
 import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
+import { pamAccountDependencyDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependency-dal";
 import { pamDiscoveredAccountDALFactory } from "@app/ee/services/pam-discovery/pam-discovered-account-dal";
 import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
 import { pamDiscoverySourceRunDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-run-dal";
@@ -199,11 +200,6 @@ import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/s
 import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
-import { secretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
-import { snapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
-import { snapshotFolderDALFactory } from "@app/ee/services/secret-snapshot/snapshot-folder-dal";
-import { snapshotSecretDALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-dal";
-import { snapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { sshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
 import { sshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
 import { sshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
@@ -524,6 +520,7 @@ import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
+import { updateCheckServiceFactory } from "@app/services/update-check/update-check-queue";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userActivationDALFactory } from "@app/services/user-activation/user-activation-dal";
@@ -697,11 +694,6 @@ export const registerRoutes = async (
   const secretApprovalRequestDAL = secretApprovalRequestDALFactory(db);
   const secretApprovalRequestReviewerDAL = secretApprovalRequestReviewerDALFactory(db);
   const secretApprovalRequestSecretDAL = secretApprovalRequestSecretDALFactory(db);
-
-  const snapshotDAL = snapshotDALFactory(db);
-  const snapshotSecretDAL = snapshotSecretDALFactory(db);
-  const snapshotSecretV2BridgeDAL = snapshotSecretV2DALFactory(db);
-  const snapshotFolderDAL = snapshotFolderDALFactory(db);
 
   const gitAppInstallSessionDAL = gitAppInstallSessionDALFactory(db);
   const gitAppOrgDAL = gitAppDALFactory(db);
@@ -910,6 +902,14 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
+  const identityAccessTokenService = identityAccessTokenServiceFactory({
+    identityAccessTokenDAL,
+    identityAccessTokenRevocationDAL,
+    identityDAL,
+    orgDAL,
+    keyStore
+  });
+
   const membershipIdentityService = membershipIdentityServiceFactory({
     identityDAL,
     membershipIdentityDAL,
@@ -922,7 +922,8 @@ export const registerRoutes = async (
     applicationMembershipCleanupService,
     projectDAL,
     keyStore,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
 
   const membershipGroupService = membershipGroupServiceFactory({
@@ -968,6 +969,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     hsmService,
+    keyStore,
     envConfig
   });
 
@@ -1086,7 +1088,8 @@ export const registerRoutes = async (
     oidcConfigDAL,
     membershipGroupDAL,
     membershipRoleDAL,
-    usageMeteringService
+    usageMeteringService,
+    identityAccessTokenService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1140,6 +1143,10 @@ export const registerRoutes = async (
     telemetryDAL,
     cronJob,
     telemetryService
+  });
+  const updateCheckService = updateCheckServiceFactory({
+    cronJob,
+    keyStore
   });
 
   const scimService = scimServiceFactory({
@@ -1326,7 +1333,8 @@ export const registerRoutes = async (
     smtpService,
     projectMembershipDAL,
     permissionService,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    folderDAL
   });
 
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
@@ -1943,11 +1951,13 @@ export const registerRoutes = async (
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
   const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
+  const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
 
   const pamDiscoveryService = pamDiscoverySourceServiceFactory({
     pamDiscoverySourceDAL,
     pamDiscoverySourceRunDAL,
     pamDiscoveredAccountDAL,
+    pamAccountDependencyDAL,
     pamAccountDAL,
     pamAccountService,
     permissionService,
@@ -1969,7 +1979,9 @@ export const registerRoutes = async (
     keyStore,
     gatewayService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    pamAccountDependencyDAL,
+    pamDiscoverySourceDAL
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -2096,8 +2108,6 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     integrationAuthDAL,
-    snapshotDAL,
-    snapshotSecretV2BridgeDAL,
     secretApprovalRequestDAL,
     projectKeyDAL,
     orgService,
@@ -2186,27 +2196,6 @@ export const registerRoutes = async (
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL
   });
 
-  const snapshotService = secretSnapshotServiceFactory({
-    permissionService,
-    licenseService,
-    folderDAL,
-    secretDAL,
-    snapshotDAL,
-    snapshotFolderDAL,
-    snapshotSecretDAL,
-    folderCommitService,
-    secretVersionDAL,
-    folderVersionDAL,
-    secretTagDAL,
-    secretVersionTagDAL,
-    projectBotService,
-    kmsService,
-    secretV2BridgeDAL,
-    secretVersionV2BridgeDAL,
-    snapshotSecretV2BridgeDAL,
-    secretVersionV2TagBridgeDAL: secretVersionTagV2BridgeDAL
-  });
-
   const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
@@ -2263,7 +2252,6 @@ export const registerRoutes = async (
     secretApprovalPolicyService,
     secretApprovalRequestSecretDAL,
     kmsService,
-    snapshotService,
     resourceMetadataDAL,
     reminderService,
     reminderDAL,
@@ -2285,7 +2273,6 @@ export const registerRoutes = async (
     secretVersionDAL,
     secretBlindIndexDAL,
     secretApprovalRequestDAL,
-    snapshotService,
     secretVersionTagDAL,
     secretQueueService,
     kmsService,
@@ -2315,7 +2302,6 @@ export const registerRoutes = async (
     projectDAL,
     secretDAL,
     secretTagDAL,
-    snapshotService,
     secretQueueService,
     secretImportDAL,
     projectEnvDAL,
@@ -2341,7 +2327,6 @@ export const registerRoutes = async (
     folderDAL,
     folderVersionDAL,
     projectEnvDAL,
-    snapshotService,
     projectDAL,
     folderCommitService,
     secretApprovalPolicyService,
@@ -2480,15 +2465,8 @@ export const registerRoutes = async (
     orgDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
-    usageMeteringService
-  });
-
-  const identityAccessTokenService = identityAccessTokenServiceFactory({
-    identityAccessTokenDAL,
-    identityAccessTokenRevocationDAL,
-    identityDAL,
-    orgDAL,
-    keyStore
+    usageMeteringService,
+    identityAccessTokenService
   });
 
   const identityV2Service = identityV2ServiceFactory({
@@ -2806,7 +2784,6 @@ export const registerRoutes = async (
     cronJob,
     secretVersionDAL,
     secretFolderVersionDAL: folderVersionDAL,
-    snapshotDAL,
     identityAccessTokenDAL,
     identityAccessTokenRevocationDAL,
     secretSharingDAL,
@@ -2985,7 +2962,6 @@ export const registerRoutes = async (
     secretTagDAL,
     folderCommitService,
     resourceMetadataDAL,
-    snapshotService,
     secretQueueService,
     webhookDAL,
     projectEnvDAL,
@@ -3002,7 +2978,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     dynamicSecretDAL,
-    projectDAL
+    projectDAL,
+    keyStore
   });
 
   const agentProxyCaService = agentProxyCaServiceFactory({
@@ -3069,7 +3046,6 @@ export const registerRoutes = async (
     secretVersionV2BridgeDAL,
     keyStore,
     resourceMetadataDAL,
-    snapshotService,
     secretQueueService,
     queueService,
     appConnectionDAL,
@@ -3851,6 +3827,7 @@ export const registerRoutes = async (
   // Register all cron jobs (synchronous registrations) before starting the scheduler
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
+  updateCheckService.init();
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
@@ -3938,7 +3915,6 @@ export const registerRoutes = async (
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
     emailDomain: emailDomainService,
-    snapshot: snapshotService,
     saml: samlService,
     ldap: ldapService,
     auditLog: auditLogService,
@@ -3999,6 +3975,7 @@ export const registerRoutes = async (
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
     telemetry: telemetryService,
+    updateCheck: updateCheckService,
     secretSharing: secretSharingService,
     userActivation: userActivationService,
     userEngagement: userEngagementService,

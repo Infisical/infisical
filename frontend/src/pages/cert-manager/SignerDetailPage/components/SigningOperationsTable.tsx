@@ -115,7 +115,7 @@ export const SigningOperationsTable = ({ signer, signerId, projectId }: Props) =
         params: {
           orgId: currentOrg.id,
           projectId,
-          membershipId: op.actorMembershipId
+          membershipId: op.actorId
         }
       });
     } else if (op.actorType === SigningActorType.Identity) {

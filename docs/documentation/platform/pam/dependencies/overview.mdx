@@ -1,0 +1,75 @@
+---
+title: "Account Dependencies"
+sidebarTitle: "Overview"
+description: "Detect the Windows services, tasks, and app pools that run as an account, and keep them working across rotations."
+---
+
+A **dependency** is a Windows service, scheduled task, or IIS application pool that runs *as* one of your accounts and therefore stores a copy of that account's password. When the account's password rotates, every dependency still holding the old password would fail to start until it is updated.
+
+Infisical **detects** these dependencies during discovery and **syncs** them automatically during rotation, so rotating a Windows account does not break the services that depend on it.
+
+<Note>
+  Dependencies apply to Windows accounts only: [Windows AD](/documentation/platform/pam/accounts/windows-ad) (domain) and [Windows](/documentation/platform/pam/accounts/windows) (local).
+</Note>
+
+## Detected dependency types
+
+| Type | What it is |
+|------|------------|
+| **Windows service** | A service whose *Log On As* identity is the account |
+| **Scheduled task** | A task configured to run under the account with a stored password |
+| **IIS application pool** | An app pool whose process model runs as the account |
+
+## Detection
+
+Dependencies are detected during [Active Directory discovery](/documentation/platform/pam/discovery/active-directory) when the **Discover account dependencies** option is enabled on the source. This option is **off by default**. When enabled, discovery locates the domain-joined Windows servers, connects to each over WinRM through the [Gateway](/documentation/platform/gateways/overview), and enumerates the services, scheduled tasks, and IIS application pools that run under a discovered account.
+
+Each detected dependency is anchored to the stable identity of the account it runs as, so it is linked to the correct managed account once that account is imported. Re-running a scan updates the dependency list in place rather than creating duplicates, and a dependency that is no longer found on a re-scanned machine is removed.
+
+<Note>
+  **Discover account dependencies** is independent of **Discover local accounts**, so you can enable either or both. Both reach your servers over WinRM, so the source's WinRM settings (port, HTTPS, and CA certificate) apply to dependency detection as well. Dependencies are detected from the servers within the source's scan scope.
+</Note>
+
+You can review an account's detected dependencies on the account's **Rotation** tab, grouped by machine, along with the last sync status of each.
+
+## Rotation (sync)
+
+When a Windows account's password [rotates](/documentation/platform/pam/product-reference/credential-rotation/windows), Infisical pushes the new password to each of the account's dependencies so they continue to authenticate:
+
+<Steps>
+  <Step title="Connect to each dependency's machine">
+    Using the account's rotation account, Infisical connects over WinRM to the machine each dependency runs on. For domain accounts, machine hostnames are re-resolved through the domain controller's DNS at sync time so a stale address cannot target the wrong host.
+  </Step>
+  <Step title="Update the stored credential">
+    The new password is written to the dependency:
+
+    | Type | What happens |
+    |------|--------------|
+    | **Windows service** | The service's stored password is updated, and the service is restarted if it was running |
+    | **Scheduled task** | The task is reconfigured with the new password |
+    | **IIS application pool** | The app pool's process-model password is updated, and the pool is recycled if it was started |
+  </Step>
+</Steps>
+
+Dependency sync runs as part of rotation and is **best effort**: a failure on one dependency is recorded on that dependency's row and never fails the account rotation. Each dependency shows one of:
+
+| Status | Meaning |
+|--------|---------|
+| **Rotated** | The new password was applied successfully on the last rotation |
+| **Failed** | The last sync did not complete; the recorded error explains why |
+| **Never** | The dependency has not been through a rotation yet |
+
+<Note>
+  Because sync keeps dependent services working, dependencies detected on the scanned servers are included automatically. Make sure the servers within a discovery source's scan scope are ones you trust to run as your managed accounts.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Active Directory Discovery" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
+    Enable server scanning to detect dependencies.
+  </Card>
+  <Card title="Windows Credential Rotation" icon="rotate" href="/documentation/platform/pam/product-reference/credential-rotation/windows">
+    How Windows and AD account passwords are rotated.
+  </Card>
+</CardGroup>

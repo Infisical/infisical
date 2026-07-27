@@ -2,13 +2,14 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
 import { LeaveProjectModal } from "@app/components/v2/LeaveProjectModal";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useLeaveProject } from "@app/hooks/api";
@@ -24,6 +25,8 @@ export const DeleteProjectSection = () => {
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { memberships } = useProjectPermission();
+  const isDirectMember = Boolean(memberships?.some((membership) => !membership.actorGroupId));
   const [isDeleting, setIsDeleting] = useToggle();
   const [isLeaving, setIsLeaving] = useToggle();
   const deleteWorkspace = useDeleteWorkspace();
@@ -90,15 +93,23 @@ export const DeleteProjectSection = () => {
             </Button>
           )}
         </ProjectPermissionCan>
-        <Button
-          isLoading={isLeaving}
-          colorSchema="danger"
-          variant="outline_bg"
-          type="submit"
-          onClick={() => handlePopUpOpen("leaveWorkspace")}
+        <Tooltip
+          content="You're a member through a group. Leave the group to remove access."
+          isDisabled={isDirectMember}
         >
-          {`Leave ${currentProject?.name}`}
-        </Button>
+          <span>
+            <Button
+              isLoading={isLeaving}
+              isDisabled={!isDirectMember}
+              colorSchema="danger"
+              variant="outline_bg"
+              type="submit"
+              onClick={() => handlePopUpOpen("leaveWorkspace")}
+            >
+              {`Leave ${currentProject?.name}`}
+            </Button>
+          </span>
+        </Tooltip>
       </div>
 
       <DeleteActionModal

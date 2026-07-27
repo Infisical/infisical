@@ -189,6 +189,9 @@ export type BillingV2Overview = {
   trialedProductKeys: string[];
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
   checkoutFrozen: boolean;
+  // false for an enterprise-managed org: render the self-serve billing UI but disable its controls
+  // (trial/buy/commit/cancel), so the customer is pointed to sales rather than hitting a 403 on submit.
+  selfServe: boolean;
 };
 
 export type BillingV2CheckoutResult = {
@@ -240,6 +243,10 @@ export type BillingV2Preview = {
 };
 
 export type BillingV2MutationResult = {
+  // checkout_created is returned when committing on a trialing org with no card created the
+  // subscription and it needs hosted checkout (checkoutUrl); otherwise subscription_updated.
+  outcome?: "checkout_created" | "subscription_updated";
+  checkoutUrl?: string;
   subscriptionId?: string;
 };
 
@@ -269,10 +276,12 @@ export type TRemoveBillingV2ProductDTO = {
 
 // Start / change annual commitments across dimensions in one atomic call. An increase is charged now;
 // a decrease is rejected server-side unless the dimension's window is open. The change always prices
-// at the current server time.
+// at the current server time. productId is required: it names the product so the server resolves the
+// trialing plan and creates/attaches the subscription when there isn't one yet (a trialing org).
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   changes: BillingV2CommitmentChange[];
+  productId: string;
 };
 
 export type TStartBillingV2TrialDTO = {
@@ -286,11 +295,11 @@ export type TCancelBillingV2TrialDTO = {
   productId: string;
 };
 
-// The trial is granted immediately (outcome is always trial_started). cardSetupUrl, when present, is a
-// best-effort setup-mode Checkout to add a card; the client redirects to it, else shows a card-required
-// banner. The card never gates the trial.
+// Card-first trial. trial_started: a card is on file, the trial is granted now. awaiting_card: no card,
+// NOT granted; the client redirects to cardSetupUrl (a setup-mode Checkout) and the trial is granted by
+// webhook on completion.
 export type BillingV2TrialResult = {
-  outcome: "trial_started";
+  outcome: "trial_started" | "awaiting_card";
   cardSetupUrl?: string;
 };
 

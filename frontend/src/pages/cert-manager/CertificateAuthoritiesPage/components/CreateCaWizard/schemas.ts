@@ -55,7 +55,7 @@ export const caWizardSchema = z
     commonName: z.string().trim().default(""),
     keySource: z.nativeEnum(CertKeySource).default(CertKeySource.Infisical),
     hsmConnectorId: z.string().uuid().optional().nullable(),
-    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).default(CertKeyAlgorithm.RSA_2048),
+    keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).default(CertKeyAlgorithm.ECDSA_P256),
     notAfter: z.string().trim().default(""),
     maxPathLength: z.string().default("-1"),
     disableManagedCrlDistributionPointUrl: z.boolean().default(false),

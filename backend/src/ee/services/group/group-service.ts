@@ -2,7 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TGroups, TRoles } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TGroups,
+  TRoles
+} from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
@@ -17,6 +24,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -93,6 +101,7 @@ type TGroupServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -113,7 +122,8 @@ export const groupServiceFactory = ({
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
-  usageMeteringService
+  usageMeteringService,
+  identityAccessTokenService
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -966,6 +976,28 @@ export const groupServiceFactory = ({
     return { user: users[0], group: groupMembership.group };
   };
 
+  // Joining/leaving this group changes the identity's effective org
+  // access only in orgs where the group holds a membership row and the identity
+  // has no direct access.
+  const groupMembershipAffectsIdentityOrgAccess = async (groupId: string, identityId: string) => {
+    const groupOrgMemberships = await membershipDAL.find({
+      scope: AccessScope.Organization,
+      actorGroupId: groupId
+    });
+    if (groupOrgMemberships.length === 0) return false;
+
+    const identityDirectMemberships = await membershipDAL.find({
+      scope: AccessScope.Organization,
+      actorIdentityId: identityId
+    });
+    const directOrgIds = new Set(
+      identityDirectMemberships
+        .filter((membership) => !membership.status || membership.status === OrgMembershipStatus.Accepted)
+        .map((membership) => membership.scopeOrgId)
+    );
+    return groupOrgMemberships.some((membership) => !directOrgIds.has(membership.scopeOrgId));
+  };
+
   const addMachineIdentityToGroup = async ({
     id,
     identityId,
@@ -1043,6 +1075,13 @@ export const groupServiceFactory = ({
       membershipDAL,
       identityGroupMembershipDAL
     });
+
+    // Gaining a group can restore the identity's effective org access, so cached
+    // membership denies must re-check. Skipped when the group grants no org the
+    // identity lacks directly.
+    if (await groupMembershipAffectsIdentityOrgAccess(id, identityId)) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
 
     // The identity may now be in a secret-manager or PAM project through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
@@ -1227,6 +1266,12 @@ export const groupServiceFactory = ({
       userIds: [],
       identityIds: [identityId]
     });
+
+    // Losing a group can remove the identity's effective org access. Skipped when
+    // the group granted no org the identity lacks directly
+    if (await groupMembershipAffectsIdentityOrgAccess(id, identityId)) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
 
     // The identity may have left a secret-manager or PAM project it only reached through this group.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "./Button";
+import { ButtonBadge } from "./ButtonBadge";
 
 /**
  * Buttons trigger actions or events when clicked or pressed.
@@ -83,6 +84,35 @@ export const Outline: Story = {
     docs: {
       description: {
         story: "Use this variant for general page actions."
+      }
+    }
+  }
+};
+
+export const WithCornerBadge: Story = {
+  name: "Composition: Corner Badge",
+  render: () => (
+    <div className="flex flex-col items-start gap-6">
+      <Button variant="outline" size="lg">
+        <LogInIcon />
+        Continue with GitHub
+        <ButtonBadge variant="project">Last used</ButtonBadge>
+      </Button>
+      <Button variant="outline" size="lg">
+        Explore feature
+        <ButtonBadge variant="info">New</ButtonBadge>
+      </Button>
+      <Button variant="outline" size="lg">
+        Use recommended setup
+        <ButtonBadge variant="success">Recommended</ButtonBadge>
+      </Button>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Place `ButtonBadge` inside a `Button` for short contextual flags such as Last used, New, or Recommended. It inherits Badge typography, sizing, radius, and casing while adding corner positioning and an opaque semantic tint. Choose an existing semantic variant or an intentionally branded project variant, and keep the label concise."
       }
     }
   }
