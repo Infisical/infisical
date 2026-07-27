@@ -14,7 +14,6 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
-import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
@@ -71,7 +70,6 @@ import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
@@ -120,7 +118,6 @@ export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceF
 
 export const secretFolderServiceFactory = ({
   folderDAL,
-  snapshotService,
   permissionService,
   projectEnvDAL,
   folderVersionDAL,
@@ -315,7 +312,6 @@ export const secretFolderServiceFactory = ({
       return { ...doc, path: folderWithFullPath.path };
     });
 
-    await snapshotService.performSnapshot(folder.parentId as string);
     return folder;
   };
 
@@ -464,8 +460,6 @@ export const secretFolderServiceFactory = ({
     // Execute with provided transaction or create new one
     const result = providedTx ? await executeBulkUpdate(providedTx) : await folderDAL.transaction(executeBulkUpdate);
 
-    await Promise.all(result.map(async (res) => snapshotService.performSnapshot(res.newFolder.parentId as string)));
-
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
       projectId,
@@ -593,7 +587,6 @@ export const secretFolderServiceFactory = ({
       return { newFolder: doc, newFolderPath: newFolderWithPath.path, oldFolderPath: oldFolderWithPath.path };
     });
 
-    await snapshotService.performSnapshot(newFolder.parentId as string);
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return {
       folder: { ...newFolder, path: newFolderPath },
@@ -819,7 +812,6 @@ export const secretFolderServiceFactory = ({
       return doc;
     });
 
-    await snapshotService.performSnapshot(folder.parentId as string);
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
     return folder;
   };
@@ -1342,8 +1334,6 @@ export const secretFolderServiceFactory = ({
       return createdFolders;
     };
     const result = providedTx ? await executeBulkCreate(providedTx) : await folderDAL.transaction(executeBulkCreate);
-    const uniqueParentIds = [...new Set(result.map((folder) => folder.parentId).filter(Boolean))];
-    await Promise.all(uniqueParentIds.map((parentId) => snapshotService.performSnapshot(parentId as string)));
 
     return {
       folders: result,
@@ -1486,9 +1476,6 @@ export const secretFolderServiceFactory = ({
     };
 
     const result = providedTx ? await executeBulkDelete(providedTx) : await folderDAL.transaction(executeBulkDelete);
-
-    const uniqueParentIds = [...new Set(result.map((folder) => folder.parentId).filter(Boolean))];
-    await Promise.all(uniqueParentIds.map((parentId) => snapshotService.performSnapshot(parentId as string)));
 
     return {
       folders: result,
@@ -1738,7 +1725,7 @@ export const secretFolderServiceFactory = ({
     // the entire operation: enumerate + lock the source subtree, recreate the tree at the destination, move every
     // folder's secrets (sharing this tx), then delete the emptied source root. a failure anywhere rolls all of
     // it back. side effects (snapshots/syncs/cache) are dispatched after the commit.
-    const { moveResults, destinationParentFolderId } = await folderDAL.transaction(async (tx) => {
+    const { moveResults } = await folderDAL.transaction(async (tx) => {
       const destinationParentFolder = await folderDAL.findBySecretPath(
         projectId,
         destinationEnvironment,
@@ -1997,15 +1984,12 @@ export const secretFolderServiceFactory = ({
       );
 
       return {
-        moveResults: moveResultsList,
-        destinationParentFolderId: destinationParentFolder.id
+        moveResults: moveResultsList
       };
     });
 
-    // now that the move has committed, dispatch side effects once: snapshot + sync each affected source/destination
-    // secret folder, then snapshot the destination parent (the new subtree); finally invalidate the project secret
-    // cache. the source root was deleted above, so its source snapshot is always skipped (the sync still runs so
-    // secret imports referencing the path re-resolve).
+    // now that the move has committed, dispatch side effects once: sync each affected source/destination
+    // secret folder, then invalidate the project secret cache.
     await Promise.all(
       moveResults.map((result) =>
         secretV2BridgeService.dispatchSecretMoveSideEffects({
@@ -2013,14 +1997,10 @@ export const secretFolderServiceFactory = ({
           orgId: actorOrgId,
           actor,
           actorId,
-          ...result,
-          skipSourceSnapshot: true
+          ...result
         })
       )
     );
-
-    // snapshot the destination parent folder so the newly created subtree is captured.
-    await snapshotService.performSnapshot(destinationParentFolderId);
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
 

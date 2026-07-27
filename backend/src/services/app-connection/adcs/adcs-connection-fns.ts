@@ -3,7 +3,7 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway/types";
-import { AdcsRpcEndpoint, callAdcsEndpoint } from "@app/lib/gateway-v2/adcs-rpc";
+import { AdcsRpcEndpoint, AdcsTemplatesResult, callAdcsEndpoint } from "@app/lib/gateway-v2/adcs-rpc";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -108,16 +108,52 @@ type TAdcsConnectionTarget = {
 };
 
 /**
+ * Confirms the certificate authority name is correct and reachable by listing its templates over
+ * the gateway. AD CS rejects an unknown authority name with E_INVALIDARG, so a successful listing
+ * proves both that the gateway/credentials work and that the name matches a CA published on the
+ * host. Throws an actionable BadRequestError otherwise.
+ */
+const assertAdcsCaIsReachable = async (
+  caName: string,
+  target: TAdcsConnectionTarget,
+  deps: TADCSGatewayDeps,
+  wasDiscovered: boolean
+): Promise<void> => {
+  try {
+    await executeAdcsGatewayOperation<AdcsTemplatesResult>({ ...target, endpoint: "/v1/templates", caName }, deps);
+  } catch (error) {
+    // A wrong name surfaces as E_INVALIDARG, whose message repeats the same guidance, so only append
+    // the underlying detail when it adds something (e.g. a transport failure like an SMB/DCOM timeout).
+    const detail = (error as Error)?.message ?? "";
+    const extraDetail = detail && !detail.includes("E_INVALIDARG") ? ` (${detail})` : "";
+    const guidance = wasDiscovered
+      ? `The certificate authority name "${caName}" was discovered from the host, but the gateway could not reach the certificate authority to list its templates. Verify the gateway can connect to the AD CS host over DCOM (MS-WCCE).`
+      : `Could not reach certificate authority "${caName}" through the gateway. Verify the certificate authority name is correct and that the gateway can connect to the AD CS host.`;
+    throw new BadRequestError({ message: `${guidance}${extraDetail}` });
+  }
+};
+
+/**
  * Returns the caller-supplied CA name, or discovers it from the CA host's registry over the
- * gateway (the CertSvc "Active" value) when omitted. `getTarget` is only invoked when discovery
- * is needed, so callers that already have a CA name pay no gateway/credential cost.
+ * gateway (the CertSvc "Active" value) when omitted. `getTarget` is only invoked when a gateway
+ * call is needed, so callers that already have a CA name and do not request validation pay no
+ * gateway/credential cost. When `ensureReachable` is set, the resolved name is validated against
+ * the CA before it is returned.
  */
 export const resolveAdcsCaName = async (
   caName: string | undefined,
   getTarget: () => Promise<TAdcsConnectionTarget>,
-  deps: TADCSGatewayDeps
+  deps: TADCSGatewayDeps,
+  options?: { ensureReachable?: boolean }
 ): Promise<string> => {
-  if (caName) return caName;
+  const ensureReachable = options?.ensureReachable ?? false;
+
+  if (caName) {
+    if (ensureReachable) {
+      await assertAdcsCaIsReachable(caName, await getTarget(), deps, false);
+    }
+    return caName;
+  }
 
   const target = await getTarget();
   const discovered = await executeAdcsGatewayOperation<{ caName: string }>(
@@ -130,6 +166,14 @@ export const resolveAdcsCaName = async (
         "Could not automatically discover the certificate authority name from the host. Provide the Certificate Authority name explicitly."
     });
   }
+
+  // Discovery above proves SMB/registry reachability plus credentials; this second check proves the CA is
+  // reachable over the different DCOM/MS-WCCE path and can list templates, which is what issuance actually
+  // needs. A CA that discovers but cannot list templates is exactly the broken state we reject up front.
+  if (ensureReachable) {
+    await assertAdcsCaIsReachable(discovered.caName, target, deps, true);
+  }
+
   return discovered.caName;
 };
 

@@ -106,7 +106,7 @@ export default function UserInfoStep({
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
   const canSubmit = isPasswordValidated && !isLoading;
   const accountStepTitle = isInvite ? "Set up your account" : t("signup.step3-message");
-  const stepTitle = isAttributionStep ? "One last thing" : accountStepTitle;
+  const stepTitle = isAttributionStep ? "We'd love to know..." : accountStepTitle;
 
   const onSubmit = async (formData: UserInfoFormData) => {
     const latestBreachStatus = await validatePassword(formData.password);
@@ -327,8 +327,8 @@ export default function UserInfoStep({
                   {String(t("signup.signup"))}
                 </Button>
                 <Button
-                  variant="ghost"
-                  size="sm"
+                  variant="outline"
+                  size="lg"
                   isFullWidth
                   onClick={() => setIsAttributionStep(false)}
                 >

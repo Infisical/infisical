@@ -5,7 +5,10 @@
 
 @font-face {
   font-family: "Alliance No. 2";
-  src: url("/fonts/AllianceNo2-Regular.otf") format("opentype");
+  src:
+    url("/fonts/AllianceNo2-Regular.woff2") format("woff2"),
+    url("/fonts/AllianceNo2-Regular.woff") format("woff"),
+    url("/fonts/AllianceNo2-Regular.otf") format("opentype");
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -63,7 +66,9 @@
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
-  --font-alliance: "Alliance No. 2", sans-serif;
+  --font-alliance:
+    "Alliance No. 2", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   --font-inter: "Inter", sans-serif;
   --font-jetbrains-mono: "JetBrains Mono", monospace;
   --max-width-8xl: 88rem; /* 1408px */

@@ -40,7 +40,7 @@ Start by configuring the resources Agent Proxy needs within Infisical to broker 
 
 2. Configure a [proxied service](/documentation/platform/agent-proxy/proxied-services) in Infisical. This defines the external service (e.g. `api.anthropic.com`, `api.github.com`, `slack.com`, etc.) that Agent Proxy can broker access to using the credential.
 
-3. Configure a [machine identity](/documentation/platform/identities/machine-identities) for Agent Proxy using [Universal Auth](/documentation/platform/identities/universal-auth) and another one for your agent.
+3. Configure a [machine identity](/documentation/platform/identities/machine-identities) for Agent Proxy and another one for your agent, each with [Universal Auth](/documentation/platform/identities/universal-auth). When creating them, grant their permissions in one step with the built-in **Agent Proxy Policies** and **Agent Policies** templates under Additional Privileges.
 
 Next, set up an instance of Agent Proxy on a separate host machine:
 

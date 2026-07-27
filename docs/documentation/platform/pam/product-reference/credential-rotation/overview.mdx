@@ -24,7 +24,7 @@ The rotation account is the account whose credentials are used to connect to the
 - **None**: no rotation account is set. The account will not rotate until one is chosen, even if its template has rotation enabled.
 
 <Note>
-  A delegated rotation account must connect to the **same host and port** as the account being rotated, because the password change runs over the rotation account's own connection. In practice, both accounts point at the same database server, though they can be different users on it (for example, a privileged administrator rotating a less privileged account).
+  A delegated rotation account must connect to the **same resource** as the account being rotated, because the password change runs over the rotation account's own connection. For databases this means the same host and port; for Windows AD it means the same domain. The two accounts can still be different users (for example, a privileged administrator rotating a less privileged account).
 </Note>
 
 ## How it Works
@@ -73,7 +73,7 @@ To rotate immediately without waiting for the next scheduled run, click **Rotate
 
 Each resource type applies the password change differently and has its own requirements for the rotation account. See the resource-specific page for the exact statement, the privileges the rotation account needs, and any special cases.
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/product-reference/credential-rotation/postgresql">
     Rotates a role's password with `ALTER USER`.
   </Card>
@@ -82,5 +82,8 @@ Each resource type applies the password change differently and has its own requi
   </Card>
   <Card title="Microsoft SQL Server" icon="database" href="/documentation/platform/pam/product-reference/credential-rotation/mssql">
     Rotates a SQL Server login's password with `ALTER LOGIN`.
+  </Card>
+  <Card title="Windows" icon="windows" href="/documentation/platform/pam/product-reference/credential-rotation/windows">
+    Rotates local Windows and Active Directory account passwords over WinRM.
   </Card>
 </CardGroup>

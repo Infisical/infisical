@@ -435,7 +435,7 @@ export const licenseV2ServiceFactory = ({
     const needsCatalog = Boolean(subscription?.items.length);
     if (needsCatalog) {
       try {
-        const catalog = await licenseClient.getCatalog();
+        const catalog = await licenseClient.getCatalog(org.id);
         catalog?.products.forEach((product) => {
           catalogProductById.set(product.id, product);
           product.dimensions.forEach((dimension) => {
@@ -777,7 +777,10 @@ export const licenseV2ServiceFactory = ({
       entitlements,
       trialedProductKeys,
       onDemandAmount,
-      checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false
+      checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false,
+      // false for an enterprise-managed org (self-serve mutations 403); default true keeps paygo and
+      // older servers unchanged.
+      selfServe: subscription?.capabilities?.selfServe ?? true
     };
 
     return { overview };
@@ -794,7 +797,7 @@ export const licenseV2ServiceFactory = ({
   const getCatalog = async ({ orgId, actor }: TGetBillingV2CatalogDTO) => {
     await ensureBillingRead(orgId, actor);
 
-    const catalog = await licenseClient.getCatalog();
+    const catalog = await licenseClient.getCatalog(orgId);
     if (!catalog) {
       return { products: [] };
     }
@@ -840,7 +843,7 @@ export const licenseV2ServiceFactory = ({
   }: TBuyBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
 
-    const catalog = await licenseClient.getCatalog();
+    const catalog = await licenseClient.getCatalog(orgId);
     const product = catalog?.products.find((candidate) => candidate.id === productId);
     if (!product) {
       throw new NotFoundError({ message: `Product with ID '${productId}' not found` });
@@ -896,7 +899,7 @@ export const licenseV2ServiceFactory = ({
 
     const payload: TSubscriptionPreviewPayload = {};
     if (addProductId) {
-      const catalog = await licenseClient.getCatalog();
+      const catalog = await licenseClient.getCatalog(orgId);
       const product = catalog?.products.find((candidate) => candidate.id === addProductId);
       if (!product) {
         throw new NotFoundError({ message: `Product with ID '${addProductId}' not found` });
@@ -941,16 +944,23 @@ export const licenseV2ServiceFactory = ({
     };
   };
 
-  const changeCommitments = async ({ orgId, actor, changes }: TChangeBillingV2CommitmentDTO) => {
+  const changeCommitments = async ({ orgId, actor, changes, productId }: TChangeBillingV2CommitmentDTO) => {
     await ensureManageBilling(orgId, actor);
     if (!changes.length) {
       throw new BadRequestError({ message: "Provide at least one commitment change" });
     }
     const result = await licenseClient.changeCommitments(orgId, {
+      productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
     await licenseClient.invalidateEntitlements(orgId);
-    return { subscriptionId: result.subscriptionId };
+    if (result.outcome === "checkout_created") {
+      if (!result.checkoutUrl) {
+        throw new InternalServerError({ message: "Checkout session did not return a URL" });
+      }
+      return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
+    }
+    return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
   // Start a plan-scoped self-serve trial. The trial is granted immediately (no upfront charge);

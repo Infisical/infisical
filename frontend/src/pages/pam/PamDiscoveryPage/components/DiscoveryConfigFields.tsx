@@ -24,6 +24,7 @@ import { PamAccountType, PamDiscoverySchedule, useListPamAccountsAdmin } from "@
 
 export const discoveryConfigFormShape = {
   scanLocalAccounts: z.boolean(),
+  discoverDependencies: z.boolean(),
   winrmPort: z.coerce.number().int().min(1).max(65535),
   useWinrmHttps: z.boolean(),
   winrmRejectUnauthorized: z.boolean(),
@@ -34,6 +35,7 @@ export type TDiscoveryConfigFields = z.infer<z.ZodObject<typeof discoveryConfigF
 
 export const DISCOVERY_CONFIG_DEFAULTS: TDiscoveryConfigFields = {
   scanLocalAccounts: true,
+  discoverDependencies: false,
   winrmPort: 5985,
   useWinrmHttps: false,
   winrmRejectUnauthorized: true,
@@ -44,6 +46,7 @@ export const discoveryConfigFromSource = (
   config: Record<string, unknown>
 ): TDiscoveryConfigFields => ({
   scanLocalAccounts: config.scanLocalAccounts !== false,
+  discoverDependencies: Boolean(config.discoverDependencies),
   winrmPort:
     typeof config.winrmPort === "number" ? config.winrmPort : DISCOVERY_CONFIG_DEFAULTS.winrmPort,
   useWinrmHttps: Boolean(config.useWinrmHttps),
@@ -55,13 +58,18 @@ export const buildDiscoveryConfiguration = (
   data: TDiscoveryConfigFields
 ): Record<string, unknown> => ({
   scanLocalAccounts: data.scanLocalAccounts,
+  discoverDependencies: data.discoverDependencies,
   winrmPort: data.winrmPort,
   useWinrmHttps: data.useWinrmHttps,
   winrmRejectUnauthorized: data.winrmRejectUnauthorized,
   ...(data.winrmCaCert.trim() ? { winrmCaCert: data.winrmCaCert.trim() } : {})
 });
 
-type ToggleName = "scanLocalAccounts" | "useWinrmHttps" | "winrmRejectUnauthorized";
+type ToggleName =
+  | "scanLocalAccounts"
+  | "discoverDependencies"
+  | "useWinrmHttps"
+  | "winrmRejectUnauthorized";
 
 const ToggleField = ({
   control,
@@ -94,13 +102,19 @@ export const DiscoveryConfigFields = ({
   control: Control<TDiscoveryConfigFields>;
 }) => {
   const scanLocalAccounts = useWatch({ control, name: "scanLocalAccounts" });
+  const discoverDependencies = useWatch({ control, name: "discoverDependencies" });
   const useWinrmHttps = useWatch({ control, name: "useWinrmHttps" });
 
   return (
     <>
       <ToggleField control={control} name="scanLocalAccounts" label="Discover local accounts" />
+      <ToggleField
+        control={control}
+        name="discoverDependencies"
+        label="Discover account dependencies"
+      />
 
-      {scanLocalAccounts && (
+      {(scanLocalAccounts || discoverDependencies) && (
         <>
           <Controller
             control={control}

@@ -1,0 +1,61 @@
+---
+title: "Windows Credential Rotation"
+sidebarTitle: "Windows"
+description: "Rotate local Windows and Active Directory account passwords with Infisical PAM."
+---
+
+This page covers what is specific to rotating a [Windows account](/documentation/platform/pam/accounts/windows) (local) or a [Windows AD account](/documentation/platform/pam/accounts/windows-ad) (domain). For how rotation is configured and scheduled, see the [overview](/documentation/platform/pam/product-reference/credential-rotation/overview).
+
+Windows rotation runs over **WinRM**, tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview). The account's WinRM settings (port, HTTPS, and CA certificate) come from its connection details.
+
+## How the password is changed
+
+<Tabs>
+  <Tab title="Windows (local)">
+    The rotation account connects to the account's **host** over WinRM and resets the local user's password:
+
+    ```powershell
+    Set-LocalUser -Name '<target_user>' -Password (ConvertTo-SecureString '<generated_password>' -AsPlainText -Force)
+    ```
+  </Tab>
+  <Tab title="Windows AD (domain)">
+    The rotation account connects to the **domain controller** (the account's DC address) over WinRM and resets the domain account's password:
+
+    ```powershell
+    Import-Module ActiveDirectory
+    Set-ADAccountPassword -Identity '<target_user>' -Reset -NewPassword (ConvertTo-SecureString '<generated_password>' -AsPlainText -Force)
+    ```
+  </Tab>
+</Tabs>
+
+## Rotation account requirements
+
+<Tabs>
+  <Tab title="Windows (local)">
+    - **Self-rotation**: the account changes its own password. This requires the account to be able to sign in over WinRM and to hold the rights to change its own credential. Many local accounts cannot, so delegated rotation is the common choice.
+    - **Delegated rotation**: a **local administrator on the same host** performs the change. This is the recommended setup for local accounts, because the administrator can both reset the password and verify it on the box.
+
+    A delegated rotation account must connect to the **same host** as the account it rotates.
+  </Tab>
+  <Tab title="Windows AD (domain)">
+    Domain accounts use **delegated rotation**: a separate domain account with permission to reset the target account's password (for example, an account with delegated control over the target's OU, or a suitable administrative account).
+
+    The rotation account must be a **different directory identity** than the account it rotates. An account cannot reset its own domain password this way, and Infisical rejects a rotation account that resolves to the same directory object as the target.
+
+    A delegated rotation account must belong to the **same domain** as the account it rotates, since the reset runs against that domain's controller.
+  </Tab>
+</Tabs>
+
+## Prerequisites
+
+- A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to the target host (local accounts) or the domain controller (domain accounts).
+- **WinRM enabled** and reachable on the host or domain controller the rotation connects to.
+- A rotation account configured on the account, as described above.
+
+<Note>
+  For an untrusted Gateway-to-host network segment, enable **WinRM over HTTPS** on the account so the connection is protected by TLS. Over plain HTTP, WinRM relies on NTLM message sealing.
+</Note>
+
+## Dependencies
+
+Rotating a Windows account also updates the services, scheduled tasks, and IIS application pools that run as that account, so they keep working with the new password. See [Account Dependencies](/documentation/platform/pam/dependencies/overview) for how dependencies are detected and synced.

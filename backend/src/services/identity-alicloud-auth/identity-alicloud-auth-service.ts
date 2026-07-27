@@ -63,7 +63,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -357,6 +357,7 @@ export const identityAliCloudAuthServiceFactory = ({
       );
       return doc;
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.ALICLOUD_AUTH);
     return { ...identityAliCloudAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -453,6 +454,7 @@ export const identityAliCloudAuthServiceFactory = ({
         : undefined
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.ALICLOUD_AUTH);
     return { ...updatedAliCloudAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -600,6 +602,7 @@ export const identityAliCloudAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.ALICLOUD_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.ALICLOUD_AUTH);
 
     return revokedIdentityAliCloudAuth;
   };

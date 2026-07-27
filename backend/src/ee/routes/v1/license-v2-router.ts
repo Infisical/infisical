@@ -168,7 +168,8 @@ const BillingV2OverviewSchema = z.object({
   entitlements: z.record(BillingV2EntitlementSchema),
   trialedProductKeys: z.string().array(),
   onDemandAmount: z.number(),
-  checkoutFrozen: z.boolean()
+  checkoutFrozen: z.boolean(),
+  selfServe: z.boolean()
 });
 
 const BillingV2PreviewLineSchema = z.object({
@@ -437,10 +438,15 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20)
+        changes: BillingV2CommitmentChangeSchema.array().min(1).max(20),
+        productId: z.string().trim()
       }),
       response: {
-        200: BillingV2MutationResultSchema
+        200: z.object({
+          outcome: z.enum(["checkout_created", "subscription_updated"]),
+          checkoutUrl: z.string().optional(),
+          subscriptionId: z.string().optional()
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -448,7 +454,8 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       return server.services.licenseV2.changeCommitments({
         orgId: req.params.organizationId,
         actor: buildActor(req.permission),
-        changes: req.body.changes
+        changes: req.body.changes,
+        productId: req.body.productId
       });
     }
   });
@@ -467,7 +474,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          outcome: z.literal("trial_started"),
+          outcome: z.enum(["trial_started", "awaiting_card"]),
           cardSetupUrl: z.string().optional()
         })
       }

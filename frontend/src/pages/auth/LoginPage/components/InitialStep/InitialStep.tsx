@@ -324,7 +324,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
             <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
               Log in to Infisical
             </CardTitle>
-            <CardAction className="-mr-2">
+            <CardAction>
               <RegionSelect compact />
             </CardAction>
           </CardHeader>
@@ -356,7 +356,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
           <CardDescription className="ml-0.5 text-base">
             {isAdmin ? "Sign in to the Super Admin console" : "Sign in to your Infisical account"}
           </CardDescription>
-          <CardAction className="-mr-2">
+          <CardAction>
             <RegionSelect compact />
           </CardAction>
         </CardHeader>
