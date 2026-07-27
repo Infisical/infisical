@@ -1,22 +1,17 @@
-/* eslint-disable no-nested-ternary */
 import { BsMicrosoftTeams } from "react-icons/bs";
-import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Spinner,
-  Td,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+  IconButton,
+  TableCell,
+  TableRow
+} from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetMicrosoftTeamsIntegrationTeams } from "@app/hooks/api";
 import {
   ProjectWorkflowIntegrationConfig,
@@ -24,9 +19,10 @@ import {
 } from "@app/hooks/api/workflowIntegrations/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { NotificationChannelsCell } from "./NotificationChannelsCell";
+
 type Props = {
   microsoftTeamsConfig?: ProjectWorkflowIntegrationConfig | null;
-  isMicrosoftTeamsConfigLoading: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIntegration", "editIntegration"]>,
     data?: {
@@ -36,11 +32,12 @@ type Props = {
   ) => void;
 };
 
-export const MicrosoftTeamsConfigRow = ({
-  handlePopUpOpen,
-  isMicrosoftTeamsConfigLoading,
-  microsoftTeamsConfig
-}: Props) => {
+const getChannelNames = (
+  channels: { channelIds: string[] } | undefined,
+  channelIdToName: Record<string, string>
+) => (channels?.channelIds ?? []).map((channelId) => channelIdToName[channelId]).filter(Boolean);
+
+export const MicrosoftTeamsConfigRow = ({ handlePopUpOpen, microsoftTeamsConfig }: Props) => {
   const { data: microsoftTeamsChannels, isPending: isMicrosoftTeamsChannelsLoading } =
     useGetMicrosoftTeamsIntegrationTeams(microsoftTeamsConfig?.integrationId);
   const microsoftTeamsChannelIdToName = Object.fromEntries(
@@ -53,105 +50,88 @@ export const MicrosoftTeamsConfigRow = ({
     return null;
   }
 
-  const isLoadingConfig = isMicrosoftTeamsChannelsLoading || isMicrosoftTeamsConfigLoading;
-
   return (
-    <Tr>
-      <Td className="flex max-w-xs items-center overflow-hidden text-ellipsis">
+    <TableRow>
+      <TableCell>
         <div className="flex items-center gap-2">
           <BsMicrosoftTeams />
           Microsoft Teams
         </div>
-      </Td>
-      <Td>
-        {microsoftTeamsConfig.isAccessRequestNotificationEnabled &&
-        !isLoadingConfig &&
-        microsoftTeamsConfig.accessRequestChannels?.channelIds?.length > 0 ? (
-          <p>
-            {microsoftTeamsConfig.accessRequestChannels.channelIds
-              .map((channel) => microsoftTeamsChannelIdToName[channel])
-              .join(", ")}
-          </p>
-        ) : isLoadingConfig ? (
-          <Spinner size="xs" />
-        ) : (
-          <Badge variant="neutral">
-            <BanIcon />
-            Disabled
-          </Badge>
+      </TableCell>
+      <NotificationChannelsCell
+        isLoading={isMicrosoftTeamsChannelsLoading}
+        isEnabled={microsoftTeamsConfig.isAccessRequestNotificationEnabled}
+        channelNames={getChannelNames(
+          microsoftTeamsConfig.accessRequestChannels,
+          microsoftTeamsChannelIdToName
         )}
-      </Td>
-      <Td>
-        {microsoftTeamsConfig.isSecretRequestNotificationEnabled &&
-        !isLoadingConfig &&
-        microsoftTeamsConfig.secretRequestChannels?.channelIds?.length > 0 ? (
-          <p>
-            {microsoftTeamsConfig.secretRequestChannels.channelIds
-              .map((channel) => microsoftTeamsChannelIdToName[channel])
-              .join(", ")}
-          </p>
-        ) : isLoadingConfig ? (
-          <Spinner size="xs" />
-        ) : (
-          <Badge variant="neutral">
-            <BanIcon />
-            Disabled
-          </Badge>
+      />
+      <NotificationChannelsCell
+        isLoading={isMicrosoftTeamsChannelsLoading}
+        isEnabled={microsoftTeamsConfig.isSecretRequestNotificationEnabled}
+        channelNames={getChannelNames(
+          microsoftTeamsConfig.secretRequestChannels,
+          microsoftTeamsChannelIdToName
         )}
-      </Td>
-      <Td>
-        <Badge variant="danger">Disabled</Badge>
-      </Td>
-      <Td>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="flex justify-end hover:text-primary-400 data-[state=open]:text-primary-400">
-              <FontAwesomeIcon size="sm" icon={faEllipsis} />
-            </div>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-1">
-            <OrgPermissionCan I={OrgPermissionActions.Edit} an={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-
-                    handlePopUpOpen("editIntegration", {
-                      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
-                    });
-                  }}
-                >
-                  Edit
-                </DropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-            <OrgPermissionCan I={OrgPermissionActions.Delete} an={OrgPermissionSubjects.Settings}>
-              {(isAllowed) => (
-                <DropdownMenuItem
-                  disabled={!isAllowed}
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-
-                    handlePopUpOpen("removeIntegration", {
-                      integrationId: microsoftTeamsConfig.integrationId,
-                      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
-                    });
-                  }}
-                >
-                  Delete
-                </DropdownMenuItem>
-              )}
-            </OrgPermissionCan>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </Td>
-    </Tr>
+      />
+      <TableCell>
+        <span className="text-muted">Not supported</span>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label="Actions for Microsoft Teams integration"
+              >
+                <MoreHorizontal />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={ProjectPermissionSub.Settings}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed}
+                    onClick={() =>
+                      handlePopUpOpen("editIntegration", {
+                        integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+                      })
+                    }
+                  >
+                    <Pencil />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Delete}
+                a={ProjectPermissionSub.Settings}
+              >
+                {(isAllowed) => (
+                  <DropdownMenuItem
+                    variant="danger"
+                    isDisabled={!isAllowed}
+                    onClick={() =>
+                      handlePopUpOpen("removeIntegration", {
+                        integrationId: microsoftTeamsConfig.integrationId,
+                        integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS
+                      })
+                    }
+                  >
+                    <Trash2 />
+                    Remove
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </TableCell>
+    </TableRow>
   );
 };

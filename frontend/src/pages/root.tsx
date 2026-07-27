@@ -5,7 +5,8 @@ import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
 import { adminQueryKeys, fetchServerConfig } from "@app/hooks/api/admin/queries";
 import { TServerConfig } from "@app/hooks/api/admin/types";
-import { authKeys, fetchAuthToken } from "@app/hooks/api/auth/queries";
+import { authKeys } from "@app/hooks/api/auth/queries";
+import { fetchAuthToken, shouldRetryAuthTokenFetch } from "@app/hooks/api/auth/refresh";
 import { queryClient } from "@app/hooks/api/reactQuery";
 
 type TRouterContext = {
@@ -27,21 +28,23 @@ const RootPage = () => {
 export const Route = createRootRouteWithContext<TRouterContext>()({
   component: RootPage,
   beforeLoad: async ({ context }) => {
-    await context.queryClient
+    const authToken = await context.queryClient
       .fetchQuery({
         queryKey: authKeys.getAuthToken,
         queryFn: fetchAuthToken,
-        staleTime: Infinity
+        staleTime: Infinity,
+        retry: shouldRetryAuthTokenFetch
       })
       .catch(() => {
         // No valid refresh cookie — boot continues unauthenticated.
         // Downstream middlewares handle redirects for protected routes.
+        return null;
       });
 
     const serverConfig = await context.queryClient.ensureQueryData({
       queryKey: adminQueryKeys.serverConfig(),
       queryFn: fetchServerConfig
     });
-    return { serverConfig };
+    return { authToken, serverConfig };
   }
 });

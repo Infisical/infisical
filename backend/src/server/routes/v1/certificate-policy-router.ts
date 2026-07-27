@@ -180,24 +180,24 @@ const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1).optional().describe(openApiHidden()),
   name: slugSchema({ min: 1, max: 255, field: "Name" }),
   description: z.string().max(1000).optional(),
-  subject: z.array(policySubjectSchema).optional(),
-  sans: z.array(policySanSchema).optional(),
-  keyUsages: policyKeyUsagesSchema.optional(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
-  algorithms: policyAlgorithmsSchema.optional(),
-  validity: policyValiditySchema.optional(),
+  subject: z.array(policySubjectSchema).nullish(),
+  sans: z.array(policySanSchema).nullish(),
+  keyUsages: policyKeyUsagesSchema.nullish(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
+  algorithms: policyAlgorithmsSchema.nullish(),
+  validity: policyValiditySchema.nullish(),
   basicConstraints: policyBasicConstraintsSchema.optional()
 });
 
 const updateCertificatePolicySchema = z.object({
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
   description: z.string().max(1000).optional(),
-  subject: z.array(policySubjectSchema).optional(),
-  sans: z.array(policySanSchema).optional(),
-  keyUsages: policyKeyUsagesSchema.optional(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.optional(),
-  algorithms: policyAlgorithmsSchema.optional(),
-  validity: policyValiditySchema.optional(),
+  subject: z.array(policySubjectSchema).nullish(),
+  sans: z.array(policySanSchema).nullish(),
+  keyUsages: policyKeyUsagesSchema.nullish(),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
+  algorithms: policyAlgorithmsSchema.nullish(),
+  validity: policyValiditySchema.nullish(),
   basicConstraints: policyBasicConstraintsSchema.optional()
 });
 

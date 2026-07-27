@@ -20,7 +20,7 @@ import {
   useRemoveBillingV2Product
 } from "@app/hooks/api";
 
-import { dimAnnualCommitted, fmtMoney } from "../billing-v2-format";
+import { dimCommitted, fmtMoney } from "../billing-v2-format";
 
 // Removing the last product cancels the whole subscription (handled by the remove endpoint). The
 // unused-time wording depends on whether the plan carries a minimum (annual) commitment.
@@ -38,9 +38,6 @@ type Props = {
   onRemoved: () => void;
 };
 
-const getServerMessage = (err: unknown): string | undefined =>
-  (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-
 export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props) => {
   // Overview is already cached by the page (same orgId key), so this reuses it without refetching.
   // Count every entitled product (the backend marks every subscription item entitled, including
@@ -53,9 +50,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
   ).length;
   const isOnlyProduct = overviewReady && entitledProductCount === 1;
   // A minimum (annual) commitment means unused time is not credited/refunded on removal.
-  const hasCommitment = (overview?.entitlements[product.id]?.dimensions ?? []).some(
-    dimAnnualCommitted
-  );
+  const hasCommitment = (overview?.entitlements[product.id]?.dimensions ?? []).some(dimCommitted);
 
   const preview = usePreviewBillingV2Change();
   const removeProduct = useRemoveBillingV2Product();
@@ -82,11 +77,8 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
           : `${product.name} will be removed. It may take a moment to update here.`
       });
       onRemoved();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: getServerMessage(err) ?? `Failed to remove ${product.name}.`
-      });
+    } catch {
+      // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
     }
   };
 

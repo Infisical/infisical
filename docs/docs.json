@@ -630,6 +630,8 @@
                       "documentation/platform/agent-proxy/overview",
                       "documentation/platform/agent-proxy/quickstart",
                       "documentation/platform/agent-proxy/proxied-services",
+                      "documentation/platform/agent-proxy/deployment",
+                      "documentation/platform/agent-proxy/connecting-agents",
                       "documentation/platform/agent-proxy/activity-logs",
                       "documentation/platform/agent-proxy/security"
                     ]
@@ -1116,7 +1118,8 @@
                       "documentation/platform/pam/product-reference/credential-rotation/overview",
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
                   {
@@ -1125,6 +1128,12 @@
                       "documentation/platform/pam/discovery/overview",
                       "documentation/platform/pam/discovery/active-directory",
                       "documentation/platform/pam/discovery/unix"
+                    ]
+                  },
+                  {
+                    "group": "Dependencies",
+                    "pages": [
+                      "documentation/platform/pam/dependencies/overview"
                     ]
                   },
                   {

@@ -77,3 +77,7 @@ upgrade-impact/.local-output/
 
 /npm/bin
 __pycache__
+
+# Local Codex design QA artifacts
+/.design-qa/
+/design-qa.md

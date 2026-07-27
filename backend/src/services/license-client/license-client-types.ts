@@ -24,6 +24,7 @@ const entitlementProductSchema = z
 // cloud/self-hosted version skew doesn't break reads.
 export const entitlementsResponseSchema = z
   .object({
+    slug: z.string().nullish(),
     features: z.record(z.string(), entitlementFeatureSchema),
     products: z.array(entitlementProductSchema).default([])
   })
@@ -141,7 +142,11 @@ const subscriptionItemDimensionSchema = z
     committedRateCents: z.number().nullish(),
     onDemandRateCents: z.number().nullish(),
     freeBand: z.number().nullish(),
-    rateCents: z.number().nullish()
+    rateCents: z.number().nullish(),
+    commitAvailable: z.boolean().default(false),
+    renewalDate: z.number().nullish(),
+    canDecreaseNow: z.boolean().nullish(),
+    decreaseAllowedFrom: z.number().nullish()
   })
   .passthrough();
 
@@ -199,6 +204,13 @@ const subscriptionBillingSchema = z
 export const subscriptionResponseSchema = z
   .object({
     status: z.string(),
+    // checkoutFrozen: mutating billing actions are frozen server-side (DISABLE_CHECKOUT); the client
+    // disables controls ahead of a 503. selfServe: false for an enterprise-managed org (its mutations
+    // 403 with not_self_serve), true for paygo. Defaults true so paygo and older servers are unchanged.
+    capabilities: z
+      .object({ checkoutFrozen: z.boolean().default(false), selfServe: z.boolean().default(true) })
+      .passthrough()
+      .nullish(),
     // Per-line billing: there is no subscription-level cadence/period/total (a subscription can mix
     // monthly and annual lines). These top-level fields are legacy summaries kept nullish for
     // back-compat with older servers; read `billing` for the authoritative per-line view.
@@ -229,10 +241,9 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
-// Proration preview for an add/remove against an existing subscription. prorationAmount is signed:
-// positive is charged now (an add), negative is a credit toward the next invoice (a removal). The
-// server prorates at request time; no client-supplied timestamp is accepted (it would let a caller
-// pick a cheaper proration instant), so the preview carries an amount but not a timestamp to echo.
+// Proration preview for an add/remove/commitment change. prorationAmount is signed: positive is
+// charged now (an add/increase), negative is a credit toward the next invoice (a removal). prorationDate
+// is the instant the server priced at; echo it back into the apply so it reproduces the exact charge.
 const subscriptionPreviewLineSchema = z
   .object({
     description: z.string(),
@@ -245,8 +256,11 @@ export const subscriptionPreviewResponseSchema = z
   .object({
     currency: z.string(),
     prorationAmount: z.number(),
+    additionalCharges: z.number().default(0),
+    totalDueNow: z.number().nullish(),
     nextInvoiceTotal: z.number(),
     nextRecurringTotal: z.number(),
+    prorationDate: z.number().nullish(),
     lines: z.array(subscriptionPreviewLineSchema).default([])
   })
   .passthrough();
@@ -337,40 +351,39 @@ export type TCloudPlanResponse = z.infer<typeof cloudPlanResponseSchema>;
 export type TBillingProfileResponse = z.infer<typeof billingProfileResponseSchema>;
 export type TSubscriptionPreview = z.infer<typeof subscriptionPreviewResponseSchema>;
 
-export type TCheckoutLineItem = {
+export type TProductLineItem = {
   productId: string;
   plan: string;
-  cadence: string;
-  // Legacy per-unit quantities (pre-commitment). Superseded by commitments for an annual per_resource
-  // line; kept optional so the server tolerates either during rollout.
+  cadence?: string;
   quantities?: Record<string, number>;
-  // Per-dimension committed quantity; REQUIRED for an annual per_resource line, omitted for monthly.
-  commitments?: Record<string, number>;
+  declaredUsage?: Record<string, number>;
 };
 
-// A single per_resource commitment quantity change (preview) applied post-purchase.
+// A single per_resource commitment quantity change (shared by preview commitmentChanges and the
+// multi-dimension commitment apply).
 export type TCommitmentChange = {
   dimensionKey: string;
   quantity: number;
 };
 
 export type TSubscriptionPreviewPayload = {
-  add?: TCheckoutLineItem[];
+  add?: TProductLineItem[];
   remove?: string[];
   commitmentChanges?: TCommitmentChange[];
 };
 
-export type TAddSubscriptionItemsPayload = {
-  items: TCheckoutLineItem[];
-};
-
-export type TCreateCheckoutPayload = {
-  items: TCheckoutLineItem[];
+export type TBuyProductPayload = {
+  productId: string;
+  plan: string;
+  cadence?: string;
+  // Committed units (annual commitment lines only; ignored on monthly).
+  quantities?: Record<string, number>;
+  // Present actual usage per per_resource dimension (sizes a monthly line, seeds the usage reading).
+  declaredUsage?: Record<string, number>;
   email?: string;
   // Absolute return URL; its origin must be in the license server's CUSTOMER_PORTAL_ORIGINS allowlist
-  // (the multi-region fix). returnPath is the relative back-compat fallback.
+  // (the multi-region fix).
   returnUrl?: string;
-  returnPath?: string;
 };
 
 export type TCreatePortalPayload = {
@@ -378,11 +391,14 @@ export type TCreatePortalPayload = {
   returnPath?: string;
 };
 
-// Self-serve apply of a previewed commitment change. The server prorates at commit time; the caller
-// cannot supply a proration timestamp (that would let a billing user pick a cheaper instant).
-export type TChangeCommitmentPayload = {
-  dimensionKey: string;
-  quantity: number;
+// Start / change annual commitments across dimensions (PUT /subscription/commitments), all-or-nothing.
+// The license server prices at its current time; the app never forwards a client-supplied instant.
+// productId is required: it names the product so the server can resolve the trialing plan and
+// create/attach the subscription when there isn't one yet (a trialing org) instead of having to infer
+// it. Not trialing the named product → product_not_trialing.
+export type TChangeCommitmentsPayload = {
+  productId: string;
+  dimensions: TCommitmentChange[];
 };
 
 export type TStartTrialPayload = {
@@ -391,15 +407,15 @@ export type TStartTrialPayload = {
   // A trial starts with no Stripe customer yet, so the server needs an email + org name to create one.
   email?: string;
   name?: string;
+  returnUrl?: string;
 };
 
-// The trial is always granted immediately (our-side, no Stripe subscription, no upfront charge), so
-// outcome is always "trial_started". cardSetupUrl is a best-effort setup-mode Checkout to add a card;
-// omitted when there's no customer / the portal isn't configured / the session couldn't open. The
-// card never gates the trial — at trial end a worker converts (card on file) or expires to free.
+// Card-first trial. "trial_started" (HTTP 200): a card is already on file, the trial is granted now.
+// "awaiting_card" (HTTP 402): no card, NOT granted; card_setup_url is a setup-mode Checkout, and
+// completing it grants the trial via webhook. Abandoning it grants nothing. Retry is safe.
 const trialResultSchema = z
   .object({
-    outcome: z.literal("trial_started"),
+    outcome: z.enum(["trial_started", "awaiting_card"]),
     card_setup_url: z
       .string()
       .url()
@@ -409,7 +425,7 @@ const trialResultSchema = z
       .optional()
   })
   .passthrough();
-export type TTrialResult = { outcome: "trial_started"; cardSetupUrl?: string };
+export type TTrialResult = { outcome: "trial_started" | "awaiting_card"; cardSetupUrl?: string };
 export { trialResultSchema };
 
 export type TCancelTrialPayload = {
@@ -442,17 +458,20 @@ export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
   // Ask the license server to recompute/bust its cached entitlements after a license change.
   refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
-  fetchCatalog: () => Promise<TCatalogResponse>;
+  // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the
+  // arg and hits its single-tenant /v1/products.
+  fetchCatalog: (orgId: string) => Promise<TCatalogResponse>;
   fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
   fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
   fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
-  createCheckoutSession: (orgId: string, payload: TCreateCheckoutPayload) => Promise<TCheckoutResult>;
   createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
   previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
-  addSubscriptionItems: (orgId: string, payload: TAddSubscriptionItemsPayload) => Promise<TCheckoutResult>;
-  removeSubscriptionItem: (orgId: string, productId: string) => Promise<TCheckoutResult>;
-  // Apply a previewed per_resource commitment change (self-serve).
-  changeCommitment: (orgId: string, payload: TChangeCommitmentPayload) => Promise<TCheckoutResult>;
+  // Buy/add one product; self-selects append vs hosted Checkout server side.
+  buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;
+  // Remove one product; removing the last product cancels the subscription.
+  removeProduct: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  // Start / change annual commitments across dimensions (all-or-nothing).
+  changeCommitments: (orgId: string, payload: TChangeCommitmentsPayload) => Promise<TCheckoutResult>;
   // Start a plan-scoped self-serve trial.
   startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
   // Cancel an in-progress trial for a product (product → free; the trial never converts).

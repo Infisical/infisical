@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Package, RefreshCw } from "lucide-react";
+import { CSSProperties, ReactNode } from "react";
+import { DollarSign, Package, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -26,31 +26,40 @@ import {
 
 import {
   byDisplayOrder,
+  commitSavingsNudge,
   dimHasCeiling,
   fmtMoney,
   productAnnualCommitted,
   tierLabel
 } from "../../billing-v2-format";
 import { asPlanDeprecation, deprecationSubline } from "../deprecation/deprecation-data";
-import {
-  ActiveBadge,
-  CardEmpty,
-  DimensionMeter,
-  DimensionRateLegend,
-  ProductIcon
-} from "../shared";
+import { ActiveBadge, CardEmpty, DimensionMeter, ProductIcon } from "../shared";
 
 type ActiveProductCardProps = {
   prod: BillingV2CatalogProduct;
   entitlement?: BillingV2Entitlement;
   readOnly?: boolean;
+  selfServe: boolean;
   onManage: (id: string) => void;
+  onSetCommitment: (id: string) => void;
 };
 
 // Full-width card for an active product: identity and status, price, Manage action, usage meters.
-const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProductCardProps) => {
+const ActiveProductCard = ({
+  prod,
+  entitlement,
+  readOnly,
+  selfServe,
+  onManage,
+  onSetCommitment
+}: ActiveProductCardProps) => {
+  // "Commit annually and save" nudge: shown when the org holds this product monthly but hasn't set the
+  // available commitment. Clicking opens the set-commitment flow. Hidden for enterprise-managed orgs.
+  const commitNudge = readOnly || !selfServe ? null : commitSavingsNudge(entitlement);
   // Every deprecation is presented as a retiring plan for now (see asPlanDeprecation).
-  const deprecation = asPlanDeprecation(entitlement?.deprecation);
+  const deprecation = !entitlement?.planTier?.includes("enterprise")
+    ? asPlanDeprecation(entitlement?.deprecation)
+    : null;
   const isProductDeprecated = deprecation?.kind === "product";
   const isPlanDeprecated = deprecation?.kind === "plan";
 
@@ -109,15 +118,9 @@ const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProd
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[15px] font-semibold text-foreground">{prod.name}</span>
-            {/* Plan retiring: strikethrough tier chip in warning tone. Otherwise the plain tier chip. */}
-            {entitlement?.planTier &&
-              (isPlanDeprecated ? (
-                <Badge variant="warning" className="line-through">
-                  {tierLabel(entitlement.planTier)}
-                </Badge>
-              ) : (
-                <Badge variant="info">{tierLabel(entitlement.planTier)}</Badge>
-              ))}
+            {entitlement?.planTier && (
+              <Badge variant="info">{tierLabel(entitlement.planTier)}</Badge>
+            )}
             {isProductDeprecated && <Badge variant="danger">Deprecated</Badge>}
             {prod.addon && <Badge variant="neutral">Add-on</Badge>}
             {isTrialing ? <Badge variant="info">Trial</Badge> : <ActiveBadge />}
@@ -145,8 +148,7 @@ const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProd
           )}
           {!hasPrice && <span className="text-sm text-muted">Included</span>}
         </div>
-        {!readOnly && (
-          // A retiring plan nudges the customer toward the replacement; everything else opens Manage.
+        {!readOnly && selfServe && (
           <Button
             variant="outline"
             size="sm"
@@ -158,11 +160,36 @@ const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProd
         )}
       </div>
       {sortedDims.length > 0 && (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-3.5">
           {sortedDims.map((dim) => (
-            <DimensionMeter key={dim.key} dim={dim} color={prod.color} hideLegend />
+            <DimensionMeter key={dim.key} dim={dim} color={prod.color} />
           ))}
-          <DimensionRateLegend dims={sortedDims} color={prod.color} />
+        </div>
+      )}
+      {commitNudge && (
+        // Full-bleed strip at the card's bottom edge nudging the monthly subscriber to commit annually.
+        <div className="-mx-4 mt-1 -mb-4 flex items-center justify-between gap-3 border-t border-border bg-warning/5 px-4 py-2.5">
+          <span className="flex items-center gap-2.5 text-xs text-muted">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-warning/40 text-warning">
+              <DollarSign className="size-3.5" />
+            </span>
+            <span>
+              Commit annually and save{" "}
+              <span className="font-medium text-foreground">~{commitNudge.savingsPct}%</span> —
+              would be{" "}
+              <span className="font-medium text-foreground">
+                {fmtMoney(commitNudge.annualCommitted)} / yr
+              </span>
+            </span>
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => onSetCommitment(prod.id)}
+          >
+            Switch to annual
+          </Button>
         </div>
       )}
     </div>
@@ -172,26 +199,35 @@ const ActiveProductCard = ({ prod, entitlement, readOnly, onManage }: ActiveProd
 type AvailableProductTileProps = {
   prod: BillingV2CatalogProduct;
   readOnly?: boolean;
+  // This product's one-per-product trial is already used up, so it can only be activated, not trialed.
+  trialUsed?: boolean;
   onManage: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
-// Compact tile for a product the org doesn't hold yet: tagline plus an activate / contact action.
+// Compact tile for a product the org doesn't hold yet: tagline plus an activate / trial / contact action.
 const AvailableProductTile = ({
   prod,
   readOnly,
+  trialUsed,
   onManage,
   onContact
 }: AvailableProductTileProps) => {
   const selfServe = prod.plans.some((plan) => plan.selfServe);
   const salesLed = prod.plans.some((plan) => plan.salesLed);
+  const offersTrial = !trialUsed && prod.plans.some((plan) => plan.selfServe && plan.trialable);
 
   let action = null;
   if (!readOnly) {
     if (selfServe) {
       action = (
-        <Button variant="org" size="sm" onClick={() => onManage(prod.id)}>
-          Activate
+        <Button
+          variant="product"
+          size="sm"
+          style={{ "--product-color": prod.color } as CSSProperties}
+          onClick={() => onManage(prod.id)}
+        >
+          {offersTrial ? "Start a free trial" : "Activate"}
         </Button>
       );
     } else if (salesLed) {
@@ -221,6 +257,7 @@ type ProductsCardProps = {
   catalog: BillingV2CatalogProduct[];
   readOnly?: boolean;
   onManage: (id: string) => void;
+  onSetCommitment: (id: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
 
@@ -229,6 +266,7 @@ export const ProductsCard = ({
   catalog,
   readOnly,
   onManage,
+  onSetCommitment,
   onContact
 }: ProductsCardProps) => {
   // A deprecated product stays visible to existing subscribers but is closed to new ones, so hide it
@@ -301,7 +339,9 @@ export const ProductsCard = ({
                   prod={prod}
                   entitlement={overview.entitlements[prod.id]}
                   readOnly={readOnly}
+                  selfServe={overview.selfServe}
                   onManage={onManage}
+                  onSetCommitment={onSetCommitment}
                 />
               ))}
               {available.length > 0 && (
@@ -318,6 +358,7 @@ export const ProductsCard = ({
                           key={prod.id}
                           prod={prod}
                           readOnly={readOnly}
+                          trialUsed={overview.trialedProductKeys.includes(prod.id)}
                           onManage={onManage}
                           onContact={onContact}
                         />

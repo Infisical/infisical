@@ -37,7 +37,11 @@ function bufferToHex(buffer: ArrayBuffer): string {
 // • Context-specific words, such as the name of the service, the username, and derivatives
 //   thereof."
 
-export const checkIsPasswordBreached = async (password: string): Promise<boolean> => {
+export type PasswordBreachStatus = "safe" | "breached" | "unavailable";
+
+export const checkPasswordBreachStatus = async (
+  password: string
+): Promise<PasswordBreachStatus> => {
   const HAVE_I_BEEN_PWNED_API_URL = "https://api.pwnedpasswords.com";
   const maxRetryAttempts = 3;
 
@@ -75,7 +79,7 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
           const responseData = response.data.toUpperCase();
           // check the last 35 hash chars to see if there's a match
           const isBreachedPassword: boolean = responseData.includes(hashedPwd.slice(5, 40));
-          return isBreachedPassword;
+          return isBreachedPassword ? "breached" : "safe";
         }
         retryAttempt += 1;
       } catch (err) {
@@ -91,10 +95,10 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
         response ? response.status : "unknown"
       }) from the Pwnd Passwords API`
     );
-    return false;
+    return "unavailable";
   } catch (err: any) {
     console.error("An unexpected error has occurred:", err.message);
-    return false;
+    return "unavailable";
   } finally {
     // Clear the UTF-8 encoded password from memory
 
@@ -111,3 +115,6 @@ export const checkIsPasswordBreached = async (password: string): Promise<boolean
     }
   }
 };
+
+export const checkIsPasswordBreached = async (password: string): Promise<boolean> =>
+  (await checkPasswordBreachStatus(password)) === "breached";

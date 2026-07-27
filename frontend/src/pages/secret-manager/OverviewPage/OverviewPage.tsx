@@ -2692,7 +2692,7 @@ const OverviewPageContent = () => {
                       }
                       handlePopUpOpen("upgradePlan", {
                         isEnterpriseFeature: true,
-                        text: "Adding dynamic secrets can be unlocked if you upgrade to Infisical Enterprise plan."
+                        text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
                       });
                     }}
                     onAddSecretRotation={() => {
@@ -3488,6 +3488,11 @@ const OverviewPageContent = () => {
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
             onSecretCreated={checkSecretsActivation}
+            onUploadSecrets={(env) => {
+              setImportParsedSecrets(env ?? null);
+              handlePopUpClose("addSecretsInAllEnvs");
+              handlePopUpOpen("importSecrets");
+            }}
             onBatchSecretCreate={(params) => {
               addPendingChange(
                 {
@@ -3964,6 +3969,7 @@ const OverviewPageContent = () => {
           }}
           selectedActions={popUp.requestAccess.data as ProjectPermissionActions[] | undefined}
           secretPath={pathPolicies[0].secretPath}
+          environment={singleEnvSlug}
         />
       )}
       {invitePopUp.inviteMembers.isOpen && (

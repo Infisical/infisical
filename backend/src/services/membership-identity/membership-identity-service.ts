@@ -14,6 +14,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
+import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -51,6 +52,10 @@ type TMembershipIdentityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "insertOrgMembershipRevocationMarker" | "removeOrgMembershipRevocationMarkers" | "bumpIdentityRevocationVersion"
+  >;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -67,7 +72,8 @@ export const membershipIdentityServiceFactory = ({
   applicationMembershipCleanupService,
   projectDAL,
   keyStore,
-  usageMeteringService
+  usageMeteringService,
+  identityAccessTokenService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -197,8 +203,24 @@ export const membershipIdentityServiceFactory = ({
         }
       });
       await membershipRoleDAL.insertMany(roleDocs, tx);
+
+      // Re-adding an identity that was previously removed must lift the org-scoped
+      // token revocation, atomically with the membership insert.
+      if (scopeData.scope === AccessScope.Organization) {
+        await identityAccessTokenService.removeOrgMembershipRevocationMarkers({
+          identityId: dto.data.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return doc;
     });
+
+    if (scopeData.scope === AccessScope.Organization) {
+      // Post-commit, so cached membership denies re-check against the restored state.
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.data.identityId });
+    }
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
@@ -278,10 +300,22 @@ export const membershipIdentityServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    let shouldRevokeOrgTokens = false;
+    let shouldRestoreOrgTokens = false;
+
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
+      if (!currentMembership) {
+        throw new BadRequestError({ message: "Identity doesn't have membership" });
+      }
+      shouldRevokeOrgTokens =
+        scopeData.scope === AccessScope.Organization && data.isActive === false && currentMembership.isActive !== false;
+      shouldRestoreOrgTokens =
+        scopeData.scope === AccessScope.Organization && data.isActive === true && currentMembership.isActive === false;
+
       const doc =
         typeof data.isActive === "undefined"
-          ? existingMembership
+          ? currentMembership
           : await membershipIdentityDAL.updateById(
               existingMembership.id,
               {
@@ -326,8 +360,29 @@ export const membershipIdentityServiceFactory = ({
         tx
       );
       const insertedRoleDocs = await membershipRoleDAL.insertMany(roleDocs, tx);
+
+      if (shouldRevokeOrgTokens) {
+        await identityAccessTokenService.insertOrgMembershipRevocationMarker({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
+      if (shouldRestoreOrgTokens) {
+        await identityAccessTokenService.removeOrgMembershipRevocationMarkers({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return { ...doc, roles: insertedRoleDocs };
     });
+
+    if (shouldRevokeOrgTokens || shouldRestoreOrgTokens) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
+    }
 
     return { membership: membershipDoc };
   };
@@ -380,12 +435,29 @@ export const membershipIdentityServiceFactory = ({
         }
       }
 
+      // Durable deny atomic with the org-membership removal.
+      if (scopeData.scope === AccessScope.Organization) {
+        await identityAccessTokenService.insertOrgMembershipRevocationMarker({
+          identityId: dto.selector.identityId,
+          orgId: scopeData.orgId,
+          tx
+        });
+      }
+
       return doc;
     };
 
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipIdentityDAL.transaction(performDelete);
+
+    // The version bump must run after the delete commits. When we own the tx it
+    // has already committed here; when the caller owns externalTx we cannot know when
+    // it commits, so we return the pending bump for the caller to run post-commit.
+    const needsRevocationBump = scopeData.scope === AccessScope.Organization;
+    if (needsRevocationBump && !externalTx) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
+    }
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
@@ -395,6 +467,13 @@ export const membershipIdentityServiceFactory = ({
     } else {
       usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
       usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
+    }
+
+    if (needsRevocationBump && externalTx) {
+      return {
+        membership: membershipDoc,
+        revocationBumpPending: { identityId: dto.selector.identityId }
+      };
     }
     return { membership: membershipDoc };
   };

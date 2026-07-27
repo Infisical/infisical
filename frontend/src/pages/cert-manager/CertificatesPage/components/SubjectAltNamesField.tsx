@@ -12,20 +12,22 @@ type SubjectAltNamesFieldProps = {
   allowedSanTypes: CertSubjectAlternativeNameType[];
   error?: string;
   shouldUnregister?: boolean;
+  namePrefix?: string;
 };
 
 export const SubjectAltNamesField = ({
   control,
   allowedSanTypes,
   error,
-  shouldUnregister
+  shouldUnregister,
+  namePrefix = "subjectAltNames"
 }: SubjectAltNamesFieldProps) => {
   const sanTypeLabels = getSanTypeLabels();
 
   return (
     <Controller
       control={control}
-      name="subjectAltNames"
+      name={namePrefix}
       shouldUnregister={shouldUnregister}
       render={({ field: { onChange, value } }) => {
         const currentValues = value || [];
