@@ -79,5 +79,6 @@ export enum AppConnection {
   Cloud66 = "cloud-66",
   LiteLLM = "litellm",
   Fireworks = "fireworks",
-  NutanixPrismCentral = "nutanix-prism-central"
+  NutanixPrismCentral = "nutanix-prism-central",
+  Spacelift = "spacelift"
 }

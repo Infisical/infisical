@@ -105,6 +105,10 @@ import {
   SanitizedDopplerConnectionSchema
 } from "@app/services/app-connection/doppler/doppler-connection-schema";
 import {
+  SanitizedSpaceliftConnectionSchema,
+  SpaceliftConnectionListItemSchema
+} from "@app/services/app-connection/spacelift";
+import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
 } from "@app/services/app-connection/external-infisical";
@@ -335,7 +339,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
-  ...SanitizedNutanixPrismCentralConnectionSchema.options
+  ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedSpaceliftConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -419,7 +424,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
-  NutanixPrismCentralConnectionListItemSchema
+  NutanixPrismCentralConnectionListItemSchema,
+  SpaceliftConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

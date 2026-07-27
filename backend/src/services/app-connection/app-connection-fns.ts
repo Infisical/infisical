@@ -139,6 +139,11 @@ import {
 } from "./dns-made-easy/dns-made-easy-connection-fns";
 import { DopplerConnectionMethod, getDopplerConnectionListItem, validateDopplerConnectionCredentials } from "./doppler";
 import {
+  getSpaceliftConnectionListItem,
+  SpaceliftConnectionMethod,
+  validateSpaceliftConnectionCredentials
+} from "./spacelift";
+import {
   ExternalInfisicalConnectionMethod,
   getExternalInfisicalConnectionListItem,
   TExternalInfisicalConnectionConfig,
@@ -410,7 +415,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
-    getNutanixPrismCentralConnectionListItem()
+    getNutanixPrismCentralConnectionListItem(),
+    getSpaceliftConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -663,7 +669,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NutanixPrismCentral]:
-      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator
+      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -719,6 +726,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
+    case SpaceliftConnectionMethod.ApiKeySecret:
       return "API Key & Secret";
     case AzureDnsConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:

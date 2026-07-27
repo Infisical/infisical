@@ -107,6 +107,7 @@ import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
 import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-connection-schema";
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
+import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
@@ -300,7 +301,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
-  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema
+  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
+  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

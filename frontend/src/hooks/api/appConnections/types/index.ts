@@ -69,6 +69,7 @@ import { TRundeckConnection } from "./rundeck-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
+import { TSpaceliftConnection } from "./spacelift-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -148,6 +149,7 @@ export * from "./rundeck-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
+export * from "./spacelift-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -242,7 +244,8 @@ export type TAppConnection =
   | TQoveryConnection
   | TLiteLLMConnection
   | TFireworksConnection
-  | TNutanixPrismCentralConnection;
+  | TNutanixPrismCentralConnection
+  | TSpaceliftConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

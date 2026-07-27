@@ -84,6 +84,7 @@ import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
+import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -267,6 +268,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Spacelift:
+        return <SpaceliftConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Bitbucket:
@@ -540,6 +543,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Spacelift:
+        return <SpaceliftConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Bitbucket:

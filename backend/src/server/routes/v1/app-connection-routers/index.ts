@@ -69,6 +69,7 @@ import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
+import { registerSpaceliftConnectionRouter } from "./spacelift-connection-router";
 import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
@@ -166,5 +167,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
     [AppConnection.Fireworks]: registerFireworksConnectionRouter,
-    [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter
+    [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
+    [AppConnection.Spacelift]: registerSpaceliftConnectionRouter
   };
