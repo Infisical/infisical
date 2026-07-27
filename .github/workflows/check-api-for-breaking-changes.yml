@@ -16,9 +16,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - "backend/src/server/routes/**"
-      - "backend/src/ee/routes/**"
-      # So changes to the check itself are exercised by the check.
+      - "backend/**"
       - ".github/workflows/check-api-for-breaking-changes.yml"
       - ".github/actions/generate-openapi-spec/**"
 
