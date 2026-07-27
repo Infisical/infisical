@@ -50,12 +50,16 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   accountType: z.string()
 });
 
-// The admin list surfaces accessibility so unusable accounts can be flagged in the UI
-const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
+const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
   accessibilityIssues: z
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
-    .describe("Reasons the account cannot launch a session, if any")
+    .describe("Reasons the account cannot launch a session, if any"),
+  requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
+  requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+  accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
+  grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+  permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")
 });
 
 const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>
@@ -346,10 +350,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
         templateId: z.string().uuid().optional().describe("Filter accounts by template ID"),
-        search: z.string().optional().describe("Filter accounts by name")
+        accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type"),
+        search: z.string().trim().optional().describe("Filter accounts by name")
       }),
       response: {
-        200: z.object({ accounts: z.array(AdminAccountListItemSchema) })
+        200: z.object({ accounts: z.array(PamAccountListItemSchema) })
       }
     },
     config: { rateLimit: readLimit },
@@ -359,6 +364,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
         templateId: req.query.templateId,
+        accountType: req.query.accountType,
         search: req.query.search,
         actorId: req.permission.id,
         actor: req.permission.type,

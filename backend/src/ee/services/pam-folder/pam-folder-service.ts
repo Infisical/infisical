@@ -73,19 +73,38 @@ export const pamFolderServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
   };
 
-  const list = async ({ projectId, search, onlyAccessible, ...ctx }: TListPamFoldersDTO & TActorContext) => {
+  const list = async ({
+    projectId,
+    search,
+    onlyAccessible,
+    filterByAction,
+    ...ctx
+  }: TListPamFoldersDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
+
+    const actionsToCheck = filterByAction
+      ? { anyOf: [filterByAction] }
+      : { anyOf: [ResourcePermissionPamResourceActions.ReadFolder, ResourcePermissionPamResourceActions.ReadAccounts] };
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { anyOf: [ResourcePermissionPamResourceActions.ReadFolder, ResourcePermissionPamResourceActions.ReadAccounts] },
+      actionsToCheck,
       ctx
     );
-    if (folderIds.length === 0 && accountIds.length === 0) return [];
 
-    return pamFolderDAL.findByProjectIdFiltered(projectId, folderIds, { search, accountIds, onlyAccessible });
+    // CreateAccounts is a folder-level action only - ignore account-level permissions for this filter
+    const isFolderOnlyAction = filterByAction === ResourcePermissionPamResourceActions.CreateAccounts;
+    const effectiveAccountIds = isFolderOnlyAction ? [] : accountIds;
+
+    if (folderIds.length === 0 && effectiveAccountIds.length === 0) return [];
+
+    return pamFolderDAL.findByProjectIdFiltered(projectId, folderIds, {
+      search,
+      accountIds: effectiveAccountIds,
+      onlyAccessible
+    });
   };
 
   const getById = async ({ folderId, projectId, ...ctx }: TGetPamFolderDTO & TActorContext) => {

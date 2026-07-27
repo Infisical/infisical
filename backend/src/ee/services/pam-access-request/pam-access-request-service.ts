@@ -257,8 +257,8 @@ export const pamAccessRequestServiceFactory = ({
             folderName: folder?.name ?? "",
             comment: params.comment,
             // Decided requests leave the approver inbox, so decision messages link to the
-            // requester-facing My Access page (same destination as the in-app notification)
-            approvalUrl: `${cfg.SITE_URL}/organizations/${params.orgId}/pam/access`
+            // unified PAM Accounts page (same destination as the in-app notification)
+            approvalUrl: `${cfg.SITE_URL}/organizations/${params.orgId}/pam/accounts`
           }
         }
       });
@@ -953,7 +953,7 @@ export const pamAccessRequestServiceFactory = ({
           body: `Your access request for **${accountName ?? "a PAM account"}** was ${
             approved ? "approved" : "denied"
           }.${comment ? ` Reviewer comment: "${comment}"` : ""}`,
-          link: `/organizations/${request.organizationId}/pam/access`
+          link: `/organizations/${request.organizationId}/pam/accounts`
         }
       ]);
     } catch (err) {

@@ -40,7 +40,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
@@ -54,6 +57,8 @@ import {
   isRotatablePamAccountType,
   PamAccountAccessibilityIssue,
   PamAccountType,
+  PamFieldWidget,
+  TPamFieldDescriptor,
   TPamMember,
   useGetPamAccountById,
   useGetPamAccountTemplate,
@@ -70,6 +75,7 @@ import {
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { PamMemberKind, PamMembershipScope, PamMemberSource } from "../../components/memberEnums";
 import {
   formatDetailDate,
@@ -81,7 +87,6 @@ import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTa
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
@@ -811,35 +816,32 @@ const SettingsTab = ({
   );
 };
 
-const CONNECTION_FIELD_LABELS: Record<string, string> = {
-  host: "Host",
-  port: "Port",
-  database: "Database",
-  sslEnabled: "SSL",
-  sslRejectUnauthorized: "Reject Unauthorized SSL",
-  sslCertificate: "SSL Certificate"
-};
-
-const humanizeFieldKey = (key: string) =>
-  key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (c) => c.toUpperCase())
-    .trim();
-
-const formatConnectionValue = (value: unknown): ReactNode => {
+const formatFieldValue = (field: TPamFieldDescriptor, value: unknown): ReactNode => {
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
+  if (field.widget === PamFieldWidget.Textarea) {
+    return <Badge variant="success">Configured</Badge>;
+  }
   const str = String(value);
-  if (str.length > 48) return "Provided";
+  if (str.length > 48) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="block max-w-full cursor-default overflow-hidden font-mono text-ellipsis !whitespace-nowrap">
+            {str}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs font-mono break-all">{str}</TooltipContent>
+      </Tooltip>
+    );
+  }
   return <span className="font-mono">{str}</span>;
 };
 
-const buildConnectionMetadata = (connectionDetails: Record<string, unknown>) =>
-  Object.entries(connectionDetails)
-    .filter(([, value]) => value !== null && value !== undefined && value !== "")
-    .map(([key, value]) => ({
-      label: CONNECTION_FIELD_LABELS[key] ?? humanizeFieldKey(key),
-      value: formatConnectionValue(value)
-    }));
+const fieldRows = (fields: TPamFieldDescriptor[] | undefined, source: Record<string, unknown>) =>
+  (fields ?? [])
+    .filter((f) => !f.secret)
+    .filter((f) => source[f.key] !== undefined && source[f.key] !== null && source[f.key] !== "")
+    .map((f) => ({ label: f.label, value: formatFieldValue(f, source[f.key]) }));
 
 export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) => {
   const { data: account, isLoading } = useGetPamAccountById(isOpen ? accountId : undefined);
@@ -884,7 +886,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
             <Badge variant="neutral">None</Badge>
           )
         },
-        ...buildConnectionMetadata(conn),
+        ...fieldRows(typeInfo?.connectionFields, conn),
         ...(account.credentials?.username
           ? [
               {
