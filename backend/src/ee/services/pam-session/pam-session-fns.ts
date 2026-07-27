@@ -45,17 +45,17 @@ export const reportPamSessionEnded = async ({
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   userDAL: Pick<TUserDALFactory, "findById">;
 }) => {
-  // Unstarted sessions have no meaningful length, so they report none rather than a "Starting" wait.
-  const durationMs = session.startedAt
-    ? Math.max(0, (session.endedAt ?? new Date()).getTime() - session.startedAt.getTime())
-    : undefined;
+  // Callers fire this without awaiting, so it must never reject: the actor lookup hits the DB and an
+  // unhandled rejection would take the process down in development.
+  try {
+    // Unstarted sessions have no meaningful length, so they report none rather than a "Starting" wait.
+    const durationMs = session.startedAt
+      ? Math.max(0, (session.endedAt ?? new Date()).getTime() - session.startedAt.getTime())
+      : undefined;
 
-  const distinctId = await resolvePamSessionDistinctId({ session, userDAL });
-
-  void telemetryService
-    .sendPostHogEvents({
+    await telemetryService.sendPostHogEvents({
       event: PostHogEventTypes.PamSessionEnded,
-      distinctId,
+      distinctId: await resolvePamSessionDistinctId({ session, userDAL }),
       organizationId: orgId,
       properties: {
         accountType: session.accountType,
@@ -64,8 +64,10 @@ export const reportPamSessionEnded = async ({
         durationMs,
         accessMethod: session.accessMethod ?? PamAccessMethod.Cli
       }
-    })
-    .catch(() => {});
+    });
+  } catch (err) {
+    logger.error(err, "Failed to report PAM session ended telemetry");
+  }
 };
 
 // Flipping a session row to terminated does not cut a live tunnel; only this ALPN signal does. Sent

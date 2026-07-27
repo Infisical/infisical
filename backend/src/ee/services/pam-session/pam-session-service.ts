@@ -329,8 +329,10 @@ export const pamSessionServiceFactory = ({
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
+    let actorDistinctId: string | undefined;
     if (sessionStarted) {
       await pamSessionDAL.activateSession(sessionId);
+      actorDistinctId = await resolvePamSessionDistinctId({ session, userDAL });
     }
 
     const templateSettingsParsed = account.templateSettings
@@ -430,7 +432,7 @@ export const pamSessionServiceFactory = ({
       accountId: session.accountId,
       accountName: session.accountName,
       accountType: session.accountType,
-      actorDistinctId: await resolvePamSessionDistinctId({ session, userDAL }),
+      actorDistinctId,
       sessionStarted
     };
   };
