@@ -1,0 +1,61 @@
+---
+title: "Spacelift Connection"
+description: "Learn how to configure a Spacelift Connection for Infisical."
+---
+
+Infisical supports connecting to Spacelift using an API key ID and API key secret for secure access to your Spacelift account.
+
+## Create an API Key in Spacelift
+
+<Steps>
+  <Step title="Navigate to Organization Settings">
+    Click on your profile name and select **Organization Settings** at the bottom left side of the Spacelift dashboard.
+
+    ![Navigate to Organization Settings](/images/app-connections/spacelift/spacelift-navigate-to-org-settings.png)
+  </Step>
+  <Step title="Open API Keys">
+    Click on **API Keys** under the identity management section.
+
+    ![Open API Keys](/images/app-connections/spacelift/spacelift-open-api-keys.png)
+  </Step>
+  <Step title="Create API Key">
+    Click on **Create API Key**.
+
+    ![Create API Key](/images/app-connections/spacelift/spacelift-create-api-key.png)
+  </Step>
+  <Step title="Set a Name">
+    Set a name for the API key, choose the type **Secret** and click **Continue**.
+
+    ![Set API Key Name](/images/app-connections/spacelift/spacelift-set-api-key-name.png)
+  </Step>
+  <Step title="Configure Roles, Space, and Create">
+    Select the roles **Space reader** and **Space writer**, choose the Space that will be managed by this credential, then click **Add** and **Create API Key**. A file will be downloaded containing your credentials.
+
+    ![Select Roles](/images/app-connections/spacelift/spacelift-select-roles.png)
+  </Step>
+  <Step title="Extract Credentials">
+    Open the downloaded file and extract the `api_key_id` and `api_key_secret` values.
+  </Step>
+</Steps>
+
+## Setup Spacelift Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **Spacelift Connection** option from the connection options modal.
+    ![Select Spacelift Connection](/images/app-connections/spacelift/spacelift-app-connection-select.png)
+  </Step>
+  <Step title="Input Credentials">
+    Enter your Spacelift API URL, API Key ID, and API Key Secret in the provided fields and
+    click **Connect to Spacelift** to establish the connection.
+    ![Connect to Spacelift](/images/app-connections/spacelift/spacelift-app-connection-form.png)
+  </Step>
+  <Step title="Connection Created">
+    Your **Spacelift Connection** is now available for use in your Infisical projects.
+    ![Spacelift Connection Created](/images/app-connections/spacelift/spacelift-app-connection-created.png)
+  </Step>
+</Steps>

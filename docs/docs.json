@@ -174,6 +174,7 @@
                       "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
+                      "integrations/app-connections/spacelift",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
