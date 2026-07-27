@@ -1,93 +1,14 @@
 import { z } from "zod";
 
-import { AuditLogsSchema, SecretSnapshotsSchema } from "@app/db/schemas";
+import { AuditLogsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags, AUDIT_LOGS, PROJECTS } from "@app/lib/api-docs";
-import { getLastMidnightDateISO, removeTrailingSlash } from "@app/lib/fn";
+import { AUDIT_LOGS } from "@app/lib/api-docs";
+import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
-  server.route({
-    method: "GET",
-    url: "/:workspaceId/secret-snapshots",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.Projects],
-      description: "Return project secret snapshots ids",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        workspaceId: z.string().trim().describe(PROJECTS.GET_SNAPSHOTS.projectId)
-      }),
-      querystring: z.object({
-        environment: z.string().trim().describe(PROJECTS.GET_SNAPSHOTS.environment),
-        path: z.string().trim().default("/").transform(removeTrailingSlash).describe(PROJECTS.GET_SNAPSHOTS.path),
-        offset: z.coerce.number().default(0).describe(PROJECTS.GET_SNAPSHOTS.offset),
-        limit: z.coerce.number().default(20).describe(PROJECTS.GET_SNAPSHOTS.limit)
-      }),
-      response: {
-        200: z.object({
-          secretSnapshots: SecretSnapshotsSchema.array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const secretSnapshots = await server.services.snapshot.listSnapshots({
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        ...req.query
-      });
-      return { secretSnapshots };
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:workspaceId/secret-snapshots/count",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      params: z.object({
-        workspaceId: z.string().trim()
-      }),
-      querystring: z.object({
-        environment: z.string().trim(),
-        path: z.string().trim().default("/").transform(removeTrailingSlash)
-      }),
-      response: {
-        200: z.object({
-          count: z.number()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const count = await server.services.snapshot.projectSecretSnapshotCount({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.params.workspaceId,
-        environment: req.query.environment,
-        path: req.query.path
-      });
-      return { count };
-    }
-  });
-
   /*
    * Daniel: This endpoint is no longer is use.
    * We are keeping it for now because it has been exposed in our public api docs for a while, so by removing it we are likely to break users workflows.
