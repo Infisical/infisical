@@ -366,11 +366,12 @@ export const pamWebAccessServiceFactory = ({
               }
             });
 
-            reportPamSessionEnded({
+            void reportPamSessionEnded({
               session: updated,
               orgId,
               endReason: PamSessionEndReason.Completed,
-              telemetryService
+              telemetryService,
+              userDAL
             });
           }
         } catch (err) {

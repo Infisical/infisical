@@ -72,7 +72,11 @@ import { getAzureAccessTokens } from "./azure/azure-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
-import { reportPamSessionEnded, sendPamSessionCancellationSignal } from "./pam-session-fns";
+import {
+  reportPamSessionEnded,
+  resolvePamSessionDistinctId,
+  sendPamSessionCancellationSignal
+} from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -426,7 +430,7 @@ export const pamSessionServiceFactory = ({
       accountId: session.accountId,
       accountName: session.accountName,
       accountType: session.accountType,
-      actorEmail: session.actorEmail,
+      actorDistinctId: await resolvePamSessionDistinctId({ session, userDAL }),
       sessionStarted
     };
   };
@@ -441,11 +445,12 @@ export const pamSessionServiceFactory = ({
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
 
     if (updatedSession) {
-      reportPamSessionEnded({
+      void reportPamSessionEnded({
         session: updatedSession,
         orgId,
         endReason: PamSessionEndReason.Completed,
-        telemetryService
+        telemetryService,
+        userDAL
       });
     }
 

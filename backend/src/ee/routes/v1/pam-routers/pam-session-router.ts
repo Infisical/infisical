@@ -168,7 +168,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.PamSessionStarted,
-            distinctId: result.actorEmail || getTelemetryDistinctId(req),
+            distinctId: result.actorDistinctId || getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
             properties: {
               accountType: result.accountType,

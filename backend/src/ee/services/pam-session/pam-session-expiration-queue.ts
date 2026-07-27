@@ -2,6 +2,7 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamSessionEndReason } from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
@@ -11,6 +12,7 @@ type TPamSessionExpirationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   pamSessionDAL: Pick<TPamSessionDALFactory, "endSessionById">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  userDAL: Pick<TUserDALFactory, "findById">;
 };
 
 export type TPamSessionExpirationServiceFactory = ReturnType<typeof pamSessionExpirationServiceFactory>;
@@ -18,7 +20,8 @@ export type TPamSessionExpirationServiceFactory = ReturnType<typeof pamSessionEx
 export const pamSessionExpirationServiceFactory = ({
   queueService,
   pamSessionDAL,
-  telemetryService
+  telemetryService,
+  userDAL
 }: TPamSessionExpirationServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -35,11 +38,12 @@ export const pamSessionExpirationServiceFactory = ({
         if (updated) {
           logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired [sessionId=${sessionId}]`);
           if (orgId) {
-            reportPamSessionEnded({
+            void reportPamSessionEnded({
               session: updated,
               orgId,
               endReason: PamSessionEndReason.Expired,
-              telemetryService
+              telemetryService,
+              userDAL
             });
           }
         } else {
