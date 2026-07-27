@@ -734,21 +734,25 @@ export const secretApprovalRequestServiceFactory = ({
           }))
         );
         const updationSecretsGroupByKey = groupBy(secrets, (i) => i.key);
-        secretUpdationCommits
-          .filter(({ key, secretId }) => {
-            const dbSecret = updationSecretsGroupByKey[key]?.[0];
-            // Conflict if: secret doesn't exist OR secretId doesn't match (was recreated) OR no secretId in commit
-            return !dbSecret || dbSecret.id !== secretId || !secretId;
-          })
-          .forEach((el) => {
-            conflicts.push({ op: SecretOperations.Update, secretId: el.id });
-          });
+        // el.secret is the commit's referenced secret in its current DB state (undefined if since deleted)
+        const hasUpdateConflict = (el: (typeof secretUpdationCommits)[number]) => {
+          if (!el.secretId || !el.secret) return true; // referenced secret was deleted (or recreated)
+          const secretWithSameKey = updationSecretsGroupByKey[el.key]?.[0];
 
-        secretUpdationCommits = secretUpdationCommits.filter(({ key, secretId }) => {
-          const dbSecret = updationSecretsGroupByKey[key]?.[0];
-          // Valid if: secret exists AND secretId matches AND has secretId
-          return dbSecret && dbSecret.id === secretId && Boolean(secretId);
+          // a rename was requested if the commit's key differs from the secret version it was based on
+          const isRename = el.key !== (el.secretVersion?.key ?? el.secret.key);
+          if (isRename) {
+            // rename conflicts only if the new key is already taken by a different secret
+            return Boolean(secretWithSameKey) && secretWithSameKey.id !== el.secretId;
+          }
+          // plain update conflicts if the key no longer belongs to the referenced secret
+          return !secretWithSameKey || secretWithSameKey.id !== el.secretId;
+        };
+
+        secretUpdationCommits.filter(hasUpdateConflict).forEach((el) => {
+          conflicts.push({ op: SecretOperations.Update, secretId: el.id });
         });
+        secretUpdationCommits = secretUpdationCommits.filter((el) => !hasUpdateConflict(el));
       }
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
@@ -1938,6 +1942,31 @@ export const secretApprovalRequestServiceFactory = ({
           throw new NotFoundError({
             message: `Secret does not exist: ${secrets.map((el) => el.key).join(",")}`
           });
+
+        const renameSourcesGroupByKey = groupBy(secrets, (i) => i.key);
+        // check if the new name is already taken by a different secret in the folder
+        const existingSecretsWithNewName = await secretV2BridgeDAL.findBySecretKeys(
+          folderId,
+          secretsWithNewName.map((el) => ({
+            key: el.newSecretName as string,
+            type: SecretType.Shared
+          }))
+        );
+        if (existingSecretsWithNewName.length) {
+          const existingSecretsGroupByKey = groupBy(existingSecretsWithNewName, (i) => i.key);
+          const conflictingNewNames = secretsWithNewName.filter((el) => {
+            const existingSecret = existingSecretsGroupByKey[el.newSecretName as string]?.[0];
+            if (!existingSecret) return false;
+            // renaming a secret to its own current name is a no-op, not a collision
+            return existingSecret.id !== renameSourcesGroupByKey[el.secretKey][0].id;
+          });
+          if (conflictingNewNames.length)
+            throw new BadRequestError({
+              message: `Secret with the new name already exists: ${conflictingNewNames
+                .map((el) => el.newSecretName)
+                .join(", ")}`
+            });
+        }
       }
 
       const updatingSecretsGroupByKey = groupBy(secretsToUpdateStoredInDB, (el) => el.key);
