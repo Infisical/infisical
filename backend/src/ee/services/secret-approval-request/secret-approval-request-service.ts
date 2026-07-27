@@ -89,7 +89,7 @@ import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secre
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { TSecretSnapshotServiceFactory } from "../secret-snapshot/secret-snapshot-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
-import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
+import { hasSecretUpdateCommitConflict, sendApprovalEmailsFn } from "./secret-approval-request-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
@@ -734,21 +734,13 @@ export const secretApprovalRequestServiceFactory = ({
           }))
         );
         const updationSecretsGroupByKey = groupBy(secrets, (i) => i.key);
-        secretUpdationCommits
-          .filter(({ key, secretId }) => {
-            const dbSecret = updationSecretsGroupByKey[key]?.[0];
-            // Conflict if: secret doesn't exist OR secretId doesn't match (was recreated) OR no secretId in commit
-            return !dbSecret || dbSecret.id !== secretId || !secretId;
-          })
-          .forEach((el) => {
-            conflicts.push({ op: SecretOperations.Update, secretId: el.id });
-          });
+        const hasUpdateConflict = (el: (typeof secretUpdationCommits)[number]) =>
+          hasSecretUpdateCommitConflict(el, updationSecretsGroupByKey[el.key]?.[0]);
 
-        secretUpdationCommits = secretUpdationCommits.filter(({ key, secretId }) => {
-          const dbSecret = updationSecretsGroupByKey[key]?.[0];
-          // Valid if: secret exists AND secretId matches AND has secretId
-          return dbSecret && dbSecret.id === secretId && Boolean(secretId);
+        secretUpdationCommits.filter(hasUpdateConflict).forEach((el) => {
+          conflicts.push({ op: SecretOperations.Update, secretId: el.id });
         });
+        secretUpdationCommits = secretUpdationCommits.filter((el) => !hasUpdateConflict(el));
       }
 
       const secretDeletionCommits = secretApprovalSecrets.filter(({ op }) => op === SecretOperations.Delete);
@@ -1924,7 +1916,9 @@ export const secretApprovalRequestServiceFactory = ({
 
       const actualSecretsToUpdate = secretsToUpdate.filter((el) => existingKeys.has(el.secretKey));
 
-      const secretsWithNewName = actualSecretsToUpdate.filter(({ newSecretName }) => Boolean(newSecretName));
+      const secretsWithNewName = actualSecretsToUpdate.filter(
+        ({ newSecretName, secretKey }) => Boolean(newSecretName) && newSecretName !== secretKey
+      );
       if (secretsWithNewName.length) {
         const secrets = await secretV2BridgeDAL.findBySecretKeys(
           folderId,
@@ -1937,6 +1931,21 @@ export const secretApprovalRequestServiceFactory = ({
         if (secrets.length !== secretsWithNewName.length)
           throw new NotFoundError({
             message: `Secret does not exist: ${secrets.map((el) => el.key).join(",")}`
+          });
+
+        // the new name must not already be taken by another secret in the folder
+        const existingSecretsWithNewName = await secretV2BridgeDAL.findBySecretKeys(
+          folderId,
+          secretsWithNewName.map((el) => ({
+            key: el.newSecretName as string,
+            type: SecretType.Shared
+          }))
+        );
+        if (existingSecretsWithNewName.length)
+          throw new BadRequestError({
+            message: `Secret with the new name already exists: ${existingSecretsWithNewName
+              .map((el) => el.key)
+              .join(", ")}`
           });
       }
 
