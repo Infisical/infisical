@@ -168,7 +168,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.PamSessionStarted,
-            distinctId: result.actorEmail || getTelemetryDistinctId(req),
+            distinctId: result.actorDistinctId || getTelemetryDistinctId(req),
             organizationId: req.permission.orgId,
             properties: {
               accountType: result.accountType,
@@ -204,7 +204,11 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { projectId, accountId, accountName, alreadyEnded } =
-        await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.permission.id);
+        await server.services.pamSession.endSessionFromGateway(
+          req.params.sessionId,
+          req.permission.id,
+          req.permission.orgId
+        );
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
@@ -385,7 +389,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
           properties: {
             accountType: result.accountType,
             orgId: req.permission.orgId,
-            duration: result.sessionDurationMs
+            duration: result.sessionDurationMs,
+            accessMethod: result.accessMethod
           }
         })
         .catch(() => {});

@@ -788,7 +788,7 @@ export const pamAccessRequestServiceFactory = ({
       }
     });
 
-    return { request, accountId: account.id, folderId: account.folderId };
+    return { request, accountId: account.id, folderId: account.folderId, accountType: account.accountType };
   };
 
   const listRequests = async ({ projectId, folderId, status, offset, limit, ...ctx }: TListAccessRequestsDTO) => {
