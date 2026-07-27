@@ -2,15 +2,13 @@ import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { PamAccountType } from "../pam/pam-enums";
+import type { TRotatableType, TSqlRotatableType, TWindowsRotatableType } from "../pam-account/pam-account-schemas";
 import {
   isRotatableAccountType,
   isSqlRotatableType,
   isWindowsRotatableType,
   ROTATABLE_ACCOUNT_TYPES,
   SQL_ROTATABLE_ACCOUNT_TYPES,
-  TRotatableType,
-  TSqlRotatableType,
-  TWindowsRotatableType,
   WINDOWS_ROTATABLE_ACCOUNT_TYPES
 } from "../pam-account/pam-account-schemas";
 
@@ -22,11 +20,9 @@ export {
   isWindowsRotatableType,
   ROTATABLE_ACCOUNT_TYPES,
   SQL_ROTATABLE_ACCOUNT_TYPES,
-  TRotatableType,
-  TSqlRotatableType,
-  TWindowsRotatableType,
   WINDOWS_ROTATABLE_ACCOUNT_TYPES
 };
+export type { TRotatableType, TSqlRotatableType, TWindowsRotatableType };
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
