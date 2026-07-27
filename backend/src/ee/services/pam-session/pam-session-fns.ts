@@ -8,7 +8,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
 
 // Sessions end from three places -- the gateway calling /end, the web-access socket tearing down and
 // the expiration queue -- and whichever gets there first flips the row, so the others see an already
@@ -22,6 +22,7 @@ export const reportPamSessionEnded = ({
   session: {
     accountType: string;
     actorEmail: string;
+    accessMethod?: string | null;
     startedAt?: Date | null;
     endedAt?: Date | null;
   };
@@ -44,7 +45,9 @@ export const reportPamSessionEnded = ({
         accountType: session.accountType,
         orgId,
         endReason,
-        durationMs
+        durationMs,
+        // Rows predating the column default to CLI, which is the only access method they could have had.
+        accessMethod: session.accessMethod ?? PamAccessMethod.Cli
       }
     })
     .catch(() => {});

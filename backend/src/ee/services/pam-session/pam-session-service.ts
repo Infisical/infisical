@@ -427,7 +427,6 @@ export const pamSessionServiceFactory = ({
       accountName: session.accountName,
       accountType: session.accountType,
       actorEmail: session.actorEmail,
-      accessMethod: session.accessMethod ?? PamAccessMethod.Cli,
       sessionStarted
     };
   };

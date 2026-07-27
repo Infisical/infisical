@@ -172,8 +172,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             organizationId: req.permission.orgId,
             properties: {
               accountType: result.accountType,
-              orgId: req.permission.orgId,
-              accessMethod: result.accessMethod
+              orgId: req.permission.orgId
             }
           })
           .catch(() => {});

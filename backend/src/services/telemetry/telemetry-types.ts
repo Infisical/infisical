@@ -1040,7 +1040,6 @@ export type TPamSessionStartedEvent = {
   properties: {
     accountType: string;
     orgId: string;
-    accessMethod: string;
   };
 };
 
@@ -1051,6 +1050,7 @@ export type TPamSessionEndedEvent = {
     orgId: string;
     durationMs?: number;
     endReason?: PamSessionEndReason;
+    accessMethod?: string;
   };
 };
 
