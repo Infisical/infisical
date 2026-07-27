@@ -41,7 +41,6 @@ export const pamSessionExpirationServiceFactory = ({
         if (updated) {
           logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired [sessionId=${sessionId}]`);
 
-          // Session rows carry no orgId, and PAM is one project per org, so resolve it from the project.
           const project = await projectDAL.findById(updated.projectId);
           if (project?.orgId) {
             void reportPamSessionEnded({

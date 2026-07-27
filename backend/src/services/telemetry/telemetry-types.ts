@@ -1048,7 +1048,6 @@ export type TPamSessionEndedEvent = {
   properties: {
     accountType: string;
     orgId: string;
-    // Absent for sessions that never reached Active, where a length would be meaningless.
     durationMs?: number;
     endReason: PamSessionEndReason;
     accessMethod: string;

@@ -11,8 +11,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamAccessMethod, PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
 
-// PAM session events are reported from gateway-authenticated routes and background jobs, so there is no
-// request actor to fall back on -- getTelemetryDistinctId would yield "unknown-auth-data" for both.
 export const resolvePamSessionDistinctId = async ({
   session,
   userDAL
@@ -27,9 +25,6 @@ export const resolvePamSessionDistinctId = async ({
   return session.actorEmail;
 };
 
-// Sessions end from three places -- the gateway calling /end, the web-access socket tearing down and
-// the expiration queue -- and whichever gets there first flips the row, so the others see an already
-// ended session. Reporting from here keeps every path on one event instead of only the gateway one.
 export const reportPamSessionEnded = async ({
   session,
   orgId,
@@ -50,14 +45,11 @@ export const reportPamSessionEnded = async ({
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   userDAL: Pick<TUserDALFactory, "findById">;
 }) => {
-  // Only sessions that reached Active have a meaningful length; for the rest createdAt would fold the
-  // "Starting" wait into the reported duration and skew the metric.
+  // Unstarted sessions have no meaningful length, so they report none rather than a "Starting" wait.
   const durationMs = session.startedAt
     ? Math.max(0, (session.endedAt ?? new Date()).getTime() - session.startedAt.getTime())
     : undefined;
 
-  // Every other PAM event keys on username, which is the externalId for SCIM users rather than their
-  // email, so keying on email here would split one person into two.
   const distinctId = await resolvePamSessionDistinctId({ session, userDAL });
 
   void telemetryService
@@ -70,7 +62,6 @@ export const reportPamSessionEnded = async ({
         orgId,
         endReason,
         durationMs,
-        // Rows predating the column default to CLI, which is the only access method they could have had.
         accessMethod: session.accessMethod ?? PamAccessMethod.Cli
       }
     })
