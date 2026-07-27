@@ -24,6 +24,39 @@ Unit tests go next to source as `*.test.ts` and test pure functions with Vitest 
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
 
+#### FIPS test image and the prebuilt toolchain
+
+CI (`.github/workflows/run-backend-tests.yml`) runs the e2e suite inside a FIPS image built
+from `Dockerfile.dev.fips`. The expensive, rarely-changing parts of that image (SoftHSM2,
+Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.6 build) live in
+**`Dockerfile.fips-toolchain`**, which is published to
+`ghcr.io/infisical/backend-fips-toolchain` for amd64 and arm64 by
+`.github/workflows/publish-fips-toolchain.yml` on pushes to `main`.
+
+`Dockerfile.dev.fips` consumes it via the `TOOLCHAIN_IMAGE` build arg, so CI and local dev
+pull the toolchain instead of spending ~15min compiling it. Consequences worth knowing:
+
+- **Editing `Dockerfile.fips-toolchain` is expensive.** CI pins the image by the content hash
+  of that file, so a PR touching it has no published tag and rebuilds from source (the old,
+  slow path). It publishes once the PR lands on `main`. Keep app-level changes in
+  `Dockerfile.dev.fips`.
+- **Don't add `cache-to: type=gha` back to the image build.** GHA cache is PR-scoped (so it
+  never hits on a PR's first run) and the repo's 10GB cache budget is already full; writing
+  image blobs there evicts the `node_modules` caches of every workflow.
+- **The published image is an internal CI build cache, not a supported artifact.** It is
+  public only so CI and local dev can pull it; it carries no support or compatibility
+  guarantee. It is *not* the FIPS product image — that is `infisical/infisical-fips`, built
+  from `Dockerfile.fips.standalone-infisical`. OCI labels on the image say the same.
+- **Keep every third-party fetch pinned and checksummed.** SoftHSM2 is pinned to a commit
+  SHA (tags are mutable); both OpenSSL tarballs and the Oracle Instant Client zip are
+  SHA256-verified; the Infisical CLI apt package is version-pinned. Oracle Instant Client
+  is redistributed under the Oracle Free Distribution, Hosting, and Use Terms, which
+  require the license to travel with it — `/opt/oracle/instantclient_23_26/BASIC_LICENSE`
+  must not be removed.
+- To iterate on the toolchain locally:
+  `docker build -f backend/Dockerfile.fips-toolchain -t fips-toolchain:local backend` then
+  `TOOLCHAIN_IMAGE=fips-toolchain:local docker compose -f docker-compose.dev.yml build backend`.
+
 ### Database
 
 - `npm run migration:new` — create new migration (interactive prompt)

@@ -10,11 +10,18 @@ on:
       - "backend/.eslintrc.js"
   workflow_call:
 
+concurrency:
+  group: run-backend-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check-be-pr:
     name: Run integration test
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Free up disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
@@ -23,7 +30,7 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          large-packages: true
+          large-packages: false
           swap-storage: true
           docker-images: true
 
@@ -52,12 +59,38 @@ jobs:
       - name: Start postgres and redis
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
       - name: Start Secret Rotation testing databases
-        run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d
       - name: Run unit test
         run: npm run test:unit
         working-directory: backend
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - name: Log in to GHCR
+        continue-on-error: true
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve FIPS toolchain image
+        id: toolchain
+        run: |
+          set -euo pipefail
+          # Lowercased: GHCR rejects uppercase repository names and the owner is "Infisical".
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER}/backend-fips-toolchain"
+          TAG="${{ hashFiles('backend/Dockerfile.fips-toolchain') }}"
+          if docker pull --quiet "$IMAGE:$TAG"; then
+            echo "Using published toolchain $IMAGE:$TAG"
+            echo "image=$IMAGE:$TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No published toolchain for $TAG (this PR changes backend/Dockerfile.fips-toolchain); building from source."
+            docker buildx build --load \
+              -f backend/Dockerfile.fips-toolchain \
+              -t "backend-fips-toolchain:$TAG" \
+              backend
+            echo "image=backend-fips-toolchain:$TAG" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build FIPS test image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
@@ -65,8 +98,13 @@ jobs:
           file: backend/Dockerfile.dev.fips
           load: true
           tags: infisical-backend-fips:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          build-args: |
+            TOOLCHAIN_IMAGE=${{ steps.toolchain.outputs.image }}
+      - name: Report disk space
+        if: always()
+        run: df -h /
+      - name: Wait for Secret Rotation testing databases
+        run: docker compose -f docker-compose.e2e-dbs.yml up -d --wait --wait-timeout 300
       - name: Run integration test
         run: |
           docker run --rm --network host \
@@ -84,5 +122,7 @@ jobs:
             infisical-backend-fips:latest \
             npm run test:e2e
       - name: cleanup
+        if: always()
         run: |
           docker compose -f "docker-compose.dev.yml" down
+          docker compose -f "docker-compose.e2e-dbs.yml" down
