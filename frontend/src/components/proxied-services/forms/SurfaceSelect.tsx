@@ -39,14 +39,25 @@ export const SurfaceSelect = ({ value, onChange, isDisabled }: Props) => {
               value.map((surface) => (
                 <Badge key={surface} variant="neutral" className="gap-1">
                   {SURFACE_LABELS[surface]}
-                  <XIcon
-                    className="size-3 cursor-pointer"
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Remove ${SURFACE_LABELS[surface]}`}
+                    className="flex cursor-pointer"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!isDisabled) toggle(surface);
                     }}
-                  />
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        if (!isDisabled) toggle(surface);
+                      }
+                    }}
+                  >
+                    <XIcon className="size-3" />
+                  </span>
                 </Badge>
               ))
             ) : (
