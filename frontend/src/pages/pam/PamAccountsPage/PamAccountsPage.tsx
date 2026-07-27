@@ -37,7 +37,10 @@ import {
   TableBody,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import {
@@ -48,7 +51,7 @@ import {
   useDeletePamFolder,
   useGetPamAccessCapabilities,
   useListPamAccountTypes,
-  useListPamFoldersAdmin
+  useListPamFolders
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
@@ -80,12 +83,13 @@ export const PamAccountsPage = () => {
   const { data: capabilities } = useGetPamAccessCapabilities();
 
   // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403).
-  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFoldersAdmin();
+  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders();
 
   // Folders where the user can create accounts — gates the "Add Account" affordance.
-  const { data: creatableFolders = [] } = useListPamFoldersAdmin({
+  const { data: creatableFolders = [] } = useListPamFolders({
     filterByAction: PamResourcePermissionActions.CreateAccounts
   });
+  // Product admins qualify even with zero folders: the create sheet lets them add one inline.
   const canManage = creatableFolders.length > 0 || Boolean(capabilities?.isProductAdmin);
 
   // Both admin and regular users filter by account type for a consistent view
@@ -212,47 +216,69 @@ export const PamAccountsPage = () => {
           <CardDescription>
             Launch sessions for accounts you have access to, or manage account settings.
           </CardDescription>
-          {canManage && (
-            <CardAction>
-              <ButtonGroup>
-                {creatableFolders.length > 0 && (
-                  <Button
-                    variant="pam"
-                    className={capabilities?.isProductAdmin ? "rounded-r-none" : ""}
-                    onClick={() => handlePopUpOpen("createAccount")}
-                  >
-                    <Plus />
-                    Add Account
-                  </Button>
-                )}
-                {capabilities?.isProductAdmin && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton
-                        variant="pam"
-                        aria-label="More create options"
-                        className={creatableFolders.length > 0 ? "border-l-transparent" : ""}
-                      >
-                        <ChevronDown />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      sideOffset={4}
-                      className="min-w-48"
-                      onClick={(e) => e.stopPropagation()}
+          <CardAction>
+            <ButtonGroup>
+              {/* Always rendered — disabled rather than hidden, so the affordance is discoverable
+                  and the reason it's unavailable is explained in the tooltip. */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={canManage ? undefined : "cursor-not-allowed"}>
+                    <Button
+                      variant="pam"
+                      isDisabled={!canManage}
+                      className="rounded-r-none"
+                      onClick={() => handlePopUpOpen("createAccount")}
                     >
-                      <DropdownMenuLabel>New</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handlePopUpOpen("createFolder")}>
-                        <FolderPlus />
-                        Add Folder
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <Plus />
+                      Add Account
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!canManage && (
+                  <TooltipContent>
+                    You don&apos;t have permission to create accounts in any folder
+                  </TooltipContent>
                 )}
-              </ButtonGroup>
-            </CardAction>
-          )}
+              </Tooltip>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    variant="pam"
+                    aria-label="More create options"
+                    className="border-l-transparent"
+                  >
+                    <ChevronDown />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={4}
+                  className="min-w-48"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DropdownMenuLabel>New</DropdownMenuLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <DropdownMenuItem
+                          isDisabled={!capabilities?.isProductAdmin}
+                          onClick={() => handlePopUpOpen("createFolder")}
+                        >
+                          <FolderPlus />
+                          Add Folder
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    {!capabilities?.isProductAdmin && (
+                      <TooltipContent side="left">
+                        Only product admins can create folders
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ButtonGroup>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex items-center gap-3">
           <InputGroup className="flex-1">

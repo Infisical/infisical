@@ -51,7 +51,7 @@ import {
   pamKeys,
   TPamDiscoveredAccount,
   TPamDiscoverySource,
-  useListPamAccountsAdmin,
+  useListPamAccounts,
   useListPamDiscoveredAccounts,
   useListPamDiscoveryRuns,
   useListPamDiscoverySources,
@@ -351,7 +351,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const { tab, setTab } = usePamSheetState("discoverySourceId");
   const { data: sources = [] } = useListPamDiscoverySources();
   const { data: discoveryTypes = [] } = useListPamDiscoveryTypes();
-  const { data: adminAccounts = [] } = useListPamAccountsAdmin();
+  const { data: adminAccounts = [] } = useListPamAccounts();
   const { map: accountTypeMap } = usePamAccountTypeMap();
   const source = sources.find((s) => s.id === sourceId);
   const typeMeta = discoveryTypes.find((t) => t.type === source?.discoveryType);

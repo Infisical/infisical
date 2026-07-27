@@ -3,7 +3,7 @@ import {
   PamAccountType,
   PamResourcePermissionActions,
   TAccessiblePamAccount,
-  TAdminAccountListItem,
+  TPamAccountListItem,
   usePamAccountActionsFromPermissions
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
@@ -13,7 +13,7 @@ import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityB
 import { AccountActionsMenu } from "./AccountActionsMenu";
 
 type Props = {
-  account: TAdminAccountListItem;
+  account: TPamAccountListItem;
   search: string;
   onOpenAccount: (accountId: string, tab?: PamSheetTab) => void;
   onLaunchAccount: (account: TAccessiblePamAccount) => void;

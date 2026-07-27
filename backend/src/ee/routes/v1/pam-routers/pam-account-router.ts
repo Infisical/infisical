@@ -50,8 +50,7 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   accountType: z.string()
 });
 
-// The admin list surfaces accessibility and approval status so the UI can show appropriate actions
-const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
+const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
   accessibilityIssues: z
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
@@ -354,7 +353,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         search: z.string().optional().describe("Filter accounts by name")
       }),
       response: {
-        200: z.object({ accounts: z.array(AdminAccountListItemSchema) })
+        200: z.object({ accounts: z.array(PamAccountListItemSchema) })
       }
     },
     config: { rateLimit: readLimit },

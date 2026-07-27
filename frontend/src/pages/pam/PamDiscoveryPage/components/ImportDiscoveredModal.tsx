@@ -22,7 +22,7 @@ import {
   TPamDiscoveredAccount,
   useImportPamDiscoveredAccounts,
   useListPamAccountTemplates,
-  useListPamFoldersAdmin,
+  useListPamFolders,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
@@ -46,7 +46,7 @@ export const ImportDiscoveredModal = ({
   const [templateByType, setTemplateByType] = useState<Record<string, string>>({});
 
   const importAccounts = useImportPamDiscoveredAccounts();
-  const { data: folders = [] } = useListPamFoldersAdmin();
+  const { data: folders = [] } = useListPamFolders();
   const { data: templates = [] } = useListPamAccountTemplates();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 

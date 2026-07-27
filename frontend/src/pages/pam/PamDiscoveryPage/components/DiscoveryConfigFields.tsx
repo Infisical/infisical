@@ -20,7 +20,7 @@ import {
   Switch,
   TextArea
 } from "@app/components/v3";
-import { PamAccountType, PamDiscoverySchedule, useListPamAccountsAdmin } from "@app/hooks/api/pam";
+import { PamAccountType, PamDiscoverySchedule, useListPamAccounts } from "@app/hooks/api/pam";
 
 export const discoveryConfigFormShape = {
   scanLocalAccounts: z.boolean(),
@@ -186,7 +186,7 @@ export const SshCredentialAccountsField = ({
 }: {
   control: Control<{ credentialAccountIds: string[] }>;
 }) => {
-  const { data: accounts = [] } = useListPamAccountsAdmin();
+  const { data: accounts = [] } = useListPamAccounts();
   const sshAccounts = accounts.filter((a) => a.accountType === PamAccountType.SSH);
 
   return (
@@ -257,7 +257,7 @@ export const CredentialAccountField = ({
 }: {
   control: Control<{ credentialAccountId: string }>;
 }) => {
-  const { data: accounts = [] } = useListPamAccountsAdmin();
+  const { data: accounts = [] } = useListPamAccounts();
   const credentialAccounts = accounts.filter((a) => a.accountType === PamAccountType.WindowsAd);
 
   return (

@@ -55,7 +55,7 @@ import {
   useGetPamAccessCapabilities,
   useListPamAccountTemplates,
   useListPamAccountTypes,
-  useListPamFoldersAdmin,
+  useListPamFolders,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
@@ -126,7 +126,7 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
   const selectedTemplateId = watch("templateId");
 
   const { data: accountTypes = [] } = useListPamAccountTypes();
-  const { data: folders = [] } = useListPamFoldersAdmin({
+  const { data: folders = [] } = useListPamFolders({
     filterByAction: PamResourcePermissionActions.CreateAccounts
   });
   const { data: templates = [] } = useListPamAccountTemplates();
@@ -345,23 +345,39 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                         <FieldLabel>
                           Account Template<span className="text-product-pam">*</span>
                         </FieldLabel>
-                        {isProductAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            className="text-muted hover:text-foreground"
-                            asChild
-                          >
-                            <Link
-                              to="/organizations/$orgId/pam/templates"
-                              params={{ orgId: currentOrg.id }}
-                              target="_blank"
-                            >
-                              Manage Templates
-                              <ArrowUpRight />
-                            </Link>
-                          </Button>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              {isProductAdmin ? (
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  className="text-muted hover:text-foreground"
+                                  asChild
+                                >
+                                  <Link
+                                    to="/organizations/$orgId/pam/templates"
+                                    params={{ orgId: currentOrg.id }}
+                                    target="_blank"
+                                  >
+                                    Manage Templates
+                                    <ArrowUpRight />
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <Button variant="ghost" size="xs" className="text-muted" isDisabled>
+                                  Manage Templates
+                                  <ArrowUpRight />
+                                </Button>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {!isProductAdmin && (
+                            <TooltipContent side="left">
+                              Only product admins can manage templates
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                       </div>
                       <FieldContent className="min-h-0 flex-1">
                         <InputGroup>

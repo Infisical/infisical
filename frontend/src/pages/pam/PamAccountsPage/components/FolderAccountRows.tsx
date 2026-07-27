@@ -7,7 +7,7 @@ import {
   PamAccountType,
   TAccessiblePamAccount,
   TPamFolderWithCount,
-  useListPamAccountsAdmin
+  useListPamAccounts
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
@@ -48,7 +48,7 @@ export const FolderAccountRows = ({
   onResultCount
 }: Props) => {
   // Only fetch this folder's accounts once it's open (lazy load per folder)
-  const { data, isLoading } = useListPamAccountsAdmin({ folderId: folder.id }, { enabled: isOpen });
+  const { data, isLoading } = useListPamAccounts({ folderId: folder.id }, { enabled: isOpen });
   const accounts = data ?? [];
 
   const q = search.trim().toLowerCase();

@@ -773,7 +773,7 @@ export const useCreatePamAccessRequest = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
-      // Refresh every account list variant (accessible + admin-list) so the row's access status
+      // Refresh every account list variant (accessible + list) so the row's access status
       // and its icon flip to pending as soon as the request is submitted.
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
