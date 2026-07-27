@@ -56,6 +56,7 @@ import {
   useListPamFolders
 } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { usePamSheetState } from "@app/hooks/usePamSheetState";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -114,7 +115,10 @@ export const PamAccountsPage = () => {
 
   const [launchAccount, setLaunchAccount] = useState<TAccessiblePamAccount | null>(null);
 
-  const query = searchInput.trim();
+  // Debounced so typing doesn't fire a request per keystroke; the filter query, the rows it
+  // produces, and the match highlighting all read from the same settled value.
+  const [debouncedSearch] = useDebounce(searchInput);
+  const query = debouncedSearch.trim();
   const filterActive = Boolean(query || selectedAccountType);
   const hasActiveFilters = Boolean(query || selectedFolderId || selectedAccountType);
 
@@ -160,8 +164,9 @@ export const PamAccountsPage = () => {
   const isFolderOpen = (folderId: string) =>
     filterActive || folderId === selectedFolderId || expandedFolders.has(folderId);
 
-  const showEmpty =
-    !isLoadingFolders && !(filterActive && isLoadingMatches) && visibleFolders.length === 0;
+  // First search has no cached matches to fall back on, so show skeletons instead of an empty table.
+  const isSearching = filterActive && isLoadingMatches;
+  const showEmpty = !isLoadingFolders && !isSearching && visibleFolders.length === 0;
 
   // Compute empty state messages to avoid nested ternaries
   let emptyTitle: string;
@@ -348,7 +353,7 @@ export const PamAccountsPage = () => {
           </Select>
         </CardContent>
 
-        {isLoadingFolders && (
+        {(isLoadingFolders || isSearching) && (
           <CardContent>
             <div className="flex flex-col gap-3">
               {SKELETON_KEYS.map((key) => (
@@ -369,7 +374,7 @@ export const PamAccountsPage = () => {
           </CardContent>
         )}
 
-        {!isLoadingFolders && !showEmpty && (
+        {!isLoadingFolders && !isSearching && !showEmpty && (
           <Table>
             <TableHeader>
               <TableRow>
@@ -384,7 +389,7 @@ export const PamAccountsPage = () => {
                   folder={folder}
                   isOpen={isFolderOpen(folder.id)}
                   onToggle={() => toggleFolder(folder.id)}
-                  search={searchInput}
+                  search={debouncedSearch}
                   accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
