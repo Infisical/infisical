@@ -1044,13 +1044,22 @@ export type TPamSessionStartedEvent = {
 };
 
 export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded | PostHogEventTypes.PamSessionTerminated;
+  event: PostHogEventTypes.PamSessionEnded;
   properties: {
     accountType: string;
     orgId: string;
+    // Absent for sessions that never reached Active, where a length would be meaningless.
     durationMs?: number;
-    endReason?: PamSessionEndReason;
-    accessMethod?: string;
+    endReason: PamSessionEndReason;
+    accessMethod: string;
+  };
+};
+
+export type TPamSessionTerminatedEvent = {
+  event: PostHogEventTypes.PamSessionTerminated;
+  properties: {
+    accountType: string;
+    orgId: string;
   };
 };
 
@@ -2059,6 +2068,7 @@ export type TPostHogEvent = {
   | TPamAccountAccessedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
+  | TPamSessionTerminatedEvent
   | TPamProductMemberEvent
   | TPamFolderMemberEvent
   | TPamAccountMemberEvent

@@ -1882,6 +1882,7 @@ export const registerRoutes = async (
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
     queueService,
     pamSessionDAL,
+    projectDAL,
     telemetryService,
     userDAL
   });

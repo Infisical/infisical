@@ -642,7 +642,7 @@ export const pamSessionServiceFactory = ({
         folderName: account.folderName
       });
 
-      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt, actor.actorOrgId);
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
       return {
         sessionId: session.id,
@@ -696,7 +696,7 @@ export const pamSessionServiceFactory = ({
     });
 
     await pamSessionDAL.activateSession(session.id);
-    await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt, actor.actorOrgId);
+    await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
 
     const certs = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId: effectiveGatewayId,
