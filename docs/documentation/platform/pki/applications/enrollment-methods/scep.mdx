@@ -68,11 +68,11 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
 
     Use this mode when devices are managed by Microsoft Intune. It removes the need to distribute a shared password and lets Intune track certificate issuance per device.
 
-    - Requires a **Microsoft Intune** [App Connection](/integrations/app-connections/microsoft-intune) with permission to validate SCEP requests.
+    - Requires a **Microsoft Intune** [App Connection](/integrations/app-connections/microsoft-intune) with permission to validate SCEP requests. Microsoft Intune is an enterprise App Connection.
     - Infisical reports issuance success and failure back to Intune for each request.
 
     <Warning>
-      **Do not attach an approval policy to a profile used with Microsoft Intune.** Intune SCEP issues synchronously, so a pending (approval-gated) response makes the device give up and re-enroll instead of installing the certificate.
+      **Do not attach an approval policy to a profile used with Microsoft Intune.** Intune SCEP issues synchronously and has no pending state. When issuance cannot complete within the request, Infisical reports the request to Intune as failed and returns a failure to the device rather than leaving either side waiting.
     </Warning>
   </Tab>
   <Tab title="Dynamic Challenge">
@@ -123,9 +123,9 @@ Infisical supports three challenge authentication modes for SCEP enrollment:
     - **Challenge Password** (static only): A shared secret that SCEP clients must include in their certificate signing request (CSR) to authenticate with Infisical's SCEP server. Must be at least 8 characters.
     - **Challenge Expiry** (dynamic only): How long each generated challenge remains valid, in minutes.
     - **Max Pending Challenges** (dynamic only): Maximum number of unused challenges that can exist at once.
-    - **Sign RA certificate with the CA**: Choose whether the RA certificate is self-signed or signed by this profile's CA. Signing it with the CA makes it chain to your CA root, which strict clients such as Apple (macOS and iOS) and Microsoft Intune require. Currently only internal CAs can sign the RA. Other CAs use a self-signed RA.
+    - **Sign RA certificate with the CA**: Choose whether the RA certificate is self-signed or signed by this profile's CA. Signing it with the CA makes it chain to your CA root, which strict clients such as Apple (macOS and iOS) and Microsoft Intune require. Currently only internal CAs can sign the RA, and requesting it for any other CA type is rejected. This cannot be changed once SCEP enrollment exists, because changing it regenerates the RA certificate and breaks devices that already trust the current one. To change it, disable SCEP enrollment and set it up again.
     - **Include CA Cert in Response**: When enabled, the CA certificate chain is included alongside the RA certificate in the GetCACert response. Most SCEP clients expect this to be enabled (default: enabled).
-    - **Allow Certificate-Based Renewal**: When enabled, devices that already hold a valid certificate issued by the same CA can renew their certificate without providing the challenge password (default: enabled).
+    - **Allow Certificate-Based Renewal**: When enabled, devices that already hold a valid certificate issued by the same CA can renew their certificate without providing the challenge password (default: enabled). This cannot be used with Microsoft Intune validation, because a renewal skips the challenge and would bypass Intune's per-request validation. Enabling it explicitly alongside Intune is rejected.
 
   </Step>
   <Step title="Obtain the SCEP endpoint URL">

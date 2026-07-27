@@ -13,6 +13,8 @@ export const selfValidatedHandler = (
       : staticChallengeValidator({ scepEnrollmentConfigDAL: deps.scepEnrollmentConfigDAL });
 
   return {
+    supportsPendingIssuance: true,
+    requiresIssuanceNotification: false,
     validateRequest: async (ctx) => {
       const isValid = await validator.validate(ctx.challengePassword, ctx.scepConfigId);
       return isValid ? { allowed: true } : { allowed: false };

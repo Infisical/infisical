@@ -462,6 +462,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "Microsoft Intune",
     image: "Microsoft Intune.svg",
     category: "CERTIFICATES",
+    enterprise: true,
     description: "Validate SCEP certificate requests with Microsoft Intune."
   },
   [AppConnection.Venafi]: {

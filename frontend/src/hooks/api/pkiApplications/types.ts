@@ -119,7 +119,6 @@ export type TPkiApplicationEnrollmentState = {
     validationConnectionId: string | null;
     signRaWithCa: boolean;
   } | null;
-  raCaSigningSupported: boolean;
   caType: CaType;
   estConfigured: boolean;
   acmeConfigured: boolean;

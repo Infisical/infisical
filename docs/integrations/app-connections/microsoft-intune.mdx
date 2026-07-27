@@ -5,19 +5,45 @@ description: "Learn how to configure a Microsoft Intune Connection for Infisical
 
 Infisical's Microsoft Intune Connection lets you validate SCEP certificate requests against Microsoft Intune using Client Secrets. When a device enrolls through a [SCEP enrollment method](/documentation/platform/pki/applications/enrollment-methods/scep) configured with Intune validation, Infisical asks Intune to confirm the device's challenge before issuing the certificate, then reports the outcome back to Intune.
 
+<Note>
+  Microsoft Intune is an enterprise App Connection and requires a paid plan.
+</Note>
+
 **Prerequisites:**
 
 - A Microsoft Entra ID tenant with Microsoft Intune enabled.
-- An App Registration in Azure with a Client Secret and the API permissions below.
 
-#### Required Azure permissions
+## Setup Azure application
 
-Set the API permissions of your Azure application to include the following **Application permissions**, then grant admin consent:
+<Steps>
+  <Step title="Register an application in Microsoft Entra ID">
+    Navigate to Microsoft Entra ID and open **App registrations**, then create a new registration.
+    <Info>
+      Azure Active Directory is now Microsoft Entra ID.
+    </Info>
+    ![Azure app registration](/images/integrations/azure-app-configuration/config-aad.png)
+    ![Azure new application](/images/integrations/azure-app-configuration/config-new-app.png)
+  </Step>
+  <Step title="Assign API permissions to the application">
+    Set the API permissions of your Azure application to include the following **Application permissions**, then grant admin consent:
 
-- Microsoft Graph
-  - `Application.Read.All`
-- Microsoft Intune
-  - `scep_challenge_provider`
+    - Microsoft Graph
+      - `Application.Read.All`
+    - Microsoft Intune
+      - `scep_challenge_provider`
+
+    `Application.Read.All` lets Infisical discover the Intune SCEP validation endpoint, and `scep_challenge_provider` lets it validate challenges and report issuance outcomes.
+
+    ![Azure API permissions](/images/integrations/azure-client-secrets/app-api-permissions.png)
+  </Step>
+  <Step title="Collect the application credentials">
+    Obtain the **Directory (Tenant) ID** and **Application (Client) ID** from the application's **Overview** page, then generate a **Client Secret** under **Certificates & secrets**.
+
+    ![Azure client secret](/images/integrations/azure-app-configuration/config-credentials-1.png)
+    ![Azure client secret](/images/integrations/azure-app-configuration/config-credentials-2.png)
+    ![Azure client secret](/images/integrations/azure-app-configuration/config-credentials-3.png)
+  </Step>
+</Steps>
 
 ## Setup Microsoft Intune Connection in Infisical
 
@@ -25,7 +51,8 @@ Set the API permissions of your Azure application to include the following **App
   <Tab title="Infisical UI">
     <Steps>
       <Step title="Navigate to App Connections">
-        In your **Certificate Manager** project, go to **Settings** and open the **App Connections** tab, then click **Add Connection**.
+        In Certificate Manager, navigate to the **App Connections** tab on the **Settings** page.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
       </Step>
       <Step title="Add Connection">
         Select the **Microsoft Intune** option from the connection options modal.

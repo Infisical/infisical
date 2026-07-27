@@ -49,7 +49,6 @@ const EnrollmentStateSchema = z.object({
   est: EstEnrollmentStateSchema.nullable(),
   acme: AcmeEnrollmentStateSchema.nullable(),
   scep: ScepEnrollmentStateSchema.nullable(),
-  raCaSigningSupported: z.boolean(),
   caType: z.nativeEnum(CaType),
   estConfigured: z.boolean(),
   acmeConfigured: z.boolean(),

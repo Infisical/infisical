@@ -28,11 +28,17 @@ export type ScepFailureContext = {
   validationConnectionId?: string | null;
 };
 
-export interface IScepValidationHandler {
+type TScepValidationHandlerBase = {
+  supportsPendingIssuance: boolean;
   validateRequest(ctx: ScepValidationContext): Promise<ScepValidationResult>;
-  reportIssued?(ctx: ScepIssuedContext): Promise<void>;
   reportFailure?(ctx: ScepFailureContext): Promise<void>;
-}
+};
+
+export type IScepValidationHandler = TScepValidationHandlerBase &
+  (
+    | { requiresIssuanceNotification: false; reportIssued?: (ctx: ScepIssuedContext) => Promise<void> }
+    | { requiresIssuanceNotification: true; reportIssued: (ctx: ScepIssuedContext) => Promise<void> }
+  );
 
 export type TScepValidationHandlerDeps = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;

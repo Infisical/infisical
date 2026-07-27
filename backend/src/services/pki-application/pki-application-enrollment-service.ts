@@ -215,7 +215,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const scepConfig = junction.scepConfigId ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId) : null;
 
     const profile = await certificateProfileDAL.findById(profileId);
-    const { raCaSigningSupported, caType } = await resolveScepRaSigning({
+    const { caType } = await resolveScepRaSigning({
       caId: profile?.caId,
       certificateAuthorityDAL
     });
@@ -267,7 +267,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
             signRaWithCa: Boolean(scepConfig.signRaWithCa)
           }
         : null,
-      raCaSigningSupported,
       caType,
       estConfigured: Boolean(junction.estConfigId),
       acmeConfigured: Boolean(junction.acmeConfigId),
@@ -663,6 +662,15 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const isIntune = challengeType === ScepChallengeType.MICROSOFT_INTUNE;
     const appCfg = getConfig();
 
+    // Cert-based renewal skips the challenge, which would bypass Intune's per-request validation.
+    if (isIntune && config.allowCertBasedRenewal === true) {
+      throw new BadRequestError({
+        message:
+          "Certificate-based renewal cannot be enabled with Microsoft Intune validation, because renewals would skip Intune's per-request validation."
+      });
+    }
+    const allowCertBasedRenewal = isIntune ? false : (config.allowCertBasedRenewal ?? true);
+
     let validationConnectionId: string | null = null;
     let validationConnectionName: string | null = null;
     if (isIntune) {
@@ -695,9 +703,6 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       hashedChallengePassword = await crypto.hashing().createHash(config.challengePassword, appCfg.SALT_ROUNDS);
     }
 
-    // Cert-based renewal skips the challenge, which would bypass Intune's per-request validation, so force it off.
-    const allowCertBasedRenewal = isIntune ? false : (config.allowCertBasedRenewal ?? true);
-
     const isFirstCreate = !junction.scepConfigId;
     const raSlug = `app-${applicationId}-${profileId}`;
 
@@ -711,11 +716,16 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const existingScepConfig = junction.scepConfigId
       ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId)
       : null;
-    // Regenerating the RA breaks devices already trusting it, so only do it on first enable or a signing change.
-    const shouldGenerateRaCert =
-      isFirstCreate || (existingScepConfig ? existingScepConfig.signRaWithCa !== signRaWithCa : false);
+    // Changing this regenerates the RA certificate, which breaks devices already trusting the current one.
+    if (existingScepConfig && existingScepConfig.signRaWithCa !== signRaWithCa) {
+      throw new BadRequestError({
+        message:
+          "Signing the RA certificate with the CA cannot be changed for an existing SCEP enrollment. Disable SCEP enrollment and set it up again to change it."
+      });
+    }
+
     let raCert: Awaited<ReturnType<typeof generateAndEncryptScepRaCertificate>> | null = null;
-    if (shouldGenerateRaCert) {
+    if (isFirstCreate) {
       raCert = await generateAndEncryptScepRaCertificate({
         slug: raSlug,
         caId: profile?.caId,

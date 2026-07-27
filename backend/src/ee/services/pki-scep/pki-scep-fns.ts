@@ -4,7 +4,6 @@ import RE2 from "re2";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { isCertChainValid } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
@@ -208,10 +207,9 @@ const generateScepRaCertificate = async ({
   const ca = await deps.certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
   if (!isScepRaCaSigningSupported(caType)) {
-    logger.warn(
-      `SCEP RA CA-signing requested for unsupported CA type '${caType}'; using a self-signed RA [caId=${caId}]`
-    );
-    return buildRaCertificate(slug);
+    throw new BadRequestError({
+      message: `CA-signed SCEP RA certificates are not supported for '${caType}' certificate authorities.`
+    });
   }
 
   return buildCaSignedRaCertificate(slug, caId, deps);

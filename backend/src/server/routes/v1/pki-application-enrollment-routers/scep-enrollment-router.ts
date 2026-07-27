@@ -24,7 +24,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
         challengeType: z.nativeEnum(ScepChallengeType).optional(),
         challengePassword: z.string().optional(),
         includeCaCertInResponse: z.boolean().optional().default(true),
-        allowCertBasedRenewal: z.boolean().optional().default(true),
+        allowCertBasedRenewal: z.boolean().optional(),
         dynamicChallengeExpiryMinutes: z.number().int().min(5).max(1440).optional(),
         dynamicChallengeMaxPending: z.number().int().min(1).max(1000).optional(),
         validationConnectionId: z.string().uuid().optional(),

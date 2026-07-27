@@ -167,5 +167,5 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
   [AppConnection.Fireworks]: AppConnectionPlanType.Regular,
   [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular,
-  [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Regular
+  [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise
 };

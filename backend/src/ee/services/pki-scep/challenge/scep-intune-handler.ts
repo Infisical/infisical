@@ -55,6 +55,8 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
   };
 
   return {
+    supportsPendingIssuance: false,
+    requiresIssuanceNotification: true,
     validateRequest: async (ctx) => {
       const { serviceUri, intuneToken } = await resolveIntune(ctx.validationConnectionId);
       const result = await intuneValidateScepRequest({

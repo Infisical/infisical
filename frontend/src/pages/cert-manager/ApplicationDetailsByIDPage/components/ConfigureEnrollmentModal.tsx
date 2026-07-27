@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { EyeIcon, EyeOffIcon, FileTextIcon, Plus, RotateCwIcon } from "lucide-react";
@@ -44,11 +45,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { isScepRaCaSigningSupported } from "@app/hooks/api/ca/capabilities";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetPkiApplicationEnrollment } from "@app/hooks/api/pkiApplications";
 import {
@@ -64,10 +67,13 @@ import {
   useSetPkiApplicationScepEnrollment
 } from "@app/hooks/api/pkiApplications/mutations";
 import { ScepChallengeType, TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
 const COPY_RESET_MS = 1000;
+
+const CREATE_CONNECTION_ID = "_create";
 
 type Props = {
   isOpen: boolean;
@@ -745,7 +751,6 @@ const ScepPanel = ({
   profileId,
   profileSlug,
   enabled,
-  raCaSigningSupported,
   caType,
   initial
 }: {
@@ -753,7 +758,6 @@ const ScepPanel = ({
   profileId: string;
   profileSlug: string;
   enabled: boolean;
-  raCaSigningSupported: boolean;
   caType: CaType;
   initial: {
     challengeType: ScepChallengeType;
@@ -772,7 +776,7 @@ const ScepPanel = ({
   const { currentProject } = useProject();
   const setMutation = useSetPkiApplicationScepEnrollment();
   const clearMutation = useClearPkiApplicationScepEnrollment();
-  const { control, handleSubmit, watch, reset } = useForm<{
+  const { control, handleSubmit, watch, reset, setValue } = useForm<{
     challengeType: ScepChallengeType;
     challengePassword?: string;
     includeCaCertInResponse: boolean;
@@ -813,12 +817,20 @@ const ScepPanel = ({
     initial?.dynamicChallengeMaxPending,
     initial?.validationConnectionId,
     initial?.signRaWithCa,
-    raCaSigningSupported,
     reset
   ]);
 
   const challengeType = watch("challengeType");
   const isIntune = challengeType === ScepChallengeType.MICROSOFT_INTUNE;
+  const isScepConfigured = Boolean(initial);
+  const raCaSigningSupported = isScepRaCaSigningSupported(caType);
+
+  const { permission } = useProjectPermission();
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
+  const canCreateConnection = permission.can(
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
+  );
 
   const { data: intuneConnections, isPending: isIntuneConnectionsLoading } =
     useListAvailableAppConnections(AppConnection.MicrosoftIntune, currentProject.id, {
@@ -966,10 +978,22 @@ const ScepPanel = ({
                       value={selected}
                       isError={Boolean(error)}
                       isLoading={isIntuneConnectionsLoading}
-                      onChange={(newValue) =>
-                        onChange((newValue as { id: string } | null)?.id ?? undefined)
-                      }
-                      options={intuneConnections ?? []}
+                      onChange={(newValue) => {
+                        if (
+                          (newValue as SingleValue<{ id: string }>)?.id === CREATE_CONNECTION_ID
+                        ) {
+                          handlePopUpOpen("addConnection");
+                          onChange(undefined);
+                          return;
+                        }
+                        onChange((newValue as { id: string } | null)?.id ?? undefined);
+                      }}
+                      options={[
+                        ...(canCreateConnection
+                          ? [{ id: CREATE_CONNECTION_ID, name: "Create Connection" }]
+                          : []),
+                        ...(intuneConnections ?? [])
+                      ]}
                       placeholder="Select connection..."
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.id}
@@ -979,8 +1003,25 @@ const ScepPanel = ({
                   <FieldDescription>
                     Selecting the connection is all that is required. The transaction and
                     certificate request arrive in the device request, and the expected subject and
-                    SAN are validated by Intune.
+                    SAN are validated by Intune. See the{" "}
+                    <a
+                      href={PkiDocsUrls.appConnections.microsoftIntune}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-500 hover:text-primary-400"
+                    >
+                      setup guide
+                    </a>{" "}
+                    for what to configure on the Intune side.
                   </FieldDescription>
+                  {!isIntuneConnectionsLoading &&
+                  !intuneConnections?.length &&
+                  !canCreateConnection ? (
+                    <FieldDescription className="text-warning">
+                      You do not have access to any Microsoft Intune Connections. Contact an admin
+                      to create one.
+                    </FieldDescription>
+                  ) : null}
                   {error ? (
                     <FieldError>A Microsoft Intune connection is required.</FieldError>
                   ) : null}
@@ -1068,7 +1109,7 @@ const ScepPanel = ({
                   available for internal certificate authorities.
                 </p>
               </div>
-              {raCaSigningSupported ? (
+              {raCaSigningSupported && !isScepConfigured ? (
                 <Switch
                   variant="project"
                   id="scep-sign-ra-with-ca"
@@ -1082,13 +1123,15 @@ const ScepPanel = ({
                       <Switch
                         variant="project"
                         id="scep-sign-ra-with-ca"
-                        checked={false}
+                        checked={raCaSigningSupported && field.value}
                         disabled
                       />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Not supported for {caType} certificate authorities.
+                    {raCaSigningSupported
+                      ? "Cannot be changed once SCEP enrollment is set up. Disable SCEP enrollment and set it up again to change it."
+                      : `Not supported for ${caType} certificate authorities.`}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -1150,6 +1193,18 @@ const ScepPanel = ({
           {enabled ? "Save" : "Enable"}
         </Button>
       </div>
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isAddConnectionOpen) =>
+          handlePopUpToggle("addConnection", isAddConnectionOpen)
+        }
+        projectType={currentProject.type}
+        projectId={currentProject.id}
+        app={AppConnection.MicrosoftIntune}
+        onComplete={(connection) => {
+          if (connection) setValue("validationConnectionId", connection.id);
+        }}
+      />
     </div>
   );
 };
@@ -1371,7 +1426,6 @@ export const ConfigureEnrollmentModal = ({
                         profileId={profileId}
                         profileSlug={profile?.profileSlug ?? ""}
                         enabled={Boolean(data?.scepConfigured)}
-                        raCaSigningSupported={Boolean(data?.raCaSigningSupported)}
                         caType={data?.caType ?? CaType.INTERNAL}
                         initial={data?.scep ?? null}
                       />
