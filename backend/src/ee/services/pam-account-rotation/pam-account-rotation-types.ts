@@ -33,4 +33,5 @@ export type TPamAccountRotationView = {
   rotationStatus: string | null;
   lastRotationError: string | null;
   isReady: boolean;
+  sharedIdentity: { id: string; name: string; discoverySources: string[] }[];
 };

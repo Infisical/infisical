@@ -387,6 +387,9 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
       queryClient.invalidateQueries({
         queryKey: [...pamKeys.discovery(), "discovered", sourceId ?? ""]
       });
+      // A scan reconciles dependencies onto managed accounts, so refresh account views (their dependency
+      // lists are keyed under pamKeys.account()) which the discovery scan otherwise never invalidates.
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
     prevRunStatus.current = latestRunStatus;
   }, [latestRunStatus, sourceId, queryClient]);
@@ -479,11 +482,13 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                     </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="w-40">Type</TableHead>
+                    <TableHead className="w-40">Dependencies</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {visibleStaged.map((account) => {
                     const typeDetails = accountTypeMap[account.accountType as PamAccountType];
+                    const hasDeps = account.dependencyCount > 0;
                     return (
                       <TableRow key={account.id}>
                         <TableCell>
@@ -509,6 +514,13 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                               {typeDetails?.name ?? account.accountType}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {hasDeps ? (
+                            <Badge variant="neutral">{account.dependencyCount}</Badge>
+                          ) : (
+                            <span className="text-sm text-muted">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -565,10 +577,10 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Started</TableHead>
+                  <TableHead className="w-44">Started</TableHead>
                   <TableHead className="w-28">Status</TableHead>
                   <TableHead>Result</TableHead>
                 </TableRow>
@@ -581,7 +593,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
 
                   return (
                     <Fragment key={run.id}>
-                      <TableRow className={hasMachineErrors ? "border-b-0" : undefined}>
+                      <TableRow className={hasMachineErrors ? "[&>td]:border-b-0" : undefined}>
                         <TableCell className="text-muted">
                           {run.startedAt
                             ? format(new Date(run.startedAt), "MMM d, yyyy h:mm a")
@@ -590,34 +602,49 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                         <TableCell>
                           <RunStatusBadge status={run.status} />
                         </TableCell>
-                        <TableCell className="text-muted">
+                        <TableCell className="whitespace-normal text-muted">
                           {run.status === "failed" ? (
-                            <span className="whitespace-pre-line text-danger">
+                            <span className="break-words whitespace-pre-line text-danger">
                               {run.errorMessage}
                             </span>
                           ) : (
-                            `${run.discoveredCount} found, ${run.newCount} new`
+                            <div className="grid w-fit grid-cols-[auto_auto] gap-x-6">
+                              <span>
+                                {run.discoveredCount}{" "}
+                                {run.discoveredCount === 1 ? "account" : "accounts"}
+                              </span>
+                              <span className="text-muted/60">{run.newCount} new</span>
+                              {typeof run.dependencyCount === "number" && (
+                                <>
+                                  <span>
+                                    {run.dependencyCount}{" "}
+                                    {run.dependencyCount === 1 ? "dep" : "deps"}
+                                  </span>
+                                  <span className="text-muted/60">
+                                    {run.newDependencyCount ?? 0} new
+                                  </span>
+                                </>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
 
                       {hasMachineErrors && (
-                        <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={3} className="pt-0 pb-4">
-                            <div className="rounded-md border border-warning/20 bg-warning/[0.06] p-3">
-                              <div className="flex items-center gap-2 text-sm font-medium text-warning">
-                                <TriangleAlert className="size-4 shrink-0" />
-                                The scan failed to find local accounts on certain machines
-                              </div>
-                              <ul className="mt-2 flex flex-col gap-1.5">
-                                {machineErrors.map((m) => (
-                                  <li key={m.machine} className="text-xs">
-                                    <span className="font-medium text-foreground">{m.machine}</span>
-                                    <span className="text-muted">: {m.error}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                        <TableRow className="bg-warning/[0.04] hover:bg-warning/[0.04]">
+                          <TableCell colSpan={3} className="pt-3 pb-4 whitespace-normal">
+                            <div className="flex items-center gap-2 text-sm font-medium text-warning">
+                              <TriangleAlert className="size-4 shrink-0" />
+                              The scan couldn&apos;t complete on some machines
                             </div>
+                            <ul className="mt-2 flex flex-col gap-1.5">
+                              {machineErrors.map((m) => (
+                                <li key={m.machine} className="text-xs break-words">
+                                  <span className="font-medium text-foreground">{m.machine}</span>
+                                  <span className="text-muted">: {m.error}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </TableCell>
                         </TableRow>
                       )}

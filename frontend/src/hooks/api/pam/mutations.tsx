@@ -486,9 +486,8 @@ export const useRemovePamProductIdentityMember = () => {
   });
 };
 
-// Product user/group add & removal must go through the PAM endpoints so the PAM-specific audit
-// events fire and approver assignments / folder memberships are handled (the generic workspace
-// routes emit project-scoped events and skip that).
+// Product user/group changes go through the PAM endpoints so PAM audit events fire and approver assignments /
+// folder memberships are handled (the generic workspace routes skip that).
 export const useAddPamProductUserMember = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -735,7 +734,7 @@ export const useImportPamDiscoveredAccounts = () => {
   return useMutation({
     mutationFn: async ({ sourceId, ...body }: TImportPamDiscoveredAccountsDTO) => {
       const { data } = await apiRequest.post<{ results: TImportPamDiscoveredAccountResult[] }>(
-        `/api/v1/pam/discovery-sources/${sourceId}/discovered/import`,
+        `/api/v1/pam/discovery-sources/${sourceId}/discovered-accounts/import`,
         body
       );
       return data.results;
@@ -788,6 +787,7 @@ export const useRotatePamAccount = () => {
     onSettled: (_, __, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
       queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
     }
   });
 };
