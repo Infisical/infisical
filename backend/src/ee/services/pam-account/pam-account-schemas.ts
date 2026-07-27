@@ -311,6 +311,46 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.Redis]: {
+    name: "Redis",
+    icon: "Redis.png",
+    connectionDetails: z.object({
+      host: z.string().trim().min(1).max(255),
+      port: z.coerce.number(),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: optionalTrimmedString
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(256),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: { defaultValue: 6379 },
+      username: {
+        defaultValue: "default",
+        tooltip: "The Redis ACL username. Use 'default' for the default user."
+      },
+      password: { widget: PamFieldWidget.Password, secret: true },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      }
+    }
+  },
+
   [PamAccountType.SSH]: {
     name: "SSH",
     icon: "SSH.png",
@@ -721,6 +761,7 @@ export const extractGatewayTarget = async (
     case PamAccountType.Postgres:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
+    case PamAccountType.Redis:
     case PamAccountType.Windows:
       return {
         host: (validated as { host: string; port: number }).host,

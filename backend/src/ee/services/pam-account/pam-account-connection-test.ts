@@ -12,6 +12,7 @@ import { extractGatewayTarget, isCredentialConfigured, qualifyUsernameWithDomain
 export enum TestConnectionMode {
   SQL = "sql",
   MongoDB = "mongodb",
+  Redis = "redis",
   LDAP = "ldap",
   Kubernetes = "kubernetes",
   SSH = "ssh",
@@ -35,6 +36,14 @@ export type TestConnectionRequest =
       username: string;
       password?: string;
       authSource: string;
+      sslEnabled?: boolean;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    }
+  | {
+      mode: TestConnectionMode.Redis;
+      username?: string;
+      password?: string;
       sslEnabled?: boolean;
       sslRejectUnauthorized?: boolean;
       sslCertificate?: string;
@@ -132,6 +141,26 @@ export const buildGatewayConnectionTest = async (
           username: c.username,
           password: c.password,
           authSource,
+          sslEnabled: cd.sslEnabled,
+          sslRejectUnauthorized: cd.sslRejectUnauthorized,
+          sslCertificate: cd.sslCertificate
+        }
+      };
+    }
+    case PamAccountType.Redis: {
+      const cd = connectionDetails as {
+        sslEnabled?: boolean;
+        sslRejectUnauthorized?: boolean;
+        sslCertificate?: string;
+      };
+      const c = creds as { username?: string; password?: string } | null;
+      return {
+        host,
+        port,
+        request: {
+          mode: TestConnectionMode.Redis,
+          username: c?.username,
+          password: c?.password,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
           sslCertificate: cd.sslCertificate
