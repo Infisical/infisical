@@ -204,8 +204,12 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { projectId, accountId, accountName, accountType, actorEmail, durationMs, alreadyEnded } =
-        await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.permission.id);
+      const { projectId, accountId, accountName, alreadyEnded } =
+        await server.services.pamSession.endSessionFromGateway(
+          req.params.sessionId,
+          req.permission.id,
+          req.permission.orgId
+        );
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
@@ -221,19 +225,6 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             }
           }
         });
-
-        void server.services.telemetry
-          .sendPostHogEvents({
-            event: PostHogEventTypes.PamSessionEnded,
-            distinctId: actorEmail || getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
-            properties: {
-              accountType,
-              orgId: req.permission.orgId,
-              durationMs
-            }
-          })
-          .catch(() => {});
       }
 
       return { message: "Session ended" };

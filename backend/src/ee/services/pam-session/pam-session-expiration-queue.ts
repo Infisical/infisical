@@ -1,19 +1,24 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
+import { PamSessionEndReason } from "../pam/pam-enums";
 import { TPamSessionDALFactory } from "./pam-session-dal";
+import { reportPamSessionEnded } from "./pam-session-fns";
 
 type TPamSessionExpirationServiceFactoryDep = {
   queueService: TQueueServiceFactory;
   pamSessionDAL: Pick<TPamSessionDALFactory, "endSessionById">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPamSessionExpirationServiceFactory = ReturnType<typeof pamSessionExpirationServiceFactory>;
 
 export const pamSessionExpirationServiceFactory = ({
   queueService,
-  pamSessionDAL
+  pamSessionDAL,
+  telemetryService
 }: TPamSessionExpirationServiceFactoryDep) => {
   const appCfg = getConfig();
 
@@ -23,12 +28,20 @@ export const pamSessionExpirationServiceFactory = ({
     }
 
     queueService.start(QueueName.PamSessionExpiration, async (job) => {
-      const { sessionId } = job.data;
+      const { sessionId, orgId } = job.data;
       try {
         logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: expiring session [sessionId=${sessionId}]`);
         const updated = await pamSessionDAL.endSessionById(sessionId);
         if (updated) {
           logger.info({ sessionId }, `${QueueName.PamSessionExpiration}: session expired [sessionId=${sessionId}]`);
+          if (orgId) {
+            reportPamSessionEnded({
+              session: updated,
+              orgId,
+              endReason: PamSessionEndReason.Expired,
+              telemetryService
+            });
+          }
         } else {
           logger.info(
             { sessionId },
@@ -42,13 +55,13 @@ export const pamSessionExpirationServiceFactory = ({
     });
   };
 
-  const scheduleSessionExpiration = async (sessionId: string, expiresAt: Date) => {
+  const scheduleSessionExpiration = async (sessionId: string, expiresAt: Date, orgId: string) => {
     const delayMs = Math.max(0, expiresAt.getTime() - Date.now());
 
     await queueService.queue(
       QueueName.PamSessionExpiration,
       QueueJobs.PamSessionExpiration,
-      { sessionId },
+      { sessionId, orgId },
       {
         jobId: `pam-session-expiration-${sessionId}`,
         delay: delayMs

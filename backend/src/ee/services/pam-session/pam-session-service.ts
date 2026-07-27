@@ -18,6 +18,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -25,6 +26,7 @@ import {
   PamAccessMethod,
   PamAccessStatus,
   PamAccountType,
+  PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
 import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
@@ -70,7 +72,7 @@ import { getAzureAccessTokens } from "./azure/azure-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
-import { sendPamSessionCancellationSignal } from "./pam-session-fns";
+import { reportPamSessionEnded, sendPamSessionCancellationSignal } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -103,6 +105,7 @@ type TPamSessionServiceFactoryDep = {
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
   >;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -121,7 +124,8 @@ export const pamSessionServiceFactory = ({
   pamSessionExpirationService,
   mfaSessionService,
   orgDAL,
-  pamAccessRequestService
+  pamAccessRequestService,
+  telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -429,7 +433,7 @@ export const pamSessionServiceFactory = ({
   };
 
   // Called by the gateway
-  const endSessionFromGateway = async (sessionId: string, gatewayId: string) => {
+  const endSessionFromGateway = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
@@ -437,18 +441,19 @@ export const pamSessionServiceFactory = ({
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
 
-    // Only report duration for sessions that actually reached Active; otherwise createdAt would
-    // fold "Starting" wait time into the reported session length and skew duration metrics.
-    const endTime = updatedSession?.endedAt ?? new Date();
-    const durationMs = session.startedAt ? Math.max(0, endTime.getTime() - session.startedAt.getTime()) : undefined;
+    if (updatedSession) {
+      reportPamSessionEnded({
+        session: updatedSession,
+        orgId,
+        endReason: PamSessionEndReason.Completed,
+        telemetryService
+      });
+    }
 
     return {
       projectId: session.projectId,
       accountId: session.accountId,
       accountName: session.accountName,
-      accountType: session.accountType,
-      actorEmail: session.actorEmail,
-      durationMs,
       alreadyEnded: !updatedSession
     };
   };
@@ -633,7 +638,7 @@ export const pamSessionServiceFactory = ({
         folderName: account.folderName
       });
 
-      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt, actor.actorOrgId);
 
       return {
         sessionId: session.id,
@@ -687,7 +692,7 @@ export const pamSessionServiceFactory = ({
     });
 
     await pamSessionDAL.activateSession(session.id);
-    await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+    await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt, actor.actorOrgId);
 
     const certs = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId: effectiveGatewayId,

@@ -15,6 +15,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
@@ -1049,6 +1050,7 @@ export type TPamSessionEndedEvent = {
     accountType: string;
     orgId: string;
     durationMs?: number;
+    endReason?: PamSessionEndReason;
   };
 };
 

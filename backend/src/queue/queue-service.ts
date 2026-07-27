@@ -484,7 +484,8 @@ export type TQueueJobTypes = {
   };
   [QueueName.PamSessionExpiration]: {
     name: QueueJobs.PamSessionExpiration;
-    payload: { sessionId: string };
+    // orgId is optional so jobs already queued without it still drain; those skip telemetry only.
+    payload: { sessionId: string; orgId?: string };
   };
   [QueueName.PamDiscoveryScan]: {
     name: QueueJobs.PamDiscoverySourceScan;
