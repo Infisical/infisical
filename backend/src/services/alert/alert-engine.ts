@@ -25,6 +25,7 @@ type TChannelDispatchResult = {
   success: boolean;
   error?: string;
   targetResults?: TChannelTargetResult[];
+  skipped?: boolean;
 };
 
 export type TAlertEngineDep = {
@@ -158,7 +159,10 @@ export const alertEngineFactory = ({
           if (definition.directed) {
             const recipients = recipientsByChannel.get(channel.id) ?? [];
             if (recipients.length === 0) {
-              return { ...base, success: false, error: "No recipients could be resolved for this channel" };
+              logger.warn(
+                `Alert ${channel.channelType} channel has no resolvable recipients; skipping it this run [alertId=${alert.id}] [channelId=${channel.id}]`
+              );
+              return { ...base, success: false, skipped: true };
             }
             const results = await Promise.all(
               recipients.map((recipient) =>
@@ -189,7 +193,10 @@ export const alertEngineFactory = ({
       })
     );
 
-    const deliveries = channelResults.flatMap((result) => {
+    const dispatched = channelResults.filter((result) => !result.skipped);
+    if (dispatched.length === 0) return AlertDispatchOutcome.NoRecipients;
+
+    const deliveries = dispatched.flatMap((result) => {
       const perTarget = new Map<string, boolean>((result.targetResults ?? []).map((t) => [t.targetId, t.success]));
       return result.targetIds.map((targetId) => ({
         targetId,
@@ -199,10 +206,10 @@ export const alertEngineFactory = ({
       }));
     });
 
-    const errors = channelResults
+    const errors = dispatched
       .filter((result) => !result.success && result.error)
       .map((result) => `${result.channelType}: ${result.error}`);
-    const anyDelivered = channelResults.some((result) => result.success);
+    const anyDelivered = dispatched.some((result) => result.success);
     let status = AlertRunStatus.SUCCESS;
     if (errors.length > 0) status = anyDelivered ? AlertRunStatus.PARTIAL : AlertRunStatus.FAILED;
     const errorText = errors.length > 0 ? errors.join("\n") : undefined;

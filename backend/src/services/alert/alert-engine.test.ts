@@ -330,7 +330,7 @@ describe("alert engine", () => {
     ]);
   });
 
-  test("fails a directed channel with no resolved recipients instead of dispatching to undefined", async () => {
+  test("skips a directed channel with no resolved recipients rather than dispatching to undefined or failing the run", async () => {
     const { engine, sentMail, historyWrites } = buildEngine({
       targets: [{ id: "t1" }],
       channels: [{ id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true }],
@@ -339,13 +339,36 @@ describe("alert engine", () => {
 
     const outcome = await engine.runAlert(makeAlert());
 
-    expect(outcome).toBe(AlertDispatchOutcome.DeliveryFailed);
+    // Nobody to notify is customer config drift, not a delivery fault: it must stay out of
+    // delivery_failed (which we alarm on) and leave no failed history row to re-read as an incident.
+    expect(outcome).toBe(AlertDispatchOutcome.NoRecipients);
     // No send is attempted with an undefined recipient.
     expect(sentMail).toHaveLength(0);
+    expect(historyWrites).toHaveLength(0);
+  });
+
+  test("dispatches the reachable channels when only some are directed-but-empty", async () => {
+    const { engine, historyWrites } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        { id: "c-email", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
+        {
+          id: "c-slack",
+          channelType: "slack",
+          encryptedConfig: encConfig({ webhookUrl: "https://hooks.slack.com/services/x" }),
+          enabled: true
+        }
+      ],
+      recipients: []
+    });
+
+    const outcome = await engine.runAlert(makeAlert());
+
+    // The empty email channel neither fails the run nor records a delivery it never attempted.
+    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
     expect(historyWrites).toHaveLength(1);
-    expect(historyWrites[0].status).toBe(AlertRunStatus.FAILED);
     expect(historyWrites[0].deliveries).toEqual([
-      { targetId: "t1", channelId: "c-email", channelType: "email", status: AlertRunStatus.FAILED }
+      { targetId: "t1", channelId: "c-slack", channelType: "slack", status: AlertRunStatus.SUCCESS }
     ]);
   });
 

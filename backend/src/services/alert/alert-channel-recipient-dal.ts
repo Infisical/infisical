@@ -5,12 +5,29 @@ import { TableName, TAlertChannelRecipients } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { DIRECTED_ALERT_CHANNEL_TYPES } from "./alert-channel-types";
 import { AlertPrincipalType } from "./alert-types";
 
 export type TAlertChannelRecipientDALFactory = ReturnType<typeof alertChannelRecipientDALFactory>;
 
 export const alertChannelRecipientDALFactory = (db: TDbClient) => {
   const alertChannelRecipientOrm = ormify(db, TableName.AlertChannelRecipient);
+
+  const $disableChannelsWithoutRecipients = async (channelIds: string[], tx?: Knex): Promise<number> => {
+    if (!channelIds.length) return 0;
+
+    return (tx || db)(TableName.AlertChannel)
+      .whereIn(`${TableName.AlertChannel}.id`, channelIds)
+      .whereIn(`${TableName.AlertChannel}.channelType`, DIRECTED_ALERT_CHANNEL_TYPES)
+      .where(`${TableName.AlertChannel}.enabled`, true)
+      .whereNotExists((qb) => {
+        void qb
+          .select(db.raw("1"))
+          .from(TableName.AlertChannelRecipient)
+          .whereRaw(`"${TableName.AlertChannelRecipient}"."channelId" = "${TableName.AlertChannel}"."id"`);
+      })
+      .update({ enabled: false });
+  };
 
   const findByChannelIds = async (channelIds: string[], tx?: Knex): Promise<TAlertChannelRecipients[]> => {
     try {
@@ -44,10 +61,15 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     try {
       if (!principalIds.length) return 0;
 
-      return await (tx || db)(TableName.AlertChannelRecipient)
+      const deleted = (await (tx || db)(TableName.AlertChannelRecipient)
         .where(`${TableName.AlertChannelRecipient}.principalType`, principalType)
         .whereIn(`${TableName.AlertChannelRecipient}.principalId`, principalIds)
-        .del();
+        .del()
+        .returning("channelId")) as { channelId: string }[];
+
+      await $disableChannelsWithoutRecipients([...new Set(deleted.map((row) => row.channelId))], tx);
+
+      return deleted.length;
     } catch (error) {
       throw new DatabaseError({ error, name: "DeleteByPrincipals" });
     }
@@ -64,11 +86,16 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
       if (projectId) void channelIds.where(`${TableName.AlertChannel}.projectId`, projectId);
       else void channelIds.where(`${TableName.AlertChannel}.orgId`, orgId as string);
 
-      return await (tx || db)(TableName.AlertChannelRecipient)
+      const deleted = (await (tx || db)(TableName.AlertChannelRecipient)
         .where(`${TableName.AlertChannelRecipient}.principalType`, AlertPrincipalType.USER)
         .whereIn(`${TableName.AlertChannelRecipient}.principalId`, userIds)
         .whereIn(`${TableName.AlertChannelRecipient}.channelId`, channelIds)
-        .del();
+        .del()
+        .returning("channelId")) as { channelId: string }[];
+
+      await $disableChannelsWithoutRecipients([...new Set(deleted.map((row) => row.channelId))], tx);
+
+      return deleted.length;
     } catch (error) {
       throw new DatabaseError({ error, name: "DeleteUsersRecipientsByScope" });
     }

@@ -1,4 +1,9 @@
-import { AlertChannelType, SlackChannelConfigSchema, TAlertPayload } from "../alert-channel-types";
+import {
+  AlertChannelType,
+  DIRECTED_ALERT_CHANNEL_TYPES,
+  SlackChannelConfigSchema,
+  TAlertPayload
+} from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
@@ -68,6 +73,16 @@ describe("alert channel registry", () => {
     Object.entries(ALERT_CHANNEL_REGISTRY).forEach(([key, def]) => {
       expect(def.type).toBe(key);
     });
+  });
+
+  // The DALs read the constant instead of the registry (which would drag the send implementations
+  // into the data layer), so it has to track the registry's directed flags.
+  test("DIRECTED_ALERT_CHANNEL_TYPES matches the registry's directed flags", () => {
+    const fromRegistry = Object.values(ALERT_CHANNEL_REGISTRY)
+      .filter((def) => def.directed)
+      .map((def) => def.type);
+
+    expect([...DIRECTED_ALERT_CHANNEL_TYPES].sort()).toEqual(fromRegistry.sort());
   });
 });
 

@@ -620,6 +620,10 @@ export enum AlertDispatchOutcome {
   NoDueTargets = "no_due_targets",
   // The alert has no enabled channels, so the run is skipped before scanning for targets.
   NoChannels = "no_channels",
+  // Every channel in the run was directed (email) with no resolvable recipient — the recipients left
+  // the org, or the recipient group emptied out. Customer config drift, not a delivery fault, so it
+  // is kept out of delivery_failed and must not alarm.
+  NoRecipients = "no_recipients",
   // Targets matched, but every one had already been alerted inside the dedup window.
   AllDeduped = "all_deduped"
 }

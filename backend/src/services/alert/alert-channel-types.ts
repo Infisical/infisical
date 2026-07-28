@@ -10,6 +10,11 @@ export enum AlertChannelType {
   PAGERDUTY = "pagerduty"
 }
 
+// Channel types that address individual principals and therefore cannot deliver without recipients.
+// Kept here rather than read off ALERT_CHANNEL_REGISTRY so the DALs don't have to pull in the send
+// implementations; alert-channels.test.ts asserts the two stay in agreement.
+export const DIRECTED_ALERT_CHANNEL_TYPES: AlertChannelType[] = [AlertChannelType.EMAIL];
+
 export type TAlertSeverity = "critical" | "error" | "warning" | "info";
 
 export type TAlertItem = {
