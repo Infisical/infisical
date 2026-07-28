@@ -12,6 +12,7 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
   alertName: payload.alert.name,
   eventLabel: payload.eventLabel,
   resourceKind: payload.resourceKind,
+  resourceOwnerKind: payload.resourceOwnerKind,
   summary: payload.summary,
   severity: payload.severity,
   viewUrl: payload.alert.viewUrl,

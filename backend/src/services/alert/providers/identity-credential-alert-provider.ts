@@ -159,6 +159,7 @@ export const identityCredentialAlertProviderFactory = ({
       eventLabel: "Expiration",
       webhookType: "com.infisical.identity.authentication.expiration",
       resourceKind: "Machine Identity Authentication",
+      resourceOwnerKind: "Machine Identity",
       severity: severityFor(targets),
       summary: alertBefore
         ? `${targets.length} machine identity authentication(s) expiring within ${humanizeAlertBefore(alertBefore)}`

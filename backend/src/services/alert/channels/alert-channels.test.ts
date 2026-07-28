@@ -26,6 +26,7 @@ const samplePayload = (): TAlertPayload => ({
   eventLabel: "Expiration",
   webhookType: "com.infisical.pki.certificate.expiration",
   resourceKind: "Certificate",
+  resourceOwnerKind: "Certificate Authority",
   severity: "warning",
   summary: "2 certificates expiring within 30d",
   items: [

@@ -77,6 +77,7 @@ const makeProvider = (targets: TTarget[], onFindDueTargets?: () => void): IResou
     eventLabel: "Expiration",
     webhookType: "com.infisical.test.resource.expiration",
     resourceKind: "Test Resource",
+    resourceOwnerKind: "Test Owner",
     severity: "warning",
     summary: `${matched.length} expiring`,
     items: matched.map((target) => ({ id: target.id, title: target.id }))

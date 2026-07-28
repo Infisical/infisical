@@ -7,6 +7,7 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   alertName: string;
   eventLabel: string;
   resourceKind: string;
+  resourceOwnerKind: string;
   summary: string;
   severity?: string;
   viewUrl: string;
@@ -24,6 +25,7 @@ export const AlertNotificationTemplate = ({
   alertName,
   eventLabel,
   resourceKind,
+  resourceOwnerKind,
   summary,
   severity = "info",
   viewUrl,
@@ -58,7 +60,7 @@ export const AlertNotificationTemplate = ({
 
       <Heading className="text-black text-[20px] leading-[28px] text-center font-semibold p-0 mx-0">{title}</Heading>
 
-      <Text className="text-gray-600 text-[14px] leading-[22px] text-center mt-[8px] mb-[0px]">
+      <Text className="text-gray-600 text-[14px] leading-[22px] mt-[16px] mb-[0px]">
         {summary}. Review the {resourceLabel} below and take action before {eventLabel.toLowerCase()} to avoid
         disruption.
       </Text>
@@ -99,8 +101,8 @@ export const AlertNotificationTemplate = ({
       <Hr className="mt-[24px] mb-[0px] h-[1px]" />
 
       <Text className="text-[11px] text-gray-400 text-center leading-[16px] mt-[16px] mb-[0px]">
-        You are receiving this because you are a recipient of this alert. Manage recipients and channels in your
-        Infisical alert settings.
+        You are receiving this because you are a recipient of this alert. Manage recipients and channels in the{" "}
+        {resourceOwnerKind.toLowerCase()}&apos;s alert settings in Infisical.
       </Text>
     </BaseEmailWrapper>
   );
@@ -112,6 +114,7 @@ AlertNotificationTemplate.PreviewProps = {
   alertName: "prod-identity-authentication-expiry",
   eventLabel: "Expiration",
   resourceKind: "Machine Identity Authentication",
+  resourceOwnerKind: "Machine Identity",
   summary: "2 machine identity authentication(s) expiring within 30 days",
   severity: "critical",
   viewUrl: "https://infisical.com/organizations/org-1/access-management?selectedTab=identities",
