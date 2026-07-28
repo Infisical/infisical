@@ -75,6 +75,7 @@ export enum PostHogEventTypes {
   AccessApprovalRequestCreated = "Access Approval Request Created",
   AccessApprovalRequestReviewed = "Access Approval Request Reviewed",
   SecretSyncCreated = "Secret Sync Created",
+  SecretSyncUpdated = "Secret Sync Updated",
   SecretSyncDeleted = "Secret Sync Deleted",
   DynamicSecretCreated = "Dynamic Secret Created",
   DynamicSecretDeleted = "Dynamic Secret Deleted",
@@ -93,6 +94,7 @@ export enum PostHogEventTypes {
   AppConnectionCreated = "App Connection Created",
   AppConnectionDeleted = "App Connection Deleted",
   SecretRotationV2Created = "Secret Rotation V2 Created",
+  SecretRotationV2Updated = "Secret Rotation V2 Updated",
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
@@ -222,6 +224,9 @@ export enum PostHogEventTypes {
   KmipClientUpdated = "KMIP Client Updated",
   KmipClientDeleted = "KMIP Client Deleted",
   KmipOperation = "KMIP Operation",
+
+  // Audit Logs
+  AuditLogsViewed = "Audit Logs Viewed",
 
   // Audit Log Streams
   AuditLogStreamCreated = "Audit Log Stream Created",
@@ -826,6 +831,20 @@ export type TSecretSyncCreatedEvent = {
   properties: {
     syncDestination: string;
     syncId: string;
+    orgId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isAutoSyncEnabled: boolean;
+  };
+};
+
+export type TSecretSyncUpdatedEvent = {
+  event: PostHogEventTypes.SecretSyncUpdated;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -838,6 +857,7 @@ export type TSecretSyncDeletedEvent = {
   properties: {
     syncDestination: string;
     syncId: string;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -924,6 +944,18 @@ export type TSecretRotationV2CreatedEvent = {
   properties: {
     rotationId: string;
     type: SecretRotation;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TSecretRotationV2UpdatedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Updated;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -1735,6 +1767,32 @@ export type TKmipOperationEvent = {
   };
 };
 
+export type TAuditLogsViewedEvent = {
+  event: PostHogEventTypes.AuditLogsViewed;
+  properties: {
+    orgId: string;
+    projectId?: string;
+    resultCount: number;
+    dateRangeStart?: string;
+    dateRangeEnd?: string;
+    actor?:
+      | UserActor
+      | IdentityActor
+      | ServiceActor
+      | ScimClientActor
+      | PlatformActor
+      | UnknownUserActor
+      | AcmeAccountActor
+      | AcmeProfileActor
+      | KmipClientActor
+      | EstAccountActor
+      | ScepAccountActor
+      | GatewayActor
+      | RelayActor
+      | KmipServerActor;
+  };
+};
+
 // Audit Log Stream event
 export type TAuditLogStreamCreatedEvent = {
   event: PostHogEventTypes.AuditLogStreamCreated;
@@ -1996,6 +2054,16 @@ export type TPostHogEvent = {
    * person record is suppressed.
    */
   anonymous?: boolean;
+  /**
+   * Optional per-event deduplication. When set, the event is captured at most
+   * once per `key` within `ttlSeconds` (enforced atomically via the key store).
+   * Use for events fired on read/poll-heavy paths (e.g. Audit Logs Viewed) to
+   * avoid flooding while still marking the actor active for the window.
+   */
+  dedup?: {
+    key: string;
+    ttlSeconds: number;
+  };
 } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
@@ -2036,6 +2104,7 @@ export type TPostHogEvent = {
   | TAccessApprovalRequestCreatedEvent
   | TAccessApprovalRequestReviewedEvent
   | TSecretSyncCreatedEvent
+  | TSecretSyncUpdatedEvent
   | TSecretSyncDeletedEvent
   | TDynamicSecretCreatedEvent
   | TDynamicSecretDeletedEvent
@@ -2054,6 +2123,7 @@ export type TPostHogEvent = {
   | TAppConnectionCreatedEvent
   | TAppConnectionDeletedEvent
   | TSecretRotationV2CreatedEvent
+  | TSecretRotationV2UpdatedEvent
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
@@ -2150,6 +2220,7 @@ export type TPostHogEvent = {
   | TKmipClientUpdatedEvent
   | TKmipClientDeletedEvent
   | TKmipOperationEvent
+  | TAuditLogsViewedEvent
   | TAuditLogStreamCreatedEvent
   | TAuditLogStreamUpdatedEvent
   | TAuditLogStreamDeletedEvent

@@ -276,6 +276,18 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
   };
 
   const sendPostHogEvents = async (event: TPostHogEvent) => {
+    // Per-event deduplication: only the first caller within the TTL window proceeds.
+    // Used to throttle read/poll-heavy events (e.g. Audit Logs Viewed) so a single
+    // actor generates at most one event per window while still being marked active.
+    if (event.dedup) {
+      try {
+        const wasSet = await keyStore.setItemWithExpiryNX(event.dedup.key, event.dedup.ttlSeconds, "1");
+        if (!wasSet) return;
+      } catch (error) {
+        logger.error(error, `Failed to check telemetry dedup cache for event=${event.event}`);
+      }
+    }
+
     if (!appCfg.INFISICAL_CLOUD && postHog) {
       if (
         [

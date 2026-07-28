@@ -2,11 +2,14 @@ import { z } from "zod";
 
 import { AuditLogsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { AUDIT_LOGS } from "@app/lib/api-docs";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
   /*
@@ -112,6 +115,30 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           eventType: req.query.eventType ? [req.query.eventType] : undefined
         }
       });
+
+      if (req.query.offset === 0) {
+        const distinctId = getTelemetryDistinctId(req);
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.AuditLogsViewed,
+            distinctId,
+            organizationId: req.permission.orgId,
+            dedup: {
+              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.permission.orgId, distinctId),
+              ttlSeconds: KeyStoreTtls.TelemetryAuditLogsViewedInSeconds
+            },
+            properties: {
+              orgId: req.permission.orgId,
+              projectId: req.params.workspaceId,
+              resultCount: auditLogs.length,
+              dateRangeStart: req.query.startDate || getLastMidnightDateISO(),
+              dateRangeEnd: req.query.endDate || new Date().toISOString(),
+              actor: req.auditLogInfo.actor
+            }
+          })
+          .catch(() => {});
+      }
+
       return { auditLogs };
     }
   });
