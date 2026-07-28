@@ -126,39 +126,34 @@ export const SpaceliftSyncFns = {
     const writeOnly = secretSync.syncOptions?.writeOnly ?? false;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
-    const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
 
     if (configType === SpaceliftConfigType.FileMount) {
       const filePath = mountPath!;
-      const existingFile = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
       const hasSecrets = Object.keys(secretMap).length > 0;
 
       if (hasSecrets) {
-        if (existingFile) {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
-        }
-
         const envContent = secretMapToEnvFileContent(secretMap);
         const encoded = Buffer.from(envContent).toString("base64");
         await addContextConfigElement(instanceUrl, jwt, contextId, filePath, encoded, writeOnly, "FILE_MOUNT");
-      } else if (existingFile && !secretSync.syncOptions.disableSecretDeletion) {
+      } else if (!secretSync.syncOptions.disableSecretDeletion) {
         await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
       }
 
       return;
     }
 
+    const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
     const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE");
-    const existingMap = new Map(existingSecrets.map((e) => [e.id, e]));
+
+    const existingByKey = new Map(existingSecrets.map((e) => [e.id, e]));
 
     for (const key of Object.keys(secretMap)) {
+      const existing = existingByKey.get(key);
+      if (existing && !existing.writeOnly && existing?.value === secretMap[key].value) {
+        continue;
+      }
+
       try {
-        const existing = existingMap.get(key);
-
-        if (existing) {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, key);
-        }
-
         await addContextConfigElement(instanceUrl, jwt, contextId, key, secretMap[key].value, writeOnly);
       } catch (error) {
         throw new SecretSyncError({ error, secretKey: key });

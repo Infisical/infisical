@@ -33,12 +33,16 @@ describe("serializeEnvFile", () => {
     expect(serializeEnvFile({})).toBe("");
   });
 
-  test("rejects keys with spaces", () => {
-    expect(() => serializeEnvFile({ "BAD KEY": "val" })).toThrow("Invalid environment variable name");
+  test("allows keys with spaces", () => {
+    expect(serializeEnvFile({ "MY KEY": "val" })).toBe("MY KEY=val");
   });
 
-  test("rejects keys starting with a digit", () => {
-    expect(() => serializeEnvFile({ "1KEY": "val" })).toThrow("Invalid environment variable name");
+  test("allows keys starting with a digit", () => {
+    expect(serializeEnvFile({ "1KEY": "val" })).toBe("1KEY=val");
+  });
+
+  test("allows hyphenated keys", () => {
+    expect(serializeEnvFile({ "my-secret": "val" })).toBe("my-secret=val");
   });
 
   test("rejects keys containing equals", () => {
@@ -47,6 +51,10 @@ describe("serializeEnvFile", () => {
 
   test("rejects keys containing newlines", () => {
     expect(() => serializeEnvFile({ "K\nV": "val" })).toThrow("Invalid environment variable name");
+  });
+
+  test("rejects empty keys", () => {
+    expect(() => serializeEnvFile({ "": "val" })).toThrow("Invalid environment variable name");
   });
 
   test("allows underscores and dots in keys", () => {
@@ -94,6 +102,14 @@ describe("parseEnvFile", () => {
   test("does not strip unquoted values", () => {
     expect(parseEnvFile("KEY=hello world")).toEqual({ KEY: "hello world" });
   });
+
+  test("preserves leading and trailing whitespace in quoted values", () => {
+    expect(parseEnvFile('KEY=" spaced "')).toEqual({ KEY: " spaced " });
+  });
+
+  test("preserves unquoted value with surrounding whitespace", () => {
+    expect(parseEnvFile("KEY= spaced ")).toEqual({ KEY: " spaced " });
+  });
 });
 
 describe("round-trip", () => {
@@ -105,7 +121,13 @@ describe("round-trip", () => {
     { BACKSLASH: "C:\\Users\\test" },
     { MIXED: 'val with "quotes" and\nnewlines and \\backslash' },
     { EMPTY: "" },
-    { A: "1", B: "2", C: "3" }
+    { A: "1", B: "2", C: "3" },
+    { "my-secret": "hyphenated" },
+    { "2FA_KEY": "digit-start" },
+    { LEADING_SPACE: " hello" },
+    { TRAILING_SPACE: "hello " },
+    { BOTH_SPACES: " hello " },
+    { TAB_PADDED: "\tvalue\t" }
   ];
 
   test.each(cases)("round-trips %j", (input) => {

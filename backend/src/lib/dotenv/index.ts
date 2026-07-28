@@ -1,9 +1,9 @@
 import RE2 from "re2";
 
-const ENV_KEY_RE = new RE2(/^[A-Za-z_][A-Za-z0-9_.]*$/);
+const DOTENV_KEY_RE = new RE2(/^[^\n\r=]+$/);
 
 const escapeValue = (value: string): string => {
-  if (/[\n\r"\\]/.test(value)) {
+  if (/[\n\r"\\]/.test(value) || value !== value.trim()) {
     const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r");
     return `"${escaped}"`;
   }
@@ -20,7 +20,7 @@ const unescapeValue = (raw: string): string => {
 export const serializeEnvFile = (map: Record<string, string>): string => {
   return Object.entries(map)
     .map(([key, value]) => {
-      if (!ENV_KEY_RE.test(key)) {
+      if (!key || !DOTENV_KEY_RE.test(key)) {
         throw new Error(`Invalid environment variable name: ${key}`);
       }
       return `${key}=${escapeValue(value)}`;
@@ -34,10 +34,10 @@ export const parseEnvFile = (content: string): Record<string, string> => {
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
     if (trimmed && !trimmed.startsWith("#")) {
-      const eqIndex = trimmed.indexOf("=");
+      const eqIndex = line.indexOf("=");
       if (eqIndex !== -1) {
-        const key = trimmed.substring(0, eqIndex);
-        const value = unescapeValue(trimmed.substring(eqIndex + 1));
+        const key = line.substring(0, eqIndex).trim();
+        const value = unescapeValue(line.substring(eqIndex + 1));
         result[key] = value;
       }
     }

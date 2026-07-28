@@ -291,7 +291,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Spacelift:
       primaryText = destinationConfig.contextName;
-      secondaryText = destinationConfig.configType === "environment-variable" ? "environment variables" : "file mount";
+      secondaryText =
+        destinationConfig.configType === "environment-variable"
+          ? "environment variables"
+          : "file mount";
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
