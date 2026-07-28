@@ -38,7 +38,6 @@ For detailed information on resource inheritance, project ownership, and enterpr
     - **[Machine identities](/documentation/platform/identities/machine-identities)** and **[user groups](/documentation/platform/groups)**: managed at the organization level and granted access into individual projects.
     - **[App Connections](/integrations/app-connections/overview)**: reusable third-party credentials (AWS, GCP, GitHub, and more) that can be managed at either the organization or project level and used by features such as [secret syncs](/integrations/secret-syncs/overview) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview).
     - **[Gateways](/documentation/platform/gateways/overview)**: secure access to private network resources without direct inbound connections.
-    - **[Secret Sharing](/documentation/platform/secret-sharing)**: share time- and view-count-bound secrets, including with people outside the organization.
     - **[Audit logs](/documentation/platform/audit-logs)** and **billing**: aggregated across all projects and product types.
 
 ### 2. Projects
@@ -52,11 +51,11 @@ For detailed information on resource inheritance, project ownership, and enterpr
 
 - **Definition**: Not everything in Infisical is a secret. Each project is created as one of several **products**, each purpose-built for a different security use case.
 - **Supported Products**:
-    - **[Secrets Management](/documentation/platform/secrets-mgmt/overview)**: Store, access, sync, and rotate application secrets across environments.
-    - **[Secrets Scanning](/documentation/platform/secret-scanning/overview)**: Detect hardcoded secrets and leaks across code, CI pipelines, and infrastructure.
-    - **[Infisical PKI](/documentation/platform/pki/overview)**: Issue and manage X.509 certificates using internal and external certificate authorities.
-    - **[Infisical KMS](/documentation/platform/kms/overview)**: Encrypt and decrypt data using centrally managed keys with enforced access policies.
-    - **[Infisical PAM](/documentation/platform/pam/overview)**: Broker and govern privileged access to databases, servers, and accounts with policy-based controls and approvals.
+    - **[Secrets Management](/documentation/platform/secrets-mgmt/overview)**: Centralize secrets across environments with automatic secret syncs, secret rotations, short-lived dynamic credentials, and lifecycle policies.
+    - **[Certificate Manager](/documentation/platform/pki/overview)**: Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.
+    - **[KMS](/documentation/platform/kms/overview)**: Generate, store, and use cryptographic keys to encrypt, decrypt, sign, and verify against managed CMKs.
+    - **[Secret Scanning](/documentation/platform/secret-scanning/overview)**: Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.
+    - **[Privileged Access Manager](/documentation/platform/pam/overview)**: Connect to databases and servers securely with session brokering, recording, and credential vaulting.
 - **Note**: The constructs described below — environments, folders, and imports — are specific to the **Secrets Management** product. Other products expose their own resources and workflows (e.g., certificates and CAs in PKI, keys in KMS, resources and accounts in PAM).
 
 ### 3. Environments
