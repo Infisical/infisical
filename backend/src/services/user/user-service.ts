@@ -568,11 +568,18 @@ export const userServiceFactory = ({
       actorUserId: userId
     });
 
-    const user = await userDAL.deleteById(userId);
+    const user = await userDAL.transaction(async (tx) => {
+      const deletedUser = await userDAL.deleteById(userId, tx);
 
-    await alertChannelRecipientDAL.deleteByPrincipals({
-      principalType: AlertPrincipalType.USER,
-      principalIds: [userId]
+      await alertChannelRecipientDAL.deleteByPrincipals(
+        {
+          principalType: AlertPrincipalType.USER,
+          principalIds: [userId]
+        },
+        tx
+      );
+
+      return deletedUser;
     });
 
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.

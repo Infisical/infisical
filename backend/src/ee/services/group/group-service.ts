@@ -576,17 +576,25 @@ export const groupServiceFactory = ({
       });
     }
 
-    const [deletedGroup] = await groupDAL.delete({
-      id: groupId,
-      orgId: actorOrgId
-    });
+    return groupDAL.transaction(async (tx) => {
+      const [deletedGroup] = await groupDAL.delete(
+        {
+          id: groupId,
+          orgId: actorOrgId
+        },
+        tx
+      );
 
-    await alertChannelRecipientDAL.deleteByPrincipals({
-      principalType: AlertPrincipalType.GROUP,
-      principalIds: [groupId]
-    });
+      await alertChannelRecipientDAL.deleteByPrincipals(
+        {
+          principalType: AlertPrincipalType.GROUP,
+          principalIds: [groupId]
+        },
+        tx
+      );
 
-    return deletedGroup;
+      return deletedGroup;
+    });
   };
 
   const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {

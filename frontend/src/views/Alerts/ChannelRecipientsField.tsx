@@ -134,11 +134,12 @@ const ProjectRecipientSelect = ({
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
   const blockedUserIds = new Set(
-    orgUsers.filter((membership) => !canReceiveAlerts(membership)).map((membership) => membership.user.id)
+    orgUsers
+      .filter((membership) => !canReceiveAlerts(membership))
+      .map((membership) => membership.user.id)
   );
   const eligibleUsers = users.filter(
-    (membership) =>
-      membership.user.isOrgMembershipActive && !blockedUserIds.has(membership.user.id)
+    (membership) => membership.user.isOrgMembershipActive && !blockedUserIds.has(membership.user.id)
   );
 
   const groupOptions = groups.map((membership) => membership.group);
