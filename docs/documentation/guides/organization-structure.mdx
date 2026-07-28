@@ -36,7 +36,7 @@ For detailed information on resource inheritance, project ownership, and enterpr
 - **Not Everything Is Project-Scoped**: While projects are the primary workspace, several resources live at the organization level and are shared across projects rather than owned by any single one.
 - **Examples**:
     - **[Machine identities](/documentation/platform/identities/machine-identities)** and **[user groups](/documentation/platform/groups)**: managed at the organization level and granted access into individual projects.
-    - **[App Connections](/integrations/app-connections/overview)**: reusable third-party credentials (AWS, GCP, GitHub, and more) used by features such as [secret syncs](/integrations/secret-syncs/overview) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+    - **[App Connections](/integrations/app-connections/overview)**: reusable third-party credentials (AWS, GCP, GitHub, and more) that can be managed at either the organization or project level and used by features such as [secret syncs](/integrations/secret-syncs/overview) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview).
     - **[Gateways](/documentation/platform/gateways/overview)**: secure access to private network resources without direct inbound connections.
     - **[Secret Sharing](/documentation/platform/secret-sharing)**: share time- and view-count-bound secrets, including with people outside the organization.
     - **[Audit logs](/documentation/platform/audit-logs)** and **billing**: aggregated across all projects and product types.
