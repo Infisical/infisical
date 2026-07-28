@@ -27,14 +27,9 @@ const SpaceliftSyncDestinationConfigSchema = z
       .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextName),
     configType: z
       .nativeEnum(SpaceliftConfigType)
-      .optional()
       .default(SpaceliftConfigType.EnvironmentVariable)
       .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.configType),
-    mountPath: z
-      .string()
-      .trim()
-      .optional()
-      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath)
+    mountPath: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath)
   })
   .superRefine((data, ctx) => {
     if (data.configType === SpaceliftConfigType.FileMount && !data.mountPath) {
@@ -49,11 +44,7 @@ const SpaceliftSyncDestinationConfigSchema = z
 const SpaceliftSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 const SpaceliftSyncOptionsSchema = z.object({
-  writeOnly: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.SPACELIFT.writeOnly)
+  writeOnly: z.boolean().optional().default(false).describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.SPACELIFT.writeOnly)
 });
 
 export const SpaceliftSyncSchema = BaseSecretSyncSchema(

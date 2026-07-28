@@ -16,7 +16,10 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { TSpaceliftContext, useSpaceliftConnectionListContexts } from "@app/hooks/api/appConnections/spacelift";
+import {
+  TSpaceliftContext,
+  useSpaceliftConnectionListContexts
+} from "@app/hooks/api/appConnections/spacelift";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { SpaceliftConfigType } from "@app/hooks/api/secretSyncs/types/spacelift-sync";
 

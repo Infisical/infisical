@@ -107,8 +107,6 @@ import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/
 import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
 import { ValidateDopplerConnectionCredentialsSchema } from "./doppler/doppler-connection-schema";
 import { dopplerConnectionService } from "./doppler/doppler-connection-service";
-import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
-import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
 import { ValidateExternalInfisicalConnectionCredentialsSchema } from "./external-infisical";
 import { externalInfisicalConnectionService } from "./external-infisical/external-infisical-connection-service";
 import { ValidateF5BigIpConnectionCredentialsSchema } from "./f5-big-ip";
@@ -177,6 +175,8 @@ import { salesforceConnectionService } from "./salesforce/salesforce-connection-
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
+import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
+import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";

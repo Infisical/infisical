@@ -200,6 +200,12 @@ import {
   TSnowflakeSyncWithCredentials
 } from "./snowflake";
 import {
+  TSpaceliftSync,
+  TSpaceliftSyncInput,
+  TSpaceliftSyncListItem,
+  TSpaceliftSyncWithCredentials
+} from "./spacelift";
+import {
   TSupabaseSync,
   TSupabaseSyncInput,
   TSupabaseSyncListItem,
@@ -225,12 +231,6 @@ import {
   TTriggerDevSyncWithCredentials
 } from "./trigger-dev/trigger-dev-sync-types";
 import { TVercelSync, TVercelSyncInput, TVercelSyncListItem, TVercelSyncWithCredentials } from "./vercel";
-import {
-  TSpaceliftSync,
-  TSpaceliftSyncInput,
-  TSpaceliftSyncListItem,
-  TSpaceliftSyncWithCredentials
-} from "./spacelift";
 import { TZabbixSync, TZabbixSyncInput, TZabbixSyncListItem, TZabbixSyncWithCredentials } from "./zabbix";
 
 export type TSecretSync =

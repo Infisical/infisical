@@ -1,5 +1,8 @@
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
-import { SpaceliftConfigType, TSpaceliftSync } from "@app/hooks/api/secretSyncs/types/spacelift-sync";
+import {
+  SpaceliftConfigType,
+  TSpaceliftSync
+} from "@app/hooks/api/secretSyncs/types/spacelift-sync";
 
 type Props = {
   secretSync: TSpaceliftSync;

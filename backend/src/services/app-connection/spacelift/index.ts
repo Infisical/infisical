@@ -5,7 +5,6 @@ export {
   listSpaceliftContexts,
   validateSpaceliftConnectionCredentials
 } from "./spacelift-connection-fns";
-export { spaceliftConnectionService } from "./spacelift-connection-service";
 export {
   CreateSpaceliftConnectionSchema,
   SanitizedSpaceliftConnectionSchema,
@@ -13,6 +12,7 @@ export {
   UpdateSpaceliftConnectionSchema,
   ValidateSpaceliftConnectionCredentialsSchema
 } from "./spacelift-connection-schemas";
+export { spaceliftConnectionService } from "./spacelift-connection-service";
 export type {
   TSpaceliftConnection,
   TSpaceliftConnectionConfig,

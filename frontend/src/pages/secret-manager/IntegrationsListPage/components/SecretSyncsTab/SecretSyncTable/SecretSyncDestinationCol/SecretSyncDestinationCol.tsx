@@ -39,6 +39,7 @@ import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { RundeckSyncDestinationCol } from "./RundeckSyncDestinationCol";
 import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
+import { SpaceliftSyncDestinationCol } from "./SpaceliftSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
@@ -47,7 +48,6 @@ import { TriggerDevSyncDestinationCol } from "./TriggerDevSyncDestinationCol";
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
-import { SpaceliftSyncDestinationCol } from "./SpaceliftSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;

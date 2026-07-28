@@ -50,7 +50,10 @@ export const validateSpaceliftConnectionCredentials = async (config: TSpaceliftC
   const { apiKeyId, apiKeySecret } = config.credentials;
 
   try {
-    const { data } = await safeRequest.post<{ data?: { apiKeyUser?: { jwt: string } }; errors?: { message: string }[] }>(
+    const { data } = await safeRequest.post<{
+      data?: { apiKeyUser?: { jwt: string } };
+      errors?: { message: string }[];
+    }>(
       `${instanceUrl}/graphql`,
       {
         query: `mutation GetSpaceliftToken($id: ID!, $secret: String!) { apiKeyUser(id: $id, secret: $secret) { jwt } }`,
@@ -116,7 +119,7 @@ export const listSpaceliftContexts = async (appConnection: TSpaceliftConnection)
     });
   }
 
-  const jwt = authData.data.apiKeyUser.jwt;
+  const { jwt } = authData.data.apiKeyUser;
 
   const { data: contextData } = await safeRequest.post<{
     data?: { contexts?: TSpaceliftContext[] };

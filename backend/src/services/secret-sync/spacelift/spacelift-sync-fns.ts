@@ -109,19 +109,18 @@ const envFileContentToSecretMap = (content: string): TSecretMap => {
 
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-
-    const eqIndex = trimmed.indexOf("=");
-    if (eqIndex === -1) continue;
-
-    const key = trimmed.substring(0, eqIndex);
-    const value = trimmed.substring(eqIndex + 1);
-    secretMap[key] = { value };
+    if (trimmed && !trimmed.startsWith("#")) {
+      const eqIndex = trimmed.indexOf("=");
+      if (eqIndex !== -1) {
+        const key = trimmed.substring(0, eqIndex);
+        const value = trimmed.substring(eqIndex + 1);
+        secretMap[key] = { value };
+      }
+    }
   }
 
   return secretMap;
 };
-
 
 export const SpaceliftSyncFns = {
   syncSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
@@ -150,18 +149,16 @@ export const SpaceliftSyncFns = {
       if (secretSync.syncOptions.disableSecretDeletion) return;
 
       for (const element of existingElements) {
-        if (element.id === filePath) continue;
-        if (element.type !== "FILE_MOUNT") continue;
         if (
-          !matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)
+          element.id !== filePath &&
+          element.type === "FILE_MOUNT" &&
+          matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)
         ) {
-          continue;
-        }
-
-        try {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
-        } catch (error) {
-          throw new SecretSyncError({ error, secretKey: element.id });
+          try {
+            await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
+          } catch (error) {
+            throw new SecretSyncError({ error, secretKey: element.id });
+          }
         }
       }
 
@@ -187,12 +184,10 @@ export const SpaceliftSyncFns = {
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
     for (const element of existingElements) {
-      if (!matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-
-      if (!(element.id in secretMap)) {
+      if (
+        matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
+        !(element.id in secretMap)
+      ) {
         try {
           await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
         } catch (error) {

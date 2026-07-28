@@ -36,10 +36,6 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
-import {
-  SpaceliftSyncOptionsReviewFields,
-  SpaceliftSyncReviewFields
-} from "./SpaceliftSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import {
   CloudflareWorkersSyncOptionsReviewFields,
@@ -70,6 +66,10 @@ import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
+import {
+  SpaceliftSyncOptionsReviewFields,
+  SpaceliftSyncReviewFields
+} from "./SpaceliftSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";

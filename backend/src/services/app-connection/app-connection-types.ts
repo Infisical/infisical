@@ -408,6 +408,12 @@ import {
   TValidateSnowflakeConnectionCredentialsSchema
 } from "./snowflake";
 import {
+  TSpaceliftConnection,
+  TSpaceliftConnectionConfig,
+  TSpaceliftConnectionInput,
+  TValidateSpaceliftConnectionCredentialsSchema
+} from "./spacelift";
+import {
   TSshConnection,
   TSshConnectionConfig,
   TSshConnectionInput,
@@ -473,12 +479,6 @@ import {
   TWinRMConnectionConfig,
   TWinRMConnectionInput
 } from "./winrm/winrm-connection-types";
-import {
-  TSpaceliftConnection,
-  TSpaceliftConnectionConfig,
-  TSpaceliftConnectionInput,
-  TValidateSpaceliftConnectionCredentialsSchema
-} from "./spacelift";
 import {
   TValidateZabbixConnectionCredentialsSchema,
   TZabbixConnection,

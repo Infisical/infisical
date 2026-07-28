@@ -86,8 +86,8 @@ export const SpaceliftConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     The method you would like to use to connect with{" "}
-                    {APP_CONNECTION_MAP[AppConnection.Spacelift].name}. This field cannot be
-                    changed after creation.
+                    {APP_CONNECTION_MAP[AppConnection.Spacelift].name}. This field cannot be changed
+                    after creation.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>

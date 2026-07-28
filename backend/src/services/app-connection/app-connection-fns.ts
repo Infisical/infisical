@@ -139,11 +139,6 @@ import {
 } from "./dns-made-easy/dns-made-easy-connection-fns";
 import { DopplerConnectionMethod, getDopplerConnectionListItem, validateDopplerConnectionCredentials } from "./doppler";
 import {
-  getSpaceliftConnectionListItem,
-  SpaceliftConnectionMethod,
-  validateSpaceliftConnectionCredentials
-} from "./spacelift";
-import {
   ExternalInfisicalConnectionMethod,
   getExternalInfisicalConnectionListItem,
   TExternalInfisicalConnectionConfig,
@@ -256,6 +251,11 @@ import {
   SnowflakeConnectionMethod,
   validateSnowflakeConnectionCredentials
 } from "./snowflake";
+import {
+  getSpaceliftConnectionListItem,
+  SpaceliftConnectionMethod,
+  validateSpaceliftConnectionCredentials
+} from "./spacelift";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -937,7 +937,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
-  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported
+  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
+  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

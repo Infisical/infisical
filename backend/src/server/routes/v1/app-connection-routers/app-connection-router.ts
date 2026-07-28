@@ -105,10 +105,6 @@ import {
   SanitizedDopplerConnectionSchema
 } from "@app/services/app-connection/doppler/doppler-connection-schema";
 import {
-  SanitizedSpaceliftConnectionSchema,
-  SpaceliftConnectionListItemSchema
-} from "@app/services/app-connection/spacelift";
-import {
   ExternalInfisicalConnectionListItemSchema,
   SanitizedExternalInfisicalConnectionSchema
 } from "@app/services/app-connection/external-infisical";
@@ -219,6 +215,10 @@ import {
   SanitizedSnowflakeConnectionSchema,
   SnowflakeConnectionListItemSchema
 } from "@app/services/app-connection/snowflake";
+import {
+  SanitizedSpaceliftConnectionSchema,
+  SpaceliftConnectionListItemSchema
+} from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
