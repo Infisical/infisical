@@ -15,10 +15,7 @@ export const SpaceliftSyncDestinationSchema = BaseSecretSyncSchema(
       .object({
         contextId: z.string().trim().min(1, "Context ID required"),
         contextName: z.string().trim().min(1, "Context name required"),
-        configType: z
-          .nativeEnum(SpaceliftConfigType)
-          .optional()
-          .default(SpaceliftConfigType.EnvironmentVariable),
+        configType: z.nativeEnum(SpaceliftConfigType),
         mountPath: z.string().trim().optional()
       })
       .superRefine((data, ctx) => {

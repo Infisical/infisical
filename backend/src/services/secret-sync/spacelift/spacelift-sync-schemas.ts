@@ -27,7 +27,6 @@ const SpaceliftSyncDestinationConfigSchema = z
       .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextName),
     configType: z
       .nativeEnum(SpaceliftConfigType)
-      .default(SpaceliftConfigType.EnvironmentVariable)
       .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.configType),
     mountPath: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath)
   })

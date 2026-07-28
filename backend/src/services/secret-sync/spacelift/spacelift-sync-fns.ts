@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { parseEnvFile, serializeEnvFile } from "@app/lib/dotenv";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { safeRequest } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -12,8 +13,10 @@ type TSpaceliftConfigElement = {
   id: string;
   value: string;
   writeOnly: boolean;
-  type?: string;
+  type?: ElementType;
 };
+
+type ElementType = "ENVIRONMENT_VARIABLE" | "FILE_MOUNT"
 
 const authenticateSpacelift = async (instanceUrl: string, apiKeyId: string, apiKeySecret: string): Promise<string> => {
   const { data } = await safeRequest.post<{
@@ -72,7 +75,7 @@ const addContextConfigElement = async (
   key: string,
   value: string,
   writeOnly: boolean,
-  type: "ENVIRONMENT_VARIABLE" | "FILE_MOUNT" = "ENVIRONMENT_VARIABLE"
+  type: ElementType = "ENVIRONMENT_VARIABLE"
 ) => {
   await graphqlRequest(
     instanceUrl,
@@ -99,26 +102,19 @@ const deleteContextConfigElement = async (instanceUrl: string, jwt: string, cont
 };
 
 const secretMapToEnvFileContent = (secretMap: TSecretMap): string => {
-  return Object.entries(secretMap)
-    .map(([key, { value }]) => `${key}=${value}`)
-    .join("\n");
+  const flat: Record<string, string> = {};
+  for (const [key, { value }] of Object.entries(secretMap)) {
+    flat[key] = value;
+  }
+  return serializeEnvFile(flat);
 };
 
 const envFileContentToSecretMap = (content: string): TSecretMap => {
+  const parsed = parseEnvFile(content);
   const secretMap: TSecretMap = {};
-
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#")) {
-      const eqIndex = trimmed.indexOf("=");
-      if (eqIndex !== -1) {
-        const key = trimmed.substring(0, eqIndex);
-        const value = trimmed.substring(eqIndex + 1);
-        secretMap[key] = { value };
-      }
-    }
+  for (const [key, value] of Object.entries(parsed)) {
+    secretMap[key] = { value };
   }
-
   return secretMap;
 };
 
@@ -126,7 +122,7 @@ export const SpaceliftSyncFns = {
   syncSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
-    const { contextId, configType = SpaceliftConfigType.EnvironmentVariable, mountPath } = secretSync.destinationConfig;
+    const { contextId, configType, mountPath } = secretSync.destinationConfig;
     const writeOnly = secretSync.syncOptions?.writeOnly ?? false;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
@@ -135,37 +131,25 @@ export const SpaceliftSyncFns = {
     if (configType === SpaceliftConfigType.FileMount) {
       const filePath = mountPath!;
       const existingFile = existingElements.find((e) => e.id === filePath);
+      const hasSecrets = Object.keys(secretMap).length > 0;
 
-      if (existingFile) {
-        await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
-      }
+      if (hasSecrets) {
+        if (existingFile) {
+          await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
+        }
 
-      if (Object.keys(secretMap).length > 0) {
         const envContent = secretMapToEnvFileContent(secretMap);
         const encoded = Buffer.from(envContent).toString("base64");
         await addContextConfigElement(instanceUrl, jwt, contextId, filePath, encoded, writeOnly, "FILE_MOUNT");
-      }
-
-      if (secretSync.syncOptions.disableSecretDeletion) return;
-
-      for (const element of existingElements) {
-        if (
-          element.id !== filePath &&
-          element.type === "FILE_MOUNT" &&
-          matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)
-        ) {
-          try {
-            await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
-          } catch (error) {
-            throw new SecretSyncError({ error, secretKey: element.id });
-          }
-        }
+      } else if (existingFile && !secretSync.syncOptions.disableSecretDeletion) {
+        await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
       }
 
       return;
     }
 
-    const existingMap = new Map(existingElements.map((e) => [e.id, e]));
+    const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE")
+    const existingMap = new Map(existingSecrets.map((e) => [e.id, e]));
 
     for (const key of Object.keys(secretMap)) {
       try {
@@ -183,7 +167,7 @@ export const SpaceliftSyncFns = {
 
     if (secretSync.syncOptions.disableSecretDeletion) return;
 
-    for (const element of existingElements) {
+    for (const element of existingSecrets) {
       if (
         matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
         !(element.id in secretMap)
@@ -200,7 +184,7 @@ export const SpaceliftSyncFns = {
   getSecrets: async (secretSync: TSpaceliftSyncWithCredentials): Promise<TSecretMap> => {
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
-    const { contextId, configType = SpaceliftConfigType.EnvironmentVariable, mountPath } = secretSync.destinationConfig;
+    const { contextId, configType, mountPath } = secretSync.destinationConfig;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
     const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
@@ -218,7 +202,7 @@ export const SpaceliftSyncFns = {
     const secretMap: TSecretMap = {};
 
     for (const element of existingElements) {
-      if (!element.writeOnly) {
+      if (element.type === "ENVIRONMENT_VARIABLE" && !element.writeOnly) {
         secretMap[element.id] = { value: element.value };
       }
     }
@@ -229,7 +213,7 @@ export const SpaceliftSyncFns = {
   removeSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
-    const { contextId, configType = SpaceliftConfigType.EnvironmentVariable, mountPath } = secretSync.destinationConfig;
+    const { contextId, configType, mountPath } = secretSync.destinationConfig;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
     const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
@@ -249,8 +233,9 @@ export const SpaceliftSyncFns = {
       return;
     }
 
-    for (const element of existingElements) {
-      if (Object.prototype.hasOwnProperty.call(secretMap, element.id)) {
+    const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE");
+    for (const element of existingSecrets) {
+      if (element.id in secretMap) {
         try {
           await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
         } catch (error) {

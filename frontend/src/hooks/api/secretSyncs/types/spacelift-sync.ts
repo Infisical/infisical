@@ -12,7 +12,7 @@ export type TSpaceliftSync = TRootSecretSync & {
   destinationConfig: {
     contextId: string;
     contextName: string;
-    configType?: SpaceliftConfigType;
+    configType: SpaceliftConfigType;
     mountPath?: string;
   };
   syncOptions: RootSyncOptions & {
