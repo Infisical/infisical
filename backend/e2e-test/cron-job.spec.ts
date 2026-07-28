@@ -133,8 +133,6 @@ beforeEach(async () => {
 }, 25_000);
 
 afterEach(async () => {
-  // Release parked handlers first so stop() drains instead of waiting out
-  // drainTimeoutMs, and so their handler-timeout timers get cleared.
   parkedHandlers.splice(0).forEach((release) => release());
   await Promise.allSettled(allFactories.map((f) => f.stop()));
   await clearNamespace();

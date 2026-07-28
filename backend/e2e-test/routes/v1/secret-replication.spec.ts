@@ -336,7 +336,6 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "prod-value"
       });
 
-      // The listSecrets assertion below covers both imports, so wait for both.
       const secret = await waitForReplicatedSecret({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,

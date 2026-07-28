@@ -456,9 +456,6 @@ describe("Secret expansion", () => {
         isReplication: true
       });
 
-      // The replicated import lands asynchronously. Poll for the deepest value
-      // in the chain — NESTED_KEY_2 only reads back expanded once both the
-      // replication and the references it depends on have resolved.
       await waitForReplicatedSecret({
         environmentSlug: seedData1.environment.slug,
         workspaceId: projectId,

@@ -81,7 +81,6 @@ describe("Secret Recursive Testing", async () => {
         )
       );
 
-      // Secrets living at "/" aren't covered by any folder delete above.
       await Promise.all(
         folderAndSecretNames
           .filter(({ path }) => path === "/")

@@ -462,9 +462,6 @@ describe("Identity Access Token — redesigned JWT flow", () => {
       expect(revocation.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedExpiresAtMs - 2_000);
       expect(revocation.expiresAt.getTime()).toBeLessThanOrEqual(expectedExpiresAtMs + markerSkewMs + 2_000);
 
-      // Drop only this identity's cached allow-verdicts so the next call
-      // re-checks Postgres. A flushdb() would also wipe the shared server's
-      // BullMQ queues, keystore, and cron leases mid-run.
       await dropRevocationVerdicts(identityId);
 
       expect((await callDetailsEndpoint(accessToken)).statusCode).toBe(401);

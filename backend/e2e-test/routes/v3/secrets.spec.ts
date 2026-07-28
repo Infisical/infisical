@@ -42,9 +42,6 @@ const trackSecret = (endpoint: string, path: string, ...keys: string[]) => {
 };
 
 afterEach(async () => {
-  // Dedupe before deleting: a personal override is registered under the same
-  // key as its shared secret, and deleting the shared one removes both. Firing
-  // two concurrent DELETEs for the same secret races into a 500.
   const unique = new Map(createdSecrets.splice(0).map((el) => [`${el.endpoint}|${el.path}|${el.key}`, el]));
   await Promise.all([...unique.values()].map(removeSecretIfPresent));
 });
