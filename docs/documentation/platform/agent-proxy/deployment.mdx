@@ -61,6 +61,27 @@ However you run the Agent Proxy, provide its identity's credentials, publish por
 
     Add `-e INFISICAL_DOMAIN=https://eu.infisical.com` for EU Cloud or a self-hosted instance.
   </Tab>
+  <Tab title="Kubernetes (Helm)">
+    Store the proxy identity's credentials in a Secret, then install the chart:
+
+    ```bash
+    kubectl create namespace infisical-agent-proxy
+
+    kubectl create secret generic agent-proxy-credentials \
+      --namespace infisical-agent-proxy \
+      --from-literal=clientId=<agent-proxy-client-id> \
+      --from-literal=clientSecret=<agent-proxy-client-secret>
+
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm install infisical-agent-proxy infisical-helm-charts/infisical-agent-proxy \
+      --namespace infisical-agent-proxy \
+      --set auth.existingSecretRef=agent-proxy-credentials
+    ```
+
+    Add `--set agentProxy.domain=https://eu.infisical.com` for EU Cloud or a self-hosted instance.
+
+    Agents reach the proxy at `infisical-agent-proxy.infisical-agent-proxy.svc.cluster.local:17322`. The chart can also restrict inbound traffic to your agent pods with a NetworkPolicy, and run multiple instances with `replicaCount`. See the [Agent Proxy Helm chart](/self-hosting/helm-charts/agent-proxy) for the full configuration reference.
+  </Tab>
   <Tab title="PaaS (Render, Railway, Fly)">
     Deploy the `infisical/cli` image as a service:
 

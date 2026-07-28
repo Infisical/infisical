@@ -374,7 +374,8 @@
                   "self-hosting/helm-charts/gateway",
                   "self-hosting/helm-charts/pki-issuer",
                   "self-hosting/helm-charts/csi-provider",
-                  "self-hosting/helm-charts/agent-injector"
+                  "self-hosting/helm-charts/agent-injector",
+                  "self-hosting/helm-charts/agent-proxy"
                 ]
               },
               "self-hosting/guides/replication",

@@ -1,0 +1,4 @@
+# Inline credentials, the smallest working install.
+auth:
+  clientId: ci-test-client-id
+  clientSecret: ci-test-client-secret

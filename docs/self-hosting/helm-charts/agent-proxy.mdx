@@ -1,0 +1,147 @@
+---
+title: "Infisical Agent Proxy"
+sidebarTitle: "Agent Proxy"
+description: "Deploy the Infisical Agent Proxy on Kubernetes using the official Helm chart."
+---
+
+The Infisical Agent Proxy brokers credentials to AI agents: agents route their traffic through it, and it applies the real secret values on the way out, so the agent never reads them.
+
+For a full overview of how the Agent Proxy works, see the [Agent Proxy documentation](/documentation/platform/agent-proxy/overview).
+
+## Before you begin
+
+You need a machine identity for the Agent Proxy with the permissions listed in [Permissions](/documentation/platform/agent-proxy/security#permissions), and a Universal Auth Client ID and Client Secret for it. The [Quickstart](/documentation/platform/agent-proxy/quickstart) covers creating both.
+
+This identity reads your real secret values. Keep it separate from the identity your agents use, and install it in a namespace your agents cannot read Secrets from.
+
+## Installation
+
+<Steps>
+  <Step title="Add the Helm repository">
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+    helm repo update
+    ```
+  </Step>
+
+  <Step title="Store the credentials in a Secret">
+    ```bash
+    kubectl create namespace infisical-agent-proxy
+
+    kubectl create secret generic agent-proxy-credentials \
+      --namespace infisical-agent-proxy \
+      --from-literal=clientId=<agent-proxy-client-id> \
+      --from-literal=clientSecret=<agent-proxy-client-secret>
+    ```
+
+    Use the Client ID and Client Secret of the Agent Proxy machine identity.
+  </Step>
+
+  <Step title="Install the chart">
+    <Tabs>
+      <Tab title="Infisical Cloud (US)">
+        ```bash
+        helm install infisical-agent-proxy infisical-helm-charts/infisical-agent-proxy \
+          --namespace infisical-agent-proxy \
+          --set auth.existingSecretRef=agent-proxy-credentials
+        ```
+      </Tab>
+
+      <Tab title="Infisical Cloud (EU)">
+        ```bash
+        helm install infisical-agent-proxy infisical-helm-charts/infisical-agent-proxy \
+          --namespace infisical-agent-proxy \
+          --set auth.existingSecretRef=agent-proxy-credentials \
+          --set agentProxy.domain=https://eu.infisical.com
+        ```
+      </Tab>
+
+      <Tab title="Self-Hosted">
+        ```bash
+        helm install infisical-agent-proxy infisical-helm-charts/infisical-agent-proxy \
+          --namespace infisical-agent-proxy \
+          --set auth.existingSecretRef=agent-proxy-credentials \
+          --set agentProxy.domain=https://infisical.your-domain.com
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify the deployment">
+    ```bash
+    kubectl get pods -n infisical-agent-proxy
+    kubectl logs -n infisical-agent-proxy deployment/infisical-agent-proxy
+    ```
+
+    A healthy proxy logs `Agent proxy authenticated; starting MITM proxy` followed by `Infisical agent proxy listening on :17322`, then stays quiet until an agent connects. If the pod restarts instead, the logs almost always show a `401 Unauthorized`, which means the Client ID or Client Secret in the Secret is wrong, or `agentProxy.domain` points at the wrong instance.
+  </Step>
+</Steps>
+
+## Connecting your agents
+
+Agents reach the proxy at the Service's in-cluster address. Point `INFISICAL_AGENT_PROXY_ADDRESS` at it when running [`infisical secrets agent-proxy connect`](/documentation/platform/agent-proxy/connecting-agents):
+
+```bash
+INFISICAL_AGENT_PROXY_ADDRESS=infisical-agent-proxy.infisical-agent-proxy.svc.cluster.local:17322
+```
+
+## Restricting access
+
+The Agent Proxy holds real credentials, so only your agent pods should be able to reach it. Enable the bundled NetworkPolicy and describe those pods:
+
+```yaml
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: my-agent
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: agents
+```
+
+Leaving `ingressFrom` empty denies all ingress. Leave `networkPolicy.enabled` off if you manage network policy elsewhere, and note that it only takes effect if your cluster runs a CNI that enforces NetworkPolicy.
+
+## High availability
+
+Set `replicaCount` above `1`. Instances are stateless and coordinate through Infisical rather than with each other, so no further configuration is needed. See [High availability](/documentation/platform/agent-proxy/deployment#high-availability) for how caching behaves across instances.
+
+## Uninstall
+
+```bash
+helm uninstall infisical-agent-proxy --namespace infisical-agent-proxy
+```
+
+## Configuration reference
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `auth.existingSecretRef` | `""` | Kubernetes Secret holding the machine identity credentials. Takes precedence over the inline values. |
+| `auth.clientIdKey` | `"clientId"` | Key in the existing Secret that holds the Client ID. |
+| `auth.clientSecretKey` | `"clientSecret"` | Key in the existing Secret that holds the Client Secret. |
+| `auth.clientId` | `""` | Inline Client ID. The chart creates a Secret from it. |
+| `auth.clientSecret` | `""` | Inline Client Secret. The chart creates a Secret from it. |
+| `agentProxy.domain` | `""` | Infisical instance URL. Empty for Infisical Cloud (US). |
+| `agentProxy.port` | `17322` | Port the Agent Proxy listens on. |
+| `agentProxy.unmatchedHost` | `allow` | Policy for hosts with no matching proxied service: `allow` or `block`. |
+| `agentProxy.pollInterval` | `60` | Seconds between permission and credential refreshes. |
+| `agentProxy.logFormat` | `json` | Log output format: `console` or `json`. |
+| `replicaCount` | `1` | Number of Agent Proxy instances. |
+| `service.type` | `ClusterIP` | Service type. |
+| `service.port` | `17322` | Port the Service exposes. |
+| `networkPolicy.enabled` | `false` | Create a NetworkPolicy restricting inbound traffic. |
+| `networkPolicy.ingressFrom` | `[]` | NetworkPolicy `from` peers allowed to reach the proxy. |
+| `image.repository` | `infisical/cli` | Container image. |
+| `image.tag` | `""` | Image tag. Defaults to the chart's `appVersion`. |
+| `resources.requests.cpu` | `100m` | CPU request. |
+| `resources.requests.memory` | `256Mi` | Memory request. |
+| `resources.limits.cpu` | `1000m` | CPU limit. |
+| `resources.limits.memory` | `512Mi` | Memory limit. |
+| `livenessProbe.enabled` | `true` | Enable the TCP liveness probe. |
+| `readinessProbe.enabled` | `true` | Enable the TCP readiness probe. |
+| `serviceAccount.create` | `true` | Create a service account. |
+| `extraEnv` | `[]` | Additional environment variables. |
+| `extraEnvFrom` | `[]` | Load environment variables from Secrets or ConfigMaps. |
+| `extraArgs` | `[]` | Extra arguments appended to the start command. |
+| `extraObjects` | `[]` | Additional Kubernetes manifests to deploy with the chart. |
