@@ -341,9 +341,7 @@ export const AlertForm = ({
               render={({ field: { value } }) => (
                 <FixedField label="Event">
                   <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[value]}</Badge>
-                  <span className="text-xs text-muted">
-                    Fires as the authentication nears expiration
-                  </span>
+                  <span className="text-xs text-muted">Alerts before a credential expires</span>
                 </FixedField>
               )}
             />
