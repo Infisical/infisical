@@ -1,3 +1,9 @@
+## 1.11.0 (July 28, 2026)
+Changes:
+* Fixed `DB_CONNECTION_URI` being rendered twice (once from `postgresql.useExistingPostgresSecret`, once from the bundled-Postgres connection string) whenever both `postgresql.enabled` and `postgresql.useExistingPostgresSecret.enabled` were set, which caused the existing-secret value to be silently overridden.
+* Added `redis.useExistingRedisSecret`, mirroring `postgresql.useExistingPostgresSecret`, so `REDIS_URL` can be sourced from an existing Kubernetes Secret instead of requiring the Redis password in plaintext Helm values.
+* Backwards compatible. No action needed unless you want to move your Redis password out of Helm values, in which case set `redis.useExistingRedisSecret.enabled: true` and point it at a Secret containing the full `REDIS_URL` connection string.
+
 ## 1.10.0 (July 3, 2026)
 Changes:
 * Added configurable `securityContext` via `infisical.podSecurityContext` and `infisical.containerSecurityContext`, with secure defaults so the Infisical Deployment and the auto-bootstrap Job run under the Kubernetes Pod Security "restricted" standard out of the box.

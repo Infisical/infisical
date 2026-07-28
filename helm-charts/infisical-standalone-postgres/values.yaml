@@ -242,6 +242,15 @@ redis:
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
 
+  useExistingRedisSecret:
+    # -- Set to true if using an existing Kubernetes secret that contains the Redis connection string
+    enabled: false
+    existingConnectionStringSecret:
+      # -- Kubernetes secret name containing the Redis connection string
+      name: ""
+      # -- Key name in the Kubernetes secret that holds the connection string
+      key: ""
+
 # -- Configuration for the bundled ingress-nginx subchart (only applies when ingress.nginx.enabled=true)
 ingress-nginx:
   controller:

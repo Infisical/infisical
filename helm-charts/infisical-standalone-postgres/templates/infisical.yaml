@@ -75,12 +75,17 @@ spec:
             secretKeyRef:
               name: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.name }}
               key: {{ .Values.postgresql.useExistingPostgresSecret.existingConnectionStringSecret.key }}
-        {{- end }}
-        {{- if .Values.postgresql.enabled }}
+        {{- else if .Values.postgresql.enabled }}
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
         {{- end }}
-        {{- if .Values.redis.enabled }}
+        {{- if .Values.redis.useExistingRedisSecret.enabled }}
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.useExistingRedisSecret.existingConnectionStringSecret.name }}
+              key: {{ .Values.redis.useExistingRedisSecret.existingConnectionStringSecret.key }}
+        {{- else if .Values.redis.enabled }}
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
         {{- end }}
