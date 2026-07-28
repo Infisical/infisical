@@ -2,6 +2,7 @@ import axios, { AxiosError, AxiosInstance, AxiosResponse, CreateAxiosDefaults } 
 import axiosRetry, { IAxiosRetryConfig } from "axios-retry";
 
 import { CustomLogger, logger } from "../logger/logger";
+import { sanitizeUrlForLog } from "../logger/sanitize-url";
 
 export function axiosResponseInterceptor(response: AxiosResponse, customLogger: CustomLogger) {
   try {
@@ -14,8 +15,10 @@ export function axiosResponseInterceptor(response: AxiosResponse, customLogger: 
       megabyteSize = `Large payload: ${(responseSize / 1024 / 1024).toFixed(2)} MB`;
     }
 
+    const url = sanitizeUrlForLog(response.config.url, response.config.baseURL);
+
     customLogger.info(
-      { url: `${response.config.method || "NO_METHOD"} ${response.config.url}`, responseSize },
+      { url: `${response.config.method || "NO_METHOD"} ${url}`, responseSize },
       `Intercepted axios response ${megabyteSize}`
     );
   } catch (error) {
