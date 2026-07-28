@@ -47,6 +47,7 @@ export const userNotificationDALFactory = (db: TDbClient) => {
         .limit(limit)
         .offset(offset)
         .orderBy(`${TableName.UserNotifications}.createdAt`, "desc")
+        .orderBy(`${TableName.UserNotifications}.id`, "asc")
         .timeout(1000 * 120); // 2 minutes timeout
 
       return docs;
