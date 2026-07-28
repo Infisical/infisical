@@ -4,13 +4,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouter } from "@tanstack/react-router";
 import { Bell, BellIcon } from "lucide-react";
 
+import { ContentLoader } from "@app/components/v2";
 import {
-  ContentLoader,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuTrigger
-} from "@app/components/v2";
-import { IconButton } from "@app/components/v3";
+  DropdownMenuTrigger,
+  IconButton
+} from "@app/components/v3";
 import {
   useDeleteNotification,
   useMarkAllNotificationsAsRead,
@@ -57,7 +57,8 @@ export const NotificationDropdown = () => {
       <DropdownMenuContent
         align="end"
         side="bottom"
-        className="z-999 mt-3 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+        className="z-999 flex h-[550px] w-[400px] overflow-hidden rounded-lg"
+        sideOffset={8}
       >
         <div className="flex w-full flex-col">
           <div className="flex items-center justify-between border-b border-mineshaft-500 px-3 py-2">
@@ -84,7 +85,7 @@ export const NotificationDropdown = () => {
           <div className="flex h-full w-full overflow-auto">
             {isLoading && (
               <div className="flex h-full w-full items-center justify-center">
-                <ContentLoader className="pointer-events-none" lottieClassName="size-10" />
+                <ContentLoader className="pointer-events-none h-full" lottieClassName="size-10" />
               </div>
             )}
             {!isLoading && notifications?.length === 0 && (
