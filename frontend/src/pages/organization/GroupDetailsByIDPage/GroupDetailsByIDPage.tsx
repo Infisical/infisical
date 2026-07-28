@@ -2,7 +2,6 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
-
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader, Spinner } from "@app/components/v2";
@@ -50,6 +49,8 @@ const Page = () => {
     "groupCreateUpdate",
     "deleteGroup"
   ] as const);
+
+
 
   const onDeleteGroupSubmit = async ({ name, id }: { name: string; id: string }) => {
     await deleteMutateAsync({
@@ -133,6 +134,7 @@ const Page = () => {
                             name: data.group.name,
                             slug: data.group.slug,
                             role: data.group.roleId || data.group.role
+                            customRole: data.group.customRole
                           });
                         }}
                       >
