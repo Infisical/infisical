@@ -44,7 +44,7 @@ internal/
 │   │   ├── sqln/               # SQL nesting (GroupRows for LEFT JOIN flattening)
 │   │   └── pglock/             # PostgreSQL advisory locks
 │   └── redis/                  # Redis client
-├── libs/                       # crypto, errutil, fn, logutil
+├── libs/                       # crypto, errutil, fn, logutil, cache, jitter, requestid
 ├── server/
 │   ├── api/                    # Endpoint implementations + DI wiring
 │   │   ├── shared/             # Shared types (Error, ValidationError) + ErrorHandler
@@ -54,7 +54,8 @@ internal/
 ├── services/                   # Shared business logic (auth, permission, kms, ...)
 └── keystore/                   # Redis key-value operations
 tests/                          # Integration tests (external test packages)
-├── infra/                      # Test infrastructure (testcontainers, helpers)
+├── infra/                      # Test infrastructure (testcontainers, HTTP client)
+│   └── nodejs/                 # Node.js backend seed facade (svc.For(t), domain builders)
 ├── platform/                   # Platform service tests
 │   ├── auth/                   # Authentication handler tests
 │   ├── externalkms/            # External KMS (AWS/GCP) tests
@@ -63,9 +64,17 @@ tests/                          # Integration tests (external test packages)
 │   ├── permission/             # Permission system tests
 │   ├── projects/               # Projects handler tests
 │   └── ratelimit/              # Rate limiting tests
-└── secretmanager/
-    └── secrets/                # Secrets API tests (list, get, permissions)
+└── secrets/
+    └── secrets/                # Secrets API tests (list, get, permissions, cache, v3, service token)
 ```
+
+**Test seed data**: create projects/identities/secrets/etc. via the `tests/infra/nodejs`
+facade — `api := stack.NodeJS().For(t)`, then domain builders like
+`api.Secrets.Create(projectID, env, key, value).Comment("...").Do()`. Parameterized
+endpoints are builders (required args in the constructor, optional setters, terminal
+`Do()`) so new params don't break call sites. Each domain file co-locates its request/
+response models with its endpoints. The `nodejs` package imports nothing from `infra`
+(infra wires it via `nodejs.Start`/`Bootstrap`/`AttachDB`), keeping the dependency acyclic.
 
 **Two tiers:**
 - `server/api/` — DI wiring + endpoint implementations. Handlers 1:1 with endpoints.
