@@ -15,7 +15,12 @@ import {
   signatureAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 
-import { CertExtendedKeyUsageType, CertKeyUsageType, CertSubjectAlternativeNameType } from "./certificate-constants";
+import {
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertPolicyState,
+  CertSubjectAlternativeNameType
+} from "./certificate-constants";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -200,6 +205,31 @@ export const validateAlgorithmCompatibility = (
       message: `Signature algorithms (${template.algorithms?.signature?.join(", ") || "none"}) are not compatible with CA key algorithm (${caKeyAlgorithm})`
     });
   }
+};
+
+/**
+ * Validates that a request asking to issue a CA certificate (basicConstraints.isCA) is permitted
+ * by the policy's CA state, throwing the standard denial error otherwise. Returns the resolved
+ * policy CA state so callers that need it for further checks (e.g. max path length) don't have
+ * to re-derive it.
+ *
+ * Centralizes the CA-denial check shared by every issuance path (direct issuance, CSR/profile
+ * issuance, approval finalization, and renewal) so a path can't silently skip it.
+ */
+export const assertCaIssuancePolicyAllowed = (
+  policy: { basicConstraints?: { isCA?: string } | null } | null | undefined,
+  shouldIssueAsCA: boolean
+): CertPolicyState => {
+  const policyIsCAState = (policy?.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
+
+  if (shouldIssueAsCA && policyIsCAState === CertPolicyState.DENIED) {
+    throw new BadRequestError({
+      message:
+        "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
+    });
+  }
+
+  return policyIsCAState;
 };
 
 /**

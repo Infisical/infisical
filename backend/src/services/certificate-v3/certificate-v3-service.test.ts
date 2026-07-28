@@ -19,6 +19,7 @@ import {
   CertExtendedKeyUsageType,
   CertIncludeType,
   CertKeyUsageType,
+  CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType
 } from "@app/services/certificate-common/certificate-constants";
@@ -2197,6 +2198,90 @@ describe("CertificateV3Service", () => {
       });
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
+    });
+
+    it("should reject renewal of a CA certificate when the policy now denies CA issuance", async () => {
+      const caCert = { ...mockOriginalCert, isCA: true, pathLength: 0 };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(caCert);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        ...mockPolicy,
+        basicConstraints: { isCA: CertPolicyState.DENIED }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(/CA certificate issuance is not allowed by this policy/);
+
+      expect(mockInternalCaService.issueCertFromCa).not.toHaveBeenCalled();
+    });
+
+    it("should carry the CA basicConstraints and path length through to the renewed certificate", async () => {
+      const caCert = { ...mockOriginalCert, isCA: true, pathLength: 0 };
+
+      vi.mocked(mockCertificateDAL.findById)
+        .mockResolvedValueOnce(caCert)
+        .mockResolvedValueOnce({ ...caCert, id: "cert-456", serialNumber: "789012" });
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        ...mockPolicy,
+        basicConstraints: { isCA: CertPolicyState.ALLOWED, maxPathLength: 1 }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+        certificate: "renewed-ca-cert",
+        certificateChain: "renewed-chain",
+        issuingCaCertificate: "issuing-ca",
+        privateKey: "private-key",
+        serialNumber: "789012",
+        certificateId: "cert-456",
+        commonName: "test.example.com",
+        ca: mockCA
+      });
+
+      const newCert = { ...caCert, id: "cert-456", serialNumber: "789012" };
+      vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
+
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
+
+      const result = await service.renewCertificate({
+        certificateId: "cert-123",
+        ...mockActor
+      });
+
+      expect(result).toHaveProperty("certificate", "renewed-ca-cert");
+      expect(mockInternalCaService.issueCertFromCa).toHaveBeenCalledWith(
+        expect.objectContaining({
+          basicConstraints: { isCA: true, pathLength: 1 },
+          pathLength: 0
+        })
+      );
     });
   });
 
