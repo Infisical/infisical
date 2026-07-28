@@ -572,7 +572,7 @@ function SidebarCollapsibleGroup({
   );
 
   return (
-    <SidebarGroup className={cn(isCollapsed ? "mt-1" : "mt-3", className)}>
+    <SidebarGroup className={cn(isCollapsed ? "mt-2" : "mt-3", className)}>
       {isCollapsed ? (
         <Tooltip>
           <TooltipTrigger asChild>
