@@ -305,7 +305,7 @@ export const SECRET_SYNC_MAP: Record<
     name: "Spacelift",
     image: "Spacelift.png",
     category: "INFRASTRUCTURE",
-    description: "Environment variables for Spacelift contexts."
+    description: "Environment variables or file mounts for Spacelift contexts."
   }
 };
 

@@ -11,18 +11,40 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
-const SpaceliftSyncDestinationConfigSchema = z.object({
-  contextId: z
-    .string()
-    .trim()
-    .min(1, "Context ID is required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextId),
-  contextName: z
-    .string()
-    .trim()
-    .min(1, "Context name is required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextName)
-});
+import { SpaceliftConfigType } from "./spacelift-sync-constants";
+
+const SpaceliftSyncDestinationConfigSchema = z
+  .object({
+    contextId: z
+      .string()
+      .trim()
+      .min(1, "Context ID is required")
+      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextId),
+    contextName: z
+      .string()
+      .trim()
+      .min(1, "Context name is required")
+      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextName),
+    configType: z
+      .nativeEnum(SpaceliftConfigType)
+      .optional()
+      .default(SpaceliftConfigType.EnvironmentVariable)
+      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.configType),
+    mountPath: z
+      .string()
+      .trim()
+      .optional()
+      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath)
+  })
+  .superRefine((data, ctx) => {
+    if (data.configType === SpaceliftConfigType.FileMount && !data.mountPath) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "File path is required when config type is file mount",
+        path: ["mountPath"]
+      });
+    }
+  });
 
 const SpaceliftSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 

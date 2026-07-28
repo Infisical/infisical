@@ -3405,7 +3405,11 @@ export const SecretSyncs = {
     },
     SPACELIFT: {
       contextId: "The ID of the Spacelift context to sync secrets to.",
-      contextName: "The name of the Spacelift context to sync secrets to."
+      contextName: "The name of the Spacelift context to sync secrets to.",
+      configType:
+        "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
+      mountPath:
+        "The file path for the mounted .env file relative to /mnt/workspace/. Required when configType is 'file-mount'. Example: 'secrets.env'."
     }
   }
 };

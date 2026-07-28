@@ -38,6 +38,10 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
 
         - **Spacelift Connection**: Select the app connection to use for authentication.
         - **Context**: Select the Spacelift context that will receive the synced secrets.
+        - **Config Type**: Choose how secrets are stored in the Spacelift context:
+            - **Environment Variables**: Each secret is synced as an individual environment variable (default).
+            - **File Mount (.env)**: All secrets are bundled into a single `.env` file mounted at the specified path under `/mnt/workspace/`.
+        - **File Path** *(File Mount only)*: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`).
 
         ![Configure Destination](/images/secret-syncs/spacelift/spacelift-sync-destination.png)
       </Step>
@@ -103,7 +107,8 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
         },
         "destinationConfig": {
           "contextId": "context-id",
-          "contextName": "my-context"
+          "contextName": "my-context",
+          "configType": "environment-variable"
         }
       }'
     ```
