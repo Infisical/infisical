@@ -11,7 +11,8 @@ export enum PamAccountType {
   GcpServiceAccount = "gcp-service-account",
   AzureCli = "azure-cli",
   Windows = "windows",
-  WindowsAd = "windows-ad"
+  WindowsAd = "windows-ad",
+  Web = "web"
 }
 
 export enum PamResourceRole {
