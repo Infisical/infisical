@@ -1878,7 +1878,6 @@ export const SecretEditTableRow = ({
             <SheetTitle>Version History</SheetTitle>
             <SheetDescription>Audit secret history and rollback changes</SheetDescription>
           </SheetHeader>
-          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">
@@ -1910,7 +1909,6 @@ export const SecretEditTableRow = ({
               View and manage user, group, and machine identity access to this secret
             </SheetDescription>
           </SheetHeader>
-          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">
