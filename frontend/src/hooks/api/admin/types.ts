@@ -91,6 +91,7 @@ export type TServerConfig = {
   trustSamlEmails?: boolean;
   trustLdapEmails?: boolean;
   trustOidcEmails?: boolean;
+  onboardingCompleted?: boolean;
   isSecretScanningDisabled?: boolean;
   kubernetesAutoFetchServiceAccountToken?: boolean;
   isMigrationModeOn?: boolean;

@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cva, VariantProps } from "cva";

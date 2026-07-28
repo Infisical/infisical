@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowRight, Building2, KeyRound, ServerCog } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { createNotification } from "@app/components/notifications";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import { useUpdateServerConfig } from "@app/hooks/api";
 
 type Props = {
   organizationId: string;
@@ -12,6 +14,24 @@ type Props = {
 
 export const WelcomePage = ({ organizationId }: Props) => {
   const navigate = useNavigate();
+  const router = useRouter();
+  const { mutateAsync: updateServerConfig, isPending: isSkippingSetup } = useUpdateServerConfig();
+
+  const handleContinueToOrganization = async () => {
+    try {
+      await updateServerConfig({ onboardingCompleted: true });
+      await router.invalidate();
+      await navigate({
+        to: "/organizations/$orgId/projects",
+        params: { orgId: organizationId }
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Guided setup could not be skipped. Try again."
+      });
+    }
+  };
 
   return (
     <AuthPageLayout contentClassName="max-w-xl">
@@ -37,35 +57,33 @@ export const WelcomePage = ({ organizationId }: Props) => {
           <div className="grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              className="group flex min-h-36 flex-col rounded-lg border border-primary bg-primary p-4 text-left text-black transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              onClick={() => navigate({ to: "/admin" })}
+              disabled={isSkippingSetup}
+              className="group flex min-h-36 cursor-pointer flex-col rounded-md border border-primary/30 bg-primary/25 p-4 text-left text-foreground transition-all select-none hover:border-primary/35 hover:bg-primary/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
+              onClick={() => navigate({ to: "/admin/setup" })}
             >
-              <ServerCog className="mb-6 size-5 text-black" />
-              <span className="font-alliance text-base font-medium text-black">
+              <ServerCog className="mb-6 size-5 text-foreground" />
+              <span className="font-alliance text-base font-medium text-foreground">
                 Configure Server Console
               </span>
-              <span className="mt-1 py-1 text-sm leading-relaxed text-black/70">
+              <span className="mt-1 py-1 text-sm leading-relaxed text-foreground/70">
                 Set authentication, signups, encryption, and access policies.
               </span>
-              <ArrowRight className="mt-auto size-4 self-end text-black/70 transition-transform group-hover:translate-x-0.5 group-hover:text-black" />
+              <ArrowRight className="mt-auto size-4 self-end text-foreground/70 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
 
             <button
               type="button"
-              className="group flex min-h-36 flex-col rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              onClick={() =>
-                navigate({
-                  to: "/organizations/$orgId/projects",
-                  params: { orgId: organizationId }
-                })
-              }
+              aria-busy={isSkippingSetup}
+              disabled={isSkippingSetup}
+              className="group flex min-h-36 flex-col rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+              onClick={handleContinueToOrganization}
             >
               <Building2 className="mb-6 size-5 text-foreground" />
               <span className="font-alliance text-base font-medium text-foreground">
                 Go to your organization
               </span>
               <span className="mt-1 py-1 text-sm leading-relaxed text-label">
-                Create a project, add secrets, and invite your team.
+                Skip guided setup and go straight to projects, secrets, and your team.
               </span>
               <ArrowRight className="mt-auto size-4 self-end text-label transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>

@@ -1,39 +1,56 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 
 import { cn } from "../../utils";
 
-type AnimatedCollapseProps = React.ComponentProps<"div"> & {
+type AnimatedCollapseVariant = "default" | "subtle";
+
+type AnimatedCollapseProps = React.ComponentPropsWithoutRef<"div"> & {
   isOpen: boolean;
   contentClassName?: string;
+  variant?: AnimatedCollapseVariant;
 };
 
-function AnimatedCollapse({
-  children,
-  className,
-  contentClassName,
-  isOpen,
-  ...props
-}: AnimatedCollapseProps) {
-  return (
-    <div
-      {...props}
-      data-slot="animated-collapse"
-      data-state={isOpen ? "open" : "closed"}
-      aria-hidden={!isOpen}
-      // React 18 does not type the inert attribute yet.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {...(!isOpen ? { inert: "" as any } : {})}
-      className={cn(
-        "grid transition-[grid-template-rows,opacity] duration-200 ease-in-out motion-reduce:transition-none",
-        isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-        className
-      )}
-    >
-      <div className={cn("min-h-0 overflow-hidden", contentClassName)}>{children}</div>
-    </div>
-  );
-}
+const AnimatedCollapse = React.forwardRef<HTMLDivElement, AnimatedCollapseProps>(
+  ({ children, className, contentClassName, isOpen, variant = "default", ...props }, ref) => {
+    const inertProps: { inert?: "" } = isOpen ? {} : { inert: "" };
+    const contentStateClassName =
+      variant === "subtle"
+        ? isOpen
+          ? "translate-y-0 opacity-100"
+          : "translate-y-px opacity-0"
+        : isOpen
+          ? "translate-y-0 scale-100 opacity-100 blur-none"
+          : "translate-y-8 scale-95 opacity-0 blur-[16px]";
 
-export { AnimatedCollapse, type AnimatedCollapseProps };
+    return (
+      <div
+        ref={ref}
+        {...props}
+        data-slot="animated-collapse"
+        data-state={isOpen ? "open" : "closed"}
+        data-variant={variant}
+        aria-hidden={!isOpen}
+        {...inertProps}
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-in-out motion-reduce:transition-none",
+          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          className
+        )}
+      >
+        <div
+          className={cn(
+            "min-h-0 overflow-hidden transition-[all] duration-200 ease-in-out motion-reduce:transition-none",
+            contentStateClassName,
+            contentClassName
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
+
+AnimatedCollapse.displayName = "AnimatedCollapse";
+
+export { AnimatedCollapse, type AnimatedCollapseProps, type AnimatedCollapseVariant };

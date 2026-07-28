@@ -71,6 +71,8 @@
     sans-serif;
   --font-inter: "Inter", sans-serif;
   --font-jetbrains-mono: "JetBrains Mono", monospace;
+  --text-2xs: 0.7rem;
+  --text-2xs--line-height: 1rem;
   --max-width-8xl: 88rem; /* 1408px */
 
   /* Colors v2 */

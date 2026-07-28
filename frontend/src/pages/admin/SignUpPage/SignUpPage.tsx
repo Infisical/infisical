@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
@@ -13,13 +13,15 @@ import { AdminSignUpForm } from "./components/AdminSignUpForm";
 export const SignUpPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const router = useRouter();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
 
   const handleSuccess = async (result: { token: string; organization: { id: string } }) => {
     SecurityClient.setToken(result.token);
     await selectOrganization({ organizationId: result.organization.id });
     localStorage.setItem("orgData.id", result.organization.id);
-    navigate({ to: "/admin/welcome" });
+    await router.invalidate();
+    await navigate({ to: "/admin/welcome" });
   };
 
   return (
