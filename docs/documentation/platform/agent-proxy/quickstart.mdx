@@ -8,13 +8,12 @@ This tutorial takes you from an Infisical project to an agent making authenticat
 
 ## Before you begin
 
-To follow along, you'll need:
-
 - An Infisical Secrets Management project.
 - A GitHub account (this guide's running example) or any other API you'd rather broker. The steps are the same either way.
-- Two hosts in the same private network: one for the agent proxy and one for the agent. The agent host must be able to reach the proxy on its port (`17322` by default).
-- The [Infisical CLI](/cli/overview) installed on both the proxy host and the agent host.
-- Optional: [GitHub's `gh` CLI](https://cli.github.com/) on the agent host, for the recommended verification in step 7. A `curl` fallback is provided, so this is not required.
+- The [Infisical CLI](/cli/overview) installed.
+- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this is not required.
+
+Step 3 forks into two ways to run the agent, and you choose there. One needs nothing but your own computer (macOS, or Linux with `bubblewrap`); the other needs a separate host to run the proxy on.
 
 ## 1. Add a secret
 
@@ -22,7 +21,7 @@ First, get a GitHub personal access token to broker:
 
 1. Go to [GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/personal-access-tokens).
 2. Click **Generate new token**, give it a name, set an expiration, and choose the resource owner.
-3. Leave the permissions at their defaults. The verification in step 7 calls `GET /user`, which any valid token can reach, so no permissions are needed here; later, grant only what your agent actually does.
+3. Leave the permissions at their defaults. The check at the end of this guide calls `GET /user`, which any valid token can reach, so no permissions are needed here; later, grant only what your agent actually does.
 4. Click **Generate token** and copy the `github_pat_…` value. GitHub only shows it once.
 
 Then, in your Infisical project, create a folder for the agent (for example `/coding-agent` in the `dev` environment) and add a secret named `GITHUB_PAT` with that token as its value. It is a regular Infisical secret.
@@ -67,254 +66,248 @@ A proxied service maps a host to the secret the proxy applies. In the same folde
   Not on the template list? Pick **Custom** and configure a [header rewrite or secret substitution](/documentation/platform/agent-proxy/proxied-services) by hand.
 </Note>
 
-## 3. Create the proxy identity
 
-The proxy and the agent authenticate as **two separate machine identities with opposite access**. That split is the whole security model: the proxy can read your secrets, the agent never can.
+## 3. Run your agent
 
-<Note>
-  The two templates have similar names but are for different identities: use **Agent Proxy Policies** for the proxy (this step) and **Agent Policies** for the agent (next step). Pick the one that matches the identity you are creating.
-</Note>
+That is everything Infisical needs. What is left is starting your agent behind a proxy, and there are two ways to do it, depending on where your agent runs. Pick the one that matches you and follow its tab to the end.
 
-**The proxy identity reads the secrets.**
+**Local proxy.** You never start a proxy: `agent-proxy run` starts one alongside your agent and stops it when the agent exits. It all happens on your own computer, with the agent sandboxed away from your credentials.
 
-<Steps>
-  <Step title="Create the identity">
-    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent-proxy`), leave the **Role** as **No Access**, select the **Agent Proxy Policies** template under **Additional Privileges**, and create it.
+**Pick this when you are the one running the agent:** Claude Code or Codex in your terminal, or a script you are iterating on.
 
-    ![Creating the agent-proxy identity with the Agent Proxy Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-identity.png)
+```text
+  +- your computer ------------------------+
+  |  +- sandbox ----+    +--------------+  |      +----------------+
+  |  |  your agent  |--->|    proxy     |  |----->| api.github.com |
+  |  +--------------+    +--------------+  |      +----------------+
+  +----------------------------------------+
+```
 
-    <Note>
-      **Agent Proxy Policies** grants the proxy these permissions, project-wide:
+**Dedicated proxy.** You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. A different machine from your credentials.
 
-      - `Read Value` and `Describe Secret` on **Secrets**: fetch real secret values
-      - `Lease` on **Dynamic Secrets**: mint credentials for brokered [dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets)
-      - `Report Usage` on **Proxied Services**: report service usage back to Infisical
+**Pick this when the agent runs without you there:** an agent that stays up, one on a machine other than yours, or one proxy shared across your team.
 
-      This template is the identity's entire access, so its project **Role** stays **No Access**. For a production deployment, grant these scoped to your services' environments and paths with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or a conditional [additional privilege](/documentation/platform/access-controls/additional-privileges). See [Permissions](/documentation/platform/agent-proxy/security#permissions).
-    </Note>
-  </Step>
-  <Step title="Generate a Client Secret">
-    Open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
-
-    ![The machine identity's Universal Auth authentication method highlighted](/images/platform/agent-proxy/quickstart-universal-auth.png)
-
-    Click **Add Client Secret**.
-
-    ![The Add Client Secret button highlighted on the Universal Auth panel](/images/platform/agent-proxy/quickstart-add-client-secret.png)
-
-    Save the **Client ID** and the **Client Secret**; you will pass both to the proxy in step 5.
-  </Step>
-</Steps>
-
-## 4. Create the agent identity
-
-**The agent identity routes traffic but reads no secrets.** It needs the `Proxy` permission and nothing else.
-
-<Steps>
-  <Step title="Create the identity">
-    In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it (for example `agent`), leave the **Role** as **No Access**, select the **Agent Policies** template under **Additional Privileges**, and create it.
-
-    ![Creating the agent identity with the Agent Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-agent-identity.png)
-
-    <Note>
-      **Agent Policies** grants the agent one permission, project-wide:
-
-      - `Proxy` on **Proxied Services**: route traffic and have credentials applied, with no secret read access
-
-      This template is the identity's entire access, so its project **Role** stays **No Access**. For a production deployment, grant it scoped to your services' environments and paths with a [custom role](/documentation/platform/access-controls/role-based-access-controls) or a conditional [additional privilege](/documentation/platform/access-controls/additional-privileges). See [Permissions](/documentation/platform/agent-proxy/security#permissions).
-    </Note>
-  </Step>
-  <Step title="Generate a Client Secret">
-    Open the identity and add a **Client Secret** under Universal Auth, exactly as in the previous step. Save the **Client ID** and the **Client Secret**; you will pass both to the agent in step 6.
-  </Step>
-</Steps>
-
-## 5. Start the agent proxy
-
-<Steps>
-  <Step title="Install the Infisical CLI">
-    On the proxy host, a separate machine in your agent's private network, install the [Infisical CLI](/cli/overview). Or use Docker for the container option below.
-  </Step>
-  <Step title="Authenticate as the proxy identity">
-    Set `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` and `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` to the Client ID and Client Secret you saved in step 3.
+```text
+        agent host          proxy host
+     +--------------+    +--------------+         +----------------+
+     |  your agent  |--->|    proxy     |-------->| api.github.com |
+     +--------------+    +--------------+         +----------------+
+```
 
 <Tabs>
-  <Tab title="Infisical Cloud (US)">
-    ```bash
-    # Authenticate as the proxy identity (from step 3)
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
-    ```
+  <Tab title="Local proxy">
+    **Your own computer is the only machine involved.** The sandbox that holds your agent comes from the operating system, so what you install depends on which one you are on:
+
+    <Tabs>
+      <Tab title="macOS">
+        Nothing to install. The sandbox is part of macOS.
+      </Tab>
+      <Tab title="Debian / Ubuntu">
+        ```bash
+        sudo apt install bubblewrap
+        ```
+      </Tab>
+      <Tab title="Fedora / RHEL">
+        ```bash
+        sudo dnf install bubblewrap
+        ```
+      </Tab>
+      <Tab title="Arch">
+        ```bash
+        sudo pacman -S bubblewrap
+        ```
+      </Tab>
+      <Tab title="Alpine">
+        ```bash
+        apk add bubblewrap
+        ```
+      </Tab>
+    </Tabs>
+
+    Linux gets the sandbox from [bubblewrap](https://github.com/containers/bubblewrap), so on a distribution not listed above, look for `bubblewrap` in your package manager. It provides the `bwrap` binary that `run` calls.
+
+    The proxy runs beside your agent rather than on a separate machine, so an **OS sandbox** is the boundary: the agent cannot read your keyring or your credential files, and its only route to the network is the proxy.
+
+    <Steps>
+      <Step title="Log in">
+        ```bash
+        infisical login
+        ```
+
+        `run` brokers as you, so this is the only credential involved.
+      </Step>
+      <Step title="Launch your agent">
+        Everything after `--` is your agent's own command. Run it from the directory you want the agent to work in:
+
+        ```bash
+        infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+        ```
+
+        No proxy to start first: this one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it cannot read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
+
+        <Note>
+          In a directory with an `.infisical.json` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
+        </Note>
+
+        <Note>
+          **On macOS the first run asks for your password once.** It adds the proxy's local CA to your login keychain, which is what lets tools like `gh` accept its certificates.
+        </Note>
+      </Step>
+      <Step title="Verify it works">
+        Each check below makes the same `GET /user` call to `api.github.com`, and the client only ever sends the fake `ghp_…` placeholder. As the request passes through the proxy the placeholder is swapped for the real value of your `GITHUB_PAT`, so GitHub returns your account profile even though the real token never reached the client. That is the whole point: real authenticated work without the caller ever holding the credential.
+
+        <Tabs>
+          <Tab title="Ask your agent">
+            The agent you just launched is already brokering. In its session, send:
+
+            > Run `gh api user` and show me the output.
+
+            [GitHub's `gh` CLI](https://cli.github.com/) reads `GITHUB_TOKEN` from the environment on its own, so the agent needs no token wiring: it runs the command and GitHub answers with your profile. Requires `gh` on your machine.
+          </Tab>
+          <Tab title="gh CLI">
+            Not driving an interactive agent? Run the check in place of the agent command:
+
+            ```bash
+            infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- gh api user
+            ```
+
+            `gh` reads `GITHUB_TOKEN` automatically, so there is nothing else to pass.
+          </Tab>
+          <Tab title="curl">
+            No `gh`? Any HTTP client works the same way. `curl` sends the placeholder in the header and the proxy swaps it:
+
+            ```bash
+            infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- \
+              sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
+            ```
+          </Tab>
+        </Tabs>
+
+        <Note>
+          Getting a `401`? The proxy could not apply the credential and forwarded the placeholder unchanged. Confirm you have **Read Value** on `GITHUB_PAT`, since `run` brokers as you, and that the host pattern matches `api.github.com`. Add `--log-file=/tmp/broker.log` and `tail -f` it to see the decision for each request.
+        </Note>
+      </Step>
+    </Steps>
+
+    Next: [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) covers what the sandbox allows and denies, and every flag `run` takes.
+
   </Tab>
-  <Tab title="Infisical Cloud (EU)">
-    ```bash
-    # Authenticate as the proxy identity (from step 3), pointed at EU Cloud
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
-    export INFISICAL_DOMAIN=https://eu.infisical.com
-    ```
-  </Tab>
-  <Tab title="Self-Hosted">
-    ```bash
-    # Authenticate as the proxy identity (from step 3), pointed at your instance
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
-    export INFISICAL_DOMAIN=https://infisical.your-domain.com
-    ```
+
+  <Tab title="Dedicated proxy">
+    You will need **two hosts in the same private network**, one for the proxy and one for the agent, with the agent host able to reach the proxy on port `17322`. Install the [Infisical CLI](/cli/overview) on both.
+
+    The proxy and the agent authenticate as **two separate machine identities with opposite access**: the proxy can read your secrets, the agent never can. That split is the security model.
+
+    <Steps>
+      <Step title="Create the proxy identity">
+        **This identity reads the secrets.** In your project, go to **Access Control → Machine Identities** and click **Add Machine Identity to Project → Create New**. Name it `agent-proxy`, leave the **Role** as **No Access**, select the **Agent Proxy Policies** template under **Additional Privileges**, and create it.
+
+        ![Creating the agent-proxy identity with the Agent Proxy Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-identity.png)
+
+        <Note>
+          The template grants exactly what a proxy needs: read access to secret values, leases for dynamic secrets, and usage reporting. That is the identity's entire access, which is why its **Role** stays **No Access**. For production, scope the same permissions to specific environments and paths: see [Permissions](/documentation/platform/agent-proxy/security#permissions).
+        </Note>
+
+        Now open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
+
+        ![The machine identity's Universal Auth authentication method highlighted](/images/platform/agent-proxy/quickstart-universal-auth.png)
+
+        Click **Add Client Secret**.
+
+        ![The Add Client Secret button highlighted on the Universal Auth panel](/images/platform/agent-proxy/quickstart-add-client-secret.png)
+
+        Save the **Client ID** and the **Client Secret**. You will pass both to the proxy in a moment.
+      </Step>
+      <Step title="Create the agent identity">
+        **This identity routes traffic but reads no secrets.** Create a second identity the same way, named `agent`, again with **Role** as **No Access**, this time selecting the **Agent Policies** template.
+
+        ![Creating the agent identity with the Agent Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-agent-identity.png)
+
+        <Note>
+          This template grants one permission, `Proxy` on proxied services: route traffic and have credentials applied, with no ability to read a secret.
+        </Note>
+
+        Add a **Client Secret** under Universal Auth exactly as before, and save this identity's **Client ID** and **Client Secret** too. You now have four values, two per identity.
+
+        <Warning>
+          Keep the two pairs apart: the proxy's credentials belong only on the proxy host, the agent's only on the agent host. Putting the proxy's on an agent machine would let that machine read your secrets directly, which is what this setup exists to prevent.
+        </Warning>
+      </Step>
+      <Step title="Start the proxy on its own host">
+        On the proxy machine, authenticate as the proxy identity and start it. It listens on port `17322`:
+
+        ```bash
+        export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-proxy-client-id>
+        export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-proxy-client-secret>
+        # export INFISICAL_DOMAIN=https://eu.infisical.com   # EU Cloud, or your self-hosted URL
+
+        infisical secrets agent-proxy start
+        ```
+
+        Leave it running and note this host's address; the next step points the agent at it.
+
+        <Note>
+          Fine for trying it out, but this dies with your terminal. [Running it durably](/documentation/platform/agent-proxy/dedicated-agent-proxy#running-it-durably) covers systemd, Docker, and PaaS.
+        </Note>
+      </Step>
+      <Step title="Launch your agent on its host">
+        On the agent machine, authenticate as the agent identity, point it at the proxy, and scope it to the folder from steps 1 and 2:
+
+        ```bash
+        export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
+        export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
+        # export INFISICAL_DOMAIN=https://eu.infisical.com   # EU Cloud, or your self-hosted URL
+
+        export INFISICAL_PROJECT_ID=<project-id>
+        export INFISICAL_ENVIRONMENT=dev
+        export INFISICAL_SECRET_PATH=/coding-agent
+        export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
+
+        infisical secrets agent-proxy connect -- claude
+        ```
+
+        Everything after `--` is the agent's own command. It starts as if you had launched it directly, finds `GITHUB_TOKEN` set to the fake `ghp_…` placeholder, and uses it like a normal token; the proxy swaps in the real value on calls to `api.github.com`.
+      </Step>
+      <Step title="Verify it works">
+        Each check below makes the same `GET /user` call to `api.github.com`, and the client only ever sends the fake `ghp_…` placeholder. As the request passes through the proxy, on its own host, the placeholder is swapped for the real value of your `GITHUB_PAT`, so GitHub returns your account profile even though the real token never reached the client. That is the whole point: real authenticated work without the caller ever holding the credential.
+
+        <Tabs>
+          <Tab title="Ask your agent">
+            The agent you just launched is already brokering. In its session, send:
+
+            > Run `gh api user` and show me the output.
+
+            [GitHub's `gh` CLI](https://cli.github.com/) reads `GITHUB_TOKEN` from the environment on its own, so the agent needs no token wiring: it runs the command and GitHub answers with your profile. Requires `gh` on the agent host.
+          </Tab>
+          <Tab title="gh CLI">
+            Not driving an interactive agent? Run the check directly, in the shell where you set the variables above:
+
+            ```bash
+            infisical secrets agent-proxy connect -- gh api user
+            ```
+
+            The proxy logs the request as `brokered`.
+          </Tab>
+          <Tab title="curl">
+            No `gh`? Any HTTP client works the same way:
+
+            ```bash
+            infisical secrets agent-proxy connect -- \
+              sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
+            ```
+          </Tab>
+        </Tabs>
+
+        <Note>
+          Getting a `401`? The credential was not applied and the placeholder went out unchanged. Confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `GITHUB_PAT`. A `407` or `403` from the proxy itself means the agent's token was missing, invalid, or revoked.
+        </Note>
+      </Step>
+    </Steps>
+
+    Next: [Dedicated Agent Proxy](/documentation/platform/agent-proxy/dedicated-agent-proxy) is what to settle before real agents depend on this: process supervision, network placement, credential refresh, and high availability.
+
   </Tab>
 </Tabs>
-
-  </Step>
-  <Step title="Start the proxy">
-    The proxy listens on port `17322` by default. Use the CLI or Docker:
-
-<Tabs>
-  <Tab title="CLI">
-    ```bash
-    infisical secrets agent-proxy start
-    ```
-  </Tab>
-  <Tab title="Docker">
-    ```bash
-    # -e without a value passes through the variables you exported above
-    docker run -p 17322:17322 \
-      -e INFISICAL_UNIVERSAL_AUTH_CLIENT_ID \
-      -e INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET \
-      -e INFISICAL_DOMAIN \
-      infisical/cli:latest secrets agent-proxy start
-    ```
-  </Tab>
-</Tabs>
-
-Remember this host's address; the next step points `INFISICAL_AGENT_PROXY_ADDRESS` at it. For production deployment, see [Deployment](/documentation/platform/agent-proxy/deployment).
-
-  </Step>
-</Steps>
-
-## 6. Connect your agent
-
-<Steps>
-  <Step title="Install the Infisical CLI">
-    On the agent host, install the [Infisical CLI](/cli/overview); `connect` is a CLI command.
-  </Step>
-  <Step title="Set the connection details">
-    Set the agent's authentication and connection details as environment variables:
-
-<Tabs>
-  <Tab title="Infisical Cloud (US)">
-    ```bash
-    # Authenticate as the agent identity (from step 4)
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
-
-    # Scope: your project, plus the environment and folder from step 1
-    export INFISICAL_PROJECT_ID=<project-id>
-    export INFISICAL_ENVIRONMENT=dev
-    export INFISICAL_SECRET_PATH=/coding-agent
-
-    # The agent proxy to route through (from step 5)
-    export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
-    ```
-  </Tab>
-  <Tab title="Infisical Cloud (EU)">
-    ```bash
-    # Authenticate as the agent identity (from step 4), pointed at EU Cloud
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
-    export INFISICAL_DOMAIN=https://eu.infisical.com
-
-    # Scope: your project, plus the environment and folder from step 1
-    export INFISICAL_PROJECT_ID=<project-id>
-    export INFISICAL_ENVIRONMENT=dev
-    export INFISICAL_SECRET_PATH=/coding-agent
-
-    # The agent proxy to route through (from step 5)
-    export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
-    ```
-  </Tab>
-  <Tab title="Self-Hosted">
-    ```bash
-    # Authenticate as the agent identity (from step 4), pointed at your instance
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<agent-client-id>
-    export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<agent-client-secret>
-    export INFISICAL_DOMAIN=https://infisical.your-domain.com
-
-    # Scope: your project, plus the environment and folder from step 1
-    export INFISICAL_PROJECT_ID=<project-id>
-    export INFISICAL_ENVIRONMENT=dev
-    export INFISICAL_SECRET_PATH=/coding-agent
-
-    # The agent proxy to route through (from step 5)
-    export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
-    ```
-  </Tab>
-</Tabs>
-
-  </Step>
-  <Step title="Launch the agent">
-    Launch the agent through `connect`. Everything after `--` is the agent's own command:
-
-<Tabs>
-  <Tab title="Claude Code">
-    ```bash
-    infisical secrets agent-proxy connect -- claude
-    ```
-  </Tab>
-  <Tab title="Codex">
-    ```bash
-    infisical secrets agent-proxy connect -- codex
-    ```
-  </Tab>
-  <Tab title="Any command">
-    ```bash
-    infisical secrets agent-proxy connect -- <your-agent-command>
-    ```
-  </Tab>
-</Tabs>
-
-The agent starts and behaves exactly as if you had launched it directly; nothing about it looks different. In its environment it finds `GITHUB_TOKEN`, set by `connect` to the fake placeholder, and uses it like a normal token. Its traffic now routes through the proxy: on calls to `api.github.com` the placeholder is swapped for the real token, and everything else passes through untouched. The next step makes that visible.
-
-<Note>
-  Every setting here can also be passed as a flag or set in `.infisical.json`. See [Connecting Agents](/documentation/platform/agent-proxy/connecting-agents) for how `connect` works and what it puts in the agent's environment.
-</Note>
-
-  </Step>
-</Steps>
-
-## 7. Verify it works
-
-Each method below makes the same `GET /user` call to `api.github.com`. The client sends only the `ghp_…` placeholder that `connect` put in the environment; as the request passes through the proxy, the placeholder is swapped for the real value of your `GITHUB_PAT` secret. GitHub returns your account profile even though the real token never reached the client. That is the whole point: real authenticated work without the caller ever holding the credential.
-
-<Tabs>
-  <Tab title="Through your agent">
-    The agent you launched in step 6 is already brokering. In its session, send:
-
-    > Run `gh api user` and show me the output.
-
-    [GitHub's `gh` CLI](https://cli.github.com/) reads `GITHUB_TOKEN` from the environment on its own, so the agent needs no token wiring; it just runs the command and GitHub returns your profile. Requires `gh` on the host where the agent runs.
-  </Tab>
-  <Tab title="gh CLI">
-    Not driving an interactive agent? Run the check through `connect` directly, in the shell where you set the step 6 variables:
-
-    ```bash
-    infisical secrets agent-proxy connect -- gh api user
-    ```
-
-    `gh` reads `GITHUB_TOKEN` automatically, so there is nothing else to pass. Requires `gh` on the host where you run this.
-  </Tab>
-  <Tab title="curl">
-    No `gh`? Any HTTP client works the same way. `curl` sends the placeholder in the header and the proxy swaps it:
-
-    ```bash
-    infisical secrets agent-proxy connect -- \
-      sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
-    ```
-  </Tab>
-</Tabs>
-
-<Note>
-  Getting a `401`? The proxy could not apply the credential and forwarded the placeholder unchanged (it does not block the call). Check the proxy's logs, and confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `GITHUB_PAT`.
-</Note>
 
 ## Next steps
 
@@ -322,7 +315,7 @@ Each method below makes the same `GET /user` call to `api.github.com`. The clien
   <Card title="Proxied Services" icon="right-left" href="/documentation/platform/agent-proxy/proxied-services">
     Host patterns, header rewrites, and secret substitution in depth.
   </Card>
-  <Card title="Deployment" icon="server" href="/documentation/platform/agent-proxy/deployment">
-    Take the Agent Proxy to production: placement, deployment methods, and HA.
+  <Card title="Security" icon="shield-halved" href="/documentation/platform/agent-proxy/security">
+    Isolation, authentication, certificates, and permissions.
   </Card>
 </CardGroup>
