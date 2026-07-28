@@ -1,0 +1,58 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infisical.fullname" . }}-redis
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "infisical.name" . }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "infisical.name" . }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: {{ .Values.redis.port }}
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infisical.fullname" . }}-redis
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "infisical.name" . }}
+    app.kubernetes.io/component: redis
+  ports:
+    - name: redis
+      port: {{ .Values.redis.port }}
+      targetPort: redis
+      protocol: TCP
+{{- end }}

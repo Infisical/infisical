@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infisical.fullname" . }}
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "infisical.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "infisical.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if or .Values.postgres.cnpg.enabled .Values.migration.enabled }}
+      initContainers:
+        {{- if .Values.postgres.cnpg.enabled }}
+        # Block startup until the CNPG database endpoint is accepting connections.
+        - name: wait-for-db
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - 'until nc -z "$DB_HOST" "$DB_PORT"; do echo "waiting for postgres..."; sleep 3; done'
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "infisical.fullname" . }}-db-app
+                  key: host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "infisical.fullname" . }}-db-app
+                  key: port
+        {{- end }}
+        {{- if .Values.migration.enabled }}
+        - name: migration
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["npm", "run", "migration:latest"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "infisical.fullname" . }}-config
+            - secretRef:
+                name: {{ include "infisical.fullname" . }}-secrets
+          env:
+            {{- include "infisical.dbEnv" . | nindent 12 }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: infisical
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "infisical.fullname" . }}-config
+            - secretRef:
+                name: {{ include "infisical.fullname" . }}-secrets
+          env:
+            {{- include "infisical.dbEnv" . | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
