@@ -8,6 +8,27 @@ import { ApproverType } from "@app/ee/services/access-approval-policy/access-app
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
+// Policies are created on the *shared* seeded project and environment, so any
+// that outlive this file change how later specs behave. Nothing in the suite
+// exercises access requests today, which is the only reason leftovers here have
+// been harmless — the sibling secret-approval leak silently broke secret writes
+// at "/" for every later spec. Track what we create and remove it after each
+// test rather than relying on that staying true.
+const createdPolicyIds: string[] = [];
+
+const deletePolicy = async (policyId: string) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/access-approvals/policies/${policyId}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    }
+  });
+  if (res.statusCode !== 200 && res.statusCode !== 404) {
+    throw new Error(`cleanup: unexpected ${res.statusCode} deleting policy ${policyId} — ${res.payload}`);
+  }
+};
+
 const createPolicy = async (dto: {
   name: string;
   secretPath: string;
@@ -31,11 +52,15 @@ const createPolicy = async (dto: {
   });
 
   expect(res.statusCode).toBe(200);
-  return res.json().approval;
+  const { approval } = res.json();
+  createdPolicyIds.push(approval.id);
+  return approval;
 };
 
-const createPolicyWithGroupApprover = (dto: { name: string; groupId: string; secretPath: string }) =>
-  testServer.inject({
+// Returns the raw response because callers assert on rejections too, so only
+// register a policy when one was actually created.
+const createPolicyWithGroupApprover = async (dto: { name: string; groupId: string; secretPath: string }) => {
+  const res = await testServer.inject({
     method: "POST",
     url: `/api/v1/access-approvals/policies`,
     headers: {
@@ -50,6 +75,12 @@ const createPolicyWithGroupApprover = (dto: { name: string; groupId: string; sec
       approvals: 1
     }
   });
+
+  if (res.statusCode === 200) {
+    createdPolicyIds.push(res.json().approval.id);
+  }
+  return res;
+};
 
 const seedGroup = async (db: Knex, dto: { slug: string; addToProject: boolean }) => {
   const [group] = await db(TableName.Groups)
@@ -95,6 +126,13 @@ const cleanupGroup = async (db: Knex, groupId: string) => {
 };
 
 describe("Access approval policy router", async () => {
+  // The update test hard-deletes its own policy rows in a finally, so its id is
+  // already gone by the time this runs — deletePolicy tolerates the 404.
+  afterEach(async () => {
+    const ids = createdPolicyIds.splice(0);
+    await Promise.all(ids.map(deletePolicy));
+  });
+
   test("Create policy", async () => {
     const policy = await createPolicy({
       secretPath: "/",
