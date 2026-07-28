@@ -31,13 +31,33 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 
 For detailed information on resource inheritance, project ownership, and enterprise examples, see the [Sub-Organizations documentation](/documentation/platform/sub-organizations).
 
+### 1.6 Organization-Level Resources
+
+- **Not Everything Is Project-Scoped**: While projects are the primary workspace, several resources live at the organization level and are shared across projects rather than owned by any single one.
+- **Examples**:
+    - **[Machine identities](/documentation/platform/identities/machine-identities)** and **[user groups](/documentation/platform/groups)**: managed at the organization level and granted access into individual projects.
+    - **[App Connections](/integrations/app-connections/overview)**: reusable third-party credentials (AWS, GCP, GitHub, and more) used by features such as [secret syncs](/integrations/secret-syncs/overview) and [dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+    - **[Gateways](/documentation/platform/gateways/overview)**: secure access to private network resources without direct inbound connections.
+    - **[Secret Sharing](/documentation/platform/secret-sharing)**: share time- and view-count-bound secrets, including with people outside the organization.
+    - **[Audit logs](/documentation/platform/audit-logs)** and **billing**: aggregated across all projects and product types.
+
 ### 2. Projects
 
-- **Definition and Role**: [Projects](/documentation/platform/project) are the highest-level construct within an [organization](/documentation/platform/organization) in Infisical. They serve as the primary container for all functionalities.
+- **Definition and Role**: [Projects](/documentation/platform/project) are the primary container for your work in Infisical. Each project is tied to a single **product type** (see below), which determines the dashboard, workflows, and capabilities available within it.
 - **Common Project Mappings**: Projects typically align with applications, services, or code repositories — each being a valid and common approach depending on your organizational structure.
-- **Functional Capabilities**: Each project encompasses features for managing secrets, certificates, and encryption keys, serving as the central hub for these resources.
 
 <Note>Projects are isolated from one another. Secrets, certificates, and other resources cannot be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
+
+### 2.1 Product Types
+
+- **Definition**: Not everything in Infisical is a secret. Each project is created as one of several **products**, each purpose-built for a different security use case.
+- **Supported Products**:
+    - **[Secrets Management](/documentation/platform/secrets-mgmt/overview)**: Store, access, sync, and rotate application secrets across environments.
+    - **[Secrets Scanning](/documentation/platform/secret-scanning/overview)**: Detect hardcoded secrets and leaks across code, CI pipelines, and infrastructure.
+    - **[Infisical PKI](/documentation/platform/pki/overview)**: Issue and manage X.509 certificates using internal and external certificate authorities.
+    - **[Infisical KMS](/documentation/platform/kms/overview)**: Encrypt and decrypt data using centrally managed keys with enforced access policies.
+    - **[Infisical PAM](/documentation/platform/pam/overview)**: Broker and govern privileged access to databases, servers, and accounts with policy-based controls and approvals.
+- **Note**: The constructs described below — environments, folders, and imports — are specific to the **Secrets Management** product. Other products expose their own resources and workflows (e.g., certificates and CAs in PKI, keys in KMS, resources and accounts in PAM).
 
 ### 3. Environments
 
@@ -60,8 +80,8 @@ For detailed information on resource inheritance, project ownership, and enterpr
 
 - **Importance**: Implementing approval workflows is recommended for organizations aiming to enhance efficiency and strengthen their security posture.
 - **Types of Workflows**:
-    - **[Access Requests](/documentation/platform/pr-workflows)**: This workflow allows developers to request access to sensitive resources. Such access can be configured for temporary use, a practice known as "just-in-time" access.
-    - **[Change Requests](/documentation/platform/access-controls/access-requests)**: Facilitates reviews and approvals when changes are proposed for sensitive environments or specific folders, ensuring proper oversight.
+    - **[Access Requests](/documentation/platform/access-controls/access-requests)**: This workflow allows developers to request access to sensitive resources. Such access can be configured for temporary use, a practice known as "just-in-time" access.
+    - **[Change Requests](/documentation/platform/pr-workflows)**: Facilitates reviews and approvals when changes are proposed for sensitive environments or specific folders, ensuring proper oversight.
 
 ### 7. Access Controls
 
