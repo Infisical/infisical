@@ -895,7 +895,11 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       await pamAccountDAL.updateById(accountId, { rotationAccountId }, tx);
       await pamAccountDAL.reconcileRotationScheduleForAccount(accountId, tx);
     });
-    return { rotationAccountId };
+    return {
+      rotationAccountId,
+      accountType: account.accountType,
+      scheduledRotationEnabled: getRotationConfig(account.templateSettings)?.enabled ?? false
+    };
   };
 
   // performRotation already records the failure; report the outcome (never throw) so the caller can audit it.
