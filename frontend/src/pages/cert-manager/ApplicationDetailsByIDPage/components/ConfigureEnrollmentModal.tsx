@@ -832,6 +832,10 @@ const ScepPanel = ({
     ProjectPermissionSub.AppConnections
   );
 
+  useEffect(() => {
+    if (isIntune && !isScepConfigured && raCaSigningSupported) setValue("signRaWithCa", true);
+  }, [isIntune, isScepConfigured, raCaSigningSupported, setValue]);
+
   const { data: intuneConnections, isPending: isIntuneConnectionsLoading } =
     useListAvailableAppConnections(AppConnection.MicrosoftIntune, currentProject.id, {
       enabled: isIntune
@@ -1104,9 +1108,10 @@ const ScepPanel = ({
               <div>
                 <FieldLabel>Sign RA certificate with the CA</FieldLabel>
                 <p className="text-xs text-accent">
-                  Issue the SCEP RA certificate from this profile&apos;s CA so it chains to the CA
-                  root. Strict clients such as Apple and Microsoft Intune require this. Only
-                  available for internal certificate authorities.
+                  Issue the SCEP RA certificate from this profile&apos;s CA so clients can build a
+                  chain to a CA they already trust. Required by strict clients such as Apple and
+                  Microsoft Intune, which reject a self-signed RA. Only available for internal
+                  certificate authorities.
                 </p>
               </div>
               {raCaSigningSupported && !isScepConfigured ? (

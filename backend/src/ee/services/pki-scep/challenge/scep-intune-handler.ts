@@ -1,8 +1,8 @@
 import * as x509 from "@peculiar/x509";
 
 import { KeyStorePrefixes } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import {
@@ -14,6 +14,7 @@ import {
   MicrosoftEntraTokenResource,
   TMicrosoftIntuneConnectionCredentials
 } from "@app/services/app-connection/microsoft-intune";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { IScepValidationHandler, TScepValidationHandlerDeps } from "./scep-validation-handler-types";
 
@@ -47,33 +48,66 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
     const inFlight = intuneAccessInFlight.get(cacheKey);
     if (inFlight) return inFlight;
 
-    const acquisition = withCache<TIntuneAccess>({
-      keyStore: deps.keyStore,
-      key: cacheKey,
-      ttlSeconds: intuneAccessTtlSeconds,
-      fetcher: async () => {
-        const credentials = (await decryptAppConnectionCredentials({
-          orgId: connection.orgId,
-          projectId: connection.projectId,
-          encryptedCredentials: connection.encryptedCredentials,
-          kmsService: deps.kmsService
-        })) as TMicrosoftIntuneConnectionCredentials;
-
-        const graphToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Graph);
-        const serviceUri = await discoverScepValidationServiceUri(graphToken.accessToken);
-        const intuneToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Intune);
-
-        return { serviceUri, intuneToken: intuneToken.accessToken, expiresAt: intuneToken.expiresAt };
+    const remember = (access: TIntuneAccess) => {
+      for (const key of intuneAccessCache.keys()) {
+        if (key !== cacheKey && key.startsWith(connectionKeyPrefix)) intuneAccessCache.delete(key);
       }
-    })
-      .then((access) => {
-        for (const key of intuneAccessCache.keys()) {
-          if (key !== cacheKey && key.startsWith(connectionKeyPrefix)) intuneAccessCache.delete(key);
+      intuneAccessCache.set(cacheKey, access);
+    };
+
+    const acquisition = (async (): Promise<TIntuneAccess> => {
+      const { encryptor, decryptor } = await deps.kmsService.createCipherPairWithDataKey(
+        connection.projectId
+          ? { type: KmsDataKey.SecretManager, projectId: connection.projectId }
+          : { type: KmsDataKey.Organization, orgId: connection.orgId }
+      );
+
+      const cachedCipherText = await deps.keyStore.getItem(cacheKey).catch((err: unknown) => {
+        logger.warn({ err }, `Intune access cache read failed [cacheKey=${cacheKey}]`);
+        return null;
+      });
+      if (cachedCipherText) {
+        try {
+          const shared = JSON.parse(
+            decryptor({ cipherTextBlob: Buffer.from(cachedCipherText, "base64") }).toString("utf8")
+          ) as TIntuneAccess;
+          if (shared.expiresAt > Date.now()) {
+            remember(shared);
+            return shared;
+          }
+        } catch (err) {
+          logger.warn({ err }, `Intune access cache decrypt failed, re-acquiring [cacheKey=${cacheKey}]`);
         }
-        intuneAccessCache.set(cacheKey, access);
-        return access;
-      })
-      .finally(() => intuneAccessInFlight.delete(cacheKey));
+      }
+
+      const credentials = (await decryptAppConnectionCredentials({
+        orgId: connection.orgId,
+        projectId: connection.projectId,
+        encryptedCredentials: connection.encryptedCredentials,
+        kmsService: deps.kmsService
+      })) as TMicrosoftIntuneConnectionCredentials;
+
+      const graphToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Graph);
+      const serviceUri = await discoverScepValidationServiceUri(graphToken.accessToken);
+      const intuneToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Intune);
+
+      const access: TIntuneAccess = {
+        serviceUri,
+        intuneToken: intuneToken.accessToken,
+        expiresAt: intuneToken.expiresAt
+      };
+
+      await deps.keyStore
+        .setItemWithExpiry(
+          cacheKey,
+          intuneAccessTtlSeconds(access),
+          encryptor({ plainText: Buffer.from(JSON.stringify(access)) }).cipherTextBlob.toString("base64")
+        )
+        .catch((err: unknown) => logger.warn({ err }, `Intune access cache write failed [cacheKey=${cacheKey}]`));
+
+      remember(access);
+      return access;
+    })().finally(() => intuneAccessInFlight.delete(cacheKey));
 
     intuneAccessInFlight.set(cacheKey, acquisition);
     return acquisition;

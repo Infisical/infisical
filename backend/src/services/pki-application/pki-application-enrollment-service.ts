@@ -8,7 +8,11 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
-import { generateAndEncryptScepRaCertificate, resolveScepRaSigning } from "@app/ee/services/pki-scep/pki-scep-fns";
+import {
+  generateAndEncryptScepRaCertificate,
+  resolveCaType,
+  resolveScepRaSigning
+} from "@app/ee/services/pki-scep/pki-scep-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -217,10 +221,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const scepConfig = junction.scepConfigId ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId) : null;
 
     const profile = await certificateProfileDAL.findById(profileId);
-    const { caType } = await resolveScepRaSigning({
-      caId: profile?.caId,
-      certificateAuthorityDAL
-    });
+    const caType = await resolveCaType(profile?.caId, certificateAuthorityDAL);
 
     const siteUrl = getConfig().SITE_URL ?? "";
     const appProfilePath = `applications/${applicationId}/profiles/${profileId}`;
@@ -709,11 +710,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const raSlug = `app-${applicationId}-${profileId}`;
 
     const profile = await certificateProfileDAL.findById(profileId);
-    const { signRaWithCa, caType } = await resolveScepRaSigning({
-      caId: profile?.caId,
-      requestedSignRaWithCa: config.signRaWithCa,
-      certificateAuthorityDAL
-    });
+    const caType = await resolveCaType(profile?.caId, certificateAuthorityDAL);
 
     // External CAs always issue asynchronously and Intune has no pending state, so every enrollment
     // would be reported to Intune as a failure.
@@ -723,9 +720,23 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       });
     }
 
+    const { signRaWithCa } = await resolveScepRaSigning({
+      caId: profile?.caId,
+      requestedSignRaWithCa: config.signRaWithCa,
+      certificateAuthorityDAL
+    });
+
     const existingScepConfig = junction.scepConfigId
       ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId)
       : null;
+
+    if (isIntune && !signRaWithCa) {
+      throw new BadRequestError({
+        message:
+          "Microsoft Intune validation requires the RA certificate to be signed with the CA. Enable 'Sign RA certificate with the CA' on this SCEP enrollment."
+      });
+    }
+
     // Changing this regenerates the RA certificate, which breaks devices already trusting the current one.
     if (existingScepConfig && existingScepConfig.signRaWithCa !== signRaWithCa) {
       throw new BadRequestError({

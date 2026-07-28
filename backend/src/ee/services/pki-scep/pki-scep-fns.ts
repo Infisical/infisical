@@ -143,6 +143,14 @@ export const SCEP_RA_CA_SIGNING_SUPPORTED_BY_CA_TYPE: Record<CaType, boolean> = 
 export const isScepRaCaSigningSupported = (caType: CaType): boolean =>
   SCEP_RA_CA_SIGNING_SUPPORTED_BY_CA_TYPE[caType] ?? false;
 
+export const resolveCaType = async (
+  caId: string | null | undefined,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">
+): Promise<CaType> => {
+  const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId) : null;
+  return (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
+};
+
 export const resolveScepRaSigning = async ({
   caId,
   requestedSignRaWithCa,
@@ -151,16 +159,15 @@ export const resolveScepRaSigning = async ({
   caId?: string | null;
   requestedSignRaWithCa?: boolean;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-}): Promise<{ signRaWithCa: boolean; raCaSigningSupported: boolean; caType: CaType }> => {
-  const ca = caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(caId) : null;
-  const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
+}): Promise<{ signRaWithCa: boolean; raCaSigningSupported: boolean }> => {
+  const caType = await resolveCaType(caId, certificateAuthorityDAL);
   const raCaSigningSupported = isScepRaCaSigningSupported(caType);
   if (requestedSignRaWithCa === true && !raCaSigningSupported) {
     throw new BadRequestError({
       message: `CA-signed SCEP RA certificates are not supported for '${caType}' certificate authorities.`
     });
   }
-  return { signRaWithCa: requestedSignRaWithCa ?? false, raCaSigningSupported, caType };
+  return { signRaWithCa: requestedSignRaWithCa ?? false, raCaSigningSupported };
 };
 
 const buildCaSignedRaCertificate = async (slug: string, caId: string, deps: TGenerateScepRaCertificateDeps) => {

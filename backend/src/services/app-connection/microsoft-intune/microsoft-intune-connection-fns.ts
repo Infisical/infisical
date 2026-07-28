@@ -155,6 +155,14 @@ export const intuneValidateScepRequest = async ({
   }
 };
 
+const assertIntuneNotificationAccepted = (data: TIntuneScepValidationResponse | undefined, action: string) => {
+  if (data?.code && data.code.toLowerCase() !== INTUNE_SUCCESS_CODE) {
+    throw new BadRequestError({
+      message: `Microsoft Intune rejected the SCEP ${action}: ${data.errorDescription || data.code}`
+    });
+  }
+};
+
 export const intuneSendSuccessNotification = async ({
   intuneAccessToken,
   serviceUri,
@@ -171,11 +179,13 @@ export const intuneSendSuccessNotification = async ({
     issuingCertificateAuthority: string;
   };
 }) => {
-  await safeRequest.post(
+  const { data } = await safeRequest.post<TIntuneScepValidationResponse>(
     `${serviceUri}/ScepActions/successNotification`,
     { notification: { ...notification, callerInfo: INTUNE_CALLER_INFO } },
     { headers: intuneScepActionHeaders(intuneAccessToken) }
   );
+
+  assertIntuneNotificationAccepted(data, "success notification");
 };
 
 export const intuneSendFailureNotification = async ({
@@ -192,11 +202,13 @@ export const intuneSendFailureNotification = async ({
     errorDescription: string;
   };
 }) => {
-  await safeRequest.post(
+  const { data } = await safeRequest.post<TIntuneScepValidationResponse>(
     `${serviceUri}/ScepActions/failureNotification`,
     { notification: { ...notification, callerInfo: INTUNE_CALLER_INFO } },
     { headers: intuneScepActionHeaders(intuneAccessToken) }
   );
+
+  assertIntuneNotificationAccepted(data, "failure notification");
 };
 
 export const validateMicrosoftIntuneConnectionCredentials = async (config: TMicrosoftIntuneConnectionConfig) => {
