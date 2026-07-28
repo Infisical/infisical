@@ -4,7 +4,6 @@ import { TrashIcon } from "lucide-react";
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldLabel,
   IconButton,
@@ -40,14 +39,6 @@ export const ChannelCard = ({ index, projectId, onRemove, canRemove }: Props) =>
   const channelErrors = errors.channels?.[index];
 
   const Icon = getChannelIcon(channelType);
-
-  // A saved email channel can only reach zero recipients by having them pruned when they left the
-  // org or project, which also disables the channel. Say so, since the empty field is otherwise
-  // indistinguishable from one the user just cleared.
-  const hasLostRecipients =
-    isExisting &&
-    channelType === AlertChannelType.Email &&
-    (channel?.recipients?.length ?? 0) === 0;
 
   return (
     <div className="flex flex-col gap-4 rounded-md border border-border p-4">
@@ -115,12 +106,6 @@ export const ChannelCard = ({ index, projectId, onRemove, canRemove }: Props) =>
               )}
             />
             <FieldError errors={[channelErrors?.recipients as { message?: string } | undefined]} />
-            {hasLostRecipients && (
-              <FieldDescription className="text-warning">
-                Every recipient of this channel lost access, so the channel was disabled. Add a
-                recipient and enable it to resume notifications.
-              </FieldDescription>
-            )}
           </FieldContent>
         </Field>
       )}

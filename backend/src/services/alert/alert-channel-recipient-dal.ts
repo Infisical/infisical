@@ -91,17 +91,29 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
           .whereRaw(`"om"."actorUserId" = ${principalIdAsUuid}`);
       })
       .where((scopeQb) => {
-        void scopeQb.whereNull("ch.projectId").orWhereExists((projectQb) => {
-          void projectQb
-            .select(db.raw("1"))
-            .from({ pm: TableName.Membership })
-            .leftJoin({ ugm: TableName.UserGroupMembership }, (join) => {
-              void join.on("ugm.groupId", "pm.actorGroupId").andOn("ugm.isPending", "=", db.raw("?", [false]));
-            })
-            .where("pm.scope", AccessScope.Project)
-            .whereRaw(`"pm"."scopeProjectId" = "ch"."projectId"`)
-            .whereRaw(`("pm"."actorUserId" = ${principalIdAsUuid} OR "ugm"."userId" = ${principalIdAsUuid})`);
-        });
+        void scopeQb
+          .whereNull("ch.projectId")
+          .orWhereExists((directQb) => {
+            void directQb
+              .select(db.raw("1"))
+              .from({ pm: TableName.Membership })
+              .where("pm.scope", AccessScope.Project)
+              .whereRaw(`"pm"."scopeProjectId" = "ch"."projectId"`)
+              .whereRaw(`"pm"."actorUserId" = ${principalIdAsUuid}`);
+          })
+          .orWhereExists((viaGroupQb) => {
+            void viaGroupQb
+              .select(db.raw("1"))
+              .from({ ugm: TableName.UserGroupMembership })
+              .join({ gm: TableName.Membership }, (join) => {
+                void join
+                  .on("gm.actorGroupId", "ugm.groupId")
+                  .andOn("gm.scope", "=", db.raw("?", [AccessScope.Project]));
+              })
+              .whereRaw(`"gm"."scopeProjectId" = "ch"."projectId"`)
+              .whereRaw(`"ugm"."userId" = ${principalIdAsUuid}`)
+              .where("ugm.isPending", false);
+          });
       });
   };
 
@@ -154,39 +166,34 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     tx?: Knex
   ): Promise<number> => {
     try {
-      const uniqueUserIds = [...new Set(userIds)];
+      const uniqueUserIds = new Set(userIds);
       const uniqueGroupIds = [...new Set(groupIds)];
-      if (!uniqueUserIds.length && !uniqueGroupIds.length) return 0;
+      if (!uniqueUserIds.size && !uniqueGroupIds.length) return 0;
 
-      const deletedUserRows = (await (tx || db)(TableName.AlertChannelRecipient)
-        .where(`${TableName.AlertChannelRecipient}.principalType`, AlertPrincipalType.USER)
-        .where((principalQb) => {
-          if (uniqueUserIds.length) {
-            void principalQb.whereIn(`${TableName.AlertChannelRecipient}.principalId`, uniqueUserIds);
-          }
-          if (uniqueGroupIds.length) {
-            void principalQb.orWhereIn(
-              `${TableName.AlertChannelRecipient}.principalId`,
-              (tx || db)(TableName.UserGroupMembership)
-                .select(db.raw(`"${TableName.UserGroupMembership}"."userId"::text`))
-                .whereIn(`${TableName.UserGroupMembership}.groupId`, uniqueGroupIds)
-            );
-          }
-        })
-        .whereNotExists($whereUserStillInChannelScope)
-        .del()
-        .returning("channelId")) as { channelId: string }[];
+      if (uniqueGroupIds.length) {
+        const members = (await (tx || db)(TableName.UserGroupMembership)
+          .whereIn(`${TableName.UserGroupMembership}.groupId`, uniqueGroupIds)
+          .select(`${TableName.UserGroupMembership}.userId`)) as { userId: string }[];
+        members.forEach((member) => uniqueUserIds.add(member.userId));
+      }
 
-      const deletedGroupRows = uniqueGroupIds.length
-        ? ((await (tx || db)(TableName.AlertChannelRecipient)
-            .where(`${TableName.AlertChannelRecipient}.principalType`, AlertPrincipalType.GROUP)
-            .whereIn(`${TableName.AlertChannelRecipient}.principalId`, uniqueGroupIds)
-            .whereNotExists($whereGroupStillInChannelScope)
-            .del()
-            .returning("channelId")) as { channelId: string }[])
-        : [];
+      const deleteForPrincipals = async (principalType: AlertPrincipalType, principalIds: string[]) => {
+        if (!principalIds.length) return [] as { channelId: string }[];
 
-      const deleted = [...deletedUserRows, ...deletedGroupRows];
+        return (await (tx || db)(TableName.AlertChannelRecipient)
+          .where(`${TableName.AlertChannelRecipient}.principalType`, principalType)
+          .whereIn(`${TableName.AlertChannelRecipient}.principalId`, principalIds)
+          .whereNotExists(
+            principalType === AlertPrincipalType.USER ? $whereUserStillInChannelScope : $whereGroupStillInChannelScope
+          )
+          .del()
+          .returning("channelId")) as { channelId: string }[];
+      };
+
+      const deleted = [
+        ...(await deleteForPrincipals(AlertPrincipalType.USER, [...uniqueUserIds])),
+        ...(await deleteForPrincipals(AlertPrincipalType.GROUP, uniqueGroupIds))
+      ];
 
       await $disableChannelsWithoutRecipients([...new Set(deleted.map((row) => row.channelId))], tx);
 
