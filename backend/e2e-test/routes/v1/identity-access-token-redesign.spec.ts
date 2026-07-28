@@ -135,6 +135,13 @@ const deleteOrgIdentityMembership = async (identityId: string) => {
   await testRedis.incr(KeyStorePrefixes.IdentityRevocationVersion(identityId));
 };
 
+// Clears this identity's cached revocation verdicts, forcing the next request
+// to re-resolve against Postgres.
+const dropRevocationVerdicts = async (identityId: string) => {
+  const keys = await testRedis.keys(`${KeyStorePrefixes.IdentityRevocationVerdict(identityId, "")}*`);
+  if (keys.length) await testRedis.del(...keys);
+};
+
 const waitForRevocationRow = async (tokenId: string) => {
   const deadline = Date.now() + 10_000;
 
@@ -455,7 +462,10 @@ describe("Identity Access Token — redesigned JWT flow", () => {
       expect(revocation.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedExpiresAtMs - 2_000);
       expect(revocation.expiresAt.getTime()).toBeLessThanOrEqual(expectedExpiresAtMs + markerSkewMs + 2_000);
 
-      await testRedis.flushdb("SYNC");
+      // Drop only this identity's cached allow-verdicts so the next call
+      // re-checks Postgres. A flushdb() would also wipe the shared server's
+      // BullMQ queues, keystore, and cron leases mid-run.
+      await dropRevocationVerdicts(identityId);
 
       expect((await callDetailsEndpoint(accessToken)).statusCode).toBe(401);
     } finally {

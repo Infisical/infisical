@@ -4,6 +4,43 @@ import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from 
 
 import { seedData1 } from "@app/db/seed-data";
 
+// Replication runs asynchronously through BullMQ, so the imported secret shows
+// up some time after the write. Poll for it instead of sleeping a fixed 10s: a
+// fixed wait is simultaneously too short (it flakes whenever CI contention
+// pushes replication past the deadline) and too long (it burns the full 10s on
+// every pass, even though replication usually lands in well under a second).
+const REPLICATION_TIMEOUT_MS = 25_000;
+const REPLICATION_POLL_MS = 250;
+
+const waitForReplicatedSecret = async (dto: {
+  workspaceId: string;
+  environmentSlug: string;
+  secretPath: string;
+  key: string;
+  value: string;
+  authToken: string;
+}) => {
+  const deadline = Date.now() + REPLICATION_TIMEOUT_MS;
+  for (;;) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const secret = await getSecretByNameV2(dto);
+      if (secret.secretValue === dto.value) return secret;
+    } catch {
+      // Not replicated yet — getSecretByNameV2 asserts on a 200.
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `Timed out after ${REPLICATION_TIMEOUT_MS}ms waiting for "${dto.key}" to replicate into ${dto.environmentSlug}${dto.secretPath}`
+      );
+    }
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => {
+      setTimeout(resolve, REPLICATION_POLL_MS);
+    });
+  }
+};
+
 // dev <- stage <- prod
 describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
   "Secret replication waterfall pattern testing - %secretPath",
@@ -118,17 +155,13 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
         value: "stage-value"
       });
 
-      // wait for 10 second for  replication to finish
-      await new Promise((resolve) => {
-        setTimeout(resolve, 10000); // time to breathe for db
-      });
-
-      const secret = await getSecretByNameV2({
+      const secret = await waitForReplicatedSecret({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
         authToken: jwtAuthToken,
-        key: "STAGING_KEY"
+        key: "STAGING_KEY",
+        value: "stage-value"
       });
 
       expect(secret.secretKey).toBe("STAGING_KEY");
@@ -173,17 +206,13 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
         value: "prod-value"
       });
 
-      // wait for 10 second for  replication to finish
-      await new Promise((resolve) => {
-        setTimeout(resolve, 10000); // time to breathe for db
-      });
-
-      const secret = await getSecretByNameV2({
+      const secret = await waitForReplicatedSecret({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
         authToken: jwtAuthToken,
-        key: "PROD_KEY"
+        key: "PROD_KEY",
+        value: "prod-value"
       });
 
       expect(secret.secretKey).toBe("PROD_KEY");
@@ -217,7 +246,7 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
       });
     });
   },
-  { timeout: 30000 }
+  { timeout: 60_000 }
 );
 
 // dev <- stage, dev <- prod
@@ -343,17 +372,22 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "prod-value"
       });
 
-      // wait for 10 second for  replication to finish
-      await new Promise((resolve) => {
-        setTimeout(resolve, 10000); // time to breathe for db
-      });
-
-      const secret = await getSecretByNameV2({
+      // The listSecrets assertion below covers both imports, so wait for both.
+      const secret = await waitForReplicatedSecret({
         environmentSlug: seedData1.environment.slug,
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
         authToken: jwtAuthToken,
-        key: "STAGING_KEY"
+        key: "STAGING_KEY",
+        value: "stage-value"
+      });
+      await waitForReplicatedSecret({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: testSuitePath,
+        authToken: jwtAuthToken,
+        key: "PROD_KEY",
+        value: "prod-value"
       });
 
       expect(secret.secretKey).toBe("STAGING_KEY");
@@ -402,5 +436,5 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
       });
     });
   },
-  { timeout: 30000 }
+  { timeout: 60_000 }
 );
