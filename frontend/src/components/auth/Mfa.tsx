@@ -436,7 +436,6 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               value={mfaCode}
               onChange={setMfaCode}
               onSubmit={verifyMfa}
-              submitLabel={String(t("mfa.verify"))}
               isPending={isLoading}
               isDisabled={typeof triesLeft === "number" && triesLeft <= 0}
               error={

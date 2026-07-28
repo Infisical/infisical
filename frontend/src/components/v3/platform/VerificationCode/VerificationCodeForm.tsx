@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { AnimatedCollapse } from "../../generic/AnimatedCollapse";
 import { Button } from "../../generic/Button";
@@ -53,7 +53,6 @@ type VerificationCodeFormProps = {
   name: string;
   onChange: (value: string) => void;
   onSubmit: () => void | Promise<void>;
-  submitLabel?: ReactNode;
   value: string;
 };
 
@@ -66,18 +65,30 @@ export const VerificationCodeForm = ({
   name,
   onChange,
   onSubmit,
-  submitLabel = "Verify",
   value
 }: VerificationCodeFormProps) => {
   const isComplete = value.trim().length === fields;
   const hasError = Boolean(error);
   const [hasChangedSinceError, setHasChangedSinceError] = useState(false);
+  const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
+  const onSubmitRef = useRef(onSubmit);
+
+  useEffect(() => {
+    onSubmitRef.current = onSubmit;
+  }, [onSubmit]);
 
   useEffect(() => {
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
     }
   }, [hasError, isPending]);
+
+  useEffect(() => {
+    if (hasAttemptedVerification || !isComplete || isDisabled || isPending) return;
+
+    setHasAttemptedVerification(true);
+    onSubmitRef.current();
+  }, [hasAttemptedVerification, isComplete, isDisabled, isPending]);
 
   const handleChange = (nextValue: string) => {
     if (hasError) setHasChangedSinceError(true);
@@ -104,7 +115,7 @@ export const VerificationCodeForm = ({
         />
         {error && <FieldError>{error}</FieldError>}
       </div>
-      <AnimatedCollapse isOpen={isComplete || Boolean(isPending)} contentClassName="px-1">
+      <AnimatedCollapse isOpen={hasAttemptedVerification}>
         <Button
           type="submit"
           variant="project"
@@ -113,7 +124,7 @@ export const VerificationCodeForm = ({
           isPending={isPending}
           isDisabled={!isComplete || isDisabled || isPending}
         >
-          {submitLabel}
+          Retry
         </Button>
       </AnimatedCollapse>
       {children}

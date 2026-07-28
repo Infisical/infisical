@@ -156,7 +156,6 @@ export const ChangeEmailSection = () => {
       : `Enter the 6-digit code sent to your new email: ${otpRecipient}`;
   const otpTitle =
     otpStep === "currentEmail" ? "Confirm from current email" : "Confirm from new email";
-  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm Email Change";
   const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
   const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
 
@@ -219,7 +218,6 @@ export const ChangeEmailSection = () => {
             value={typedOTP}
             onChange={setTypedOTP}
             onSubmit={onOtpSubmit}
-            submitLabel={otpButtonLabel}
             isPending={isOtpSubmitLoading}
           >
             {otpStep === "newEmail" && (

@@ -96,7 +96,6 @@ export default function CodeInputStep({
             value={code}
             onChange={setCode}
             onSubmit={handleVerify}
-            submitLabel={String(t("signup.verify"))}
             isPending={isVerifying}
             error={isCodeError ? t("signup.step2-code-error") : undefined}
           >

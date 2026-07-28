@@ -68,7 +68,6 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
         value={totp}
         onChange={(value) => setTotp(value.replace(/\D/g, "").slice(0, 6))}
         onSubmit={handleVerify}
-        submitLabel="Verify code"
         isPending={isVerifying}
       />
     </div>
