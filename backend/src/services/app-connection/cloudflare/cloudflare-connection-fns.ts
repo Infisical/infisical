@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -10,11 +11,13 @@ import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflarePagesProject,
+  TCloudflarePermissionGroup,
   TCloudflareWorkersScript,
   TCloudflareZone
 } from "./cloudflare-connection-types";
 
 const CLOUDFLARE_ZONES_PER_PAGE = 50;
+const CLOUDFLARE_PERMISSION_GROUPS_PER_PAGE = 50;
 const CLOUDFLARE_MAX_PAGES = 100;
 
 export const getCloudflareConnectionListItem = () => {
@@ -111,6 +114,52 @@ export const listCloudflareZones = async (appConnection: TCloudflareConnection):
   return zones;
 };
 
+export const listCloudflarePermissionGroups = async (
+  appConnection: TCloudflareConnection
+): Promise<TCloudflarePermissionGroup[]> => {
+  const {
+    credentials: { apiToken, accountId }
+  } = appConnection;
+
+  const permissionGroups: TCloudflarePermissionGroup[] = [];
+
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await request.get<{
+      result: { id: string; name: string; scopes?: string[] }[];
+      result_info?: { total_pages?: number };
+    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`, {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json"
+      },
+      params: {
+        page,
+        per_page: CLOUDFLARE_PERMISSION_GROUPS_PER_PAGE
+      }
+    });
+
+    permissionGroups.push(
+      ...data.result.map((a) => ({
+        id: a.id,
+        name: a.name,
+        scopes: a.scopes ?? []
+      }))
+    );
+
+    // this endpoint doesn't always return result_info, so when it's missing we keep paging as long as
+    // the page came back full and stop on the first partial page
+    totalPages =
+      data.result_info?.total_pages ?? (data.result.length === CLOUDFLARE_PERMISSION_GROUPS_PER_PAGE ? page + 1 : page);
+    page += 1;
+  }
+
+  return permissionGroups;
+};
+
 export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {
   const { apiToken, accountId } = config.credentials;
 
@@ -128,6 +177,7 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
       });
     }
   } catch (error: unknown) {
+    logger.error(error, `Failed to validate Cloudflare connection credentials [accountId=${accountId}]`);
     if (error instanceof AxiosError) {
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access

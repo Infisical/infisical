@@ -3574,6 +3574,13 @@ export const SecretRotations = {
     DATADOG_API_KEY: {
       name: "The name for the generated Datadog API key."
     },
+    CLOUDFLARE_API_TOKEN: {
+      name: "The name for the generated Cloudflare API token.",
+      policies:
+        "The access policies to attach to the generated Cloudflare API token. Each policy scopes a set of permission groups to either the entire account or a set of zones.",
+      allowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is denied from."
+    },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
     },
@@ -3665,6 +3672,10 @@ export const SecretRotations = {
     DATADOG_API_KEY: {
       apiKeyId: "The name of the secret that the rotated Datadog API key ID will be mapped to.",
       apiKey: "The name of the secret that the rotated Datadog API key value will be mapped to."
+    },
+    CLOUDFLARE_API_TOKEN: {
+      tokenId: "The name of the secret that the rotated Cloudflare API token ID will be mapped to.",
+      apiToken: "The name of the secret that the rotated Cloudflare API token value will be mapped to."
     },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."

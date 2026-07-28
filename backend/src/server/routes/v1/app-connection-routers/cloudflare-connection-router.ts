@@ -107,4 +107,37 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       return zones;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/cloudflare-permission-groups`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listCloudflarePermissionGroups",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string(),
+            scopes: z.string().array()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const permissionGroups = await server.services.appConnection.cloudflare.listPermissionGroups(
+        connectionId,
+        req.permission
+      );
+      return permissionGroups;
+    }
+  });
 };

@@ -27,7 +27,8 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.DatadogApiKey]: "Datadog API Key",
   [SecretRotation.ConvexAccessKey]: "Convex Access Key",
   [SecretRotation.FireworksApiKey]: "Fireworks Secret",
-  [SecretRotation.SnowflakeUserKeyPair]: "Snowflake User Key Pair"
+  [SecretRotation.SnowflakeUserKeyPair]: "Snowflake User Key Pair",
+  [SecretRotation.CloudflareApiToken]: "Cloudflare API Token"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -56,5 +57,6 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.DatadogApiKey]: AppConnection.Datadog,
   [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
   [SecretRotation.FireworksApiKey]: AppConnection.Fireworks,
-  [SecretRotation.SnowflakeUserKeyPair]: AppConnection.Snowflake
+  [SecretRotation.SnowflakeUserKeyPair]: AppConnection.Snowflake,
+  [SecretRotation.CloudflareApiToken]: AppConnection.Cloudflare
 };

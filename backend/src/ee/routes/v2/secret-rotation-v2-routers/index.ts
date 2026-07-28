@@ -3,6 +3,7 @@ import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotat
 import { registerAuth0ClientSecretRotationRouter } from "./auth0-client-secret-rotation-router";
 import { registerAwsIamUserSecretRotationRouter } from "./aws-iam-user-secret-rotation-router";
 import { registerAzureClientSecretRotationRouter } from "./azure-client-secret-rotation-router";
+import { registerCloudflareApiTokenRotationRouter } from "./cloudflare-api-token-rotation-router";
 import { registerConvexAccessKeyRotationRouter } from "./convex-access-key-rotation-router";
 import { registerDatabricksServicePrincipalSecretRotationRouter } from "./databricks-service-principal-secret-rotation-router";
 import { registerDatadogApiKeyRotationRouter } from "./datadog-api-key-rotation-router";
@@ -58,5 +59,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DatadogApiKey]: registerDatadogApiKeyRotationRouter,
   [SecretRotation.ConvexAccessKey]: registerConvexAccessKeyRotationRouter,
   [SecretRotation.FireworksApiKey]: registerFireworksApiKeyRotationRouter,
-  [SecretRotation.SnowflakeUserKeyPair]: registerSnowflakeUserKeyPairRotationRouter
+  [SecretRotation.SnowflakeUserKeyPair]: registerSnowflakeUserKeyPairRotationRouter,
+  [SecretRotation.CloudflareApiToken]: registerCloudflareApiTokenRotationRouter
 };

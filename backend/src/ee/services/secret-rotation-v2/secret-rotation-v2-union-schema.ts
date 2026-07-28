@@ -21,6 +21,7 @@ import { SalesforceOauthCredentialsRotationSchema } from "@app/ee/services/secre
 import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/unix-linux-local-account-rotation";
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
+import { CloudflareApiTokenRotationSchema } from "./cloudflare-api-token";
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key";
@@ -54,5 +55,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   DatadogApiKeyRotationSchema,
   ConvexAccessKeyRotationSchema,
   FireworksApiKeyRotationSchema,
-  SnowflakeUserKeyPairRotationSchema
+  SnowflakeUserKeyPairRotationSchema,
+  CloudflareApiTokenRotationSchema
 ]);
