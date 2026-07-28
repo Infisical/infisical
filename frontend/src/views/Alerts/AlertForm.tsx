@@ -235,11 +235,8 @@ export const AlertForm = ({
         createNotification({ text: "Successfully created alert", type: "success" });
       }
       onComplete();
-    } catch (err) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Failed to save alert";
-      createNotification({ text: message, type: "error" });
+    } catch {
+      // MutationCache reports request errors globally; keep the form open for another attempt.
     }
   };
 
