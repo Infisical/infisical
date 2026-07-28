@@ -59,7 +59,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         )
       }
     },
-    onResponse: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
       const key = await server.services.projectKey.getLatestProjectKey({
         actor: req.permission.type,
