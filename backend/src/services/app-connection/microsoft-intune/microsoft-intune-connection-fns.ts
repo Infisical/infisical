@@ -39,10 +39,12 @@ export const getMicrosoftIntuneConnectionListItem = () => {
   };
 };
 
+const ENTRA_TOKEN_EXPIRY_SKEW_SECONDS = 300;
+
 export const getMicrosoftEntraToken = async (
   credentials: Pick<TMicrosoftIntuneConnectionCredentials, "tenantId" | "clientId" | "clientSecret">,
   scope: string
-) => {
+): Promise<{ accessToken: string; expiresAt: number }> => {
   const { tenantId, clientId, clientSecret } = credentials;
 
   try {
@@ -56,7 +58,8 @@ export const getMicrosoftEntraToken = async (
       })
     );
 
-    return data.access_token;
+    const lifetimeSeconds = Math.max(data.expires_in - ENTRA_TOKEN_EXPIRY_SKEW_SECONDS, 0);
+    return { accessToken: data.access_token, expiresAt: Date.now() + lifetimeSeconds * 1000 };
   } catch (err) {
     if (err instanceof AxiosError) {
       throw new BadRequestError({
@@ -201,7 +204,7 @@ export const validateMicrosoftIntuneConnectionCredentials = async (config: TMicr
 
   switch (method) {
     case MicrosoftIntuneConnectionMethod.ClientSecret: {
-      const graphToken = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Graph);
+      const { accessToken: graphToken } = await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Graph);
       await discoverScepValidationServiceUri(graphToken);
       await getMicrosoftEntraToken(credentials, MicrosoftEntraTokenResource.Intune);
 

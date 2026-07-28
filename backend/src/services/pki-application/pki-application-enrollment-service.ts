@@ -17,6 +17,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
@@ -707,11 +709,19 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const raSlug = `app-${applicationId}-${profileId}`;
 
     const profile = await certificateProfileDAL.findById(profileId);
-    const { signRaWithCa } = await resolveScepRaSigning({
+    const { signRaWithCa, caType } = await resolveScepRaSigning({
       caId: profile?.caId,
       requestedSignRaWithCa: config.signRaWithCa,
       certificateAuthorityDAL
     });
+
+    // External CAs always issue asynchronously and Intune has no pending state, so every enrollment
+    // would be reported to Intune as a failure.
+    if (isIntune && caType !== CaType.INTERNAL) {
+      throw new BadRequestError({
+        message: `Microsoft Intune validation requires an internal certificate authority. This profile uses ${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType]}, which issues asynchronously and cannot complete within a SCEP request.`
+      });
+    }
 
     const existingScepConfig = junction.scepConfigId
       ? await scepEnrollmentConfigDAL.findById(junction.scepConfigId)

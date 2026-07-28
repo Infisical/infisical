@@ -3509,6 +3509,7 @@ export const registerRoutes = async (
   });
 
   const pkiScepService = pkiScepServiceFactory({
+    keyStore,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,

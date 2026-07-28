@@ -89,6 +89,8 @@ export const KeyStorePrefixes = {
     `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+  ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
+    `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
   MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,

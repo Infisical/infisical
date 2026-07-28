@@ -12,6 +12,7 @@ import {
   ResourcePermissionApplicationEnrollmentActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -89,6 +90,7 @@ type TPkiScepServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
@@ -119,6 +121,7 @@ export const pkiScepServiceFactory = ({
   projectDAL,
   kmsService,
   appConnectionDAL,
+  keyStore,
   licenseService,
   certificatePolicyDAL,
   certificatePolicyService,
@@ -275,7 +278,8 @@ export const pkiScepServiceFactory = ({
       scepEnrollmentConfigDAL,
       scepDynamicChallengeDAL,
       appConnectionDAL,
-      kmsService
+      kmsService,
+      keyStore
     });
 
   const $reportIssuedCertificate = async ({

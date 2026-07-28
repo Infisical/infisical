@@ -1,3 +1,4 @@
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -44,5 +45,6 @@ export type TScepValidationHandlerDeps = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: Pick<TScepDynamicChallengeDALFactory, "consumeByHash">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
