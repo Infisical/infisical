@@ -21,7 +21,10 @@ import {
   InputGroupAddon,
   InputGroupInput,
   RadioGroup,
-  RadioGroupItem
+  RadioGroupItem,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { Button } from "@app/components/v3/generic/Button";
 import { Field, FieldContent, FieldError, FieldLabel } from "@app/components/v3/generic/Field";
@@ -47,15 +50,16 @@ import { useOrganization } from "@app/context";
 import {
   accountTypeRequiresRecording,
   PamAccountType,
+  PamResourcePermissionActions,
   useCreatePamAccount,
   useGetPamAccessCapabilities,
   useListPamAccountTemplates,
   useListPamAccountTypes,
-  useListPamFoldersAdmin,
+  useListPamFolders,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
 
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import {
   accountFormSchema,
   applyServerValidationErrors,
@@ -122,7 +126,9 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
   const selectedTemplateId = watch("templateId");
 
   const { data: accountTypes = [] } = useListPamAccountTypes();
-  const { data: folders = [] } = useListPamFoldersAdmin();
+  const { data: folders = [] } = useListPamFolders({
+    filterByAction: PamResourcePermissionActions.CreateAccounts
+  });
   const { data: templates = [] } = useListPamAccountTemplates();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
@@ -303,12 +309,26 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                               </SelectItem>
                             ))}
                             {folders.length > 0 && <SelectSeparator />}
-                            <SelectItem value={CREATE_FOLDER_VALUE}>
-                              <span className="flex items-center gap-1.5 text-muted">
-                                <Plus className="size-4" />
-                                Create folder
-                              </span>
-                            </SelectItem>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <SelectItem
+                                    value={CREATE_FOLDER_VALUE}
+                                    disabled={!isProductAdmin}
+                                  >
+                                    <span className="flex items-center gap-1.5 text-muted">
+                                      <Plus className="size-4" />
+                                      Create folder
+                                    </span>
+                                  </SelectItem>
+                                </div>
+                              </TooltipTrigger>
+                              {!isProductAdmin && (
+                                <TooltipContent side="left">
+                                  Only product admins can create folders
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
                           </SelectContent>
                         </Select>
                       </FieldContent>
@@ -325,23 +345,39 @@ export const CreateAccountSheet = ({ isOpen, onOpenChange, defaultFolderId, onCr
                         <FieldLabel>
                           Account Template<span className="text-product-pam">*</span>
                         </FieldLabel>
-                        {isProductAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            className="text-muted hover:text-foreground"
-                            asChild
-                          >
-                            <Link
-                              to="/organizations/$orgId/pam/templates"
-                              params={{ orgId: currentOrg.id }}
-                              target="_blank"
-                            >
-                              Manage Templates
-                              <ArrowUpRight />
-                            </Link>
-                          </Button>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              {isProductAdmin ? (
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  className="text-muted hover:text-foreground"
+                                  asChild
+                                >
+                                  <Link
+                                    to="/organizations/$orgId/pam/templates"
+                                    params={{ orgId: currentOrg.id }}
+                                    target="_blank"
+                                  >
+                                    Manage Templates
+                                    <ArrowUpRight />
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <Button variant="ghost" size="xs" className="text-muted" isDisabled>
+                                  Manage Templates
+                                  <ArrowUpRight />
+                                </Button>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {!isProductAdmin && (
+                            <TooltipContent side="left">
+                              Only product admins can manage templates
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                       </div>
                       <FieldContent className="min-h-0 flex-1">
                         <InputGroup>

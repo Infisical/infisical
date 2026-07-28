@@ -120,6 +120,9 @@ export const licenseServiceFactory = ({
     envConfig.INTERNAL_REGION
   );
 
+  const isV1CloudKey = () =>
+    instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY && envConfig.LICENSE_SERVER_V2_MODE !== "on";
+
   const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
     logger.info("Start syncing license key features");
     try {
@@ -314,25 +317,6 @@ export const licenseServiceFactory = ({
             throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
           }
           currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
-
-          // The entitlement projection only carries feature flags, so set the plan slug from the
-          // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
-          // it non-fatal so a subscription read failure doesn't drop the org to the free fallback.
-          try {
-            const subscription = await licenseClient.getSubscription(rootOrgId);
-            const paidTiers = (subscription?.items ?? [])
-              .map((item) => item.plan.toLowerCase())
-              .filter((tier) => tier !== "free");
-            if (paidTiers.some((tier) => tier.includes("enterprise"))) {
-              currentPlan.slug = "enterprise";
-            } else if (paidTiers.some((tier) => tier.includes("advanced"))) {
-              currentPlan.slug = "advanced";
-            } else if (paidTiers.length > 0) {
-              currentPlan.slug = "pro";
-            }
-          } catch (error) {
-            logger.error(error, `getPlan: failed to resolve plan tier from subscription [orgId=${rootOrgId}]`);
-          }
         } else {
           const {
             data: { currentPlan: v1Plan }
@@ -414,7 +398,7 @@ export const licenseServiceFactory = ({
   };
 
   const generateOrgCustomerId = async (orgName: string, email?: string | null) => {
-    if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
+    if (isV1CloudKey()) {
       const {
         data: { customerId }
       } = await licenseServerCloudApi.request.post<{ customerId: string }>(
@@ -445,7 +429,7 @@ export const licenseServiceFactory = ({
     // report-only-if-changed, so they're harmless.
     usageMeteringService?.emit(rootOrgId, UserIdentities.key);
 
-    if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
+    if (isV1CloudKey()) {
       const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
       if (org?.customerId) {

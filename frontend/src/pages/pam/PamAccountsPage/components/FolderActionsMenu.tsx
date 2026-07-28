@@ -7,7 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   PamResourcePermissionActions,
@@ -16,7 +19,7 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { PAM_FOLDER_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
+import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 
 type Props = {
   folder: TPamFolderWithCount;
@@ -26,17 +29,22 @@ type Props = {
 };
 
 export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }: Props) => {
-  // Defer the permission fetch until the menu is first opened to avoid a request per row
-  const [hasOpened, setHasOpened] = useState(false);
-  const { can, isLoading } = usePamFolderActions(folder.id, hasOpened);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const tabs = visiblePamTabs(PAM_FOLDER_TABS, can);
-  const canCreateAccounts = can(PamResourcePermissionActions.CreateAccounts);
-  const canDelete = can(PamResourcePermissionActions.DeleteFolder);
-  const hasAnyAction = tabs.length > 0 || canCreateAccounts || canDelete;
+  // Every role sees the same menu with the same items, so permissions only decide what's disabled —
+  // fetch them when the menu opens rather than once per visible folder on page load.
+  const { can, isLoading } = usePamFolderActions(folder.id, isOpen);
+
+  // Treat an unresolved permission set as "not allowed" so nothing is actionable until it loads.
+  const allowed = (action: PamResourcePermissionActions) => !isLoading && can(action);
+  const canCreateAccounts = allowed(PamResourcePermissionActions.CreateAccounts);
+  const canDelete = allowed(PamResourcePermissionActions.DeleteFolder);
+  // Items are disabled while permissions load, but the reason isn't known yet — don't claim it's
+  // a permission problem until the fetch settles.
+  const showReason = !isLoading;
 
   return (
-    <DropdownMenu onOpenChange={(open) => open && setHasOpened(true)}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <IconButton
           variant="ghost"
@@ -49,31 +57,60 @@ export const FolderActionsMenu = ({ folder, onOpenTab, onAddAccount, onDelete }:
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        {isLoading && <DropdownMenuItem isDisabled>Checking access&hellip;</DropdownMenuItem>}
-        {!isLoading && !hasAnyAction && (
-          <DropdownMenuItem isDisabled>No actions available</DropdownMenuItem>
-        )}
-        {tabs.map((tab) => (
-          <DropdownMenuItem key={tab.value} onClick={() => onOpenTab(tab.value)}>
-            <tab.icon />
-            {tab.label}
-          </DropdownMenuItem>
-        ))}
-        {canCreateAccounts && (
-          <DropdownMenuItem onClick={onAddAccount}>
-            <Plus />
-            Add Account
-          </DropdownMenuItem>
-        )}
-        {canDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="danger" onClick={onDelete}>
-              <Trash2 />
-              Delete Folder
-            </DropdownMenuItem>
-          </>
-        )}
+        {PAM_FOLDER_TABS.map((tab) => {
+          const hasPermission = !tab.action || allowed(tab.action);
+          return (
+            <Tooltip key={tab.value}>
+              <TooltipTrigger asChild>
+                <div>
+                  <DropdownMenuItem
+                    isDisabled={!hasPermission}
+                    onClick={() => onOpenTab(tab.value)}
+                  >
+                    <tab.icon />
+                    {tab.label}
+                  </DropdownMenuItem>
+                </div>
+              </TooltipTrigger>
+              {!hasPermission && showReason && (
+                <TooltipContent side="left">
+                  You don&apos;t have permission to access {tab.label.toLowerCase()}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          );
+        })}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem isDisabled={!canCreateAccounts} onClick={onAddAccount}>
+                <Plus />
+                Add Account
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!canCreateAccounts && showReason && (
+            <TooltipContent side="left">
+              You don&apos;t have permission to create accounts in this folder
+            </TooltipContent>
+          )}
+        </Tooltip>
+        <DropdownMenuSeparator />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
+                <Trash2 />
+                Delete Folder
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!canDelete && showReason && (
+            <TooltipContent side="left">
+              You don&apos;t have permission to delete this folder
+            </TooltipContent>
+          )}
+        </Tooltip>
       </DropdownMenuContent>
     </DropdownMenu>
   );

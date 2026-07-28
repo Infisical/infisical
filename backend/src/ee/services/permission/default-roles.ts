@@ -476,7 +476,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionProxiedServiceActions.Create,
       ProjectPermissionProxiedServiceActions.Edit,
       ProjectPermissionProxiedServiceActions.Delete,
-      ProjectPermissionProxiedServiceActions.Proxy
+      ProjectPermissionProxiedServiceActions.Proxy,
+      ProjectPermissionProxiedServiceActions.ReportUsage
     ],
     ProjectPermissionSub.ProxiedServices
   );
@@ -1163,7 +1164,12 @@ const buildPamResourceConnectorPermissionRules = () => {
 const buildPamResourceAuditorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
-    [ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionPamResourceActions.ViewAuditLogs],
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ResourcePermissionPamResourceActions.ViewAuditLogs
+    ],
     ResourcePermissionSub.PamResource
   );
   return rules;

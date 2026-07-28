@@ -48,8 +48,7 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  PersonalOverride = "personal-override"
+  Delete = "delete"
 }
 
 export enum ProjectPermissionCmekActions {
@@ -296,7 +295,8 @@ export enum ProjectPermissionProxiedServiceActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  Proxy = "proxy"
+  Proxy = "proxy",
+  ReportUsage = "report-usage"
 }
 
 export enum ProjectPermissionApprovalRequestActions {

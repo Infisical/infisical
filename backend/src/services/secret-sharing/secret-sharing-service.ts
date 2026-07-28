@@ -870,8 +870,10 @@ export const secretSharingServiceFactory = ({
       return null;
     }
 
-    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
-    const assets = await orgAssetDAL.listAssetsByType(orgId, ["brand-logo", "brand-favicon"]);
+    const org = await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () =>
+      orgDAL.findRootOrgDetails(orgId)
+    );
+    const assets = await orgAssetDAL.listAssetsByType(org?.id ?? orgId, ["brand-logo", "brand-favicon"]);
 
     const hasLogo = assets.some((a) => a.assetType === "brand-logo");
     const hasFavicon = assets.some((a) => a.assetType === "brand-favicon");
@@ -913,7 +915,11 @@ export const secretSharingServiceFactory = ({
       return null;
     }
 
-    const asset = await orgAssetDAL.getFirstAsset(orgId, assetType);
+    const org = await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () =>
+      orgDAL.findRootOrgDetails(orgId)
+    );
+
+    const asset = await orgAssetDAL.getFirstAsset(org?.id ?? orgId, assetType);
     return asset;
   };
 

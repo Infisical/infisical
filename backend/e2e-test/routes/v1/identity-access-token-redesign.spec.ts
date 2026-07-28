@@ -16,6 +16,7 @@ import jwt from "jsonwebtoken";
 
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
 // ---------------------------------------------------------------------------
@@ -126,6 +127,12 @@ const deleteOrgIdentityMembership = async (identityId: string) => {
 
   await testDb(TableName.MembershipRole).where({ membershipId: membership.id }).delete();
   await testDb(TableName.Membership).where({ id: membership.id }).delete();
+
+  // The real removal paths (membershipIdentityService.deleteMembership,
+  // identityV1.deleteIdentity sub-org branch) bump the identity's revocation
+  // version so cached "allow" verdicts are rechecked once against Postgres. This
+  // helper mutates the row directly, so mirror that bump here.
+  await testRedis.incr(KeyStorePrefixes.IdentityRevocationVersion(identityId));
 };
 
 const waitForRevocationRow = async (tokenId: string) => {

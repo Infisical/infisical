@@ -3,16 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  FieldError,
-  Input
-} from "@app/components/v3";
+import { Button, CardContent, CardHeader, CardTitle, FieldError, Input } from "@app/components/v3";
 import { useSendVerificationEmail } from "@app/hooks/api";
+
+import { AuthPagePanel } from "./AuthPagePanel";
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -61,14 +55,14 @@ export default function EnterEmailStep({
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
-      <Card className="mx-auto w-full max-w-sm items-stretch gap-0 p-6">
+      <AuthPagePanel>
         <CardHeader className="mb-4 gap-4">
           <CardTitle className="ml-0.5 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-[1.65rem] font-medium text-transparent">
             {t("signup.step1-start")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="w-full">
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex w-full flex-col gap-2">
             <Input
               placeholder="Enter your email address..."
               onChange={(e) => setEmail(e.target.value)}
@@ -80,20 +74,18 @@ export default function EnterEmailStep({
             />
             {emailError && <FieldError>Please enter a valid email.</FieldError>}
           </div>
-          <div className="mt-4 w-full">
-            <Button
-              type="submit"
-              onClick={emailCheck}
-              variant="project"
-              size="lg"
-              isFullWidth
-              isDisabled={isPending}
-              isPending={isPending}
-            >
-              {String(t("signup.step1-submit"))}
-            </Button>
-          </div>
-          <div className="mt-6 flex w-full justify-center text-xs text-label">
+          <Button
+            type="submit"
+            onClick={emailCheck}
+            variant="project"
+            size="lg"
+            isFullWidth
+            isDisabled={isPending}
+            isPending={isPending}
+          >
+            {String(t("signup.step1-submit"))}
+          </Button>
+          <div className="flex w-full justify-center text-xs text-label">
             <Link to="/login">
               <span className="cursor-pointer duration-200 hover:text-foreground hover:underline hover:decoration-project/45 hover:underline-offset-2">
                 {t("signup.already-have-account")}
@@ -101,7 +93,7 @@ export default function EnterEmailStep({
             </Link>
           </div>
         </CardContent>
-      </Card>
+      </AuthPagePanel>
     </div>
   );
 }

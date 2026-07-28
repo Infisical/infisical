@@ -46,12 +46,29 @@ export const AdcsFields = ({ control, availableConnections, isPending }: Props) 
                 <Info />
               </TooltipTrigger>
               <TooltipContent className="max-w-sm">
-                The AD CS certificate authority name (the CA&apos;s common name), e.g. corp-ca01-CA.
-                Leave blank to discover it automatically from the CA host.
+                <div className="flex flex-col gap-2">
+                  <p>
+                    The AD CS certificate authority name (the CA&apos;s common name), for example{" "}
+                    <span className="font-mono">corp-ca01-CA</span>.
+                  </p>
+                  <p>
+                    Leave blank only if the Gateway can reach the CA host over SMB (TCP 445) to
+                    discover the name automatically. Otherwise enter it here.
+                  </p>
+                  <p>
+                    To find the name, run this on the AD CS server:
+                    <br />
+                    <span className="font-mono">certutil -getreg CA\CommonName</span>
+                  </p>
+                </div>
               </TooltipContent>
             </Tooltip>
           </FieldLabel>
-          <Input {...field} placeholder="Auto-discovered if left blank" isError={Boolean(error)} />
+          <Input
+            {...field}
+            placeholder="Enter CA name (auto-discovered if left blank)"
+            isError={Boolean(error)}
+          />
           <FieldError errors={[error]} />
         </Field>
       )}

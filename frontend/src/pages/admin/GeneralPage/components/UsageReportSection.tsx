@@ -1,8 +1,15 @@
-import { faDownload, faFileAlt, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faDownload, faFileAlt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Card, CardTitle } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import { downloadFile } from "@app/helpers/download";
 import { useGenerateUsageReport } from "@app/hooks/api/admin/mutation";
 
@@ -22,24 +29,26 @@ export const UsageReportSection = () => {
   };
 
   return (
-    <Card className="p-6">
-      <CardTitle className="mb-4 flex items-center gap-3">
-        <FontAwesomeIcon icon={faFileAlt} />
-        Offline Usage Reports
-      </CardTitle>
-
-      <div className="mb-4 text-sm text-gray-400">
-        Generate secure usage reports for offline license compliance and billing verification.
-      </div>
-
-      <Button
-        onClick={handleGenerateReport}
-        className="w-fit"
-        isLoading={generateUsageReport.isPending}
-        leftIcon={<FontAwesomeIcon icon={generateUsageReport.isPending ? faSpinner : faDownload} />}
-      >
-        {generateUsageReport.isPending ? "Generating..." : "Generate Report"}
-      </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <FontAwesomeIcon icon={faFileAlt} />
+          Offline Usage Reports
+        </CardTitle>
+        <CardDescription>
+          Generate secure usage reports for offline license compliance and billing verification.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          variant="neutral"
+          onClick={handleGenerateReport}
+          isPending={generateUsageReport.isPending}
+        >
+          <FontAwesomeIcon icon={faDownload} />
+          Generate report
+        </Button>
+      </CardContent>
     </Card>
   );
 };
