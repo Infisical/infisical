@@ -150,6 +150,7 @@ export const SpaceliftSyncFns = {
     for (const key of Object.keys(secretMap)) {
       const existing = existingByKey.get(key);
       if (existing && !existing.writeOnly && existing?.value === secretMap[key].value) {
+        // eslint-disable-next-line no-continue
         continue;
       }
 
