@@ -25,9 +25,7 @@ const SpaceliftSyncDestinationConfigSchema = z
       .trim()
       .min(1, "Context name is required")
       .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextName),
-    configType: z
-      .nativeEnum(SpaceliftConfigType)
-      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.configType),
+    configType: z.nativeEnum(SpaceliftConfigType).describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.configType),
     mountPath: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath)
   })
   .superRefine((data, ctx) => {

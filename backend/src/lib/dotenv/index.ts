@@ -12,12 +12,7 @@ const escapeValue = (value: string): string => {
 
 const unescapeValue = (raw: string): string => {
   if (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) {
-    return raw
-      .slice(1, -1)
-      .replace(/\\r/g, "\r")
-      .replace(/\\n/g, "\n")
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, "\\");
+    return raw.slice(1, -1).replace(/\\r/g, "\r").replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
   }
   return raw;
 };

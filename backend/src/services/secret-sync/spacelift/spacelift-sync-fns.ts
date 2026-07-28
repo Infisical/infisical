@@ -16,7 +16,7 @@ type TSpaceliftConfigElement = {
   type?: ElementType;
 };
 
-type ElementType = "ENVIRONMENT_VARIABLE" | "FILE_MOUNT"
+type ElementType = "ENVIRONMENT_VARIABLE" | "FILE_MOUNT";
 
 const authenticateSpacelift = async (instanceUrl: string, apiKeyId: string, apiKeySecret: string): Promise<string> => {
   const { data } = await safeRequest.post<{
@@ -148,7 +148,7 @@ export const SpaceliftSyncFns = {
       return;
     }
 
-    const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE")
+    const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE");
     const existingMap = new Map(existingSecrets.map((e) => [e.id, e]));
 
     for (const key of Object.keys(secretMap)) {
