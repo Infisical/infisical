@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { logger } from "@app/lib/logger";
+
 import { cronJobFactory } from "./cron-job";
 
 vi.mock("@app/lib/logger", () => ({
@@ -315,6 +317,27 @@ describe("slot election", () => {
     await flushSlotOps();
 
     expect([...held.keys()]).toEqual(["{cron}:slot:0"]);
+    await stop();
+  });
+
+  // These two strings are what alerting matches on, so pin them. The initial
+  // claim and the periodic refresh share one code path now, and it would be easy
+  // to collapse them into a single message without noticing.
+  test("slot failures are logged under their own labels", async () => {
+    const redis = makeRedis();
+    redis.set.mockRejectedValue(new Error("redis unavailable"));
+    const { start, stop } = makeFactory({ redis });
+    vi.mocked(logger.error).mockClear();
+
+    start(); // initial claim fails
+    await flushSlotOps();
+    vi.advanceTimersByTime(50); // refresh tick fails
+    await flushSlotOps();
+
+    const messages = vi.mocked(logger.error).mock.calls.map(([, message]) => message);
+    expect(messages).toContain("cron: initial slot claim failed");
+    expect(messages).toContain("cron: slot refresh failed");
+
     await stop();
   });
 });

@@ -378,10 +378,10 @@ export const cronJobFactory = ({
   // Chaining also gives stop() one handle to await, so it can never read
   // `currentSlot` mid-handover (skipping the release) or have a late claim land
   // after the release.
-  const runSlotOp = () => {
+  const runSlotOp = (label: string) => {
     slotOp = slotOp
       .then(() => (stopped ? undefined : claimOrRefreshSlot()))
-      .catch((err: unknown) => logger.error({ err }, "cron: slot refresh failed"));
+      .catch((err: unknown) => logger.error({ err }, `cron: ${label} failed`));
     return slotOp;
   };
 
@@ -576,10 +576,10 @@ export const cronJobFactory = ({
   // participating.
   const start = () => {
     stopped = false;
-    slotTimer = setInterval(() => void runSlotOp(), slotRefreshMs);
+    slotTimer = setInterval(() => void runSlotOp("slot refresh"), slotRefreshMs);
     enqueueTimer = setInterval(safeTick("enqueue tick", enqueueTick), enqueueIntervalMs);
     processTimer = setInterval(safeTick("process tick", processTick), processIntervalMs);
-    void runSlotOp();
+    void runSlotOp("initial slot claim");
   };
 
   // Stops the timers, drains in-flight handlers, and atomically releases the
