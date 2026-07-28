@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { execFile } from "child_process";
-import { join } from "path";
+import { chmod, rm, writeFile } from "fs/promises";
+import { dirname, join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
@@ -32,20 +33,100 @@ export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository): Promise<void> => {
+const GIT_TRACE_ENV_KEYS = ["GIT_TRACE", "GIT_TRACE_PACKET", "GIT_TRACE_CURL", "GIT_CURL_VERBOSE"];
+const GIT_ASKPASS_FILE_NAME = "git-askpass.sh";
+const MAX_MESSAGE_LENGTH = 1024;
+
+const redactSensitiveErrorData = (message: string) =>
+  message
+    .replace(/\b(https?:\/\/)([^/\s:@]+):([^@\s/]+)@/gi, "$1[redacted]@")
+    .replace(/\b((?:Proxy-)?Authorization:\s*(?:Bearer|Basic)\s+)[^\s,;]+/gi, "$1[redacted]");
+
+const sanitizeErrorMessage = (message: string) => {
+  const redactedErrorMessage = redactSensitiveErrorData(message);
+
+  return redactedErrorMessage.length <= MAX_MESSAGE_LENGTH
+    ? redactedErrorMessage
+    : `${redactedErrorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
+};
+
+const getGitCloneEnv = (auth: TCloneRepository["auth"], askPassPath?: string): NodeJS.ProcessEnv => {
+  const env = { ...process.env };
+
+  for (const key of Object.keys(env)) {
+    if (GIT_TRACE_ENV_KEYS.includes(key) || key.startsWith("GIT_TRACE2")) {
+      delete env[key];
+    }
+  }
+
+  if (auth && askPassPath) {
+    env.GIT_ASKPASS = askPassPath;
+    env.GIT_TERMINAL_PROMPT = "0";
+    env.INFISICAL_GIT_USERNAME = auth.username;
+    env.INFISICAL_GIT_PASSWORD = auth.password;
+  }
+
+  return env;
+};
+
+const writeGitAskPassScript = async (askPassPath: string) => {
+  await writeFile(
+    askPassPath,
+    [
+      "#!/bin/sh",
+      'case "$1" in',
+      '  *Username*) printf "%s\\n" "$INFISICAL_GIT_USERNAME" ;;',
+      '  *Password*) printf "%s\\n" "$INFISICAL_GIT_PASSWORD" ;;',
+      '  *) printf "\\n" ;;',
+      "esac",
+      ""
+    ].join("\n"),
+    { mode: 0o700 }
+  );
+  // writeFile's mode can be masked by process umask; chmod enforces the executable bit for Git.
+  await chmod(askPassPath, 0o700);
+};
+
+export const cloneRepository = async ({ remoteUrl, repoPath, auth }: TCloneRepository): Promise<void> => {
   // Validate that the constructed URL is structurally valid.
   // This prevents malformed or tampered components from producing unexpected git behavior.
-  // eslint-disable-next-line no-new
-  new URL(cloneUrl);
+  const parsedRemoteUrl = new URL(remoteUrl);
+
+  if (parsedRemoteUrl.username || parsedRemoteUrl.password) {
+    throw new Error("Git remote URL must not contain credentials");
+  }
+
+  const askPassPath = auth ? join(dirname(repoPath), GIT_ASKPASS_FILE_NAME) : undefined;
+
+  if (askPassPath) {
+    await writeGitAskPassScript(askPassPath);
+  }
 
   return new Promise((resolve, reject) => {
-    execFile("git", ["clone", cloneUrl, repoPath, "--bare"], (error) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
+    const cleanupAskPass = async () => {
+      if (askPassPath) {
+        await rm(askPassPath, { force: true });
       }
-    });
+    };
+
+    execFile(
+      "git",
+      ["-c", "credential.helper=", "clone", remoteUrl, repoPath, "--bare"],
+      { env: getGitCloneEnv(auth, askPassPath) },
+      (error) => {
+        void cleanupAskPass()
+          .catch(() => {
+            // Cleanup must not replace the git clone result with a filesystem error.
+          })
+          .then(() => {
+            if (error) {
+              reject(new Error(sanitizeErrorMessage(error.message || "An unknown error occurred.")));
+            } else {
+              resolve();
+            }
+          });
+      }
+    );
   });
 };
 
@@ -158,8 +239,6 @@ export const convertPatchLineToFileLineNumber = (patch: string, patchLineNumber:
   return currentNewLine;
 };
 
-const MAX_MESSAGE_LENGTH = 1024;
-
 export const parseScanErrorMessage = (err: unknown): string => {
   let errorMessage: string;
 
@@ -171,9 +250,7 @@ export const parseScanErrorMessage = (err: unknown): string => {
     errorMessage = (err as Error)?.message || "An unknown error occurred.";
   }
 
-  return errorMessage.length <= MAX_MESSAGE_LENGTH
-    ? errorMessage
-    : `${errorMessage.substring(0, MAX_MESSAGE_LENGTH - 3)}...`;
+  return sanitizeErrorMessage(errorMessage);
 };
 
 const generateSecretValuePolicyConfiguration = (entropy: number): string => `

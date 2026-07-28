@@ -181,8 +181,12 @@ export const BitbucketSecretScanningFactory = () => {
     const { username } = await getBitbucketUser({ email, apiToken });
 
     await cloneRepository({
-      cloneUrl: `https://${encodeURIComponent(username)}:${apiToken}@bitbucket.org/${resourceName}.git`,
-      repoPath
+      remoteUrl: `https://bitbucket.org/${resourceName}.git`,
+      repoPath,
+      auth: {
+        username,
+        password: apiToken
+      }
     });
 
     return repoPath;
