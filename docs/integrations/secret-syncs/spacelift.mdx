@@ -86,7 +86,7 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
   <Tab title="API">
     To create a **Spacelift Sync**, make an API request to the [Create Spacelift Sync](/api-reference/endpoints/secret-syncs/spacelift/create) API endpoint.
 
-    ### Sample request
+    ### Sample request (Environment Variables)
 
     ```bash Request
     curl --request POST \
@@ -112,5 +112,37 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
         }
       }'
     ```
+
+    ### Sample request (File Mount)
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/secret-syncs/spacelift \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-spacelift-file-sync",
+        "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "description": "sync secrets as a mounted .env file",
+        "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "environment": "dev",
+        "secretPath": "/my-secrets",
+        "isEnabled": true,
+        "syncOptions": {
+          "initialSyncBehavior": "overwrite-destination",
+          "disableSecretDeletion": true,
+          "writeOnly": false
+        },
+        "destinationConfig": {
+          "contextId": "context-id",
+          "contextName": "my-context",
+          "configType": "file-mount",
+          "mountPath": "secrets.env"
+        }
+      }'
+    ```
+
+    <Note>
+      When using `file-mount`, all secrets are bundled into a single `.env` file and mounted at `/mnt/workspace/<mountPath>` in Spacelift runs. The `mountPath` field is required for this config type.
+    </Note>
   </Tab>
 </Tabs>
