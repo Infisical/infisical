@@ -13,6 +13,8 @@ export default defineConfig({
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
     include: ["./e2e-test/**/*.spec.ts"],
+    // Runs per test file, after the environment is up — see the file for why.
+    setupFiles: ["./e2e-test/setup/reset-shared-org-flags.ts"],
     pool: "forks",
     poolOptions: {
       forks: {

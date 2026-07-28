@@ -1,45 +1,25 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { createSecretImport, deleteSecretImport } from "e2e-test/testUtils/secret-imports";
-import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
+import { createSecretV2, deleteSecretV2, getSecretsV2, waitForReplicatedSecret } from "e2e-test/testUtils/secrets";
 
 import { seedData1 } from "@app/db/seed-data";
 
-// Replication runs asynchronously through BullMQ, so the imported secret shows
-// up some time after the write. Poll for it instead of sleeping a fixed 10s: a
-// fixed wait is simultaneously too short (it flakes whenever CI contention
-// pushes replication past the deadline) and too long (it burns the full 10s on
-// every pass, even though replication usually lands in well under a second).
-const REPLICATION_TIMEOUT_MS = 25_000;
-const REPLICATION_POLL_MS = 250;
+// Source secrets are torn down after the test that created them. Cleanup used
+// to sit at the end of each test body, so a failing assertion skipped it and
+// left the source secret in place — and since every test here replicates into
+// the same shared environments, the leftovers then showed up in later tests'
+// assertions as phantom imports.
+const createdSecrets: Parameters<typeof deleteSecretV2>[0][] = [];
 
-const waitForReplicatedSecret = async (dto: {
-  workspaceId: string;
-  environmentSlug: string;
-  secretPath: string;
-  key: string;
-  value: string;
-  authToken: string;
-}) => {
-  const deadline = Date.now() + REPLICATION_TIMEOUT_MS;
-  for (;;) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const secret = await getSecretByNameV2(dto);
-      if (secret.secretValue === dto.value) return secret;
-    } catch {
-      // Not replicated yet — getSecretByNameV2 asserts on a 200.
-    }
-    if (Date.now() >= deadline) {
-      throw new Error(
-        `Timed out after ${REPLICATION_TIMEOUT_MS}ms waiting for "${dto.key}" to replicate into ${dto.environmentSlug}${dto.secretPath}`
-      );
-    }
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => {
-      setTimeout(resolve, REPLICATION_POLL_MS);
-    });
-  }
+const createTrackedSecret = async (dto: Parameters<typeof createSecretV2>[0]) => {
+  const secret = await createSecretV2(dto);
+  createdSecrets.push(dto);
+  return secret;
 };
+
+afterEach(async () => {
+  await Promise.all(createdSecrets.splice(0).map((el) => deleteSecretV2(el)));
+});
 
 // dev <- stage <- prod
 describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
@@ -146,7 +126,7 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
     });
 
     test("Check one level imported secret exist", async () => {
-      await createSecretV2({
+      await createTrackedSecret({
         environmentSlug: "staging",
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
@@ -186,18 +166,10 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
           })
         ])
       );
-
-      await deleteSecretV2({
-        environmentSlug: "staging",
-        workspaceId: seedData1.projectV3.id,
-        secretPath: testSuitePath,
-        authToken: jwtAuthToken,
-        key: "STAGING_KEY"
-      });
     });
 
     test("Check two level imported secret exist", async () => {
-      await createSecretV2({
+      await createTrackedSecret({
         environmentSlug: "prod",
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
@@ -236,14 +208,6 @@ describe.each([{ secretPath: "/" }, { secretPath: "/deep" }])(
           })
         ])
       );
-
-      await deleteSecretV2({
-        environmentSlug: "prod",
-        workspaceId: seedData1.projectV3.id,
-        secretPath: testSuitePath,
-        authToken: jwtAuthToken,
-        key: "PROD_KEY"
-      });
     });
   },
   { timeout: 60_000 }
@@ -354,7 +318,7 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
     });
 
     test("Check imported secret exist", async () => {
-      await createSecretV2({
+      await createTrackedSecret({
         environmentSlug: "staging",
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
@@ -363,7 +327,7 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
         value: "stage-value"
       });
 
-      await createSecretV2({
+      await createTrackedSecret({
         environmentSlug: "prod",
         workspaceId: seedData1.projectV3.id,
         secretPath: testSuitePath,
@@ -419,21 +383,6 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
           })
         ])
       );
-
-      await deleteSecretV2({
-        environmentSlug: "staging",
-        workspaceId: seedData1.projectV3.id,
-        secretPath: testSuitePath,
-        authToken: jwtAuthToken,
-        key: "STAGING_KEY"
-      });
-      await deleteSecretV2({
-        environmentSlug: "prod",
-        workspaceId: seedData1.projectV3.id,
-        secretPath: testSuitePath,
-        authToken: jwtAuthToken,
-        key: "PROD_KEY"
-      });
     });
   },
   { timeout: 60_000 }
