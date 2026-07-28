@@ -8,7 +8,9 @@ type TUser = { id: string; email: string | null; firstName: string | null };
 const buildResolver = (opts: {
   users: TUser[];
   groupMembers?: Record<string, string[]>; // groupId -> userIds (current group membership)
-  orgUserIds?: string[]; // users currently in the org
+  orgUserIds?: string[]; // users with an active, accepted org membership (defaults to every user)
+  deactivatedUserIds?: string[]; // users whose org membership was deactivated
+  invitedUserIds?: string[]; // users invited to the org who never accepted
   effectiveProjectUserIds?: string[]; // users currently effective in the project
   effectiveProjectGroupIds?: string[]; // groups currently holding a project membership
 }) => {
@@ -23,8 +25,24 @@ const buildResolver = (opts: {
         $in.groupId.flatMap((groupId) => (opts.groupMembers?.[groupId] ?? []).map((userId) => ({ groupId, userId })))
     } as never,
     orgDAL: {
-      findMembership: async ({ $in }: { $in: { actorUserId: string[] } }) =>
-        $in.actorUserId.filter((id) => (opts.orgUserIds ?? []).includes(id)).map((actorUserId) => ({ actorUserId }))
+      // Mirrors the real DAL closely enough to honour the isActive/status filters the resolver passes.
+      findMembership: async (filter: { $in: { actorUserId: string[] }; isActive?: boolean; status?: string }) => {
+        const activeUserIds = opts.orgUserIds ?? opts.users.map((u) => u.id);
+        return filter.$in.actorUserId
+          .flatMap((actorUserId) => {
+            if (activeUserIds.includes(actorUserId)) return [{ actorUserId, isActive: true, status: "accepted" }];
+            if ((opts.deactivatedUserIds ?? []).includes(actorUserId))
+              return [{ actorUserId, isActive: false, status: "accepted" }];
+            if ((opts.invitedUserIds ?? []).includes(actorUserId))
+              return [{ actorUserId, isActive: true, status: "invited" }];
+            return []; // no org membership at all
+          })
+          .filter(
+            (membership) =>
+              (filter.isActive === undefined || membership.isActive === filter.isActive) &&
+              (filter.status === undefined || membership.status === filter.status)
+          );
+      }
     } as never,
     projectDAL: {
       findEffectiveProjectSubjectsMembership: async ({
@@ -130,6 +148,59 @@ describe("alert recipient resolver — send-time scope re-check", () => {
           [
             { principalType: AlertPrincipalType.GROUP, principalId: "g1" },
             { principalType: AlertPrincipalType.USER, principalId: "u1" } // still a direct recipient
+          ]
+        ]
+      ]),
+      { orgId: "org-1", projectId: "proj-1" }
+    );
+
+    const emails = (result.get("c1") ?? []).map((r) => r.email);
+    expect(emails).toEqual(["u1@example.com"]);
+  });
+
+  test("org scope: drops a deactivated user and a user who never accepted their invite", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2"), user("u3")],
+      orgUserIds: ["u1"],
+      deactivatedUserIds: ["u2"],
+      invitedUserIds: ["u3"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        [
+          "c1",
+          [
+            { principalType: AlertPrincipalType.USER, principalId: "u1" },
+            { principalType: AlertPrincipalType.USER, principalId: "u2" }, // deactivated
+            { principalType: AlertPrincipalType.USER, principalId: "u3" } // invite pending
+          ]
+        ]
+      ]),
+      { orgId: "org-1", projectId: null }
+    );
+
+    const emails = (result.get("c1") ?? []).map((r) => r.email);
+    expect(emails).toEqual(["u1@example.com"]);
+  });
+
+  test("project scope: drops a deactivated user who still holds a project membership", async () => {
+    const resolver = buildResolver({
+      users: [user("u1"), user("u2")],
+      groupMembers: { g1: ["u1", "u2"] },
+      orgUserIds: ["u1"],
+      deactivatedUserIds: ["u2"], // deactivating a user leaves their project membership in place
+      effectiveProjectUserIds: ["u1", "u2"],
+      effectiveProjectGroupIds: ["g1"]
+    });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        [
+          "c1",
+          [
+            { principalType: AlertPrincipalType.GROUP, principalId: "g1" },
+            { principalType: AlertPrincipalType.USER, principalId: "u2" }
           ]
         ]
       ]),

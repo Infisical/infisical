@@ -64,11 +64,14 @@ type SelectProps = {
 
 const RecipientSelect = ({
   options,
+  labelledOptions,
   value,
   onChange,
   isError
-}: SelectProps & { options: RecipientOption[] }) => {
-  const byKey = new Map(options.map((o) => [`${o.principalType}-${o.principalId}`, o]));
+}: SelectProps & { options: RecipientOption[]; labelledOptions?: RecipientOption[] }) => {
+  const byKey = new Map(
+    (labelledOptions ?? options).map((o) => [`${o.principalType}-${o.principalId}`, o])
+  );
   const selected = value.map(
     (recipient): RecipientOption =>
       byKey.get(`${recipient.principalType}-${recipient.principalId}`) ?? {
@@ -103,23 +106,47 @@ const RecipientSelect = ({
   );
 };
 
+const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
+  membership.isActive && membership.status !== "invited";
+
 const OrgRecipientSelect = ({ orgId, ...props }: SelectProps & { orgId: string }) => {
   const { data: users = [] } = useGetOrgUsers(orgId);
   const { data: groups = [] } = useGetOrganizationGroups(orgId);
 
-  return <RecipientSelect options={buildOptions(users, groups)} {...props} />;
-};
-
-const ProjectRecipientSelect = ({ projectId, ...props }: SelectProps & { projectId: string }) => {
-  const { data: users = [] } = useGetWorkspaceUsers(projectId);
-  const { data: groups = [] } = useListWorkspaceGroups(projectId);
+  const eligibleUsers = users.filter(canReceiveAlerts);
 
   return (
     <RecipientSelect
-      options={buildOptions(
-        users,
-        groups.map((membership) => membership.group)
-      )}
+      options={buildOptions(eligibleUsers, groups)}
+      labelledOptions={buildOptions(users, groups)}
+      {...props}
+    />
+  );
+};
+
+const ProjectRecipientSelect = ({
+  projectId,
+  orgId,
+  ...props
+}: SelectProps & { projectId: string; orgId: string }) => {
+  const { data: users = [] } = useGetWorkspaceUsers(projectId);
+  const { data: orgUsers = [] } = useGetOrgUsers(orgId);
+  const { data: groups = [] } = useListWorkspaceGroups(projectId);
+
+  const blockedUserIds = new Set(
+    orgUsers.filter((membership) => !canReceiveAlerts(membership)).map((membership) => membership.user.id)
+  );
+  const eligibleUsers = users.filter(
+    (membership) =>
+      membership.user.isOrgMembershipActive && !blockedUserIds.has(membership.user.id)
+  );
+
+  const groupOptions = groups.map((membership) => membership.group);
+
+  return (
+    <RecipientSelect
+      options={buildOptions(eligibleUsers, groupOptions)}
+      labelledOptions={buildOptions(users, groupOptions)}
       {...props}
     />
   );
@@ -131,7 +158,7 @@ export const ChannelRecipientsField = ({ projectId, ...props }: Props) => {
   const { currentOrg } = useOrganization();
 
   return projectId ? (
-    <ProjectRecipientSelect projectId={projectId} {...props} />
+    <ProjectRecipientSelect projectId={projectId} orgId={currentOrg.id} {...props} />
   ) : (
     <OrgRecipientSelect orgId={currentOrg.id} {...props} />
   );

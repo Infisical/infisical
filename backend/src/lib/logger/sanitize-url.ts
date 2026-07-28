@@ -14,11 +14,7 @@ const CREDENTIAL_PATH_HOSTS = new Set([
   "maker.ifttt.com"
 ]);
 
-const CREDENTIAL_PATH_HOST_SUFFIXES = [
-  ".webhook.office.com",
-  ".logic.azure.com",
-  ".slack.com"
-];
+const CREDENTIAL_PATH_HOST_SUFFIXES = [".webhook.office.com", ".logic.azure.com", ".slack.com"];
 
 const hasScheme = new RE2(/^[a-z][a-z\d+\-.]*:\/\//i);
 const trailingSlashes = new RE2(/\/+$/);

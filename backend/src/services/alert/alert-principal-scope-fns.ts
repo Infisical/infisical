@@ -1,3 +1,4 @@
+import { OrgMembershipStatus } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -18,6 +19,10 @@ export type TInScopePrincipals = { userIds: Set<string>; groupIds: Set<string> }
  * the write path (validating an alert channel's recipients) and the send path (re-checking recipients
  * at delivery time), so both agree on what "in scope" means.
  *
+ * Users must hold an active, accepted org membership in every scope — a deactivated user and a user
+ * with a pending invite both keep their memberships, so the project query alone would still match
+ * them and they'd receive alerts.
+ *
  * Project scope: effective project membership, i.e. directly added or inherited via a project group.
  * Org scope: org membership for users. Groups are verified against the org only when `groupDAL` is
  * supplied — a group cannot move between orgs, so the send path skips that query and trusts the ids
@@ -29,23 +34,30 @@ export const resolvePrincipalsInScope = async (
 ): Promise<TInScopePrincipals> => {
   if (userIds.length === 0 && groupIds.length === 0) return { userIds: new Set(), groupIds: new Set() };
 
+  const activeOrgUserIds = new Set<string>();
+  if (userIds.length) {
+    const memberships = await orgDAL.findMembership({
+      $in: { actorUserId: userIds },
+      scopeOrgId: orgId,
+      isActive: true,
+      status: OrgMembershipStatus.Accepted
+    });
+    memberships.forEach((membership) => {
+      if (membership.actorUserId) activeOrgUserIds.add(membership.actorUserId);
+    });
+  }
+
   if (projectId) {
     const { effectiveUserIds, effectiveGroupIds } = await projectDAL.findEffectiveProjectSubjectsMembership({
       orgId,
       projectId,
-      userIds,
+      userIds: [...activeOrgUserIds],
       groupIds
     });
     return { userIds: new Set(effectiveUserIds), groupIds: new Set(effectiveGroupIds) };
   }
 
-  const inScopeUserIds = new Set<string>();
-  if (userIds.length) {
-    const memberships = await orgDAL.findMembership({ $in: { actorUserId: userIds }, scopeOrgId: orgId });
-    memberships.forEach((membership) => {
-      if (membership.actorUserId) inScopeUserIds.add(membership.actorUserId);
-    });
-  }
+  const inScopeUserIds = activeOrgUserIds;
 
   if (!groupDAL || groupIds.length === 0) return { userIds: inScopeUserIds, groupIds: new Set(groupIds) };
 
