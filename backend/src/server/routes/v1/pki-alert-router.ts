@@ -386,6 +386,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listPkiAlertCertificatesV1",
       description: "List certificates that match an alert's filter rules",
       tags: [ApiDocsTags.PkiAlerting],
       params: z.object({

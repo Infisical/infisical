@@ -169,6 +169,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "generateCaCertificate",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Generate certificate for a Certificate Authority",
       params: z.object({
@@ -353,6 +354,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
     },
     schema: {
       hide: false,
+      operationId: "getCaCertificateById",
       tags: [ApiDocsTags.PkiCertificateAuthorities],
       description: "Get a specific CA certificate by ID",
       params: z.object({
