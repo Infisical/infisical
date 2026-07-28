@@ -40,23 +40,26 @@ For detailed information on resource inheritance, project ownership, and enterpr
     - **[Gateways](/documentation/platform/gateways/overview)**: secure access to private network resources without direct inbound connections.
     - **[Audit logs](/documentation/platform/audit-logs)** and **billing**: aggregated across all projects and product types.
 
-### 2. Projects
+### 2. Products
 
-- **Definition and Role**: [Projects](/documentation/platform/project) are the primary container for your work in Infisical. Each project is tied to a single **product type** (see below), which determines the dashboard, workflows, and capabilities available within it.
-- **Common Project Mappings**: Projects typically align with applications, services, or code repositories — each being a valid and common approach depending on your organizational structure.
-
-<Note>Projects are isolated from one another. Secrets, certificates, and other resources cannot be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
-
-### 2.1 Product Types
-
-- **Definition**: Not everything in Infisical is a secret. Each project is created as one of several **products**, each purpose-built for a different security use case.
+- **Definition**: Not everything in Infisical is a secret. Infisical is organized into several **products**, each purpose-built for a different security use case, with its own dashboard, workflows, and capabilities.
 - **Supported Products**:
     - **[Secrets Management](/documentation/platform/secrets-mgmt/overview)**: Centralize secrets across environments with automatic secret syncs, secret rotations, short-lived dynamic credentials, and lifecycle policies.
     - **[Certificate Manager](/documentation/platform/pki/overview)**: Issue, rotate, and govern X.509 certificates for TLS, mTLS, code signing, and device identity.
     - **[KMS](/documentation/platform/kms/overview)**: Generate, store, and use cryptographic keys to encrypt, decrypt, sign, and verify against managed CMKs.
     - **[Secret Scanning](/documentation/platform/secret-scanning/overview)**: Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.
     - **[Privileged Access Manager](/documentation/platform/pam/overview)**: Connect to databases and servers securely with session brokering, recording, and credential vaulting.
-- **Note**: The constructs described below — environments, folders, and imports — are specific to the **Secrets Management** product. Other products expose their own resources and workflows (e.g., certificates and CAs in PKI, keys in KMS, resources and accounts in PAM).
+- **How Products Are Structured**: Products differ in how they organize work, so not everything is project-based:
+    - **Secrets Management**, **KMS**, and **Secret Scanning** organize their resources into one or more **[projects](/documentation/platform/project)** (see below).
+    - **Certificate Manager** and **Privileged Access Manager** operate at the organization level as a single workspace, rather than a list of separate projects.
+
+### 2.1 Projects
+
+- **Definition and Role**: For the products that use them, a [project](/documentation/platform/project) is an isolated workspace that holds the resources, environments, and settings for a single scope of work within that product.
+- **Common Project Mappings**: Projects typically align with applications, services, or code repositories — each being a valid and common approach depending on your organizational structure.
+- **Scope**: The constructs described below — environments, folders, and imports — are specific to **Secrets Management** projects. Other products expose their own resources and workflows.
+
+<Note>Projects are isolated from one another. Secrets, certificates, and other resources cannot be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
 
 ### 3. Environments
 
