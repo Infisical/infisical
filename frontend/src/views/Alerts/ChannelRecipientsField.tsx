@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { UserIcon, UsersIcon } from "lucide-react";
 
 import { FilterableSelect } from "@app/components/v3";
@@ -69,6 +70,13 @@ const RecipientSelect = ({
   onChange,
   isError
 }: SelectProps & { options: RecipientOption[]; labelledOptions?: RecipientOption[] }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
+  }, []);
+
   const byKey = new Map(
     (labelledOptions ?? options).map((o) => [`${o.principalType}-${o.principalId}`, o])
   );
@@ -83,26 +91,31 @@ const RecipientSelect = ({
   );
 
   return (
-    <FilterableSelect<RecipientOption>
-      isMulti
-      placeholder="Select users or groups..."
-      options={options}
-      value={selected}
-      isError={isError}
-      groupBy="groupLabel"
-      getGroupHeaderLabel={(groupValue) => groupValue}
-      getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
-      getOptionLabel={(option) => option.label}
-      formatOptionLabel={formatOptionLabel}
-      onChange={(newValue) =>
-        onChange(
-          (newValue as RecipientOption[]).map((option) => ({
-            principalType: option.principalType,
-            principalId: option.principalId
-          }))
-        )
-      }
-    />
+    <div ref={containerRef}>
+      <FilterableSelect<RecipientOption>
+        isMulti
+        placeholder="Select users or groups..."
+        options={options}
+        value={selected}
+        isError={isError}
+        groupBy="groupLabel"
+        getGroupHeaderLabel={(groupValue) => groupValue}
+        getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
+        getOptionLabel={(option) => option.label}
+        formatOptionLabel={formatOptionLabel}
+        menuPortalTarget={menuPortalTarget ?? undefined}
+        menuPosition="fixed"
+        menuPlacement="auto"
+        onChange={(newValue) =>
+          onChange(
+            (newValue as RecipientOption[]).map((option) => ({
+              principalType: option.principalType,
+              principalId: option.principalId
+            }))
+          )
+        }
+      />
+    </div>
   );
 };
 
