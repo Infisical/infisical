@@ -130,7 +130,7 @@ export const SpaceliftSyncFns = {
 
     if (configType === SpaceliftConfigType.FileMount) {
       const filePath = mountPath!;
-      const existingFile = existingElements.find((e) => e.id === filePath);
+      const existingFile = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
       const hasSecrets = Object.keys(secretMap).length > 0;
 
       if (hasSecrets) {
@@ -191,7 +191,7 @@ export const SpaceliftSyncFns = {
 
     if (configType === SpaceliftConfigType.FileMount) {
       const filePath = mountPath!;
-      const fileElement = existingElements.find((e) => e.id === filePath);
+      const fileElement = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
 
       if (!fileElement || fileElement.writeOnly) return {};
 
@@ -220,7 +220,7 @@ export const SpaceliftSyncFns = {
 
     if (configType === SpaceliftConfigType.FileMount) {
       const filePath = mountPath!;
-      const fileElement = existingElements.find((e) => e.id === filePath);
+      const fileElement = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
 
       if (fileElement) {
         try {
