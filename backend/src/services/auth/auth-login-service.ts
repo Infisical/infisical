@@ -1015,7 +1015,7 @@ export const authLoginServiceFactory = ({
           actorType: ActorType.USER,
           actorId: user.id,
           orgId: org.id,
-          status: OrgMembershipStatus.Accepted
+          acceptAnyStatus: true
         });
 
         if (orgMembership?.isActive) {
