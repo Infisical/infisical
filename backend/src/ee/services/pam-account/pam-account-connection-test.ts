@@ -154,13 +154,14 @@ export const buildGatewayConnectionTest = async (
         sslCertificate?: string;
       };
       const c = creds as { username?: string; password?: string } | null;
+      if (!c) return tcp(host, port);
       return {
         host,
         port,
         request: {
           mode: TestConnectionMode.Redis,
-          username: c?.username,
-          password: c?.password,
+          username: c.username,
+          password: c.password,
           sslEnabled: cd.sslEnabled,
           sslRejectUnauthorized: cd.sslRejectUnauthorized,
           sslCertificate: cd.sslCertificate
