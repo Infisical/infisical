@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -45,7 +45,7 @@ const $paginateCloudflare = async <T>(
 
   while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await request.get<{ result: T[]; result_info?: { total_pages?: number } }>(url, {
+    const { data } = await safeRequest.get<{ result: T[]; result_info?: { total_pages?: number } }>(url, {
       headers: getCloudflareAuthHeaders(apiToken),
       params: { ...params, page, per_page: CLOUDFLARE_PER_PAGE }
     });
@@ -74,7 +74,7 @@ export const listCloudflarePagesProjects = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const { data } = await request.get<{ result: { name: string; id: string }[] }>(
+  const { data } = await safeRequest.get<{ result: { name: string; id: string }[] }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
     { headers: getCloudflareAuthHeaders(apiToken) }
   );
@@ -92,7 +92,7 @@ export const listCloudflareWorkersScripts = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const { data } = await request.get<{ result: { id: string }[] }>(
+  const { data } = await safeRequest.get<{ result: { id: string }[] }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/scripts`,
     { headers: getCloudflareAuthHeaders(apiToken) }
   );
@@ -134,7 +134,7 @@ export const listCloudflarePermissionGroups = async (
 
   for (let page = 1; page <= CLOUDFLARE_MAX_PAGES; page += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await request.get<{ result: { id: string; name: string; scopes?: string[] }[] }>(
+    const { data } = await safeRequest.get<{ result: { id: string; name: string; scopes?: string[] }[] }>(
       `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`,
       {
         headers: getCloudflareAuthHeaders(apiToken),
@@ -160,7 +160,7 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
   const { apiToken, accountId } = config.credentials;
 
   try {
-    const resp = await request.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
+    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
       headers: getCloudflareAuthHeaders(apiToken)
     });
 

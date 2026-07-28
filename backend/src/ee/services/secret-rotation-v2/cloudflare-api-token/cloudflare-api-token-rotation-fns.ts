@@ -8,9 +8,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { safeRequest } from "@app/lib/validator";
 import {
   getCloudflareAuthHeaders,
   getCloudflareErrorMessage
@@ -84,7 +84,7 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
 
   const $createToken = async () => {
     try {
-      const { data } = await request.post<TCloudflareCreateTokenResponse>(
+      const { data } = await safeRequest.post<TCloudflareCreateTokenResponse>(
         `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens`,
         {
           name: `${name}-${Date.now()}`,
@@ -122,7 +122,7 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
 
   const $deleteToken = async (tokenId: string) => {
     try {
-      await request.delete(
+      await safeRequest.delete(
         `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/${encodeURIComponent(tokenId)}`,
         { headers: authHeaders }
       );
@@ -201,7 +201,7 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
     TCloudflareApiTokenRotationGeneratedCredentials
   > = async (activeCredentials) => {
     try {
-      const { data } = await request.get<TCloudflareVerifyTokenResponse>(
+      const { data } = await safeRequest.get<TCloudflareVerifyTokenResponse>(
         `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/verify`,
         { headers: getCloudflareAuthHeaders(activeCredentials.apiToken) }
       );
