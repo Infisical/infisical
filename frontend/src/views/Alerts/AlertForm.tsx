@@ -60,10 +60,8 @@ type Props = {
   onCancel: () => void;
 };
 
-const SectionHeader = ({ step, title }: { step: number; title: string }) => (
-  <p className="text-xs font-semibold text-label">
-    {step} · {title}
-  </p>
+const SectionHeader = ({ title }: { title: string }) => (
+  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">{title}</p>
 );
 
 const FixedField = ({ label, children }: { label: string; children: ReactNode }) => (
@@ -249,7 +247,7 @@ export const AlertForm = ({
       >
         <div className="flex flex-col gap-8 p-4">
           <section className="flex flex-col gap-4">
-            <SectionHeader step={1} title="Details" />
+            <SectionHeader title="Details" />
             <Field>
               <FieldLabel htmlFor="alert-name">Name</FieldLabel>
               <FieldContent>
@@ -283,7 +281,7 @@ export const AlertForm = ({
           </section>
 
           <section className="flex flex-col gap-4">
-            <SectionHeader step={2} title="Trigger" />
+            <SectionHeader title="Trigger" />
 
             <Controller
               control={control}
@@ -399,7 +397,7 @@ export const AlertForm = ({
           </section>
 
           <section className="flex flex-col gap-4">
-            <SectionHeader step={3} title="Delivery" />
+            <SectionHeader title="Delivery" />
             <ChannelsField projectId={projectId} />
           </section>
         </div>
