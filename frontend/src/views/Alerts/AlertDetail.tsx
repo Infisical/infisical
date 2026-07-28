@@ -1,5 +1,12 @@
 import { ReactNode } from "react";
-import { BellPlusIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react";
+import {
+  BanIcon,
+  BellPlusIcon,
+  CheckIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
@@ -86,6 +93,7 @@ export const AlertDetail = ({
       return (
         <div className="flex w-full items-center gap-2">
           <Badge variant={existingAlert.enabled ? "success" : "neutral"}>
+            {existingAlert.enabled ? <CheckIcon /> : <BanIcon />}
             {existingAlert.enabled ? "Enabled" : "Disabled"}
           </Badge>
           <span className="min-w-0 flex-1 truncate text-xs text-muted">{summary}</span>

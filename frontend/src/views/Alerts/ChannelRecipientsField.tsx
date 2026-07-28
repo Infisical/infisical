@@ -142,7 +142,7 @@ const ProjectRecipientSelect = ({
   orgId,
   ...props
 }: SelectProps & { projectId: string; orgId: string }) => {
-  const { data: users = [] } = useGetWorkspaceUsers(projectId);
+  const { data: users = [] } = useGetWorkspaceUsers(projectId, true);
   const { data: orgUsers = [] } = useGetOrgUsers(orgId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 

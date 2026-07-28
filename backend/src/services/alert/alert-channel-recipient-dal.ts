@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAlertChannelRecipients } from "@app/db/schemas";
+import { AccessScope, TableName, TAlertChannelRecipients } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -75,29 +75,124 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     }
   };
 
-  const deleteUsersRecipientsByScope = async (
-    { userIds, orgId, projectId }: { userIds: string[]; orgId?: string; projectId?: string },
+  const $whereUserStillInChannelScope = (qb: Knex.QueryBuilder) => {
+    const principalIdAsUuid = `"${TableName.AlertChannelRecipient}"."principalId"::uuid`;
+
+    void qb
+      .select(db.raw("1"))
+      .from({ ch: TableName.AlertChannel })
+      .whereRaw(`"ch"."id" = "${TableName.AlertChannelRecipient}"."channelId"`)
+      .whereExists((orgQb) => {
+        void orgQb
+          .select(db.raw("1"))
+          .from({ om: TableName.Membership })
+          .where("om.scope", AccessScope.Organization)
+          .whereRaw(`"om"."scopeOrgId" = "ch"."orgId"`)
+          .whereRaw(`"om"."actorUserId" = ${principalIdAsUuid}`);
+      })
+      .where((scopeQb) => {
+        void scopeQb.whereNull("ch.projectId").orWhereExists((projectQb) => {
+          void projectQb
+            .select(db.raw("1"))
+            .from({ pm: TableName.Membership })
+            .leftJoin({ ugm: TableName.UserGroupMembership }, (join) => {
+              void join.on("ugm.groupId", "pm.actorGroupId").andOn("ugm.isPending", "=", db.raw("?", [false]));
+            })
+            .where("pm.scope", AccessScope.Project)
+            .whereRaw(`"pm"."scopeProjectId" = "ch"."projectId"`)
+            .whereRaw(`("pm"."actorUserId" = ${principalIdAsUuid} OR "ugm"."userId" = ${principalIdAsUuid})`);
+        });
+      });
+  };
+
+  const $whereGroupStillInChannelScope = (qb: Knex.QueryBuilder) => {
+    const principalIdAsUuid = `"${TableName.AlertChannelRecipient}"."principalId"::uuid`;
+
+    void qb
+      .select(db.raw("1"))
+      .from({ ch: TableName.AlertChannel })
+      .whereRaw(`"ch"."id" = "${TableName.AlertChannelRecipient}"."channelId"`)
+      .where((scopeQb) => {
+        void scopeQb
+          .where((orgScopeQb) => {
+            void orgScopeQb.whereNull("ch.projectId").whereExists((groupQb) => {
+              void groupQb
+                .select(db.raw("1"))
+                .from({ g: TableName.Groups })
+                .whereRaw(`"g"."id" = ${principalIdAsUuid}`)
+                .whereRaw(`"g"."orgId" = "ch"."orgId"`);
+            });
+          })
+          .orWhere((projectScopeQb) => {
+            void projectScopeQb.whereNotNull("ch.projectId").whereExists((membershipQb) => {
+              void membershipQb
+                .select(db.raw("1"))
+                .from({ pm: TableName.Membership })
+                .where("pm.scope", AccessScope.Project)
+                .whereRaw(`"pm"."scopeProjectId" = "ch"."projectId"`)
+                .whereRaw(`"pm"."actorGroupId" = ${principalIdAsUuid}`);
+            });
+          });
+      });
+  };
+
+  /**
+   * Drops recipient rows whose principal can no longer reach the channel's scope, evaluated per
+   * (principal, channel) pair. Call it after deleting a membership that can revoke access — losing an
+   * org membership also prunes that org's project channels (and its sub-orgs'), losing a project
+   * membership prunes only that project's channels.
+   *
+   * `groupIds` prunes the groups' own rows *and* their members' user rows: the recipient picker offers
+   * anyone with access to the project, group-inherited included, so a user row can be backed solely by
+   * a group and dies with it. Pass removed users in `userIds` when the group itself keeps its access.
+   *
+   * Safe to call unconditionally: a principal that still has access keeps its rows, so callers don't
+   * have to work out which scopes a change actually touched.
+   */
+  const pruneOutOfScopeRecipients = async (
+    { userIds = [], groupIds = [] }: { userIds?: string[]; groupIds?: string[] },
     tx?: Knex
   ): Promise<number> => {
     try {
-      if (!userIds.length || (!orgId && !projectId)) return 0;
+      const uniqueUserIds = [...new Set(userIds)];
+      const uniqueGroupIds = [...new Set(groupIds)];
+      if (!uniqueUserIds.length && !uniqueGroupIds.length) return 0;
 
-      const channelIds = (tx || db)(TableName.AlertChannel).select("id");
-      if (projectId) void channelIds.where(`${TableName.AlertChannel}.projectId`, projectId);
-      else void channelIds.where(`${TableName.AlertChannel}.orgId`, orgId as string);
-
-      const deleted = (await (tx || db)(TableName.AlertChannelRecipient)
+      const deletedUserRows = (await (tx || db)(TableName.AlertChannelRecipient)
         .where(`${TableName.AlertChannelRecipient}.principalType`, AlertPrincipalType.USER)
-        .whereIn(`${TableName.AlertChannelRecipient}.principalId`, userIds)
-        .whereIn(`${TableName.AlertChannelRecipient}.channelId`, channelIds)
+        .where((principalQb) => {
+          if (uniqueUserIds.length) {
+            void principalQb.whereIn(`${TableName.AlertChannelRecipient}.principalId`, uniqueUserIds);
+          }
+          if (uniqueGroupIds.length) {
+            void principalQb.orWhereIn(
+              `${TableName.AlertChannelRecipient}.principalId`,
+              (tx || db)(TableName.UserGroupMembership)
+                .select(db.raw(`"${TableName.UserGroupMembership}"."userId"::text`))
+                .whereIn(`${TableName.UserGroupMembership}.groupId`, uniqueGroupIds)
+            );
+          }
+        })
+        .whereNotExists($whereUserStillInChannelScope)
         .del()
         .returning("channelId")) as { channelId: string }[];
+
+      const deletedGroupRows = uniqueGroupIds.length
+        ? ((await (tx || db)(TableName.AlertChannelRecipient)
+            .where(`${TableName.AlertChannelRecipient}.principalType`, AlertPrincipalType.GROUP)
+            .whereIn(`${TableName.AlertChannelRecipient}.principalId`, uniqueGroupIds)
+            .whereNotExists($whereGroupStillInChannelScope)
+            .del()
+            .returning("channelId")) as { channelId: string }[])
+        : [];
+
+      const deleted = [...deletedUserRows, ...deletedGroupRows];
 
       await $disableChannelsWithoutRecipients([...new Set(deleted.map((row) => row.channelId))], tx);
 
       return deleted.length;
     } catch (error) {
-      throw new DatabaseError({ error, name: "DeleteUsersRecipientsByScope" });
+      throw new DatabaseError({ error, name: "PruneOutOfScopeRecipients" });
     }
   };
 
@@ -106,6 +201,6 @@ export const alertChannelRecipientDALFactory = (db: TDbClient) => {
     findByChannelIds,
     deleteByChannelId,
     deleteByPrincipals,
-    deleteUsersRecipientsByScope
+    pruneOutOfScopeRecipients
   };
 };

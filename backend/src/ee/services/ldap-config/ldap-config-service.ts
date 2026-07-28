@@ -28,6 +28,7 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -82,6 +83,7 @@ type TLdapConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   userGroupMembershipDAL: Pick<
@@ -120,6 +122,7 @@ export const ldapConfigServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   projectKeyDAL,
+  alertChannelRecipientDAL,
   projectDAL,
   projectBotDAL,
   userGroupMembershipDAL,
@@ -715,6 +718,7 @@ export const ldapConfigServiceFactory = ({
               membershipGroupDAL,
               projectKeyDAL,
               usageMeteringService,
+              alertChannelRecipientDAL,
               tx
             });
           }

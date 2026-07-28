@@ -104,7 +104,7 @@ type TGroupServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
-  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -438,6 +438,8 @@ export const groupServiceFactory = ({
 
       const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
       await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds }, tx);
     });
   };
 
@@ -558,6 +560,8 @@ export const groupServiceFactory = ({
       membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
 
       await deleteMembershipsInBatch(membershipIdsToDelete, tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
     });
 
     return group;
@@ -577,6 +581,10 @@ export const groupServiceFactory = ({
     }
 
     return groupDAL.transaction(async (tx) => {
+      // Read before the delete cascades the group memberships away — a member may have reached a
+      // project only through this group, leaving them stale on that project's alert channels.
+      const memberUserIds = (await userGroupMembershipDAL.find({ groupId }, { tx })).map((m) => m.userId);
+
       const [deletedGroup] = await groupDAL.delete(
         {
           id: groupId,
@@ -592,6 +600,8 @@ export const groupServiceFactory = ({
         },
         tx
       );
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: memberUserIds }, tx);
 
       return deletedGroup;
     });
@@ -1186,7 +1196,8 @@ export const groupServiceFactory = ({
       userDAL,
       userGroupMembershipDAL,
       membershipGroupDAL,
-      projectKeyDAL
+      projectKeyDAL,
+      alertChannelRecipientDAL
     });
 
     await cleanUpSubOrgProjectMemberships({

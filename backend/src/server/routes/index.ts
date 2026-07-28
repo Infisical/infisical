@@ -956,7 +956,8 @@ export const registerRoutes = async (
     licenseService,
     applicationMembershipCleanupService,
     projectDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const roleService = roleServiceFactory({
@@ -1236,6 +1237,7 @@ export const registerRoutes = async (
     membershipUserDAL,
     additionalPrivilegeDAL,
     approvalPolicyDAL,
+    alertChannelRecipientDAL,
     emailDomainDAL,
     telemetryService,
     usageMeteringService
@@ -1251,7 +1253,8 @@ export const registerRoutes = async (
     orgMembershipDAL,
     membershipRoleDAL,
     membershipGroupDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1351,7 +1354,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1375,7 +1379,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1439,7 +1444,8 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     approvalPolicyDAL,
     certificatePolicyDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1495,7 +1501,8 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL,
     membershipUserDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -1557,7 +1564,8 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     membershipRoleDAL,
     applicationMembershipCleanupService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const projectKeyService = projectKeyServiceFactory({
@@ -2905,7 +2913,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const userActivationService = userActivationServiceFactory({

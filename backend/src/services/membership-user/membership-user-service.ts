@@ -89,7 +89,7 @@ type TMembershipUserServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
-  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteUsersRecipientsByScope">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -555,14 +555,9 @@ export const membershipUserServiceFactory = ({
           userGroupMembershipDAL,
           membershipRoleDAL,
           additionalPrivilegeDAL,
-          approvalPolicyDAL
+          approvalPolicyDAL,
+          alertChannelRecipientDAL
         });
-        // Prune the user's alert-channel recipient rows across the whole org (org- and
-        // project-scoped channels) since leaving the org drops all their access.
-        await alertChannelRecipientDAL.deleteUsersRecipientsByScope(
-          { userIds: [dto.selector.userId], orgId: dto.permission.orgId },
-          tx
-        );
         return doc;
       }
 
@@ -583,16 +578,15 @@ export const membershipUserServiceFactory = ({
           },
           tx
         );
-
-        // Prune the user's alert-channel recipient rows for this project's channels only.
-        await alertChannelRecipientDAL.deleteUsersRecipientsByScope(
-          { userIds: [dto.selector.userId], projectId: dto.scopeData.projectId },
-          tx
-        );
       }
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
+
+      if (dto.scopeData.scope === AccessScope.Project) {
+        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [dto.selector.userId] }, tx);
+      }
+
       return doc;
     };
 

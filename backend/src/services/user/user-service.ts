@@ -513,7 +513,15 @@ export const userServiceFactory = ({
     const myAccount = users?.find((el) => el.id === userId);
     if (duplicatedAccounts.length && myAccount) {
       await userDAL.transaction(async (tx) => {
-        await userDAL.delete({ $in: { id: duplicatedAccounts?.map((el) => el.id) } }, tx);
+        const duplicatedAccountIds = duplicatedAccounts.map((el) => el.id);
+        await userDAL.delete({ $in: { id: duplicatedAccountIds } }, tx);
+        await alertChannelRecipientDAL.deleteByPrincipals(
+          {
+            principalType: AlertPrincipalType.USER,
+            principalIds: duplicatedAccountIds
+          },
+          tx
+        );
         await userDAL.updateById(userId, { username: (myAccount.email || myAccount.username).toLowerCase() }, tx);
       });
     }
