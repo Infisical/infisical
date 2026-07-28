@@ -11,6 +11,10 @@ import {
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import {
+  getCloudflareAuthHeaders,
+  getCloudflareErrorMessage
+} from "@app/services/app-connection/cloudflare/cloudflare-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { CLOUDFLARE_API_TOKEN_MIN_TTL_DAYS } from "./cloudflare-api-token-rotation-constants";
@@ -22,15 +26,6 @@ import {
   TCloudflareCreateTokenResponse,
   TCloudflareVerifyTokenResponse
 } from "./cloudflare-api-token-rotation-types";
-
-const getCloudflareErrorMessage = (error: unknown) => {
-  if (error instanceof AxiosError) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    return (error.response?.data?.errors?.[0]?.message as string) || error.message || "Unknown error";
-  }
-
-  return "Unknown error";
-};
 
 export const cloudflareApiTokenRotationFactory: TRotationFactory<
   TCloudflareApiTokenRotationWithConnection,
@@ -46,14 +41,17 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
 
   const { accountId, apiToken } = connection.credentials;
 
-  const authHeaders = {
-    Authorization: `Bearer ${apiToken}`,
-    Accept: "application/json"
-  };
+  const authHeaders = getCloudflareAuthHeaders(apiToken);
 
-  const $buildResources = (policy: TCloudflareApiTokenPolicy) => {
+  // https://developers.cloudflare.com/fundamentals/api/how-to/create-via-api/ — note that all-zones is
+  // expressed as a nested object rather than the "*" string the other scopes use
+  const $buildResources = (policy: TCloudflareApiTokenPolicy): Record<string, string | Record<string, string>> => {
     if (policy.scope === CloudflareApiTokenPolicyScope.Account) {
       return { [`com.cloudflare.api.account.${accountId}`]: "*" };
+    }
+
+    if (policy.scope === CloudflareApiTokenPolicyScope.AllZones) {
+      return { [`com.cloudflare.api.account.${accountId}`]: { "com.cloudflare.api.account.zone.*": "*" } };
     }
 
     return Object.fromEntries(
@@ -202,31 +200,22 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
   const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
     TCloudflareApiTokenRotationGeneratedCredentials
   > = async (activeCredentials) => {
-    let data: TCloudflareVerifyTokenResponse;
-
     try {
-      ({ data } = await request.get<TCloudflareVerifyTokenResponse>(
+      const { data } = await request.get<TCloudflareVerifyTokenResponse>(
         `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/verify`,
-        {
-          headers: {
-            Authorization: `Bearer ${activeCredentials.apiToken}`,
-            Accept: "application/json"
-          }
-        }
-      ));
-    } catch (error: unknown) {
-      logger.error(
-        error,
-        `cloudflareApiTokenRotation: failed to verify token during check active credentials [rotationId=${rotationId}] [tokenId=${activeCredentials.tokenId}]`
+        { headers: getCloudflareAuthHeaders(activeCredentials.apiToken) }
       );
+
+      if (!data.success || data.result?.status !== "active") {
+        throw new BadRequestError({
+          message: `Cloudflare API token verification failed: token status is ${data.result?.status ?? "unknown"}`
+        });
+      }
+    } catch (error: unknown) {
+      if (error instanceof BadRequestError) throw error;
+
       throw new BadRequestError({
         message: `Cloudflare API token verification failed: ${getCloudflareErrorMessage(error)}`
-      });
-    }
-
-    if (!data.success || data.result?.status !== "active") {
-      throw new BadRequestError({
-        message: `Cloudflare API token verification failed: token status is ${data.result?.status ?? "unknown"}`
       });
     }
   };

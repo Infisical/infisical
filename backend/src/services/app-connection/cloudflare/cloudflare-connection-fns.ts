@@ -2,7 +2,6 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -16,9 +15,49 @@ import {
   TCloudflareZone
 } from "./cloudflare-connection-types";
 
-const CLOUDFLARE_ZONES_PER_PAGE = 50;
-const CLOUDFLARE_PERMISSION_GROUPS_PER_PAGE = 50;
+// Cloudflare caps per_page at 50 on the list endpoints we use
+const CLOUDFLARE_PER_PAGE = 50;
 const CLOUDFLARE_MAX_PAGES = 100;
+
+export const getCloudflareAuthHeaders = (apiToken: string) => ({
+  Authorization: `Bearer ${apiToken}`,
+  Accept: "application/json"
+});
+
+export const getCloudflareErrorMessage = (error: unknown) => {
+  if (error instanceof AxiosError) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    return (error.response?.data?.errors?.[0]?.message as string) || error.message || "Unknown error";
+  }
+
+  return "Unknown error";
+};
+
+/** Walks a paginated Cloudflare list endpoint using the `result_info.total_pages` it reports. */
+const $paginateCloudflare = async <T>(
+  url: string,
+  { apiToken, params }: { apiToken: string; params?: Record<string, unknown> }
+): Promise<T[]> => {
+  const results: T[] = [];
+
+  let page = 1;
+  let totalPages = 1;
+
+  while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await request.get<{ result: T[]; result_info?: { total_pages?: number } }>(url, {
+      headers: getCloudflareAuthHeaders(apiToken),
+      params: { ...params, page, per_page: CLOUDFLARE_PER_PAGE }
+    });
+
+    results.push(...data.result);
+
+    totalPages = data.result_info?.total_pages ?? 1;
+    page += 1;
+  }
+
+  return results;
+};
 
 export const getCloudflareConnectionListItem = () => {
   return {
@@ -37,12 +76,7 @@ export const listCloudflarePagesProjects = async (
 
   const { data } = await request.get<{ result: { name: string; id: string }[] }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      }
-    }
+    { headers: getCloudflareAuthHeaders(apiToken) }
   );
 
   return data.result.map((a) => ({
@@ -60,12 +94,7 @@ export const listCloudflareWorkersScripts = async (
 
   const { data } = await request.get<{ result: { id: string }[] }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/workers/scripts`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      }
-    }
+    { headers: getCloudflareAuthHeaders(apiToken) }
   );
 
   return data.result.map((a) => ({
@@ -78,42 +107,22 @@ export const listCloudflareZones = async (appConnection: TCloudflareConnection):
     credentials: { apiToken }
   } = appConnection;
 
-  const zones: TCloudflareZone[] = [];
+  const zones = await $paginateCloudflare<{ id: string; name: string }>(
+    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`,
+    { apiToken }
+  );
 
-  let page = 1;
-  let totalPages = 1;
-
-  // Cloudflare defaults to 20 results per page and caps per_page at 50 for the zones endpoint
-  while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
-    // eslint-disable-next-line no-await-in-loop
-    const { data } = await request.get<{
-      result: { name: string; id: string }[];
-      result_info?: { total_pages?: number };
-    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`, {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      },
-      params: {
-        page,
-        per_page: CLOUDFLARE_ZONES_PER_PAGE
-      }
-    });
-
-    zones.push(
-      ...data.result.map((a) => ({
-        name: a.name,
-        id: a.id
-      }))
-    );
-
-    totalPages = data.result_info?.total_pages ?? 1;
-    page += 1;
-  }
-
-  return zones;
+  return zones.map((a) => ({
+    name: a.name,
+    id: a.id
+  }));
 };
 
+/**
+ * Unlike the other list endpoints, token permission groups don't reliably report
+ * `result_info.total_pages`, so this paginates on its own: keep requesting while a page comes back
+ * full and stop on the first partial page.
+ */
 export const listCloudflarePermissionGroups = async (
   appConnection: TCloudflareConnection
 ): Promise<TCloudflarePermissionGroup[]> => {
@@ -123,24 +132,15 @@ export const listCloudflarePermissionGroups = async (
 
   const permissionGroups: TCloudflarePermissionGroup[] = [];
 
-  let page = 1;
-  let totalPages = 1;
-
-  while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
+  for (let page = 1; page <= CLOUDFLARE_MAX_PAGES; page += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await request.get<{
-      result: { id: string; name: string; scopes?: string[] }[];
-      result_info?: { total_pages?: number };
-    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`, {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      },
-      params: {
-        page,
-        per_page: CLOUDFLARE_PERMISSION_GROUPS_PER_PAGE
+    const { data } = await request.get<{ result: { id: string; name: string; scopes?: string[] }[] }>(
+      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`,
+      {
+        headers: getCloudflareAuthHeaders(apiToken),
+        params: { page, per_page: CLOUDFLARE_PER_PAGE }
       }
-    });
+    );
 
     permissionGroups.push(
       ...data.result.map((a) => ({
@@ -150,11 +150,7 @@ export const listCloudflarePermissionGroups = async (
       }))
     );
 
-    // this endpoint doesn't always return result_info, so when it's missing we keep paging as long as
-    // the page came back full and stop on the first partial page
-    totalPages =
-      data.result_info?.total_pages ?? (data.result.length === CLOUDFLARE_PERMISSION_GROUPS_PER_PAGE ? page + 1 : page);
-    page += 1;
+    if (data.result.length < CLOUDFLARE_PER_PAGE) break;
   }
 
   return permissionGroups;
@@ -165,10 +161,7 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
 
   try {
     const resp = await request.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
-      headers: {
-        Authorization: `Bearer ${apiToken}`,
-        Accept: "application/json"
-      }
+      headers: getCloudflareAuthHeaders(apiToken)
     });
 
     if (resp.data === null) {
@@ -177,11 +170,9 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
       });
     }
   } catch (error: unknown) {
-    logger.error(error, `Failed to validate Cloudflare connection credentials [accountId=${accountId}]`);
     if (error instanceof AxiosError) {
       throw new BadRequestError({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        message: `Failed to validate credentials: ${error.response?.data?.errors?.[0]?.message || error.message || "Unknown error"}`
+        message: `Failed to validate credentials: ${getCloudflareErrorMessage(error)}`
       });
     }
     throw new BadRequestError({

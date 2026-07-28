@@ -18,6 +18,7 @@ export enum CloudflareApiTokenPolicyEffect {
 
 export enum CloudflareApiTokenPolicyScope {
   Account = "account",
+  AllZones = "all-zones",
   Zones = "zones"
 }
 
@@ -41,15 +42,16 @@ export const CloudflareApiTokenPolicySchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["zoneIds"],
-        message: "At least one zone is required when the policy is scoped to zones"
+        message: "At least one zone is required when the policy is scoped to specific zones"
       });
     }
 
-    if (policy.scope === CloudflareApiTokenPolicyScope.Account && policy.zoneIds?.length) {
+    // reject zones on the other scopes rather than silently ignoring them
+    if (policy.scope !== CloudflareApiTokenPolicyScope.Zones && policy.zoneIds?.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["zoneIds"],
-        message: "Zones cannot be specified when the policy is scoped to the entire account"
+        message: "Zones can only be specified when the policy is scoped to specific zones"
       });
     }
   });
