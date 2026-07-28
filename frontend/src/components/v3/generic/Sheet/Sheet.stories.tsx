@@ -3,7 +3,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { Label } from "../Label";
-import { Separator } from "../Separator";
 import {
   Sheet,
   SheetClose,
@@ -256,7 +255,7 @@ export const ScrollableContent: Story = {
     docs: {
       description: {
         story:
-          "For long bodies, anchor the header and footer while the middle scrolls — common for activity feeds, audit log details, and changelogs. Wrap the scroll region between two `Separator`s in a single flex column so the rules sit flush against the scrolling content."
+          "For long bodies, anchor the header and footer while the middle scrolls — common for activity feeds, audit log details, and changelogs. The header's built-in bottom border frames the top of the scroll region; add `border-t` to the footer to frame the bottom."
       }
     }
   },
@@ -270,22 +269,18 @@ export const ScrollableContent: Story = {
           <SheetTitle>Recent activity</SheetTitle>
           <SheetDescription>Audit events for this secret over the last 30 days.</SheetDescription>
         </SheetHeader>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Separator />
-          <div className="flex thin-scrollbar flex-1 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
-            {Array.from({ length: 12 }).map((_, i) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <div key={i} className="flex flex-col gap-1 border-b border-border pb-3">
-                <span className="font-medium">Event {i + 1}</span>
-                <span className="text-accent">
-                  Secret value updated by scott@infisical.com — {i + 1}h ago.
-                </span>
-              </div>
-            ))}
-          </div>
-          <Separator />
+        <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-3 overflow-y-auto p-4 text-sm text-foreground">
+          {Array.from({ length: 12 }).map((_, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <div key={i} className="flex flex-col gap-1 border-b border-border pb-3">
+              <span className="font-medium">Event {i + 1}</span>
+              <span className="text-accent">
+                Secret value updated by scott@infisical.com — {i + 1}h ago.
+              </span>
+            </div>
+          ))}
         </div>
-        <SheetFooter>
+        <SheetFooter className="border-t">
           <SheetClose asChild>
             <Button variant="ghost">Close</Button>
           </SheetClose>
