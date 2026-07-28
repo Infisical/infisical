@@ -44,16 +44,7 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
     if (index < displayItems.length - 1) itemBlocks.push({ type: "divider" });
   });
 
-  const alertInfoFields: Array<{ type: "mrkdwn"; text: string }> = [
-    { type: "mrkdwn", text: `*Alert:*\n${escapeSlackText(payload.alert.name)}` }
-  ];
-  if (payload.alert.condition) {
-    alertInfoFields.push({ type: "mrkdwn", text: `*Alert Before:*\n${escapeSlackText(payload.alert.condition)}` });
-  }
-
   const attachmentBlocks: TSlackBlock[] = [
-    { type: "section", fields: alertInfoFields },
-    { type: "divider" },
     { type: "section", text: { type: "mrkdwn", text: escapeSlackText(payload.summary) } },
     ...itemBlocks
   ];
