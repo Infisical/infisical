@@ -21,6 +21,7 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "signSshKey",
       tags: [ApiDocsTags.SshCertificates],
       description: "Sign SSH public key",
       body: z.object({
@@ -104,6 +105,7 @@ export const registerSshCertRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "issueSshCredentials",
       tags: [ApiDocsTags.SshCertificates],
       description: "Issue SSH credentials (certificate + key)",
       body: z.object({

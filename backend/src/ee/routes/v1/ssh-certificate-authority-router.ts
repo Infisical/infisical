@@ -21,6 +21,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "createSshCa",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Create SSH CA",
       body: z
@@ -95,6 +96,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "getSshCa",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Get SSH CA",
       params: z.object({
@@ -143,6 +145,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "getSshCaPublicKey",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Get public key of SSH CA",
       params: z.object({
@@ -170,6 +173,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "updateSshCa",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Update SSH CA",
       params: z.object({
@@ -225,6 +229,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "deleteSshCa",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Delete SSH CA",
       params: z.object({
@@ -272,6 +277,7 @@ export const registerSshCaRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
+      operationId: "listSshCaCertificateTemplates",
       tags: [ApiDocsTags.SshCertificateAuthorities],
       description: "Get list of certificate templates for the SSH CA",
       params: z.object({
