@@ -316,7 +316,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Redis.png",
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
-      port: z.coerce.number(),
+      port: z.coerce.number().int().min(1).max(65535),
       sslEnabled: z.boolean(),
       sslRejectUnauthorized: z.boolean(),
       sslCertificate: optionalTrimmedString
