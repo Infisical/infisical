@@ -1,0 +1,160 @@
+---
+title: "Cloudflare API Token"
+description: "Learn how to automatically rotate Cloudflare API tokens."
+---
+
+<Note>
+  **Rotation Type: Dual-Phase**
+
+  This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
+</Note>
+
+## Prerequisites
+
+- Create a [Cloudflare Connection](/integrations/app-connections/cloudflare). That connection is used to create and delete API tokens on your behalf during rotation.
+- The connection's API token must include the **Account** - **API Tokens** - **Edit** permission. See the **Secret Rotation** tab under [Configure API Token and Account ID for Infisical](/integrations/app-connections/cloudflare#configure-api-token-and-account-id-for-infisical) for the exact configuration.
+
+## Create a Cloudflare API Token Rotation in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
+
+        ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
+
+        2. Select the **Cloudflare API Token** option.
+
+        ![Select Cloudflare API Token](/images/secret-rotations-v2/cloudflare-api-token/select-cloudflare-api-token.png)
+
+        3. Configure the rotation behavior, then click **Next**.
+
+        - **Cloudflare Connection** - The connection that will create and delete API tokens during rotation.
+        - **Rotation Interval** - The interval, in days, after which a rotation is triggered.
+        - **Rotate At** - The local time of day when rotation runs once the interval has elapsed.
+        - **Auto-Rotation Enabled** - Whether to rotate automatically on the interval. Turn off to rotate only manually or pause rotation.
+
+        ![Rotation Configuration](/images/secret-rotations-v2/cloudflare-api-token/configuration.png)
+
+        4. Set the Cloudflare API token parameters, then click **Next**.
+
+        The **General** tab defines the token Infisical generates:
+
+        - **Token Name** - The name for the generated token, up to 100 characters. A timestamp is appended to each generated token so every rotation produces a distinct name in Cloudflare.
+        - **Access Policies** - The permissions granted to the generated token. Add a policy for each permission group you want to grant, using **Add policy**. Each policy has:
+            - **Effect** - Whether to `Allow` or `Deny` the selected permission group.
+            - **Scope** - The resources the policy applies to:
+                - `Entire account` - The whole Cloudflare account the connection is bound to.
+                - `All zones` - Every zone in the account, including zones added later.
+                - `Specific zones` - Only the zones you select.
+            - **Zones** - The zones the policy applies to. Shown only when the scope is `Specific zones`, and required in that case.
+            - **Permission group** - The Cloudflare permission group to grant. The list is fetched through your Cloudflare Connection and filtered to the groups that are valid for the selected scope.
+
+        Policies that target the same effect, scope, and zones are combined into a single Cloudflare policy when the token is created.
+
+        The **Restrictions** tab optionally limits where the generated token can be used:
+
+        - **Allowed IPs** (optional) - The generated token can only be used from these IP addresses or CIDR blocks, one entry per line. Leave empty to allow any IP.
+        - **Disallowed IPs** (optional) - The generated token cannot be used from these IP addresses or CIDR blocks, one entry per line.
+
+        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-api-token/parameters.png)
+
+        5. Specify the secret names that the rotated API token will be mapped to. Then click **Next**.
+
+        - **Token ID** - The name of the secret in Infisical where the generated token's ID will be stored.
+        - **API Token** - The name of the secret in Infisical where the generated token's value will be stored.
+
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/cloudflare-api-token/secrets-mapping.png)
+
+        6. Give your rotation a name and description (optional). Then click **Next**.
+
+        - **Name** - A slug-friendly name for this rotation configuration.
+        - **Description** (optional) - Notes about this rotation.
+
+        ![Rotation Details](/images/secret-rotations-v2/cloudflare-api-token/details.png)
+
+        7. Review your configuration, then click **Create Secret Rotation**.
+
+        ![Rotation Review](/images/secret-rotations-v2/cloudflare-api-token/review.png)
+
+        8. Your **Cloudflare API Token** rotation is created. The current API token is available as a secret at the mapped path. Rotations will create a new token, switch the active secret to it, then revoke the previous token for zero-downtime rotation.
+
+        ![Rotation Created](/images/secret-rotations-v2/cloudflare-api-token/created.png)
+
+        <Note>
+          Infisical sets an expiration on every token it generates, calculated as twice the rotation interval plus one day, with a minimum of 7 days. This guarantees a token can never expire while it is still the active or previous credential.
+        </Note>
+    </Tab>
+    <Tab title="API">
+        To create a Cloudflare API Token rotation, call the [Create Cloudflare API Token Rotation](/api-reference/endpoints/secret-rotations/cloudflare-api-token/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+          --url https://us.infisical.com/api/v2/secret-rotations/cloudflare-api-token \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "name": "my-cloudflare-rotation",
+            "projectId": "<project-id>",
+            "description": "Cloudflare API token rotation",
+            "connectionId": "<cloudflare-connection-id>",
+            "environment": "dev",
+            "secretPath": "/",
+            "isAutoRotationEnabled": true,
+            "rotationInterval": 30,
+            "rotateAtUtc": {
+              "hours": 0,
+              "minutes": 0
+            },
+            "parameters": {
+              "name": "infisical-rotated-token",
+              "policies": [
+                {
+                  "effect": "allow",
+                  "scope": "account",
+                  "permissionGroupIds": ["<permission-group-id>"]
+                }
+              ],
+              "allowedIps": ["203.0.113.0/24"]
+            },
+            "secretsMapping": {
+              "tokenId": "CLOUDFLARE_API_TOKEN_ID",
+              "apiToken": "CLOUDFLARE_API_TOKEN"
+            }
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "secretRotation": {
+            "id": "<rotation-id>",
+            "name": "my-cloudflare-rotation",
+            "description": "Cloudflare API token rotation",
+            "secretsMapping": {
+              "tokenId": "CLOUDFLARE_API_TOKEN_ID",
+              "apiToken": "CLOUDFLARE_API_TOKEN"
+            },
+            "isAutoRotationEnabled": true,
+            "activeIndex": 0,
+            "connectionId": "<cloudflare-connection-id>",
+            "rotationInterval": 30,
+            "rotateAtUtc": { "hours": 0, "minutes": 0 },
+            "type": "cloudflare-api-token",
+            "parameters": {
+              "name": "infisical-rotated-token",
+              "policies": [
+                {
+                  "effect": "allow",
+                  "scope": "account",
+                  "permissionGroupIds": ["<permission-group-id>"]
+                }
+              ],
+              "allowedIps": ["203.0.113.0/24"]
+            }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>

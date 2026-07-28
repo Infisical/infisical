@@ -78,6 +78,28 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
           </Accordion>
         </AccordionGroup>
       </Tab>
+      <Tab title="Secret Rotation">
+        <AccordionGroup>
+          <Accordion title="Cloudflare API Token">
+            Use the following permissions to grant Infisical access to create and revoke Cloudflare API tokens during rotation:
+
+            ![Configure Token](/images/app-connections/cloudflare/cloudflare-api-token-configure-permissions.png)
+
+            **Required Permissions:**
+            - **Account** - **API Tokens** - **Edit**
+
+            The **API Tokens** - **Edit** permission is what allows Infisical to create the replacement token and revoke the previous one on each rotation cycle. Without it, rotation fails when creating the new token.
+
+            <Note>
+              Infisical also uses this connection to list the zones and permission groups you can choose from when configuring the rotation. If you plan to scope generated tokens to specific zones, add **Account** - **Account Settings** - **Read** as well.
+            </Note>
+
+            The generated tokens are not granted these permissions. Each rotated token only receives the access policies you configure on the [Cloudflare API Token rotation](/documentation/platform/secret-rotation/cloudflare-api-token) itself.
+
+            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+          </Accordion>
+        </AccordionGroup>
+      </Tab>
     </Tabs>
 
   </Step>
