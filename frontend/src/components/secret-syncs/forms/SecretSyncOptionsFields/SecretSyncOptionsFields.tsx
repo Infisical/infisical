@@ -45,6 +45,7 @@ import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
 import { QoverySyncOptionsFields } from "./QoverySyncOptionsFields";
 import { RenderSyncOptionsFields } from "./RenderSyncOptionsFields";
 import { SecretSyncKeySchemaField } from "./SecretSyncKeySchemaField";
+import { SpaceliftSyncOptionsFields } from "./SpaceliftSyncOptionsFields";
 import { TriggerDevSyncOptionsFields } from "./TriggerDevSyncOptionsFields";
 
 type Props = {
@@ -152,8 +153,10 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Rundeck:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
-    case SecretSync.Spacelift:
       AdditionalSyncOptionsFieldsComponent = null;
+      break;
+    case SecretSync.Spacelift:
+      AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsFields />;
       break;
     default:
       throw new Error(`Unhandled Additional Sync Options Fields: ${destination}`);

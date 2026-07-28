@@ -36,7 +36,10 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
-import { SpaceliftSyncReviewFields } from "./SpaceliftSyncReviewFields";
+import {
+  SpaceliftSyncOptionsReviewFields,
+  SpaceliftSyncReviewFields
+} from "./SpaceliftSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import {
   CloudflareWorkersSyncOptionsReviewFields,
@@ -258,6 +261,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

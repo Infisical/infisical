@@ -3148,6 +3148,10 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
         "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+    },
+    SPACELIFT: {
+      writeOnly:
+        "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
     }
   },
   DESTINATION_CONFIG: {

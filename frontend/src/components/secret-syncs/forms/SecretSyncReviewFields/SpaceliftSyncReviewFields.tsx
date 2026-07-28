@@ -1,8 +1,25 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+
+export const SpaceliftSyncOptionsReviewFields = () => {
+  const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Spacelift }>();
+
+  const [{ writeOnly }] = watch(["syncOptions"]);
+
+  return (
+    <Detail>
+      <DetailLabel>Mark as Secret</DetailLabel>
+      <DetailValue>
+        <Badge variant={writeOnly ? "success" : "neutral"}>
+          {writeOnly ? "Enabled" : "Disabled"}
+        </Badge>
+      </DetailValue>
+    </Detail>
+  );
+};
 
 export const SpaceliftSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Spacelift }>();

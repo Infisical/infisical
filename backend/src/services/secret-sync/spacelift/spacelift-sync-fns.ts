@@ -1,18 +1,178 @@
+/* eslint-disable no-await-in-loop */
+import { removeTrailingSlash } from "@app/lib/fn";
+import { safeRequest } from "@app/lib/validator";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { TSpaceliftSyncWithCredentials } from "./spacelift-sync-types";
 
+type TSpaceliftConfigElement = {
+  id: string;
+  value: string;
+  writeOnly: boolean;
+};
+
+const authenticateSpacelift = async (instanceUrl: string, apiKeyId: string, apiKeySecret: string): Promise<string> => {
+  const { data } = await safeRequest.post<{
+    data?: { apiKeyUser?: { jwt: string } };
+    errors?: { message: string }[];
+  }>(`${instanceUrl}/graphql`, {
+    query: `mutation GetSpaceliftToken($id: ID!, $secret: String!) { apiKeyUser(id: $id, secret: $secret) { jwt } }`,
+    variables: { id: apiKeyId, secret: apiKeySecret }
+  });
+
+  if (data.errors?.length || !data.data?.apiKeyUser?.jwt) {
+    throw new Error(`Failed to authenticate with Spacelift: ${data.errors?.[0]?.message ?? "no JWT returned"}`);
+  }
+
+  return data.data.apiKeyUser.jwt;
+};
+
+const graphqlRequest = async <T>(
+  instanceUrl: string,
+  jwt: string,
+  query: string,
+  variables?: Record<string, unknown>
+) => {
+  const { data } = await safeRequest.post<{ data?: T; errors?: { message: string }[] }>(
+    `${instanceUrl}/graphql`,
+    { query, variables },
+    { headers: { Authorization: `Bearer ${jwt}` } }
+  );
+
+  if (data.errors?.length) {
+    throw new Error(data.errors[0].message);
+  }
+
+  return data.data;
+};
+
+const getContextConfigElements = async (
+  instanceUrl: string,
+  jwt: string,
+  contextId: string
+): Promise<TSpaceliftConfigElement[]> => {
+  const data = await graphqlRequest<{ context?: { config: TSpaceliftConfigElement[] } }>(
+    instanceUrl,
+    jwt,
+    `query GetContextConfig($id: ID!) { context(id: $id) { config { id value writeOnly } } }`,
+    { id: contextId }
+  );
+
+  return data?.context?.config ?? [];
+};
+
+const addContextConfigElement = async (
+  instanceUrl: string,
+  jwt: string,
+  contextId: string,
+  key: string,
+  value: string,
+  writeOnly: boolean
+) => {
+  await graphqlRequest(
+    instanceUrl,
+    jwt,
+    `mutation AddContextConfig($context: ID!, $config: ConfigInput!) {
+      contextConfigAdd(context: $context, config: $config) { id }
+    }`,
+    {
+      context: contextId,
+      config: { id: key, value, type: "ENVIRONMENT_VARIABLE", writeOnly }
+    }
+  );
+};
+
+const deleteContextConfigElement = async (instanceUrl: string, jwt: string, contextId: string, key: string) => {
+  await graphqlRequest(
+    instanceUrl,
+    jwt,
+    `mutation DeleteContextConfig($context: ID!, $id: ID!) {
+      contextConfigDelete(context: $context, id: $id) { id }
+    }`,
+    { context: contextId, id: key }
+  );
+};
+
 export const SpaceliftSyncFns = {
-  syncSecrets: async (_secretSync: TSpaceliftSyncWithCredentials, _secretMap: TSecretMap): Promise<void> => {
-    // TODO: Implement syncing secrets to Spacelift context
+  syncSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+    const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
+    const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
+    const { contextId } = secretSync.destinationConfig;
+    const writeOnly = secretSync.syncOptions?.writeOnly ?? false;
+
+    const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
+    const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
+    const existingMap = new Map(existingElements.map((e) => [e.id, e]));
+
+    for (const key of Object.keys(secretMap)) {
+      try {
+        const existing = existingMap.get(key);
+
+        if (existing) {
+          await deleteContextConfigElement(instanceUrl, jwt, contextId, key);
+        }
+
+        await addContextConfigElement(instanceUrl, jwt, contextId, key, secretMap[key].value, writeOnly);
+      } catch (error) {
+        throw new SecretSyncError({ error, secretKey: key });
+      }
+    }
+
+    if (secretSync.syncOptions.disableSecretDeletion) return;
+
+    for (const element of existingElements) {
+      if (!matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema)) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (!(element.id in secretMap)) {
+        try {
+          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
+        } catch (error) {
+          throw new SecretSyncError({ error, secretKey: element.id });
+        }
+      }
+    }
   },
 
   getSecrets: async (secretSync: TSpaceliftSyncWithCredentials): Promise<TSecretMap> => {
-    throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
+    const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
+    const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
+    const { contextId } = secretSync.destinationConfig;
+
+    const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
+    const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
+
+    const secretMap: TSecretMap = {};
+
+    for (const element of existingElements) {
+      if (!element.writeOnly) {
+        secretMap[element.id] = { value: element.value };
+      }
+    }
+
+    return secretMap;
   },
 
-  removeSecrets: async (_secretSync: TSpaceliftSyncWithCredentials, _secretMap: TSecretMap): Promise<void> => {
-    // TODO: Implement removing secrets from Spacelift context
+  removeSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
+    const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
+    const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
+    const { contextId } = secretSync.destinationConfig;
+
+    const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
+    const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
+
+    for (const element of existingElements) {
+      if (Object.prototype.hasOwnProperty.call(secretMap, element.id)) {
+        try {
+          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
+        } catch (error) {
+          throw new SecretSyncError({ error, secretKey: element.id });
+        }
+      }
+    }
   }
 };

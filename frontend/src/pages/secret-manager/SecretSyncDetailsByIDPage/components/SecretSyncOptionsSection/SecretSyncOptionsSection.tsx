@@ -20,6 +20,7 @@ import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOpti
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { QoverySyncOptionsSection } from "./QoverySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
+import { SpaceliftSyncOptionsSection } from "./SpaceliftSyncOptionsSection";
 import { TriggerDevSyncOptionsSection } from "./TriggerDevSyncOptionsSection";
 
 type Props = {
@@ -98,8 +99,10 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Rundeck:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
-    case SecretSync.Spacelift:
       AdditionalSyncOptionsComponent = null;
+      break;
+    case SecretSync.Spacelift:
+      AdditionalSyncOptionsComponent = <SpaceliftSyncOptionsSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

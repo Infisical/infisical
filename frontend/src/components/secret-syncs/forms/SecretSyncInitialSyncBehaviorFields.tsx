@@ -390,6 +390,17 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
           </AlertDescription>
         </Alert>
       )}
+      {destination === SecretSync.Spacelift &&
+        currentInitialBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination && (
+          <Alert className="mb-3" variant="warning">
+            <TriangleAlert />
+            <AlertTitle>Secret values are not imported</AlertTitle>
+            <AlertDescription>
+              Variables marked as secret in Spacelift cannot be read back, so only plaintext
+              variable values will be imported.
+            </AlertDescription>
+          </Alert>
+        )}
       {destination === SecretSync.Vercel &&
         !vercelSensitive &&
         currentInitialBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination && (

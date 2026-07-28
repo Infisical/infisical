@@ -1,0 +1,111 @@
+---
+title: "Spacelift Sync"
+description: "Learn how to configure a Spacelift Sync for Infisical."
+---
+
+**Prerequisites:**
+
+- Set up and add secrets to [Infisical Cloud](https://app.infisical.com).
+- Create a [Spacelift Connection](/integrations/app-connections/spacelift).
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Add Sync">
+        Navigate to **Project** > **Integrations**, select the **Secret Syncs** tab, and click **Add Sync**.
+
+        ![Add Sync](/images/secret-syncs/spacelift/spacelift-sync-add.png)
+      </Step>
+      <Step title="Select Spacelift">
+        Select **Spacelift** from the list of available secret syncs.
+
+        ![Select Spacelift](/images/secret-syncs/spacelift/spacelift-sync-select.png)
+      </Step>
+      <Step title="Configure source">
+        Configure the **Source** from where secrets should be retrieved, then click **Next**.
+
+        - **Environment**: The project environment from which to retrieve secrets.
+        - **Secret Path**: The folder path from which to retrieve secrets.
+
+        <Tip>
+          If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        ![Configure Source](/images/secret-syncs/spacelift/spacelift-sync-source.png)
+      </Step>
+      <Step title="Configure destination">
+        Configure the **Destination** where secrets should be deployed, then click **Next**.
+
+        - **Spacelift Connection**: Select the app connection to use for authentication.
+        - **Context**: Select the Spacelift context that will receive the synced secrets.
+
+        ![Configure Destination](/images/secret-syncs/spacelift/spacelift-sync-destination.png)
+      </Step>
+      <Step title="Configure sync options">
+        Configure the **Sync Options**, then click **Next**.
+
+        - **Initial Sync Behavior**: Determines how Infisical resolves the first sync.
+            - **Overwrite Destination Secrets**: Removes any secrets at the destination not present in Infisical.
+            - **Import Secrets (Prioritize Infisical)**: Imports secrets from Spacelift before syncing, prioritizing values from Infisical over Spacelift when keys conflict.
+            - **Import Secrets (Prioritize Spacelift)**: Imports secrets from Spacelift before syncing, prioritizing values from Spacelift over Infisical when keys conflict.
+        - **Key Schema**: A template that transforms secret names when syncing. Use `{{secretKey}}` for the original secret name and `{{environment}}` for the environment.
+        - **Auto-Sync Enabled**: Automatically sync secrets from the source location when changes occur. Disable this to sync manually only.
+        - **Disable Secret Deletion**: Prevents Infisical from removing secrets at the destination. Enable this when you intend to manage destination secrets outside Infisical.
+        - **Mark as Secret**: When enabled, synced variables are marked as secrets in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API.
+
+        <Warning>
+          Variables marked as secret in Spacelift cannot be read back by Infisical. When using an import sync behavior, only plaintext variable values will be imported. If **Disable Secret Deletion** is not enabled, any existing secret variables in the Spacelift context that are not present in Infisical will be deleted during sync.
+        </Warning>
+
+        ![Configure Sync Options](/images/secret-syncs/spacelift/spacelift-sync-options.png)
+      </Step>
+      <Step title="Configure details">
+        Configure the details of your Spacelift Sync, then click **Next**.
+
+        - **Name**: A slug-friendly name for the sync.
+        - **Description**: An optional description for the sync.
+
+        ![Configure Details](/images/secret-syncs/spacelift/spacelift-sync-details.png)
+      </Step>
+      <Step title="Review configuration">
+        Review the Spacelift Sync configuration, then click **Create Sync**.
+
+        ![Review Configuration](/images/secret-syncs/spacelift/spacelift-sync-review.png)
+      </Step>
+      <Step title="Sync created">
+        If enabled, the Spacelift Sync begins syncing your secrets to the selected context.
+
+        ![Sync Created](/images/secret-syncs/spacelift/spacelift-sync-created.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create a **Spacelift Sync**, make an API request to the [Create Spacelift Sync](/api-reference/endpoints/secret-syncs/spacelift/create) API endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/secret-syncs/spacelift \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-spacelift-sync",
+        "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "description": "an example sync",
+        "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "environment": "dev",
+        "secretPath": "/my-secrets",
+        "isEnabled": true,
+        "syncOptions": {
+          "initialSyncBehavior": "overwrite-destination",
+          "disableSecretDeletion": true,
+          "writeOnly": false
+        },
+        "destinationConfig": {
+          "contextId": "context-id",
+          "contextName": "my-context"
+        }
+      }'
+    ```
+  </Tab>
+</Tabs>
