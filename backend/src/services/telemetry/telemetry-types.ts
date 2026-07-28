@@ -15,6 +15,7 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
@@ -124,6 +125,11 @@ export enum PostHogEventTypes {
   PamAccountMemberAdded = "PAM Account Member Added",
   PamAccountMemberUpdated = "PAM Account Member Updated",
   PamAccountMemberRemoved = "PAM Account Member Removed",
+  PamAccountRotationConfigured = "PAM Account Rotation Configured",
+  PamAccountRotated = "PAM Account Rotated",
+  PamAccessRequestCreated = "PAM Access Request Created",
+  PamAccessRequestReviewed = "PAM Access Request Reviewed",
+  PamAccessGrantRevoked = "PAM Access Grant Revoked",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
   ResourceAuthMethodUpdated = "Resource Auth Method Updated",
@@ -1025,6 +1031,7 @@ export type TPamAccountAccessedEvent = {
     accountType: string;
     orgId: string;
     duration: number;
+    accessMethod: string;
   };
 };
 
@@ -1037,11 +1044,21 @@ export type TPamSessionStartedEvent = {
 };
 
 export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded | PostHogEventTypes.PamSessionTerminated;
+  event: PostHogEventTypes.PamSessionEnded;
   properties: {
     accountType: string;
     orgId: string;
     durationMs?: number;
+    endReason: PamSessionEndReason;
+    accessMethod: string;
+  };
+};
+
+export type TPamSessionTerminatedEvent = {
+  event: PostHogEventTypes.PamSessionTerminated;
+  properties: {
+    accountType: string;
+    orgId: string;
   };
 };
 
@@ -1070,6 +1087,47 @@ export type TPamAccountMemberEvent = {
     | PostHogEventTypes.PamAccountMemberAdded
     | PostHogEventTypes.PamAccountMemberUpdated
     | PostHogEventTypes.PamAccountMemberRemoved;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPamAccountRotationConfiguredEvent = {
+  event: PostHogEventTypes.PamAccountRotationConfigured;
+  properties: {
+    accountType: string;
+    orgId: string;
+    hasRotationAccount: boolean;
+    scheduledRotationEnabled: boolean;
+  };
+};
+
+export type TPamAccountRotatedEvent = {
+  event: PostHogEventTypes.PamAccountRotated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamAccessRequestCreatedEvent = {
+  event: PostHogEventTypes.PamAccessRequestCreated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamAccessRequestReviewedEvent = {
+  event: PostHogEventTypes.PamAccessRequestReviewed;
+  properties: {
+    orgId: string;
+    status: string;
+  };
+};
+
+export type TPamAccessGrantRevokedEvent = {
+  event: PostHogEventTypes.PamAccessGrantRevoked;
   properties: {
     orgId: string;
   };
@@ -2009,9 +2067,15 @@ export type TPostHogEvent = {
   | TPamAccountAccessedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
+  | TPamSessionTerminatedEvent
   | TPamProductMemberEvent
   | TPamFolderMemberEvent
   | TPamAccountMemberEvent
+  | TPamAccountRotationConfiguredEvent
+  | TPamAccountRotatedEvent
+  | TPamAccessRequestCreatedEvent
+  | TPamAccessRequestReviewedEvent
+  | TPamAccessGrantRevokedEvent
   | TResourceAuthMethodEvent
   | THoneyTokenCreatedEvent
   | THoneyTokenUpdatedEvent

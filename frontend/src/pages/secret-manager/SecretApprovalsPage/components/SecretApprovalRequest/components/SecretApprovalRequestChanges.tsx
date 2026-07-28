@@ -205,7 +205,12 @@ export const SecretApprovalRequestChanges = ({
     try {
       setWillMerge(true);
       await handleReview(ApprovalStatus.APPROVED);
-      await performSecretApprovalMerge({ projectId, id: secretApprovalRequestDetails.id });
+      await performSecretApprovalMerge({
+        projectId,
+        id: secretApprovalRequestDetails.id,
+        environment: secretApprovalRequestDetails.environment,
+        secretPath: secretApprovalRequestDetails.secretPath
+      });
     } catch {
       // Approval or merge failed, error already shown via mutation
     } finally {
@@ -684,6 +689,8 @@ export const SecretApprovalRequestChanges = ({
               statusChangeByEmail={secretApprovalRequestDetails.statusChangedByUser?.email}
               enforcementLevel={secretApprovalRequestDetails.policy.enforcementLevel}
               bypassReason={secretApprovalRequestDetails.bypassReason}
+              environment={secretApprovalRequestDetails.environment}
+              secretPath={secretApprovalRequestDetails.secretPath}
             />
           </SheetFooter>
         )}

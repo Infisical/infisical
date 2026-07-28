@@ -47,6 +47,7 @@ export type TListPamAccountsDTO = {
   projectId: string;
   folderId?: string;
   templateId?: string;
+  accountType?: string;
   search?: string;
 };
 

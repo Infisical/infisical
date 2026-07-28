@@ -96,31 +96,32 @@ export default function TeamInviteStep(): JSX.Element {
             />
             {validationError && <FieldError>{validationError}</FieldError>}
           </Field>
-          <Button
-            onClick={() => {
-              if (serverDetails?.emailConfigured) {
-                inviteUsers({ emails });
-              } else {
-                handlePopUpOpen("setUpEmail");
-              }
-            }}
-            variant="project"
-            size="lg"
-            isFullWidth
-            isPending={isPending}
-          >
-            {t("signup.step5-send-invites") ?? ""}
-          </Button>
-
-          <Button
-            onClick={redirectToHome}
-            isDisabled={isPending}
-            variant="outline"
-            size="lg"
-            isFullWidth
-          >
-            {t("signup.step5-skip") ?? "Skip"}
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={() => {
+                if (serverDetails?.emailConfigured) {
+                  inviteUsers({ emails });
+                } else {
+                  handlePopUpOpen("setUpEmail");
+                }
+              }}
+              variant="project"
+              size="lg"
+              isFullWidth
+              isPending={isPending}
+            >
+              {t("signup.step5-send-invites") ?? ""}
+            </Button>
+            <Button
+              onClick={redirectToHome}
+              isDisabled={isPending}
+              variant="outline"
+              size="lg"
+              isFullWidth
+            >
+              {t("signup.step5-skip") ?? "Skip"}
+            </Button>
+          </div>
         </CardContent>
       </AuthPagePanel>
       <EmailServiceSetupModal

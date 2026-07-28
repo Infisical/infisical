@@ -13,7 +13,6 @@ export const CronJobName = {
   DailyReminders: "daily-reminders",
   DailyResourceCleanup: "daily-resource-cleanup",
   DailySecretVersionCleanup: "daily-secret-version-cleanup",
-  DailySnapshotCleanup: "daily-snapshot-cleanup",
   DailyAuditLogCleanup: "daily-audit-log-cleanup",
   DailyResourceNotification: "daily-resource-notification",
   FrequentResourceCleanup: "frequent-resource-cleanup",
