@@ -76,26 +76,26 @@ export const secretApprovalPolicyServiceFactory = ({
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
-  const $policyExists = async ({
-    envIds,
-    envId,
+  const $assertNoConflictingPolicy = async ({
+    envs,
     secretPath,
-    policyId
+    excludePolicyId
   }: {
-    envIds?: string[];
-    envId?: string;
+    envs: { id: string; slug: string }[];
     secretPath: string;
-    policyId?: string;
+    excludePolicyId?: string;
   }) => {
-    if (!envIds && !envId) {
-      throw new BadRequestError({ message: "At least one environment should be provided" });
-    }
+    if (envs.length === 0) return;
     const policy = await secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({
-      envIds: envId ? [envId] : envIds || [],
-      secretPath
+      envIds: envs.map((e) => e.id),
+      secretPath,
+      excludePolicyId
     });
-
-    return policyId ? policy && policy.id !== policyId : Boolean(policy);
+    if (!policy) return;
+    const conflictEnv = envs.find((e) => policy.environments?.some((pe) => pe.id === e.id)) ?? envs[0];
+    throw new BadRequestError({
+      message: `A policy for secret path '${secretPath}' already exists in environment '${conflictEnv.slug}'`
+    });
   };
 
   const createSecretApprovalPolicy = async ({
@@ -161,14 +161,7 @@ export const secretApprovalPolicyServiceFactory = ({
       throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
     }
 
-    for (const env of envs) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await $policyExists({ envId: env.id, secretPath })) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
+    await $assertNoConflictingPolicy({ envs, secretPath });
 
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
@@ -357,20 +350,11 @@ export const secretApprovalPolicyServiceFactory = ({
     ) {
       envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: secretApprovalPolicy.projectId });
     }
-    for (const env of envs) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await $policyExists({
-          envId: env.id,
-          secretPath: secretPath || secretApprovalPolicy.secretPath,
-          policyId: secretApprovalPolicy.id
-        })
-      ) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath || secretApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
+    await $assertNoConflictingPolicy({
+      envs,
+      secretPath: secretPath || secretApprovalPolicy.secretPath,
+      excludePolicyId: secretApprovalPolicy.id
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
