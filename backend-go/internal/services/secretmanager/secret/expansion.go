@@ -74,7 +74,7 @@ func NewSecretExpander(secrets []*ProcessedSecret, opts ExpandOpts) *SecretExpan
 // It iteratively expands references, fetching absolute refs as needed.
 func (e *SecretExpander) Expand() {
 	for {
-		needed := e.expandPass()
+		needed := e.expandPass(false)
 		if len(needed) == 0 {
 			break
 		}
@@ -120,6 +120,13 @@ func (e *SecretExpander) Expand() {
 		}
 	}
 
+	// Everything fetchable has been fetched. Substitute what remains, including
+	// references that were deferred while their dependencies were still pending.
+	for i := range e.fullyExpanded {
+		e.fullyExpanded[i] = false
+	}
+	e.expandPass(true)
+
 	e.replaceDeniedRefs()
 	e.replaceNotFoundRefs()
 }
@@ -141,7 +148,12 @@ func (e *SecretExpander) HasDeniedRefs() bool {
 
 // expandPass expands all references in current values.
 // Returns list of absolute refs that are needed but not yet available.
-func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
+//
+// When final is false, a reference whose resolved value still depends on
+// un-fetched secrets is left untouched so the next pass can re-resolve it with
+// the full environment context. When final is true, anything still unresolved
+// (missing or permission-denied) collapses to an empty string.
+func (e *SecretExpander) expandPass(final bool) []AbsoluteSecretRef {
 	neededRefs := make(map[string]AbsoluteSecretRef)
 
 	for i, sec := range e.secrets {
@@ -149,7 +161,7 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 			continue
 		}
 
-		expanded, needed := e.expandValue(sec.Value, make(map[string]struct{}), 0)
+		expanded, needed := e.expandValue(sec.Value, sec.Environment, sec.SecretPath, true, final, make(map[string]struct{}), 0)
 		sec.Value = expanded
 
 		if len(needed) == 0 && !hasReferences(expanded) {
@@ -179,7 +191,15 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 // This happens because the outer ${A} resolves to the inner expansion result,
 // where the cycle was detected and replaced with empty string. This is intentional
 // behavior matching the Node.js implementation.
-func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, depth int) (string, []AbsoluteSecretRef) {
+func (e *SecretExpander) expandValue(
+	value string,
+	ownerEnv string,
+	ownerPath string,
+	isLocal bool,
+	final bool,
+	visited map[string]struct{},
+	depth int,
+) (string, []AbsoluteSecretRef) {
 	if depth > maxExpansionDepth {
 		return value, nil
 	}
@@ -199,56 +219,80 @@ func (e *SecretExpander) expandValue(value string, visited map[string]struct{}, 
 		var resolvedValue string
 		var secretID string
 		var found bool
+		var pending bool
 
-		if len(parts) == 1 {
-			// Relative reference: ${KEY}
+		if len(parts) == 1 && isLocal {
+			// Relative reference inside a secret from the requested board:
+			// resolve against the local (import-aware) lookup.
 			found = true // Always replace relative refs (with empty if not found)
 			if sec := e.localLookup[parts[0]]; sec != nil {
 				secretID = sec.Environment + ":" + sec.SecretPath + ":" + sec.Secret.Key
 
 				if _, cyclic := visited[secretID]; !cyclic {
 					visited[secretID] = struct{}{}
-					expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+					expandedValue, moreNeeded := e.expandValue(sec.Value, sec.Environment, sec.SecretPath, true, final, visited, depth+1)
 					delete(visited, secretID)
 					resolvedValue = expandedValue
 					neededRefs = append(neededRefs, moreNeeded...)
+					pending = len(moreNeeded) > 0
 				}
 				// else: cyclic, resolvedValue stays ""
 			}
 			// else: not found, resolvedValue stays "" (missing ref becomes empty)
 		} else {
-			// Absolute reference: ${env.path.KEY}
-			env := parts[0]
-			secretKey := parts[len(parts)-1]
-			pathParts := parts[1 : len(parts)-1]
-			path := "/"
-			if len(pathParts) > 0 {
-				path = "/" + strings.Join(pathParts, "/")
+			// Either an absolute reference ${env.path.KEY}, or a relative
+			// reference inside a secret that was itself fetched from another
+			// environment/path. The latter must resolve against that secret's
+			// own location, not the requested board.
+			var ref AbsoluteSecretRef
+			if len(parts) == 1 {
+				ref = AbsoluteSecretRef{Env: ownerEnv, Path: ownerPath, Key: parts[0]}
+			} else {
+				secretKey := parts[len(parts)-1]
+				pathParts := parts[1 : len(parts)-1]
+				path := "/"
+				if len(pathParts) > 0 {
+					path = "/" + strings.Join(pathParts, "/")
+				}
+				ref = AbsoluteSecretRef{Env: parts[0], Path: path, Key: secretKey}
 			}
 
-			ref := AbsoluteSecretRef{Env: env, Path: path, Key: secretKey}
 			secretID = ref.CacheKey()
-			locationKey := env + ":" + path
+			locationKey := ref.Env + ":" + ref.Path
 
 			if secrets, ok := e.absoluteLookup[locationKey]; ok {
-				if sec, ok := secrets[secretKey]; ok {
+				if sec, ok := secrets[ref.Key]; ok {
 					found = true
 
 					if _, cyclic := visited[secretID]; !cyclic {
 						visited[secretID] = struct{}{}
-						expandedValue, moreNeeded := e.expandValue(sec.Value, visited, depth+1)
+						expandedValue, moreNeeded := e.expandValue(sec.Value, ref.Env, ref.Path, false, final, visited, depth+1)
 						delete(visited, secretID)
 						resolvedValue = expandedValue
 						neededRefs = append(neededRefs, moreNeeded...)
+						pending = len(moreNeeded) > 0
 					}
 					// else: cyclic, resolvedValue stays ""
 				}
 			}
 
 			if !found {
-				neededRefs = append(neededRefs, ref)
-				continue
+				if !final {
+					neededRefs = append(neededRefs, ref)
+					continue
+				}
+				// Final pass: the secret is missing or was denied by the
+				// permission check, so the reference collapses to empty.
+				found = true
 			}
+		}
+
+		// The resolved value still depends on secrets that have not been
+		// fetched yet. Leave the reference in place so the next pass can
+		// resolve it with the correct environment context; substituting a
+		// partially expanded value here would strip that context away.
+		if pending && !final {
+			continue
 		}
 
 		if found {
