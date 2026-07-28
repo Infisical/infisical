@@ -6,6 +6,7 @@ import { TSecretRotationV2Form } from "../schemas";
 import { Auth0ClientSecretRotationSecretsMappingFields } from "./Auth0ClientSecretRotationSecretsMappingFields";
 import { AwsIamUserSecretRotationSecretsMappingFields } from "./AwsIamUserSecretRotationSecretsMappingFields";
 import { AzureClientSecretRotationSecretsMappingFields } from "./AzureClientSecretRotationSecretsMappingFields";
+import { CloudflareApiTokenRotationSecretsMappingFields } from "./CloudflareApiTokenRotationSecretsMappingFields";
 import { ConvexAccessKeyRotationSecretsMappingFields } from "./ConvexAccessKeyRotationSecretsMappingFields";
 import { DatabricksServicePrincipalSecretRotationSecretsMappingFields } from "./DatabricksServicePrincipalSecretRotationSecretsMappingFields";
 import { DatadogApiKeyRotationSecretsMappingFields } from "./DatadogApiKeyRotationSecretsMappingFields";
@@ -55,7 +56,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DatadogApiKey]: DatadogApiKeyRotationSecretsMappingFields,
   [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationSecretsMappingFields,
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationSecretsMappingFields,
-  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationSecretsMappingFields
+  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationSecretsMappingFields,
+  [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {
