@@ -1,3 +1,4 @@
+// public route paths
 export const publicPaths = [
   "/",
   // `/integrations`,
