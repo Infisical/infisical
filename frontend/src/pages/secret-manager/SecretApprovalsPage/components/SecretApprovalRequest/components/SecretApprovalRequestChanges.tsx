@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -127,6 +127,29 @@ const getReviewStatusBadge = (status?: ApprovalStatus) => {
       <HourglassIcon />
       Pending
     </Badge>
+  );
+};
+
+const TruncatedSecretPath = ({ value }: { value: string }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Tooltip
+      open={open}
+      onOpenChange={(next) => {
+        const el = ref.current;
+        const isTruncated = !!el && el.scrollWidth > el.clientWidth;
+        setOpen(next && isTruncated);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <div ref={ref} className="truncate text-sm text-foreground">
+          {value}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs break-words">{value}</TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -557,11 +580,13 @@ export const SecretApprovalRequestChanges = ({
                 </Detail>
                 <Detail>
                   <DetailLabel>Secret Path</DetailLabel>
-                  <DetailValue className="truncate">
-                    {secretApprovalRequestDetails.isReplicated
-                      ? approvalSecretPath
-                      : formatReservedPaths(secretApprovalRequestDetails.secretPath)}
-                  </DetailValue>
+                  <TruncatedSecretPath
+                    value={
+                      secretApprovalRequestDetails.isReplicated
+                        ? approvalSecretPath
+                        : formatReservedPaths(secretApprovalRequestDetails.secretPath)
+                    }
+                  />
                 </Detail>
                 {secretApprovalRequestDetails.commitMessage && (
                   <Detail>

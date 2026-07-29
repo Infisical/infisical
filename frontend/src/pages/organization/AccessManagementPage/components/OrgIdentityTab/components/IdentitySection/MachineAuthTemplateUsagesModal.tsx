@@ -1,19 +1,23 @@
-import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "@tanstack/react-router";
+import { FileKeyIcon } from "lucide-react";
 
 import {
-  EmptyState,
-  Modal,
-  ModalContent,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetTemplateUsages } from "@app/hooks/api/identityAuthTemplates";
 
@@ -41,51 +45,64 @@ export const MachineAuthTemplateUsagesModal = ({
   });
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onClose}>
-      <ModalContent title={`Usages for Identity Auth Template: ${templateName}`}>
-        <div>
-          <TableContainer>
-            <Table>
-              <THead>
-                <Tr className="h-14">
-                  <Th>Identity Name</Th>
-                  <Th>Identity ID</Th>
-                </Tr>
-              </THead>
-              <TBody>
-                {isPending && <TableSkeleton columns={3} innerKey="template-usages" />}
-                {!isPending &&
-                  usages.map((usage) => (
-                    <Tr
-                      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
-                      key={`usage-${usage.identityId}`}
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/identities/$identityId",
-                          params: {
-                            identityId: usage.identityId,
-                            orgId: organizationId
-                          }
-                        })
-                      }
-                    >
-                      <Td>{usage.identityName}</Td>
-                      <Td>
-                        <span className="text-sm text-mineshaft-400">{usage.identityId}</span>
-                      </Td>
-                    </Tr>
-                  ))}
-              </TBody>
-            </Table>
-            {!isPending && usages.length === 0 && (
-              <EmptyState
-                title="This template is not currently being used by any identities"
-                icon={faCertificate}
-              />
-            )}
-          </TableContainer>
-        </div>
-      </ModalContent>
-    </Modal>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Usages for Identity Auth Template: {templateName}</DialogTitle>
+        </DialogHeader>
+        {isPending || usages.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Identity Name</TableHead>
+                <TableHead>Identity ID</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isPending &&
+                Array.from({ length: 3 }, (_, index) => (
+                  <TableRow key={`template-usage-skeleton-${index + 1}`}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-56" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {!isPending &&
+                usages.map((usage) => (
+                  <TableRow
+                    key={`usage-${usage.identityId}`}
+                    onClick={() =>
+                      navigate({
+                        to: "/organizations/$orgId/identities/$identityId",
+                        params: { identityId: usage.identityId, orgId: organizationId }
+                      })
+                    }
+                  >
+                    <TableCell>{usage.identityName}</TableCell>
+                    <TableCell className="text-muted">{usage.identityId}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FileKeyIcon />
+              </EmptyMedia>
+              <EmptyTitle>This template is not currently being used by any identities</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 };
