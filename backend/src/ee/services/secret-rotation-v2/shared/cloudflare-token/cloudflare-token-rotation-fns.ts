@@ -124,8 +124,9 @@ export const deleteCloudflareToken = async ({
 };
 
 /**
- * Best-effort revocation of every listed token. Used by the cleanup paths, where a failure must not
- * abort the remaining deletions, so each one is logged rather than thrown.
+ * Revokes every listed token. Each deletion is attempted even when others fail, but if any token
+ * could not be revoked, an error is thrown so the caller knows the token is still active — a silent
+ * failure would let the user believe a live token had been revoked.
  */
 export const revokeCloudflareTokens = async ({
   accountId,
@@ -143,11 +144,20 @@ export const revokeCloudflareTokens = async ({
     tokenIds.map((tokenId) => deleteCloudflareToken({ accountId, connectionApiToken, tokenId }))
   );
 
+  const failureMessages: string[] = [];
+
   results.forEach((result, index) => {
     if (result.status === "rejected") {
       logger.error(result.reason, `${logPrefix} [tokenId=${tokenIds[index]}]`);
+      failureMessages.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
     }
   });
+
+  if (failureMessages.length) {
+    throw new BadRequestError({
+      message: `Failed to revoke ${failureMessages.length} of ${tokenIds.length} Cloudflare token(s) — the unrevoked token(s) are still active: ${failureMessages.join("; ")}`
+    });
+  }
 };
 
 /**
