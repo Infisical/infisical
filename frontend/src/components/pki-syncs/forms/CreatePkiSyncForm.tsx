@@ -333,7 +333,7 @@ export const CreatePkiSyncForm = ({
                     <Field className="mt-2">
                       <Field orientation="horizontal">
                         <FieldContent>
-                          <Label htmlFor="auto-sync-enabled">Auto-sync on Change</Label>
+                          <Label htmlFor="auto-sync-enabled">Auto-sync on change</Label>
                           <FieldDescription>
                             When certificates in the selected list change, sync automatically. Turn
                             off to only sync manually.

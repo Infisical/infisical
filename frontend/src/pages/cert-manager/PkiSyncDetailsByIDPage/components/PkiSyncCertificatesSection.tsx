@@ -13,10 +13,7 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
-import {
-  CertificateDisplayName,
-  getCertificateDisplayName
-} from "@app/components/utilities/certificateDisplayUtils";
+import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   Badge,
   Card,
@@ -226,7 +223,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>SAN / CN</TableHead>
+                    <TableHead className="w-full">SAN / CN</TableHead>
                     <TableHead>Certificate Status</TableHead>
                     <TableHead>Serial Number</TableHead>
                     <TableHead>External ID</TableHead>
@@ -268,7 +265,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         altNames: syncCert.certificateAltNames,
                         commonName: syncCert.certificateCommonName
                       },
-                      34,
+                      undefined,
                       "Unknown"
                     );
 
@@ -278,14 +275,14 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                       <TableRow key={syncCert.id}>
                         <TableCell isTruncatable>
                           <div className="flex items-center gap-2">
-                            <CertificateDisplayName
-                              cert={{
-                                altNames: syncCert.certificateAltNames,
-                                commonName: syncCert.certificateCommonName
-                              }}
-                              maxLength={34}
-                              fallback="Unknown"
-                            />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate">{originalDisplayName}</span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-lg break-words">
+                                {originalDisplayName}
+                              </TooltipContent>
+                            </Tooltip>
                             {supportsDefaultCertificate && isDefaultCertificate && (
                               <Badge variant="neutral">Default</Badge>
                             )}
@@ -298,7 +295,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         </TableCell>
                         <TableCell isTruncatable>
                           <div
-                            className="truncate text-xs"
+                            className="truncate"
                             title={syncCert.certificateSerialNumber || "Unknown"}
                           >
                             {truncateSerialNumber(syncCert.certificateSerialNumber)}
@@ -309,9 +306,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                             <div className="flex items-center gap-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="truncate text-xs">
-                                    {syncCert.externalIdentifier}
-                                  </span>
+                                  <span className="truncate">{syncCert.externalIdentifier}</span>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-none whitespace-nowrap">
                                   {syncCert.externalIdentifier}
@@ -323,7 +318,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               />
                             </div>
                           ) : (
-                            <span className="text-xs">-</span>
+                            <span className="text-muted">-</span>
                           )}
                         </TableCell>
                         <TableCell>
