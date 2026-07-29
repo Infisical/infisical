@@ -37,6 +37,7 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
   const [mintedEnrollment, setMintedEnrollment] = useState<
     (TGatewayEnrollmentToken & { gatewayId: string }) | null
   >(null);
+  const [isCommandDirty, setIsCommandDirty] = useState(false);
   const { mutateAsync: mint, isPending: isMinting } = useMintGatewayToken();
   const enrollment = mintedEnrollment?.gatewayId === gatewayId ? mintedEnrollment : null;
 
@@ -107,6 +108,7 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
                 gatewayName={gatewayName}
                 enrollmentToken={enrollment.token}
                 expiresAt={enrollment.expiresAt}
+                onCommandDirtyChange={setIsCommandDirty}
               />
               <OrgPermissionCan
                 I={OrgGatewayPermissionActions.EditGateways}
@@ -114,14 +116,14 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
               >
                 {(isAllowed) => (
                   <Button
-                    variant="neutral"
+                    variant={isCommandDirty ? "warning" : "neutral"}
                     size="sm"
                     isPending={isMinting}
                     isDisabled={!isAllowed || isMinting}
                     onClick={handleGenerate}
                   >
                     <RefreshCwIcon className="size-4" />
-                    Regenerate command
+                    {isCommandDirty ? "Update command for selected relay" : "Regenerate command"}
                   </Button>
                 )}
               </OrgPermissionCan>

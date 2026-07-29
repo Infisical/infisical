@@ -4,14 +4,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  PageLoader,
-  Separator
-} from "@app/components/v3";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, PageLoader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -59,17 +52,16 @@ const Page = () => {
         Relays
       </Link>
       <RelayPageHeader relay={relay} orgId={orgId} />
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="w-full min-w-0 lg:col-start-2 lg:row-start-1">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[24rem_minmax(0,1fr)]">
+        <div className="w-full min-w-0 lg:col-start-1 lg:row-start-1">
           <RelayDetailsCard relay={relay} />
         </div>
-        <div className="flex min-w-0 flex-col gap-y-8 lg:col-start-1 lg:row-start-1">
+        <div className="flex min-w-0 flex-col gap-y-8 lg:col-start-2 lg:row-start-1">
           <RelayDeploySection
             relayId={relayId}
             relayName={relay.name}
             authMethod={relay.authMethod}
           />
-          <Separator />
           <RelayConnectedGatewaysSection relayId={relayId} />
         </div>
       </div>

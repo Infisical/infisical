@@ -1,9 +1,11 @@
 import { useState } from "react";
 import {
   DoorClosedIcon,
+  ExternalLinkIcon,
   MoreHorizontalIcon,
   PencilIcon,
   SearchIcon,
+  Settings2Icon,
   TrashIcon
 } from "lucide-react";
 
@@ -166,6 +168,23 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSelectedPoolId(pool.id)}>
+                          <Settings2Icon />
+                          Manage Gateways
+                        </DropdownMenuItem>
+                        {pool.connectedResourcesCount > 0 && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              setResourcesPool({
+                                id: pool.id,
+                                name: pool.name
+                              })
+                            }
+                          >
+                            <ExternalLinkIcon />
+                            View Resources
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handlePopUpOpen("editPool", pool)}>
                           <PencilIcon />
                           Edit

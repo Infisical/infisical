@@ -52,11 +52,11 @@ const Page = () => {
         Gateways
       </Link>
       <GatewayPageHeader gateway={gateway} orgId={orgId} />
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="w-full min-w-0 lg:col-start-2 lg:row-start-1">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[24rem_minmax(0,1fr)]">
+        <div className="w-full min-w-0 lg:col-start-1 lg:row-start-1">
           <GatewayDetailsCard gateway={gateway} />
         </div>
-        <div className="flex min-w-0 flex-col gap-y-8 lg:col-start-1 lg:row-start-1">
+        <div className="flex min-w-0 flex-col gap-y-8 lg:col-start-2 lg:row-start-1">
           <GatewayDeploySection
             gatewayId={gatewayId}
             gatewayName={gateway.name}

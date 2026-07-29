@@ -235,7 +235,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span>{gw.name}</span>
-                          <Badge variant="neutral">Gateway v{gw.isV1 ? "1" : "2"}</Badge>
+                          <Badge variant="neutral">V{gw.isV1 ? "1" : "2"}</Badge>
                         </div>
                       </TableCell>
                       <TableCell>

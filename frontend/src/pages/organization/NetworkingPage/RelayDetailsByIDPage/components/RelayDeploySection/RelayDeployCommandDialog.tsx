@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLinkIcon } from "lucide-react";
 
-import { Badge, CodeBlock, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { Badge, CodeBlock, TabsContent } from "@app/components/v3";
 
 type Props = {
   relayId: string;
@@ -58,47 +57,30 @@ export const RelayDeployCommandContent = ({
   const startServiceCommand = `sudo systemctl start ${relayName}`;
   const expiryLabel = expiresAt ? formatTimeRemaining(expiresAt, now) : null;
   const isExpired = expiryLabel === "Expired";
-  const badgeLabel = authMethod === "aws" ? "AWS Auth" : "Token Auth";
   const label = (title: string) => (
-    <span className="flex flex-wrap items-center gap-2">
+    <span className="flex w-full items-center justify-between gap-2">
       <span>{title}</span>
-      <Badge variant="info">{badgeLabel}</Badge>
       {expiryLabel && (
-        <Badge variant={expiryLabel === "Expired" ? "danger" : "neutral"}>{expiryLabel}</Badge>
+        <Badge className="tabular-nums" variant={expiryLabel === "Expired" ? "danger" : "neutral"}>
+          {expiryLabel}
+        </Badge>
       )}
     </span>
   );
 
   return (
     <div className="min-w-0 space-y-4">
-      <Tabs defaultValue="cli" className="min-w-0">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList variant="filled">
-            <TabsTrigger value="cli">CLI</TabsTrigger>
-            <TabsTrigger value="systemd">System service</TabsTrigger>
-          </TabsList>
-          <a
-            href="https://infisical.com/docs/cli/overview"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-label underline underline-offset-4 hover:text-foreground"
-          >
-            Installation guide
-            <ExternalLinkIcon className="size-3" />
-          </a>
-        </div>
-        <TabsContent value="cli" className="min-w-0">
-          <CodeBlock value={cliCommand} label={label("Command")} isCopyable={!isExpired} />
-        </TabsContent>
-        <TabsContent value="systemd" className="min-w-0 space-y-4">
-          <CodeBlock
-            value={systemdInstallCommand}
-            label={label("Install service")}
-            isCopyable={!isExpired}
-          />
-          <CodeBlock value={startServiceCommand} label="Start service" />
-        </TabsContent>
-      </Tabs>
+      <TabsContent value="cli" className="mt-0 min-w-0">
+        <CodeBlock value={cliCommand} label={label("Command")} isCopyable={!isExpired} />
+      </TabsContent>
+      <TabsContent value="systemd" className="mt-0 min-w-0 space-y-4">
+        <CodeBlock
+          value={systemdInstallCommand}
+          label={label("Install service")}
+          isCopyable={!isExpired}
+        />
+        <CodeBlock value={startServiceCommand} label="Start service" />
+      </TabsContent>
       {authMethod === "aws" && (
         <p className="text-xs text-muted">
           Requires AWS credentials matching the configured allowlist.

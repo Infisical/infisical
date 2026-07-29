@@ -9,6 +9,11 @@ import {
   AccordionItem,
   AccordionTrigger,
   Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -70,14 +75,14 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
   const total = gateways?.length ?? 0;
 
   return (
-    <section className="min-w-0 space-y-4" aria-labelledby="relay-connected-gateways-title">
-      <div>
-        <h2 id="relay-connected-gateways-title" className="text-base font-medium text-foreground">
-          Connected Gateways
-        </h2>
-        <p className="mt-1 text-sm text-muted">Gateways currently routing through this relay</p>
-      </div>
-      <div>
+    <Card className="min-w-0" aria-labelledby="relay-connected-gateways-title">
+      <CardHeader>
+        <CardTitle>
+          <h2 id="relay-connected-gateways-title">Connected Gateways</h2>
+        </CardTitle>
+        <CardDescription>Gateways currently routing through this relay</CardDescription>
+      </CardHeader>
+      <CardContent>
         {isPending && (
           <div className="space-y-2" aria-label="Loading connected gateways">
             <Skeleton className="h-10 w-full" />
@@ -107,7 +112,7 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
                     <span className="flex-1">{label}</span>
                     <Badge variant={variant}>{items.length}</Badge>
                   </AccordionTrigger>
-                  <AccordionContent className="px-4 py-3">
+                  <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                     <ItemGroup>
                       {items.map((g) => (
                         <Item asChild variant="outline" size="xs" key={g.id}>
@@ -132,7 +137,7 @@ export const RelayConnectedGatewaysSection = ({ relayId }: { relayId: string }) 
             })}
           </Accordion>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 };

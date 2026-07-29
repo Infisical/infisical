@@ -280,10 +280,10 @@ export const GatewayTab = withPermission(
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <Table className="table-fixed">
+                <Table className="min-w-[57rem] table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[38%]">
+                      <TableHead className="w-80 min-w-80">
                         <TableHeadLabel>Name</TableHeadLabel>
                       </TableHead>
                       {showPoolsTab && (
@@ -342,7 +342,7 @@ export const GatewayTab = withPermission(
                               : undefined
                           }
                         >
-                          <TableCell className="min-w-0">
+                          <TableCell className="min-w-80">
                             <div className="flex min-w-0 items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -351,7 +351,7 @@ export const GatewayTab = withPermission(
                                 <TooltipContent>{el.name}</TooltipContent>
                               </Tooltip>
                               <Badge variant="neutral" className="shrink-0">
-                                Gateway v{el.isV1 ? "1" : "2"}
+                                V{el.isV1 ? "1" : "2"}
                               </Badge>
                             </div>
                           </TableCell>

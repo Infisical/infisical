@@ -42,8 +42,7 @@ import { useTimedReset } from "@app/hooks";
 import { useUpdateRelay } from "@app/hooks/api/relays";
 import { TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
 
-import { NetworkingAuthMethodLabel } from "../../../components/NetworkingAuthMethodLabel";
-import { RelayAuthMethodModal } from "../RelayAuthMethod/RelayAuthMethodModal";
+import { NetworkingAuthMethodForm } from "../../../components/NetworkingAuthMethodForm";
 
 const HealthBadge = ({ relay }: { relay: TRelayWithAuthMethod }) => {
   if (!relay.heartbeat) {
@@ -128,10 +127,10 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [generalModalOpen, setGeneralModalOpen] = useState(false);
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
+  const { mutateAsync: updateRelayAuthMethod, isPending: isUpdatingAuthMethod } = useUpdateRelay();
 
   const { authMethod } = relay;
   const isIdentityRelay = authMethod.method === "identity";
@@ -207,27 +206,7 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
           </DetailGroup>
           <Separator className="my-4" />
           <DetailGroup>
-            <DetailGroupHeader className="flex items-center justify-between">
-              Authentication
-              {!isIdentityRelay && (
-                <OrgPermissionCan
-                  I={OrgRelayPermissionActions.EditRelays}
-                  a={OrgPermissionSubjects.Relay}
-                >
-                  {(isAllowed) => (
-                    <IconButton
-                      size="xs"
-                      variant="ghost-muted"
-                      aria-label="edit auth method"
-                      isDisabled={!isAllowed}
-                      onClick={() => setAuthModalOpen(true)}
-                    >
-                      <PencilIcon />
-                    </IconButton>
-                  )}
-                </OrgPermissionCan>
-              )}
-            </DetailGroupHeader>
+            <DetailGroupHeader>Authentication</DetailGroupHeader>
             {isIdentityRelay && (
               <Alert variant="warning">
                 <TriangleAlertIcon />
@@ -248,36 +227,42 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
               </Alert>
             )}
             {!isIdentityRelay && (
-              <Detail>
-                <DetailLabel>Method</DetailLabel>
-                <DetailValue>
-                  <NetworkingAuthMethodLabel method={authMethod.method} />
-                </DetailValue>
-              </Detail>
-            )}
-            {authMethod.method === "aws" && (
-              <>
-                <Detail>
-                  <DetailLabel>STS Endpoint</DetailLabel>
-                  <DetailValue>{authMethod.config.stsEndpoint}</DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Allowed Principal ARNs</DetailLabel>
-                  <DetailValue>
-                    {authMethod.config.allowedPrincipalArns || (
-                      <span className="text-muted">&mdash;</span>
-                    )}
-                  </DetailValue>
-                </Detail>
-                <Detail>
-                  <DetailLabel>Allowed Account IDs</DetailLabel>
-                  <DetailValue>
-                    {authMethod.config.allowedAccountIds || (
-                      <span className="text-muted">&mdash;</span>
-                    )}
-                  </DetailValue>
-                </Detail>
-              </>
+              <OrgPermissionCan
+                I={OrgRelayPermissionActions.EditRelays}
+                a={OrgPermissionSubjects.Relay}
+              >
+                {(isAllowed) => (
+                  <NetworkingAuthMethodForm
+                    currentMethod={authMethod}
+                    isDisabled={!isAllowed}
+                    isPending={isUpdatingAuthMethod}
+                    onUpdate={async (form) => {
+                      try {
+                        await updateRelayAuthMethod({
+                          relayId: relay.id,
+                          authMethod:
+                            form.method === "aws"
+                              ? {
+                                  method: "aws",
+                                  stsEndpoint: form.stsEndpoint,
+                                  allowedPrincipalArns: form.allowedPrincipalArns,
+                                  allowedAccountIds: form.allowedAccountIds
+                                }
+                              : { method: "token" }
+                        });
+                        createNotification({ type: "success", text: "Auth method updated" });
+                        return true;
+                      } catch {
+                        createNotification({
+                          type: "error",
+                          text: "Failed to update auth method"
+                        });
+                        return false;
+                      }
+                    }}
+                  />
+                )}
+              </OrgPermissionCan>
             )}
             {authMethod.method === "identity" && authMethod.config.identityName && (
               <Detail>
@@ -295,15 +280,6 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
         relayId={relay.id}
         currentHost={relay.host}
       />
-
-      {!isIdentityRelay && (
-        <RelayAuthMethodModal
-          isOpen={authModalOpen}
-          onOpenChange={setAuthModalOpen}
-          relayId={relay.id}
-          currentMethod={authMethod}
-        />
-      )}
     </>
   );
 };

@@ -18,6 +18,7 @@ type Props = {
   gatewayName: string;
   enrollmentToken: string;
   expiresAt: string;
+  onCommandDirtyChange: (isDirty: boolean) => void;
 };
 
 const AUTO_RELAY_OPTION = { id: "_auto", name: "Auto Select Relay" };
@@ -35,13 +36,19 @@ const formatTimeRemaining = (expiresAt: string, now: number) => {
 };
 
 // Renders a freshly minted token as inline deployment instructions.
-export const EnrollmentTokenContent = ({ gatewayName, enrollmentToken, expiresAt }: Props) => {
+export const EnrollmentTokenContent = ({
+  gatewayName,
+  enrollmentToken,
+  expiresAt,
+  onCommandDirtyChange
+}: Props) => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
   const { data: relays, isPending: isRelaysLoading } = useGetRelays();
   const [relay, setRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
+  const [commandRelay, setCommandRelay] = useState<{ id: string; name: string }>(AUTO_RELAY_OPTION);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -49,7 +56,19 @@ export const EnrollmentTokenContent = ({ gatewayName, enrollmentToken, expiresAt
     return () => window.clearInterval(timer);
   }, []);
 
-  const resolvedRelayName = relay.id === "_auto" ? "" : relay.name;
+  useEffect(() => {
+    setCommandRelay(relay);
+    // A newly minted token commits the currently selected relay to the displayed command.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrollmentToken]);
+
+  const isCommandDirty = relay.id !== commandRelay.id;
+
+  useEffect(() => {
+    onCommandDirtyChange(isCommandDirty);
+  }, [isCommandDirty, onCommandDirtyChange]);
+
+  const resolvedRelayName = commandRelay.id === "_auto" ? "" : commandRelay.name;
   const expiryLabel = formatTimeRemaining(expiresAt, now);
   const isExpired = expiryLabel === "Expired";
 
@@ -65,10 +84,11 @@ export const EnrollmentTokenContent = ({ gatewayName, enrollmentToken, expiresAt
 
   const startServiceCommand = `sudo systemctl start ${gatewayName}`;
   const commandLabel = (
-    <span className="flex flex-wrap items-center gap-2">
+    <span className="flex w-full items-center justify-between gap-2">
       <span>Command</span>
-      <Badge variant="info">Token Auth</Badge>
-      <Badge variant={isExpired ? "danger" : "neutral"}>{expiryLabel}</Badge>
+      <Badge className="tabular-nums" variant={isExpired ? "danger" : "neutral"}>
+        {expiryLabel}
+      </Badge>
     </span>
   );
 
@@ -82,10 +102,11 @@ export const EnrollmentTokenContent = ({ gatewayName, enrollmentToken, expiresAt
           value={systemdInstallCommand}
           isCopyable={!isExpired}
           label={
-            <span className="flex flex-wrap items-center gap-2">
+            <span className="flex w-full items-center justify-between gap-2">
               <span>Install service</span>
-              <Badge variant="info">Token Auth</Badge>
-              <Badge variant={isExpired ? "danger" : "neutral"}>{expiryLabel}</Badge>
+              <Badge className="tabular-nums" variant={isExpired ? "danger" : "neutral"}>
+                {expiryLabel}
+              </Badge>
             </span>
           }
         />

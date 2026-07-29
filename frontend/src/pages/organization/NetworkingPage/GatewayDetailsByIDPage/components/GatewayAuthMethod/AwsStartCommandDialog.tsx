@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 
 import {
-  Badge,
   CodeBlock,
   Field,
   FieldDescription,
@@ -43,28 +42,13 @@ export const AwsStartCommandContent = ({ gatewayId, gatewayName }: Props) => {
 
   const startServiceCommand = `sudo systemctl start ${gatewayName}`;
 
-  const commandLabel = (
-    <span className="flex flex-wrap items-center gap-2">
-      <span>Command</span>
-      <Badge variant="info">AWS Auth</Badge>
-    </span>
-  );
-
   return (
     <div className="min-w-0 space-y-4">
       <TabsContent value="cli" className="mt-0 min-w-0">
-        <CodeBlock value={cliCommand} label={commandLabel} />
+        <CodeBlock value={cliCommand} label="Command" />
       </TabsContent>
       <TabsContent value="systemd" className="mt-0 min-w-0 space-y-4">
-        <CodeBlock
-          value={systemdInstallCommand}
-          label={
-            <span className="flex flex-wrap items-center gap-2">
-              <span>Install service</span>
-              <Badge variant="info">AWS Auth</Badge>
-            </span>
-          }
-        />
+        <CodeBlock value={systemdInstallCommand} label="Install service" />
         <CodeBlock value={startServiceCommand} label="Start service" />
       </TabsContent>
       <Field>
