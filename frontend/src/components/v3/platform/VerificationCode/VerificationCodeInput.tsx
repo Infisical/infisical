@@ -232,9 +232,10 @@ export const VerificationCodeInput = ({
         onBlur={() => setIsFocused(false)}
         onChange={(event) => {
           const input = event.currentTarget;
-          const nextValue = (
-            fields === 6 ? input.value.replace(/\D/g, "") : input.value
-          ).slice(0, fields);
+          const nextValue = (fields === 6 ? input.value.replace(/\D/g, "") : input.value).slice(
+            0,
+            fields
+          );
 
           input.value = nextValue;
           const nextSelectionStart = Math.min(
