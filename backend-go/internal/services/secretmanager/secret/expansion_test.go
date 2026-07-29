@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -367,6 +368,25 @@ func TestExpand_MaxDepth(t *testing.T) {
 	expander.Expand()
 
 	assert.Contains(t, secrets[0].Value, "levelA-")
+}
+
+// maxExpansionDepth bounds the whole Expand() call for a local chain: no later
+// pass may hand an already-expanded value a fresh depth budget and carry the
+// chain further than the cap allows.
+func TestExpand_MaxDepth_NotExtendedByLaterPasses(t *testing.T) {
+	const chainLen = 25
+	secrets := make([]*ProcessedSecret, chainLen)
+	for i := range chainLen {
+		value := "end"
+		if i < chainLen-1 {
+			value = fmt.Sprintf("L%02d-${K%02d}", i, i+1)
+		}
+		secrets[i] = newTestSecret(fmt.Sprintf("K%02d", i), value, "dev", "/")
+	}
+
+	NewSecretExpander(secrets, ExpandOpts{}).Expand()
+
+	assert.Equal(t, "L00-L01-L02-L03-L04-L05-L06-L07-L08-L09-L10-L11-${K12}", secrets[0].Value)
 }
 
 func TestExpand_MultipleReferencesInSingleValue(t *testing.T) {

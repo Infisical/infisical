@@ -45,6 +45,7 @@ type SecretExpander struct {
 	fullyExpanded  []bool
 	deniedRefs     map[string]struct{} // cacheKey -> denied by permission check
 	requestedRefs  map[string]struct{} // cacheKey -> already requested (avoid infinite loop)
+	deferred       bool                // a substitution was postponed pending a fetch
 }
 
 // NewSecretExpander creates an expander from priority-ordered secrets.
@@ -120,12 +121,13 @@ func (e *SecretExpander) Expand() {
 		}
 	}
 
-	// Everything fetchable has been fetched. Substitute what remains, including
-	// references that were deferred while their dependencies were still pending.
-	for i := range e.fullyExpanded {
-		e.fullyExpanded[i] = false
+	// A reference is left unsubstituted only when its resolved value still had
+	// unfetched dependencies, so the final substitution pass is needed only in
+	// that case. Running it unconditionally would hand every value a second
+	// depth budget and defeat maxExpansionDepth.
+	if e.deferred {
+		e.expandPass(true)
 	}
-	e.expandPass(true)
 
 	e.replaceDeniedRefs()
 	e.replaceNotFoundRefs()
@@ -292,6 +294,7 @@ func (e *SecretExpander) expandValue(
 		// resolve it with the correct environment context; substituting a
 		// partially expanded value here would strip that context away.
 		if pending && !final {
+			e.deferred = true
 			continue
 		}
 
