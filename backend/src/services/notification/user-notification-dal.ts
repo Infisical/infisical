@@ -74,7 +74,7 @@ export const userNotificationDALFactory = (db: TDbClient) => {
       try {
         // eslint-disable-next-line no-await-in-loop
         deletedNotificationIds = await db.transaction(async (trx) => {
-          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+          await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
 
           const findExpiredNotificationSubQuery = trx(TableName.UserNotifications)
             .where("createdAt", "<", threeMonthsAgo)

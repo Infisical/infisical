@@ -6,6 +6,8 @@ export type CaIssuanceCapabilities = {
   minRsaKeyBits?: number;
 };
 
+export const isScepRaCaSigningSupported = (caType?: CaType): boolean => caType === CaType.INTERNAL;
+
 export const getCaIssuanceCapabilities = (caType?: CaType): CaIssuanceCapabilities => {
   switch (caType) {
     case CaType.DIGICERT:

@@ -178,6 +178,8 @@ export const Navbar = () => {
     ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
     : currentOrg;
 
+  const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
+
   useEffect(() => {
     if (isModalIntrusive) {
       setShowCardDeclinedModal(true);
@@ -452,7 +454,8 @@ export const Navbar = () => {
                       {/* Current Organization */}
                       <CommandGroup heading="Current Organization">
                         <CommandItem
-                          value={rootOrg.name}
+                          value={rootOrg.id}
+                          keywords={[rootOrg.name]}
                           onSelect={() => {
                             setIsOrgSelectOpen(false);
                             if (isSubOrganization) {
@@ -513,7 +516,8 @@ export const Navbar = () => {
                             {subOrganizations.map((subOrg) => (
                               <CommandItem
                                 key={subOrg.id}
-                                value={subOrg.name}
+                                value={subOrg.id}
+                                keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
                                   handleOrgSelection({ organizationId: subOrg.id });
@@ -547,29 +551,29 @@ export const Navbar = () => {
                               }
                             </OrgPermissionCan>
                           </CommandGroup>
-                          <CommandSeparator />
+                          {otherOrgs.length > 0 && <CommandSeparator />}
                         </>
                       )}
                       {/* Other Organizations */}
-                      {orgs && orgs.filter((o) => o.id !== rootOrg.id).length > 0 && (
+                      {otherOrgs.length > 0 && (
                         <CommandGroup heading="Other Organizations">
-                          {orgs
-                            .filter((o) => o.id !== rootOrg.id)
-                            .map((org) => (
-                              <CommandItem
-                                key={org.id}
-                                value={org.name}
-                                onSelect={() => {
-                                  setIsOrgSelectOpen(false);
-                                  handleOrgNav(org);
-                                }}
-                              >
-                                <span className="truncate">{org.name}</span>
-                              </CommandItem>
-                            ))}
+                          {otherOrgs.map((org) => (
+                            <CommandItem
+                              key={org.id}
+                              value={org.id}
+                              keywords={[org.name]}
+                              onSelect={() => {
+                                setIsOrgSelectOpen(false);
+                                handleOrgNav(org);
+                              }}
+                            >
+                              <span className="truncate">{org.name}</span>
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       )}
                     </CommandList>
+                    <CommandSeparator />
                     <div className="p-1">
                       <button
                         type="button"
