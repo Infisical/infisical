@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -127,6 +127,38 @@ const getReviewStatusBadge = (status?: ApprovalStatus) => {
       <HourglassIcon />
       Pending
     </Badge>
+  );
+};
+
+// Renders the secret path with a `truncate` ellipsis and, only when the text is actually
+// clipped, wraps it in a tooltip that reveals the full path on hover.
+const TruncatedSecretPath = ({ value }: { value: string }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const check = () => setIsTruncated(el.scrollWidth > el.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value]);
+
+  const valueEl = (
+    <div ref={ref} className="truncate text-sm text-foreground">
+      {value}
+    </div>
+  );
+
+  if (!isTruncated) return valueEl;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{valueEl}</TooltipTrigger>
+      <TooltipContent className="max-w-xs break-words">{value}</TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -557,11 +589,13 @@ export const SecretApprovalRequestChanges = ({
                 </Detail>
                 <Detail>
                   <DetailLabel>Secret Path</DetailLabel>
-                  <DetailValue className="truncate">
-                    {secretApprovalRequestDetails.isReplicated
-                      ? approvalSecretPath
-                      : formatReservedPaths(secretApprovalRequestDetails.secretPath)}
-                  </DetailValue>
+                  <TruncatedSecretPath
+                    value={
+                      secretApprovalRequestDetails.isReplicated
+                        ? approvalSecretPath
+                        : formatReservedPaths(secretApprovalRequestDetails.secretPath)
+                    }
+                  />
                 </Detail>
                 {secretApprovalRequestDetails.commitMessage && (
                   <Detail>
