@@ -879,7 +879,7 @@ Every "notify me when X happens" alert (credential expiry and anything else buil
     | `delivery_success` | Every channel the run touched delivered. |
     | `delivery_partial` | At least one channel failed, so the notification was dropped on that channel. Dedup is per channel and target, so the next run retries only the failed channels. |
     | `delivery_failed` | No channel delivered — the whole run dropped. |
-    | `alert_not_found` | The alert was deleted (or its project soft-deleted) between enqueue and run. |
+    | `alert_not_found` | The alert was deleted between enqueue and run. |
     | `alert_disabled` | The alert was disabled between enqueue and run. |
     | `no_provider` | No provider is registered for the alert's resource type. A misconfiguration. |
     | `no_due_targets` | Nothing matched the alert condition this run. |
