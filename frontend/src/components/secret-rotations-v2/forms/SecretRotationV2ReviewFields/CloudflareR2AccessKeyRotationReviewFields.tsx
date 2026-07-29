@@ -19,10 +19,7 @@ export const CloudflareR2AccessKeyRotationReviewFields = () => {
     }
   >();
 
-  const [parameters, { accessKeyId, secretAccessKey }] = watch([
-    "parameters",
-    "secretsMapping"
-  ]);
+  const [parameters, { accessKeyId, secretAccessKey }] = watch(["parameters", "secretsMapping"]);
 
   return (
     <>

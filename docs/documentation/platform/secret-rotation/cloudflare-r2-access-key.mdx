@@ -29,7 +29,7 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
 
         2. Select the **Cloudflare R2 Access Key** option.
 
-        ![Select Cloudflare R2 Access Key](/images/secret-rotations-v2/cloudflare-r2-access-key/select-cloudflare-r2-access-key.png)
+        ![Select Cloudflare R2 Access Key](/images/secret-rotations-v2/cloudflare-r2-access-key/step-1.png)
 
         3. Configure the rotation behavior, then click **Next**.
         - **Cloudflare Connection** - The connection that will create and delete access keys during rotation.
@@ -37,7 +37,7 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
         - **Rotate At** - The local time of day when rotation runs once the interval has elapsed.
         - **Auto-Rotation Enabled** - Whether to rotate automatically on the interval. Turn off to rotate only manually or pause rotation.
 
-        ![Rotation Configuration](/images/secret-rotations-v2/cloudflare-r2-access-key/configuration.png)
+        ![Rotation Configuration](/images/secret-rotations-v2/cloudflare-r2-access-key/step-2.png)
 
         4. Set the R2 access key parameters, then click **Next**.
 
@@ -54,29 +54,29 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
         - **Allowed IPs** (optional) - The generated key can only be used from these IP addresses or CIDR blocks, one entry per line. Leave empty to allow any IP.
         - **Disallowed IPs** (optional) - The generated key cannot be used from these IP addresses or CIDR blocks, one entry per line.
 
-        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-r2-access-key/parameters.png)
+        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-r2-access-key/step-3.png)
 
         5. Specify the secret names that the rotated credentials will be mapped to. Then click **Next**.
 
         - **Access Key ID** - The name of the secret in Infisical where the generated access key ID will be stored.
         - **Secret Access Key** - The name of the secret in Infisical where the generated secret access key will be stored.
 
-        ![Rotation Secrets Mapping](/images/secret-rotations-v2/cloudflare-r2-access-key/secrets-mapping.png)
+        ![Rotation Secrets Mapping](/images/secret-rotations-v2/cloudflare-r2-access-key/step-4.png)
 
         6. Give your rotation a name and description (optional). Then click **Next**.
 
         - **Name** - A slug-friendly name for this rotation configuration.
         - **Description** (optional) - Notes about this rotation.
 
-        ![Rotation Details](/images/secret-rotations-v2/cloudflare-r2-access-key/details.png)
+        ![Rotation Details](/images/secret-rotations-v2/cloudflare-r2-access-key/step-5.png)
 
         7. Review your configuration, then click **Create Secret Rotation**.
 
-        ![Rotation Review](/images/secret-rotations-v2/cloudflare-r2-access-key/review.png)
+        ![Rotation Review](/images/secret-rotations-v2/cloudflare-r2-access-key/step-6.png)
 
-        8. Your **Cloudflare R2 Access Key** rotation is created. The credentials are available as secrets at the mapped path, and work with any S3 client pointed at `https://<account-id>.r2.cloudflarestorage.com`. Rotations will create a new key, switch the active secrets to it, then revoke the previous key for zero-downtime rotation.
+        8. Your **Cloudflare R2 Access Key** rotation is created. Rotations will create a new key, switch the active secrets to it, then revoke the previous key for zero-downtime rotation.
 
-        ![Rotation Created](/images/secret-rotations-v2/cloudflare-r2-access-key/created.png)
+        ![Rotation Created](/images/secret-rotations-v2/cloudflare-r2-access-key/step-7.png)
 
         <Note>
           Infisical sets an expiration on every token it generates, calculated as twice the rotation interval plus one day, with a minimum of 7 days. This guarantees a key can never expire while it is still the active or previous credential.
