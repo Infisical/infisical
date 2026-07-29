@@ -54,6 +54,24 @@ export const Route = createFileRoute("/_restrict-login-signup/login/select-organ
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({ event: "signup_completed" });
       }
+
+      // Provider-verified signups arrive with no org; send them to org setup instead of the
+      // personal-org fallback. Fetch errors fall through to the strip-redirect, whose main
+      // flow re-fetches and surfaces them.
+      let hasNoOrg = false;
+      try {
+        const orgsWithSubOrgs = await context.queryClient.ensureQueryData({
+          queryKey: organizationKeys.getUserOrganizationsWithSubOrgs,
+          queryFn: fetchOrganizationsWithSubOrgs
+        });
+        hasNoOrg = orgsWithSubOrgs.length === 0;
+      } catch {
+        hasNoOrg = false;
+      }
+      if (hasNoOrg) {
+        throw redirect({ to: "/organizations/onboarding", replace: true });
+      }
+
       // Consume the one-shot param so refresh/back-nav can't re-fire the conversion event
       // (search middlewares never run on the initial document load, so it must be stripped here).
       throw redirect({

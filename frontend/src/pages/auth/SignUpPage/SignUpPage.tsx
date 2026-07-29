@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
 import InitialSignupStep from "@app/components/auth/InitialSignupStep";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
@@ -213,30 +214,6 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     }
   };
 
-  const termsNotice = (
-    <p className="text-xs text-pretty text-label">
-      By signing up, you agree to our{" "}
-      <a
-        href="https://infisical.com/terms/cloud"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
-      >
-        Terms of Service
-      </a>{" "}
-      and{" "}
-      <a
-        href="https://infisical.com/privacy"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline underline-offset-2 transition-colors duration-200 hover:text-foreground hover:decoration-project/45"
-      >
-        Privacy Policy
-      </a>
-      .
-    </p>
-  );
-
   const renderBottomContent = () => {
     if (
       section === SignupSection.Email ||
@@ -244,7 +221,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       section === SignupSection.InviteTeam ||
       section === SignupSection.Complete
     ) {
-      return termsNotice;
+      return <AuthTermsNotice />;
     }
 
     if (section === SignupSection.VerifyCode) {
