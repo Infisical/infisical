@@ -109,6 +109,7 @@ Control which SANs can appear on certificates:
 | IP | `10.0.0.0/8` | Internal services |
 | Email | `*@example.com` | S/MIME certificates |
 | URI | `spiffe://example.com/*` | SPIFFE identities |
+| UPN | `*@example.com` | Active Directory user authentication |
 
 Each SAN rule specifies the type, a pattern (fixed or wildcard), and whether to **allow** or **deny** it.
 
@@ -160,6 +161,8 @@ Define higher-level intended uses:
 | Code Signing | Software artifacts |
 | Email Protection | S/MIME |
 | OCSP Signing | OCSP responders |
+| Time Stamping | Trusted timestamps |
+| Any Extended Key Usage | Any purpose |
 
 If you configure Extended Key Usages, only the usages listed in **Required** or **Allowed** are permitted. Leave Extended Key Usages unconfigured to allow any extended key usage.
 

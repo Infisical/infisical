@@ -66,6 +66,9 @@
   --breakpoint-dashboard: 1400px;
 
   /* Fonts */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
   --font-alliance:
     "Alliance No. 2", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
@@ -230,6 +233,15 @@
   --color-blue-700: #0053bf;
   --color-blue-800: #004299;
   --color-blue-900: #00367d;
+}
+
+/* iOS Safari zooms the viewport when focusing an input whose font-size is below 16px.
+   Bumping the type scale on detected iOS devices keeps form controls at/above that
+   threshold to prevent the zoom while preserving their relationship to surrounding text. */
+html[data-platform="ios"] {
+  --text-xs: 0.875rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
 }
 
 @utility min-table-row {

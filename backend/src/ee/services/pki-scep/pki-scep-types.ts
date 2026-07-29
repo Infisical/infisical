@@ -19,6 +19,17 @@ export enum ScepPkiStatus {
   PENDING = "3"
 }
 
+export enum ScepEnrollmentStatus {
+  Success = "success",
+  Pending = "pending",
+  Failure = "failure"
+}
+
+export enum ScepIssuanceStatus {
+  Success = "success",
+  Pending = "pending"
+}
+
 export enum ScepFailInfo {
   BadAlg = "0",
   BadMessageCheck = "1",

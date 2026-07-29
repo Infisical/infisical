@@ -1,6 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
+import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -4068,6 +4069,9 @@ interface SetPkiApplicationScepEnrollment {
     applicationId: string;
     profileId: string;
     challengeType: string;
+    signRaWithCa: boolean;
+    validationConnectionId?: string;
+    validationConnectionName?: string;
   };
 }
 
@@ -7043,7 +7047,7 @@ interface ScepEnrollmentEvent {
     transactionId: string;
     csrSubject: string;
     challengeType: ScepChallengeType;
-    status: "success" | "pending" | "failure";
+    status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
@@ -7059,7 +7063,7 @@ interface ScepRenewalEvent {
     transactionId: string;
     csrSubject: string;
     existingCertificateSerial?: string;
-    status: "success" | "pending" | "failure";
+    status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
