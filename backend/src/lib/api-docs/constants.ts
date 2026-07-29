@@ -3687,7 +3687,6 @@ export const SecretRotations = {
       apiToken: "The name of the secret that the rotated Cloudflare API token value will be mapped to."
     },
     CLOUDFLARE_R2_ACCESS_KEY: {
-      apiToken: "The name of the secret that the rotated Cloudflare API token value will be mapped to.",
       accessKeyId: "The name of the secret that the rotated R2 access key ID will be mapped to.",
       secretAccessKey: "The name of the secret that the rotated R2 secret access key will be mapped to."
     },

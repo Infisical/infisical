@@ -13,7 +13,6 @@ export const CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION: TSecretRotationV2Lis
       accessLevel: CloudflareR2AccessLevel.ObjectRead
     },
     secretsMapping: {
-      apiToken: "CLOUDFLARE_R2_API_TOKEN",
       accessKeyId: "CLOUDFLARE_R2_ACCESS_KEY_ID",
       secretAccessKey: "CLOUDFLARE_R2_SECRET_ACCESS_KEY"
     }

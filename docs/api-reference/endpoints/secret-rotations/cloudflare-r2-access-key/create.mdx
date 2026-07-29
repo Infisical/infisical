@@ -30,7 +30,6 @@ Creates a Cloudflare R2 Access Key secret rotation. Infisical will create and ro
 | `parameters.disallowedIps` | string[] | No | The IP addresses or CIDR blocks the generated access key is denied from. |
 | `secretsMapping.accessKeyId` | string | Yes | Secret key name to store the generated access key ID (e.g. `CLOUDFLARE_R2_ACCESS_KEY_ID`). |
 | `secretsMapping.secretAccessKey` | string | Yes | Secret key name to store the generated secret access key (e.g. `CLOUDFLARE_R2_SECRET_ACCESS_KEY`). |
-| `secretsMapping.apiToken` | string | Yes | Secret key name to store the underlying Cloudflare API token value (e.g. `CLOUDFLARE_R2_API_TOKEN`). |
 | `description` | string | No | Optional description. |
 
 ## Sample request
@@ -61,8 +60,7 @@ curl --request POST \
     },
     "secretsMapping": {
       "accessKeyId": "CLOUDFLARE_R2_ACCESS_KEY_ID",
-      "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
-      "apiToken": "CLOUDFLARE_R2_API_TOKEN"
+      "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY"
     }
   }'
 ```
@@ -77,8 +75,7 @@ curl --request POST \
     "description": "Cloudflare R2 access key rotation",
     "secretsMapping": {
       "accessKeyId": "CLOUDFLARE_R2_ACCESS_KEY_ID",
-      "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
-      "apiToken": "CLOUDFLARE_R2_API_TOKEN"
+      "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY"
     },
     "isAutoRotationEnabled": true,
     "activeIndex": 0,

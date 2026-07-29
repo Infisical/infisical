@@ -59,7 +59,6 @@ export const CloudflareR2AccessKeyRotationSchema = z
       disallowedIps: CloudflareTokenIpRestrictionsSchema
     }),
     secretsMapping: z.object({
-      apiToken: z.string().trim().min(1, "API Token secret name required"),
       accessKeyId: z.string().trim().min(1, "Access Key ID secret name required"),
       secretAccessKey: z.string().trim().min(1, "Secret Access Key secret name required")
     })

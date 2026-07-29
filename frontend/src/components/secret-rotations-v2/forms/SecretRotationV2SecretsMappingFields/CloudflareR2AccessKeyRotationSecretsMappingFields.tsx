@@ -51,24 +51,6 @@ export const CloudflareR2AccessKeyRotationSecretsMappingFields = () => {
           name="secretsMapping.secretAccessKey"
         />
       )
-    },
-    {
-      name: "API Token",
-      input: (
-        <Controller
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input
-                value={value}
-                onChange={onChange}
-                placeholder={rotationOption?.template.secretsMapping.apiToken}
-              />
-            </FormControl>
-          )}
-          control={control}
-          name="secretsMapping.apiToken"
-        />
-      )
     }
   ];
 

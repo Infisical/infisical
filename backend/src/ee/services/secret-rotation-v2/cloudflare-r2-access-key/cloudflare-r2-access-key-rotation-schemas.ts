@@ -40,18 +40,26 @@ export const CloudflareR2BucketSchema = z.object({
   jurisdiction: z.nativeEnum(CloudflareR2Jurisdiction).default(CloudflareR2Jurisdiction.Default)
 });
 
-export const CloudflareR2AccessKeyRotationGeneratedCredentialsSchema = z
-  .object({
-    // the underlying Cloudflare API token value, and the input to the secret access key hash
-    apiToken: z.string(),
-    // the API token's id — what R2's S3 API expects as the access key id, and what we delete on revoke
-    accessKeyId: z.string(),
-    // sha256 hex of `apiToken`
-    secretAccessKey: z.string()
-  })
-  .array()
+const CloudflareR2AccessKeyCredentialsSchema = z.object({
+  /**
+   * The underlying Cloudflare API token value. Retained only so the credential check can introspect
+   * the token and to derive the secret access key — it is never mapped to a secret or returned to
+   * callers, since R2's S3 API only needs the access key pair.
+   */
+  apiToken: z.string(),
+  // the API token's id — what R2's S3 API expects as the access key id, and what we delete on revoke
+  accessKeyId: z.string(),
+  // sha256 hex of `apiToken`
+  secretAccessKey: z.string()
+});
+
+export const CloudflareR2AccessKeyRotationGeneratedCredentialsSchema = CloudflareR2AccessKeyCredentialsSchema.array()
   .min(1)
   .max(2);
+
+/** Keeps `apiToken` inside the encryption boundary — zod strips it when serializing the response. */
+export const CloudflareR2AccessKeyRotationGeneratedCredentialsResponseSchema =
+  CloudflareR2AccessKeyCredentialsSchema.omit({ apiToken: true }).array().min(1).max(2);
 
 const CloudflareR2AccessKeyRotationParametersSchema = z.object({
   name: CloudflareTokenNameSchema.describe(SecretRotations.PARAMETERS.CLOUDFLARE_R2_ACCESS_KEY.name),
@@ -75,7 +83,6 @@ const CloudflareR2AccessKeyRotationParametersSchema = z.object({
 });
 
 const CloudflareR2AccessKeyRotationSecretsMappingSchema = z.object({
-  apiToken: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.CLOUDFLARE_R2_ACCESS_KEY.apiToken),
   accessKeyId: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.CLOUDFLARE_R2_ACCESS_KEY.accessKeyId),
   secretAccessKey: SecretNameSchema.describe(SecretRotations.SECRETS_MAPPING.CLOUDFLARE_R2_ACCESS_KEY.secretAccessKey)
 });
@@ -86,7 +93,6 @@ export const CloudflareR2AccessKeyRotationTemplateSchema = z.object({
     accessLevel: z.nativeEnum(CloudflareR2AccessLevel)
   }),
   secretsMapping: z.object({
-    apiToken: z.string(),
     accessKeyId: z.string(),
     secretAccessKey: z.string()
   })

@@ -172,7 +172,6 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TCloudflareR2AccessKeyRotationGeneratedCredentials> = (
     generatedCredentials
   ) => [
-    { key: secretsMapping.apiToken, value: generatedCredentials.apiToken },
     { key: secretsMapping.accessKeyId, value: generatedCredentials.accessKeyId },
     { key: secretsMapping.secretAccessKey, value: generatedCredentials.secretAccessKey }
   ];

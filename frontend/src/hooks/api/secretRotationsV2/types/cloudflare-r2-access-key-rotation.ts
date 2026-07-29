@@ -19,14 +19,12 @@ export type TCloudflareR2AccessKeyRotation = TSecretRotationV2Base & {
     disallowedIps?: string[];
   };
   secretsMapping: {
-    apiToken: string;
     accessKeyId: string;
     secretAccessKey: string;
   };
 };
 
 export type TCloudflareR2AccessKeyRotationGeneratedCredentials = {
-  apiToken: string;
   accessKeyId: string;
   secretAccessKey: string;
 };

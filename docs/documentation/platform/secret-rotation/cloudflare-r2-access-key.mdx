@@ -9,7 +9,7 @@ description: "Learn how to automatically rotate Cloudflare R2 access keys."
   This rotation maintains two active credential sets with overlapping validity, ensuring zero-downtime during rotation cycles.
 </Note>
 
-An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API: the **Access Key ID** is the token's ID, and the **Secret Access Key** is the SHA-256 hash of the token's value. This rotation creates that token scoped to the buckets you select, then hands you all three values as secrets.
+An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API: the **Access Key ID** is the token's ID, and the **Secret Access Key** is the SHA-256 hash of the token's value. This rotation creates that token scoped to the buckets you select, then hands you both values as secrets.
 
 ## Prerequisites
 
@@ -60,7 +60,6 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
 
         - **Access Key ID** - The name of the secret in Infisical where the generated access key ID will be stored.
         - **Secret Access Key** - The name of the secret in Infisical where the generated secret access key will be stored.
-        - **API Token** - The name of the secret in Infisical where the underlying Cloudflare API token value will be stored. Use this one when calling the Cloudflare REST API rather than R2's S3 API.
 
         ![Rotation Secrets Mapping](/images/secret-rotations-v2/cloudflare-r2-access-key/secrets-mapping.png)
 
@@ -115,8 +114,7 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
             },
             "secretsMapping": {
               "accessKeyId": "CLOUDFLARE_R2_ACCESS_KEY_ID",
-              "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
-              "apiToken": "CLOUDFLARE_R2_API_TOKEN"
+              "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY"
             }
           }'
         ```
@@ -131,8 +129,7 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
             "description": "Cloudflare R2 access key rotation",
             "secretsMapping": {
               "accessKeyId": "CLOUDFLARE_R2_ACCESS_KEY_ID",
-              "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
-              "apiToken": "CLOUDFLARE_R2_API_TOKEN"
+              "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY"
             },
             "isAutoRotationEnabled": true,
             "activeIndex": 0,

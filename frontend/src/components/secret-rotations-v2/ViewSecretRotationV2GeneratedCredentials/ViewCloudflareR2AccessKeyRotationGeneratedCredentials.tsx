@@ -25,9 +25,6 @@ export const ViewCloudflareR2AccessKeyRotationGeneratedCredentials = ({
           <CredentialDisplay isSensitive label="Secret Access Key">
             {activeCredentials?.secretAccessKey}
           </CredentialDisplay>
-          <CredentialDisplay isSensitive label="API Token">
-            {activeCredentials?.apiToken}
-          </CredentialDisplay>
         </>
       }
       inactiveCredentials={
@@ -37,9 +34,6 @@ export const ViewCloudflareR2AccessKeyRotationGeneratedCredentials = ({
           </CredentialDisplay>
           <CredentialDisplay isSensitive label="Secret Access Key">
             {inactiveCredentials?.secretAccessKey}
-          </CredentialDisplay>
-          <CredentialDisplay isSensitive label="API Token">
-            {inactiveCredentials?.apiToken}
           </CredentialDisplay>
         </>
       }

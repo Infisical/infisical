@@ -19,7 +19,7 @@ export const CloudflareR2AccessKeyRotationReviewFields = () => {
     }
   >();
 
-  const [parameters, { apiToken, accessKeyId, secretAccessKey }] = watch([
+  const [parameters, { accessKeyId, secretAccessKey }] = watch([
     "parameters",
     "secretsMapping"
   ]);
@@ -54,7 +54,6 @@ export const CloudflareR2AccessKeyRotationReviewFields = () => {
       <SecretRotationReviewSection label="Secrets Mapping">
         <GenericFieldLabel label="Access Key ID">{accessKeyId}</GenericFieldLabel>
         <GenericFieldLabel label="Secret Access Key">{secretAccessKey}</GenericFieldLabel>
-        <GenericFieldLabel label="API Token">{apiToken}</GenericFieldLabel>
       </SecretRotationReviewSection>
     </>
   );

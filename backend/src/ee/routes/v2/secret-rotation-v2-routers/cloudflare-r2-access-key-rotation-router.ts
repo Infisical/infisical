@@ -1,5 +1,5 @@
 import {
-  CloudflareR2AccessKeyRotationGeneratedCredentialsSchema,
+  CloudflareR2AccessKeyRotationGeneratedCredentialsResponseSchema,
   CloudflareR2AccessKeyRotationSchema,
   CreateCloudflareR2AccessKeyRotationSchema,
   UpdateCloudflareR2AccessKeyRotationSchema
@@ -15,5 +15,5 @@ export const registerCloudflareR2AccessKeyRotationRouter = async (server: Fastif
     responseSchema: CloudflareR2AccessKeyRotationSchema,
     createSchema: CreateCloudflareR2AccessKeyRotationSchema,
     updateSchema: UpdateCloudflareR2AccessKeyRotationSchema,
-    generatedCredentialsSchema: CloudflareR2AccessKeyRotationGeneratedCredentialsSchema
+    generatedCredentialsSchema: CloudflareR2AccessKeyRotationGeneratedCredentialsResponseSchema
   });
