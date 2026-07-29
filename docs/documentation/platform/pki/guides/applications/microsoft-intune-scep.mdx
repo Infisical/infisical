@@ -77,11 +77,7 @@ The request flow is: the device retrieves its profile from Intune, submits the S
         Navigate to **Certificate Authorities**, open the CA behind your profile, and in the **CA Certificates** section select **Download CA Certificate**.
 
         <Note>
-          Infisical exports `cert.pem`. Intune requires a DER-encoded `.cer` file, so convert it before uploading:
-
-          ```bash
-          openssl x509 -in cert.pem -outform der -out ca.cer
-          ```
+          Infisical exports the certificate as `cert.pem`, and Intune's upload field expects a `.cer` extension. Rename it to `cert.cer` before uploading. No conversion is required, because a `.cer` file carries Base-64 encoded X.509 data, which is what `cert.pem` already contains.
         </Note>
 
         ![Downloading the CA certificate from Infisical](/images/platform/pki/integrations/microsoft-intune/infisical-download-ca-cert.png)
@@ -129,9 +125,9 @@ The request flow is: the device retrieves its profile from Intune, submits the S
         | **Root Certificate** | The Trusted certificate profile created above |
         | **SCEP Server URLs** | The **SCEP endpoint URL** copied from Infisical |
 
-        Set the subject name format and subject alternative name to what your devices need. Intune seals these into its challenge and checks the device's request against them.
+        Set the subject name format and subject alternative name according to what your devices require. Intune seals both into its challenge and validates the device's request against them.
 
-        Not every field on this profile reaches Infisical. Intune sends the device's request and a yes or no on the challenge, so anything it does not put in that request has to be configured on the issuing side instead:
+        Not every field on this profile reaches Infisical. Intune transmits the device's request together with a validation result for the challenge, so any value it does not place in that request must be configured on the issuing side:
 
         | Setting | Where the issued certificate gets it |
         |---------|-------------------------------------|
@@ -141,7 +137,7 @@ The request flow is: the device retrieves its profile from Intune, submits the S
         | **Extended key usage** | The Infisical certificate profile, from its defaults |
 
         <Warning>
-          **Set the validity period and extended key usage on the Infisical profile, not only here.** Intune's copies of these describe what it expects the issuing CA to be configured for, and it never transmits them. A profile with no TTL falls back to 90 days, and a profile with no extended key usages issues certificates without any, whatever this page says. Keep the two sides in agreement so Intune reports what Infisical actually issued.
+          **Configure the validity period and extended key usage on the Infisical profile as well.** Intune's copies of these settings declare what it expects of the issuing CA, and it does not transmit them. A profile without a TTL falls back to 90 days, and a profile without extended key usages issues certificates that carry none, regardless of what this page specifies. Keep both sides aligned so that Intune reports the certificates Infisical actually issues.
         </Warning>
 
         <Note>
