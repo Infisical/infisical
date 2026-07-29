@@ -161,8 +161,11 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
       } catch (error) {
         logger.error(
           error,
-          `cloudflareR2AccessKeyRotation: failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.accessKeyId}]`
+          `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.accessKeyId}]`
         );
+        throw new BadRequestError({
+          message: `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.accessKeyId}]`
+        });
       }
     }
 

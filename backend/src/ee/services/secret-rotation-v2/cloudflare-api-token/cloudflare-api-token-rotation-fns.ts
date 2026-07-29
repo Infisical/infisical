@@ -13,6 +13,7 @@ import {
   TCloudflareTokenResources,
   verifyCloudflareToken
 } from "@app/ee/services/secret-rotation-v2/shared/cloudflare-token";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { CloudflareApiTokenPolicyScope } from "./cloudflare-api-token-rotation-schemas";
@@ -107,11 +108,14 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
     if (credentialsToRevoke?.tokenId) {
       try {
         await deleteCloudflareToken({ accountId, connectionApiToken, tokenId: credentialsToRevoke.tokenId });
-      } catch (error) {
+      } catch (error: unknown) {
         logger.error(
           error,
-          `cloudflareApiTokenRotation: failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.tokenId}]`
+          `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.tokenId}]`
         );
+        throw new BadRequestError({
+          message: `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.tokenId}]`
+        });
       }
     }
 

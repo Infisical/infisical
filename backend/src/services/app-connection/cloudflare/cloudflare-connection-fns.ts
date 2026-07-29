@@ -36,6 +36,10 @@ export const getCloudflareErrorMessage = (error: unknown) => {
     return (error.response?.data?.errors?.[0]?.message as string) || error.message || "Unknown error";
   }
 
+  // every Cloudflare failure is reported through here, so a non-HTTP error (a safeRequest rejection, a
+  // programming error) must still say something diagnosable rather than collapsing to "Unknown error"
+  if (error instanceof Error) return error.message || "Unknown error";
+
   return "Unknown error";
 };
 
@@ -204,7 +208,9 @@ export const listCloudflareR2Buckets = async (appConnection: TCloudflareConnecti
   return results.flatMap((result, index) => {
     if (result.status === "fulfilled") return result.value;
 
-    logger.error(
+    // an account without EU/FedRAMP enabled rejects those jurisdictions, so this is the expected path
+    // for most accounts on every call — not an error worth paging on
+    logger.debug(
       result.reason,
       `listCloudflareR2Buckets: skipping unavailable jurisdiction [jurisdiction=${jurisdictions[index]}]`
     );
@@ -214,15 +220,12 @@ export const listCloudflareR2Buckets = async (appConnection: TCloudflareConnecti
 };
 
 export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {
-  const { apiToken, accountId } = config.credentials;
+  const { apiToken } = config.credentials;
 
   try {
-    const resp = await safeRequest.get(
-      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/verify`,
-      {
-        headers: getCloudflareAuthHeaders(apiToken)
-      }
-    );
+    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/user/tokens/verify`, {
+      headers: getCloudflareAuthHeaders(apiToken)
+    });
 
     if (resp.data === null) {
       throw new BadRequestError({
