@@ -205,7 +205,7 @@ That is everything Infisical needs. What is left is starting your agent behind a
         ![Creating the agent-proxy identity with the Agent Proxy Policies template selected under Additional Privileges](/images/platform/agent-proxy/quickstart-create-identity.png)
 
         <Note>
-          The template grants exactly what a proxy needs: read access to secret values, leases for dynamic secrets, and usage reporting. That is the identity's entire access, which is why its **Role** stays **No Access**. For production, scope the same permissions to specific environments and paths: see [Permissions](/documentation/platform/agent-proxy/security#permissions).
+          The template grants exactly what a proxy needs: read access to secret values, leases for dynamic secrets, and usage reporting. That is the identity's entire access, which is why its **Role** stays **No Access**. For production, scope the same permissions to specific environments and paths: see [Permissions](/documentation/platform/agent-proxy/standalone-agent-proxy#permissions).
         </Note>
 
         Now open the identity and go to its [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
@@ -315,7 +315,7 @@ That is everything Infisical needs. What is left is starting your agent behind a
   <Card title="Proxied Services" icon="right-left" href="/documentation/platform/agent-proxy/proxied-services">
     Host patterns, header rewrites, and secret substitution in depth.
   </Card>
-  <Card title="Security" icon="shield-halved" href="/documentation/platform/agent-proxy/security">
-    Isolation, authentication, certificates, and permissions.
+  <Card title="Activity Logs" icon="scroll" href="/documentation/platform/agent-proxy/activity-logs">
+    See what the proxy brokered on every request.
   </Card>
 </CardGroup>

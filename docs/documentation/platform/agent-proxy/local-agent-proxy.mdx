@@ -269,7 +269,7 @@ On Linux the root is generated fresh in memory for each run and the environment 
 
 ## Permissions: it all runs as you
 
-`run` involves no agent identity and no `Proxy` permission check at all. Every API call is made with your own token: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
+`run` involves no agent identity and no `Proxy` permission check at all, and requests carry no proxy-authentication header. Every API call is made with your own token: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
 
 That is deliberate. You are running an agent as yourself, on your own machine, against secrets you could already read; a permission boundary between you and yourself would be theater. The sandbox is the security boundary here. The only question `run` asks is whether you can read the value.
 

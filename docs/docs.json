@@ -632,8 +632,7 @@
                       "documentation/platform/agent-proxy/proxied-services",
                       "documentation/platform/agent-proxy/local-agent-proxy",
                       "documentation/platform/agent-proxy/standalone-agent-proxy",
-                      "documentation/platform/agent-proxy/activity-logs",
-                      "documentation/platform/agent-proxy/security"
+                      "documentation/platform/agent-proxy/activity-logs"
                     ]
                   }
                 ]
@@ -4332,6 +4331,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/agent-proxy/security",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+    },
     {
       "source": "/documentation/platform/agent-proxy/deployment",
       "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
