@@ -231,17 +231,18 @@ export const VerificationCodeInput = ({
         name={name}
         onBlur={() => setIsFocused(false)}
         onChange={(event) => {
+          const input = event.currentTarget;
           const nextValue = (
-            fields === 6 ? event.target.value.replace(/\D/g, "") : event.target.value
+            fields === 6 ? input.value.replace(/\D/g, "") : input.value
           ).slice(0, fields);
 
-          event.target.value = nextValue;
+          input.value = nextValue;
           const nextSelectionStart = Math.min(
-            event.target.selectionStart ?? nextValue.length,
+            input.selectionStart ?? nextValue.length,
             nextValue.length
           );
           const nextSelectionEnd = Math.min(
-            event.target.selectionEnd ?? nextSelectionStart,
+            input.selectionEnd ?? nextSelectionStart,
             nextValue.length
           );
 
