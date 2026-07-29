@@ -36,6 +36,7 @@ export const registerServeUI = async (
         POSTHOG_API_KEY: appCfg.POSTHOG_PROJECT_API_KEY,
         INTERCOM_ID: appCfg.INTERCOM_ID,
         TELEMETRY_CAPTURING_ENABLED: appCfg.TELEMETRY_ENABLED,
+        PLATFORM_VERSION: appCfg.INFISICAL_PLATFORM_VERSION,
         CDN_HOST: cdnHost
       };
       // Define window.__toCdnUrl for Vite's experimental.renderBuiltUrl runtime support

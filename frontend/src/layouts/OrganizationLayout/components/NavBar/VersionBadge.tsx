@@ -21,12 +21,11 @@ export const VersionBadge = () => {
   // only populated on self-hosted instances that are behind the latest release
   const newerVersion = config.latestAvailableVersion;
 
+  const className =
+    "mt-1 mr-2 hidden items-center gap-x-1.5 text-xs text-muted transition-colors hover:text-accent md:inline-flex";
+
   if (!newerVersion) {
-    return (
-      <span className="mt-1 mr-2 hidden items-center gap-x-1.5 text-xs text-muted transition-colors hover:text-accent md:inline-flex">
-        v{version}
-      </span>
-    );
+    return <span className={className}>v{version}</span>;
   }
 
   return (
@@ -36,14 +35,13 @@ export const VersionBadge = () => {
           href="https://upgrade.infisical.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-1 mr-2 hidden items-center gap-x-1.5 text-xs text-muted transition-colors hover:text-accent md:inline-flex"
+          className={className}
         >
-          <span aria-hidden className="size-1.5 rounded-full bg-info" />
-          New version available
+          <span aria-hidden className="size-1.5 rounded-full bg-info" />v{version}
         </a>
       </TooltipTrigger>
       <TooltipContent>
-        v{version} → v{newerVersion}
+        New version available: v{version} → v{newerVersion}
       </TooltipContent>
     </Tooltip>
   );

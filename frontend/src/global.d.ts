@@ -7,6 +7,7 @@ declare global {
       POSTHOG_API_KEY?: string;
       INTERCOM_ID?: string;
       TELEMETRY_CAPTURING_ENABLED: string;
+      PLATFORM_VERSION?: string;
     };
     dataLayer?: Record<string, unknown>[];
   }

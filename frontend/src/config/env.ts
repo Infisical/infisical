@@ -31,6 +31,10 @@ export const envConfig = {
     // Release tags (e.g. "v0.159.15") are passed through as INFISICAL_PLATFORM_VERSION
     // by the release workflow. Strip any leading "v" so consumers can prefix it
     // themselves without producing "vv0.159.15".
-    return import.meta.env.VITE_INFISICAL_PLATFORM_VERSION?.replace(/^v/i, "");
+    const version =
+      window?.__INFISICAL_RUNTIME_ENV__?.PLATFORM_VERSION ||
+      import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;
+
+    return version?.replace(/^v/i, "");
   }
 };
