@@ -390,7 +390,8 @@
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/automated-bootstrapping",
                   "self-hosting/guides/production-hardening",
-                  "self-hosting/guides/monitoring-telemetry"
+                  "self-hosting/guides/monitoring-telemetry",
+                  "self-hosting/guides/postgres-high-availability"
                 ]
               },
               {

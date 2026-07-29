@@ -1,0 +1,473 @@
+---
+title: "PostgreSQL High Availability & Failover"
+description: "Set up PostgreSQL high availability, streaming replication, and failover for self-hosted Infisical deployments"
+---
+
+PostgreSQL is the single source of truth for all Infisical application data — secrets, version history, user accounts, access policies, audit logs, and configuration. Protecting this data with a high-availability (HA) setup is critical for production deployments.
+
+This guide covers the concepts, architecture patterns, and operational procedures for running PostgreSQL in an HA configuration with Infisical.
+
+## Overview
+
+A highly available PostgreSQL deployment for Infisical consists of:
+
+1. **Primary database** — handles all read and write operations
+2. **One or more replicas** — receive changes via streaming replication and serve read traffic
+3. **Automatic failover mechanism** — promotes a replica to primary if the primary becomes unavailable
+4. **Backup and recovery** — continuous backups enabling point-in-time recovery
+
+```mermaid
+flowchart LR
+    subgraph Infisical["Infisical Application Layer"]
+        app1["Instance 1"]
+        app2["Instance 2"]
+        app3["Instance N"]
+    end
+
+    subgraph PG["PostgreSQL Cluster"]
+        primary["Primary (read-write)"]
+        replica1["Replica 1 (read-only)"]
+        replica2["Replica 2 (read-only)"]
+        primary -- "Streaming replication" --> replica1
+        primary -- "Streaming replication" --> replica2
+    end
+
+    app1 -- "writes" --> primary
+    app2 -- "writes" --> primary
+    app3 -- "writes" --> primary
+    app1 -. "reads" .-> replica1
+    app2 -. "reads" .-> replica2
+```
+
+## Infisical Read Replica Configuration
+
+Infisical natively supports read replicas. When configured, Infisical routes read-heavy queries (secret lookups, project listings, etc.) to replicas while directing all writes to the primary database.
+
+Configure read replicas via the `DB_READ_REPLICAS` environment variable:
+
+```bash
+DB_READ_REPLICAS='[{"DB_CONNECTION_URI":"postgresql://user:pass@replica1:5432/infisical?sslmode=require"},{"DB_CONNECTION_URI":"postgresql://user:pass@replica2:5432/infisical?sslmode=require"}]'
+```
+
+<Info>
+  The primary connection string is set via `DB_CONNECTION_URI`. Read replicas are optional but recommended for production to offload read traffic and improve availability.
+</Info>
+
+## High Availability Options
+
+### Option A: Managed PostgreSQL (Recommended)
+
+Managed database services handle replication, failover, patching, and backups automatically. This is the lowest-operational-overhead path to HA.
+
+| **Cloud Provider** | **Service** | **HA Feature** |
+|--------------------|-------------|----------------|
+| AWS | [Amazon RDS for PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html) | Multi-AZ with automatic failover |
+| GCP | [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres/high-availability) | Regional HA with automatic failover |
+| Azure | [Azure Database for PostgreSQL](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-high-availability) | Zone-redundant HA |
+
+**When using managed PostgreSQL:**
+- Enable Multi-AZ / zone-redundant HA for automatic failover
+- Configure automated backups with point-in-time recovery
+- Create read replicas and configure `DB_READ_REPLICAS` in Infisical
+- Enable connection pooling (e.g., RDS Proxy, PgBouncer) for large deployments
+
+### Option B: Self-Managed PostgreSQL with Patroni
+
+For on-premise or air-gapped deployments where managed services are not available, [Patroni](https://patroni.readthedocs.io/) provides automatic failover and cluster management for PostgreSQL.
+
+#### Architecture
+
+```mermaid
+flowchart TB
+    subgraph ETCD["Etcd Cluster (Consensus)"]
+        etcd1["etcd node 1"]
+        etcd2["etcd node 2"]
+        etcd3["etcd node 3"]
+    end
+
+    subgraph PG["PostgreSQL + Patroni"]
+        pg1["Node 1 (Primary)"]
+        pg2["Node 2 (Replica)"]
+        pg3["Node 3 (Replica)"]
+    end
+
+    subgraph LB["HAProxy"]
+        lb["Load Balancer"]
+        lb -- "port 5000 (read-write)" --> pg1
+        lb -- "port 5001 (read-only)" --> pg2
+        lb -- "port 5001 (read-only)" --> pg3
+    end
+
+    pg1 <--> ETCD
+    pg2 <--> ETCD
+    pg3 <--> ETCD
+    pg1 -- "streaming replication" --> pg2
+    pg1 -- "streaming replication" --> pg3
+```
+
+#### Components
+
+| **Component** | **Purpose** | **Minimum Nodes** |
+|---------------|-------------|-------------------|
+| PostgreSQL + Patroni | Database with cluster management | 3 (1 primary + 2 replicas) |
+| Etcd | Distributed consensus for leader election | 3 |
+| HAProxy | Connection routing (primary vs. replica) | 1–2 (for redundancy) |
+
+#### Patroni Configuration
+
+Below is a reference Patroni configuration. Adapt network addresses, credentials, and tuning parameters to your environment.
+
+```yaml
+scope: infisical-cluster
+namespace: /db/
+name: postgresql1
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: <NODE_IP>:8008
+
+etcd:
+  hosts: <ETCD_1>:2379,<ETCD_2>:2379,<ETCD_3>:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      parameters:
+        max_connections: 500
+        shared_buffers: 4GB
+        effective_cache_size: 12GB
+        work_mem: 16MB
+        maintenance_work_mem: 512MB
+        max_worker_processes: 8
+        max_parallel_workers_per_gather: 4
+        max_parallel_workers: 8
+        wal_level: replica
+        hot_standby: "on"
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby_feedback: "on"
+        wal_keep_size: 1GB
+  initdb:
+    - encoding: UTF8
+    - data-checksums
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: <NODE_IP>:5432
+  data_dir: /var/lib/postgresql/data
+  authentication:
+    superuser:
+      username: postgres
+      password: "<POSTGRES_PASSWORD>"
+    replication:
+      username: replicator
+      password: "<REPLICATION_PASSWORD>"
+```
+
+<Warning>
+  Replace placeholder values (`<NODE_IP>`, `<ETCD_*>`, passwords) with your actual deployment details. Never use default or example passwords in production.
+</Warning>
+
+#### HAProxy Configuration for PostgreSQL Routing
+
+HAProxy routes connections to the current primary or replicas based on Patroni health checks:
+
+```conf
+frontend postgres_primary
+    bind *:5000
+    default_backend postgres_primary_backend
+
+frontend postgres_replicas
+    bind *:5001
+    default_backend postgres_replica_backend
+
+backend postgres_primary_backend
+    option httpchk GET /primary
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server pg1 <PG_NODE_1>:5432 check port 8008
+    server pg2 <PG_NODE_2>:5432 check port 8008
+    server pg3 <PG_NODE_3>:5432 check port 8008
+
+backend postgres_replica_backend
+    option httpchk GET /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server pg1 <PG_NODE_1>:5432 check port 8008
+    server pg2 <PG_NODE_2>:5432 check port 8008
+    server pg3 <PG_NODE_3>:5432 check port 8008
+```
+
+Then configure Infisical to connect through HAProxy:
+```bash
+# Primary (read-write)
+DB_CONNECTION_URI="postgresql://user:pass@haproxy:5000/infisical"
+
+# Read replicas
+DB_READ_REPLICAS='[{"DB_CONNECTION_URI":"postgresql://user:pass@haproxy:5001/infisical"}]'
+```
+
+### Option C: Kubernetes with CloudNativePG
+
+For Kubernetes deployments, the [CloudNativePG](https://cloudnative-pg.io/) operator manages the full PostgreSQL lifecycle including replication, failover, backup, and recovery.
+
+See the [Kubernetes (HA) reference architecture](/self-hosting/reference-architectures/on-prem-k8s-ha) for a complete deployment guide.
+
+Key capabilities:
+- Automatic primary election and replica promotion
+- Continuous WAL archiving to S3-compatible object storage
+- Point-in-time recovery from object storage
+- Declarative cluster configuration via Kubernetes CRDs
+
+## Failover Procedures
+
+### Automatic Failover (Within a Single Cluster)
+
+Both Patroni and CloudNativePG handle within-cluster failover automatically:
+
+1. The primary becomes unreachable (hardware failure, network partition, process crash)
+2. The failover mechanism detects the failure (typically within 10–30 seconds)
+3. The most up-to-date replica is promoted to primary
+4. Connection routing is updated — HAProxy (Patroni) or the Kubernetes service (CloudNativePG) sends write traffic to the new primary
+5. Remaining replicas re-attach to the new primary
+
+**Infisical behavior during failover:**
+- Write operations may fail briefly during the promotion window (typically &lt; 30 seconds)
+- Read operations against replicas continue uninterrupted
+- Infisical application instances automatically reconnect to the new primary — no restart required
+- Cached data in Redis remains valid throughout the failover
+
+### Manual Failover (Planned Maintenance)
+
+For planned maintenance (e.g., OS patching, hardware upgrades), perform a controlled switchover:
+
+<Tabs>
+  <Tab title="Patroni">
+    ```bash
+    # Perform a controlled switchover to a specific replica
+    patronictl switchover --primary postgresql1 --candidate postgresql2
+
+    # Verify the new cluster state
+    patronictl list
+    ```
+  </Tab>
+  <Tab title="CloudNativePG">
+    ```bash
+    # Trigger a switchover via the cluster resource
+    kubectl cnpg promote <cluster-name> <target-instance>
+
+    # Verify cluster status
+    kubectl cnpg status <cluster-name>
+    ```
+  </Tab>
+  <Tab title="Managed (AWS RDS)">
+    ```bash
+    # Reboot the primary with failover
+    aws rds reboot-db-instance \
+      --db-instance-identifier infisical-primary \
+      --force-failover
+
+    # Monitor the failover event
+    aws rds describe-events \
+      --source-identifier infisical-primary \
+      --source-type db-instance
+    ```
+  </Tab>
+</Tabs>
+
+### Cross-Datacenter Failover (Disaster Recovery)
+
+For multi-datacenter deployments where an entire datacenter becomes unavailable:
+
+1. **Verify the primary datacenter is truly down** — avoid split-brain by confirming the outage through multiple channels
+2. **Promote the replica in the surviving datacenter** to primary:
+   - **Patroni**: Reconfigure the surviving cluster's Patroni nodes to form an independent cluster
+   - **CloudNativePG**: Use the operator's promotion process for the replica cluster
+   - **Managed**: Promote the cross-region read replica to a standalone instance
+3. **Update Infisical configuration** — point `DB_CONNECTION_URI` to the promoted database
+4. **Update `DB_READ_REPLICAS`** to remove any replicas that are no longer accessible
+5. **Restart Infisical instances** to pick up the new configuration
+6. **Verify operation** — confirm Infisical is functional with the new primary
+
+<Warning>
+  Cross-datacenter failover is a manual process by design. Automatic cross-DC failover is not recommended as it can lead to split-brain scenarios where both datacenters believe they are the primary.
+</Warning>
+
+## Backup and Recovery
+
+### Backup Strategy
+
+Implement a layered backup strategy:
+
+| **Backup Type** | **Frequency** | **Retention** | **Purpose** |
+|-----------------|---------------|---------------|-------------|
+| Continuous WAL archiving | Real-time | 7–14 days | Point-in-time recovery |
+| Full base backups | Daily | 30 days | Full restore capability |
+| Logical backups (`pg_dump`) | Weekly | 90 days | Cross-version restore, selective table recovery |
+
+### Continuous WAL Archiving
+
+WAL (Write-Ahead Log) archiving captures every database change as it happens and stores WAL segments in external storage (S3, MinIO, NFS). This enables restoring the database to any point in time.
+
+<Tabs>
+  <Tab title="Patroni (pgBackRest)">
+    Add to Patroni's `postgresql.parameters`:
+    ```yaml
+    archive_mode: "on"
+    archive_command: "pgbackrest --stanza=infisical archive-push %p"
+    ```
+
+    pgBackRest configuration (`/etc/pgbackrest/pgbackrest.conf`):
+    ```ini
+    [infisical]
+    pg1-path=/var/lib/postgresql/data
+
+    [global]
+    repo1-type=s3
+    repo1-s3-bucket=infisical-pg-backups
+    repo1-s3-endpoint=s3.amazonaws.com
+    repo1-s3-region=us-east-1
+    repo1-retention-full=4
+    repo1-retention-diff=7
+    ```
+  </Tab>
+  <Tab title="CloudNativePG">
+    Configure backup in the cluster manifest:
+    ```yaml
+    apiVersion: postgresql.cnpg.io/v1
+    kind: Cluster
+    metadata:
+      name: infisical-db
+    spec:
+      instances: 3
+      backup:
+        barmanObjectStore:
+          destinationPath: s3://infisical-pg-backups/
+          s3Credentials:
+            accessKeyId:
+              name: s3-creds
+              key: ACCESS_KEY_ID
+            secretAccessKey:
+              name: s3-creds
+              key: SECRET_ACCESS_KEY
+          wal:
+            compression: gzip
+        retentionPolicy: "30d"
+    ```
+  </Tab>
+</Tabs>
+
+### Point-in-Time Recovery
+
+If data corruption or accidental deletion occurs, restore the database to a specific point in time:
+
+<Tabs>
+  <Tab title="pgBackRest">
+    ```bash
+    # Restore to a specific timestamp
+    pgbackrest --stanza=infisical \
+      --type=time \
+      --target="2024-01-15 14:30:00+00" \
+      restore
+    ```
+  </Tab>
+  <Tab title="CloudNativePG">
+    Create a recovery cluster pointing to the backup:
+    ```yaml
+    apiVersion: postgresql.cnpg.io/v1
+    kind: Cluster
+    metadata:
+      name: infisical-db-recovered
+    spec:
+      instances: 3
+      bootstrap:
+        recovery:
+          source: infisical-db
+          recoveryTarget:
+            targetTime: "2024-01-15T14:30:00Z"
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Regularly test your backup and recovery procedures. A backup is only valuable if you have verified that it can be successfully restored.
+</Warning>
+
+## Monitoring
+
+Monitor the health of your PostgreSQL HA deployment with these key metrics:
+
+| **Metric** | **Warning Threshold** | **Critical Threshold** | **Action** |
+|-----------|----------------------|----------------------|------------|
+| Replication lag (seconds) | > 5s | > 30s | Investigate network or replica performance |
+| Active connections | > 80% of `max_connections` | > 90% | Scale connection pooling or increase limit |
+| Disk usage | > 70% | > 85% | Expand storage or configure audit log retention |
+| WAL generation rate | Baseline + 50% | Baseline + 100% | Investigate unexpected write patterns |
+| Failed backup count | Any failure | 2+ consecutive | Check backup storage connectivity |
+
+### Health Check Queries
+
+```sql
+-- Check replication status on primary
+SELECT client_addr, state, sent_lsn, write_lsn, flush_lsn, replay_lsn,
+       extract(epoch from replay_lag)::int AS lag_seconds
+FROM pg_stat_replication;
+
+-- Check replica status on a replica
+SELECT pg_is_in_recovery(),
+       pg_last_wal_receive_lsn(),
+       pg_last_wal_replay_lsn(),
+       pg_last_xact_replay_timestamp();
+
+-- Check database size (for storage monitoring)
+SELECT pg_database.datname,
+       pg_size_pretty(pg_database_size(pg_database.datname)) AS size
+FROM pg_database
+WHERE datname = 'infisical';
+```
+
+## Disaster Recovery Architecture
+
+For organizations requiring resilience against full datacenter failures, deploy Infisical across multiple datacenters:
+
+```mermaid
+flowchart TB
+    subgraph DC1["Primary Datacenter"]
+        app1["Infisical (Active)"]
+        pg1["PostgreSQL Primary"]
+        redis1["Redis Primary"]
+        app1 --> pg1
+        app1 --> redis1
+    end
+
+    subgraph DC2["DR Datacenter"]
+        app2["Infisical (Standby)"]
+        pg2["PostgreSQL Replica"]
+        redis2["Redis Standby"]
+        app2 -.-> pg2
+        app2 -.-> redis2
+    end
+
+    pg1 -- "Streaming replication" --> pg2
+    redis1 -- "Backup/restore" --> redis2
+
+    GLB["Global Load Balancer"] --> app1
+    GLB -.-> app2
+```
+
+In this architecture:
+- The **primary datacenter** handles all traffic during normal operation
+- The **DR datacenter** maintains a streaming replica of PostgreSQL and periodic Redis backups
+- During a disaster, the DR datacenter is promoted to primary (manual process)
+- Infisical application instances in the DR datacenter connect to the promoted PostgreSQL and restored Redis
+
+This pattern works for both Kubernetes and Linux deployments. For Kubernetes-specific implementation details, see the [Kubernetes (HA) reference architecture](/self-hosting/reference-architectures/on-prem-k8s-ha). For Linux-specific setup, see the [Linux (HA) reference architecture](/self-hosting/reference-architectures/linux-deployment-ha).
+
+<Tip>
+  If your primary Infisical deployment runs on Kubernetes and you need a minimal DR instance outside the cluster, you can deploy Infisical as a [Linux package](/self-hosting/deployment-options/native/linux-package/installation) or via [Docker Compose](/self-hosting/deployment-options/docker-compose) on a standalone VM. Both the Kubernetes and VM instances can point to the same PostgreSQL cluster — the Infisical application layer is stateless.
+</Tip>
