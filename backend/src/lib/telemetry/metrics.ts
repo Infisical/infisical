@@ -518,7 +518,7 @@ export const secretOperationDurationHistogram = infisicalCoreMeter.createHistogr
   "infisical.secret.operation.duration",
   {
     description: "Secret operation latency by operation type, outcome, and environment.",
-    unit: "s"
+    unit: "ms"
   }
 );
 
@@ -533,7 +533,7 @@ export const recordSecretOperationDuration = (params: {
   outcome: "success" | "failure";
 }) => {
   if (!isTelemetryEnabled()) return;
-  secretOperationDurationHistogram.record((performance.now() - params.startTime) / 1000, {
+  secretOperationDurationHistogram.record(performance.now() - params.startTime, {
     operation: params.operation,
     outcome: params.outcome
   });
