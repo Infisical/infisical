@@ -104,13 +104,13 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     await resolver.markPassThrough(orgId);
   };
 
-  // Ask the license server to recompute its cached entitlements (used after a license change), then
-  // drop the local cache so the next read reflects them. No-op when the backend is dormant.
+  // Drop the local plan cache so the next read reflects a change immediately. The license server no
+  // longer caches entitlements (reads are always live), so there's nothing to ask it to recompute.
+  // No-op when the backend is dormant.
   const refreshEntitlements = async (org: TEntitlementOrg) => {
     if (!backend) {
       return;
     }
-    await backend.refreshEntitlements(org);
     await invalidateEntitlements(org.id);
   };
 

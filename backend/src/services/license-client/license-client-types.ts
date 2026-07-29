@@ -459,8 +459,6 @@ export { trialsResponseSchema };
 
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
-  // Ask the license server to recompute/bust its cached entitlements after a license change.
-  refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
   // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the
   // arg and hits its single-tenant /v1/products.
   fetchCatalog: (orgId: string) => Promise<TCatalogResponse>;

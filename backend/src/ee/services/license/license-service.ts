@@ -69,12 +69,13 @@ type TLicenseServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItems" | "deleteItem">;
   projectDAL: TProjectDALFactory;
   licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription" | "refreshEntitlements">;
   licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
-  // Fire-and-forget v2 usage meter for org user seats; no-ops when the v2 license server is disabled.
-  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  // Fire-and-forget v2 usage meter for org user seats + demand-driven reconciliation; both no-op when
+  // the v2 license server is disabled.
+  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit" | "reconcile">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -320,18 +321,33 @@ export const licenseServiceFactory = ({
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const [cachedPlan, passThrough] = await Promise.all([
-          keyStore.getItem(KeyStorePrefixes.LicenseCloudPlan(orgId)),
-          keyStore.getItem(KeyStorePrefixes.LicenseCachePassThrough(orgId))
+        // One MGET for the plan cache + the two markers instead of three separate round-trips.
+        const [cachedPlan, passThrough, reconcileMarker] = await keyStore.getItems([
+          KeyStorePrefixes.LicenseCloudPlan(orgId),
+          KeyStorePrefixes.LicenseCachePassThrough(orgId),
+          KeyStorePrefixes.LicenseUsageReconcileMarker(orgId)
         ]);
+
+        // Demand-driven usage reconciliation: for a billable org (a paid plan → non-null slug) that
+        // hasn't been reconciled this interval, re-emit its meters in the background. reconcile()
+        // self-throttles on the same marker, so this is a no-op on the vast majority of calls and never
+        // blocks the request. Free orgs (null slug) never enter the reconcile path.
+        const maybeReconcile = (plan: TFeatureSet) => {
+          if (!reconcileMarker && plan.slug) {
+            usageMeteringService?.reconcile(orgId);
+          }
+        };
+
         if (cachedPlan) {
           // A billing mutation flagged this org: serve the cached plan now but kick a background refresh
           // so the cache converges as the license server reconciles, instead of waiting out the TTL.
           if (passThrough) {
             void revalidatePlanInBackground(orgId);
           }
+          const plan = JSON.parse(cachedPlan) as TFeatureSet;
+          maybeReconcile(plan);
           logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
-          return JSON.parse(cachedPlan) as TFeatureSet;
+          return plan;
         }
 
         const org = await orgDAL.findRootOrgDetails(orgId);
@@ -395,6 +411,7 @@ export const licenseServiceFactory = ({
           licenseDualRead?.compareInBackground(rootOrgId, currentPlan);
         }
 
+        maybeReconcile(currentPlan);
         return currentPlan;
       }
     } catch (error) {

@@ -39,7 +39,6 @@ import {
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
 // no org_id is carried. The global catalog is org-independent and shared by both backends.
 const ENTITLEMENTS_PATH = "/v1/entitlements";
-const ENTITLEMENTS_REFRESH_PATH = "/v1/entitlements/refresh";
 const PRODUCTS_PATH = "/v1/products";
 const SUBSCRIPTION_PATH = "/v1/subscription";
 
@@ -129,16 +128,6 @@ export const licenseServerBackend = (
     await throwIfResponseError(res);
     const body: unknown = await res.json();
     return entitlementsResponseSchema.parse(body);
-  },
-
-  refreshEntitlements: async (org: TEntitlementOrg): Promise<void> => {
-    const url = new URL(orgScoped(org.id, "/entitlements/refresh"), serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
   },
 
   fetchCatalog: async (orgId: string): Promise<TCatalogResponse> => {
@@ -394,16 +383,6 @@ export const licenseServerSelfHostedBackend = (
     await throwIfResponseError(res);
     const body: unknown = await res.json();
     return entitlementsResponseSchema.parse(body);
-  },
-
-  refreshEntitlements: async (): Promise<void> => {
-    const url = new URL(ENTITLEMENTS_REFRESH_PATH, serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${licenseKey}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
   },
 
   fetchCatalog: async (): Promise<TCatalogResponse> => {

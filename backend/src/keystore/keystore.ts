@@ -154,6 +154,8 @@ export const KeyStorePrefixes = {
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.
   LicenseCacheRevalidateLock: (orgId: string) => `license-cache-revalidate-lock-${orgId}` as const,
+  // Throttles the demand-driven usage reconciliation (fired from getPlan) to once per org per interval.
+  LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
@@ -204,6 +206,8 @@ export const KeyStoreTtls = {
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Throttle window for the single-flight background revalidation.
   LicenseCacheRevalidateLockInSeconds: 10,
+  // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
+  LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes

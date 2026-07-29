@@ -807,7 +807,7 @@ export const registerRoutes = async (
 
   // Created before licenseService so the latter can emit the v2 user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, envConfig });
 
   const licenseService = licenseServiceFactory({
     permissionService,
@@ -836,9 +836,11 @@ export const registerRoutes = async (
     cronJob,
     keyStore,
     orgDAL,
+    licenseService,
     usageMeteringService,
     meteredFeatures,
     usageReporter,
+    isCloud: envConfig.isCloud,
     source: usageSource
   });
 
