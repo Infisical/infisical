@@ -42,6 +42,7 @@ export type TCloudflareR2AccessKeyRotationOption = {
   type: SecretRotation.CloudflareR2AccessKey;
   connection: AppConnection.Cloudflare;
   template: {
+    parameters: Pick<TCloudflareR2AccessKeyRotation["parameters"], "accessLevel">;
     secretsMapping: TCloudflareR2AccessKeyRotation["secretsMapping"];
   };
 };

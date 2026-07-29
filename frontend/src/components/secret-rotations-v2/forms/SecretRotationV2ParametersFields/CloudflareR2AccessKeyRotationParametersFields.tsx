@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { Control, Controller, useFormContext } from "react-hook-form";
+import { useMemo } from "react";
+import { Controller, useFormContext } from "react-hook-form";
 import { MultiValue } from "react-select";
 
 import {
@@ -20,12 +20,11 @@ import { TSecretRotationV2Form } from "../schemas";
 import {
   CLOUDFLARE_R2_ACCESS_LEVEL_MAP,
   CLOUDFLARE_R2_JURISDICTION_MAP,
-  CloudflareR2AccessLevel,
   r2BucketKey,
   TCloudflareR2BucketSelection
 } from "../schemas/cloudflare-r2-access-key-rotation-schema";
 import { CLOUDFLARE_TOKEN_NAME_MAX_LENGTH } from "../schemas/shared";
-import { CloudflareIpListInput } from "./shared";
+import { CloudflareIpListField } from "./shared";
 
 type TCloudflareR2AccessKeyForm = TSecretRotationV2Form & {
   type: SecretRotation.CloudflareR2AccessKey;
@@ -36,58 +35,29 @@ enum ParameterTab {
   Restrictions = "restrictions"
 }
 
-const formatBucketOptionLabel = ({ name, jurisdiction }: TCloudflareR2BucketSelection) => (
-  <span>
-    {name}{" "}
-    <span className="text-mineshaft-400">{CLOUDFLARE_R2_JURISDICTION_MAP[jurisdiction]}</span>{" "}
-  </span>
-);
+// One source for the picker label's content and order: the JSX dims the jurisdiction, and react-select
+// filters on the plain-text join, so the two must not drift apart.
+const bucketLabelParts = ({ name, jurisdiction }: TCloudflareR2BucketSelection) =>
+  [name, CLOUDFLARE_R2_JURISDICTION_MAP[jurisdiction]] as const;
 
-// react-select filters on this, so it has to cover the jurisdiction the option renders too
-const getBucketSearchLabel = ({ name, jurisdiction }: TCloudflareR2BucketSelection) =>
-  `${CLOUDFLARE_R2_JURISDICTION_MAP[jurisdiction]} ${name}`;
+const formatBucketOptionLabel = (bucket: TCloudflareR2BucketSelection) => {
+  const [name, jurisdiction] = bucketLabelParts(bucket);
 
-const IpListField = ({
-  control,
-  name,
-  label,
-  tooltipText
-}: {
-  control: Control<TCloudflareR2AccessKeyForm>;
-  name: "parameters.allowedIps" | "parameters.disallowedIps";
-  label: string;
-  tooltipText: string;
-}) => (
-  <Controller
-    control={control}
-    name={name}
-    render={({ field: { value, onChange }, fieldState: { error } }) => (
-      <FormControl
-        isOptional
-        isError={Boolean(error)}
-        errorText={error?.message}
-        label={label}
-        tooltipText={tooltipText}
-      >
-        <CloudflareIpListInput value={value} onChange={onChange} />
-      </FormControl>
-    )}
-  />
-);
+  return (
+    <span>
+      {name} <span className="text-mineshaft-400">{jurisdiction}</span>
+    </span>
+  );
+};
+
+const getBucketSearchLabel = (bucket: TCloudflareR2BucketSelection) =>
+  bucketLabelParts(bucket).join(" ");
 
 export const CloudflareR2AccessKeyRotationParametersFields = () => {
-  const { control, watch, setValue, getValues } = useFormContext<TCloudflareR2AccessKeyForm>();
+  const { control, watch } = useFormContext<TCloudflareR2AccessKeyForm>();
 
   const connectionId = watch("connection.id");
   const selectedBuckets = watch("parameters.buckets");
-
-  // The rotation template only seeds the secrets mapping, so pick the least-privileged access level on
-  // create rather than leaving the select empty.
-  useEffect(() => {
-    if (!getValues("parameters.accessLevel")) {
-      setValue("parameters.accessLevel", CloudflareR2AccessLevel.ObjectRead);
-    }
-  }, []);
 
   const { data: buckets, isPending: isBucketsPending } = useCloudflareConnectionListR2Buckets(
     connectionId,
@@ -151,21 +121,10 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
                 formatOptionLabel={formatBucketOptionLabel}
                 getOptionLabel={getBucketSearchLabel}
                 getOptionValue={r2BucketKey}
-                value={
-                  value
-                    ? bucketOptions.filter((bucket) =>
-                        value.some((selection) => r2BucketKey(selection) === r2BucketKey(bucket))
-                      )
-                    : []
-                }
-                // narrowed to the two identifying fields so listing-only metadata is never persisted
-                onChange={(option) =>
-                  onChange(
-                    (option as MultiValue<TCloudflareR2BucketSelection>).map(
-                      ({ name, jurisdiction }) => ({ name, jurisdiction })
-                    )
-                  )
-                }
+                // the form field holds the option shape itself, and react-select matches selections by
+                // `getOptionValue`, so the stored value can be handed back as-is
+                value={value ?? []}
+                onChange={(option) => onChange(option as MultiValue<TCloudflareR2BucketSelection>)}
               />
             </FormControl>
           )}
@@ -197,13 +156,13 @@ export const CloudflareR2AccessKeyRotationParametersFields = () => {
         />
       </TabPanel>
       <TabPanel value={ParameterTab.Restrictions}>
-        <IpListField
+        <CloudflareIpListField
           control={control}
           name="parameters.allowedIps"
           label="Allowed IPs"
           tooltipText="The generated access key can only be used from these IP addresses or CIDR blocks. One entry per line. Leave empty to allow any IP."
         />
-        <IpListField
+        <CloudflareIpListField
           control={control}
           name="parameters.disallowedIps"
           label="Disallowed IPs"

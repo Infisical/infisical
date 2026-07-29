@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
 
-import { TextArea } from "@app/components/v2";
+import { FormControl, TextArea } from "@app/components/v2";
 
 /**
  * Textarea-backed editor for a list of IPs/CIDRs. The raw text lives in local state so partially
  * typed entries and blank lines survive re-renders, while the form only ever holds the parsed list.
  */
-export const CloudflareIpListInput = ({
+const CloudflareIpListInput = ({
   value,
   onChange
 }: {
@@ -34,3 +35,32 @@ export const CloudflareIpListInput = ({
     />
   );
 };
+
+/** The labelled, form-wired version — shared by every Cloudflare rotation with IP restrictions. */
+export const CloudflareIpListField = <T extends FieldValues>({
+  control,
+  name,
+  label,
+  tooltipText
+}: {
+  control: Control<T>;
+  name: FieldPath<T>;
+  label: string;
+  tooltipText: string;
+}) => (
+  <Controller
+    control={control}
+    name={name}
+    render={({ field: { value, onChange }, fieldState: { error } }) => (
+      <FormControl
+        isOptional
+        isError={Boolean(error)}
+        errorText={error?.message}
+        label={label}
+        tooltipText={tooltipText}
+      >
+        <CloudflareIpListInput value={value} onChange={onChange} />
+      </FormControl>
+    )}
+  />
+);

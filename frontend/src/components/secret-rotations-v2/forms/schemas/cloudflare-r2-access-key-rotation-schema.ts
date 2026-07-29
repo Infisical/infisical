@@ -48,7 +48,12 @@ export const CloudflareR2AccessKeyRotationSchema = z
     type: z.literal(SecretRotation.CloudflareR2AccessKey),
     parameters: z.object({
       name: CloudflareTokenNameSchema,
-      buckets: CloudflareR2BucketSchema.array().min(1, "At least one bucket is required"),
+      buckets: CloudflareR2BucketSchema.array()
+        .min(1, "At least one bucket is required")
+        .refine(
+          (buckets) => new Set(buckets.map(r2BucketKey)).size === buckets.length,
+          "Buckets must be unique"
+        ),
       accessLevel: z.nativeEnum(CloudflareR2AccessLevel),
       allowedIps: CloudflareTokenIpRestrictionsSchema,
       disallowedIps: CloudflareTokenIpRestrictionsSchema

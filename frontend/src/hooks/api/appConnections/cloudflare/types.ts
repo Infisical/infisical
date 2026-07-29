@@ -29,10 +29,8 @@ export enum CloudflareR2Jurisdiction {
   FedRamp = "fedramp"
 }
 
+/** Name and jurisdiction together identify a bucket, and are all a token policy needs to grant it. */
 export type TCloudflareR2Bucket = {
   name: string;
   jurisdiction: CloudflareR2Jurisdiction;
-  location?: string;
-  storageClass?: string;
-  creationDate?: string;
 };

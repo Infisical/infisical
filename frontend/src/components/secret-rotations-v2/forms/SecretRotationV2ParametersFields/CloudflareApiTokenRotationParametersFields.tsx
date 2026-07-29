@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { Control, Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -38,7 +38,7 @@ import {
   isStoredPolicy
 } from "../schemas/cloudflare-api-token-rotation-schema";
 import { CLOUDFLARE_TOKEN_NAME_MAX_LENGTH } from "../schemas/shared";
-import { CloudflareIpListInput } from "./shared";
+import { CloudflareIpListField } from "./shared";
 
 // The schema merges policy rows into the stored shape on submit, so `TSecretRotationV2Form` (the
 // schema's *output* type) describes merged policies. The fields here edit rows, which is the input side.
@@ -55,34 +55,6 @@ enum ParameterTab {
   General = "general",
   Restrictions = "restrictions"
 }
-
-const IpListField = ({
-  control,
-  name,
-  label,
-  tooltipText
-}: {
-  control: Control<TCloudflareApiTokenForm>;
-  name: "parameters.allowedIps" | "parameters.disallowedIps";
-  label: string;
-  tooltipText: string;
-}) => (
-  <Controller
-    control={control}
-    name={name}
-    render={({ field: { value, onChange }, fieldState: { error } }) => (
-      <FormControl
-        isOptional
-        isError={Boolean(error)}
-        errorText={error?.message}
-        label={label}
-        tooltipText={tooltipText}
-      >
-        <CloudflareIpListInput value={value} onChange={onChange} />
-      </FormControl>
-    )}
-  />
-);
 
 export const CloudflareApiTokenRotationParametersFields = () => {
   const { control, watch, setValue, getValues } = useFormContext<TCloudflareApiTokenForm>();
@@ -337,13 +309,13 @@ export const CloudflareApiTokenRotationParametersFields = () => {
         </div>
       </TabPanel>
       <TabPanel value={ParameterTab.Restrictions}>
-        <IpListField
+        <CloudflareIpListField
           control={control}
           name="parameters.allowedIps"
           label="Allowed IPs"
           tooltipText="The generated token can only be used from these IP addresses or CIDR blocks. One entry per line. Leave empty to allow any IP."
         />
-        <IpListField
+        <CloudflareIpListField
           control={control}
           name="parameters.disallowedIps"
           label="Disallowed IPs"
