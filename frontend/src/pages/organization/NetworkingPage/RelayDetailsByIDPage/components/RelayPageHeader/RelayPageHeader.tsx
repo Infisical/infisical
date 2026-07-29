@@ -145,7 +145,7 @@ export const RelayPageHeader = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete relay {relay.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Relay?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the relay from your organization.
             </AlertDialogDescription>
@@ -168,7 +168,7 @@ export const RelayPageHeader = ({
             </Field>
           </AlertDialogConfirmationField>
           <Alert variant="danger">
-            <AlertDescription>Deleting {relay.name} cannot be undone.</AlertDescription>
+            <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
@@ -192,7 +192,7 @@ export const RelayPageHeader = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke access for {relay.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Revoke Relay Access?</AlertDialogTitle>
             <AlertDialogDescription>
               The relay will be disconnected and active tokens invalidated. It must re-authenticate
               to reconnect.

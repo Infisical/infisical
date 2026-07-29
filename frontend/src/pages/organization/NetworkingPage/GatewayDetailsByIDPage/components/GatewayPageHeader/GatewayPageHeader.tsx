@@ -181,7 +181,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
             </Field>
           </AlertDialogConfirmationField>
           <Alert variant="danger">
-            <AlertDescription>Deleting {gateway.name} cannot be undone.</AlertDescription>
+            <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
@@ -205,7 +205,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke access for {gateway.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Revoke Gateway Access?</AlertDialogTitle>
             <AlertDialogDescription>
               The gateway will be disconnected and active tokens invalidated. It must
               re-authenticate to reconnect.

@@ -55,6 +55,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableHeadLabel,
   TableRow,
   Tooltip,
   TooltipContent,
@@ -194,19 +195,30 @@ export const RelayTab = withPermission(
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-1/3">Name</TableHead>
-                  <TableHead>Host</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead className="w-1/3">
+                    <TableHeadLabel>Name</TableHeadLabel>
+                  </TableHead>
                   <TableHead>
-                    Health Check
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon className="ml-2 inline size-3.5" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        The last known health check. Triggers every hour.
-                      </TooltipContent>
-                    </Tooltip>
+                    <TableHeadLabel>Host</TableHeadLabel>
+                  </TableHead>
+                  <TableHead>
+                    <TableHeadLabel>Created</TableHeadLabel>
+                  </TableHead>
+                  <TableHead>
+                    <TableHeadLabel
+                      trailing={
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="size-3" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            The last known health check. Triggers every hour.
+                          </TooltipContent>
+                        </Tooltip>
+                      }
+                    >
+                      Health Check
+                    </TableHeadLabel>
                   </TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
@@ -297,9 +309,7 @@ export const RelayTab = withPermission(
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Delete relay {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}?
-                </AlertDialogTitle>
+                <AlertDialogTitle>Delete Relay?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This permanently removes the relay from your organization.
                 </AlertDialogDescription>
@@ -326,10 +336,7 @@ export const RelayTab = withPermission(
                 </Field>
               </AlertDialogConfirmationField>
               <Alert variant="danger">
-                <AlertDescription>
-                  Deleting {(popUp.deleteRelay.data as { name?: string })?.name || "relay"} cannot
-                  be undone.
-                </AlertDescription>
+                <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>
                 <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>

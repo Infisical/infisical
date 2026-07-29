@@ -63,6 +63,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableHeadLabel,
   TableRow,
   Tabs,
   TabsList,
@@ -282,19 +283,32 @@ export const GatewayTab = withPermission(
                 <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[38%]">Name</TableHead>
-                      {showPoolsTab && <TableHead className="w-[28%]">Pools</TableHead>}
-                      <TableHead className="w-36">Connected</TableHead>
+                      <TableHead className="w-[38%]">
+                        <TableHeadLabel>Name</TableHeadLabel>
+                      </TableHead>
+                      {showPoolsTab && (
+                        <TableHead className="w-[28%]">
+                          <TableHeadLabel>Pools</TableHeadLabel>
+                        </TableHead>
+                      )}
+                      <TableHead className="w-36">
+                        <TableHeadLabel>Connected</TableHeadLabel>
+                      </TableHead>
                       <TableHead className="w-40">
-                        Health Check
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <InfoIcon className="ml-2 inline size-3" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            The last known health check. Triggers every 3 minutes.
-                          </TooltipContent>
-                        </Tooltip>
+                        <TableHeadLabel
+                          trailing={
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoIcon className="size-3" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                The last known health check. Triggers every 3 minutes.
+                              </TooltipContent>
+                            </Tooltip>
+                          }
+                        >
+                          Health Check
+                        </TableHeadLabel>
                       </TableHead>
                       <TableHead className="w-12" />
                     </TableRow>
@@ -484,10 +498,7 @@ export const GatewayTab = withPermission(
                     </Field>
                   </AlertDialogConfirmationField>
                   <Alert variant="danger">
-                    <AlertDescription>
-                      Deleting {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}{" "}
-                      cannot be undone.
-                    </AlertDescription>
+                    <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                   </Alert>
                   <AlertDialogFooter>
                     <AlertDialogCancel

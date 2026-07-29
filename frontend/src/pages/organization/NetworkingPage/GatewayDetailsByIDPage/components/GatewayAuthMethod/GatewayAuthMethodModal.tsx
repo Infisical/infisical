@@ -23,12 +23,12 @@ import { useOrganization } from "@app/context";
 import { useUpdateGateway } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView } from "@app/hooks/api/gateways-v2/types";
 
-type SettableMethod = "aws" | "token";
-
-const METHOD_OPTIONS: { value: SettableMethod; label: string }[] = [
-  { value: "token", label: "Token Auth" },
-  { value: "aws", label: "AWS Auth" }
-];
+import {
+  NETWORKING_AUTH_METHOD_OPTIONS,
+  NetworkingAuthMethod,
+  NetworkingAuthMethodOption,
+  NetworkingAuthMethodSingleValue
+} from "../../../components/NetworkingAuthMethodLabel";
 
 const schema = z
   .object({
@@ -75,7 +75,7 @@ export const GatewayAuthMethodModal = ({
   const { mutateAsync: updateGateway, isPending } = useUpdateGateway();
   const { isSubOrganization } = useOrganization();
 
-  const initialMethod: SettableMethod = currentMethod.method === "aws" ? "aws" : "token";
+  const initialMethod: NetworkingAuthMethod = currentMethod.method === "aws" ? "aws" : "token";
   const initialAws = currentMethod.method === "aws" ? currentMethod.config : null;
 
   const {
@@ -145,7 +145,8 @@ export const GatewayAuthMethodModal = ({
             name="method"
             render={({ field }) => {
               const selected =
-                METHOD_OPTIONS.find((o) => o.value === field.value) ?? METHOD_OPTIONS[0];
+                NETWORKING_AUTH_METHOD_OPTIONS.find((o) => o.value === field.value) ??
+                NETWORKING_AUTH_METHOD_OPTIONS[0];
               return (
                 <Field>
                   <FieldLabel>Method</FieldLabel>
@@ -153,14 +154,18 @@ export const GatewayAuthMethodModal = ({
                     <FilterableSelect
                       value={selected}
                       onChange={(opt) => {
-                        const next = opt as { value: SettableMethod } | null;
+                        const next = opt as { value: NetworkingAuthMethod } | null;
                         if (next) field.onChange(next.value);
                       }}
-                      options={METHOD_OPTIONS}
+                      options={NETWORKING_AUTH_METHOD_OPTIONS}
                       isSearchable={false}
                       isClearable={false}
                       getOptionLabel={(o) => o.label}
                       getOptionValue={(o) => o.value}
+                      components={{
+                        Option: NetworkingAuthMethodOption,
+                        SingleValue: NetworkingAuthMethodSingleValue
+                      }}
                     />
                   </FieldContent>
                 </Field>

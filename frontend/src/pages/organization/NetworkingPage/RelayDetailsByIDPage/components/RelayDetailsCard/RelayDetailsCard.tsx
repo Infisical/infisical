@@ -40,8 +40,9 @@ import {
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
 import { useUpdateRelay } from "@app/hooks/api/relays";
-import { TRelayAuthMethodView, TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
+import { TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
 
+import { NetworkingAuthMethodLabel } from "../../../components/NetworkingAuthMethodLabel";
 import { RelayAuthMethodModal } from "../RelayAuthMethod/RelayAuthMethodModal";
 
 const HealthBadge = ({ relay }: { relay: TRelayWithAuthMethod }) => {
@@ -54,12 +55,6 @@ const HealthBadge = ({ relay }: { relay: TRelayWithAuthMethod }) => {
     return <Badge variant="success">Healthy</Badge>;
   }
   return <Badge variant="danger">Unreachable</Badge>;
-};
-
-const AuthMethodBadge = ({ method }: { method: TRelayAuthMethodView["method"] }) => {
-  if (method === "aws") return <Badge variant="info">AWS Auth</Badge>;
-  if (method === "token") return <Badge variant="info">Token Auth</Badge>;
-  return <Badge variant="warning">Machine Identity</Badge>;
 };
 
 const EditGeneralModal = ({
@@ -256,7 +251,7 @@ export const RelayDetailsCard = ({ relay }: { relay: TRelayWithAuthMethod }) => 
               <Detail>
                 <DetailLabel>Method</DetailLabel>
                 <DetailValue>
-                  <AuthMethodBadge method={authMethod.method} />
+                  <NetworkingAuthMethodLabel method={authMethod.method} />
                 </DetailValue>
               </Detail>
             )}

@@ -38,6 +38,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableHeadLabel,
   TableRow
 } from "@app/components/v3";
 import { useSubscription } from "@app/context/SubscriptionContext";
@@ -106,9 +107,15 @@ export const GatewayPoolsContent = ({ search }: Props) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-1/3">Name</TableHead>
-              <TableHead>Connected</TableHead>
-              <TableHead>Health</TableHead>
+              <TableHead className="w-1/3">
+                <TableHeadLabel>Name</TableHeadLabel>
+              </TableHead>
+              <TableHead>
+                <TableHeadLabel>Connected</TableHeadLabel>
+              </TableHead>
+              <TableHead>
+                <TableHeadLabel>Health</TableHeadLabel>
+              </TableHead>
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
@@ -211,9 +218,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete gateway pool {(popUp.deletePool.data as TGatewayPool)?.name}?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Delete Gateway Pool?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the gateway pool from your organization.
             </AlertDialogDescription>
@@ -240,9 +245,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
             </Field>
           </AlertDialogConfirmationField>
           <Alert variant="danger">
-            <AlertDescription>
-              Deleting {(popUp.deletePool.data as TGatewayPool)?.name} cannot be undone.
-            </AlertDescription>
+            <AlertDescription>Deleting this gateway pool cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={deletePool.isPending}>Cancel</AlertDialogCancel>

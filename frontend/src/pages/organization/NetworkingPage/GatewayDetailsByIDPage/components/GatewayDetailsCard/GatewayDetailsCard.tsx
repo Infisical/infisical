@@ -30,13 +30,10 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { useTimedReset } from "@app/hooks";
-import {
-  GatewayAuthMethodView,
-  TGatewayV2,
-  TGatewayV2WithAuthMethod
-} from "@app/hooks/api/gateways-v2/types";
+import { TGatewayV2, TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
+import { NetworkingAuthMethodLabel } from "../../../components/NetworkingAuthMethodLabel";
 import { GatewayAuthMethodModal } from "../GatewayAuthMethod/GatewayAuthMethodModal";
 import { ViewGatewayAuth } from "../GatewayAuthMethod/ViewGatewayAuth";
 
@@ -48,12 +45,6 @@ const HealthBadge = ({ gateway }: { gateway: TGatewayV2 }) => {
     return <Badge variant="success">Healthy</Badge>;
   }
   return <Badge variant="danger">Unreachable</Badge>;
-};
-
-const AuthMethodBadge = ({ method }: { method: GatewayAuthMethodView["method"] }) => {
-  if (method === "aws") return <Badge variant="info">AWS Auth</Badge>;
-  if (method === "token") return <Badge variant="info">Token Auth</Badge>;
-  return <Badge variant="warning">Machine Identity</Badge>;
 };
 
 export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
@@ -173,7 +164,7 @@ export const GatewayDetailsCard = ({ gateway }: { gateway: TGatewayV2WithAuthMet
               <Detail>
                 <DetailLabel>Method</DetailLabel>
                 <DetailValue>
-                  <AuthMethodBadge method={authMethod.method} />
+                  <NetworkingAuthMethodLabel method={authMethod.method} />
                 </DetailValue>
               </Detail>
             )}

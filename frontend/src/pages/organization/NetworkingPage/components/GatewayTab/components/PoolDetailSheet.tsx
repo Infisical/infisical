@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -35,6 +37,7 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  TableHeadLabel,
   TableRow
 } from "@app/components/v3";
 import {
@@ -207,8 +210,12 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>
+                    <TableHeadLabel>Name</TableHeadLabel>
+                  </TableHead>
+                  <TableHead>
+                    <TableHeadLabel>Status</TableHeadLabel>
+                  </TableHead>
                   <TableHead className="w-5" />
                 </TableRow>
               </TableHeader>
@@ -284,11 +291,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Remove{" "}
-                {(popUp.removeGateway.data as { name: string } | undefined)?.name ?? "gateway"} from
-                the pool?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Remove Gateway from Gateway Pool?</AlertDialogTitle>
               <AlertDialogDescription>
                 This removes the gateway from the pool. The gateway itself will not be deleted.
               </AlertDialogDescription>
@@ -314,6 +317,12 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 />
               </Field>
             </AlertDialogConfirmationField>
+            <Alert variant="warning">
+              <AlertDescription>
+                Removing this gateway may interrupt traffic through this gateway pool. The gateway
+                will not be deleted and can be added back.
+              </AlertDescription>
+            </Alert>
             <AlertDialogFooter>
               <AlertDialogCancel isDisabled={removeGateway.isPending}>Cancel</AlertDialogCancel>
               <AlertDialogAction

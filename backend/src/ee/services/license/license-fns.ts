@@ -121,7 +121,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   projectTemplates: false,
   kmip: false,
   gateway: false,
-  gatewayPool: true,
+  gatewayPool: false,
   pamSlackNotifications: false,
   sshHostGroups: false,
   secretScanning: false,
