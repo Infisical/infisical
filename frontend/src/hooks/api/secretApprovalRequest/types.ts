@@ -152,5 +152,7 @@ export type TUpdateSecretApprovalRequestStatusDTO = {
 export type TPerformSecretApprovalRequestMerge = {
   id: string;
   projectId: string;
+  environment: string;
+  secretPath: string;
   bypassReason?: string;
 };

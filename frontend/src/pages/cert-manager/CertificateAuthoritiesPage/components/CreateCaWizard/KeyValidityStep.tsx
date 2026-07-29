@@ -68,7 +68,7 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                     value === CertKeySource.Hsm &&
                     !HSM_SUPPORTED_CA_KEY_ALGORITHMS.includes(form.getValues("keyAlgorithm"))
                   ) {
-                    form.setValue("keyAlgorithm", CertKeyAlgorithm.RSA_2048, {
+                    form.setValue("keyAlgorithm", CertKeyAlgorithm.ECDSA_P256, {
                       shouldValidate: true
                     });
                   }

@@ -26,7 +26,7 @@ import {
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { PamAccountType } from "@app/hooks/api/pam";
 
-import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
+import { AccountPlatformIcon } from "./AccountPlatformIcon";
 
 type MetadataField = {
   label: string;

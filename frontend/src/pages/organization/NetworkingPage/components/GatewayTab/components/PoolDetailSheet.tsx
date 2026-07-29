@@ -145,126 +145,133 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
           <SheetTitle>{pool.name}</SheetTitle>
         </SheetHeader>
 
-        <div className="mx-4 flex items-center gap-7 rounded-md border border-border bg-container px-5 py-3">
-          <div>
-            <div className="text-xs text-accent">Health</div>
-            <div className="mt-0.5 text-sm font-medium">
-              <PoolHealthBadge pool={pool} />
+        <div className="flex flex-col gap-4 p-4">
+          <div className="flex items-center gap-7 rounded-md border border-border bg-container px-5 py-3">
+            <div>
+              <div className="text-xs text-accent">Health</div>
+              <div className="mt-0.5 text-sm font-medium">
+                <PoolHealthBadge pool={pool} />
+              </div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div>
+              <div className="text-xs text-accent">Total Gateways</div>
+              <div className="mt-0.5 text-sm font-medium text-foreground">{pool.memberCount}</div>
+            </div>
+            <div className="h-8 w-px bg-border" />
+            <div>
+              <div className="text-xs text-accent">Created</div>
+              <div className="mt-0.5 text-sm font-medium text-foreground">{createdDate}</div>
             </div>
           </div>
-          <div className="h-8 w-px bg-border" />
-          <div>
-            <div className="text-xs text-accent">Total Gateways</div>
-            <div className="mt-0.5 text-sm font-medium text-foreground">{pool.memberCount}</div>
-          </div>
-          <div className="h-8 w-px bg-border" />
-          <div>
-            <div className="text-xs text-accent">Created</div>
-            <div className="mt-0.5 text-sm font-medium text-foreground">{createdDate}</div>
-          </div>
-        </div>
 
-        <div className="px-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h4 className="text-sm font-medium text-foreground">Member Gateways</h4>
-            <OrgPermissionCan
-              I={OrgGatewayPoolPermissionActions.EditGatewayPools}
-              a={OrgPermissionSubjects.GatewayPool}
-            >
-              {(isAllowed: boolean) => {
-                const isDisabled = !isAllowed || availableGateways.length === 0;
-                return (
-                  <div className="flex min-w-0 items-center gap-2">
-                    <FilterableSelect<GatewayOption>
-                      isMulti
-                      value={selectedGateways}
-                      onChange={(value) =>
-                        setSelectedGateways(Array.isArray(value) ? [...value] : [])
-                      }
-                      options={gatewayOptions}
-                      placeholder="Select gateways..."
-                      isDisabled={isDisabled || addGateway.isPending}
-                      menuPosition="fixed"
-                      className="w-64"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      isDisabled={!isAllowed || selectedGateways.length === 0}
-                      isPending={addGateway.isPending}
-                      onClick={handleAdd}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                );
-              }}
-            </OrgPermissionCan>
-          </div>
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h4 className="text-sm font-medium text-foreground">Member Gateways</h4>
+              <OrgPermissionCan
+                I={OrgGatewayPoolPermissionActions.EditGatewayPools}
+                a={OrgPermissionSubjects.GatewayPool}
+              >
+                {(isAllowed: boolean) => {
+                  const isDisabled = !isAllowed || availableGateways.length === 0;
+                  return (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FilterableSelect<GatewayOption>
+                        isMulti
+                        value={selectedGateways}
+                        onChange={(value) =>
+                          setSelectedGateways(Array.isArray(value) ? [...value] : [])
+                        }
+                        options={gatewayOptions}
+                        placeholder="Select gateways..."
+                        isDisabled={isDisabled || addGateway.isPending}
+                        menuPosition="fixed"
+                        className="w-64"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        isDisabled={!isAllowed || selectedGateways.length === 0}
+                        isPending={addGateway.isPending}
+                        onClick={handleAdd}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  );
+                }}
+              </OrgPermissionCan>
+            </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-5" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {memberGateways.length === 0 && (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-sm text-accent">
-                    No gateways in this pool
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-5" />
                 </TableRow>
-              )}
-              {memberGateways.map((gw) => {
-                const isOnline = isGatewayHealthy(gw);
-
-                return (
-                  <TableRow key={gw.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span>{gw.name}</span>
-                        <Badge variant="neutral">Gateway v{gw.isV1 ? "1" : "2"}</Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={isOnline ? "success" : "danger"}>
-                        {isOnline ? "Healthy" : "Unreachable"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton aria-label="Gateway options" variant="ghost" size="sm">
-                            <FontAwesomeIcon icon={faEllipsisV} />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-[60] min-w-[180px]">
-                          {!gw.isV1 && (
-                            <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
-                              <FontAwesomeIcon icon={faHeartPulse} />
-                              Trigger health check
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            variant="danger"
-                            onSelect={() =>
-                              handlePopUpOpen("removeGateway", { id: gw.id, name: gw.name })
-                            }
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                            Remove from pool
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+              </TableHeader>
+              <TableBody>
+                {memberGateways.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-sm text-accent">
+                      No gateways in this pool
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                )}
+                {memberGateways.map((gw) => {
+                  const isOnline = isGatewayHealthy(gw);
+
+                  return (
+                    <TableRow key={gw.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{gw.name}</span>
+                          <Badge variant="neutral">Gateway v{gw.isV1 ? "1" : "2"}</Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={isOnline ? "success" : "danger"}>
+                          {isOnline ? "Healthy" : "Unreachable"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              aria-label="Gateway options"
+                              variant="ghost"
+                              size="sm"
+                              className="p-1.5"
+                            >
+                              <FontAwesomeIcon icon={faEllipsisV} />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-[60] min-w-[180px]">
+                            {!gw.isV1 && (
+                              <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
+                                <FontAwesomeIcon icon={faHeartPulse} />
+                                Trigger health check
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              variant="danger"
+                              onSelect={() =>
+                                handlePopUpOpen("removeGateway", { id: gw.id, name: gw.name })
+                              }
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                              Remove from pool
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         <AlertDialog

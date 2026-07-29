@@ -1,4 +1,5 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { PackRule, packRules } from "@casl/ability/extra";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -8,7 +9,11 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { resolveResourceRoleRules } from "../permission/permission-service";
-import { ResourcePermissionPamResourceActions, ResourcePermissionSub } from "../permission/resource-permission";
+import {
+  ResourcePermissionPamResourceActions,
+  ResourcePermissionSet,
+  ResourcePermissionSub
+} from "../permission/resource-permission";
 
 export type TActorContext = {
   actorId: string;
@@ -159,4 +164,88 @@ export const getResourceIdsWithActions = async (
     .map((m) => m.scopeResourceId!);
 
   return { folderIds, accountIds };
+};
+
+// Resolves each account's effective (packed) resource permissions in a single membership fetch, so a
+// list view can render per-account action states without one /permissions request per row. The merge
+// mirrors getAccountPermissions (folder-level roles ∪ direct account-level roles).
+export const getAccountPermissionRulesMap = async (
+  membershipDAL: TMembershipDep,
+  membershipRoleDAL: TMembershipRoleDep,
+  projectId: string,
+  accounts: { id: string; folderId?: string | null }[],
+  ctx: TActorContext
+) => {
+  const permissionsByAccountId = new Map<string, PackRule<RawRuleOf<MongoAbility<ResourcePermissionSet>>>[]>();
+  if (accounts.length === 0) return permissionsByAccountId;
+
+  const [folderMemberships, accountMemberships] = await Promise.all([
+    membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.PamFolder,
+      actorType: ctx.actor,
+      actorId: ctx.actorId
+    }),
+    membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.PamAccount,
+      actorType: ctx.actor,
+      actorId: ctx.actorId
+    })
+  ]);
+
+  const activeFolderMemberships = folderMemberships.filter((m) => m.isActive);
+  const activeAccountMemberships = accountMemberships.filter((m) => m.isActive);
+  const allMemberships = [...activeFolderMemberships, ...activeAccountMemberships];
+
+  const roles =
+    allMemberships.length > 0
+      ? await membershipRoleDAL.find({ $in: { membershipId: allMemberships.map((m) => m.id) } })
+      : [];
+
+  const now = new Date();
+  const rolesByMembershipId = new Map<string, string[]>();
+  roles
+    .filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime)))
+    .forEach((r) => {
+      rolesByMembershipId.set(r.membershipId, [...(rolesByMembershipId.get(r.membershipId) ?? []), r.role]);
+    });
+
+  const rolesByResourceId = (memberships: typeof allMemberships) => {
+    const map = new Map<string, string[]>();
+    memberships.forEach((m) => {
+      const roleList = m.scopeResourceId ? rolesByMembershipId.get(m.id) : undefined;
+      if (m.scopeResourceId && roleList?.length) {
+        map.set(m.scopeResourceId, [...(map.get(m.scopeResourceId) ?? []), ...roleList]);
+      }
+    });
+    return map;
+  };
+
+  const folderRolesByResourceId = rolesByResourceId(activeFolderMemberships);
+  const accountRolesByResourceId = rolesByResourceId(activeAccountMemberships);
+
+  const rulesForRole = (resourceType: ResourceType, role: string) => {
+    try {
+      return resolveResourceRoleRules(resourceType, role);
+    } catch {
+      return [];
+    }
+  };
+
+  accounts.forEach((account) => {
+    const rules: RawRuleOf<MongoAbility<ResourcePermissionSet>>[] = [];
+    if (account.folderId) {
+      (folderRolesByResourceId.get(account.folderId) ?? []).forEach((role) => {
+        rules.push(...rulesForRole(ResourceType.PamFolder, role));
+      });
+    }
+    (accountRolesByResourceId.get(account.id) ?? []).forEach((role) => {
+      rules.push(...rulesForRole(ResourceType.PamAccount, role));
+    });
+    const ability = createMongoAbility<ResourcePermissionSet>(rules);
+    permissionsByAccountId.set(account.id, packRules(ability.rules));
+  });
+
+  return permissionsByAccountId;
 };

@@ -24,10 +24,10 @@ import {
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
 import { formatDuration } from "../../components/formatDuration";
 import { PamDetailSheet } from "../../components/PamDetailSheet";
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 
 type Props = {
   request: TPamAccessRequest | null;

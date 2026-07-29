@@ -1,0 +1,127 @@
+# Build toolchain for the FIPS test/dev image.
+#
+# This layer is expensive (~15 min from scratch: two OpenSSL builds, SoftHSM2, Oracle
+# Instant Client) and changes very rarely, so it is published to GHCR by
+# .github/workflows/publish-fips-toolchain.yml and consumed by Dockerfile.dev.fips.
+#
+# Anything edited here changes the published tag, so CI will rebuild it from source on
+# the PR that changes it and publish the new tag once that PR lands on main.
+#
+# SCOPE: this is an internal CI build cache, not a supported Infisical artifact. It is
+# published publicly only so CI and local dev can pull it instead of recompiling. It is
+# not part of any public API, carries no support or compatibility guarantee, and its tags
+# may change or be deleted at any time. It is NOT the FIPS product image. That one is
+# infisical/infisical-fips, built from Dockerfile.fips.standalone-infisical.
+#
+# THIRD-PARTY CONTENTS: includes Oracle Instant Client, redistributed under the Oracle
+# Free Distribution, Hosting, and Use Terms and Conditions, which permit redistribution
+# of the unmodified Program provided a copy of the license accompanies it. That copy
+# ships in the image at /opt/oracle/instantclient_23_26/BASIC_LICENSE and must not be
+# removed. Also includes OpenSSL (Apache-2.0), SoftHSM2 (BSD-2-Clause), the Infisical
+# CLI, and Debian packages under their respective licenses.
+
+FROM node:22.22.0-trixie-slim
+
+ARG SOFTHSM2_VERSION=2.5.0
+ARG SOFTHSM2_COMMIT=369df0383d101bc8952692c2a368ac8bc887d1b4
+
+ENV SOFTHSM2_VERSION=${SOFTHSM2_VERSION} \
+    SOFTHSM2_SOURCES=/tmp/softhsm2
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    autoconf \
+    automake \
+    git \
+    libtool \
+    libssl-dev \
+    python3 \
+    make \
+    g++ \
+    openssh-client \
+    curl \
+    pkg-config \
+    perl \
+    wget \
+    unzip \
+    libaio1t64 \
+    unixodbc \
+    unixodbc-dev \
+    freetds-dev \
+    freetds-bin \
+    tdsodbc \
+    opensc \
+    smbclient \
+    && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical=0.43.79 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then \
+      ln -sf /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1; \
+    fi
+
+RUN printf "[FreeTDS]\nDescription = FreeTDS Driver\nDriver = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nSetup = /usr/lib/x86_64-linux-gnu/odbc/libtdsodbc.so\nFileUsage = 1\n" > /etc/odbcinst.ini
+
+RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
+WORKDIR ${SOFTHSM2_SOURCES}
+
+RUN git checkout --detach "${SOFTHSM2_COMMIT}" \
+    && test "$(git rev-parse HEAD)" = "${SOFTHSM2_COMMIT}" \
+    && sh autogen.sh \
+    && ./configure --prefix=/usr/local --disable-gost \
+    && make \
+    && make install
+
+WORKDIR /root
+RUN rm -fr ${SOFTHSM2_SOURCES}
+
+RUN mkdir -p /opt/oracle && \
+    ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then \
+      EXPECTED_SHA="9c9a32051e97f087016fb334b7ad5c0aea8511ca8363afd8e0dc6ec4fc515c32" && \
+      curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.arm64-23.26.0.0.0.zip; \
+    else \
+      EXPECTED_SHA="d6c79cbcf0ff209363e779855c690d4fc730aed847e9198a2c439bcf34760af5" && \
+      curl -o /tmp/instantclient.zip https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip; \
+    fi && \
+    echo "$EXPECTED_SHA  /tmp/instantclient.zip" | sha256sum -c - && \
+    unzip -oq /tmp/instantclient.zip -d /opt/oracle && \
+    rm /tmp/instantclient.zip && \
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig
+
+WORKDIR /openssl-build
+RUN wget https://www.openssl.org/source/openssl-3.1.2.tar.gz \
+    && echo "a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539  openssl-3.1.2.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.1.2.tar.gz \
+    && cd openssl-3.1.2 \
+    && ./Configure enable-fips --libdir=lib \
+    && make -j"$(nproc)" \
+    && make install_fips \
+    && test -f /usr/local/lib/ossl-modules/fips.so \
+    && cd / \
+    && rm -rf /openssl-build \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+WORKDIR /tmp/openssl-pqc-build
+RUN wget -q https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz \
+    && echo "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736  openssl-3.5.6.tar.gz" | sha256sum -c - \
+    && tar -xf openssl-3.5.6.tar.gz \
+    && cd openssl-3.5.6 \
+    && ./Configure --prefix=/opt/openssl-pqc --openssldir=/opt/openssl-pqc/ssl no-docs \
+    && make -j"$(nproc)" \
+    && make install_sw \
+    && cd / \
+    && rm -rf /tmp/openssl-pqc-build
+
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="Infisical backend FIPS test toolchain" \
+      org.opencontainers.image.description="Internal CI build cache for Infisical's backend FIPS test image (Dockerfile.dev.fips). Not a supported or versioned public artifact: no support or compatibility guarantee, tags may change or be deleted without notice, and it is not the FIPS product image (that is infisical/infisical-fips). Do not depend on it outside Infisical CI and local development." \
+      org.opencontainers.image.source="https://github.com/Infisical/infisical" \
+      org.opencontainers.image.licenses="NOASSERTION" \
+      com.infisical.image.internal="true" \
+      com.infisical.image.supported="false" \
+      com.infisical.thirdparty.oracle-instantclient.license="/opt/oracle/instantclient_23_26/BASIC_LICENSE"

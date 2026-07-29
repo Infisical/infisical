@@ -19,7 +19,9 @@ export const PamDiscoverySourceRunsSchema = z.object({
   startedAt: z.date().nullable().optional(),
   completedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  dependencyCount: z.number().nullable().optional(),
+  newDependencyCount: z.number().nullable().optional()
 });
 
 export type TPamDiscoverySourceRuns = z.infer<typeof PamDiscoverySourceRunsSchema>;

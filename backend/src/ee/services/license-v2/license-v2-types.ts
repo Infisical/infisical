@@ -194,6 +194,7 @@ export type BillingV2Overview = {
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.
   onDemandAmount: number;
   checkoutFrozen: boolean;
+  selfServe: boolean;
 };
 
 export type TGetBillingV2OverviewDTO = {
@@ -274,11 +275,14 @@ export type TRemoveBillingV2ProductDTO = {
 
 // Start / change annual commitments across dimensions in one atomic call. Increase is charged now; a
 // decrease is rejected by the server unless the dimension's decrease window is open. The change always
-// prices at the current server time; a client-supplied proration instant is never accepted.
+// prices at the current server time; a client-supplied proration instant is never accepted. productId
+// is required: it names the product so the server resolves the trialing plan and creates/attaches the
+// subscription when there isn't one yet (a trialing org). Not trialing it → product_not_trialing.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
   actor: OrgServiceActor;
   changes: BillingV2CommitmentChange[];
+  productId: string;
 };
 
 export type TStartBillingV2TrialDTO = {
