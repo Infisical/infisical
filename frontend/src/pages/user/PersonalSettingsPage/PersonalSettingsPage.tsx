@@ -9,7 +9,7 @@ import { PersonalTabGroup } from "./components/PersonalTabGroup";
 
 export const PersonalSettingsPage = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate({ from: "/_authenticate/personal-settings/_layout/" });
+  const navigate = useNavigate({ from: "/personal-settings/" });
   const { selectedTab } = useSearch({
     from: "/_authenticate/personal-settings/_layout/"
   });
@@ -22,7 +22,7 @@ export const PersonalSettingsPage = () => {
       </Helmet>
       <Link
         to="/"
-        className="mb-6 inline-flex items-center gap-2 rounded-sm text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="mb-6 inline-flex items-center gap-2 rounded-sm text-sm text-muted transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <ArrowLeftIcon className="size-4" />
         Back to organization

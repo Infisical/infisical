@@ -115,12 +115,13 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
               </Alert>
             )}
 
-            {isPending ? (
+            {isPending && (
               <div className="space-y-2" aria-label="Loading passkeys">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </div>
-            ) : isError ? (
+            )}
+            {!isPending && isError && (
               <Alert variant="danger">
                 <TriangleAlertIcon />
                 <AlertTitle>Passkeys could not be loaded</AlertTitle>
@@ -130,7 +131,8 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
                   </Button>
                 </AlertDescription>
               </Alert>
-            ) : (
+            )}
+            {!isPending && !isError && (
               <div className="flex flex-col gap-2">
                 {credentials.length === 0 && (
                   <p className="rounded-lg border border-border bg-container p-4 text-center text-sm text-muted">

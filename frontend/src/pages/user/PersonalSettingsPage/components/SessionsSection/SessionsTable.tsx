@@ -49,8 +49,7 @@ const formatLocalDateTime = (date: Date): string => {
 
 export const SessionsTable = () => {
   const { data, isPending, isError, refetch } = useGetMySessions();
-  const { mutateAsync: revokeMySessionById, isPending: isRevoking } =
-    useRevokeMySessionById();
+  const { mutateAsync: revokeMySessionById, isPending: isRevoking } = useRevokeMySessionById();
   const [sessionToRevoke, setSessionToRevoke] = useState<{
     id: string;
     ip: string;
@@ -153,25 +152,27 @@ export const SessionsTable = () => {
                   <div className="flex flex-col">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <time
-                          dateTime={lastUsedDate.toISOString()}
-                          tabIndex={0}
-                          className="w-fit cursor-help rounded-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        <button
+                          type="button"
+                          className="w-fit cursor-help rounded-sm bg-transparent p-0 text-left font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
-                          {timeAgo(lastUsedDate, new Date())}
-                        </time>
+                          <time dateTime={lastUsedDate.toISOString()}>
+                            {timeAgo(lastUsedDate, new Date())}
+                          </time>
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>{formatLocalDateTime(lastUsedDate)}</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <time
-                          dateTime={createdAtDate.toISOString()}
-                          tabIndex={0}
-                          className="w-fit cursor-help rounded-sm text-xs text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        <button
+                          type="button"
+                          className="w-fit cursor-help rounded-sm bg-transparent p-0 text-left text-xs text-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
-                          Created {timeAgo(createdAtDate, new Date())}
-                        </time>
+                          <time dateTime={createdAtDate.toISOString()}>
+                            Created {timeAgo(createdAtDate, new Date())}
+                          </time>
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>{formatLocalDateTime(createdAtDate)}</TooltipContent>
                     </Tooltip>

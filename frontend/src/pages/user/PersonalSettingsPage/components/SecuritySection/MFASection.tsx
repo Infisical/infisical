@@ -46,12 +46,7 @@ import { useEnableMfa } from "./useEnableMfa";
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
-  const {
-    data: user,
-    isPending,
-    isError: isUserError,
-    refetch: refetchUser
-  } = useGetUser();
+  const { data: user, isPending, isError: isUserError, refetch: refetchUser } = useGetUser();
   const { changePreferredMfa, isBusy: isChangingPreferred } = useChangePreferredMfa();
   const { isBusy: isEnabling, enableMfa } = useEnableMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
@@ -93,13 +88,7 @@ export const MFASection = () => {
     setHasAcknowledgedCodes(false);
   };
 
-  if (
-    isUserError ||
-    isTotpError ||
-    isWebAuthnError ||
-    isOrganizationsError ||
-    isServerError
-  ) {
+  if (isUserError || isTotpError || isWebAuthnError || isOrganizationsError || isServerError) {
     return (
       <Alert variant="danger">
         <CircleAlertIcon />

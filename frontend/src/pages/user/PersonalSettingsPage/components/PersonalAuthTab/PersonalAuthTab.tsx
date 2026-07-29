@@ -1,13 +1,6 @@
 import { AlertCircleIcon } from "lucide-react";
 
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  Card,
-  Skeleton
-} from "@app/components/v3";
+import { Alert, AlertDescription, AlertTitle, Button, Card, Skeleton } from "@app/components/v3";
 import { useGetUser } from "@app/hooks/api";
 import { AuthMethod } from "@app/hooks/api/users/types";
 
