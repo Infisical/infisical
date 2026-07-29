@@ -6,7 +6,6 @@ import {
   CloudflareR2AccessKeyRotationGeneratedCredentialsSchema,
   CloudflareR2AccessKeyRotationListItemSchema,
   CloudflareR2AccessKeyRotationSchema,
-  CloudflareR2BucketSchema,
   CreateCloudflareR2AccessKeyRotationSchema
 } from "./cloudflare-r2-access-key-rotation-schemas";
 
@@ -23,6 +22,3 @@ export type TCloudflareR2AccessKeyRotationWithConnection = TCloudflareR2AccessKe
 export type TCloudflareR2AccessKeyRotationGeneratedCredentials = z.infer<
   typeof CloudflareR2AccessKeyRotationGeneratedCredentialsSchema
 >;
-
-/** A bucket as selected on the rotation, distinct from the app connection's richer listing type. */
-export type TCloudflareR2AccessKeyBucket = z.infer<typeof CloudflareR2BucketSchema>;

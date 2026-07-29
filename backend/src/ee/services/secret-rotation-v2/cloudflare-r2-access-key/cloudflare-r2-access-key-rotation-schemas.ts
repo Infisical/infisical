@@ -57,19 +57,14 @@ const CloudflareR2AccessKeyRotationParametersSchema = z.object({
   name: CloudflareTokenNameSchema.describe(SecretRotations.PARAMETERS.CLOUDFLARE_R2_ACCESS_KEY.name),
   buckets: CloudflareR2BucketSchema.array()
     .min(1, "At least one bucket is required")
-    .superRefine((buckets, ctx) => {
-      const keys = buckets.map(({ name, jurisdiction }) => `${jurisdiction}:${name}`);
-
-      if (new Set(keys).size !== keys.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Buckets must be unique"
-        });
-      }
-    })
+    .refine(
+      (buckets) => new Set(buckets.map(({ name, jurisdiction }) => `${jurisdiction}:${name}`)).size === buckets.length,
+      "Buckets must be unique"
+    )
     .describe(SecretRotations.PARAMETERS.CLOUDFLARE_R2_ACCESS_KEY.buckets),
   accessLevel: z
     .nativeEnum(CloudflareR2AccessLevel)
+    .default(CloudflareR2AccessLevel.ObjectRead)
     .describe(SecretRotations.PARAMETERS.CLOUDFLARE_R2_ACCESS_KEY.accessLevel),
   allowedIps: CloudflareTokenIpRestrictionSchema.array()
     .optional()
@@ -86,6 +81,10 @@ const CloudflareR2AccessKeyRotationSecretsMappingSchema = z.object({
 });
 
 export const CloudflareR2AccessKeyRotationTemplateSchema = z.object({
+  // seeds the create form; the least-privileged level is the right thing to land on by default
+  parameters: z.object({
+    accessLevel: z.nativeEnum(CloudflareR2AccessLevel)
+  }),
   secretsMapping: z.object({
     apiToken: z.string(),
     accessKeyId: z.string(),

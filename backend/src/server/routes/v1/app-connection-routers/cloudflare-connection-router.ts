@@ -157,10 +157,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
         200: z
           .object({
             name: z.string(),
-            jurisdiction: z.nativeEnum(CloudflareR2Jurisdiction),
-            location: z.string().optional(),
-            storageClass: z.string().optional(),
-            creationDate: z.string().optional()
+            jurisdiction: z.nativeEnum(CloudflareR2Jurisdiction)
           })
           .array()
       }

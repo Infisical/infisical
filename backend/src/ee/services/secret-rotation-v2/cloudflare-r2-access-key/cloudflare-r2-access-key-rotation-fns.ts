@@ -20,7 +20,6 @@ import {
   getCloudflareErrorMessage,
   listCloudflarePermissionGroups
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-fns";
-import { TCloudflarePermissionGroup } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 
 import {
   CLOUDFLARE_R2_ACCESS_LEVEL_PERMISSION_GROUPS,
@@ -50,13 +49,12 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
    * does not validate these keys when the token is created, so a bucket renamed or deleted after the
    * rotation was configured yields a token that grants nothing rather than an error.
    */
-  const $buildResources = (): Record<string, string> =>
-    Object.fromEntries(
-      buckets.map(({ name: bucketName, jurisdiction }) => [
-        `com.cloudflare.edge.r2.bucket.${accountId}_${jurisdiction}_${bucketName}`,
-        "*"
-      ])
-    );
+  const bucketResources = Object.fromEntries(
+    buckets.map(({ name: bucketName, jurisdiction }) => [
+      `${CLOUDFLARE_R2_BUCKET_PERMISSION_SCOPE}.${accountId}_${jurisdiction}_${bucketName}`,
+      "*"
+    ])
+  );
 
   /**
    * R2's S3-compatible secret access key is the hex sha256 of the API token's value, and the access key
@@ -65,7 +63,7 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
   const $toSecretAccessKey = (tokenValue: string) =>
     crypto.nativeCrypto.createHash("sha256").update(tokenValue).digest("hex");
 
-  const $listPermissionGroups = async (): Promise<TCloudflarePermissionGroup[]> => {
+  const $listPermissionGroups = async () => {
     try {
       return await listCloudflarePermissionGroups(connection);
     } catch (error: unknown) {
@@ -111,7 +109,7 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
       policies: [
         {
           effect: CloudflareTokenPolicyEffect.Allow,
-          resources: $buildResources(),
+          resources: bucketResources,
           permissionGroupIds
         }
       ]

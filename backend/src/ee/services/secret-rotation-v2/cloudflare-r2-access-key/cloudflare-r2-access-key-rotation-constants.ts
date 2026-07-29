@@ -9,6 +9,9 @@ export const CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION: TSecretRotationV2Lis
   type: SecretRotation.CloudflareR2AccessKey,
   connection: AppConnection.Cloudflare,
   template: {
+    parameters: {
+      accessLevel: CloudflareR2AccessLevel.ObjectRead
+    },
     secretsMapping: {
       apiToken: "CLOUDFLARE_R2_API_TOKEN",
       accessKeyId: "CLOUDFLARE_R2_ACCESS_KEY_ID",

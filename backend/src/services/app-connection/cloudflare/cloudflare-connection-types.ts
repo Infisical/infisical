@@ -46,13 +46,10 @@ export type TCloudflarePermissionGroup = {
   scopes: string[];
 };
 
+/** Name and jurisdiction together identify a bucket, and are all a token policy needs to grant it. */
 export type TCloudflareR2Bucket = {
   name: string;
   jurisdiction: CloudflareR2Jurisdiction;
-  // the physical region the bucket's data lives in, e.g. "weur" — informational only
-  location?: string;
-  storageClass?: string;
-  creationDate?: string;
 };
 
 /** Raw shape returned by Cloudflare's `GET /accounts/:id/r2/buckets` list endpoint. */
@@ -60,10 +57,7 @@ export type TCloudflareR2BucketsApiResponse = {
   result: {
     buckets?: {
       name: string;
-      creation_date?: string;
       jurisdiction?: string;
-      location?: string;
-      storage_class?: string;
     }[];
   } | null;
   result_info?: { cursor?: string };

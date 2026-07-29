@@ -19,7 +19,7 @@ import {
   TCloudflareVerifyTokenResponse
 } from "./cloudflare-token-rotation-types";
 
-export const getCloudflareTokenExpiresOn = (rotationInterval: number) => {
+const getCloudflareTokenExpiresOn = (rotationInterval: number) => {
   const days = Math.max(rotationInterval * 2 + 1, CLOUDFLARE_TOKEN_MIN_TTL_DAYS);
 
   const expiresOn = new Date();
@@ -31,7 +31,7 @@ export const getCloudflareTokenExpiresOn = (rotationInterval: number) => {
 };
 
 // an empty `in` list would deny every request, so we omit either side rather than sending []
-export const buildCloudflareTokenCondition = ({
+const buildCloudflareTokenCondition = ({
   allowedIps,
   disallowedIps
 }: TCloudflareTokenRestrictions): TCloudflareTokenCondition | undefined => {

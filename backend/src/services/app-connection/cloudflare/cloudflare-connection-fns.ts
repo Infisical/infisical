@@ -22,8 +22,8 @@ import {
 const CLOUDFLARE_PER_PAGE = 50;
 const CLOUDFLARE_MAX_PAGES = 100;
 
-// R2 accepts up to 1000 per page; 100 keeps responses small while rarely needing a second request
-const CLOUDFLARE_R2_BUCKETS_PER_PAGE = 100;
+// R2's maximum. Cursor pagination is strictly sequential, so a large page keeps round-trips down.
+const CLOUDFLARE_R2_BUCKETS_PER_PAGE = 1000;
 
 export const getCloudflareAuthHeaders = (apiToken: string) => ({
   Authorization: `Bearer ${apiToken}`,
@@ -124,11 +124,7 @@ export const listCloudflareZones = async (appConnection: TCloudflareConnection):
   }));
 };
 
-/**
- * Unlike the other list endpoints, token permission groups don't reliably report
- * `result_info.total_pages`, so this paginates on its own: keep requesting while a page comes back
- * full and stop on the first partial page.
- */
+/** This endpoint returns the account's full set of token permission groups in one response. */
 export const listCloudflarePermissionGroups = async (
   appConnection: TCloudflareConnection
 ): Promise<TCloudflarePermissionGroup[]> => {
@@ -138,7 +134,6 @@ export const listCloudflarePermissionGroups = async (
 
   const { data } = await safeRequest.get<{
     result: { id: string; name: string; scopes?: string[] }[];
-    result_info?: { count?: number };
   }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`, {
     headers: getCloudflareAuthHeaders(apiToken)
   });
@@ -182,14 +177,11 @@ const $listCloudflareR2BucketsForJurisdiction = async ({
       ...(data.result?.buckets ?? []).map((bucket) => ({
         name: bucket.name,
         // the payload omits the jurisdiction for `default`, so fall back to the one we asked for
-        jurisdiction: (bucket.jurisdiction as CloudflareR2Jurisdiction) || jurisdiction,
-        location: bucket.location,
-        storageClass: bucket.storage_class,
-        creationDate: bucket.creation_date
+        jurisdiction: (bucket.jurisdiction as CloudflareR2Jurisdiction) || jurisdiction
       }))
     );
 
-    cursor = data.result_info?.cursor || undefined;
+    cursor = data.result_info?.cursor;
     if (!cursor) break;
   }
 
