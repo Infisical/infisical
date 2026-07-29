@@ -47,6 +47,7 @@ import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connec
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerLiteLLMConnectionRouter } from "./litellm-connection-router";
+import { registerMicrosoftIntuneConnectionRouter } from "./microsoft-intune-connection-router";
 import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
@@ -143,6 +144,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
     [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
+    [AppConnection.MicrosoftIntune]: registerMicrosoftIntuneConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.VenafiTpp]: registerVenafiTppConnectionRouter,
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,

@@ -1658,26 +1658,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const certificateProfileService = certificateProfileServiceFactory({
-    certificateProfileDAL,
-    certificatePolicyDAL,
-    certificatePolicyService,
-    apiEnrollmentConfigDAL,
-    estEnrollmentConfigDAL,
-    acmeEnrollmentConfigDAL,
-    scepEnrollmentConfigDAL,
-    scepDynamicChallengeDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    permissionService,
-    kmsService,
-    projectDAL,
-    resourceMetadataDAL,
-    pkiApplicationProfileDAL
-  });
-
   const pkiApplicationService = pkiApplicationServiceFactory({
     pkiApplicationDAL,
     pkiApplicationProfileDAL,
@@ -1749,18 +1729,6 @@ export const registerRoutes = async (
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
-    projectDAL,
-    permissionService
-  });
-
-  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
-    pkiApplicationDAL,
-    pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL,
-    estEnrollmentConfigDAL,
-    acmeEnrollmentConfigDAL,
-    scepEnrollmentConfigDAL,
-    kmsService,
     projectDAL,
     permissionService
   });
@@ -2931,6 +2899,48 @@ export const registerRoutes = async (
     licenseService
   });
 
+  const certificateProfileService = certificateProfileServiceFactory({
+    certificateProfileDAL,
+    certificatePolicyDAL,
+    certificatePolicyService,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
+    scepDynamicChallengeDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCertDAL,
+    hsmConnectorService,
+    externalCertificateAuthorityDAL,
+    permissionService,
+    kmsService,
+    projectDAL,
+    resourceMetadataDAL,
+    pkiApplicationProfileDAL
+  });
+
+  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
+    pkiApplicationDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
+    appConnectionService,
+    approvalPolicyDAL,
+    certificateProfileDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCertDAL,
+    hsmConnectorService,
+    kmsService,
+    projectDAL,
+    permissionService
+  });
+
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
     permissionService,
@@ -3478,6 +3488,7 @@ export const registerRoutes = async (
   });
 
   const pkiScepService = pkiScepServiceFactory({
+    keyStore,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -3490,6 +3501,7 @@ export const registerRoutes = async (
     certificateBodyDAL,
     projectDAL,
     kmsService,
+    appConnectionDAL,
     licenseService,
     certificatePolicyDAL,
     certificatePolicyService,

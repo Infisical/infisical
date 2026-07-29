@@ -55,7 +55,8 @@ const VENAFI_SAN_TYPE_BY_SAN_TYPE: Record<CertSubjectAlternativeNameType, number
   [CertSubjectAlternativeNameType.DNS_NAME]: 2,
   [CertSubjectAlternativeNameType.IP_ADDRESS]: 7,
   [CertSubjectAlternativeNameType.EMAIL]: 1,
-  [CertSubjectAlternativeNameType.URI]: 6
+  [CertSubjectAlternativeNameType.URI]: 6,
+  [CertSubjectAlternativeNameType.UPN]: 0
 };
 
 type TVenafiTppCertificateRequest = {
