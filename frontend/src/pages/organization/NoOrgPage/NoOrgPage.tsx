@@ -7,7 +7,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { ContentLoader } from "@app/components/v2";
-import { organizationKeys, useCreateOrg, useGetOrganizations, useSelectOrganization } from "@app/hooks/api";
+import {
+  fetchOrganizations,
+  organizationKeys,
+  useCreateOrg,
+  useSelectOrganization
+} from "@app/hooks/api";
 
 const PERSONAL_ORG_NAME = "Personal Org";
 // A useRef gate resets on a full unmount/remount; this sessionStorage flag survives it, so an
@@ -32,8 +37,6 @@ export const NoOrgPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const organizations = useGetOrganizations();
-
   const { mutateAsync: createOrg } = useCreateOrg({ invalidate: false });
   const { mutateAsync: selectOrg } = useSelectOrganization();
 
@@ -43,7 +46,6 @@ export const NoOrgPage = () => {
 
   useEffect(() => {
     if (hasRun.current) return;
-    if (organizations.isPending) return;
 
     hasRun.current = true;
 
@@ -51,7 +53,8 @@ export const NoOrgPage = () => {
     sessionStorage.setItem(CREATION_STARTED_KEY, "true");
 
     const createPersonalOrg = async () => {
-      const orgName = generatePersonalOrgName((organizations.data ?? []).map((org) => org.name));
+      const existingOrgs = await fetchOrganizations().catch(() => []);
+      const orgName = generatePersonalOrgName(existingOrgs.map((org) => org.name));
 
       let organization;
       try {
@@ -93,7 +96,7 @@ export const NoOrgPage = () => {
     };
 
     createPersonalOrg();
-  }, [createOrg, selectOrg, navigate, queryClient, organizations.isPending, organizations.data]);
+  }, [createOrg, selectOrg, navigate, queryClient]);
 
   return (
     <>
