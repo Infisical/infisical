@@ -61,9 +61,6 @@ runs:
           -e JWT_AUTH_SECRET=something-random \
           -e ENCRYPTION_KEY=4bnfe4e407b8921c104518903515b218 \
           -e TELEMETRY_ENABLED=false \
-          -e SECRET_SCANNING_GIT_APP_ID=793712 \
-          -e SECRET_SCANNING_PRIVATE_KEY=some-random \
-          -e SECRET_SCANNING_WEBHOOK_SECRET=some-random \
           "${{ inputs.container-name }}"
 
     - name: Wait for the API to serve its spec
