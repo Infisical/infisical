@@ -874,6 +874,7 @@ export const licenseV2ServiceFactory = ({
     if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
+    await licenseClient.markEntitlementsStale(orgId);
     return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
   };
 
