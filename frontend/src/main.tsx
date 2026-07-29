@@ -7,6 +7,7 @@ import NProgress from "nprogress";
 
 import { Lottie } from "./components/v2";
 import { queryClient } from "./hooks/api/reactQuery";
+import { initializePlatform } from "./lib/fn/platform";
 import { ErrorPage } from "./pages/public/ErrorPage/ErrorPage";
 import { NotFoundPage } from "./pages/public/NotFoundPage/NotFoundPage";
 // Import the generated route tree
@@ -27,13 +28,7 @@ import "./translation";
 // have a look at the Quick start guide
 // for passing in lng and translations on init/
 
-const isIos =
-  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
-
-if (isIos) {
-  document.documentElement.dataset.platform = "ios";
-}
+initializePlatform();
 
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);
