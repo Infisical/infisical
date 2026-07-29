@@ -72,6 +72,24 @@ export const getMicrosoftEntraToken = async (
   }
 };
 
+const INTUNE_SERVICE_HOST = "manage.microsoft.com";
+
+const assertIntuneServiceUri = (uri: string) => {
+  let parsed: URL;
+  try {
+    parsed = new URL(uri);
+  } catch {
+    throw new BadRequestError({ message: "Microsoft Intune returned a malformed SCEP validation service URL." });
+  }
+
+  const isIntuneHost = parsed.hostname === INTUNE_SERVICE_HOST || parsed.hostname.endsWith(`.${INTUNE_SERVICE_HOST}`);
+  if (parsed.protocol !== "https:" || !isIntuneHost) {
+    throw new BadRequestError({
+      message: `Refusing the SCEP validation service at '${parsed.host}' because it is not an HTTPS ${INTUNE_SERVICE_HOST} endpoint.`
+    });
+  }
+};
+
 export const discoverScepValidationServiceUri = async (graphAccessToken: string) => {
   try {
     const { data } = await request.get<TMicrosoftGraphServicePrincipalEndpointsResponse>(
@@ -92,7 +110,10 @@ export const discoverScepValidationServiceUri = async (graphAccessToken: string)
       });
     }
 
-    return endpoint.uri.replace(/\/+$/, "");
+    const serviceUri = endpoint.uri.replace(/\/+$/, "");
+    assertIntuneServiceUri(serviceUri);
+
+    return serviceUri;
   } catch (err) {
     if (err instanceof BadRequestError) throw err;
     if (err instanceof AxiosError) {
