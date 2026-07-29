@@ -46,6 +46,13 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                 link: z.string()
               })
             )
+            .optional(),
+          // Product-access grants are best-effort; present only when at least one grant failed.
+          grantFailures: z
+            .object({
+              projectIds: z.string().array(),
+              pamAccess: z.boolean()
+            })
             .optional()
         })
       }
@@ -66,7 +73,11 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      // Best-effort: the org invite already succeeded, so a project-side failure must not fail the request.
+      // Best-effort: the org invite already succeeded, so a product-side failure must not fail
+      // the request. Failures are still reported back so the client can tell the inviter.
+      const failedProjectIds: string[] = [];
+      let pamAccessFailed = false;
+
       if (req.body.projectIds?.length) {
         for await (const projectId of req.body.projectIds) {
           try {
@@ -84,6 +95,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             });
           } catch (err) {
             logger.error(err, `Failed to grant invitees access to project [projectId=${projectId}]`);
+            failedProjectIds.push(projectId);
           }
         }
       }
@@ -93,7 +105,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       if (req.body.grantPamAccess) {
         try {
           const pamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
-          const { memberships } = await server.services.pamMembership.addProductUserMembers({
+          const { memberships, unresolved } = await server.services.pamMembership.addProductUserMembers({
             projectId: pamProjectId,
             actorId: req.permission.id,
             actor: req.permission.type,
@@ -103,6 +115,13 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             emails: req.body.inviteeEmails,
             role: PamProductRole.Member
           });
+
+          // The org invite above creates user records for every email, so leftovers mean
+          // some invitees silently missed the grant (the service skips them without throwing).
+          if (unresolved.length) {
+            logger.error(`Failed to resolve invitees for PAM access [emails=${unresolved.join(",")}]`);
+            pamAccessFailed = true;
+          }
 
           for await (const membership of memberships) {
             await server.services.auditLog.createAuditLog({
@@ -123,6 +142,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           }
         } catch (err) {
           logger.error(err, "Failed to grant invitees PAM access");
+          pamAccessFailed = true;
         }
       }
 
@@ -137,9 +157,11 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      const hasGrantFailures = failedProjectIds.length > 0 || pamAccessFailed;
       return {
         completeInviteLinks,
-        message: `Send an invite link to ${req.body.inviteeEmails.join(", ")}`
+        message: `Send an invite link to ${req.body.inviteeEmails.join(", ")}`,
+        ...(hasGrantFailures ? { grantFailures: { projectIds: failedProjectIds, pamAccess: pamAccessFailed } } : {})
       };
     }
   });

@@ -28,30 +28,32 @@ interface ProductSelectionStepProps {
 }
 
 const setUpProduct = async (product: SignupProductType): Promise<Project | undefined> => {
+  // PAM pages are org-scoped; there is no project to create.
+  if (product === ProjectType.PAM) return undefined;
+
+  // Locate before creating: a retry after a lost response or a mid-flow refresh can arrive
+  // with the project already created (cert-manager is even bootstrapped server-side), and the
+  // org is brand new, so any existing project of the type belongs to this flow.
+  const [existingProject] = await fetchUserWorkspaces(false, product);
+  if (existingProject) return existingProject;
+
   switch (product) {
     case ProjectType.SecretManager:
       return initProjectHelper({ projectName: EXAMPLE_PROJECT_NAME });
-    case ProjectType.KMS:
-    case ProjectType.SecretScanning: {
-      const { data } = await createWorkspace({
-        projectName: EXAMPLE_PROJECT_NAME,
-        type: product
-      });
-      return data.project;
-    }
     case ProjectType.CertificateManager: {
-      // Orgs get a cert-manager project bootstrapped server-side, so locate before creating.
-      const projects = await fetchUserWorkspaces(false, ProjectType.CertificateManager);
-      if (projects.length > 0) return projects[0];
       const { data } = await createWorkspace({
         projectName: "Certificate Manager",
         type: ProjectType.CertificateManager
       });
       return data.project;
     }
-    default:
-      // PAM pages are org-scoped; there is no project to create.
-      return undefined;
+    default: {
+      const { data } = await createWorkspace({
+        projectName: EXAMPLE_PROJECT_NAME,
+        type: product
+      });
+      return data.project;
+    }
   }
 };
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   CardContent,
@@ -79,13 +80,22 @@ export default function TeamInviteStep({
     setValidationError("");
 
     try {
-      await mutateAsync({
+      const { data } = await mutateAsync({
         inviteeEmails: parsed,
         organizationId: orgId,
         organizationRoleSlug: "member",
         ...(projectIds?.length ? { projectIds } : {}),
         ...(grantPamAccess ? { grantPamAccess } : {})
       });
+
+      // Product grants are best-effort server-side: the invites went out, so continue,
+      // but don't let the inviter believe access was granted when it wasn't.
+      if (data.grantFailures) {
+        createNotification({
+          type: "warning",
+          text: "Invites were sent, but some product access could not be granted. Grant access from each product's Access Control page."
+        });
+      }
     } catch {
       // The global mutation error handler already surfaces a toast; stay on this step.
       return;
