@@ -83,7 +83,7 @@ That is everything Infisical needs. What is left is starting your agent behind a
   +----------------------------------------+
 ```
 
-**Dedicated proxy.** You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. A different machine from your credentials.
+**Standalone proxy.** You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. A different machine from your credentials.
 
 **Pick this when the agent runs without you there:** an agent that stays up, one on a machine other than yours, or one proxy shared across your team.
 
@@ -193,7 +193,7 @@ That is everything Infisical needs. What is left is starting your agent behind a
 
   </Tab>
 
-  <Tab title="Dedicated proxy">
+  <Tab title="Standalone proxy">
     You will need **two hosts in the same private network**, one for the proxy and one for the agent, with the agent host able to reach the proxy on port `17322`. Install the [Infisical CLI](/cli/overview) on both.
 
     The proxy and the agent authenticate as **two separate machine identities with opposite access**: the proxy can read your secrets, the agent never can. That split is the security model.
@@ -247,7 +247,7 @@ That is everything Infisical needs. What is left is starting your agent behind a
         Leave it running and note this host's address; the next step points the agent at it.
 
         <Note>
-          Fine for trying it out, but this dies with your terminal. [Running it durably](/documentation/platform/agent-proxy/dedicated-agent-proxy#running-it-durably) covers systemd, Docker, and PaaS.
+          Fine for trying it out, but this dies with your terminal. [Running it durably](/documentation/platform/agent-proxy/standalone-agent-proxy#running-it-durably) covers systemd, Docker, and PaaS.
         </Note>
       </Step>
       <Step title="Launch your agent on its host">
@@ -304,7 +304,7 @@ That is everything Infisical needs. What is left is starting your agent behind a
       </Step>
     </Steps>
 
-    Next: [Dedicated Agent Proxy](/documentation/platform/agent-proxy/dedicated-agent-proxy) is what to settle before real agents depend on this: process supervision, network placement, credential refresh, and high availability.
+    Next: [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) is what to settle before real agents depend on this: process supervision, network placement, credential refresh, and high availability.
 
   </Tab>
 </Tabs>

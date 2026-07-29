@@ -27,7 +27,7 @@ Two things exist, and you already have both:
 
 That is the entire setup. No host to provision, no machine identities to create, no service to keep running, and no proxy address to configure: you are logged in, so `run` authenticates as you, and it starts and stops its own proxy around the agent.
 
-For agents running anywhere else it is the other way round: a [dedicated proxy](/documentation/platform/agent-proxy/dedicated-agent-proxy) buys a stronger boundary, but there is real infrastructure to stand up first.
+For agents running anywhere else it is the other way round: a [standalone proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) buys a stronger boundary, but there is real infrastructure to stand up first.
 
 ## What the sandbox is for
 
@@ -50,7 +50,7 @@ flowchart LR
 ```
 
 <Warning>
-  **`run` cannot be pointed at a proxy running elsewhere.** It always starts its own, so `--proxy` is rejected with an error rather than silently ignored. To route an agent through a proxy on another host, see [Dedicated Agent Proxy](/documentation/platform/agent-proxy/dedicated-agent-proxy).
+  **`run` cannot be pointed at a proxy running elsewhere.** It always starts its own, so `--proxy` is rejected with an error rather than silently ignored. To route an agent through a proxy on another host, see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 </Warning>
 
 ## Before you begin

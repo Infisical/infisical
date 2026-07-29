@@ -16,7 +16,7 @@ description: "Run the Infisical Agent Proxy and connect agents to it"
 
   </Tab>
 
-  <Tab title="Dedicated proxy (start + connect)">
+  <Tab title="Standalone proxy (start + connect)">
     ```bash
     # On the proxy host
     infisical secrets agent-proxy start [options]
@@ -40,7 +40,7 @@ These subcommands run the [Infisical Agent Proxy](/documentation/platform/agent-
 
 - `run` is for an agent on your own computer. It does the proxy's work and the agent's launch in one process, authenticating as your logged-in user, and sandboxes the agent. It is not `connect` with convenient defaults, and it cannot be pointed at a proxy elsewhere: `--proxy` is rejected rather than ignored. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
 - `start` runs the proxy as a long-running service, for agents that do not run on your own computer.
-- `connect` launches an agent behind a proxy **already running elsewhere**, setting up proxy routing, CA trust, and placeholder credentials. It needs a proxy address, which is why it goes with `start`. Both authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from your agents'; see [Dedicated Agent Proxy](/documentation/platform/agent-proxy/dedicated-agent-proxy).
+- `connect` launches an agent behind a proxy **already running elsewhere**, setting up proxy routing, CA trust, and placeholder credentials. It needs a proxy address, which is why it goes with `start`. Both authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from your agents'; see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
 Neither arrangement depends on the other: `run` needs no `start`, and a deployed proxy needs no `run`. All three read the same [proxied services](/documentation/platform/agent-proxy/proxied-services) and secrets from Infisical.
 
@@ -228,7 +228,7 @@ $ infisical secrets agent-proxy run -- claude
   </Accordion>
 </Accordion>
 
-### Dedicated proxy, on a host of its own
+### Standalone proxy, on a host of its own
 
 These two are used together, on different hosts: `start` on the proxy host, `connect` on each agent host.
 

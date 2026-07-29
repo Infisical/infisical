@@ -42,7 +42,7 @@ Two things, and they are the same no matter where your agent runs:
 
 Then you route your agent's traffic through Agent Proxy. The agent needs no code changes: the [Infisical CLI](/cli/overview) launches it with its HTTP clients pointed at the proxy, and the proxy applies the real credential to matching requests on the way out.
 
-## Local proxy or dedicated proxy
+## Local proxy or standalone proxy
 
 The proxy has to sit between your agent and the internet, so where it runs follows from where your agent runs. That gives two shapes:
 
@@ -52,7 +52,7 @@ The proxy has to sit between your agent and the internet, so where it runs follo
 
     **Pick this when you are the one running the agent:** Claude Code or Codex in your terminal, or a script you are iterating on.
   </Card>
-  <Card title="Dedicated proxy" icon="server">
+  <Card title="Standalone proxy" icon="server">
     You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. A different machine from your credentials.
 
     **Pick this when the agent runs without you there:** an agent that stays up, one on a machine other than yours, or one proxy shared across your team.

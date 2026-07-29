@@ -631,7 +631,7 @@
                       "documentation/platform/agent-proxy/quickstart",
                       "documentation/platform/agent-proxy/proxied-services",
                       "documentation/platform/agent-proxy/local-agent-proxy",
-                      "documentation/platform/agent-proxy/dedicated-agent-proxy",
+                      "documentation/platform/agent-proxy/standalone-agent-proxy",
                       "documentation/platform/agent-proxy/activity-logs",
                       "documentation/platform/agent-proxy/security"
                     ]
@@ -4334,11 +4334,11 @@
   "redirects": [
     {
       "source": "/documentation/platform/agent-proxy/deployment",
-      "destination": "/documentation/platform/agent-proxy/dedicated-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
     },
     {
       "source": "/documentation/platform/agent-proxy/connecting-agents",
-      "destination": "/documentation/platform/agent-proxy/dedicated-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
     },
     {
       "source": "/documentation/platform/kms/hsm-integration",

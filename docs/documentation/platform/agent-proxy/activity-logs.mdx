@@ -18,7 +18,7 @@ Each request is logged with these fields (plus the standard `time`, `level`, and
 | --- | --- |
 | `event` | Always `agent-proxy.request`, so activity is easy to filter from other logs |
 | `decision` | `brokered`, `passthrough`, `blocked`, or `error` |
-| `agentId` / `agentName` | Who made the request: the agent's machine identity behind a dedicated proxy, or your own account (or `token`) on a local proxy |
+| `agentId` / `agentName` | Who made the request: the agent's machine identity behind a standalone proxy, or your own account (or `token`) on a local proxy |
 | `projectId` / `environment` / `secretPath` | The folder the request was scoped to |
 | `serviceName` / `serviceId` | The matched proxied service (omitted when none matched) |
 | `method` / `host` / `port` / `path` | The request line, before substitution (so `path` shows the placeholder) |
@@ -59,7 +59,7 @@ infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
 
 The file is written in the human-readable format shown above, and is appended to on every run without being rotated for you, so use `logrotate` (`copytruncate`) if you keep one around. Without the flag, warnings and errors still print to your terminal; only the per-request trail is dropped.
 
-### Dedicated proxy
+### Standalone proxy
 
 Records go to **stderr**, so whatever supervises the proxy collects them. `--log-format` sets their shape, and `--log-file` additionally writes `json` to a file, which lets you watch a readable stream while persisting machine-readable records for a collector:
 

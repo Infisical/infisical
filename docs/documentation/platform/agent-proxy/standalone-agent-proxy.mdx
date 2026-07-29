@@ -1,10 +1,10 @@
 ---
-title: "Dedicated Agent Proxy"
-sidebarTitle: "Dedicated Proxy"
+title: "Standalone Agent Proxy"
+sidebarTitle: "Standalone Proxy"
 description: "Operate an Agent Proxy that runs on its own host: supervision, placement, refresh, and high availability."
 ---
 
-A dedicated proxy serves agents that run somewhere other than your own computer, and is the setup to use when a team shares one proxy. `agent-proxy start` runs it as one long-lived process on a machine of its own, and `agent-proxy connect` launches each agent behind it. Because the agent is on a different host, it has no access at all to the process holding the real credentials; that separation is the security boundary, and most of what follows exists to keep it intact.
+A standalone proxy serves agents that run somewhere other than your own computer, and is the setup to use when a team shares one proxy. `agent-proxy start` runs it as one long-lived process on a machine of its own, and `agent-proxy connect` launches each agent behind it. Because the agent is on a different host, it has no access at all to the process holding the real credentials; that separation is the security boundary, and most of what follows exists to keep it intact.
 
 ```text
 +---- Your private network -------------------+
@@ -22,7 +22,7 @@ A dedicated proxy serves agents that run somewhere other than your own computer,
 +---------------------------------------------+
 ```
 
-To set one up, follow the **Dedicated proxy** tab of the [Quickstart](/documentation/platform/agent-proxy/quickstart). This page is what comes after.
+To set one up, follow the **Standalone proxy** tab of the [Quickstart](/documentation/platform/agent-proxy/quickstart). This page is what comes after.
 
 The Quickstart leaves you with a proxy running in a shell. The rest of this page is what to settle before real agents depend on it.
 

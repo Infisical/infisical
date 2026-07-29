@@ -5,9 +5,9 @@ description: "Understand how the Agent Proxy isolates agents, authenticates requ
 
 This page covers the Agent Proxy's security model: how agents stay isolated from each other and from real credentials, how requests are authenticated and authorized, how TLS interception works, and what access each identity needs. None of it is required to get started (see the [Quickstart](/documentation/platform/agent-proxy/quickstart)), but it is worth reading before real agents depend on the setup.
 
-The two setups rest on different boundaries, so each has its own section. A [dedicated proxy](#dedicated-proxy) separates the agent from the credentials by host, with separate machine identities either side. A [local proxy](#local-proxy) shares one machine, so an OS sandbox does that job instead, and none of the identity setup applies.
+The two setups rest on different boundaries, so each has its own section. A [standalone proxy](#standalone-proxy) separates the agent from the credentials by host, with separate machine identities either side. A [local proxy](#local-proxy) shares one machine, so an OS sandbox does that job instead, and none of the identity setup applies.
 
-## Dedicated proxy
+## Standalone proxy
 
 The proxy runs on a host of its own, and each agent authenticates separately. Everything in this section describes that arrangement.
 
@@ -22,7 +22,7 @@ The Agent Proxy's security boundary is machine **identity**: what an agent can r
 - Every proxied request carries the agent's short-lived machine identity token in the proxy-authentication header. A request that arrives with no proxy-authentication header is challenged with `407` and a `Proxy-Authenticate: Basic` response. A request whose token is present but invalid, expired, or revoked is rejected with `403`. Both checks happen before anything else.
 - The Agent Proxy grants nothing on its own. For each agent it asks Infisical which proxied services that agent's identity holds the **Proxy** permission on, within the agent's exact project, environment, and folder scope. Credentials are applied only for those services; everything else does not exist as far as that agent is concerned.
 - The agent's identity cannot read secret values. Only the Agent Proxy's own identity can, and it lives on a separate machine. Even if an agent is tricked into leaking its token, that token grants no ability to fetch a secret; it can only route traffic through the same services the agent could already reach.
-- Authorization is re-checked, not granted once. The Agent Proxy re-validates each active agent's permissions on every poll and fails closed. See [Caching and polling](/documentation/platform/agent-proxy/dedicated-agent-proxy#caching-and-polling) for the interval and exactly what happens when a grant is revoked.
+- Authorization is re-checked, not granted once. The Agent Proxy re-validates each active agent's permissions on every poll and fails closed. See [Caching and polling](/documentation/platform/agent-proxy/standalone-agent-proxy#caching-and-polling) for the interval and exactly what happens when a grant is revoked.
 
 ### Certificates & TLS interception
 
@@ -73,7 +73,7 @@ The sandbox is therefore load-bearing in a way it is not here: read its [full de
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Dedicated Agent Proxy" icon="server" href="/documentation/platform/agent-proxy/dedicated-agent-proxy">
+  <Card title="Standalone Agent Proxy" icon="server" href="/documentation/platform/agent-proxy/standalone-agent-proxy">
     Deploy the proxy, connect your agents, and take it to production.
   </Card>
   <Card title="Local Agent Proxy" icon="laptop-code" href="/documentation/platform/agent-proxy/local-agent-proxy">
