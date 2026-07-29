@@ -11,6 +11,15 @@ name: "Check API For Breaking Changes"
 # This check is advisory. It reports what the PR changes and comments when something
 # breaks, but it never fails the job. Making it blocking is a separate decision, and
 # one worth taking only once the reports have been observed to be trustworthy.
+#
+# Merges to main do not re-run this: no pull_request event fires for open PRs when the
+# base branch moves, and a manual re-run replays the original event's merge commit. A
+# report therefore describes main as of the last push to the PR branch. That direction
+# of staleness is safe — the head spec is built from that same older main, so the diff
+# still isolates this PR and another PR's merge can never light up this one. What it
+# can miss is an interaction: main changed something this PR also touches. Catching
+# that needs the head re-diffed against current main, which is what a merge queue
+# (`merge_group`) is for, and the repo does not use one yet.
 
 on:
   pull_request:
@@ -166,7 +175,9 @@ jobs:
           {
             echo "## API changes"
             echo
-            echo "Baseline: \`${{ steps.baseline.outputs.sha }}\` (the main commit this PR is merged onto)"
+            echo "Baseline: \`${{ steps.baseline.outputs.sha }}\` (the main commit this PR was merged onto"
+            echo "when \`${{ github.event.pull_request.head.sha }}\` was pushed). Nothing re-runs this check"
+            echo "when main moves, so push to the branch to re-diff against a newer main."
             echo
 
             if [ "${{ steps.breaking.outputs.breaking }}" = "true" ]; then
