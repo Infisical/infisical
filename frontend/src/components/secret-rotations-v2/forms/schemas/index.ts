@@ -16,6 +16,7 @@ import { UnixLinuxLocalAccountRotationMethod } from "@app/hooks/api/secretRotati
 import { WindowsLocalAccountRotationMethod } from "@app/hooks/api/secretRotationsV2/types/windows-local-account-rotation";
 
 import { CloudflareApiTokenRotationSchema } from "./cloudflare-api-token-rotation-schema";
+import { CloudflareR2AccessKeyRotationSchema } from "./cloudflare-r2-access-key-rotation-schema";
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key-rotation-schema";
 import { DatadogApiKeyRotationSchema } from "./datadog-api-key-rotation-schema";
 import { DatadogApplicationKeySecretRotationSchema } from "./datadog-application-key-secret-rotation-schema";
@@ -64,7 +65,8 @@ export const SecretRotationV2FormSchema = (isUpdate: boolean) =>
         ConvexAccessKeyRotationSchema,
         FireworksApiKeyRotationSchema,
         SnowflakeUserKeyPairRotationSchema,
-        CloudflareApiTokenRotationSchema
+        CloudflareApiTokenRotationSchema,
+        CloudflareR2AccessKeyRotationSchema
       ]),
       z.object({ id: z.string().optional() })
     )

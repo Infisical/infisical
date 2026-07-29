@@ -6,6 +6,7 @@ import { appConnectionKeys } from "../queries";
 import {
   TCloudflarePagesProject,
   TCloudflarePermissionGroup,
+  TCloudflareR2Bucket,
   TCloudflareWorkersScript,
   TCloudflareZone
 } from "./types";
@@ -19,7 +20,9 @@ const cloudflareConnectionKeys = {
   listZones: (connectionId: string, scopeToAccount: boolean) =>
     [...cloudflareConnectionKeys.all, "zones", connectionId, { scopeToAccount }] as const,
   listPermissionGroups: (connectionId: string) =>
-    [...cloudflareConnectionKeys.all, "permission-groups", connectionId] as const
+    [...cloudflareConnectionKeys.all, "permission-groups", connectionId] as const,
+  listR2Buckets: (connectionId: string) =>
+    [...cloudflareConnectionKeys.all, "r2-buckets", connectionId] as const
 };
 
 export const useCloudflareConnectionListPagesProjects = (
@@ -118,6 +121,31 @@ export const useCloudflareConnectionListPermissionGroups = (
     queryFn: async () => {
       const { data } = await apiRequest.get<TCloudflarePermissionGroup[]>(
         `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-permission-groups`
+      );
+
+      return data;
+    },
+    ...options
+  });
+};
+
+export const useCloudflareConnectionListR2Buckets = (
+  connectionId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TCloudflareR2Bucket[],
+      unknown,
+      TCloudflareR2Bucket[],
+      ReturnType<typeof cloudflareConnectionKeys.listR2Buckets>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: cloudflareConnectionKeys.listR2Buckets(connectionId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TCloudflareR2Bucket[]>(
+        `/api/v1/app-connections/cloudflare/${connectionId}/cloudflare-r2-buckets`
       );
 
       return data;

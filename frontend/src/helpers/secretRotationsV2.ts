@@ -139,6 +139,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Cloudflare API Token",
     image: "Cloudflare.png",
     size: 50
+  },
+  [SecretRotation.CloudflareR2AccessKey]: {
+    name: "Cloudflare R2 Access Key",
+    image: "Cloudflare.png",
+    size: 50
   }
 };
 
@@ -169,7 +174,8 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.ConvexAccessKey]: AppConnection.Convex,
   [SecretRotation.FireworksApiKey]: AppConnection.Fireworks,
   [SecretRotation.SnowflakeUserKeyPair]: AppConnection.Snowflake,
-  [SecretRotation.CloudflareApiToken]: AppConnection.Cloudflare
+  [SecretRotation.CloudflareApiToken]: AppConnection.Cloudflare,
+  [SecretRotation.CloudflareR2AccessKey]: AppConnection.Cloudflare
 };
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
@@ -200,7 +206,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.ConvexAccessKey]: true,
   [SecretRotation.FireworksApiKey]: true,
   [SecretRotation.SnowflakeUserKeyPair]: true,
-  [SecretRotation.CloudflareApiToken]: true
+  [SecretRotation.CloudflareApiToken]: true,
+  [SecretRotation.CloudflareR2AccessKey]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Control, Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { MultiValue, SingleValue } from "react-select";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -18,8 +18,7 @@ import {
   Tab,
   TabList,
   TabPanel,
-  Tabs,
-  TextArea
+  Tabs
 } from "@app/components/v2";
 import {
   TCloudflarePermissionGroup,
@@ -29,7 +28,6 @@ import {
 } from "@app/hooks/api/appConnections/cloudflare";
 
 import {
-  CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH,
   CLOUDFLARE_POLICY_EFFECT_MAP,
   CLOUDFLARE_POLICY_SCOPE_MAP,
   CLOUDFLARE_POLICY_SCOPE_RESOURCE_MAP,
@@ -39,6 +37,8 @@ import {
   explodePolicies,
   isStoredPolicy
 } from "../schemas/cloudflare-api-token-rotation-schema";
+import { CLOUDFLARE_TOKEN_NAME_MAX_LENGTH } from "../schemas/shared";
+import { CloudflareIpListInput } from "./shared";
 
 // The schema merges policy rows into the stored shape on submit, so `TSecretRotationV2Form` (the
 // schema's *output* type) describes merged policies. The fields here edit rows, which is the input side.
@@ -55,39 +55,6 @@ enum ParameterTab {
   General = "general",
   Restrictions = "restrictions"
 }
-
-/**
- * Textarea-backed editor for a list of IPs/CIDRs. The raw text lives in local state so partially
- * typed entries and blank lines survive re-renders, while the form only ever holds the parsed list.
- */
-const IpListInput = ({
-  value,
-  onChange
-}: {
-  value?: string[];
-  onChange: (value: string[]) => void;
-}) => {
-  const [rawValue, setRawValue] = useState((value ?? []).join("\n"));
-
-  return (
-    <TextArea
-      reSize="none"
-      rows={4}
-      value={rawValue}
-      onChange={(e) => {
-        setRawValue(e.target.value);
-        onChange(
-          e.target.value
-            .split(/[\n,]/)
-            .map((entry) => entry.trim())
-            .filter(Boolean)
-        );
-      }}
-      placeholder={"199.27.128.0/21\n2400:cb00::/32"}
-      className="border-mineshaft-600 bg-mineshaft-900 font-mono text-sm"
-    />
-  );
-};
 
 const IpListField = ({
   control,
@@ -111,7 +78,7 @@ const IpListField = ({
         label={label}
         tooltipText={tooltipText}
       >
-        <IpListInput value={value} onChange={onChange} />
+        <CloudflareIpListInput value={value} onChange={onChange} />
       </FormControl>
     )}
   />
@@ -196,7 +163,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
               <Input
                 {...field}
                 placeholder="infisical-rotated-token"
-                maxLength={CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH}
+                maxLength={CLOUDFLARE_TOKEN_NAME_MAX_LENGTH}
               />
             </FormControl>
           )}

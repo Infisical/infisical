@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 import { BaseSecretRotationSchema } from "@app/components/secret-rotations-v2/forms/schemas/base-secret-rotation-v2-schema";
-import { isValidIpOrCidr } from "@app/helpers/ip";
+import {
+  CloudflareTokenIpRestrictionsSchema,
+  CloudflareTokenNameSchema
+} from "@app/components/secret-rotations-v2/forms/schemas/shared";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { groupBy, unique } from "@app/lib/fn/array";
 
@@ -33,19 +36,6 @@ export const CLOUDFLARE_POLICY_SCOPE_RESOURCE_MAP: Record<CloudflareApiTokenPoli
   [CloudflareApiTokenPolicyScope.AllZones]: "com.cloudflare.api.account.zone",
   [CloudflareApiTokenPolicyScope.Zones]: "com.cloudflare.api.account.zone"
 };
-
-/** Matches the backend schema — Cloudflare caps token names at 120 and we append a timestamp. */
-export const CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH = 100;
-
-const IpRestrictionsSchema = z
-  .string()
-  .trim()
-  .array()
-  .optional()
-  .refine(
-    (ips) => !ips || ips.every(isValidIpOrCidr),
-    "Each entry must be a valid IP address or CIDR block"
-  );
 
 /**
  * What a form row holds: exactly one permission group, which keeps each row readable as a single
@@ -111,18 +101,14 @@ export const CloudflareApiTokenRotationSchema = z
   .object({
     type: z.literal(SecretRotation.CloudflareApiToken),
     parameters: z.object({
-      name: z
-        .string()
-        .trim()
-        .min(1, "Token name required")
-        .max(CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH, "Token name too long"),
+      name: CloudflareTokenNameSchema,
       // The form edits rows; zodResolver hands the transformed (merged) value to handleSubmit, so the
       // API receives the stored shape without the generic rotation form knowing anything about it.
       policies: CloudflareApiTokenPolicyRowSchema.array()
         .min(1, "At least one policy is required")
         .transform(mergePolicyRows),
-      allowedIps: IpRestrictionsSchema,
-      disallowedIps: IpRestrictionsSchema
+      allowedIps: CloudflareTokenIpRestrictionsSchema,
+      disallowedIps: CloudflareTokenIpRestrictionsSchema
     }),
     secretsMapping: z.object({
       tokenId: z.string().trim().min(1, "Token ID secret name required"),

@@ -18,3 +18,21 @@ export type TCloudflarePermissionGroup = {
   // the resource types this permission group can be attached to, e.g. "com.cloudflare.api.account.zone"
   scopes: string[];
 };
+
+/**
+ * The storage jurisdiction of an R2 bucket. It is part of the bucket's identity — the same bucket name
+ * can exist in more than one jurisdiction, and a token policy has to name both.
+ */
+export enum CloudflareR2Jurisdiction {
+  Default = "default",
+  Eu = "eu",
+  FedRamp = "fedramp"
+}
+
+export type TCloudflareR2Bucket = {
+  name: string;
+  jurisdiction: CloudflareR2Jurisdiction;
+  location?: string;
+  storageClass?: string;
+  creationDate?: string;
+};
