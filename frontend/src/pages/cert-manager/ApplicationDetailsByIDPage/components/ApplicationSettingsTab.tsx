@@ -631,16 +631,15 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                                 </Badge>
                               ))
                             ) : (
-                              <Badge variant="outline" asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => openEnrollment(p)}
-                                  aria-label={`Configure enrollment for ${p.profileSlug}`}
-                                >
-                                  <Settings2Icon />
-                                  Configure
-                                </button>
-                              </Badge>
+                              <button
+                                type="button"
+                                onClick={() => openEnrollment(p)}
+                                aria-label={`Configure enrollment for ${p.profileSlug}`}
+                                className="flex cursor-pointer items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+                              >
+                                <Settings2Icon className="size-3.5" />
+                                Configure
+                              </button>
                             )}
                           </div>
                         ) : hasMethods ? (

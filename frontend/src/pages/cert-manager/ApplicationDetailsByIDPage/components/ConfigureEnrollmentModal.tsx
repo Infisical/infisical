@@ -1,12 +1,28 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { EyeIcon, EyeOffIcon, FileTextIcon, Plus, RotateCwIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  EyeIcon,
+  EyeOffIcon,
+  FileTextIcon,
+  Plus,
+  RotateCwIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal, Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
   Dialog,
   DialogContent,
@@ -145,18 +161,26 @@ const DisableEnrollmentButton = ({
       <Button variant="outline" onClick={() => setIsOpen(true)} isPending={isPending}>
         Disable
       </Button>
-      <ConfirmActionModal
-        isOpen={isOpen}
-        onChange={setIsOpen}
-        confirmKey="disable"
-        title={`Disable ${method} enrollment for this profile?`}
-        subTitle={`Clients using ${method} against this profile via this application will stop being able to request certificates. Existing certificates remain valid.`}
-        buttonText="Disable enrollment"
-        onConfirmed={async () => {
-          await onConfirmed();
-          setIsOpen(false);
-        }}
-      />
+      <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangleIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Disable {method} enrollment for this profile?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Clients using {method} against this profile via this application will stop being able
+              to request certificates. Existing certificates remain valid.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger" isPending={isPending} onClick={onConfirmed}>
+              Disable enrollment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
@@ -178,16 +202,26 @@ const ApiPanel = ({
   applicationId,
   profileId,
   enabled,
-  initial
+  initial,
+  onCancelPending,
+  onDirtyChange
 }: {
   applicationId: string;
   profileId: string;
   enabled: boolean;
+  onCancelPending: () => void;
+  onDirtyChange: (isDirty: boolean) => void;
   initial: { autoRenew: boolean; renewBeforeDays: number | null } | null;
 }) => {
   const setMutation = useSetPkiApplicationApiEnrollment();
   const clearMutation = useClearPkiApplicationApiEnrollment();
-  const { control, handleSubmit, watch, reset } = useForm<ApiForm>({
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { isDirty }
+  } = useForm<ApiForm>({
     defaultValues: {
       autoRenew: initial?.autoRenew ?? false,
       renewBeforeDays: initial?.renewBeforeDays ?? null
@@ -203,6 +237,10 @@ const ApiPanel = ({
 
   const autoRenew = watch("autoRenew");
 
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   const onSave = handleSubmit(async (values) => {
     try {
       await setMutation.mutateAsync({
@@ -211,6 +249,7 @@ const ApiPanel = ({
         autoRenew: values.autoRenew,
         renewBeforeDays: values.autoRenew ? (values.renewBeforeDays ?? undefined) : undefined
       });
+      reset(values);
       createNotification({ type: "success", text: "API enrollment saved" });
     } catch (err) {
       createNotification({ type: "error", text: errorText(err, "Failed to save API enrollment") });
@@ -310,6 +349,11 @@ const ApiPanel = ({
         )}
       </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
+        {!enabled && (
+          <Button variant="outline" onClick={onCancelPending}>
+            Cancel
+          </Button>
+        )}
         {enabled && (
           <DisableEnrollmentButton
             method="API"
@@ -331,16 +375,25 @@ const EstPanel = ({
   applicationId,
   profileId,
   enabled,
-  initial
+  initial,
+  onCancelPending,
+  onDirtyChange
 }: {
   applicationId: string;
   profileId: string;
   enabled: boolean;
+  onCancelPending: () => void;
+  onDirtyChange: (isDirty: boolean) => void;
   initial: { disableBootstrapCaValidation: boolean; estEndpointUrl: string } | null;
 }) => {
   const setMutation = useSetPkiApplicationEstEnrollment();
   const clearMutation = useClearPkiApplicationEstEnrollment();
-  const { control, handleSubmit, reset } = useForm<EstForm>({
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isDirty }
+  } = useForm<EstForm>({
     defaultValues: {
       passphrase: "",
       disableBootstrapCaValidation: initial?.disableBootstrapCaValidation ?? false,
@@ -356,6 +409,10 @@ const EstPanel = ({
     });
   }, [initial?.disableBootstrapCaValidation, reset]);
 
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   const onSave = handleSubmit(async (values) => {
     try {
       await setMutation.mutateAsync({
@@ -364,6 +421,11 @@ const EstPanel = ({
         passphrase: values.passphrase,
         disableBootstrapCaValidation: values.disableBootstrapCaValidation,
         caChain: values.caChain || undefined
+      });
+      reset({
+        passphrase: "",
+        disableBootstrapCaValidation: values.disableBootstrapCaValidation,
+        caChain: values.caChain
       });
       createNotification({ type: "success", text: "EST enrollment saved" });
     } catch (err) {
@@ -464,6 +526,11 @@ const EstPanel = ({
         />
       </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
+        {!enabled && (
+          <Button variant="outline" onClick={onCancelPending}>
+            Cancel
+          </Button>
+        )}
         {enabled && (
           <DisableEnrollmentButton
             method="EST"
@@ -485,11 +552,15 @@ const AcmePanel = ({
   applicationId,
   profileId,
   enabled,
-  initial
+  initial,
+  onCancelPending,
+  onDirtyChange
 }: {
   applicationId: string;
   profileId: string;
   enabled: boolean;
+  onCancelPending: () => void;
+  onDirtyChange: (isDirty: boolean) => void;
   initial: {
     skipDnsOwnershipVerification: boolean;
     skipEabBinding: boolean;
@@ -503,7 +574,14 @@ const AcmePanel = ({
   const [credentials, setCredentials] = useState<{ eabKid: string; eabSecret: string } | null>(
     null
   );
-  const { control, handleSubmit, watch, setValue, reset } = useForm<AcmeForm>({
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { isDirty }
+  } = useForm<AcmeForm>({
     defaultValues: {
       skipDnsOwnershipVerification: initial?.skipDnsOwnershipVerification ?? false,
       skipEabBinding: initial?.skipEabBinding ?? false
@@ -520,6 +598,10 @@ const AcmePanel = ({
   const skipDns = watch("skipDnsOwnershipVerification");
   const skipEab = watch("skipEabBinding");
 
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   const onSave = handleSubmit(async (values) => {
     if (values.skipDnsOwnershipVerification && values.skipEabBinding) {
       createNotification({
@@ -530,6 +612,7 @@ const AcmePanel = ({
     }
     try {
       await setMutation.mutateAsync({ applicationId, profileId, ...values });
+      reset(values);
       createNotification({ type: "success", text: "ACME enrollment saved" });
     } catch (err) {
       createNotification({ type: "error", text: errorText(err, "Failed to save ACME enrollment") });
@@ -721,6 +804,11 @@ const AcmePanel = ({
         />
       </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
+        {!enabled && (
+          <Button variant="outline" onClick={onCancelPending}>
+            Cancel
+          </Button>
+        )}
         {enabled && (
           <DisableEnrollmentButton
             method="ACME"
@@ -741,12 +829,16 @@ const ScepPanel = ({
   profileId,
   profileSlug,
   enabled,
-  initial
+  initial,
+  onCancelPending,
+  onDirtyChange
 }: {
   applicationId: string;
   profileId: string;
   profileSlug: string;
   enabled: boolean;
+  onCancelPending: () => void;
+  onDirtyChange: (isDirty: boolean) => void;
   initial: {
     challengeType: ScepChallengeType;
     includeCaCertInResponse: boolean;
@@ -761,7 +853,13 @@ const ScepPanel = ({
 }) => {
   const setMutation = useSetPkiApplicationScepEnrollment();
   const clearMutation = useClearPkiApplicationScepEnrollment();
-  const { control, handleSubmit, watch, reset } = useForm<{
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { isDirty }
+  } = useForm<{
     challengeType: ScepChallengeType;
     challengePassword?: string;
     includeCaCertInResponse: boolean;
@@ -799,9 +897,14 @@ const ScepPanel = ({
 
   const challengeType = watch("challengeType");
 
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   const onSave = handleSubmit(async (values) => {
     try {
       await setMutation.mutateAsync({ applicationId, profileId, ...values });
+      reset({ ...values, challengePassword: "" });
       createNotification({ type: "success", text: "SCEP enrollment saved" });
     } catch (err) {
       createNotification({ type: "error", text: errorText(err, "Failed to save SCEP enrollment") });
@@ -1013,6 +1116,11 @@ const ScepPanel = ({
         />
       </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
+        {!enabled && (
+          <Button variant="outline" onClick={onCancelPending}>
+            Cancel
+          </Button>
+        )}
         {enabled && (
           <DisableEnrollmentButton
             method="SCEP"
@@ -1092,6 +1200,8 @@ export const ConfigureEnrollmentModal = ({
 
   const [pendingMethods, setPendingMethods] = useState<EnrollmentMethod[]>([]);
   const [activeTab, setActiveTab] = useState<EnrollmentMethod | "">("");
+  const [isDiscardOpen, setIsDiscardOpen] = useState(false);
+  const [dirtyMethods, setDirtyMethods] = useState<Partial<Record<EnrollmentMethod, boolean>>>({});
 
   const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
   const visibleMethods = ALL_ORDER.filter(
@@ -1105,6 +1215,8 @@ export const ConfigureEnrollmentModal = ({
     if (!isOpen) {
       setPendingMethods([]);
       setActiveTab("");
+      setIsDiscardOpen(false);
+      setDirtyMethods({});
     }
   }, [isOpen, profileId]);
 
@@ -1129,8 +1241,39 @@ export const ConfigureEnrollmentModal = ({
     setActiveTab(method);
   };
 
+  const handleCancelPending = (method: EnrollmentMethod) =>
+    setPendingMethods((prev) => prev.filter((m) => m !== method));
+
+  const handleDirtyChange = useCallback(
+    (method: EnrollmentMethod, isDirty: boolean) =>
+      setDirtyMethods((prev) =>
+        Boolean(prev[method]) === isDirty ? prev : { ...prev, [method]: isDirty }
+      ),
+    []
+  );
+
+  const hasUnsavedWork = pendingMethods.length > 0 || Object.values(dirtyMethods).some(Boolean);
+
+  const isUnsaved = (method: EnrollmentMethod) =>
+    pendingMethods.includes(method) || Boolean(dirtyMethods[method]);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && hasUnsavedWork) {
+      setIsDiscardOpen(true);
+      return;
+    }
+    onOpenChange(open);
+  };
+
+  const handleDiscard = () => {
+    setPendingMethods([]);
+    setDirtyMethods({});
+    setIsDiscardOpen(false);
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] thin-scrollbar max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configure enrollment methods for {profile?.profileSlug}</DialogTitle>
@@ -1160,8 +1303,8 @@ export const ConfigureEnrollmentModal = ({
                     {visibleMethods.map((m) => (
                       <Tab key={m} value={m}>
                         {METHOD_LABELS[m]}
-                        {pendingMethods.includes(m) && (
-                          <span className="ml-1.5 text-xs text-muted">(not enabled)</span>
+                        {isUnsaved(m) && (
+                          <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
                         )}
                       </Tab>
                     ))}
@@ -1213,43 +1356,51 @@ export const ConfigureEnrollmentModal = ({
                 )}
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
                   {visibleMethods.includes("api") ? (
-                    <TabPanel value="api">
+                    <TabPanel value="api" className="pb-0 data-[state=inactive]:hidden" forceMount>
                       <ApiPanel
                         applicationId={applicationId}
                         profileId={profileId}
                         enabled={Boolean(data?.api)}
                         initial={data?.api ?? null}
+                        onCancelPending={() => handleCancelPending("api")}
+                        onDirtyChange={(d) => handleDirtyChange("api", d)}
                       />
                     </TabPanel>
                   ) : null}
                   {visibleMethods.includes("est") ? (
-                    <TabPanel value="est">
+                    <TabPanel value="est" className="pb-0 data-[state=inactive]:hidden" forceMount>
                       <EstPanel
                         applicationId={applicationId}
                         profileId={profileId}
                         enabled={Boolean(data?.estConfigured)}
                         initial={data?.est ?? null}
+                        onCancelPending={() => handleCancelPending("est")}
+                        onDirtyChange={(d) => handleDirtyChange("est", d)}
                       />
                     </TabPanel>
                   ) : null}
                   {visibleMethods.includes("acme") ? (
-                    <TabPanel value="acme">
+                    <TabPanel value="acme" className="pb-0 data-[state=inactive]:hidden" forceMount>
                       <AcmePanel
                         applicationId={applicationId}
                         profileId={profileId}
                         enabled={Boolean(data?.acmeConfigured)}
                         initial={data?.acme ?? null}
+                        onCancelPending={() => handleCancelPending("acme")}
+                        onDirtyChange={(d) => handleDirtyChange("acme", d)}
                       />
                     </TabPanel>
                   ) : null}
                   {visibleMethods.includes("scep") ? (
-                    <TabPanel value="scep">
+                    <TabPanel value="scep" className="pb-0 data-[state=inactive]:hidden" forceMount>
                       <ScepPanel
                         applicationId={applicationId}
                         profileId={profileId}
                         profileSlug={profile?.profileSlug ?? ""}
                         enabled={Boolean(data?.scepConfigured)}
                         initial={data?.scep ?? null}
+                        onCancelPending={() => handleCancelPending("scep")}
+                        onDirtyChange={(d) => handleDirtyChange("scep", d)}
                       />
                     </TabPanel>
                   ) : null}
@@ -1259,6 +1410,26 @@ export const ConfigureEnrollmentModal = ({
           </>
         )}
       </DialogContent>
+
+      <AlertDialog open={isDiscardOpen} onOpenChange={setIsDiscardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangleIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Discard unsaved enrollment methods?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enrollment methods you added but have not enabled yet will be discarded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction variant="danger" onClick={handleDiscard}>
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
