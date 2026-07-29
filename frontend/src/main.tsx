@@ -27,6 +27,14 @@ import "./translation";
 // have a look at the Quick start guide
 // for passing in lng and translations on init/
 
+const isIos =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
+
+if (isIos) {
+  document.documentElement.dataset.platform = "ios";
+}
+
 // Configure Lottie player to use local WASM file
 setWasmUrl(lottieWasmUrl);
 
