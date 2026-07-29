@@ -343,7 +343,7 @@ Replace `otel-collector:8889` with the actual hostname and port where your OpenT
 Infisical emits metrics on two OpenTelemetry meters simultaneously. Choose which to scrape based on your deployment scale.
 
 - **High-cardinality, per-actor meters:** the `Infisical` and `API` meters' original metrics (`infisical.http.server.request.*`, `infisical.http.server.error.count`, `infisical.secret.read.count`, `infisical.auth.attempt.count`, `infisical.kmip.operation.count`) include per-actor labels such as `user.email`, `identity.name`, `client.address`, `user_agent.original`, `organization.name`, `project.name`, `secret.path`, and `secret.name`. The `SecretSyncs`, `PkiSyncs`, and `Integrations` meters likewise carry unbounded labels such as `syncId`. Useful for self-hosted deployments where you want per-user visibility directly in Grafana. May become expensive at large scale (many users, identities, or IPs) due to label cardinality.
-- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
+- **`InfisicalCore` meter (bounded-cardinality):** all newer metrics (queue, audit log, alert dispatch, permission cache, secret cache, rate limit, build info, `infisical.core.http.error.count`, authentication latency, token renewal, SSO config changes, SCIM provisioning, and database connection pool) use **only bounded enums and static route templates** as labels (e.g. HTTP method, parameterized `http.route`, error type, outcome). A strict allowlist drops every other attribute at the SDK level, so **no tenant or actor identifiers are emitted**; no organization ID, project IDs, names, emails, IPs, or user agents. This keeps the series count independent of how many organizations, users, or identities you have. Per-org and per-actor detail is available in audit logs instead.
 
 All meters emit at the same time. If you are a self-hosted instance and find the per-actor labels useful, keep using the high-cardinality metrics. For larger or multi-tenant deployments, scrape only the `InfisicalCore` metrics to keep cardinality under control.
 
@@ -851,6 +851,45 @@ Per-provider observability for the audit-log stream feature (Datadog, Splunk, Cu
     **Description**: Per-provider stream delivery latency (HTTP round trip to the SIEM).
 
     **Attributes**: `audit_log_stream.provider`, `outcome`, `error.type` (on failure)
+  </Accordion>
+</AccordionGroup>
+
+### Alert Dispatch Metrics (InfisicalCore)
+
+Every "notify me when X happens" alert (credential expiry and anything else built on the alert module) is delivered by a dispatch job. This metric records how each job ended, so you can tell a dropped notification apart from a job that had nothing to send.
+
+<AccordionGroup>
+  <Accordion title="Alert Dispatch Outcome">
+    **Metric Name**: `infisical.alert.dispatch.outcome.count`
+
+    **Type**: Counter
+
+    **Unit**: `{job}`
+
+    **Description**: Alert dispatch jobs by resource type and outcome.
+
+    **Attributes**:
+      - `type` (string): the alert's resource type, e.g. `identity.authentication`
+      - `outcome` (string): one of the closed enum values below
+
+    **Outcomes**:
+
+    | Outcome | Meaning |
+    |---------|---------|
+    | `delivery_success` | Every channel the run touched delivered. |
+    | `delivery_partial` | At least one channel failed, so the notification was dropped on that channel. Dedup is per channel and target, so the next run retries only the failed channels. |
+    | `delivery_failed` | No channel delivered — the whole run dropped. |
+    | `alert_not_found` | The alert was deleted (or its project soft-deleted) between enqueue and run. |
+    | `alert_disabled` | The alert was disabled between enqueue and run. |
+    | `no_provider` | No provider is registered for the alert's resource type. A misconfiguration. |
+    | `no_due_targets` | Nothing matched the alert condition this run. |
+    | `no_channels` | The alert has no enabled channels, so the run is skipped before scanning. |
+    | `no_recipients` | Every channel in the run was email with no resolvable recipient — the recipients left the organization, or the recipient group emptied out. |
+    | `all_deduped` | Targets matched, but all had already been alerted inside the dedup window. |
+
+    **What to alarm on**: `delivery_failed` and `delivery_partial`. Both mean a channel could not be reached and a notification was dropped. Keep `no_recipients` out of that alarm — it is customer configuration drift, not a delivery fault, and it needs a nudge to the organization rather than a page to you.
+
+    Track the `delivery_*` share of the total separately, as a health signal rather than an alarm: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead.
   </Accordion>
 </AccordionGroup>
 
