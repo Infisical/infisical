@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -130,33 +130,24 @@ const getReviewStatusBadge = (status?: ApprovalStatus) => {
   );
 };
 
-// Renders the secret path with a `truncate` ellipsis and, only when the text is actually
-// clipped, wraps it in a tooltip that reveals the full path on hover.
 const TruncatedSecretPath = ({ value }: { value: string }) => {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [isTruncated, setIsTruncated] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const check = () => setIsTruncated(el.scrollWidth > el.clientWidth);
-    check();
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [value]);
-
-  const valueEl = (
-    <div ref={ref} className="truncate text-sm text-foreground">
-      {value}
-    </div>
-  );
-
-  if (!isTruncated) return valueEl;
+  const [open, setOpen] = useState(false);
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{valueEl}</TooltipTrigger>
+    <Tooltip
+      open={open}
+      onOpenChange={(next) => {
+        const el = ref.current;
+        const isTruncated = !!el && el.scrollWidth > el.clientWidth;
+        setOpen(next && isTruncated);
+      }}
+    >
+      <TooltipTrigger asChild>
+        <div ref={ref} className="truncate text-sm text-foreground">
+          {value}
+        </div>
+      </TooltipTrigger>
       <TooltipContent className="max-w-xs break-words">{value}</TooltipContent>
     </Tooltip>
   );
