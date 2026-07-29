@@ -13,7 +13,6 @@ import {
   TCloudflareTokenResources,
   verifyCloudflareToken
 } from "@app/ee/services/secret-rotation-v2/shared/cloudflare-token";
-import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { CloudflareApiTokenPolicyScope } from "./cloudflare-api-token-rotation-schemas";
@@ -95,15 +94,16 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
     return callback();
   };
 
-  // We persist the new token before revoking the old one so a revocation failure can never leave the
-  // rotation without a usable credential.
+  // The new token is created first so a creation failure leaves the rotation untouched. The previous
+  // (inactive) token is then revoked *before* the new credentials are persisted: the callback
+  // overwrites the inactive slot, so a post-persist revocation failure would lose the token id and
+  // leave the token active with no way to retry its deletion. Revoking first keeps the DB state
+  // unchanged on failure, so the next attempt retries the same deletion (a 404 counts as success).
   const rotateCredentials: TRotationFactoryRotateCredentials<TCloudflareApiTokenRotationGeneratedCredentials> = async (
     credentialsToRevoke,
     callback
   ) => {
     const newCredentials = await $createToken();
-
-    const result = await callback(newCredentials);
 
     if (credentialsToRevoke?.tokenId) {
       try {
@@ -111,15 +111,14 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
       } catch (error: unknown) {
         logger.error(
           error,
-          `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.tokenId}]`
+          `Failed to revoke previous token during rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.tokenId}]`
         );
-        throw new BadRequestError({
-          message: `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.tokenId}]`
-        });
+        // deleteCloudflareToken already throws a descriptive, user-facing BadRequestError
+        throw error;
       }
     }
 
-    return result;
+    return callback(newCredentials);
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TCloudflareApiTokenRotationGeneratedCredentials> = (

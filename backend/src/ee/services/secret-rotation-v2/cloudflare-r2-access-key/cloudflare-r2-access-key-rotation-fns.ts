@@ -146,14 +146,15 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
     return callback();
   };
 
-  // We persist the new access key before revoking the old one so a revocation failure can never leave
-  // the rotation without a usable credential.
+  // The new access key is created first so a creation failure leaves the rotation untouched. The
+  // previous (inactive) key is then revoked *before* the new credentials are persisted: the callback
+  // overwrites the inactive slot, so a post-persist revocation failure would lose the key id and
+  // leave the underlying token active with no way to retry its deletion. Revoking first keeps the DB
+  // state unchanged on failure, so the next attempt retries the same deletion (a 404 counts as success).
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TCloudflareR2AccessKeyRotationGeneratedCredentials
   > = async (credentialsToRevoke, callback) => {
     const newCredentials = await $createCredentials();
-
-    const result = await callback(newCredentials);
 
     if (credentialsToRevoke?.accessKeyId) {
       try {
@@ -161,15 +162,14 @@ export const cloudflareR2AccessKeyRotationFactory: TRotationFactory<
       } catch (error) {
         logger.error(
           error,
-          `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.accessKeyId}]`
+          `Failed to revoke previous token during rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.accessKeyId}]`
         );
-        throw new BadRequestError({
-          message: `Failed to revoke previous token after rotation [rotationId=${rotationId}] [tokenId=${credentialsToRevoke.accessKeyId}]`
-        });
+        // deleteCloudflareToken already throws a descriptive, user-facing BadRequestError
+        throw error;
       }
     }
 
-    return result;
+    return callback(newCredentials);
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TCloudflareR2AccessKeyRotationGeneratedCredentials> = (
