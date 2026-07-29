@@ -51,7 +51,7 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityJwtAuthDALFactory } from "./identity-jwt-auth-dal";
-import { doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
+import { doesAudValueMatchJwtPolicy, doesFieldValueMatchJwtPolicy } from "./identity-jwt-auth-fns";
 import {
   JwtConfigurationType,
   TAttachJwtAuthDTO,
@@ -251,7 +251,7 @@ export const identityJwtAuthServiceFactory = ({
         if (
           !identityJwtAuth.boundAudiences
             .split(", ")
-            .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+            .some((policyValue) => doesAudValueMatchJwtPolicy(tokenData.aud as string | string[], policyValue))
         ) {
           throw new UnauthorizedError({
             message: "Access denied: token audience not allowed",
