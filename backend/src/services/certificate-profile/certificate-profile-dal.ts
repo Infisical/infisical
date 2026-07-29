@@ -651,7 +651,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       if (search) {
         query = query.where((builder) => {
           void builder.where((qb) => {
-            void qb.whereILike("cn", `%${search}%`).orWhereILike("serialNumber", `%${search}%`);
+            void qb.whereILike("commonName", `%${search}%`).orWhereILike("serialNumber", `%${search}%`);
           });
         });
       }
@@ -675,7 +675,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       const certificates = await query
         .select((tx || db).ref("id").withSchema(TableName.Certificate))
         .select((tx || db).ref("serialNumber").withSchema(TableName.Certificate))
-        .select((tx || db).ref("cn").withSchema(TableName.Certificate))
+        .select((tx || db).ref("commonName").withSchema(TableName.Certificate).as("cn"))
         .select((tx || db).ref("status").withSchema(TableName.Certificate))
         .select((tx || db).ref("notBefore").withSchema(TableName.Certificate))
         .select((tx || db).ref("notAfter").withSchema(TableName.Certificate))
