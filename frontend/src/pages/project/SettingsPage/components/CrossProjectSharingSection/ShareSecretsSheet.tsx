@@ -382,7 +382,7 @@ export const ShareSecretsSheet = ({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="thin-scrollbar flex-1 overflow-y-auto px-4">
+        <div className="thin-scrollbar flex-1 overflow-y-auto p-4">
           <FieldGroup>
             <div>
               <p className="text-xs font-semibold tracking-widest text-muted uppercase">

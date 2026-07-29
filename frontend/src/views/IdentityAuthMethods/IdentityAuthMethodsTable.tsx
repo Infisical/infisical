@@ -30,6 +30,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
+import { identityAuthMethodOptions } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModalContent";
 
 import { IdentityAuthRevokeDialog } from "./helpers";
 import { IdentityAuthMethodSheet } from "./IdentityAuthMethodSheet";
@@ -84,6 +85,10 @@ export const IdentityAuthMethodsTable = ({
         <TableBody>
           {authMethods.map((authMethod) => {
             const isLockedOut = activeLockoutAuthMethods?.includes(authMethod);
+            const authMethodIcon = identityAuthMethodOptions.find(
+              ({ value }) => value === authMethod
+            )?.icon;
+
             return (
               <TableRow
                 key={authMethod}
@@ -92,6 +97,7 @@ export const IdentityAuthMethodsTable = ({
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
+                    {authMethodIcon}
                     {identityAuthToNameMap[authMethod]}
                     {isLockedOut && (
                       <Tooltip>

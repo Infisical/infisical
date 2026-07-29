@@ -207,7 +207,7 @@ export const IdentityAuthMethodSheet = ({
               )}
             </SheetTitle>
           </SheetHeader>
-          <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto px-4 pb-4">
+          <div className="flex thin-scrollbar flex-1 flex-col overflow-y-auto p-4">
             <Content identityId={identityId} isLockedOut={isLockedOut} onMutated={onMutated} />
           </div>
           <SheetFooter className="justify-between border-t">

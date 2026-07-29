@@ -107,6 +107,8 @@ export default function UserInfoStep({
   const canSubmit = isPasswordValidated && !isLoading;
   const accountStepTitle = isInvite ? "Set up your account" : t("signup.step3-message");
   const stepTitle = isAttributionStep ? "We'd love to know..." : accountStepTitle;
+  // Submit label defaults to "Next" for the standard flow; the invite flow overrides it to "Sign Up".
+  const submitLabel = isInvite ? t("signup.signup") : t("signup.next");
 
   const onSubmit = async (formData: UserInfoFormData) => {
     const latestBreachStatus = await validatePassword(formData.password);
@@ -285,7 +287,7 @@ export default function UserInfoStep({
                   isPending={isLoading}
                   isDisabled={!canSubmit}
                 >
-                  {String(t("signup.signup"))}
+                  {String(submitLabel)}
                 </Button>
               ) : (
                 <Button
@@ -324,7 +326,7 @@ export default function UserInfoStep({
                   isPending={isLoading}
                   isDisabled={!canSubmit}
                 >
-                  {String(t("signup.signup"))}
+                  {String(submitLabel)}
                 </Button>
                 <Button
                   variant="outline"
