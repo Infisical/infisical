@@ -2,8 +2,9 @@ import { useState } from "react";
 import { CircleAlertIcon, PowerIcon, ShieldCheckIcon } from "lucide-react";
 
 import { MFA_METHOD_ICONS, MFA_METHOD_LABELS, RecoveryCodesView } from "@app/components/mfa/setup";
-import { ContentLoader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -12,8 +13,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
+  Card,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -24,7 +27,8 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Skeleton
 } from "@app/components/v3";
 import { useGetOrganizations, useGetUser } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -42,15 +46,36 @@ import { useEnableMfa } from "./useEnableMfa";
 const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
-  const { data: user, isPending } = useGetUser();
-  const { changePreferredMfa } = useChangePreferredMfa();
+  const {
+    data: user,
+    isPending,
+    isError: isUserError,
+    refetch: refetchUser
+  } = useGetUser();
+  const { changePreferredMfa, isBusy: isChangingPreferred } = useChangePreferredMfa();
   const { isBusy: isEnabling, enableMfa } = useEnableMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
-  const { data: totpConfiguration } = useGetUserTotpConfiguration();
-  const { data: webAuthnData } = useGetWebAuthnCredentials();
+  const {
+    data: totpConfiguration,
+    isError: isTotpError,
+    refetch: refetchTotp
+  } = useGetUserTotpConfiguration();
+  const {
+    data: webAuthnData,
+    isError: isWebAuthnError,
+    refetch: refetchWebAuthn
+  } = useGetWebAuthnCredentials();
   const webAuthnCredentials = webAuthnData?.credentials ?? [];
-  const { data: organizations = [] } = useGetOrganizations();
-  const { data: serverDetails } = useFetchServerStatus();
+  const {
+    data: organizations = [],
+    isError: isOrganizationsError,
+    refetch: refetchOrganizations
+  } = useGetOrganizations();
+  const {
+    data: serverDetails,
+    isError: isServerError,
+    refetch: refetchServer
+  } = useFetchServerStatus();
 
   const isMfaEnforced = organizations.some((org) => org.enforceMfa);
   const isEmailMfaAvailable = Boolean(serverDetails?.emailConfigured);
@@ -68,14 +93,53 @@ export const MFASection = () => {
     setHasAcknowledgedCodes(false);
   };
 
+  if (
+    isUserError ||
+    isTotpError ||
+    isWebAuthnError ||
+    isOrganizationsError ||
+    isServerError
+  ) {
+    return (
+      <Alert variant="danger">
+        <CircleAlertIcon />
+        <AlertTitle>Two-factor authentication settings could not be loaded</AlertTitle>
+        <AlertDescription>
+          <p>Check your connection and try again.</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              Promise.all([
+                refetchUser(),
+                refetchTotp(),
+                refetchWebAuthn(),
+                refetchOrganizations(),
+                refetchServer()
+              ])
+            }
+          >
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (isPending || !user) {
-    return <ContentLoader />;
+    return (
+      <Card aria-label="Loading two-factor authentication settings">
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="h-4 w-full max-w-2xl" />
+        <Skeleton className="h-24 w-full" />
+      </Card>
+    );
   }
 
   if (user.authMethods?.includes(AuthMethod.LDAP)) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
+        <h2 className="text-lg font-medium text-foreground">Two-Factor Authentication</h2>
         <p className="mt-1 text-sm text-muted">
           Two-factor authentication is managed by your identity provider for LDAP accounts.
         </p>
@@ -117,7 +181,7 @@ export const MFASection = () => {
     <div className="p-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
+          <h2 className="text-lg font-medium text-foreground">Two-Factor Authentication</h2>
           <DocumentationLinkBadge href={LEARN_MORE_URL} />
         </div>
         {user.isMfaEnabled ? (
@@ -145,6 +209,7 @@ export const MFASection = () => {
           <Select
             value={selectedMethod}
             onValueChange={(value) => handlePreferredMethodChange(value as MfaMethod)}
+            disabled={isChangingPreferred || availableMethods.length === 0}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a method" />
@@ -166,7 +231,7 @@ export const MFASection = () => {
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-6">
+      <div className="mt-6 flex flex-col items-start justify-between gap-4 border-t border-border pt-6 sm:flex-row sm:items-center">
         {user.isMfaEnabled ? (
           <>
             <p className="text-sm text-muted">
@@ -190,7 +255,7 @@ export const MFASection = () => {
                 : "Set up an authenticator app or passkey below to enable two-factor authentication. Email codes are unavailable because SMTP is not configured for this instance."}
             </p>
             <Button
-              variant="org"
+              variant="neutral"
               isDisabled={isEnabling || !canEnable}
               onClick={() => setIsEnableOpen(true)}
             >
@@ -204,7 +269,7 @@ export const MFASection = () => {
 
   return (
     <>
-      <div className="mb-6 rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card">
         {banner}
         <div className="mx-6 border-t border-border" />
         <MfaMethodsCard />
@@ -228,14 +293,17 @@ export const MFASection = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="org" isPending={isEnabling} onClick={handleEnable}>
+            <AlertDialogAction variant="neutral" isPending={isEnabling} onClick={handleEnable}>
               Enable
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isDisableOpen} onOpenChange={setIsDisableOpen}>
+      <AlertDialog
+        open={isDisableOpen}
+        onOpenChange={(open) => !isDisabling && setIsDisableOpen(open)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
@@ -246,8 +314,15 @@ export const MFASection = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isDisabling} onClick={handleDisable}>
+            <AlertDialogCancel isDisabled={isDisabling}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isDisabling}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDisable();
+              }}
+            >
               Disable
             </AlertDialogAction>
           </AlertDialogFooter>

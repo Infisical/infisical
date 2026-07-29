@@ -48,8 +48,8 @@ export const RecoveryOptionsCard = () => {
   return (
     <div className="p-6">
       <h3 className="mb-4 text-sm font-medium text-foreground">Recovery options</h3>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
+      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-start gap-3">
           <KeyRoundIcon className="mt-0.5 text-muted" />
           <div>
             <p className="text-sm text-foreground">Recovery codes</p>
@@ -59,7 +59,7 @@ export const RecoveryOptionsCard = () => {
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
           <Button variant="outline" size="sm" isDisabled={isBusy} onClick={viewCodes}>
             <EyeIcon /> View
           </Button>

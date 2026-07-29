@@ -54,6 +54,7 @@ type VerificationCodeFormProps = {
   onChange: (value: string) => void;
   onSubmit: () => void | Promise<void>;
   submitLabel?: ReactNode;
+  submitVariant?: React.ComponentProps<typeof Button>["variant"];
   value: string;
 };
 
@@ -67,6 +68,7 @@ export const VerificationCodeForm = ({
   onChange,
   onSubmit,
   submitLabel = "Verify",
+  submitVariant = "project",
   value
 }: VerificationCodeFormProps) => {
   const isComplete = value.trim().length === fields;
@@ -107,7 +109,7 @@ export const VerificationCodeForm = ({
       <AnimatedCollapse isOpen={isComplete || Boolean(isPending)} contentClassName="px-1">
         <Button
           type="submit"
-          variant="project"
+          variant={submitVariant}
           size="lg"
           isFullWidth
           isPending={isPending}

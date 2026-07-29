@@ -3,8 +3,15 @@ import { FingerprintIcon } from "lucide-react";
 import QRCode from "qrcode";
 
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader } from "@app/components/v2";
-import { Button, Input, VerificationCodeForm } from "@app/components/v3";
+import {
+  Button,
+  Field,
+  FieldDescription,
+  FieldLabel,
+  Input,
+  Skeleton,
+  VerificationCodeForm
+} from "@app/components/v3";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { useEnrollMfa, useGetUserTotpRegistration } from "@app/hooks/api/users";
 import { useRegisterPasskey } from "@app/hooks/api/webauthn";
@@ -12,9 +19,16 @@ import { useRegisterPasskey } from "@app/hooks/api/webauthn";
 type Props = {
   method: MfaMethod;
   onVerified: () => void | Promise<void>;
+  variant?: React.ComponentProps<typeof Button>["variant"];
 };
 
-const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
+const TotpVerify = ({
+  onVerified,
+  variant
+}: {
+  onVerified: Props["onVerified"];
+  variant: Props["variant"];
+}) => {
   const [hasRegistered, setHasRegistered] = useState(false);
   const { data: registration, isPending } = useGetUserTotpRegistration({ enabled: !hasRegistered });
   const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
@@ -41,7 +55,14 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
     }
   };
 
-  if (isPending) return <ContentLoader />;
+  if (isPending) {
+    return (
+      <div className="space-y-4" aria-label="Loading authenticator setup">
+        <Skeleton className="mx-auto h-44 w-44" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -69,13 +90,20 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
         onChange={(value) => setTotp(value.replace(/\D/g, "").slice(0, 6))}
         onSubmit={handleVerify}
         submitLabel="Verify code"
+        submitVariant={variant}
         isPending={isVerifying}
       />
     </div>
   );
 };
 
-const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
+const WebAuthnVerify = ({
+  onVerified,
+  variant
+}: {
+  onVerified: Props["onVerified"];
+  variant: Props["variant"];
+}) => {
   const { registerPasskey, isRegistering } = useRegisterPasskey();
   const { mutateAsync: enrollMfa } = useEnrollMfa();
   const [name, setName] = useState("");
@@ -99,19 +127,24 @@ const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => 
         Register a passkey using Face ID, Touch ID, a security key, or your device. Optionally give
         it a name so you can recognize it later.
       </p>
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Passkey name (optional)"
-      />
-      <Button variant="org" isPending={isRegistering} onClick={handleRegister}>
-        <FingerprintIcon /> Register Passkey
+      <Field>
+        <FieldLabel htmlFor="mfa-passkey-name">Passkey name</FieldLabel>
+        <Input
+          id="mfa-passkey-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Optional"
+        />
+        <FieldDescription>Use a name that helps you recognize this device.</FieldDescription>
+      </Field>
+      <Button variant={variant} isPending={isRegistering} onClick={handleRegister}>
+        <FingerprintIcon /> Register passkey
       </Button>
     </div>
   );
 };
 
-export const VerifyStep = ({ method, onVerified }: Props) => {
-  if (method === MfaMethod.TOTP) return <TotpVerify onVerified={onVerified} />;
-  return <WebAuthnVerify onVerified={onVerified} />;
+export const VerifyStep = ({ method, onVerified, variant = "project" }: Props) => {
+  if (method === MfaMethod.TOTP) return <TotpVerify onVerified={onVerified} variant={variant} />;
+  return <WebAuthnVerify onVerified={onVerified} variant={variant} />;
 };

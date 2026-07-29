@@ -1,41 +1,96 @@
-import { faBan } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
+import { LogOutIcon } from "lucide-react";
 
-import { Button } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import { useRevokeMySessions } from "@app/hooks/api";
 
 import { SessionsTable } from "./SessionsTable";
 
 export const SessionsSection = () => {
-  const { mutateAsync } = useRevokeMySessions();
+  const [isRevokeAllOpen, setIsRevokeAllOpen] = useState(false);
+  const { mutateAsync, isPending } = useRevokeMySessions();
 
   const onRevokeAllSessionsClick = async () => {
     try {
       await mutateAsync();
+      createNotification({
+        text: "All sessions signed out.",
+        type: "success"
+      });
+      setIsRevokeAllOpen(false);
       window.location.href = "/login";
-    } catch (err) {
-      console.error(err);
+    } catch {
+      createNotification({
+        text: "Failed to sign out all sessions.",
+        type: "error"
+      });
     }
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-8 flex justify-between">
-        <h2 className="flex-1 text-xl font-medium text-mineshaft-100">Sessions</h2>
-        <Button
-          colorSchema="secondary"
-          type="submit"
-          leftIcon={<FontAwesomeIcon icon={faBan} />}
-          onClick={onRevokeAllSessionsClick}
-        >
-          Revoke all
-        </Button>
-      </div>
-      <p className="mb-8 text-gray-400">
-        Logging into Infisical via browser or CLI creates a session. Revoking all sessions logs your
-        account out all active sessions across all browsers and CLIs.
-      </p>
-      <SessionsTable />
-    </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sessions</CardTitle>
+          <CardDescription>
+            Review browser and CLI sessions with access to your account.
+          </CardDescription>
+          <CardAction>
+            <Button variant="danger" size="sm" onClick={() => setIsRevokeAllOpen(true)}>
+              <LogOutIcon />
+              Sign out all
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <SessionsTable />
+        </CardContent>
+      </Card>
+
+      <AlertDialog
+        open={isRevokeAllOpen}
+        onOpenChange={(open) => !isPending && setIsRevokeAllOpen(open)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out all sessions?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This signs your account out of every browser and CLI, including this session. You will
+              need to sign in again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                onRevokeAllSessionsClick();
+              }}
+            >
+              Sign out all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

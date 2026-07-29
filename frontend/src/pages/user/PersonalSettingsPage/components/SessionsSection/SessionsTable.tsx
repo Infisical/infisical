@@ -1,22 +1,37 @@
-import { faServer } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { AlertCircleIcon, ServerIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  DeleteActionModal,
-  EmptyState,
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertTitle,
+  Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  Skeleton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Button } from "@app/components/v2/Button";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetMySessions, useRevokeMySessionById } from "@app/hooks/api";
-import { usePopUp } from "@app/hooks/usePopUp";
 import { timeAgo } from "@app/lib/fn/date";
 import { formatSessionUserAgent } from "@app/lib/fn/string";
 
@@ -33,101 +48,180 @@ const formatLocalDateTime = (date: Date): string => {
 };
 
 export const SessionsTable = () => {
-  const { data, isPending } = useGetMySessions();
-  const { mutateAsync: revokeMySessionById } = useRevokeMySessionById();
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "deleteSession"
-  ] as const);
+  const { data, isPending, isError, refetch } = useGetMySessions();
+  const { mutateAsync: revokeMySessionById, isPending: isRevoking } =
+    useRevokeMySessionById();
+  const [sessionToRevoke, setSessionToRevoke] = useState<{
+    id: string;
+    ip: string;
+    browser: string;
+  } | null>(null);
 
   const handleSignOut = async (sessionId: string) => {
-    await revokeMySessionById(sessionId);
-    createNotification({
-      text: "Session revoked successfully",
-      type: "success"
-    });
-
-    handlePopUpClose("deleteSession");
+    try {
+      await revokeMySessionById(sessionId);
+      createNotification({
+        text: "Session signed out.",
+        type: "success"
+      });
+      setSessionToRevoke(null);
+    } catch {
+      createNotification({
+        text: "Failed to sign out session.",
+        type: "error"
+      });
+    }
   };
+
+  if (isError) {
+    return (
+      <Alert variant="danger">
+        <AlertCircleIcon />
+        <AlertTitle>Sessions could not be loaded</AlertTitle>
+        <AlertDescription>
+          <p>Check your connection and try again.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!isPending && data?.length === 0) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ServerIcon />
+          </EmptyMedia>
+          <EmptyTitle>No active sessions</EmptyTitle>
+          <EmptyDescription>
+            Browser and CLI sessions will appear here after you sign in.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   return (
     <>
-      <DeleteActionModal
-        isOpen={popUp.deleteSession.isOpen}
-        title="Are you sure you want to sign out of this session?"
-        onChange={(isOpen) => handlePopUpToggle("deleteSession", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
-          handleSignOut((popUp?.deleteSession?.data as { sessionId: string })?.sessionId)
-        }
-      />
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th>IP & Session ID</Th>
-              <Th>OS & Browser</Th>
-              <Th>Last accessed</Th>
-              <Th>Manage</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="sessions" />}
-            {!isPending &&
-              data &&
-              data.length > 0 &&
-              data.map(({ id, createdAt, lastUsed, ip, userAgent }) => {
-                const { os, browser } = formatSessionUserAgent(userAgent);
-                const lastUsedDate = new Date(lastUsed);
-                const createdAtDate = new Date(createdAt);
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>IP and session ID</TableHead>
+            <TableHead>Device</TableHead>
+            <TableHead>Last accessed</TableHead>
+            <TableHead>
+              <span className="sr-only">Actions</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isPending &&
+            Array.from({ length: 3 }).map((_, index) => (
+              <TableRow key={`session-skeleton-${index + 1}`}>
+                {Array.from({ length: 4 }).map((__, cellIndex) => (
+                  <TableCell key={`session-skeleton-cell-${cellIndex + 1}`}>
+                    <Skeleton className="h-4 w-full max-w-36" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          {data?.map(({ id, createdAt, lastUsed, ip, userAgent }) => {
+            const { os, browser } = formatSessionUserAgent(userAgent);
+            const lastUsedDate = new Date(lastUsed);
+            const createdAtDate = new Date(createdAt);
 
-                return (
-                  <Tr className="h-20" key={`session-${id}`}>
-                    <Td>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{ip}</span>
-                        <span className="text-sm text-gray-500">ID: {id}</span>
-                      </div>
-                    </Td>
-                    <Td>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{os}</span>
-                        <span className="text-sm text-gray-500">{browser}</span>
-                      </div>
-                    </Td>
-                    <Td>
-                      <div className="flex flex-col">
-                        <Tooltip content={formatLocalDateTime(lastUsedDate)}>
-                          <span className="font-medium">{timeAgo(lastUsedDate, new Date())}</span>
-                        </Tooltip>
-                        <Tooltip content={formatLocalDateTime(createdAtDate)}>
-                          <span className="text-sm text-gray-500">
-                            Created {timeAgo(createdAtDate, new Date())}
-                          </span>
-                        </Tooltip>
-                      </div>
-                    </Td>
-                    <Td>
-                      <Button
-                        variant="plain"
-                        colorSchema="danger"
-                        onClick={() => handlePopUpOpen("deleteSession", { sessionId: id })}
-                      >
-                        Sign out
-                      </Button>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            {!isPending && data && data?.length === 0 && (
-              <Tr>
-                <Td colSpan={4}>
-                  <EmptyState title="No sessions on file" icon={faServer} />
-                </Td>
-              </Tr>
-            )}
-          </TBody>
-        </Table>
-      </TableContainer>
+            return (
+              <TableRow key={`session-${id}`}>
+                <TableCell>
+                  <div className="flex min-w-44 flex-col">
+                    <span className="font-medium">{ip || "Unknown IP"}</span>
+                    <span className="max-w-64 truncate font-mono text-xs text-muted" title={id}>
+                      {id}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{os || "Unknown operating system"}</span>
+                    <span className="text-xs text-muted">{browser || "Unknown browser"}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <time
+                          dateTime={lastUsedDate.toISOString()}
+                          tabIndex={0}
+                          className="w-fit cursor-help rounded-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {timeAgo(lastUsedDate, new Date())}
+                        </time>
+                      </TooltipTrigger>
+                      <TooltipContent>{formatLocalDateTime(lastUsedDate)}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <time
+                          dateTime={createdAtDate.toISOString()}
+                          tabIndex={0}
+                          className="w-fit cursor-help rounded-sm text-xs text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          Created {timeAgo(createdAtDate, new Date())}
+                        </time>
+                      </TooltipTrigger>
+                      <TooltipContent>{formatLocalDateTime(createdAtDate)}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setSessionToRevoke({ id, ip, browser })}
+                  >
+                    Sign out
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+
+      <AlertDialog
+        open={sessionToRevoke !== null}
+        onOpenChange={(open) => !open && !isRevoking && setSessionToRevoke(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out this session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {sessionToRevoke
+                ? `The ${sessionToRevoke.browser || "unknown browser"} session from ${
+                    sessionToRevoke.ip || "an unknown IP"
+                  } will lose access to your account.`
+                : "This session will lose access to your account."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isRevoking}
+              onClick={(event) => {
+                event.preventDefault();
+                if (sessionToRevoke) handleSignOut(sessionToRevoke.id);
+              }}
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

@@ -4,13 +4,11 @@ import { InsecureConnectionBanner } from "../OrganizationLayout/components/Insec
 
 export const PersonalSettingsLayout = () => {
   return (
-    <div className="dark flex h-screen w-full flex-col overflow-x-hidden bg-bunker-800">
+    <div className="dark flex min-h-screen w-full flex-col bg-background">
       {!window.isSecureContext && <InsecureConnectionBanner />}
-      <div className="flex grow flex-col overflow-y-hidden md:flex-row">
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
-          <Outlet />
-        </main>
-      </div>
+      <main className="min-w-0 flex-1 dark:scheme-dark">
+        <Outlet />
+      </main>
     </div>
   );
 };

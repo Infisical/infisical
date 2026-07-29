@@ -4,7 +4,7 @@ import { UserNameSection } from "../UserNameSection";
 
 export const PersonalGeneralTab = () => {
   return (
-    <div>
+    <div className="space-y-6">
       <UserNameSection />
       <SessionsSection />
       <DeleteAccountSection />

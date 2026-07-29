@@ -1,12 +1,30 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { VerificationCodeForm } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  VerificationCodeForm
+} from "@app/components/v3";
 import { useUser } from "@app/context";
 import {
   useRequestEmailChangeOTP,
@@ -33,6 +51,14 @@ export const ChangeEmailSection = () => {
   const [otpStep, setOtpStep] = useState<OtpStep | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
   const [typedOTP, setTypedOTP] = useState("");
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    },
+    []
+  );
 
   const emailForm = useForm<EmailFormData>({
     defaultValues: { newEmail: "" },
@@ -80,14 +106,22 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    await requestEmailChangeOTP({ newEmail });
+    try {
+      await requestEmailChangeOTP({ newEmail });
+    } catch {
+      createNotification({
+        text: "Failed to send an email-change verification code.",
+        type: "error"
+      });
+      return;
+    }
 
     setPendingEmail(newEmail);
     setTypedOTP("");
     setOtpStep("currentEmail");
 
     createNotification({
-      text: "Verification code sent to your current email address. Check your inbox!",
+      text: "Verification code sent to your current email address.",
       type: "success"
     });
   };
@@ -143,7 +177,7 @@ export const ChangeEmailSection = () => {
     resetFlow();
     clearSession();
 
-    setTimeout(() => {
+    redirectTimer.current = setTimeout(() => {
       navigate({ to: "/login" });
     }, 2000);
   };
@@ -156,63 +190,74 @@ export const ChangeEmailSection = () => {
       : `Enter the 6-digit code sent to your new email: ${otpRecipient}`;
   const otpTitle =
     otpStep === "currentEmail" ? "Confirm from current email" : "Confirm from new email";
-  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm Email Change";
+  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm email change";
   const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
   const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
 
   return (
     <>
-      <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Change email</h2>
-
-        <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
-          <div className="max-w-md">
+      <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Change Email</CardTitle>
+            <CardDescription>
+              Verify both your current and new email addresses. A successful change signs you out.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-w-md">
             <Controller
               control={emailForm.control}
               name="newEmail"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="New email address"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  tooltipText={
-                    hasEmailAuth
-                      ? "Your email authentication method is currently enabled and will remain active after changing your email."
-                      : "Email authentication method will be automatically enabled after changing your email. You may disable email authentication after logging in with your new email if needed."
-                  }
-                >
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="new-email-address">New email address</FieldLabel>
                   <Input
+                    id="new-email-address"
                     {...field}
                     placeholder="Enter new email address"
                     type="email"
-                    className="bg-mineshaft-800"
+                    autoComplete="email"
+                    aria-invalid={Boolean(error)}
                   />
-                </FormControl>
+                  <FieldDescription>
+                    {hasEmailAuth
+                      ? "Email authentication remains enabled after the change."
+                      : "Email authentication will be enabled automatically. You can change it after signing in with your new email."}
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </Field>
               )}
             />
-          </div>
-          <Button
-            type="submit"
-            colorSchema="secondary"
-            isLoading={isRequestingOTP}
-            isDisabled={isRequestingOTP || !isEmailValid(watchedEmail)}
-          >
-            Send Verification Code
-          </Button>
-          <p className="mt-2 font-inter text-sm text-mineshaft-400">
-            We&apos;ll first send a 6-digit code to your current email to confirm the change. After
-            you approve, a second code will be sent to your new email to finalize it.
-          </p>
-        </form>
-      </div>
+          </CardContent>
+          <CardFooter>
+            <Button
+              type="submit"
+              variant="neutral"
+              isPending={isRequestingOTP}
+              isDisabled={!isEmailValid(watchedEmail) || isOtpModalOpen}
+            >
+              Send verification code
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
 
-      <Modal
-        isOpen={isOtpModalOpen}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) closeOtpModal();
+      <Dialog
+        open={isOtpModalOpen}
+        onOpenChange={(open) => {
+          if (!open && !isOtpSubmitLoading) closeOtpModal();
         }}
       >
-        <ModalContent title={otpTitle} subTitle={otpSubTitle}>
+        <DialogContent
+          className="sm:max-w-md"
+          onEscapeKeyDown={(event) => isOtpSubmitLoading && event.preventDefault()}
+          onInteractOutside={(event) => isOtpSubmitLoading && event.preventDefault()}
+          showCloseButton={!isOtpSubmitLoading}
+        >
+          <DialogHeader>
+            <DialogTitle>{otpTitle}</DialogTitle>
+            <DialogDescription>{otpSubTitle}</DialogDescription>
+          </DialogHeader>
           <VerificationCodeForm
             key={otpStep ?? "closed"}
             name="email-change-verification-code"
@@ -220,10 +265,11 @@ export const ChangeEmailSection = () => {
             onChange={setTypedOTP}
             onSubmit={onOtpSubmit}
             submitLabel={otpButtonLabel}
+            submitVariant="neutral"
             isPending={isOtpSubmitLoading}
           >
             {otpStep === "newEmail" && (
-              <p className="text-center text-xs text-mineshaft-400">
+              <p className="text-center text-xs text-muted">
                 Didn&apos;t get a code? If the new address already belongs to another Infisical
                 account, we&apos;ve sent it an email explaining why the change can&apos;t be
                 completed.
@@ -232,16 +278,16 @@ export const ChangeEmailSection = () => {
             <div className="flex justify-center">
               <Button
                 type="button"
-                colorSchema="secondary"
                 variant="outline"
                 onClick={closeOtpModal}
+                isDisabled={isOtpSubmitLoading}
               >
                 Cancel
               </Button>
             </div>
           </VerificationCodeForm>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

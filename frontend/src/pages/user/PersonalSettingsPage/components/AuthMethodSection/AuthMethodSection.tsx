@@ -7,7 +7,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Switch } from "@app/components/v2";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  Switch
+} from "@app/components/v3";
 import { useServerConfig, useUser } from "@app/context";
 import { useUpdateUserAuthMethods } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -35,7 +46,7 @@ export type FormData = z.infer<typeof schema>;
 export const AuthMethodSection = () => {
   const { user } = useUser();
   const { config } = useServerConfig();
-  const { mutateAsync } = useUpdateUserAuthMethods();
+  const { mutateAsync, isPending } = useUpdateUserAuthMethods();
 
   const { reset, setValue, watch } = useForm<FormData>({
     defaultValues: {
@@ -59,46 +70,33 @@ export const AuthMethodSection = () => {
       ? [...authMethods, authMethodOpt.value]
       : authMethods.filter((auth) => auth !== authMethodOpt.value);
 
-    if (value) {
+    try {
       const newUser = await mutateAsync({
         authMethods: newAuthMethods
       });
 
       setValue("authMethods", newUser.authMethods);
       createNotification({
-        text: "Successfully enabled authentication method",
+        text: `${authMethodOpt.label} authentication ${value ? "enabled" : "disabled"}.`,
         type: "success"
       });
-      return;
-    }
-
-    if (newAuthMethods.length === 0) {
+    } catch {
       createNotification({
-        text: "You must keep at least 1 authentication method enabled",
+        text: `Failed to ${value ? "enable" : "disable"} ${authMethodOpt.label} authentication.`,
         type: "error"
       });
-      return;
     }
-
-    const newUser = await mutateAsync({
-      authMethods: newAuthMethods
-    });
-
-    setValue("authMethods", newUser.authMethods);
-    createNotification({
-      text: "Successfully disabled authentication method",
-      type: "success"
-    });
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Authentication methods</h2>
-      <p className="mb-4 text-gray-400">
-        By enabling a SSO provider, you are allowing an account with that provider which uses the
-        same email address as your existing Infisical account to be able to log in to Infisical.
-      </p>
-      <div className="mb-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Authentication Methods</CardTitle>
+        <CardDescription>
+          Choose which providers can sign in to your Infisical account using the same email address.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="divide-y divide-border">
         {user &&
           authMethodOpts.map((authMethodOpt) => {
             // only filter when enabledLoginMethods is explicitly configured by admin
@@ -109,22 +107,45 @@ export const AuthMethodSection = () => {
               return null;
             }
 
+            const isEnabled = authMethods?.includes(authMethodOpt.value) ?? false;
+            const isOnlyMethod = isEnabled && authMethods.length === 1;
+            const descriptionId = `enable-${authMethodOpt.value}-auth-description`;
+
             return (
-              <div className="flex items-center p-4" key={`auth-method-${authMethodOpt.value}`}>
-                <div className="flex items-center">
-                  <FontAwesomeIcon icon={authMethodOpt.icon} className="mr-4" />
+              <Field
+                orientation="horizontal"
+                className="py-4"
+                key={`auth-method-${authMethodOpt.value}`}
+                data-disabled={isPending || isOnlyMethod}
+              >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <FontAwesomeIcon icon={authMethodOpt.icon} className="size-4" />
+                  <FieldContent>
+                    <FieldLabel
+                      htmlFor={`enable-${authMethodOpt.value}-auth`}
+                      className="cursor-pointer text-sm font-medium text-foreground"
+                    >
+                      {authMethodOpt.label}
+                    </FieldLabel>
+                    <FieldDescription id={descriptionId}>
+                      {isOnlyMethod
+                        ? "Keep at least one authentication method enabled."
+                        : `Allow sign-in with ${authMethodOpt.label}.`}
+                    </FieldDescription>
+                  </FieldContent>
                 </div>
                 <Switch
                   id={`enable-${authMethodOpt.value}-auth`}
                   onCheckedChange={(value) => onAuthMethodToggle(value, authMethodOpt)}
-                  isChecked={authMethods?.includes(authMethodOpt.value) ?? false}
-                >
-                  <p className="mr-4 w-12">{authMethodOpt.label}</p>
-                </Switch>
-              </div>
+                  checked={isEnabled}
+                  disabled={isPending || isOnlyMethod}
+                  aria-describedby={descriptionId}
+                  variant="neutral"
+                />
+              </Field>
             );
           })}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };

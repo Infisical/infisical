@@ -34,8 +34,8 @@ type MethodRowProps = {
 };
 
 const MethodRow = ({ icon: Icon, title, description, badge, action }: MethodRowProps) => (
-  <div className="flex items-center justify-between gap-4 py-3">
-    <div className="flex items-start gap-3">
+  <div className="flex flex-col items-stretch justify-between gap-3 py-3 sm:flex-row sm:items-center sm:gap-4">
+    <div className="flex min-w-0 items-start gap-3">
       <Icon className="mt-0.5 text-muted" />
       <div>
         <div className="flex items-center gap-2">
@@ -45,7 +45,7 @@ const MethodRow = ({ icon: Icon, title, description, badge, action }: MethodRowP
         <p className="text-xs text-muted">{description}</p>
       </div>
     </div>
-    <div className="shrink-0">{action}</div>
+    <div className="shrink-0 self-end sm:self-auto">{action}</div>
   </div>
 );
 
@@ -144,7 +144,10 @@ export const MfaMethodsCard = () => {
 
       <PasskeyManagerDialog isOpen={isPasskeyManagerOpen} onOpenChange={setIsPasskeyManagerOpen} />
 
-      <AlertDialog open={isRemoveTotpOpen} onOpenChange={setIsRemoveTotpOpen}>
+      <AlertDialog
+        open={isRemoveTotpOpen}
+        onOpenChange={(open) => !isRemovingTotp && setIsRemoveTotpOpen(open)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove authenticator app?</AlertDialogTitle>
@@ -153,11 +156,14 @@ export const MfaMethodsCard = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isRemovingTotp}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               isPending={isRemovingTotp}
-              onClick={handleRemoveTotp}
+              onClick={(event) => {
+                event.preventDefault();
+                handleRemoveTotp();
+              }}
             >
               Remove
             </AlertDialogAction>
