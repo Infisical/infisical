@@ -257,6 +257,7 @@ import {
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
+import { signupOnboardingResponseDALFactory } from "@app/services/auth/auth-signup-onboarding-dal";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { mfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
@@ -595,6 +596,7 @@ export const registerRoutes = async (
   const userDAL = userDALFactory(db);
   const userAliasDAL = userAliasDALFactory(db);
   const authDAL = authDALFactory(db);
+  const signupOnboardingResponseDAL = signupOnboardingResponseDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
   const orgMembershipDAL = orgMembershipDALFactory(db);
@@ -1394,7 +1396,8 @@ export const registerRoutes = async (
     orgDAL,
     orgService,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    signupOnboardingResponseDAL
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({

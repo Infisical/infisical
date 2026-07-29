@@ -33,6 +33,10 @@ export enum PostHogEventTypes {
   SecretDeleted = "secrets deleted",
   AdminInit = "admin initialization",
   UserSignedUp = "User Signed Up",
+  SignupProductSelected = "Signup Product Selected",
+  SignupProductsSubmitted = "Signup Products Submitted",
+  SignupLaunchDestinationSelected = "Signup Launch Destination Selected",
+  SignupAttributionProvided = "Signup Attribution Provided",
   UserLoginV2 = "User Login V2",
   SecretRotated = "secrets rotated",
   SecretScannerFull = "historical cloud secret scan",
@@ -316,6 +320,45 @@ export type TUserSignedUpEvent = {
     email: string;
     attributionSource?: string;
     signupMethod?: string;
+  };
+};
+
+export type TSignupProductSelectedEvent = {
+  event: PostHogEventTypes.SignupProductSelected;
+  properties: {
+    product: string;
+  };
+};
+
+/**
+ * One summary event per signup (TSignupProductSelectedEvent is the per-product breakdown).
+ * $set_once mirrors the selection onto the person record for cohorting.
+ */
+export type TSignupProductsSubmittedEvent = {
+  event: PostHogEventTypes.SignupProductsSubmitted;
+  properties: {
+    products: string[];
+    productCount: number;
+    isExploring: boolean;
+    $set_once: {
+      signupProducts: string[];
+      signupProductCount: number;
+      signupIsExploring: boolean;
+    };
+  };
+};
+
+export type TSignupLaunchDestinationSelectedEvent = {
+  event: PostHogEventTypes.SignupLaunchDestinationSelected;
+  properties: {
+    launchDestination: string;
+  };
+};
+
+export type TSignupAttributionProvidedEvent = {
+  event: PostHogEventTypes.SignupAttributionProvided;
+  properties: {
+    attributionSource: string;
   };
 };
 
@@ -2000,6 +2043,10 @@ export type TPostHogEvent = {
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
+  | TSignupProductSelectedEvent
+  | TSignupProductsSubmittedEvent
+  | TSignupLaunchDestinationSelectedEvent
+  | TSignupAttributionProvidedEvent
   | TUserLoginV2Event
   | TSecretScannerEvent
   | TUserOrgInvitedEvent

@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamProductRole } from "@app/ee/services/pam/pam-enums";
 import { unique } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { sanitizeEmail } from "@app/lib/validator";
 import { inviteUserRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -27,7 +30,11 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           .max(100)
           .transform((val) => unique(val.map((el) => sanitizeEmail(el)))),
         organizationId: z.string().trim(),
-        organizationRoleSlug: z.string().default(OrgMembershipRole.Member)
+        organizationRoleSlug: z.string().default(OrgMembershipRole.Member),
+        // Signup-created projects the invitees get member access to.
+        projectIds: z.string().trim().array().max(5).optional(),
+        // Grants membership on the org's consolidated PAM project (PAM has no signup-created project).
+        grantPamAccess: z.boolean().optional()
       }),
       response: {
         200: z.object({
@@ -58,6 +65,66 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           roles: [{ isTemporary: false, role: req.body.organizationRoleSlug }]
         }
       });
+
+      // Best-effort: the org invite already succeeded, so a project-side failure must not fail the request.
+      if (req.body.projectIds?.length) {
+        for await (const projectId of req.body.projectIds) {
+          try {
+            await server.services.membershipUser.createMembership({
+              permission: req.permission,
+              scopeData: {
+                scope: AccessScope.Project,
+                orgId: req.permission.orgId,
+                projectId
+              },
+              data: {
+                usernames: req.body.inviteeEmails,
+                roles: [{ isTemporary: false, role: ProjectMembershipRole.Member }]
+              }
+            });
+          } catch (err) {
+            logger.error(err, `Failed to grant invitees access to project [projectId=${projectId}]`);
+          }
+        }
+      }
+
+      // PAM must go through its product-membership service so role validation, metering,
+      // and access-request cleanup apply.
+      if (req.body.grantPamAccess) {
+        try {
+          const pamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
+          const { memberships } = await server.services.pamMembership.addProductUserMembers({
+            projectId: pamProjectId,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorOrgId: req.permission.orgId,
+            actorAuthMethod: req.permission.authMethod,
+            userIds: [],
+            emails: req.body.inviteeEmails,
+            role: PamProductRole.Member
+          });
+
+          for await (const membership of memberships) {
+            await server.services.auditLog.createAuditLog({
+              ...req.auditLogInfo,
+              orgId: req.permission.orgId,
+              projectId: pamProjectId,
+              event: {
+                type: EventType.PAM_PRODUCT_MEMBER_ADD,
+                metadata: { userId: membership.userId, role: membership.role }
+              }
+            });
+            void server.services.telemetry.sendPostHogEvents({
+              event: PostHogEventTypes.PamProductMemberAdded,
+              distinctId: getTelemetryDistinctId(req),
+              organizationId: req.permission.orgId,
+              properties: { orgId: req.permission.orgId }
+            });
+          }
+        } catch (err) {
+          logger.error(err, "Failed to grant invitees PAM access");
+        }
+      }
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,

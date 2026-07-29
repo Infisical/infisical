@@ -52,13 +52,12 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
   });
 
   try {
-    const { data } = await apiRequest.post("/api/v4/secrets/batch", {
+    await apiRequest.post("/api/v4/secrets/batch", {
       projectId: project.id,
       environment: "dev",
       secretPath: "/",
       secrets: secretsToBeAdded
     });
-    return data;
   } catch (err) {
     console.error("Failed to upload secrets", err);
   }
