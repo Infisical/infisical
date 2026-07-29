@@ -52,6 +52,7 @@ export type TCreateChannelInTxInput = {
 
 export type TUpdateChannelInTxInput = {
   channelId: string;
+  channelType?: AlertChannelType | string;
   name?: string;
   config?: Record<string, unknown>;
   enabled?: boolean;
@@ -168,7 +169,13 @@ export const alertChannelServiceFactory = ({
     channel: TAlertChannels,
     cipher: { encryptor: TAlertEncryptor; decryptor: TAlertDecryptor },
     tx: Knex
-  ): Promise<Record<string, unknown>> => {
+  ): Promise<void> => {
+    if (input.channelType !== undefined && input.channelType !== channel.channelType) {
+      throw new BadRequestError({
+        message: `Channel '${channel.id}' is a ${channel.channelType} channel and its type cannot be changed to ${input.channelType}`
+      });
+    }
+
     const definition = getChannelDefinition(channel.channelType);
     const existingConfig = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, cipher.decryptor);
 
@@ -207,8 +214,6 @@ export const alertChannelServiceFactory = ({
         );
       }
     }
-
-    return finalConfig;
   };
 
   const deleteChannelInTx = async (channelId: string, tx: Knex): Promise<void> => {

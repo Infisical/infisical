@@ -4,8 +4,8 @@ import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 
 import {
+  ALERT_CHANNEL_HTTP_TIMEOUT,
   PagerDutyChannelConfigSchema,
-  pagerDutyIntegrationKeyRegex,
   TAlertChannelSendContext,
   TAlertItem,
   TAlertPayload,
@@ -13,7 +13,6 @@ import {
 } from "../alert-channel-types";
 
 const PAGERDUTY_EVENTS_URL = "https://events.pagerduty.com/v2/enqueue";
-const PAGERDUTY_TIMEOUT = 7 * 1000;
 export const PAGERDUTY_MAX_INCIDENTS_PER_RUN = 10;
 const PAGERDUTY_SUMMARY_MAX_LENGTH = 1024;
 
@@ -72,17 +71,13 @@ export const buildPagerDutyEvent = (
 const triggerPagerDutyEvent = async (payload: TPagerDutyPayload): Promise<void> => {
   await safeRequest.post(PAGERDUTY_EVENTS_URL, payload, {
     headers: { "Content-Type": "application/json" },
-    timeout: PAGERDUTY_TIMEOUT,
-    signal: AbortSignal.timeout(PAGERDUTY_TIMEOUT)
+    timeout: ALERT_CHANNEL_HTTP_TIMEOUT,
+    signal: AbortSignal.timeout(ALERT_CHANNEL_HTTP_TIMEOUT)
   });
 };
 
 export const sendPagerDutyNotification = async (ctx: TAlertChannelSendContext): Promise<TChannelResult> => {
   const config = PagerDutyChannelConfigSchema.parse(ctx.config);
-
-  if (!pagerDutyIntegrationKeyRegex.test(config.integrationKey)) {
-    return { success: false, error: "Invalid PagerDuty integration key" };
-  }
 
   const targetResults = await Promise.all(
     ctx.payload.items.map(async (item) => {

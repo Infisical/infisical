@@ -18,15 +18,8 @@ type RecipientOption = {
   groupLabel: "Users" | "Groups";
 };
 
-const userLabel = (user: {
-  firstName?: string;
-  lastName?: string;
-  username?: string;
-  email?: string;
-}): string => {
-  const name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-  return user.email || user.username || name || "Unknown user";
-};
+const userLabel = (user: { firstName?: string; lastName?: string; username?: string }): string =>
+  user.username || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Unknown user";
 
 const buildOptions = (
   users: { user: { id: string; firstName?: string; lastName?: string; username?: string } }[],

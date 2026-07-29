@@ -11,7 +11,7 @@ interface AlertNotificationTemplateProps extends Omit<BaseEmailWrapperProps, "ti
   summary: string;
   severity?: string;
   viewUrl: string;
-  items: { title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
+  items: { id: string; title: string; identifier?: string; fields?: { label: string; value: string }[] }[];
 }
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; background: string; border: string }> = {
@@ -68,7 +68,7 @@ export const AlertNotificationTemplate = ({
       <Section className="mt-[28px] mb-[8px]">
         {items.map((item) => (
           <Section
-            key={item.identifier ?? item.title}
+            key={item.id}
             className="mb-[12px] px-[20px] pt-[16px] pb-[8px] border border-solid border-gray-200 rounded-lg bg-gray-50"
           >
             <Text className="text-[15px] font-semibold text-black m-0 mb-[2px]">{item.title}</Text>
@@ -121,6 +121,7 @@ AlertNotificationTemplate.PreviewProps = {
   siteUrl: "https://infisical.com",
   items: [
     {
+      id: "ua-client-secret:1f0c3a5e-1111-4c2a-9f10-8b7d6e5a4c31",
       title: "ci-runner",
       fields: [
         { label: "Secret Name", value: "ci-secret" },
@@ -129,6 +130,7 @@ AlertNotificationTemplate.PreviewProps = {
       ]
     },
     {
+      id: "ua-client-secret:2b9d4f7c-2222-4e83-b6a1-5c4e3d2b1a09",
       title: "deploy-bot",
       fields: [
         { label: "Secret Name", value: "release-token" },

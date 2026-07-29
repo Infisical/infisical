@@ -34,6 +34,13 @@ export type TAlertPermissionInput = {
   actor: TGenericPermission;
 };
 
+export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
+  actor: dto.actor,
+  actorId: dto.actorId,
+  actorAuthMethod: dto.actorAuthMethod,
+  actorOrgId: dto.actorOrgId
+});
+
 export const DEFAULT_DEDUP_WINDOW_HOURS = 24;
 
 // Providers scan this many days ahead of `alertBefore` so alerts fire at LEAST `alertBefore` before

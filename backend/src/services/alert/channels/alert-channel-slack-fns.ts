@@ -1,7 +1,8 @@
-import { SLACK_WEBHOOK_TIMEOUT, TSlackBlock, TSlackPayload } from "@app/lib/slack/slack-webhook";
+import { TSlackBlock, TSlackPayload } from "@app/lib/slack/slack-webhook";
 import { safeRequest } from "@app/lib/validator";
 
 import {
+  ALERT_CHANNEL_HTTP_TIMEOUT,
   SlackChannelConfigSchema,
   TAlertChannelSendContext,
   TAlertPayload,
@@ -78,8 +79,8 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
 const triggerSlackWebhook = async (url: string, payload: TSlackPayload): Promise<void> => {
   await safeRequest.post(url, payload, {
     headers: { "Content-Type": "application/json" },
-    timeout: SLACK_WEBHOOK_TIMEOUT,
-    signal: AbortSignal.timeout(SLACK_WEBHOOK_TIMEOUT)
+    timeout: ALERT_CHANNEL_HTTP_TIMEOUT,
+    signal: AbortSignal.timeout(ALERT_CHANNEL_HTTP_TIMEOUT)
   });
 };
 

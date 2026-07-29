@@ -91,6 +91,8 @@ export type TIdentityCredentialAlertProviderDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
 };
 
+const targetId = (target: TIdentityCredentialTarget): string => `${target.credentialType}:${target.id}`;
+
 export const identityCredentialAlertProviderFactory = ({
   identityCredentialAlertDAL,
   permissionService
@@ -168,7 +170,7 @@ export const identityCredentialAlertProviderFactory = ({
         ? `${targets.length} machine identity authentication(s) expiring within ${humanizeAlertBefore(alertBefore)}`
         : `${targets.length} machine identity authentication(s) expiring`,
       items: targets.map((target) => ({
-        id: `${target.credentialType}:${target.id}`,
+        id: targetId(target),
         title: target.identityName,
         fields: [
           { label: "Secret Name", value: target.description || target.clientSecretPrefix },
@@ -178,8 +180,6 @@ export const identityCredentialAlertProviderFactory = ({
       }))
     };
   };
-
-  const targetId = (target: TIdentityCredentialTarget): string => `${target.credentialType}:${target.id}`;
 
   const buildTestTargets = (): TIdentityCredentialTarget[] => [
     {

@@ -30,7 +30,7 @@ import { recordScimOperationMetric, ScimOperation } from "@app/lib/telemetry/met
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AlertPrincipalType } from "@app/services/alert/alert-types";
+import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
@@ -1541,18 +1541,16 @@ export const scimServiceFactory = ({
       });
 
     const [group] = await groupDAL.transaction(async (tx) => {
-      // Read the members before the delete cascades their group memberships away — one may have
-      // reached a project only through this group, leaving them stale on its alert channels.
-      const memberUserIds = (await userGroupMembershipDAL.find({ groupId }, { tx })).map((m) => m.userId);
+      const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
+        { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
 
       const deleted = await groupDAL.delete({ id: groupId, orgId }, tx);
       if (!deleted.length) return deleted;
 
-      await alertChannelRecipientDAL.deleteByPrincipals(
-        { principalType: AlertPrincipalType.GROUP, principalIds: [groupId] },
-        tx
-      );
-      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: memberUserIds }, tx);
+      await finalizeAlertRecipients();
 
       return deleted;
     });

@@ -3,13 +3,12 @@ import crypto from "node:crypto";
 import { safeRequest } from "@app/lib/validator";
 
 import {
+  ALERT_CHANNEL_HTTP_TIMEOUT,
   TAlertChannelSendContext,
   TAlertPayload,
   TChannelResult,
   WebhookChannelConfigSchema
 } from "../alert-channel-types";
-
-const ALERT_WEBHOOK_TIMEOUT = 7 * 1000;
 
 type TAlertWebhookPayload = {
   specversion: "1.0";
@@ -71,8 +70,8 @@ const triggerWebhook = async (params: {
 
   await safeRequest.post(url, payload, {
     headers,
-    timeout: ALERT_WEBHOOK_TIMEOUT,
-    signal: AbortSignal.timeout(ALERT_WEBHOOK_TIMEOUT)
+    timeout: ALERT_CHANNEL_HTTP_TIMEOUT,
+    signal: AbortSignal.timeout(ALERT_CHANNEL_HTTP_TIMEOUT)
   });
 };
 

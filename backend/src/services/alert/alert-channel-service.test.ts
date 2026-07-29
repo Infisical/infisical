@@ -172,21 +172,44 @@ describe("alert channel service", () => {
   });
 
   test("keeps an omitted secret on update", async () => {
+    const { service, store } = buildService({
+      seed: [
+        seedRow({
+          id: "ch-1",
+          channelType: AlertChannelType.WEBHOOK,
+          encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
+        })
+      ]
+    });
+
+    // Config sent without signingSecret -> keep the existing one.
+    await service.updateChannelInTx(
+      { channelId: "ch-1", config: { url: "https://example.com/hook" } },
+      store.get("ch-1") as never,
+      cipher,
+      tx
+    );
+
+    const stored = JSON.parse(store.get("ch-1")!.encryptedConfig.toString()) as Record<string, unknown>;
+    expect(stored).toEqual({ url: "https://example.com/hook", signingSecret: "s3cr3t" });
+  });
+
+  test("rejects changing the channel type of an existing channel", async () => {
     const { service } = buildService();
     const channel = seedRow({
       id: "ch-1",
       channelType: AlertChannelType.WEBHOOK,
-      encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
+      encryptedConfig: encConfig({ url: "https://example.com/hook" })
     });
 
-    // Config sent without signingSecret -> keep the existing one.
-    const finalConfig = await service.updateChannelInTx(
-      { channelId: "ch-1", config: { url: "https://example.com/hook" } },
-      channel as never,
-      cipher,
-      tx
-    );
-    expect(finalConfig).toEqual({ url: "https://example.com/hook", signingSecret: "s3cr3t" });
+    await expect(
+      service.updateChannelInTx(
+        { channelId: "ch-1", channelType: AlertChannelType.SLACK },
+        channel as never,
+        cipher,
+        tx
+      )
+    ).rejects.toThrow("type cannot be changed");
   });
 
   test("clears an optional secret when explicitly emptied on update", async () => {
@@ -197,17 +220,16 @@ describe("alert channel service", () => {
       encryptedConfig: encConfig({ url: "https://example.com/hook", signingSecret: "s3cr3t" })
     });
 
-    const finalConfig = await service.updateChannelInTx(
+    await service.updateChannelInTx(
       { channelId: "ch-1", config: { url: "https://example.com/hook", signingSecret: "" } },
       channel as never,
       cipher,
       tx
     );
 
-    expect(finalConfig).toEqual({ url: "https://example.com/hook" });
-    // And it is actually gone from the stored ciphertext, not just hidden.
+    // It is actually gone from the stored ciphertext, not just hidden.
     const stored = JSON.parse(store.get("ch-1")!.encryptedConfig.toString()) as Record<string, unknown>;
-    expect(stored).not.toHaveProperty("signingSecret");
+    expect(stored).toEqual({ url: "https://example.com/hook" });
   });
 
   test("sets a new secret when a value is provided on update", async () => {

@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
 import { TGenericPermission } from "@app/lib/types";
 
 const createSecureNameValidator = () => {
@@ -177,12 +178,8 @@ export const SlackChannelConfigSchema = z.object({
     }, "Slack webhook URL must be from hooks.slack.com")
 });
 
-export const pagerDutyIntegrationKeyRegex = new RE2("^[a-f0-9]{32}$", "i");
-
 export const PagerDutyChannelConfigSchema = z.object({
-  integrationKey: z
-    .string()
-    .refine((val) => pagerDutyIntegrationKeyRegex.test(val), "Integration key must be a 32-character hex string")
+  integrationKey: z.string().refine((val) => pagerDutyIntegrationKeyRegex.test(val), PAGERDUTY_INTEGRATION_KEY_ERROR)
 });
 
 export type TPagerDutyChannelConfig = z.infer<typeof PagerDutyChannelConfigSchema>;

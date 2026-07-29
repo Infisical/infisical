@@ -18,7 +18,7 @@ import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
-import { AlertPermissionAction, IResourceAlertProvider, TAlertContext } from "./alert-types";
+import { AlertPermissionAction, IResourceAlertProvider, TAlertContext, toAlertActor } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
@@ -81,12 +81,7 @@ export const alertChannelTestServiceFactory = ({
         orgId: owner.orgId,
         projectId: owner.projectId,
         resourceId: owner.resourceId,
-        actor: {
-          actor: dto.actor,
-          actorId: dto.actorId,
-          actorAuthMethod: dto.actorAuthMethod,
-          actorOrgId: dto.actorOrgId
-        }
+        actor: toAlertActor(dto)
       });
     }
   };
@@ -185,12 +180,7 @@ export const alertChannelTestServiceFactory = ({
       orgId: dto.actorOrgId,
       projectId,
       resourceId: dto.resourceId,
-      actor: {
-        actor: dto.actor,
-        actorId: dto.actorId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
-      }
+      actor: toAlertActor(dto)
     });
     await provider.assertResourceInScope({ orgId: dto.actorOrgId, projectId, resourceId: dto.resourceId });
 

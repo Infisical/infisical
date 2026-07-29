@@ -24,7 +24,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AlertPrincipalType } from "@app/services/alert/alert-types";
+import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -581,9 +581,11 @@ export const groupServiceFactory = ({
     }
 
     return groupDAL.transaction(async (tx) => {
-      // Read before the delete cascades the group memberships away — a member may have reached a
-      // project only through this group, leaving them stale on that project's alert channels.
-      const memberUserIds = (await userGroupMembershipDAL.find({ groupId }, { tx })).map((m) => m.userId);
+      const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
+        { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
 
       const [deletedGroup] = await groupDAL.delete(
         {
@@ -593,15 +595,7 @@ export const groupServiceFactory = ({
         tx
       );
 
-      await alertChannelRecipientDAL.deleteByPrincipals(
-        {
-          principalType: AlertPrincipalType.GROUP,
-          principalIds: [groupId]
-        },
-        tx
-      );
-
-      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: memberUserIds }, tx);
+      await finalizeAlertRecipients();
 
       return deletedGroup;
     });

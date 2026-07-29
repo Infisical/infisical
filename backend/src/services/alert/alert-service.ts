@@ -21,7 +21,7 @@ import {
   TListAlertsDTO,
   TUpdateAlertDTO
 } from "./alert-service-types";
-import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider } from "./alert-types";
+import { AlertPermissionAction, AlertTriggerType, IResourceAlertProvider, toAlertActor } from "./alert-types";
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
@@ -53,13 +53,6 @@ export const alertServiceFactory = ({
     return provider;
   };
 
-  const $toActor = (dto: TGenericPermission): TGenericPermission => ({
-    actor: dto.actor,
-    actorId: dto.actorId,
-    actorAuthMethod: dto.actorAuthMethod,
-    actorOrgId: dto.actorOrgId
-  });
-
   const $assertAlertPermission = (
     provider: IResourceAlertProvider,
     action: AlertPermissionAction,
@@ -71,7 +64,7 @@ export const alertServiceFactory = ({
       orgId: scope.orgId,
       projectId: scope.projectId,
       resourceId: scope.resourceId,
-      actor: $toActor(dto)
+      actor: toAlertActor(dto)
     });
 
   const $validate = (
@@ -292,6 +285,7 @@ export const alertServiceFactory = ({
         await alertChannelService.updateChannelInTx(
           {
             channelId: channelInput.id,
+            channelType: channelInput.channelType,
             name: channelInput.name,
             config: channelInput.config,
             enabled: channelInput.enabled,

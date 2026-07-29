@@ -102,9 +102,7 @@ export const ChannelCard = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className="size-4 text-muted" />
-          <span className="text-sm font-medium text-foreground">
-            {ALERT_CHANNEL_TYPE_LABELS[channelType]}
-          </span>
+          <span className="text-sm font-medium text-foreground">{channelLabel}</span>
         </div>
         <div className="flex items-center gap-3">
           <Button

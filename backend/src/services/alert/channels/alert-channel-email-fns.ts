@@ -17,6 +17,7 @@ const buildSubstitutions = (payload: TAlertPayload) => ({
   severity: payload.severity,
   viewUrl: payload.alert.viewUrl,
   items: payload.items.map((item) => ({
+    id: item.id,
     title: item.title,
     identifier: item.identifier,
     fields: item.fields ?? []
