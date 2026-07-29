@@ -33,7 +33,7 @@ import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionCo
 import { useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretType } from "@app/hooks/api/types";
-import { hasSecretPersonalOverridePermission } from "@app/lib/fn/permission";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
 type Props = {
@@ -82,11 +82,10 @@ export const SecretOverrideRow = ({
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const canSaveOverride = hasSecretPersonalOverridePermission(
+  // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+  const canSaveOverride = hasSecretReadValueOrDescribePermission(
     permission,
-    isCreatingOverride
-      ? ProjectPermissionSecretActions.Create
-      : ProjectPermissionSecretActions.Edit,
+    ProjectPermissionSecretActions.DescribeSecret,
     { environment, secretPath, secretName, secretTags: ["*"] }
   );
   const [isOverrideFieldFocused, setIsOverrideFieldFocused] = useToggle();

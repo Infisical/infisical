@@ -32,6 +32,11 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
+export enum PamSessionEndReason {
+  Completed = "completed",
+  Expired = "expired"
+}
+
 export enum GcpServiceAccountAuthMethod {
   Impersonation = "impersonation",
   StaticKey = "static-key"

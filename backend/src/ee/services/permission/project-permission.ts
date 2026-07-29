@@ -48,8 +48,7 @@ export enum ProjectPermissionSecretActions {
   ReadValue = "readValue",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  PersonalOverride = "personal-override"
+  Delete = "delete"
 }
 
 export enum ProjectPermissionCmekActions {

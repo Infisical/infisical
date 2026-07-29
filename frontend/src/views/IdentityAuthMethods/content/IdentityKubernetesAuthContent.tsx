@@ -4,6 +4,7 @@ import { BanIcon, EyeIcon } from "lucide-react";
 
 import {
   Badge,
+  DetailGroup,
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -45,7 +46,7 @@ export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProp
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <DetailGroup className="grid grid-cols-2 gap-x-6 gap-y-5">
       <IdentityAuthAccessTokenFields
         accessTokenTTL={data.accessTokenTTL}
         accessTokenMaxTTL={data.accessTokenMaxTTL}
@@ -108,6 +109,6 @@ export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProp
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>
-    </div>
+    </DetailGroup>
   );
 };

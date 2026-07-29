@@ -1,5 +1,10 @@
-import { IdentitySection } from "./components";
+import { IdentityAuthTemplatesSection, IdentitySection } from "./components";
 
 export const OrgIdentityTab = () => {
-  return <IdentitySection />;
+  return (
+    <div className="flex flex-col gap-4">
+      <IdentitySection />
+      <IdentityAuthTemplatesSection />
+    </div>
+  );
 };
