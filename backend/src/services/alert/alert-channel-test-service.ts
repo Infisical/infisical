@@ -43,23 +43,15 @@ export const alertChannelTestServiceFactory = ({
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
   const $assertCooldown = async (orgId: string, actorId: string, channelType: string) => {
-    const windows = [
-      { key: KeyStorePrefixes.AlertChannelTestOrgCooldown(orgId, channelType), scope: "organization" },
-      { key: KeyStorePrefixes.AlertChannelTestActorCooldown(actorId, channelType), scope: "you" }
-    ];
+    const key = KeyStorePrefixes.AlertChannelTestCooldown(orgId, actorId, channelType);
+    const acquired = await keyStore.setItemWithExpiryNX(key, KeyStoreTtls.AlertChannelTestCooldownInSeconds, "1");
+    if (acquired) return;
 
-    for (const { key, scope } of windows) {
-      // eslint-disable-next-line no-await-in-loop -- the org window must settle before the actor's is spent
-      const acquired = await keyStore.setItemWithExpiryNX(key, KeyStoreTtls.AlertChannelTestCooldownInSeconds, "1");
-      if (!acquired) {
-        // eslint-disable-next-line no-await-in-loop
-        const remaining = await keyStore.ttl(key);
-        const seconds = remaining > 0 ? remaining : KeyStoreTtls.AlertChannelTestCooldownInSeconds;
-        throw new RateLimitError({
-          message: `A ${channelType} test was already sent by ${scope} in the last minute. Try again in ${seconds}s.`
-        });
-      }
-    }
+    const remaining = await keyStore.ttl(key);
+    const seconds = remaining > 0 ? remaining : KeyStoreTtls.AlertChannelTestCooldownInSeconds;
+    throw new RateLimitError({
+      message: `You already sent a ${channelType} test in the last minute. Try again in ${seconds}s.`
+    });
   };
 
   const $resolveConfig = async (dto: TTestAlertChannelDTO, projectId: string | null) => {
@@ -128,7 +120,7 @@ export const alertChannelTestServiceFactory = ({
     return {
       ...payload,
       severity: "info",
-      summary: `Test notification from Infisical. A real ${payload.resourceKind} ${payload.eventLabel.toLowerCase()} alert would look like this. No action is needed.`
+      summary: `Test alert from Infisical. A real ${payload.resourceKind} ${payload.eventLabel.toLowerCase()} alert would look like this. No action is needed.`
     };
   };
 

@@ -60,7 +60,8 @@ const buildKeyStore = () => {
   const keys = new Map<string, number>();
   return {
     acquired: [] as string[],
-    setItemWithExpiryNX: async (key: string, expiryInSeconds: number | string) => {
+    setItemWithExpiryNX: async (key: string, expiryInSeconds: number | string, ...rest: string[]) => {
+      void rest;
       if (keys.has(key)) return null;
       keys.set(key, Number(expiryInSeconds));
       return "OK" as const;
@@ -210,7 +211,7 @@ describe("alertChannelTestService", () => {
 
     // The window is still free, so a corrected config can be tested immediately.
     await expect(
-      keyStore.setItemWithExpiryNX(`alert-channel-test-cooldown:org:${ORG_ID}:slack`, 60, "1")
+      keyStore.setItemWithExpiryNX(`alert-channel-test-cooldown:${ORG_ID}:${ACTOR_ID}:slack`, 60, "1")
     ).resolves.toBe("OK");
   });
 
@@ -301,7 +302,7 @@ describe("alertChannelTestService", () => {
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/recipients could be resolved/);
     await expect(
-      keyStore.setItemWithExpiryNX(`alert-channel-test-cooldown:org:${ORG_ID}:email`, 60, "1")
+      keyStore.setItemWithExpiryNX(`alert-channel-test-cooldown:${ORG_ID}:${ACTOR_ID}:email`, 60, "1")
     ).resolves.toBe("OK");
   });
 

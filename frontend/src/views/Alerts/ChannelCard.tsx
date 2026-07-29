@@ -78,8 +78,10 @@ export const ChannelCard = ({
 
       if (result.success) {
         createNotification({
-          text: `Test ${channelLabel} notification sent${
-            result.deliveredTo && result.deliveredTo > 1 ? ` to ${result.deliveredTo} recipients` : ""
+          text: `Test ${channelLabel} alert sent${
+            result.deliveredTo && result.deliveredTo > 1
+              ? ` to ${result.deliveredTo} recipients`
+              : ""
           }`,
           type: "success"
         });

@@ -86,10 +86,8 @@ export const KeyStorePrefixes = {
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
   RecentAnnouncements: "announcements:recent" as const,
 
-  AlertChannelTestOrgCooldown: (orgId: string, channelType: string) =>
-    `alert-channel-test-cooldown:org:${orgId}:${channelType}` as const,
-  AlertChannelTestActorCooldown: (actorId: string, channelType: string) =>
-    `alert-channel-test-cooldown:actor:${actorId}:${channelType}` as const,
+  AlertChannelTestCooldown: (orgId: string, actorId: string, channelType: string) =>
+    `alert-channel-test-cooldown:${orgId}:${actorId}:${channelType}` as const,
 
   ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
