@@ -7,7 +7,7 @@ import {
 } from "../pam-session/aws-iam/aws-iam-federation";
 import { AZURE_SCOPES, getAzureAccessToken } from "../pam-session/azure/azure-federation";
 import { mintGcpAccessToken } from "../pam-session/gcp/gcp-federation";
-import { extractGatewayTarget, isCredentialConfigured } from "./pam-account-schemas";
+import { extractGatewayTarget, isCredentialConfigured, qualifyUsernameWithDomain } from "./pam-account-schemas";
 
 export enum TestConnectionMode {
   SQL = "sql",
@@ -48,7 +48,15 @@ export type TestConnectionRequest =
       ldapCaCert?: string;
       ldapTlsServerName?: string;
     }
-  | { mode: TestConnectionMode.Kubernetes; token: string; sslRejectUnauthorized?: boolean; sslCertificate?: string }
+  | {
+      mode: TestConnectionMode.Kubernetes;
+      authMethod: "service-account-token" | "gateway-kubernetes-auth";
+      token?: string;
+      namespace?: string;
+      serviceAccountName?: string;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    }
   | { mode: TestConnectionMode.SSH; authMethod: string; username: string; password?: string; privateKey?: string }
   | { mode: TestConnectionMode.Tcp };
 
@@ -132,21 +140,42 @@ export const buildGatewayConnectionTest = async (
     }
     case PamAccountType.Kubernetes: {
       const cd = connectionDetails as { sslRejectUnauthorized?: boolean; sslCertificate?: string };
-      const c = creds as { authMethod: string; serviceAccountToken?: string } | null;
-      if (!c || c.authMethod !== "service-account-token" || !c.serviceAccountToken) return tcp(host, port);
-      return {
-        host,
-        port,
-        request: {
-          mode: TestConnectionMode.Kubernetes,
-          token: c.serviceAccountToken,
-          sslRejectUnauthorized: cd.sslRejectUnauthorized,
-          sslCertificate: cd.sslCertificate
-        }
-      };
+      const c = creds as {
+        authMethod: string;
+        serviceAccountToken?: string;
+        namespace?: string;
+        serviceAccountName?: string;
+      } | null;
+      if (c?.authMethod === "service-account-token" && c.serviceAccountToken) {
+        return {
+          host,
+          port,
+          request: {
+            mode: TestConnectionMode.Kubernetes,
+            authMethod: "service-account-token",
+            token: c.serviceAccountToken,
+            sslRejectUnauthorized: cd.sslRejectUnauthorized,
+            sslCertificate: cd.sslCertificate
+          }
+        };
+      }
+      if (c?.authMethod === "gateway-kubernetes-auth" && c.namespace && c.serviceAccountName) {
+        return {
+          host,
+          port,
+          request: {
+            mode: TestConnectionMode.Kubernetes,
+            authMethod: "gateway-kubernetes-auth",
+            namespace: c.namespace,
+            serviceAccountName: c.serviceAccountName
+          }
+        };
+      }
+      return tcp(host, port);
     }
     case PamAccountType.WindowsAd: {
       const cd = connectionDetails as {
+        domain: string;
         useLdaps?: boolean;
         ldapRejectUnauthorized?: boolean;
         ldapCaCert?: string;
@@ -159,7 +188,7 @@ export const buildGatewayConnectionTest = async (
         port,
         request: {
           mode: TestConnectionMode.LDAP,
-          username: c.username,
+          username: qualifyUsernameWithDomain(c.username, cd.domain),
           password: c.password,
           useLdaps: cd.useLdaps,
           ldapRejectUnauthorized: cd.ldapRejectUnauthorized,
