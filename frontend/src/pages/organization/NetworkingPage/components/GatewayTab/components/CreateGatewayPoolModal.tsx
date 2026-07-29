@@ -81,7 +81,7 @@ export const CreateGatewayPoolModal = ({ isOpen, onToggle }: Props) => {
         onToggle(open);
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Gateway Pool</DialogTitle>
           <DialogDescription>

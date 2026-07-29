@@ -80,7 +80,7 @@ export const EditGatewayPoolModal = ({ isOpen, onToggle, pool }: Props) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onToggle}>
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Gateway Pool</DialogTitle>
           <DialogDescription>Update the name shown across your organization.</DialogDescription>

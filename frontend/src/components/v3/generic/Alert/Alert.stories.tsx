@@ -26,7 +26,17 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["default", "info", "success", "warning", "danger", "project", "org", "sub-org"]
+      options: [
+        "default",
+        "outline",
+        "info",
+        "success",
+        "warning",
+        "danger",
+        "project",
+        "org",
+        "sub-org"
+      ]
     },
     children: {
       table: {
@@ -57,6 +67,26 @@ export const Default: Story = {
       description: {
         story:
           "Use this variant for neutral informational messages that do not warrant a semantic tone."
+      }
+    }
+  },
+  render: (args) => (
+    <Alert {...args}>
+      <AlertTitle>Your changes have been saved.</AlertTitle>
+      <AlertDescription>The new configuration will apply on the next sync.</AlertDescription>
+    </Alert>
+  )
+};
+
+export const Outline: Story = {
+  name: "Variant: Outline",
+  args: {
+    variant: "outline"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Use this variant for neutral informational messages that need a bordered container."
       }
     }
   },

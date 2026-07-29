@@ -14,6 +14,8 @@ import {
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -39,7 +41,10 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  Field,
+  FieldLabel,
   IconButton,
+  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -98,6 +103,7 @@ const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
 export const RelayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
+    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
     const { currentOrg } = useOrganization();
     const orgId = currentOrg?.id || "";
@@ -130,13 +136,16 @@ export const RelayTab = withPermission(
 
     const handleDeleteRelay = async () => {
       const data = popUp.deleteRelay.data as { id: string };
-      await deleteRelayById.mutateAsync(data.id);
-
-      handlePopUpToggle("deleteRelay");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted relay"
-      });
+      try {
+        await deleteRelayById.mutateAsync(data.id);
+        handlePopUpToggle("deleteRelay", false);
+        createNotification({
+          type: "success",
+          text: "Successfully deleted relay"
+        });
+      } catch {
+        createNotification({ type: "error", text: "Failed to delete relay" });
+      }
     };
 
     const filteredRelays = relays?.filter((el) =>
@@ -280,23 +289,60 @@ export const RelayTab = withPermission(
           )}
           <AlertDialog
             open={popUp.deleteRelay.isOpen}
-            onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
+            onOpenChange={(open) => {
+              if (!open) setDeleteConfirmation("");
+              handlePopUpToggle("deleteRelay", open);
+            }}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Delete {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}?
+                  Delete relay {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   This permanently removes the relay from your organization.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+                <Field>
+                  <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
+                    <span>
+                      Type &quot;
+                      <span className="text-foreground">
+                        {(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
+                      </span>
+                      &quot; to confirm.
+                    </span>
+                  </FieldLabel>
+                  <Input
+                    id="delete-relay-confirmation"
+                    value={deleteConfirmation}
+                    onChange={(event) => setDeleteConfirmation(event.target.value)}
+                    placeholder={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </Field>
+                <Alert variant="danger">
+                  <AlertDescription>
+                    Deleting {(popUp.deleteRelay.data as { name?: string })?.name || "relay"} cannot
+                    be undone.
+                  </AlertDescription>
+                </Alert>
+              </div>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="danger"
                   isPending={deleteRelayById.isPending}
-                  onClick={handleDeleteRelay}
+                  isDisabled={
+                    deleteConfirmation !==
+                    ((popUp.deleteRelay.data as { name?: string })?.name || "relay")
+                  }
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleDeleteRelay();
+                  }}
                 >
                   Delete Relay
                 </AlertDialogAction>

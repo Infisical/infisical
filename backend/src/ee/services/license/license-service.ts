@@ -255,6 +255,7 @@ export const licenseServiceFactory = ({
 
         if (isValidOfflineLicense) {
           onPremFeatures = {
+            ...getDefaultOnPremFeatures(),
             ...contents.license.features,
             slug: "enterprise"
           };

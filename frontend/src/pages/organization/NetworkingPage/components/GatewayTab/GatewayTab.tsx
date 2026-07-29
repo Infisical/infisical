@@ -17,6 +17,8 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -46,7 +48,10 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  Field,
+  FieldLabel,
   IconButton,
+  Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -95,6 +100,7 @@ export const GatewayTab = withPermission(
     const showPoolsTab = subscription?.gatewayPool;
     const [search, setSearch] = useState("");
     const [poolSearch, setPoolSearch] = useState("");
+    const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
       ...gatewaysQueryKeys.listWithTokens(),
       refetchInterval: 15_000
@@ -139,13 +145,17 @@ export const GatewayTab = withPermission(
 
     const handleDeleteGateway = async () => {
       const data = popUp.deleteGateway.data as { id: string; isV1: boolean };
-      if (data.isV1) {
-        await deleteGatewayById.mutateAsync(data.id);
-      } else {
-        await deleteGatewayV2ById.mutateAsync(data.id);
+      try {
+        if (data.isV1) {
+          await deleteGatewayById.mutateAsync(data.id);
+        } else {
+          await deleteGatewayV2ById.mutateAsync(data.id);
+        }
+        handlePopUpToggle("deleteGateway", false);
+        createNotification({ type: "success", text: "Successfully deleted gateway" });
+      } catch {
+        createNotification({ type: "error", text: "Failed to delete gateway" });
       }
-      handlePopUpToggle("deleteGateway");
-      createNotification({ type: "success", text: "Successfully deleted gateway" });
     };
 
     const filteredGateway = gateways?.filter((el) =>
@@ -417,7 +427,7 @@ export const GatewayTab = withPermission(
                 open={popUp.editDetails.isOpen}
                 onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
               >
-                <DialogContent className="max-w-md">
+                <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Edit Gateway</DialogTitle>
                   </DialogHeader>
@@ -429,23 +439,68 @@ export const GatewayTab = withPermission(
               </Dialog>
               <AlertDialog
                 open={popUp.deleteGateway.isOpen}
-                onOpenChange={(open) => handlePopUpToggle("deleteGateway", open)}
+                onOpenChange={(open) => {
+                  if (!open) setDeleteConfirmation("");
+                  handlePopUpToggle("deleteGateway", open);
+                }}
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Delete {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}?
+                      Delete gateway{" "}
+                      {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       This permanently removes the gateway from your organization.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
+                  <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+                    <Field>
+                      <FieldLabel htmlFor="delete-gateway-confirmation" size="sm">
+                        <span>
+                          Type &quot;
+                          <span className="text-foreground">
+                            {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}
+                          </span>
+                          &quot; to confirm.
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        id="delete-gateway-confirmation"
+                        value={deleteConfirmation}
+                        onChange={(event) => setDeleteConfirmation(event.target.value)}
+                        placeholder={
+                          (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
+                        }
+                        autoComplete="off"
+                        autoFocus
+                      />
+                    </Field>
+                    <Alert variant="danger">
+                      <AlertDescription>
+                        Deleting{" "}
+                        {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"} cannot
+                        be undone.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel
+                      isDisabled={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
+                    >
+                      Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       variant="danger"
                       isPending={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}
-                      onClick={handleDeleteGateway}
+                      isDisabled={
+                        deleteConfirmation !==
+                        ((popUp.deleteGateway.data as { name?: string })?.name || "gateway")
+                      }
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleDeleteGateway();
+                      }}
                     >
                       Delete Gateway
                     </AlertDialogAction>

@@ -118,7 +118,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 export const GatewayDeployModal = ({ isOpen, onOpenChange }: Props) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Gateway</DialogTitle>
           <DialogDescription>

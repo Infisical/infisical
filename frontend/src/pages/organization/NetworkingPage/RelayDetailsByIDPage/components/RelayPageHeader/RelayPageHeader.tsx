@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { BanIcon, CopyIcon, EllipsisIcon, TrashIcon } from "lucide-react";
 
@@ -5,6 +6,8 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -17,7 +20,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Field,
+  FieldLabel,
+  Input
 } from "@app/components/v3";
 import {
   OrgPermissionSubjects,
@@ -41,15 +47,20 @@ export const RelayPageHeader = ({
     "deleteRelay",
     "revokeRelay"
   ] as const);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   const onDelete = async () => {
-    await deleteRelay(relay.id);
-    createNotification({ type: "success", text: "Successfully deleted relay" });
-    navigate({
-      to: "/organizations/$orgId/networking",
-      params: { orgId },
-      search: { selectedTab: "relays" }
-    });
+    try {
+      await deleteRelay(relay.id);
+      createNotification({ type: "success", text: "Successfully deleted relay" });
+      navigate({
+        to: "/organizations/$orgId/networking",
+        params: { orgId },
+        search: { selectedTab: "relays" }
+      });
+    } catch {
+      createNotification({ type: "error", text: "Failed to delete relay" });
+    }
   };
 
   const onRevoke = async () => {
@@ -126,18 +137,49 @@ export const RelayPageHeader = ({
 
       <AlertDialog
         open={popUp.deleteRelay.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmation("");
+          handlePopUpToggle("deleteRelay", open);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {relay.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete relay {relay.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the relay from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+            <Field>
+              <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
+                <span>
+                  Type &quot;<span className="text-foreground">{relay.name}</span>&quot; to confirm.
+                </span>
+              </FieldLabel>
+              <Input
+                id="delete-relay-confirmation"
+                value={deleteConfirmation}
+                onChange={(event) => setDeleteConfirmation(event.target.value)}
+                placeholder={relay.name}
+                autoComplete="off"
+                autoFocus
+              />
+            </Field>
+            <Alert variant="danger">
+              <AlertDescription>Deleting {relay.name} cannot be undone.</AlertDescription>
+            </Alert>
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isDeleting} onClick={onDelete}>
+            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isDeleting}
+              isDisabled={deleteConfirmation !== relay.name}
+              onClick={(event) => {
+                event.preventDefault();
+                onDelete();
+              }}
+            >
               Delete Relay
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -156,8 +198,15 @@ export const RelayPageHeader = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isRevoking} onClick={onRevoke}>
+            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isRevoking}
+              onClick={(event) => {
+                event.preventDefault();
+                onRevoke();
+              }}
+            >
               Revoke Access
             </AlertDialogAction>
           </AlertDialogFooter>
