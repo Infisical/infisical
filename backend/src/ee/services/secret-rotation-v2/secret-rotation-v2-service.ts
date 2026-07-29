@@ -16,6 +16,7 @@ import {
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { cloudflareApiTokenRotationFactory } from "@app/ee/services/secret-rotation-v2/cloudflare-api-token/cloudflare-api-token-rotation-fns";
+import { cloudflareR2AccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/cloudflare-r2-access-key/cloudflare-r2-access-key-rotation-fns";
 import { convexAccessKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/convex-access-key/convex-access-key-rotation-fns";
 import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret/databricks-service-principal-secret-rotation-fns";
 import { datadogApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-api-key/datadog-api-key-rotation-fns";
@@ -215,7 +216,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.ConvexAccessKey]: convexAccessKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.FireworksApiKey]: fireworksApiKeyRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.SnowflakeUserKeyPair]: snowflakeUserKeyPairRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.CloudflareApiToken]: cloudflareApiTokenRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.CloudflareApiToken]: cloudflareApiTokenRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({

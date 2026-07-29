@@ -6,15 +6,14 @@ import {
   BaseSecretRotationSchema,
   BaseUpdateSecretRotationSchema
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-schemas";
+import {
+  CloudflareTokenIpRestrictionSchema,
+  CloudflareTokenNameSchema,
+  CloudflareTokenPolicyEffect
+} from "@app/ee/services/secret-rotation-v2/shared/cloudflare-token";
 import { SecretRotations } from "@app/lib/api-docs";
-import { isValidIpOrCidr } from "@app/lib/ip";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-
-export enum CloudflareApiTokenPolicyEffect {
-  Allow = "allow",
-  Deny = "deny"
-}
 
 export enum CloudflareApiTokenPolicyScope {
   Account = "account",
@@ -22,17 +21,9 @@ export enum CloudflareApiTokenPolicyScope {
   Zones = "zones"
 }
 
-/**
- * Cloudflare caps token names at 120 characters. We generate names as `<name>-<timestamp>`, so the
- * user-supplied portion is capped lower to leave room for the suffix.
- */
-export const CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH = 100;
-
-const IpRestrictionSchema = z.string().trim().refine(isValidIpOrCidr, "Must be a valid IP address or CIDR block");
-
 export const CloudflareApiTokenPolicySchema = z
   .object({
-    effect: z.nativeEnum(CloudflareApiTokenPolicyEffect),
+    effect: z.nativeEnum(CloudflareTokenPolicyEffect),
     scope: z.nativeEnum(CloudflareApiTokenPolicyScope),
     zoneIds: z.string().trim().array().optional(),
     permissionGroupIds: z.string().trim().array().min(1, "At least one permission group is required")
@@ -66,22 +57,14 @@ export const CloudflareApiTokenRotationGeneratedCredentialsSchema = z
   .max(2);
 
 const CloudflareApiTokenRotationParametersSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Token name required")
-    .max(
-      CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH,
-      `Token name must be ${CLOUDFLARE_API_TOKEN_NAME_MAX_LENGTH} characters or fewer`
-    )
-    .describe(SecretRotations.PARAMETERS.CLOUDFLARE_API_TOKEN.name),
+  name: CloudflareTokenNameSchema.describe(SecretRotations.PARAMETERS.CLOUDFLARE_API_TOKEN.name),
   policies: CloudflareApiTokenPolicySchema.array()
     .min(1, "At least one access policy is required")
     .describe(SecretRotations.PARAMETERS.CLOUDFLARE_API_TOKEN.policies),
-  allowedIps: IpRestrictionSchema.array()
+  allowedIps: CloudflareTokenIpRestrictionSchema.array()
     .optional()
     .describe(SecretRotations.PARAMETERS.CLOUDFLARE_API_TOKEN.allowedIps),
-  disallowedIps: IpRestrictionSchema.array()
+  disallowedIps: CloudflareTokenIpRestrictionSchema.array()
     .optional()
     .describe(SecretRotations.PARAMETERS.CLOUDFLARE_API_TOKEN.disallowedIps)
 });

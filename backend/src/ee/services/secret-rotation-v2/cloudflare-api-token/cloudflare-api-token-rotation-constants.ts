@@ -13,10 +13,3 @@ export const CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION: TSecretRotationV2ListIte
     }
   }
 };
-
-/**
- * A generated token stays active across at most two rotation cycles, so `2 * interval + 1` days can
- * never expire a token that is still in use. The floor keeps rotation development mode (where the
- * interval is treated as minutes) from producing a near-immediate expiry.
- */
-export const CLOUDFLARE_API_TOKEN_MIN_TTL_DAYS = 7;

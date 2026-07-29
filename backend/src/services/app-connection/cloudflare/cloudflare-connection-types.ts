@@ -3,6 +3,7 @@ import z from "zod";
 import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
+import { CloudflareR2Jurisdiction } from "./cloudflare-connection-enum";
 import {
   CloudflareConnectionSchema,
   CreateCloudflareConnectionSchema,
@@ -43,4 +44,27 @@ export type TCloudflarePermissionGroup = {
   name: string;
   // the resource types this permission group can be attached to, e.g. "com.cloudflare.api.account.zone"
   scopes: string[];
+};
+
+export type TCloudflareR2Bucket = {
+  name: string;
+  jurisdiction: CloudflareR2Jurisdiction;
+  // the physical region the bucket's data lives in, e.g. "weur" — informational only
+  location?: string;
+  storageClass?: string;
+  creationDate?: string;
+};
+
+/** Raw shape returned by Cloudflare's `GET /accounts/:id/r2/buckets` list endpoint. */
+export type TCloudflareR2BucketsApiResponse = {
+  result: {
+    buckets?: {
+      name: string;
+      creation_date?: string;
+      jurisdiction?: string;
+      location?: string;
+      storage_class?: string;
+    }[];
+  } | null;
+  result_info?: { cursor?: string };
 };

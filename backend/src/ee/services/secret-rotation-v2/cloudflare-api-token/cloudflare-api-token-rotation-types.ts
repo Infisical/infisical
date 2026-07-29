@@ -25,20 +25,3 @@ export type TCloudflareApiTokenRotationGeneratedCredentials = z.infer<
 >;
 
 export type TCloudflareApiTokenPolicy = z.infer<typeof CloudflareApiTokenPolicySchema>;
-
-export type TCloudflareCreateTokenResponse = {
-  result: {
-    id: string;
-    name: string;
-    value: string;
-    status: string;
-  } | null;
-};
-
-export type TCloudflareVerifyTokenResponse = {
-  success: boolean;
-  result: {
-    id: string;
-    status: string;
-  } | null;
-};

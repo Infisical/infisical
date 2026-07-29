@@ -22,6 +22,7 @@ import { UnixLinuxLocalAccountRotationSchema } from "@app/ee/services/secret-rot
 import { WindowsLocalAccountRotationSchema } from "@app/ee/services/secret-rotation-v2/windows-local-account-rotation";
 
 import { CloudflareApiTokenRotationSchema } from "./cloudflare-api-token";
+import { CloudflareR2AccessKeyRotationSchema } from "./cloudflare-r2-access-key";
 import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key";
@@ -56,5 +57,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   ConvexAccessKeyRotationSchema,
   FireworksApiKeyRotationSchema,
   SnowflakeUserKeyPairRotationSchema,
-  CloudflareApiTokenRotationSchema
+  CloudflareApiTokenRotationSchema,
+  CloudflareR2AccessKeyRotationSchema
 ]);

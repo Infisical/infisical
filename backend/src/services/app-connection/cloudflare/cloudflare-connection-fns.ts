@@ -1,16 +1,19 @@
 import { AxiosError } from "axios";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
-import { CloudflareConnectionMethod } from "./cloudflare-connection-enum";
+import { CloudflareConnectionMethod, CloudflareR2Jurisdiction } from "./cloudflare-connection-enum";
 import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflarePagesProject,
   TCloudflarePermissionGroup,
+  TCloudflareR2Bucket,
+  TCloudflareR2BucketsApiResponse,
   TCloudflareWorkersScript,
   TCloudflareZone
 } from "./cloudflare-connection-types";
@@ -18,6 +21,9 @@ import {
 // Cloudflare caps per_page at 50 on the list endpoints we use
 const CLOUDFLARE_PER_PAGE = 50;
 const CLOUDFLARE_MAX_PAGES = 100;
+
+// R2 accepts up to 1000 per page; 100 keeps responses small while rarely needing a second request
+const CLOUDFLARE_R2_BUCKETS_PER_PAGE = 100;
 
 export const getCloudflareAuthHeaders = (apiToken: string) => ({
   Authorization: `Bearer ${apiToken}`,
@@ -130,30 +136,89 @@ export const listCloudflarePermissionGroups = async (
     credentials: { apiToken, accountId }
   } = appConnection;
 
-  const permissionGroups: TCloudflarePermissionGroup[] = [];
+  const { data } = await safeRequest.get<{
+    result: { id: string; name: string; scopes?: string[] }[];
+    result_info?: { count?: number };
+  }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`, {
+    headers: getCloudflareAuthHeaders(apiToken)
+  });
 
-  for (let page = 1; page <= CLOUDFLARE_MAX_PAGES; page += 1) {
+  return data.result.map((a) => ({
+    id: a.id,
+    name: a.name,
+    scopes: a.scopes ?? []
+  }));
+};
+
+/**
+ * Unlike the other list endpoints, `r2/buckets` returns its array under `result.buckets` and paginates
+ * with an opaque cursor from `result_info.cursor` rather than reporting `result_info.total_pages`, so
+ * it can't go through `$paginateCloudflare`.
+ */
+const $listCloudflareR2BucketsForJurisdiction = async ({
+  accountId,
+  apiToken,
+  jurisdiction
+}: {
+  accountId: string;
+  apiToken: string;
+  jurisdiction: CloudflareR2Jurisdiction;
+}): Promise<TCloudflareR2Bucket[]> => {
+  const buckets: TCloudflareR2Bucket[] = [];
+
+  let cursor: string | undefined;
+
+  for (let page = 0; page < CLOUDFLARE_MAX_PAGES; page += 1) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await safeRequest.get<{ result: { id: string; name: string; scopes?: string[] }[] }>(
-      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/permission_groups`,
+    const { data } = await safeRequest.get<TCloudflareR2BucketsApiResponse>(
+      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/r2/buckets`,
       {
-        headers: getCloudflareAuthHeaders(apiToken),
-        params: { page, per_page: CLOUDFLARE_PER_PAGE }
+        headers: { ...getCloudflareAuthHeaders(apiToken), "cf-r2-jurisdiction": jurisdiction },
+        params: { per_page: CLOUDFLARE_R2_BUCKETS_PER_PAGE, ...(cursor ? { cursor } : {}) }
       }
     );
 
-    permissionGroups.push(
-      ...data.result.map((a) => ({
-        id: a.id,
-        name: a.name,
-        scopes: a.scopes ?? []
+    buckets.push(
+      ...(data.result?.buckets ?? []).map((bucket) => ({
+        name: bucket.name,
+        // the payload omits the jurisdiction for `default`, so fall back to the one we asked for
+        jurisdiction: (bucket.jurisdiction as CloudflareR2Jurisdiction) || jurisdiction,
+        location: bucket.location,
+        storageClass: bucket.storage_class,
+        creationDate: bucket.creation_date
       }))
     );
 
-    if (data.result.length < CLOUDFLARE_PER_PAGE) break;
+    cursor = data.result_info?.cursor || undefined;
+    if (!cursor) break;
   }
 
-  return permissionGroups;
+  return buckets;
+};
+
+export const listCloudflareR2Buckets = async (appConnection: TCloudflareConnection): Promise<TCloudflareR2Bucket[]> => {
+  const {
+    credentials: { apiToken, accountId }
+  } = appConnection;
+
+  const jurisdictions = Object.values(CloudflareR2Jurisdiction);
+
+  // A bucket's jurisdiction is only reachable by asking for it, and accounts without EU/FedRAMP
+  // enabled reject those requests — a failure in one jurisdiction must not hide the others' buckets.
+  const results = await Promise.allSettled(
+    jurisdictions.map((jurisdiction) => $listCloudflareR2BucketsForJurisdiction({ accountId, apiToken, jurisdiction }))
+  );
+
+  return results.flatMap((result, index) => {
+    if (result.status === "fulfilled") return result.value;
+
+    logger.error(
+      result.reason,
+      `listCloudflareR2Buckets: skipping unavailable jurisdiction [jurisdiction=${jurisdictions[index]}]`
+    );
+
+    return [];
+  });
 };
 
 export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {
