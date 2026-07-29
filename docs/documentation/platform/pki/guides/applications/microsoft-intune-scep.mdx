@@ -125,34 +125,24 @@ The request flow is: the device retrieves its profile from Intune, submits the S
         | **Root Certificate** | The Trusted certificate profile created above |
         | **SCEP Server URLs** | The **SCEP endpoint URL** copied from Infisical |
 
-        Set the subject name format and subject alternative name according to what your devices require. Intune seals both into its challenge and validates the device's request against them.
+        Set the subject name format and subject alternative name to what your devices require, then complete the remaining fields.
 
-        Not every field on this profile reaches Infisical. Intune transmits the device's request together with a validation result for the challenge, so any value it does not place in that request must be configured on the issuing side:
+        Intune treats the remaining settings in two different ways. Some travel to Infisical inside the device's request, while others are policy that Intune enforces on its own side and never transmits:
 
-        | Setting | Where the issued certificate gets it |
-        |---------|-------------------------------------|
-        | **Subject name format**, **Subject alternative name** | The device's request |
-        | **Key size**, **Key usage** | The device's request |
-        | **Certificate validity period** | The Infisical [certificate profile](/documentation/platform/pki/settings/profiles), from its TTL |
-        | **Extended key usage** | The Infisical certificate profile, from its defaults |
+        | Source of the issued value | Settings |
+        |----------------------------|----------|
+        | The device's request | **Subject name format**, **Subject alternative name**, **Key size**, **Key usage** |
+        | The Infisical [certificate profile](/documentation/platform/pki/settings/profiles) | **Certificate validity period**, **Extended key usage** |
 
         <Warning>
-          **Configure the validity period and extended key usage on the Infisical profile as well.** Intune's copies of these settings declare what it expects of the issuing CA, and it does not transmit them. A profile without a TTL falls back to 90 days, and a profile without extended key usages issues certificates that carry none, regardless of what this page specifies. Keep both sides aligned so that Intune reports the certificates Infisical actually issues.
-        </Warning>
-
-        <Note>
-          Field names vary slightly by platform. Apple profiles include **Deployment Channel**, while Windows profiles include **Hash algorithm** and a **Key storage provider**.
-        </Note>
-
-        <Warning>
-          On Apple platforms, pair **Deployment Channel** with **Certificate type**: use Device Channel for device certificates, which stores them in the system keychain, and User Channel for user certificates, which stores them in the user keychain. Under User Channel, Certificate type can only be **User**. The channel cannot be edited after the profile is deployed, so a change means creating a new profile.
+          **Define matching defaults on the Infisical certificate profile.** Set its TTL and extended key usages to the values configured here, so the issued certificates match the policy Intune enforces. A profile without a TTL falls back to 90 days, and one whose extended key usages are unset or empty issues certificates that carry none. Those values must also be permitted by the profile's [certificate policy](/documentation/platform/pki/settings/policies), which otherwise rejects issuance after Intune has already approved the challenge.
         </Warning>
 
         ![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
 
-        <Warning>
-          Whatever you choose must be permitted by the [certificate policy](/documentation/platform/pki/settings/policies) behind your profile. Anything the policy disallows causes issuance to fail after Intune has already approved the challenge.
-        </Warning>
+        <Note>
+          Fields vary by platform. Windows profiles add **Hash algorithm** and **Key storage provider**. Apple profiles add **Deployment Channel**, which has to agree with **Certificate type**: Device Channel stores device certificates in the system keychain, User Channel stores user certificates in the user keychain, and under User Channel the certificate type can only be **User**. The channel cannot be changed after the profile is deployed.
+        </Note>
     </Step>
 
     <Step title="Assign and create the profile">

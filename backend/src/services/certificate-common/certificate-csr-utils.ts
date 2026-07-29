@@ -19,7 +19,12 @@ import {
 } from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
+import {
+  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "./certificate-constants";
 
 /**
  * Extracts certificate request data from a CSR string
@@ -60,10 +65,13 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
   if (csrExtendedKeyUsageExtension) {
-    const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages.map(
-      (ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]
-    );
-    const mapped = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+    const mapped = csrExtendedKeyUsageExtension.usages.map((ekuOid) => {
+      const name = CertExtendedKeyUsageOIDToName[ekuOid as string];
+      if (!name) {
+        throw new BadRequestError({ message: `Unsupported extended key usage in CSR: ${ekuOid as string}` });
+      }
+      return mapLegacyExtendedKeyUsageToStandard(name);
+    });
     if (mapped.length > 0) {
       certificateRequest.extendedKeyUsages = mapped;
     }
@@ -73,14 +81,12 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   if (sanExtension) {
     const sanNames = new x509.GeneralNames(sanExtension.value);
     const altNamesArray: TAltNameMapping[] = sanNames.items
-      .filter(
-        (value) =>
-          value.type === TAltNameType.EMAIL ||
-          value.type === TAltNameType.DNS ||
-          value.type === TAltNameType.IP ||
-          value.type === TAltNameType.URL
-      )
+      .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
       .map((name): TAltNameMapping => {
+        if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+          return { type: name.type as TAltNameType, value: name.value };
+        }
+
         const altNameType = validateAndMapAltNameType(name.value);
         if (!altNameType) {
           throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });

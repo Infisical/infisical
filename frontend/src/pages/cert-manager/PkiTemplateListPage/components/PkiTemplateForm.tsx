@@ -25,10 +25,11 @@ import {
   useUpdateCertTemplateV2
 } from "@app/hooks/api";
 import {
+  buildExtendedKeyUsageToggleSchema,
   EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import { CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { TCertificateTemplateV2 } from "@app/hooks/api/certificateTemplates/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -55,12 +56,7 @@ const schema = z.object({
     [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
   }),
   extendedKeyUsages: z.object({
-    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+    ...buildExtendedKeyUsageToggleSchema(z.boolean().optional())
   })
 });
 

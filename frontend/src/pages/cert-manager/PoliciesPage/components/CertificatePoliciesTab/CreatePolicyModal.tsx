@@ -96,7 +96,8 @@ const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
   dns_name: "DNS Name",
   ip_address: "IP Address",
   email: "Email",
-  uri: "URI"
+  uri: "URI",
+  upn: "UPN"
 };
 
 const SUBJECT_ATTRIBUTE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number], string> =

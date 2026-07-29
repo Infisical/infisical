@@ -33,6 +33,7 @@ import {
   useUpdatePkiSubscriber
 } from "@app/hooks/api";
 import {
+  buildExtendedKeyUsageToggleSchema,
   EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
@@ -69,12 +70,7 @@ const schema = z
       [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
     }),
     extendedKeyUsages: z.object({
-      [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-      [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-      [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-      [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-      [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-      [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+      ...buildExtendedKeyUsageToggleSchema(z.boolean().optional())
     }),
     enableAutoRenewal: z.boolean().optional().default(false),
     renewalBefore: z.coerce.number().min(1).optional(),
