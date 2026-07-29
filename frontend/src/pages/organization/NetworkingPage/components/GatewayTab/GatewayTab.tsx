@@ -56,6 +56,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OverflowBadgeList,
   Skeleton,
   Table,
   TableBody,
@@ -80,6 +81,7 @@ import { useSubscription } from "@app/context/SubscriptionContext";
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
+import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById, useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 
@@ -88,6 +90,7 @@ import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
 import { GatewayPoolsContent } from "./components/GatewayPoolsContent";
+import { getPoolHealthBadgeVariant } from "./components/PoolHealthBadge";
 
 export const GatewayTab = withPermission(
   () => {
@@ -108,13 +111,13 @@ export const GatewayTab = withPermission(
     });
     const { data: pools } = useListGatewayPools({ enabled: Boolean(showPoolsTab) });
 
-    // Build reverse map: gatewayId -> pool names
-    const gatewayPoolMap = new Map<string, string[]>();
+    // Build reverse map: gatewayId -> pools
+    const gatewayPoolMap = new Map<string, TGatewayPool[]>();
     if (showPoolsTab && pools) {
       pools.forEach((pool) => {
         pool.memberGatewayIds.forEach((gwId) => {
           const existing = gatewayPoolMap.get(gwId) ?? [];
-          existing.push(pool.name);
+          existing.push(pool);
           gatewayPoolMap.set(gwId, existing);
         });
       });
@@ -276,17 +279,17 @@ export const GatewayTab = withPermission(
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-1/3">Name</TableHead>
-                      {showPoolsTab && <TableHead>Pools</TableHead>}
-                      <TableHead>Connected</TableHead>
-                      <TableHead>
+                      <TableHead className="w-[38%]">Name</TableHead>
+                      {showPoolsTab && <TableHead className="w-[28%]">Pools</TableHead>}
+                      <TableHead className="w-36">Connected</TableHead>
+                      <TableHead className="w-40">
                         Health Check
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <InfoIcon className="ml-2 inline size-3.5" />
+                            <InfoIcon className="ml-2 inline size-3" />
                           </TooltipTrigger>
                           <TooltipContent>
                             The last known health check. Triggers every 3 minutes.
@@ -314,9 +317,7 @@ export const GatewayTab = withPermission(
                       return (
                         <TableRow
                           key={el.id}
-                          className={
-                            canNavigate ? "cursor-pointer hover:bg-mineshaft-700" : undefined
-                          }
+                          className={canNavigate ? "cursor-pointer" : undefined}
                           onClick={
                             canNavigate
                               ? () =>
@@ -327,38 +328,45 @@ export const GatewayTab = withPermission(
                               : undefined
                           }
                         >
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span>{el.name}</span>
-                              <Badge variant="neutral">Gateway v{el.isV1 ? "1" : "2"}</Badge>
+                          <TableCell className="min-w-0">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="min-w-0 flex-1 truncate">{el.name}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>{el.name}</TooltipContent>
+                              </Tooltip>
+                              <Badge variant="neutral" className="shrink-0">
+                                Gateway v{el.isV1 ? "1" : "2"}
+                              </Badge>
                             </div>
                           </TableCell>
                           {showPoolsTab && (
-                            <TableCell>
+                            <TableCell className="min-w-0">
                               {(gatewayPoolMap.get(el.id) ?? []).length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {(gatewayPoolMap.get(el.id) ?? []).map((poolName) => (
-                                    <Badge key={poolName} variant="info">
-                                      {poolName}
-                                    </Badge>
-                                  ))}
-                                </div>
+                                <OverflowBadgeList
+                                  items={gatewayPoolMap.get(el.id) ?? []}
+                                  getKey={(pool) => pool.id}
+                                  getLabel={(pool) => pool.name}
+                                  getVariant={getPoolHealthBadgeVariant}
+                                  maxBadgeWidth={144}
+                                />
                               ) : (
-                                <span className="text-mineshaft-400">&mdash;</span>
+                                <span className="text-muted">&mdash;</span>
                               )}
                             </TableCell>
                           )}
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">
                             {!el.isV1 && el.connectedResourcesCount > 0 ? (
-                              <span className="text-mineshaft-200">
+                              <span>
                                 {el.connectedResourcesCount} resource
                                 {el.connectedResourcesCount !== 1 ? "s" : ""}
                               </span>
                             ) : (
-                              <span className="text-mineshaft-400">—</span>
+                              <span className="text-muted">—</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <GatewayHealthStatus
                               heartbeat={"heartbeat" in el ? el.heartbeat : null}
                               heartbeatTTL={"heartbeatTTL" in el ? el.heartbeatTTL : null}
@@ -447,10 +455,7 @@ export const GatewayTab = withPermission(
               >
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Delete gateway{" "}
-                      {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}?
-                    </AlertDialogTitle>
+                    <AlertDialogTitle>Delete Gateway?</AlertDialogTitle>
                     <AlertDialogDescription>
                       This permanently removes the gateway from your organization.
                     </AlertDialogDescription>

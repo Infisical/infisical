@@ -1,6 +1,7 @@
 import { format } from "date-fns";
+import { CircleCheckIcon, CircleDashedIcon, CircleXIcon } from "lucide-react";
 
-import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
 export const GatewayHealthStatus = ({
@@ -11,7 +12,12 @@ export const GatewayHealthStatus = ({
   heartbeatTTL?: number | null;
 }) => {
   if (!heartbeat && !heartbeatTTL) {
-    return <span className="cursor-default text-yellow-500">Unregistered</span>;
+    return (
+      <Badge variant="warning" iconPosition="left">
+        <CircleDashedIcon />
+        Unregistered
+      </Badge>
+    );
   }
 
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
@@ -20,9 +26,10 @@ export const GatewayHealthStatus = ({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+        <Badge variant={isHealthy ? "success" : "danger"} iconPosition="left">
+          {isHealthy ? <CircleCheckIcon /> : <CircleXIcon />}
           {isHealthy ? "Healthy" : "Unreachable"}
-        </span>
+        </Badge>
       </TooltipTrigger>
       <TooltipContent>
         {heartbeatDate

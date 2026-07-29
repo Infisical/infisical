@@ -157,7 +157,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete gateway {gateway.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Gateway?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the gateway from your organization.
             </AlertDialogDescription>

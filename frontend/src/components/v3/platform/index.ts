@@ -2,6 +2,7 @@ export * from "./DateRangeFilter";
 export * from "./DocumentationLinkBadge";
 export * from "./GatewayPicker";
 export * from "./IdentityRoleBadges";
+export * from "./OverflowBadgeList";
 export * from "./PageLoader";
 export * from "./PasswordGenerator";
 export * from "./PermissionActionSelect";
