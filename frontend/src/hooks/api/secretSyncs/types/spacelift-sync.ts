@@ -7,6 +7,11 @@ export enum SpaceliftConfigType {
   FileMount = "file-mount"
 }
 
+export enum SpaceliftFileMountFormat {
+  DotEnv = "dot-env",
+  SecretPerFile = "secret-per-file"
+}
+
 export type TSpaceliftSync = TRootSecretSync & {
   destination: SecretSync.Spacelift;
   destinationConfig: {
@@ -14,6 +19,7 @@ export type TSpaceliftSync = TRootSecretSync & {
     contextName: string;
     configType: SpaceliftConfigType;
     mountPath?: string;
+    fileMountFormat?: SpaceliftFileMountFormat;
   };
   syncOptions: RootSyncOptions & {
     writeOnly?: boolean;

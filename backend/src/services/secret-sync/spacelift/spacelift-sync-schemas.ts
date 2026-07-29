@@ -11,7 +11,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
-import { SpaceliftConfigType } from "./spacelift-sync-constants";
+import { SpaceliftConfigType, SpaceliftFileMountFormat } from "./spacelift-sync-constants";
 
 const SpaceliftSyncDestinationConfigSchema = z
   .object({
@@ -26,10 +26,18 @@ const SpaceliftSyncDestinationConfigSchema = z
       .min(1, "Context name is required")
       .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.contextName),
     configType: z.nativeEnum(SpaceliftConfigType).describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.configType),
-    mountPath: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath)
+    mountPath: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.mountPath),
+    fileMountFormat: z
+      .nativeEnum(SpaceliftFileMountFormat)
+      .optional()
+      .describe(SecretSyncs.DESTINATION_CONFIG.SPACELIFT.fileMountFormat)
   })
   .superRefine((data, ctx) => {
-    if (data.configType === SpaceliftConfigType.FileMount && !data.mountPath) {
+    if (
+      data.configType === SpaceliftConfigType.FileMount &&
+      data.fileMountFormat !== SpaceliftFileMountFormat.SecretPerFile &&
+      !data.mountPath
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "File path is required when config type is file mount",

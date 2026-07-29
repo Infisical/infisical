@@ -40,8 +40,12 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
         - **Context**: Select the Spacelift context that will receive the synced secrets.
         - **Config Type**: Choose how secrets are stored in the Spacelift context:
             - **Environment Variables**: Each secret is synced as an individual environment variable (default).
-            - **File Mount (.env)**: All secrets are bundled into a single `.env` file mounted at the specified path under `/mnt/workspace/`.
-        - **File Path** *(File Mount only)*: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`).
+            - **File Mount**: Secrets are mounted as files under `/mnt/workspace/`.
+        - **File Format** *(File Mount only)*: Choose the file format for mounted secrets:
+            - **.env File**: All secrets are bundled into a single `.env` file at the specified path (e.g., `/mnt/workspace/secrets.env`).
+            - **One Secret Per File**: Each secret is stored as a separate file. The filename is the secret key and the content is the secret value (e.g., `/mnt/workspace/secrets/MY_SECRET`).
+        - **File Path** *(.env File only)*: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`). Required.
+        - **Directory Path** *(One Secret Per File only)*: The directory under `/mnt/workspace/` where secret files are created (e.g., `secrets/`). Optional -- leave empty to mount files directly in `/mnt/workspace/`.
 
         ![Configure Destination](/images/secret-syncs/spacelift/spacelift-sync-destination.png)
       </Step>
@@ -113,7 +117,7 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
       }'
     ```
 
-    ### Sample request (File Mount)
+    ### Sample request (File Mount - .env)
 
     ```bash Request
     curl --request POST \
@@ -136,13 +140,45 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
           "contextId": "context-id",
           "contextName": "my-context",
           "configType": "file-mount",
+          "fileMountFormat": "dot-env",
           "mountPath": "secrets.env"
         }
       }'
     ```
 
+    ### Sample request (File Mount - One Secret Per File)
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/secret-syncs/spacelift \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "my-spacelift-per-file-sync",
+        "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "description": "sync each secret as a separate mounted file",
+        "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "environment": "dev",
+        "secretPath": "/my-secrets",
+        "isEnabled": true,
+        "syncOptions": {
+          "initialSyncBehavior": "overwrite-destination",
+          "disableSecretDeletion": true,
+          "writeOnly": false
+        },
+        "destinationConfig": {
+          "contextId": "context-id",
+          "contextName": "my-context",
+          "configType": "file-mount",
+          "fileMountFormat": "secret-per-file",
+          "mountPath": "secrets/"
+        }
+      }'
+    ```
+
     <Note>
-      When using `file-mount`, all secrets are bundled into a single `.env` file and mounted at `/mnt/workspace/<mountPath>` in Spacelift runs. The `mountPath` field is required for this config type.
+      When using `file-mount` with `dot-env` format, all secrets are bundled into a single `.env` file and mounted at `/mnt/workspace/<mountPath>`. The `mountPath` field is required.
+
+      When using `file-mount` with `secret-per-file` format, each secret is mounted as a separate file at `/mnt/workspace/<mountPath>/<secretKey>`. The `mountPath` field is optional -- omit it to mount files directly under `/mnt/workspace/`.
     </Note>
   </Tab>
 </Tabs>

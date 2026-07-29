@@ -3409,7 +3409,9 @@ export const SecretSyncs = {
       configType:
         "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
       mountPath:
-        "The file path for the mounted .env file relative to /mnt/workspace/. Required when configType is 'file-mount'. Example: 'secrets.env'."
+        "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
+      fileMountFormat:
+        "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
     }
   }
 };

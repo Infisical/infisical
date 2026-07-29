@@ -7,6 +7,11 @@ export enum SpaceliftConfigType {
   FileMount = "file-mount"
 }
 
+export enum SpaceliftFileMountFormat {
+  DotEnv = "dot-env",
+  SecretPerFile = "secret-per-file"
+}
+
 export const SPACELIFT_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Spacelift",
   destination: SecretSync.Spacelift,

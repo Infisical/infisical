@@ -6,7 +6,7 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-import { SpaceliftConfigType } from "./spacelift-sync-constants";
+import { SpaceliftConfigType, SpaceliftFileMountFormat } from "./spacelift-sync-constants";
 import { TSpaceliftSyncWithCredentials } from "./spacelift-sync-types";
 
 type TSpaceliftConfigElement = {
@@ -101,6 +101,12 @@ const deleteContextConfigElement = async (instanceUrl: string, jwt: string, cont
   );
 };
 
+const toDirectoryPrefix = (path: string): string => {
+  if (!path) return "";
+  if (path.endsWith("/")) return path;
+  return `${path}/`;
+};
+
 const secretMapToEnvFileContent = (secretMap: TSecretMap): string => {
   const flat: Record<string, string> = {};
   for (const [key, { value }] of Object.entries(secretMap)) {
@@ -122,13 +128,52 @@ export const SpaceliftSyncFns = {
   syncSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
-    const { contextId, configType, mountPath } = secretSync.destinationConfig;
+    const { contextId, configType, mountPath, fileMountFormat } = secretSync.destinationConfig;
     const writeOnly = secretSync.syncOptions?.writeOnly ?? false;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
 
     if (configType === SpaceliftConfigType.FileMount) {
-      const filePath = mountPath!;
+      const basePath = mountPath ?? "";
+
+      if (fileMountFormat === SpaceliftFileMountFormat.SecretPerFile) {
+        const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
+        const prefix = toDirectoryPrefix(basePath);
+        const existingFileMounts = existingElements.filter(
+          (e) => e.type === "FILE_MOUNT" && (prefix ? e.id.startsWith(prefix) : !e.id.includes("/"))
+        );
+
+        for (const [key, { value }] of Object.entries(secretMap)) {
+          const fileId = `${prefix}${key}`;
+          const encoded = Buffer.from(value).toString("base64");
+
+          try {
+            await addContextConfigElement(instanceUrl, jwt, contextId, fileId, encoded, writeOnly, "FILE_MOUNT");
+          } catch (error) {
+            throw new SecretSyncError({ error, secretKey: key });
+          }
+        }
+
+        if (!secretSync.syncOptions.disableSecretDeletion) {
+          for (const element of existingFileMounts) {
+            const secretKey = element.id.slice(prefix.length);
+            if (
+              matchesSchema(secretKey, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
+              !(secretKey in secretMap)
+            ) {
+              try {
+                await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
+              } catch (error) {
+                throw new SecretSyncError({ error, secretKey });
+              }
+            }
+          }
+        }
+
+        return;
+      }
+
+      const filePath = basePath;
       const hasSecrets = Object.keys(secretMap).length > 0;
 
       if (hasSecrets) {
@@ -180,14 +225,32 @@ export const SpaceliftSyncFns = {
   getSecrets: async (secretSync: TSpaceliftSyncWithCredentials): Promise<TSecretMap> => {
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
-    const { contextId, configType, mountPath } = secretSync.destinationConfig;
+    const { contextId, configType, mountPath, fileMountFormat } = secretSync.destinationConfig;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
     const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
 
     if (configType === SpaceliftConfigType.FileMount) {
-      const filePath = mountPath!;
-      const fileElement = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
+      const basePath = mountPath ?? "";
+
+      if (fileMountFormat === SpaceliftFileMountFormat.SecretPerFile) {
+        const prefix = toDirectoryPrefix(basePath);
+        const secretMap: TSecretMap = {};
+
+        for (const element of existingElements) {
+          if (element.type === "FILE_MOUNT" && !element.writeOnly) {
+            const matches = prefix ? element.id.startsWith(prefix) : !element.id.includes("/");
+            if (matches) {
+              const secretKey = element.id.slice(prefix.length);
+              secretMap[secretKey] = { value: Buffer.from(element.value, "base64").toString("utf-8") };
+            }
+          }
+        }
+
+        return secretMap;
+      }
+
+      const fileElement = existingElements.find((e) => e.id === basePath && e.type === "FILE_MOUNT");
 
       if (!fileElement || fileElement.writeOnly) return {};
 
@@ -209,20 +272,41 @@ export const SpaceliftSyncFns = {
   removeSecrets: async (secretSync: TSpaceliftSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     const instanceUrl = removeTrailingSlash(secretSync.connection.credentials.apiUrl);
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
-    const { contextId, configType, mountPath } = secretSync.destinationConfig;
+    const { contextId, configType, mountPath, fileMountFormat } = secretSync.destinationConfig;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
     const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
 
     if (configType === SpaceliftConfigType.FileMount) {
-      const filePath = mountPath!;
-      const fileElement = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
+      const basePath = mountPath ?? "";
+
+      if (fileMountFormat === SpaceliftFileMountFormat.SecretPerFile) {
+        const prefix = basePath.endsWith("/") ? basePath : `${basePath}/`;
+
+        for (const element of existingElements) {
+          const matches = prefix ? element.id.startsWith(prefix) : !element.id.includes("/");
+          if (element.type === "FILE_MOUNT" && matches) {
+            const secretKey = element.id.slice(prefix.length);
+            if (secretKey in secretMap) {
+              try {
+                await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
+              } catch (error) {
+                throw new SecretSyncError({ error, secretKey });
+              }
+            }
+          }
+        }
+
+        return;
+      }
+
+      const fileElement = existingElements.find((e) => e.id === basePath && e.type === "FILE_MOUNT");
 
       if (fileElement) {
         try {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
+          await deleteContextConfigElement(instanceUrl, jwt, contextId, basePath);
         } catch (error) {
-          throw new SecretSyncError({ error, secretKey: filePath });
+          throw new SecretSyncError({ error, secretKey: basePath });
         }
       }
 
