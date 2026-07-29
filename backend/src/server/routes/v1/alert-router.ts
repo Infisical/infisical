@@ -131,14 +131,34 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) =>
-      server.services.alertChannelTest.testChannel({
+    handler: async (req) => {
+      const result = await server.services.alertChannelTest.testChannel({
         ...req.body,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
-      })
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        ...(req.body.projectId ? { projectId: req.body.projectId } : { orgId: req.permission.orgId }),
+        event: {
+          type: EventType.TEST_ALERT_CHANNEL,
+          metadata: {
+            channelId: req.body.channelId,
+            channelType: req.body.channelType,
+            resourceType: req.body.resourceType,
+            resourceId: req.body.resourceId,
+            success: result.success,
+            deliveredTo: result.deliveredTo,
+            error: result.error
+          }
+        }
+      });
+
+      return result;
+    }
   });
 
   server.route({

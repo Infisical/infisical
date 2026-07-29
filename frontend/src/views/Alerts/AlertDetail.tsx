@@ -79,13 +79,9 @@ export const AlertDetail = ({
   const handleDeleteAlert = async () => {
     if (!existingAlert) return;
 
-    try {
-      await deleteAlert.mutateAsync({ alertId: existingAlert.id });
-      createNotification({ text: "Successfully deleted alert", type: "success" });
-      handlePopUpToggle("deleteAlert", false);
-    } catch {
-      createNotification({ text: "Failed to delete alert", type: "error" });
-    }
+    await deleteAlert.mutateAsync({ alertId: existingAlert.id });
+    createNotification({ text: "Successfully deleted alert", type: "success" });
+    handlePopUpToggle("deleteAlert", false);
   };
 
   const renderValue = () => {

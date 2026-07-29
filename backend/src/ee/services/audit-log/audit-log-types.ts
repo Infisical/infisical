@@ -937,7 +937,8 @@ export enum EventType {
   // Alerts
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
-  DELETE_ALERT = "delete-alert"
+  DELETE_ALERT = "delete-alert",
+  TEST_ALERT_CHANNEL = "test-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7491,10 +7492,24 @@ interface DeleteAlertEvent {
   };
 }
 
+interface TestAlertChannelEvent {
+  type: EventType.TEST_ALERT_CHANNEL;
+  metadata: {
+    channelId?: string;
+    channelType: string;
+    resourceType: string;
+    resourceId?: string | null;
+    success: boolean;
+    deliveredTo?: number;
+    error?: string;
+  };
+}
+
 export type Event =
   | CreateAlertEvent
   | UpdateAlertEvent
   | DeleteAlertEvent
+  | TestAlertChannelEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

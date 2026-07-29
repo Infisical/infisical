@@ -10,6 +10,7 @@ import {
   FieldLabel,
   IconButton,
   Input,
+  Label,
   Switch
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
@@ -120,9 +121,9 @@ export const ChannelCard = ({
             control={control}
             name={`channels.${index}.enabled`}
             render={({ field }) => (
-              <FieldLabel
+              <Label
                 htmlFor={`channel-${index}-enabled`}
-                className="flex cursor-pointer items-center gap-2 text-xs text-muted"
+                className="cursor-pointer text-xs font-normal text-muted"
               >
                 Enabled
                 <Switch
@@ -131,7 +132,7 @@ export const ChannelCard = ({
                   checked={field.value}
                   onCheckedChange={field.onChange}
                 />
-              </FieldLabel>
+              </Label>
             )}
           />
           {canRemove && (

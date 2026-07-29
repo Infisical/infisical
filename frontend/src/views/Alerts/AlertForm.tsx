@@ -13,6 +13,7 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  Label,
   OrgIcon,
   ProjectIcon,
   Select,
@@ -308,7 +309,15 @@ export const AlertForm = ({
               render={({ field: { value } }) => (
                 <FixedField label="Event">
                   <Badge variant="warning">{ALERT_EVENT_TYPE_LABELS[value]}</Badge>
-                  <span className="text-xs text-muted">Alerts before a credential expires</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm text-foreground">
+                      Alerts before a credential expires.
+                    </span>
+                    <span className="text-xs text-muted">
+                      Supports Universal Auth client secrets with a TTL. More credential types
+                      coming.
+                    </span>
+                  </div>
                 </FixedField>
               )}
             />
@@ -394,9 +403,9 @@ export const AlertForm = ({
               control={control}
               name="enabled"
               render={({ field }) => (
-                <FieldLabel
+                <Label
                   htmlFor="alert-enabled"
-                  className="flex cursor-pointer items-center gap-2 text-sm text-muted"
+                  className="cursor-pointer text-sm font-normal text-muted"
                 >
                   Enabled
                   <Switch
@@ -405,7 +414,7 @@ export const AlertForm = ({
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
-                </FieldLabel>
+                </Label>
               )}
             />
           </div>

@@ -1035,15 +1035,22 @@ export const superAdminServiceFactory = ({
     if (!membershipRole) {
       throw new NotFoundError({ name: "Membership Role", message: "Membership role not found" });
     }
-    const [organizationMembership] = await membershipUserDAL.delete({
-      scopeOrgId: organizationId,
-      scope: AccessScope.Organization,
-      id: membershipId
-    });
+    const organizationMembership = await membershipUserDAL.transaction(async (tx) => {
+      const [deletedMembership] = await membershipUserDAL.delete(
+        {
+          scopeOrgId: organizationId,
+          scope: AccessScope.Organization,
+          id: membershipId
+        },
+        tx
+      );
 
-    if (organizationMembership?.actorUserId) {
-      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [organizationMembership.actorUserId] });
-    }
+      if (deletedMembership?.actorUserId) {
+        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [deletedMembership.actorUserId] }, tx);
+      }
+
+      return deletedMembership;
+    });
 
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
