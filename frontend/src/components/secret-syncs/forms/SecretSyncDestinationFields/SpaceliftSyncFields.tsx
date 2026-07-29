@@ -1,6 +1,6 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { Info } from "lucide-react";
 import { SingleValue } from "react-select";
+import { Info } from "lucide-react";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
@@ -172,7 +172,9 @@ export const SpaceliftSyncFields = () => {
                         <Info />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-md">
-                        {`Files will be mounted at /mnt/workspace/<directory>/<secret-key>. Leave empty to mount directly in /mnt/workspace/.`}
+                        {
+                          "Files will be mounted at /mnt/workspace/<directory>/<secret-key>. Leave empty to mount directly in /mnt/workspace/."
+                        }
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
