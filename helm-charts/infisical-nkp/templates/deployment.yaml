@@ -11,6 +11,10 @@ spec:
       {{- include "infisical.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        # Roll pods when generated configuration changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
       labels:
         {{- include "infisical.selectorLabels" . | nindent 8 }}
     spec:
@@ -56,7 +60,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: {{ .Values.config.port }}
               protocol: TCP
           envFrom:
             - configMapRef:

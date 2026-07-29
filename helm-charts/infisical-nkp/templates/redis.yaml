@@ -11,17 +11,32 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "infisical.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: redis
   template:
     metadata:
       labels:
         app.kubernetes.io/name: {{ include "infisical.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: redis
     spec:
       containers:
         - name: redis
           image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
           imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          # $(REDIS_PASSWORD) is expanded by the kubelet from the env var below,
+          # so the password itself never appears in the pod spec.
+          args:
+            - --port
+            - {{ .Values.redis.port | quote }}
+            - --requirepass
+            - $(REDIS_PASSWORD)
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "infisical.fullname" . }}-secrets
+                  key: REDIS_PASSWORD
           ports:
             - name: redis
               containerPort: {{ .Values.redis.port }}
@@ -49,10 +64,39 @@ spec:
   type: ClusterIP
   selector:
     app.kubernetes.io/name: {{ include "infisical.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: redis
   ports:
     - name: redis
       port: {{ .Values.redis.port }}
       targetPort: redis
       protocol: TCP
+{{- if .Values.redis.networkPolicy }}
+---
+# Defense in depth alongside requirepass: only Infisical pods may reach Redis.
+# Enforced only where the cluster CNI supports NetworkPolicy (NKP's does).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "infisical.fullname" . }}-redis
+  labels:
+    {{- include "infisical.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "infisical.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "infisical.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.redis.port }}
+{{- end }}
 {{- end }}

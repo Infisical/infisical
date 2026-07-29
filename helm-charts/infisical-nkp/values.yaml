@@ -34,6 +34,10 @@ redis:
     tag: "7.4-alpine"
     pullPolicy: IfNotPresent
   port: 6379
+  # Restrict Redis ingress to the Infisical pods (enforced where the CNI
+  # supports NetworkPolicy). The bundled Redis is also password-protected with
+  # a generated password stored in the chart Secret (REDIS_PASSWORD).
+  networkPolicy: true
 
 # PostgreSQL is provided by the NKP CloudNativePG (CNPG) operator.
 # REQUIRES the CloudNativePG platform application to be enabled in the
@@ -61,6 +65,8 @@ service:
   type: ClusterIP
   port: 8080
 
+# TLS is handled by the NKP kommander-traefik controller via the router
+# annotations below; there is no separate tls toggle.
 ingress:
   enabled: true
   className: kommander-traefik
@@ -68,7 +74,6 @@ ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-  tls: true
 
 resources:
   requests:

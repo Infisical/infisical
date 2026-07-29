@@ -8,7 +8,12 @@
 {{- if .Values.fullnameOverride -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- printf "%s" (include "infisical.name" .) | trunc 63 | trimSuffix "-" -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -23,6 +28,7 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 {{/* Selector labels */}}
 {{- define "infisical.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "infisical.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: backend
 {{- end -}}
 
@@ -61,12 +67,18 @@ use the external URI stored in the chart's own secret.
 {{- end }}
 {{- end -}}
 
-{{/* REDIS_URL: in-cluster Redis service when enabled, else the external URL. */}}
-{{- define "infisical.redisUrl" -}}
-{{- if .Values.redis.enabled -}}
-redis://{{ include "infisical.fullname" . }}-redis:{{ .Values.redis.port }}
+{{/*
+Password for the bundled Redis: reuse the one already stored in the Secret
+(so upgrades don't rotate it), else generate a new one. Call this exactly once
+per render and reuse the result (each call generates a fresh random value on
+first install).
+*/}}
+{{- define "infisical.redisPassword" -}}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace (printf "%s-secrets" (include "infisical.fullname" .)) -}}
+{{- if and $existing $existing.data.REDIS_PASSWORD -}}
+{{- $existing.data.REDIS_PASSWORD | b64dec -}}
 {{- else -}}
-{{ .Values.secrets.redisUrl }}
+{{- randAlphaNum 32 -}}
 {{- end -}}
 {{- end -}}
 
