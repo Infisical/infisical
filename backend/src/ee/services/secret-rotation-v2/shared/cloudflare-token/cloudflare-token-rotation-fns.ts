@@ -117,6 +117,8 @@ export const deleteCloudflareToken = async ({
     // 404 means the token is already gone, which is the desired end state of revocation
     if (error instanceof AxiosError && error.response?.status === 404) return;
 
+    logger.error(error, `Failed to delete Cloudflare API token ${tokenId}: ${getCloudflareErrorMessage(error)}`);
+
     throw new BadRequestError({
       message: `Failed to delete Cloudflare API token ${tokenId}: ${getCloudflareErrorMessage(error)}`
     });
@@ -131,8 +133,7 @@ export const deleteCloudflareToken = async ({
 export const revokeCloudflareTokens = async ({
   accountId,
   connectionApiToken,
-  tokenIds,
-  logPrefix
+  tokenIds
 }: {
   accountId: string;
   connectionApiToken: string;
@@ -140,24 +141,7 @@ export const revokeCloudflareTokens = async ({
   /** identifies the caller in the log line, e.g. `cloudflareApiTokenRotation: ... [rotationId=...]` */
   logPrefix: string;
 }) => {
-  const results = await Promise.allSettled(
-    tokenIds.map((tokenId) => deleteCloudflareToken({ accountId, connectionApiToken, tokenId }))
-  );
-
-  const failureMessages: string[] = [];
-
-  results.forEach((result, index) => {
-    if (result.status === "rejected") {
-      logger.error(result.reason, `${logPrefix} [tokenId=${tokenIds[index]}]`);
-      failureMessages.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
-    }
-  });
-
-  if (failureMessages.length) {
-    throw new BadRequestError({
-      message: `Failed to revoke ${failureMessages.length} of ${tokenIds.length} Cloudflare token(s) — the unrevoked token(s) are still active: ${failureMessages.join("; ")}`
-    });
-  }
+  await Promise.all(tokenIds.map((tokenId) => deleteCloudflareToken({ accountId, connectionApiToken, tokenId })));
 };
 
 /**
