@@ -1,0 +1,143 @@
+image:
+  repository: infisical/cli
+  # Defaults to the chart's appVersion. `secrets agent-proxy start` requires v0.43.105 or newer.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Number of Agent Proxy instances. Instances are stateless and coordinate through Infisical, so
+# more than one can run behind a load balancer. Each signs its own intermediate from the same
+# per-organization root CA, so agents trust any instance.
+replicaCount: 1
+
+agentProxy:
+  # Infisical instance URL. Leave empty for Infisical Cloud (US).
+  # Set to https://eu.infisical.com for EU Cloud, or your own URL when self-hosting.
+  domain: ""
+
+  # Port the Agent Proxy listens on.
+  port: 17322
+
+  # Policy for hosts with no matching proxied service: "allow" or "block".
+  # "block" rejects every unmatched host, including your Infisical instance.
+  unmatchedHost: allow
+
+  # Seconds between permission and credential refreshes for active agents.
+  pollInterval: 60
+
+  # Log output format: "console" or "json". Defaults to json, which is what most
+  # cluster log collectors expect.
+  logFormat: json
+
+# Universal Auth credentials for the Agent Proxy machine identity.
+# This identity reads the real secret values, so keep it separate from your agents' identity.
+auth:
+  # Name of an existing Kubernetes Secret holding the credentials.
+  # Takes precedence over the inline clientId/clientSecret below.
+  existingSecretRef: ""
+  # Keys within the existing Secret.
+  clientIdKey: "clientId"
+  clientSecretKey: "clientSecret"
+
+  # Inline credentials. The chart creates a Secret from these.
+  # Prefer existingSecretRef so credentials are not stored in your Helm values.
+  clientId: ""
+  clientSecret: ""
+
+service:
+  type: ClusterIP
+  port: 17322
+  annotations: {}
+
+# Restrict inbound traffic to the pods that run your agents. The Agent Proxy holds real
+# credentials, so only agent machines should be able to reach it.
+# Leave disabled if you manage network policy separately.
+networkPolicy:
+  enabled: false
+  # Selectors describing which clients may reach the Agent Proxy. Standard NetworkPolicy
+  # "from" peers, passed through as-is. An empty list allows no ingress at all.
+  ingressFrom: []
+  #  - podSelector:
+  #      matchLabels:
+  #        app.kubernetes.io/name: my-agent
+  #  - namespaceSelector:
+  #      matchLabels:
+  #        kubernetes.io/metadata.name: agents
+
+# The Agent Proxy terminates TLS for every intercepted host and holds up to 512 concurrent
+# connections, so it is more CPU-hungry than the gateway. Tune to your fleet size.
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# The Agent Proxy serves a raw HTTP CONNECT proxy with no health endpoint, so probes
+# check that the listener accepts TCP connections.
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+affinity: {}
+tolerations: {}
+nodeSelector: {}
+
+# -- Extra environment variables for the agent proxy container
+extraEnv: []
+#  - name: LOG_LEVEL
+#    value: debug
+#  - name: MY_SECRET
+#    valueFrom:
+#      secretKeyRef:
+#        name: my-secret
+#        key: my-key
+
+# -- Load environment variables from Secrets or ConfigMaps
+extraEnvFrom: []
+#  - secretRef:
+#      name: my-secret
+#  - configMapRef:
+#      name: my-configmap
+
+# -- Extra arguments appended to `infisical secrets agent-proxy start`
+extraArgs: []
+#  - --log-file=/var/log/infisical/agent-proxy.log
+
+# -- Extra Kubernetes manifests to deploy with this chart
+extraObjects: []

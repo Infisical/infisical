@@ -1,0 +1,22 @@
+# Locked-down install: multiple replicas, custom port, ingress restricted to agent pods.
+auth:
+  clientId: ci-test-client-id
+  clientSecret: ci-test-client-secret
+
+replicaCount: 3
+
+agentProxy:
+  port: 18322
+
+service:
+  port: 18322
+
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: my-agent
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: agents
