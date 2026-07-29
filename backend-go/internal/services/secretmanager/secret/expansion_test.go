@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newTestSecret(key, value, env, path string) *ProcessedSecret {
@@ -190,23 +191,33 @@ func TestExpand_AbsoluteReference_DeepPath(t *testing.T) {
 }
 
 func TestExpand_AbsoluteReference_WithNestedRelative(t *testing.T) {
+	// A relative reference inside a value reached through an absolute reference
+	// resolves in the referenced environment, not in the requesting one.
 	secrets := []*ProcessedSecret{
-		newTestSecret("LOCAL_VAR", "local-resolved", "dev", "/"),
-		newTestSecret("A", "${prod.USES_LOCAL}", "dev", "/"),
+		newTestSecret("VAR", "dev-value", "dev", "/"),
+		newTestSecret("A", "${prod.USES_RELATIVE}", "dev", "/"),
 	}
 
 	opts := ExpandOpts{
 		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
-			return []*ProcessedSecret{
-				newTestSecret("USES_LOCAL", "prefix-${LOCAL_VAR}-suffix", "prod", "/"),
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Key == "USES_RELATIVE":
+					out = append(out, newTestSecret("USES_RELATIVE", "prefix-${VAR}-suffix", "prod", "/"))
+				case ref.Env == "prod" && ref.Key == "VAR":
+					out = append(out, newTestSecret("VAR", "prod-value", "prod", "/"))
+				}
 			}
+			return out
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
 
-	assert.Equal(t, "prefix-local-resolved-suffix", secrets[1].Value)
+	assert.Equal(t, "prefix-prod-value-suffix", secrets[1].Value)
+	assert.Equal(t, "dev-value", secrets[0].Value)
 }
 
 func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {
@@ -679,4 +690,166 @@ func TestExpand_RawValuePreserved(t *testing.T) {
 
 	assert.Equal(t, "${A} world", secrets[1].RawValue)
 	assert.Equal(t, "hello world", secrets[1].Value)
+}
+
+func TestExpand_NestedRelativeResolvesInReferencedEnv(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("HOST", "dev-host", "dev", "/"),
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	var requested []string
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				requested = append(requested, ref.CacheKey())
+				switch {
+				case ref.Env == "prod" && ref.Key == "URL":
+					out = append(out, newTestSecret("URL", "https://${HOST}/api", "prod", "/"))
+				case ref.Env == "prod" && ref.Key == "HOST":
+					out = append(out, newTestSecret("HOST", "prod-host", "prod", "/"))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.Equal(t, "https://prod-host/api", secrets[1].Value)
+	assert.Contains(t, requested, "prod:/:HOST")
+	assert.Equal(t, "dev-host", secrets[0].Value)
+}
+
+func TestExpand_NestedRelativeInReferencedPath(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("TOKEN", "local-token", "dev", "/"),
+		newTestSecret("AUTH", "${prod.svc.HEADER}", "dev", "/"),
+	}
+
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Path == "/svc" && ref.Key == "HEADER":
+					out = append(out, newTestSecret("HEADER", "Bearer ${TOKEN}", "prod", "/svc"))
+				case ref.Env == "prod" && ref.Path == "/svc" && ref.Key == "TOKEN":
+					out = append(out, newTestSecret("TOKEN", "prod-token", "prod", "/svc"))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.Equal(t, "Bearer prod-token", secrets[1].Value)
+}
+
+func TestExpand_NestedRelativeMissingInReferencedEnv(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("HOST", "dev-host", "dev", "/"),
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				if ref.Env == "prod" && ref.Key == "URL" {
+					out = append(out, newTestSecret("URL", "https://${HOST}/api", "prod", "/"))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	// The referenced env has no HOST — it must not fall back to the dev value.
+	assert.Equal(t, "https:///api", secrets[1].Value)
+}
+
+func TestExpand_NestedRelativeDeniedInReferencedEnv(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("HOST", "dev-host", "dev", "/"),
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		CanAccessAbsolute: func(ref AbsoluteSecretRef, _ []string) bool {
+			return ref.Key != "HOST"
+		},
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				switch {
+				case ref.Env == "prod" && ref.Key == "URL":
+					out = append(out, newTestSecret("URL", "https://${HOST}/api", "prod", "/"))
+				case ref.Env == "prod" && ref.Key == "HOST":
+					out = append(out, newTestSecret("HOST", "prod-host", "prod", "/"))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.Equal(t, "https:///api", secrets[1].Value)
+	assert.True(t, expander.HasDeniedRefs())
+	assert.Contains(t, expander.DeniedRefs(), "prod:/:HOST")
+}
+
+func TestExpand_NestedRelativeCycleAcrossEnvs(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				if ref.Env == "prod" && ref.Key == "URL" {
+					out = append(out, newTestSecret("URL", "a-${URL}-b", "prod", "/"))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.False(t, hasReferences(secrets[0].Value))
+}
+
+func TestExpand_NestedRelativeMutualCycleAcrossEnvs(t *testing.T) {
+	// prod.A -> ${B} (in prod) -> ${staging.A} -> ${B} (in staging) -> ...
+	// Expansion must terminate rather than fetching forever.
+	secrets := []*ProcessedSecret{
+		newTestSecret("ROOT", "${prod.A}", "dev", "/"),
+	}
+
+	fetches := 0
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			fetches++
+			require.Less(t, fetches, 50, "expansion did not converge")
+
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				switch ref.Key {
+				case "A":
+					out = append(out, newTestSecret("A", "${B}", ref.Env, ref.Path))
+				case "B":
+					other := "staging"
+					if ref.Env == "staging" {
+						other = "prod"
+					}
+					out = append(out, newTestSecret("B", "${"+other+".A}", ref.Env, ref.Path))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.False(t, hasReferences(secrets[0].Value))
 }
