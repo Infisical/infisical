@@ -104,6 +104,7 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
     callback
   ) => {
     const newCredentials = await $createToken();
+    const result = await callback(newCredentials);
 
     if (credentialsToRevoke?.tokenId) {
       try {
@@ -118,7 +119,7 @@ export const cloudflareApiTokenRotationFactory: TRotationFactory<
       }
     }
 
-    return callback(newCredentials);
+    return result;
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TCloudflareApiTokenRotationGeneratedCredentials> = (
