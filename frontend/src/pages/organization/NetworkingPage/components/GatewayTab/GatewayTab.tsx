@@ -22,6 +22,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -454,7 +455,7 @@ export const GatewayTab = withPermission(
                       This permanently removes the gateway from your organization.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+                  <AlertDialogConfirmationField>
                     <Field>
                       <FieldLabel htmlFor="delete-gateway-confirmation" size="sm">
                         <span>
@@ -476,14 +477,13 @@ export const GatewayTab = withPermission(
                         autoFocus
                       />
                     </Field>
-                    <Alert variant="danger">
-                      <AlertDescription>
-                        Deleting{" "}
-                        {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"} cannot
-                        be undone.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
+                  </AlertDialogConfirmationField>
+                  <Alert variant="danger">
+                    <AlertDescription>
+                      Deleting {(popUp.deleteGateway.data as { name?: string })?.name || "gateway"}{" "}
+                      cannot be undone.
+                    </AlertDescription>
+                  </Alert>
                   <AlertDialogFooter>
                     <AlertDialogCancel
                       isDisabled={deleteGatewayById.isPending || deleteGatewayV2ById.isPending}

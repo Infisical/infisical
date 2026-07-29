@@ -14,6 +14,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -217,7 +218,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
               This permanently removes the gateway pool from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+          <AlertDialogConfirmationField>
             <Field>
               <FieldLabel htmlFor="delete-pool-confirmation" size="sm">
                 <span>
@@ -237,12 +238,12 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                 autoFocus
               />
             </Field>
-            <Alert variant="danger">
-              <AlertDescription>
-                Deleting {(popUp.deletePool.data as TGatewayPool)?.name} cannot be undone.
-              </AlertDescription>
-            </Alert>
-          </div>
+          </AlertDialogConfirmationField>
+          <Alert variant="danger">
+            <AlertDescription>
+              Deleting {(popUp.deletePool.data as TGatewayPool)?.name} cannot be undone.
+            </AlertDescription>
+          </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={deletePool.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction

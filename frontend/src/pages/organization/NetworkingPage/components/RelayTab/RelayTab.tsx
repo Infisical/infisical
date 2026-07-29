@@ -19,6 +19,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -303,7 +304,7 @@ export const RelayTab = withPermission(
                   This permanently removes the relay from your organization.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+              <AlertDialogConfirmationField>
                 <Field>
                   <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
                     <span>
@@ -323,13 +324,13 @@ export const RelayTab = withPermission(
                     autoFocus
                   />
                 </Field>
-                <Alert variant="danger">
-                  <AlertDescription>
-                    Deleting {(popUp.deleteRelay.data as { name?: string })?.name || "relay"} cannot
-                    be undone.
-                  </AlertDescription>
-                </Alert>
-              </div>
+              </AlertDialogConfirmationField>
+              <Alert variant="danger">
+                <AlertDescription>
+                  Deleting {(popUp.deleteRelay.data as { name?: string })?.name || "relay"} cannot
+                  be undone.
+                </AlertDescription>
+              </Alert>
               <AlertDialogFooter>
                 <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>
                 <AlertDialogAction

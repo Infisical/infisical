@@ -9,6 +9,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -292,7 +293,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 This removes the gateway from the pool. The gateway itself will not be deleted.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <div data-slot="alert-dialog-confirmation-field" className="py-4">
+            <AlertDialogConfirmationField>
               <Field>
                 <FieldLabel htmlFor="remove-gateway-confirmation" size="sm">
                   <span>
@@ -312,7 +313,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   autoFocus
                 />
               </Field>
-            </div>
+            </AlertDialogConfirmationField>
             <AlertDialogFooter>
               <AlertDialogCancel isDisabled={removeGateway.isPending}>Cancel</AlertDialogCancel>
               <AlertDialogAction

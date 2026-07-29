@@ -11,6 +11,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -149,7 +150,7 @@ export const RelayPageHeader = ({
               This permanently removes the relay from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+          <AlertDialogConfirmationField>
             <Field>
               <FieldLabel htmlFor="delete-relay-confirmation" size="sm">
                 <span>
@@ -165,10 +166,10 @@ export const RelayPageHeader = ({
                 autoFocus
               />
             </Field>
-            <Alert variant="danger">
-              <AlertDescription>Deleting {relay.name} cannot be undone.</AlertDescription>
-            </Alert>
-          </div>
+          </AlertDialogConfirmationField>
+          <Alert variant="danger">
+            <AlertDescription>Deleting {relay.name} cannot be undone.</AlertDescription>
+          </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction

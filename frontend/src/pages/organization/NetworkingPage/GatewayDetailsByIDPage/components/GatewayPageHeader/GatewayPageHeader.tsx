@@ -11,6 +11,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -161,7 +162,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               This permanently removes the gateway from your organization.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div data-slot="alert-dialog-confirmation-field" className="space-y-4 py-4">
+          <AlertDialogConfirmationField>
             <Field>
               <FieldLabel htmlFor="delete-gateway-confirmation" size="sm">
                 <span>
@@ -178,10 +179,10 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
                 autoFocus
               />
             </Field>
-            <Alert variant="danger">
-              <AlertDescription>Deleting {gateway.name} cannot be undone.</AlertDescription>
-            </Alert>
-          </div>
+          </AlertDialogConfirmationField>
+          <Alert variant="danger">
+            <AlertDescription>Deleting {gateway.name} cannot be undone.</AlertDescription>
+          </Alert>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction

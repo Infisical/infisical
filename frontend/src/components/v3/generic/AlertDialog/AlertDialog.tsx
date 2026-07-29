@@ -132,6 +132,12 @@ function AlertDialogDescription({
   );
 }
 
+function AlertDialogConfirmationField({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div data-slot="alert-dialog-confirmation-field" className={cn("mt-4", className)} {...props} />
+  );
+}
+
 function AlertDialogAction({
   className,
   variant = "outline",
@@ -188,6 +194,7 @@ export {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
