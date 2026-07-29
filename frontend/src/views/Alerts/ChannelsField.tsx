@@ -22,6 +22,8 @@ import { getChannelIcon } from "./channelIcons";
 
 type Props = {
   projectId?: string;
+  resourceType: string;
+  resourceId?: string | null;
 };
 
 const buildNewChannel = (channelType: AlertChannelType): TChannelForm => ({
@@ -35,7 +37,7 @@ const buildNewChannel = (channelType: AlertChannelType): TChannelForm => ({
   integrationKey: ""
 });
 
-export const ChannelsField = ({ projectId }: Props) => {
+export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) => {
   const {
     control,
     formState: { errors }
@@ -91,6 +93,8 @@ export const ChannelsField = ({ projectId }: Props) => {
               key={field.id}
               index={index}
               projectId={projectId}
+              resourceType={resourceType}
+              resourceId={resourceId}
               canRemove={fields.length > 1}
               onRemove={() => remove(index)}
             />

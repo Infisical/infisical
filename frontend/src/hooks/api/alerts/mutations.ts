@@ -3,7 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { alertKeys } from "./queries";
-import { TAlert, TCreateAlertDTO, TUpdateAlertDTO } from "./types";
+import {
+  TAlert,
+  TCreateAlertDTO,
+  TTestAlertChannelDTO,
+  TTestAlertChannelResponse,
+  TUpdateAlertDTO
+} from "./types";
 
 export const useCreateAlert = () => {
   const queryClient = useQueryClient();
@@ -32,6 +38,17 @@ export const useUpdateAlert = () => {
     }
   });
 };
+
+export const useTestAlertChannel = () =>
+  useMutation<TTestAlertChannelResponse, unknown, TTestAlertChannelDTO>({
+    mutationFn: async (dto) => {
+      const { data } = await apiRequest.post<TTestAlertChannelResponse>(
+        "/api/v1/alerts/channels/test",
+        dto
+      );
+      return data;
+    }
+  });
 
 export const useDeleteAlert = () => {
   const queryClient = useQueryClient();

@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleHelpIcon, FingerprintIcon, KeyRoundIcon } from "lucide-react";
 
@@ -32,7 +32,6 @@ import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_EVENT_TYPE_LABELS,
   ALERT_RESOURCE_TYPE_LABELS,
-  AlertChannelType,
   AlertEventType,
   alertFormSchema,
   AlertResourceType,
@@ -40,10 +39,10 @@ import {
   MIN_ALERT_BEFORE_DAYS,
   parseAlertBeforeDays,
   TAlert,
-  TAlertChannelInput,
   TAlertForm,
   TChannelForm,
   toAlertBefore,
+  toChannelInput,
   useCreateAlert,
   useUpdateAlert
 } from "@app/hooks/api/alerts";
@@ -116,37 +115,6 @@ const buildFormDefaults = (alert?: TAlert): TAlertForm => {
   };
 };
 
-const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
-  const base: TAlertChannelInput = {
-    ...(channel.id ? { id: channel.id } : {}),
-    name: channel.name,
-    channelType: channel.channelType,
-    enabled: channel.enabled
-  };
-
-  switch (channel.channelType) {
-    case AlertChannelType.Email:
-      return { ...base, config: {}, recipients: channel.recipients };
-    case AlertChannelType.Slack:
-      return { ...base, config: channel.webhookUrl ? { webhookUrl: channel.webhookUrl } : {} };
-    case AlertChannelType.Webhook:
-      return {
-        ...base,
-        config: {
-          url: channel.url,
-          ...(channel.signingSecret ? { signingSecret: channel.signingSecret } : {})
-        }
-      };
-    case AlertChannelType.PagerDuty:
-      return {
-        ...base,
-        config: channel.integrationKey ? { integrationKey: channel.integrationKey } : {}
-      };
-    default:
-      return { ...base, config: {} };
-  }
-};
-
 export const AlertForm = ({
   projectId,
   scopeName,
@@ -173,6 +141,7 @@ export const AlertForm = ({
     formState: { errors, isSubmitting }
   } = formMethods;
 
+  const resourceTypeValue = useWatch({ control, name: "resourceType" });
   const isProjectScope = Boolean(projectId);
   const isResourceScope = Boolean(resourceId ?? alert?.resourceId);
   const resolveScopeIcon = () => {
@@ -398,7 +367,11 @@ export const AlertForm = ({
 
           <section className="flex flex-col gap-4">
             <SectionHeader title="Delivery" />
-            <ChannelsField projectId={projectId} />
+            <ChannelsField
+              projectId={projectId}
+              resourceType={resourceTypeValue}
+              resourceId={resourceId ?? alert?.resourceId ?? null}
+            />
           </section>
         </div>
 

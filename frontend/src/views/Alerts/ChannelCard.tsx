@@ -1,7 +1,9 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { TrashIcon } from "lucide-react";
+import { SendIcon, TrashIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
+  Button,
   Field,
   FieldContent,
   FieldError,
@@ -11,7 +13,13 @@ import {
   Switch
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
-import { ALERT_CHANNEL_TYPE_LABELS, AlertChannelType, TAlertForm } from "@app/hooks/api/alerts";
+import {
+  ALERT_CHANNEL_TYPE_LABELS,
+  AlertChannelType,
+  TAlertForm,
+  toChannelInput,
+  useTestAlertChannel
+} from "@app/hooks/api/alerts";
 
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
@@ -19,19 +27,31 @@ import { ChannelRecipientsField } from "./ChannelRecipientsField";
 type Props = {
   index: number;
   projectId?: string;
+  resourceType: string;
+  resourceId?: string | null;
   onRemove: () => void;
   canRemove: boolean;
 };
 
 const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
 
-export const ChannelCard = ({ index, projectId, onRemove, canRemove }: Props) => {
+export const ChannelCard = ({
+  index,
+  projectId,
+  resourceType,
+  resourceId,
+  onRemove,
+  canRemove
+}: Props) => {
   const scopeVariant = useScopeVariant();
   const {
     control,
     register,
+    getValues,
+    trigger,
     formState: { errors }
   } = useFormContext<TAlertForm>();
+  const testChannel = useTestAlertChannel();
 
   const channel = useWatch({ control, name: `channels.${index}` });
   const channelType = channel?.channelType;
@@ -39,6 +59,41 @@ export const ChannelCard = ({ index, projectId, onRemove, canRemove }: Props) =>
   const channelErrors = errors.channels?.[index];
 
   const Icon = getChannelIcon(channelType);
+  const channelLabel = ALERT_CHANNEL_TYPE_LABELS[channelType];
+
+  const onTest = async () => {
+    if (!(await trigger(`channels.${index}`))) return;
+
+    const { config, recipients } = toChannelInput(getValues(`channels.${index}`));
+    try {
+      const result = await testChannel.mutateAsync({
+        resourceType,
+        resourceId,
+        projectId: projectId ?? null,
+        channelId: channel?.id,
+        channelType,
+        config,
+        recipients
+      });
+
+      if (result.success) {
+        createNotification({
+          text: `Test ${channelLabel} notification sent${
+            result.deliveredTo && result.deliveredTo > 1 ? ` to ${result.deliveredTo} recipients` : ""
+          }`,
+          type: "success"
+        });
+      } else {
+        createNotification({
+          title: `Test ${channelLabel} notification failed`,
+          text: result.error ?? "The channel could not be reached.",
+          type: "error"
+        });
+      }
+    } catch {
+      // MutationCache reports request errors (including the cooldown) globally.
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 rounded-md border border-border p-4">
@@ -50,6 +105,17 @@ export const ChannelCard = ({ index, projectId, onRemove, canRemove }: Props) =>
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            onClick={onTest}
+            isPending={testChannel.isPending}
+            isDisabled={testChannel.isPending}
+          >
+            <SendIcon className="size-3.5" />
+            Send test
+          </Button>
           <Controller
             control={control}
             name={`channels.${index}.enabled`}

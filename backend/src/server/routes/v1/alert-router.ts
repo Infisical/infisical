@@ -108,6 +108,40 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "POST",
+    url: "/channels/test",
+    config: { rateLimit: writeLimit },
+    schema: {
+      operationId: "testAlertChannel",
+      body: z.object({
+        resourceType: z.string().min(1),
+        resourceId: z.string().nullable().optional(),
+        projectId: z.string().nullable().optional(),
+        channelId: z.string().uuid().optional(),
+        channelType: z.nativeEnum(AlertChannelType),
+        config: z.record(z.unknown()).default({}),
+        recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean(),
+          deliveredTo: z.number().optional(),
+          error: z.string().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) =>
+      server.services.alertChannelTest.testChannel({
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
+  server.route({
     method: "GET",
     url: "/",
     config: { rateLimit: readLimit },

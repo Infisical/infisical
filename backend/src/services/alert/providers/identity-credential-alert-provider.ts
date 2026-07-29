@@ -83,6 +83,9 @@ const CREDENTIAL_TYPE_LABEL: Record<TIdentityCredentialTarget["credentialType"],
   "ua-client-secret": "Universal Auth Client Secret"
 };
 
+const TEST_TARGET_ID = "00000000-0000-0000-0000-000000000000";
+const TEST_TARGET_EXPIRES_IN_DAYS = 7;
+
 export type TIdentityCredentialAlertProviderDep = {
   identityCredentialAlertDAL: TIdentityCredentialAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
@@ -178,6 +181,18 @@ export const identityCredentialAlertProviderFactory = ({
 
   const targetId = (target: TIdentityCredentialTarget): string => `${target.credentialType}:${target.id}`;
 
+  const buildTestTargets = (): TIdentityCredentialTarget[] => [
+    {
+      credentialType: "ua-client-secret",
+      id: TEST_TARGET_ID,
+      identityId: TEST_TARGET_ID,
+      identityName: "Sample Machine Identity",
+      description: "Sample Client Secret",
+      clientSecretPrefix: "abcd",
+      expiresAt: new Date(Date.now() + TEST_TARGET_EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000)
+    }
+  ];
+
   const assertResourceInScope = async (input: {
     orgId: string;
     projectId?: string | null;
@@ -271,6 +286,7 @@ export const identityCredentialAlertProviderFactory = ({
     buildViewUrl,
     buildPayload,
     targetId,
+    buildTestTargets,
     dedupWindowHours: (condition) => {
       const parsed = IdentityCredentialConditionSchema.safeParse(condition);
       if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;

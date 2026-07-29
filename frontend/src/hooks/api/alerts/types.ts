@@ -95,6 +95,22 @@ export type TCreateAlertDTO = {
   channels: TAlertChannelInput[];
 };
 
+export type TTestAlertChannelDTO = {
+  resourceType: string;
+  resourceId?: string | null;
+  projectId?: string | null;
+  channelId?: string;
+  channelType: AlertChannelType;
+  config?: Record<string, unknown>;
+  recipients?: TAlertChannelRecipient[];
+};
+
+export type TTestAlertChannelResponse = {
+  success: boolean;
+  deliveredTo?: number;
+  error?: string;
+};
+
 export type TUpdateAlertDTO = {
   alertId: string;
   name?: string;

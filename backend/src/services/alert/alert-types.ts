@@ -94,6 +94,11 @@ export interface IResourceAlertProvider<TTarget = unknown> {
   // Stable id per target, used for dedup and history. Must be stable across cron runs.
   targetId(target: TTarget): string;
 
+  // Representative targets used to render a "send test" delivery, so what a user sees when testing a
+  // channel is the same shape a real firing produces. Purely synthetic: never queried, stored, or
+  // deduped against history, so the ids need not correspond to real rows.
+  buildTestTargets(): TTarget[];
+
   // Optional per-condition dedup window override (hours). Defaults to DEFAULT_DEDUP_WINDOW_HOURS.
   dedupWindowHours?(condition: unknown): number;
 

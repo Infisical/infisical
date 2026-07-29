@@ -236,6 +236,7 @@ import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
 import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { alertChannelServiceFactory } from "@app/services/alert/alert-channel-service";
+import { alertChannelTestServiceFactory } from "@app/services/alert/alert-channel-test-service";
 import { alertDALFactory } from "@app/services/alert/alert-dal";
 import { alertEngineFactory } from "@app/services/alert/alert-engine";
 import { alertHistoryDALFactory } from "@app/services/alert/alert-history-dal";
@@ -1067,6 +1068,14 @@ export const registerRoutes = async (
     alertChannelService,
     kmsService,
     alertProviderRegistry
+  });
+  const alertChannelTestService = alertChannelTestServiceFactory({
+    alertChannelDAL,
+    alertRecipientResolver,
+    alertProviderRegistry,
+    kmsService,
+    smtpService,
+    keyStore
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
@@ -4100,6 +4109,7 @@ export const registerRoutes = async (
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
     alert: alertService,
+    alertChannelTest: alertChannelTestService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

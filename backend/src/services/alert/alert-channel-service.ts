@@ -1,5 +1,4 @@
 import { Knex } from "knex";
-import { z } from "zod";
 
 import { TAlertChannels } from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -7,6 +6,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import {
+  assertChannelConfigValid,
+  getChannelDefinition,
+  mergeChannelConfigWithStored
+} from "./alert-channel-config-fns";
 import {
   decryptChannelConfig,
   encryptChannelConfig,
@@ -63,12 +67,6 @@ export const alertChannelServiceFactory = ({
   projectDAL,
   groupDAL
 }: TAlertChannelServiceFactoryDep) => {
-  const $getDefinition = (channelType: string) => {
-    const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
-    if (!definition) throw new BadRequestError({ message: `Unknown channel type '${channelType}'` });
-    return definition;
-  };
-
   // Confirms every recipient principal (user/group) actually belongs to the channel's scope so an
   // alert can't be made to notify a foreign principal.
   const $validateRecipients = async (
@@ -118,21 +116,6 @@ export const alertChannelServiceFactory = ({
     }
   };
 
-  const $assertConfigValid = (
-    definition: { configSchema: { parse: (value: unknown) => unknown } },
-    channelType: string,
-    config: Record<string, unknown>
-  ) => {
-    try {
-      definition.configSchema.parse(config);
-    } catch (err) {
-      const detail = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : null;
-      throw new BadRequestError({
-        message: detail ? `Invalid ${channelType} channel config: ${detail}` : `Invalid ${channelType} channel config`
-      });
-    }
-  };
-
   const $redactConfig = (channelType: string, config: Record<string, unknown>): Record<string, unknown> => {
     const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
     if (!definition) return {};
@@ -146,35 +129,15 @@ export const alertChannelServiceFactory = ({
     return redacted;
   };
 
-  const $mergeConfigForUpdate = (
-    channelType: string,
-    incomingConfig: Record<string, unknown>,
-    existingConfig: Record<string, unknown>
-  ): Record<string, unknown> => {
-    const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
-    if (!definition) return incomingConfig;
-
-    const merged: Record<string, unknown> = { ...incomingConfig };
-    definition.secretFields.forEach((field) => {
-      if (!(field in incomingConfig)) {
-        if (existingConfig[field] != null) merged[field] = existingConfig[field];
-        return;
-      }
-      const value = incomingConfig[field];
-      if (value === "" || value === null || value === undefined) delete merged[field];
-    });
-    return merged;
-  };
-
   const createChannelInTx = async (
     input: TCreateChannelInTxInput,
     encryptor: TAlertEncryptor,
     tx: Knex
   ): Promise<TAlertChannels> => {
-    const definition = $getDefinition(input.channelType);
+    const definition = getChannelDefinition(input.channelType);
     const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
-    $assertConfigValid(definition, input.channelType, input.config);
+    assertChannelConfigValid(definition, input.channelType, input.config);
     await $validateRecipients(input.orgId, input.projectId, recipients);
 
     const created = await alertChannelDAL.create(
@@ -206,13 +169,13 @@ export const alertChannelServiceFactory = ({
     cipher: { encryptor: TAlertEncryptor; decryptor: TAlertDecryptor },
     tx: Knex
   ): Promise<Record<string, unknown>> => {
-    const definition = $getDefinition(channel.channelType);
+    const definition = getChannelDefinition(channel.channelType);
     const existingConfig = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, cipher.decryptor);
 
     let finalConfig = existingConfig;
     if (input.config !== undefined) {
-      const merged = $mergeConfigForUpdate(channel.channelType, input.config, existingConfig);
-      $assertConfigValid(definition, channel.channelType, merged);
+      const merged = mergeChannelConfigWithStored(channel.channelType, input.config, existingConfig);
+      assertChannelConfigValid(definition, channel.channelType, merged);
       finalConfig = merged;
     }
 
