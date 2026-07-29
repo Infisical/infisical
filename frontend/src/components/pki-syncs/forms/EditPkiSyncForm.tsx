@@ -142,10 +142,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       });
       onComplete(updatedPkiSync);
     } catch {
-      createNotification({
-        text: `Failed to update ${destinationName} Certificate Sync`,
-        type: "error"
-      });
+      /* empty */
     }
   };
 
