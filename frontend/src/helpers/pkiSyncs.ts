@@ -125,3 +125,27 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral
 };
+
+export const BOOLEAN_SYNC_OPTION_FIELDS = [
+  { key: "canRemoveCertificates", label: "Remove Expired/Revoked Certificates" },
+  { key: "canImportCertificates", label: "Import Certificates" },
+  { key: "includeRootCa", label: "Include Root CA in Chain" },
+  { key: "preserveArn", label: "Preserve ARN on Renewal" },
+  { key: "enableVersioning", label: "Versioning on Renewal" },
+  { key: "preserveSecretOnRenewal", label: "Preserve Secret on Renewal" },
+  { key: "preserveItemOnRenewal", label: "Preserve Item on Renewal" },
+  { key: "updateExistingCertificates", label: "Update Existing Certificates" },
+  { key: "combineCertificateChain", label: "Combine Certificate and Chain" },
+  { key: "includePrivateKey", label: "Include Private Key" }
+] as const;
+
+export const VALUE_SYNC_OPTION_FIELDS = [
+  { key: "certificateNameSchema", label: "Certificate Name Schema" },
+  { key: "caCertificateNameSchema", label: "CA Certificate Name Schema" },
+  { key: "exportFormat", label: "Export Format" },
+  { key: "pemCertificateExtension", label: "Certificate File Extension" },
+  { key: "fileMode", label: "File Permissions" },
+  { key: "privateKeyFileMode", label: "Private Key Permissions" },
+  { key: "owner", label: "Owner" },
+  { key: "group", label: "Group" }
+] as const;

@@ -10,27 +10,17 @@ import {
   DetailValue,
   Separator
 } from "@app/components/v3";
+import { BOOLEAN_SYNC_OPTION_FIELDS, VALUE_SYNC_OPTION_FIELDS } from "@app/helpers/pkiSyncs";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
 };
 
-const EnabledBadge = ({ enabled }: { enabled: boolean }) => (
-  <Badge variant={enabled ? "success" : "neutral"}>{enabled ? "Enabled" : "Disabled"}</Badge>
-);
+const DESTINATION_OWNED_OPTIONS = new Set<string>(["exportFormat"]);
 
 export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
-  const {
-    syncOptions: {
-      canRemoveCertificates,
-      certificateNameSchema,
-      preserveArn,
-      enableVersioning,
-      preserveItemOnRenewal,
-      updateExistingCertificates
-    }
-  } = pkiSync;
+  const syncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
 
   return (
     <>
@@ -40,54 +30,38 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
           <AccordionTrigger>Sync Options</AccordionTrigger>
           <AccordionContent>
             <DetailGroup>
-              <Detail>
-                <DetailLabel>Inactive Certificate Removal</DetailLabel>
-                <DetailValue>
-                  <EnabledBadge enabled={canRemoveCertificates} />
-                </DetailValue>
-              </Detail>
-              {certificateNameSchema && (
-                <Detail>
-                  <DetailLabel>Certificate Name Schema</DetailLabel>
-                  <DetailValue>
-                    <Badge variant="neutral" className="max-w-full truncate">
-                      {certificateNameSchema}
-                    </Badge>
-                  </DetailValue>
-                </Detail>
-              )}
-              {preserveArn !== undefined && (
-                <Detail>
-                  <DetailLabel>Preserve ARN</DetailLabel>
-                  <DetailValue>
-                    <EnabledBadge enabled={preserveArn} />
-                  </DetailValue>
-                </Detail>
-              )}
-              {enableVersioning !== undefined && (
-                <Detail>
-                  <DetailLabel>Versioning</DetailLabel>
-                  <DetailValue>
-                    <EnabledBadge enabled={enableVersioning} />
-                  </DetailValue>
-                </Detail>
-              )}
-              {preserveItemOnRenewal !== undefined && (
-                <Detail>
-                  <DetailLabel>Preserve Item on Renewal</DetailLabel>
-                  <DetailValue>
-                    <EnabledBadge enabled={preserveItemOnRenewal} />
-                  </DetailValue>
-                </Detail>
-              )}
-              {updateExistingCertificates !== undefined && (
-                <Detail>
-                  <DetailLabel>Update Existing Certificates</DetailLabel>
-                  <DetailValue>
-                    <EnabledBadge enabled={updateExistingCertificates} />
-                  </DetailValue>
-                </Detail>
-              )}
+              {BOOLEAN_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+                const value = syncOptions?.[key];
+                if (typeof value !== "boolean") return null;
+
+                return (
+                  <Detail key={key}>
+                    <DetailLabel>{label}</DetailLabel>
+                    <DetailValue>
+                      <Badge variant={value ? "success" : "neutral"}>
+                        {value ? "Enabled" : "Disabled"}
+                      </Badge>
+                    </DetailValue>
+                  </Detail>
+                );
+              })}
+              {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+                if (DESTINATION_OWNED_OPTIONS.has(key)) return null;
+
+                const value = syncOptions?.[key];
+                if (value === undefined || value === null || value === "") return null;
+
+                return (
+                  <Detail key={key}>
+                    <DetailLabel>{label}</DetailLabel>
+                    <DetailValue>
+                      <Badge variant="neutral" className="max-w-full truncate">
+                        {String(value)}
+                      </Badge>
+                    </DetailValue>
+                  </Detail>
+                );
+              })}
             </DetailGroup>
           </AccordionContent>
         </AccordionItem>

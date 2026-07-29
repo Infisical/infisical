@@ -103,7 +103,7 @@ const PageContent = () => {
             className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon className="size-4" />
-            {applicationName ? "Back to Application" : "PKI Syncs"}
+            {applicationName ? "Back to Application" : "Certificate Syncs"}
           </button>
           <div className="mb-6 flex w-full items-center gap-3">
             <img

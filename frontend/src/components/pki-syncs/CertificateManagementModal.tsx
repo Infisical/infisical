@@ -103,7 +103,9 @@ export const CertificateManagementModal = ({
   const allCertificates = data?.certificates || [];
   const totalCount = data?.totalCount || 0;
 
-  const { data: syncData } = useListPkiSyncCertificates(pkiSync?.id || "");
+  const { data: syncData } = useListPkiSyncCertificates(pkiSync?.id || "", undefined, {
+    enabled: Boolean(pkiSync?.id)
+  });
   const syncCertificates = syncData?.certificates || [];
   const addCertificatesToSync = useAddCertificatesToPkiSync();
   const removeCertificatesFromSync = useRemoveCertificatesFromPkiSync();

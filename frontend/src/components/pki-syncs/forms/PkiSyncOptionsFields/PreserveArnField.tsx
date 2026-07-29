@@ -4,7 +4,7 @@ export const PreserveArnField = () => (
   <SyncSwitchField
     name="syncOptions.preserveArn"
     id="preserve-arn"
-    label="Preserve ARN on Renewal"
+    label="Preserve ARN on renewal"
     description={
       <>
         When enabled, renewals replace the existing certificate&apos;s contents while keeping the

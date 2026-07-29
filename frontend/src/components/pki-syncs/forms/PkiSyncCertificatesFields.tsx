@@ -9,6 +9,7 @@ import {
   EmptyTitle,
   Field,
   FieldError,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -89,11 +90,11 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-1/3">SAN / CN</TableHead>
-                        <TableHead className="w-1/4">Serial Number</TableHead>
+                        <TableHead>SAN / CN</TableHead>
+                        <TableHead className="w-1/5">Serial Number</TableHead>
                         <TableHead className="w-1/6">Issued At</TableHead>
                         <TableHead className="w-1/6">Expires At</TableHead>
-                        <TableHead className="w-12">Remove</TableHead>
+                        <TableHead className="w-12" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -121,29 +122,24 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
                               )}
                             </TableCell>
                             <TableCell className="max-w-0">
-                              <div
-                                className="font-mono text-xs text-muted"
-                                title={cert.serialNumber}
-                              >
+                              <div className="font-mono text-xs" title={cert.serialNumber}>
                                 {truncatedSerial}
                               </div>
                             </TableCell>
                             <TableCell className="max-w-0">
-                              <span className="text-sm text-muted">
+                              <span className="text-sm">
                                 {new Date(cert.notBefore).toLocaleDateString()}
                               </span>
                             </TableCell>
                             <TableCell className="max-w-0">
-                              <span
-                                className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}
-                              >
+                              <span className={isExpired ? "text-sm text-danger" : "text-sm"}>
                                 {new Date(cert.notAfter).toLocaleDateString()}
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Button
+                              <IconButton
                                 type="button"
-                                size="sm"
+                                size="xs"
                                 variant="ghost"
                                 aria-label="Remove certificate"
                                 onClick={() => {
@@ -151,8 +147,8 @@ export const PkiSyncCertificatesFields = ({ applicationId }: Props = {}) => {
                                   onChange(newIds);
                                 }}
                               >
-                                <Trash2 className="size-4" />
-                              </Button>
+                                <Trash2 />
+                              </IconButton>
                             </TableCell>
                           </TableRow>
                         );

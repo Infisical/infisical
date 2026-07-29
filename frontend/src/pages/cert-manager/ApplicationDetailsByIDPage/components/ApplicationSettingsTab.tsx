@@ -90,16 +90,20 @@ import {
 } from "@app/views/PkiAlertsV2Page/utils/pki-alert-formatters";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import { ConfigureEnrollmentModal } from "./ConfigureEnrollmentModal";
+import {
+  ConfigureEnrollmentModal,
+  EnrollmentMethod,
+  METHOD_LABELS
+} from "./ConfigureEnrollmentModal";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
 
 const methodBadges = (p: TPkiApplicationProfile) => {
-  const methods: string[] = [];
-  if (p.apiConfigId) methods.push("API");
-  if (p.estConfigId) methods.push("EST");
-  if (p.acmeConfigId) methods.push("ACME");
-  if (p.scepConfigId) methods.push("SCEP");
+  const methods: EnrollmentMethod[] = [];
+  if (p.apiConfigId) methods.push("api");
+  if (p.estConfigId) methods.push("est");
+  if (p.acmeConfigId) methods.push("acme");
+  if (p.scepConfigId) methods.push("scep");
   return methods;
 };
 
@@ -398,6 +402,12 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
   const [profilesToAttach, setProfilesToAttach] = useState<{ value: string; label: string }[]>([]);
   const [profileToDetach, setProfileToDetach] = useState<TPkiApplicationProfile | null>(null);
   const [profileToConfigure, setProfileToConfigure] = useState<TPkiApplicationProfile | null>(null);
+  const [enrollmentMethodToOpen, setEnrollmentMethodToOpen] = useState<EnrollmentMethod>();
+
+  const openEnrollment = (profile: TPkiApplicationProfile, method?: EnrollmentMethod) => {
+    setEnrollmentMethodToOpen(method);
+    setProfileToConfigure(profile);
+  };
 
   const { data: profileList } = useListCertificateProfiles({ limit: 100 });
   const attachMutation = useAttachPkiApplicationProfiles();
@@ -607,39 +617,37 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                       <TableCell>
                         {/* eslint-disable-next-line no-nested-ternary */}
                         {canConfigureEnrollment ? (
-                          <button
-                            type="button"
-                            onClick={() => setProfileToConfigure(p)}
-                            className="group -mx-2 inline-flex items-center gap-2 rounded-sm px-2 py-1 text-left transition-colors hover:bg-mineshaft-700/50"
-                            aria-label={
-                              hasMethods
-                                ? `Edit enrollment for ${p.profileSlug}`
-                                : `Configure enrollment for ${p.profileSlug}`
-                            }
-                          >
+                          <div className="flex flex-wrap items-center gap-1.5">
                             {hasMethods ? (
-                              <>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {methods.map((m) => (
-                                    <Badge key={m} variant="neutral">
-                                      {m}
-                                    </Badge>
-                                  ))}
-                                </div>
-                                <PencilIcon className="size-3 shrink-0 text-accent opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-                              </>
+                              methods.map((m) => (
+                                <Badge key={m} variant="neutral" asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEnrollment(p, m)}
+                                    aria-label={`Edit ${METHOD_LABELS[m]} enrollment for ${p.profileSlug}`}
+                                  >
+                                    {METHOD_LABELS[m]}
+                                  </button>
+                                </Badge>
+                              ))
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-xs font-medium text-accent transition-colors group-hover:border-mineshaft-500 group-hover:text-foreground">
-                                <Settings2Icon className="size-3.5" />
-                                Configure
-                              </span>
+                              <Badge variant="outline" asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => openEnrollment(p)}
+                                  aria-label={`Configure enrollment for ${p.profileSlug}`}
+                                >
+                                  <Settings2Icon />
+                                  Configure
+                                </button>
+                              </Badge>
                             )}
-                          </button>
+                          </div>
                         ) : hasMethods ? (
                           <div className="flex flex-wrap gap-1.5">
                             {methods.map((m) => (
                               <Badge key={m} variant="neutral">
-                                {m}
+                                {METHOD_LABELS[m]}
                               </Badge>
                             ))}
                           </div>
@@ -657,7 +665,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="min-w-48" align="end" sideOffset={2}>
                               {canConfigureEnrollment ? (
-                                <DropdownMenuItem onClick={() => setProfileToConfigure(p)}>
+                                <DropdownMenuItem onClick={() => openEnrollment(p)}>
                                   <PencilIcon />
                                   Configure Enrollment
                                 </DropdownMenuItem>
@@ -896,10 +904,14 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
       <ConfigureEnrollmentModal
         isOpen={Boolean(profileToConfigure)}
         onOpenChange={(open) => {
-          if (!open) setProfileToConfigure(null);
+          if (!open) {
+            setProfileToConfigure(null);
+            setEnrollmentMethodToOpen(undefined);
+          }
         }}
         applicationId={application.id}
         profile={profileToConfigure}
+        initialMethod={enrollmentMethodToOpen}
       />
     </div>
   );

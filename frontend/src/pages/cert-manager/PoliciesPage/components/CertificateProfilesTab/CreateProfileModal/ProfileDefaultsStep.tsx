@@ -14,6 +14,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  IconButton,
   Input,
   Select,
   SelectContent,
@@ -153,14 +154,14 @@ const AttributeListEditor = <T extends string>({
                 onItemsChange(next);
               }}
             />
-            <Button
+            <IconButton
               type="button"
               variant="ghost"
-              size="sm"
+              aria-label="Remove entry"
               onClick={() => onItemsChange(items.filter((_, i) => i !== index))}
             >
-              <Trash2 className="size-4" />
-            </Button>
+              <Trash2 />
+            </IconButton>
           </div>
         );
       })}
@@ -232,14 +233,19 @@ type Props = {
   setValue: UseFormSetValue<FormData>;
   policyConstraints: PolicyConstraints;
   isAwsAcmPublicCa: boolean;
+  isExternalAdcsCa: boolean;
 };
+
+const EXTERNAL_ADCS_HINT =
+  "Validity, key usages, extended key usages and basic constraints are controlled by the external CA's certificate template.";
 
 export const ProfileDefaultsStep = ({
   control,
   watch,
   setValue,
   policyConstraints,
-  isAwsAcmPublicCa
+  isAwsAcmPublicCa,
+  isExternalAdcsCa
 }: Props) => {
   const watchedPolicyId = watch("certificatePolicyId");
   const watchedDefaultsIsCA = watch("defaults.basicConstraints.isCA") || false;
@@ -288,34 +294,38 @@ export const ProfileDefaultsStep = ({
 
   return (
     <div className="space-y-8">
-      <Controller
-        name="defaults.ttlDays"
-        control={control}
-        render={({ field, fieldState: { error } }) => (
-          <Field>
-            <FieldLabel>Time to Live (TTL) in Days</FieldLabel>
-            <FieldContent>
-              <Input
-                type="number"
-                placeholder="e.g. 365"
-                value={field.value == null ? "" : field.value}
-                isError={Boolean(error)}
-                disabled={isAwsAcmPublicCa}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  field.onChange(val === "" ? null : Number(val));
-                }}
-              />
-              <FieldDescription>
-                {isAwsAcmPublicCa
-                  ? "AWS ACM Public CA issues certificates with a fixed 198-day validity. This field cannot be changed."
-                  : "Fallback validity period used when not explicitly specified in a certificate request. Leave empty for no TTL default."}
-              </FieldDescription>
-              <FieldError errors={[error]} />
-            </FieldContent>
-          </Field>
-        )}
-      />
+      {isExternalAdcsCa && <p className="text-xs text-muted">{EXTERNAL_ADCS_HINT}</p>}
+
+      {!isExternalAdcsCa && (
+        <Controller
+          name="defaults.ttlDays"
+          control={control}
+          render={({ field, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>Time to Live (TTL) in Days</FieldLabel>
+              <FieldContent>
+                <Input
+                  type="number"
+                  placeholder="e.g. 365"
+                  value={field.value == null ? "" : field.value}
+                  isError={Boolean(error)}
+                  disabled={isAwsAcmPublicCa}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    field.onChange(val === "" ? null : Number(val));
+                  }}
+                />
+                <FieldDescription>
+                  {isAwsAcmPublicCa
+                    ? "AWS ACM Public CA issues certificates with a fixed 198-day validity. This field cannot be changed."
+                    : "Fallback validity period used when not explicitly specified in a certificate request. Leave empty for no TTL default."}
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
+          )}
+        />
+      )}
 
       {policyConstraints.shouldShowSubjectSection && (
         <AttributeListEditor<CertSubjectAttributeType>
@@ -374,7 +384,7 @@ export const ProfileDefaultsStep = ({
         />
       )}
 
-      {(policyConstraints.allowedSignatureAlgorithms.length > 0 ||
+      {((!isExternalAdcsCa && policyConstraints.allowedSignatureAlgorithms.length > 0) ||
         policyConstraints.allowedKeyAlgorithms.length > 0) && (
         <div>
           <SectionHeading
@@ -382,7 +392,7 @@ export const ProfileDefaultsStep = ({
             description="Default signature and key algorithms applied when a request omits them."
           />
           <div className="mt-4 flex gap-3">
-            {policyConstraints.allowedSignatureAlgorithms.length > 0 && (
+            {!isExternalAdcsCa && policyConstraints.allowedSignatureAlgorithms.length > 0 && (
               <Field className="flex-1">
                 <FieldLabel>Signature Algorithm</FieldLabel>
                 <FieldContent>
@@ -436,7 +446,7 @@ export const ProfileDefaultsStep = ({
         </div>
       )}
 
-      {filteredKeyUsages.length > 0 && (
+      {!isExternalAdcsCa && filteredKeyUsages.length > 0 && (
         <KeyUsageGrid
           title="Key Usages"
           description="Key usages applied by default to issued certificates."
@@ -448,7 +458,7 @@ export const ProfileDefaultsStep = ({
         />
       )}
 
-      {filteredExtendedKeyUsages.length > 0 && (
+      {!isExternalAdcsCa && filteredExtendedKeyUsages.length > 0 && (
         <KeyUsageGrid
           title="Extended Key Usages"
           description="Extended key usages applied by default to issued certificates."
@@ -460,7 +470,7 @@ export const ProfileDefaultsStep = ({
         />
       )}
 
-      {policyConstraints.policyAllowsCA && (
+      {!isExternalAdcsCa && policyConstraints.policyAllowsCA && (
         <div>
           <SectionHeading
             title="Basic Constraints"

@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { EllipsisIcon, HistoryIcon, PencilIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  CircleHelpIcon,
+  EllipsisIcon,
+  HistoryIcon,
+  PencilIcon,
+  RotateCwIcon,
+  ScrollTextIcon,
+  Trash2Icon,
+  TriangleAlertIcon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
@@ -7,7 +17,6 @@ import {
   CertificateDisplayName,
   getCertificateDisplayName
 } from "@app/components/utilities/certificateDisplayUtils";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Card,
@@ -16,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
   CopyButton,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,6 +67,14 @@ const getSyncStatusVariant = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Failed) return "danger";
   if (status === CertificateSyncStatus.Running) return "neutral";
   return "info";
+};
+
+const getSyncStatusIcon = (status?: CertificateSyncStatus | null) => {
+  if (status === CertificateSyncStatus.Succeeded) return <CheckCircle2Icon />;
+  if (status === CertificateSyncStatus.Failed) return <TriangleAlertIcon />;
+  if (status === CertificateSyncStatus.Running || status === CertificateSyncStatus.Pending)
+    return <RotateCwIcon />;
+  return <CircleHelpIcon />;
 };
 
 const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
@@ -291,7 +309,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                             <div className="flex items-center gap-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="truncate text-xs text-muted">
+                                  <span className="truncate text-xs">
                                     {syncCert.externalIdentifier}
                                   </span>
                                 </TooltipTrigger>
@@ -305,7 +323,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               />
                             </div>
                           ) : (
-                            <span className="text-xs text-muted">-</span>
+                            <span className="text-xs">-</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -314,19 +332,23 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-block">
-                                  <Badge variant="danger">Failed</Badge>
+                                  <Badge variant="danger">
+                                    <TriangleAlertIcon />
+                                    Failed
+                                  </Badge>
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>{syncCert.lastSyncMessage}</TooltipContent>
                             </Tooltip>
                           ) : (
                             <Badge variant={getSyncStatusVariant(syncCert.syncStatus)}>
+                              {getSyncStatusIcon(syncCert.syncStatus)}
                               {getSyncStatusText(syncCert.syncStatus)}
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell>
-                          <span className={isExpired ? "text-danger" : "text-muted"}>
+                          <span className={isExpired ? "text-danger" : undefined}>
                             {syncCert.certificateNotAfter
                               ? new Date(syncCert.certificateNotAfter).toLocaleDateString()
                               : "Unknown"}
@@ -410,21 +432,21 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
         }}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setCertificateToDelete(null);
+        onOpenChange={(isOpen) => {
+          setIsDeleteModalOpen(isOpen);
+          if (!isOpen) setCertificateToDelete(null);
         }}
         title="Remove Certificate from Sync"
-        subTitle={`Are you sure you want to remove "${certificateToDelete?.displayName}" from this PKI sync?`}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
+        description={`Are you sure you want to remove "${certificateToDelete?.displayName}" from this certificate sync?`}
+        confirmKey="confirm"
+        onConfirm={async () => {
           if (certificateToDelete) {
             await handleRemoveCertificate(certificateToDelete.id);
           }
         }}
-        buttonText="Remove Certificate"
+        confirmLabel="Remove Certificate"
       />
     </>
   );

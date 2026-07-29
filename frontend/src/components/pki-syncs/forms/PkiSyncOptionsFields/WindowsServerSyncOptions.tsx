@@ -38,7 +38,7 @@ export const WindowsServerSyncOptions = ({ isUpdate }: Props) => {
       <ServerExportFormatFields isUpdate={isUpdate} />
       <Field className="mb-4">
         <FieldLabel>
-          File Permissions <span className="text-muted">(optional)</span>
+          File permissions <span className="text-muted">(optional)</span>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info />

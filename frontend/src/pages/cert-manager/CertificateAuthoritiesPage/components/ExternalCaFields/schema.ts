@@ -17,15 +17,19 @@ const baseSchema = z.object({
 const acmeConfigurationSchema = z
   .object({
     dnsAppConnection: z.object({
-      id: z.string(),
+      id: z.string().min(1, "DNS Connection is required"),
       name: z.string()
     }),
     dnsProviderConfig: z.object({
       provider: z.nativeEnum(AcmeDnsProvider),
-      hostedZoneId: z.string()
+      hostedZoneId: z.string().trim().min(1, "Hosted Zone ID is required")
     }),
-    directoryUrl: z.string(),
-    accountEmail: z.string(),
+    directoryUrl: z.string().trim().min(1, "Directory URL is required").url("Must be a valid URL"),
+    accountEmail: z
+      .string()
+      .trim()
+      .min(1, "Account Email is required")
+      .email("Must be a valid email address"),
     eabKid: z.string().optional(),
     eabHmacKey: z.string().optional(),
     dnsResolver: z
@@ -48,7 +52,7 @@ const acmeConfigurationSchema = z
 
 const azureAdCsConfigurationSchema = z.object({
   azureAdcsConnection: z.object({
-    id: z.string(),
+    id: z.string().min(1, "Azure ADCS Connection is required"),
     name: z.string()
   })
 });

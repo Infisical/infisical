@@ -69,6 +69,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   applicationId: string;
   profile: TPkiApplicationProfile | null;
+  initialMethod?: EnrollmentMethod;
 };
 
 const errorText = (err: unknown, fallback: string) =>
@@ -262,20 +263,20 @@ const ApiPanel = ({
           control={control}
           name="autoRenew"
           render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <Field orientation="horizontal">
+              <FieldContent>
                 <Label>Auto-renew</Label>
-                <p className="text-xs text-accent">
+                <FieldDescription>
                   Automatically renew certificates issued via this profile before they expire.
-                </p>
-              </div>
+                </FieldDescription>
+              </FieldContent>
               <Switch
                 variant="project"
                 id="api-auto-renew"
                 checked={field.value}
                 onCheckedChange={field.onChange}
               />
-            </div>
+            </Field>
           )}
         />
         {autoRenew && (
@@ -445,20 +446,20 @@ const EstPanel = ({
           control={control}
           name="disableBootstrapCaValidation"
           render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <FieldLabel>Disable bootstrap CA validation</FieldLabel>
-                <p className="text-xs text-accent">
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label>Disable bootstrap CA validation</Label>
+                <FieldDescription>
                   Allow EST clients to skip server-certificate validation during enrollment.
-                </p>
-              </div>
+                </FieldDescription>
+              </FieldContent>
               <Switch
                 variant="project"
                 id="est-disable-bootstrap"
                 checked={field.value}
                 onCheckedChange={field.onChange}
               />
-            </div>
+            </Field>
           )}
         />
       </SectionCard>
@@ -630,13 +631,13 @@ const AcmePanel = ({
           control={control}
           name="skipDnsOwnershipVerification"
           render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <FieldLabel>Skip DNS ownership verification</FieldLabel>
-                <p className="text-xs text-accent">
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label>Skip DNS ownership verification</Label>
+                <FieldDescription>
                   Skip DNS-01 / HTTP-01 challenge enforcement during enrollment.
-                </p>
-              </div>
+                </FieldDescription>
+              </FieldContent>
               {skipEab ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -669,20 +670,20 @@ const AcmePanel = ({
                   }}
                 />
               )}
-            </div>
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="skipEabBinding"
           render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <FieldLabel>Skip EAB binding</FieldLabel>
-                <p className="text-xs text-accent">
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label>Skip EAB binding</Label>
+                <FieldDescription>
                   Allow ACME accounts to register without providing an EAB key.
-                </p>
-              </div>
+                </FieldDescription>
+              </FieldContent>
               {skipDns ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -715,7 +716,7 @@ const AcmePanel = ({
                   }}
                 />
               )}
-            </div>
+            </Field>
           )}
         />
       </SectionCard>
@@ -974,40 +975,40 @@ const ScepPanel = ({
           control={control}
           name="includeCaCertInResponse"
           render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <FieldLabel>Include CA cert in response</FieldLabel>
-                <p className="text-xs text-accent">
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label>Include CA cert in response</Label>
+                <FieldDescription>
                   Return the issuing CA certificate inline alongside the issued cert.
-                </p>
-              </div>
+                </FieldDescription>
+              </FieldContent>
               <Switch
                 variant="project"
                 id="scep-include-ca"
                 checked={field.value}
                 onCheckedChange={field.onChange}
               />
-            </div>
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="allowCertBasedRenewal"
           render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <FieldLabel>Allow cert-based renewal</FieldLabel>
-                <p className="text-xs text-accent">
+            <Field orientation="horizontal">
+              <FieldContent>
+                <Label>Allow cert-based renewal</Label>
+                <FieldDescription>
                   Let clients renew using their existing certificate as authentication.
-                </p>
-              </div>
+                </FieldDescription>
+              </FieldContent>
               <Switch
                 variant="project"
                 id="scep-cert-renewal"
                 checked={field.value}
                 onCheckedChange={field.onChange}
               />
-            </div>
+            </Field>
           )}
         />
       </SectionCard>
@@ -1027,9 +1028,9 @@ const ScepPanel = ({
   );
 };
 
-type EnrollmentMethod = "api" | "est" | "acme" | "scep";
+export type EnrollmentMethod = "api" | "est" | "acme" | "scep";
 
-const METHOD_LABELS: Record<EnrollmentMethod, string> = {
+export const METHOD_LABELS: Record<EnrollmentMethod, string> = {
   api: "API",
   est: "EST",
   acme: "ACME",
@@ -1077,7 +1078,8 @@ export const ConfigureEnrollmentModal = ({
   isOpen,
   onOpenChange,
   applicationId,
-  profile
+  profile,
+  initialMethod
 }: Props) => {
   const profileId = profile?.profileId ?? "";
   const { data, isLoading } = useGetPkiApplicationEnrollment(applicationId, profileId);
@@ -1088,20 +1090,20 @@ export const ConfigureEnrollmentModal = ({
   if (data?.acmeConfigured) configuredMethods.push("acme");
   if (data?.scepConfigured) configuredMethods.push("scep");
 
-  const [pendingMethod, setPendingMethod] = useState<EnrollmentMethod | null>(null);
+  const [pendingMethods, setPendingMethods] = useState<EnrollmentMethod[]>([]);
   const [activeTab, setActiveTab] = useState<EnrollmentMethod | "">("");
 
   const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
   const visibleMethods = ALL_ORDER.filter(
-    (m) => configuredMethods.includes(m) || pendingMethod === m
+    (m) => configuredMethods.includes(m) || pendingMethods.includes(m)
   );
   const addableMethods = ALL_ORDER.filter(
-    (m) => !configuredMethods.includes(m) && pendingMethod !== m
+    (m) => !configuredMethods.includes(m) && !pendingMethods.includes(m)
   );
 
   useEffect(() => {
     if (!isOpen) {
-      setPendingMethod(null);
+      setPendingMethods([]);
       setActiveTab("");
     }
   }, [isOpen, profileId]);
@@ -1112,18 +1114,18 @@ export const ConfigureEnrollmentModal = ({
       return;
     }
     if (!activeTab || !visibleMethods.includes(activeTab as EnrollmentMethod)) {
-      setActiveTab(visibleMethods[0]);
+      setActiveTab(
+        initialMethod && visibleMethods.includes(initialMethod) ? initialMethod : visibleMethods[0]
+      );
     }
-  }, [visibleMethods, activeTab]);
+  }, [visibleMethods, activeTab, initialMethod]);
 
   useEffect(() => {
-    if (pendingMethod && configuredMethods.includes(pendingMethod)) {
-      setPendingMethod(null);
-    }
-  }, [pendingMethod, data]);
+    setPendingMethods((prev) => prev.filter((m) => !configuredMethods.includes(m)));
+  }, [data]);
 
   const handleAdd = (method: EnrollmentMethod) => {
-    setPendingMethod(method);
+    setPendingMethods((prev) => (prev.includes(method) ? prev : [...prev, method]));
     setActiveTab(method);
   };
 
@@ -1158,6 +1160,9 @@ export const ConfigureEnrollmentModal = ({
                     {visibleMethods.map((m) => (
                       <Tab key={m} value={m}>
                         {METHOD_LABELS[m]}
+                        {pendingMethods.includes(m) && (
+                          <span className="ml-1.5 text-xs text-muted">(not enabled)</span>
+                        )}
                       </Tab>
                     ))}
                   </TabList>

@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -823,8 +824,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         <SheetHeader className="border-b border-border">
           {showGrid ? (
             <>
-              <SheetTitle>Create External CA</SheetTitle>
-              <SheetDescription>Select the certificate authority to connect to.</SheetDescription>
+              <SheetTitle>Connect External CA</SheetTitle>
+              <SheetDescription>
+                Select the third-party certificate authority to connect to. Infisical issues through
+                it rather than hosting the signing key.
+              </SheetDescription>
             </>
           ) : (
             <>
@@ -901,6 +905,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                       disabled={Boolean(ca)}
                       isError={Boolean(error)}
                     />
+                    {!error && (
+                      <FieldDescription>
+                        Must be slug-friendly: lowercase letters, numbers, and hyphens only.
+                      </FieldDescription>
+                    )}
                     <FieldError errors={[error]} />
                   </Field>
                 )}

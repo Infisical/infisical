@@ -476,7 +476,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const queryClient = useQueryClient();
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
-  const currentStep = STEPS[selectedStepIndex];
 
   const canCreatePolicy = permission.can(
     ProjectPermissionCertificatePolicyActions.Create,
@@ -494,7 +493,10 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
   const isEdit = mode === "edit" && profile;
   const isClone = mode === "clone" && profile;
-  const isFinalStep = selectedStepIndex === STEPS.length - 1;
+
+  const steps = useMemo(() => (isEdit ? STEPS.filter((s) => s.key !== "issuer") : STEPS), [isEdit]);
+  const currentStep = steps[selectedStepIndex];
+  const isFinalStep = selectedStepIndex === steps.length - 1;
 
   const certificateAuthorities = (allCaData || []).map((ca) => ({
     ...ca,
@@ -726,7 +728,16 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
     }
 
     let effectiveDefaults = data.defaults;
-    if (effectiveDefaults) {
+    if (effectiveDefaults && (isAzureAdcsCa || isAdcsCa)) {
+      const adcsSafeDefaults = { ...effectiveDefaults };
+      delete adcsSafeDefaults.ttlDays;
+      delete adcsSafeDefaults.signatureAlgorithm;
+      delete adcsSafeDefaults.keyUsages;
+      delete adcsSafeDefaults.extendedKeyUsages;
+      delete adcsSafeDefaults.basicConstraints;
+      effectiveDefaults = adcsSafeDefaults;
+    }
+    if (effectiveDefaults && !(isAzureAdcsCa || isAdcsCa)) {
       const nextDefaults = { ...effectiveDefaults };
       if (policyConstraints.requiredKeyUsages.length) {
         const keyUsages = { ...(nextDefaults.keyUsages || {}) };
@@ -800,15 +811,21 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   };
 
   const isStepValid = async (index: number) => {
-    const { fields } = STEPS[index];
+    const { fields } = steps[index];
     if (fields.length === 0) return true;
     return trigger(fields as any);
   };
 
   const goNext = async () => {
     const isValid = await isStepValid(selectedStepIndex);
-    if (!isValid) return;
-    setSelectedStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1));
+    if (!isValid) {
+      createNotification({
+        text: "Please fix the highlighted fields before continuing.",
+        type: "error"
+      });
+      return;
+    }
+    setSelectedStepIndex((prev) => Math.min(prev + 1, steps.length - 1));
   };
 
   const goBack = () => {
@@ -877,7 +894,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 }}
               >
                 <StepperList>
-                  {STEPS.map((s, i) => (
+                  {steps.map((s, i) => (
                     <StepperStep
                       key={s.key}
                       index={i}
@@ -895,7 +912,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 
-              {selectedStepIndex === 0 && (
+              {currentStep.key === "details" && (
                 <div className="space-y-5">
                   <Controller
                     control={control}
@@ -939,7 +956,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 </div>
               )}
 
-              {selectedStepIndex === 1 && (
+              {currentStep.key === "issuer" && (
                 <div className="space-y-5">
                   <Controller
                     control={control}
@@ -952,7 +969,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         <FieldContent>
                           <Select
                             value={value}
-                            disabled={Boolean(isEdit)}
                             onValueChange={(next) => {
                               if (next === IssuerType.SELF_SIGNED) {
                                 setValue("certificateAuthorityId", "");
@@ -1013,7 +1029,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                                 groupBy={hasCas ? "groupType" : undefined}
                                 getGroupHeaderLabel={hasCas ? getGroupHeaderLabel : undefined}
                                 placeholder="Select a certificate authority"
-                                isDisabled={Boolean(isEdit)}
                                 isError={Boolean(error)}
                                 className="w-full"
                               />
@@ -1084,7 +1099,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                                 ? "No certificate policies available"
                                 : "Select a certificate policy"
                             }
-                            isDisabled={Boolean(isEdit)}
                             isError={Boolean(error)}
                             components={{ Option: CertificatePolicyOption }}
                             className="w-full"
@@ -1102,13 +1116,14 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 </div>
               )}
 
-              {selectedStepIndex === 2 && (
+              {currentStep.key === "certificate-defaults" && (
                 <ProfileDefaultsStep
                   control={control}
                   watch={watch}
                   setValue={setValue}
                   policyConstraints={policyConstraints}
                   isAwsAcmPublicCa={isAwsAcmPublicCa}
+                  isExternalAdcsCa={isAzureAdcsCa || isAdcsCa}
                 />
               )}
             </div>
@@ -1133,7 +1148,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             <span className="text-xs text-muted" />
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
-                Step {selectedStepIndex + 1} of {STEPS.length}
+                Step {selectedStepIndex + 1} of {steps.length}
               </span>
               {selectedStepIndex > 0 && (
                 <Button type="button" variant="outline" onClick={goBack}>
@@ -1149,7 +1164,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   isDisabled={isSubmitting}
                   onClick={handleSubmit(onFormSubmit, (errors) => {
                     const errorKeys = Object.keys(errors);
-                    const stepIndex = STEPS.findIndex((s) =>
+                    const stepIndex = steps.findIndex((s) =>
                       s.fields.some((fld) => errorKeys.includes(fld))
                     );
                     if (stepIndex >= 0) setSelectedStepIndex(stepIndex);

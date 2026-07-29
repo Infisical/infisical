@@ -31,7 +31,7 @@ export const LinuxServerSyncOptions = ({ isUpdate }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>
-                File Permissions <span className="text-muted">(optional)</span>
+                File permissions <span className="text-muted">(optional)</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />
@@ -57,7 +57,7 @@ export const LinuxServerSyncOptions = ({ isUpdate }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>
-                Private Key Permissions <span className="text-muted">(optional)</span>
+                Private key permissions <span className="text-muted">(optional)</span>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />

@@ -38,7 +38,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
             <FieldLabel>
-              Export Format
+              Export format
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info />
@@ -72,7 +72,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>
-                Certificate File Extension
+                Certificate file extension
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />
@@ -108,7 +108,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
             <Field className="mb-4">
               <Field orientation="horizontal">
                 <FieldContent>
-                  <Label htmlFor="combine-certificate-chain">Combine Certificate and Chain</Label>
+                  <Label htmlFor="combine-certificate-chain">Combine certificate and chain</Label>
                   <FieldDescription>
                     When enabled, the certificate file holds the leaf certificate followed by the
                     chain (a full-chain file, as nginx expects) and no separate chain file is
@@ -134,7 +134,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
               <FieldLabel>
-                PKCS#12 Password
+                PKCS#12 password
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info />
@@ -166,7 +166,7 @@ export const ServerExportFormatFields = ({ isUpdate }: Props) => {
             <Field className="mb-4">
               <Field orientation="horizontal">
                 <FieldContent>
-                  <Label htmlFor="include-private-key">Include Private Key</Label>
+                  <Label htmlFor="include-private-key">Include private key</Label>
                   <FieldDescription>
                     When enabled, the certificate&apos;s private key is written alongside the
                     certificate as a .key file. The sync fails for a certificate whose key is not

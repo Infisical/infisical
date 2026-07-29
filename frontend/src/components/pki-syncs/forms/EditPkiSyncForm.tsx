@@ -166,7 +166,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
                 <Field className="mt-2">
                   <Field orientation="horizontal">
                     <FieldContent>
-                      <Label htmlFor="auto-sync-enabled">Auto-sync on changes</Label>
+                      <Label htmlFor="auto-sync-enabled">Auto-sync on Change</Label>
                       <FieldDescription>
                         When certificates in the selected list change, sync automatically. Turn off
                         to only sync manually.

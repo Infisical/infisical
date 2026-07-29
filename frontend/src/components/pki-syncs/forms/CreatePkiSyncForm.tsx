@@ -1,9 +1,19 @@
 import { useState } from "react";
 import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangleIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
   Button,
   DocumentationLinkBadge,
   Field,
@@ -143,6 +153,7 @@ export const CreatePkiSyncForm = ({
   const { name: destinationName } = PKI_SYNC_MAP[destination];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const FORM_TABS = getFormTabs(destination);
 
   const { syncOption } = usePkiSyncOption(destination);
@@ -210,16 +221,15 @@ export const CreatePkiSyncForm = ({
         }`,
         type: "success"
       });
+      setShowConfirmation(false);
       onComplete(pkiSync);
     } catch {
-      createNotification({
-        text: `Failed to create ${destinationName} Certificate Sync`,
-        type: "error"
-      });
+      /* empty */
     }
   };
 
-  const { handleSubmit, trigger, control, getValues, setError } = formMethods;
+  const { handleSubmit, trigger, control, getValues, setError, watch } = formMethods;
+  const canRemoveCertificates = watch("syncOptions.canRemoveCertificates");
 
   const isStepValid = async (index: number) => {
     const isValid = await trigger(FORM_TABS[index].fields);
@@ -252,7 +262,7 @@ export const CreatePkiSyncForm = ({
 
   const handleNext = async () => {
     if (isFinalStep) {
-      await handleSubmit(onSubmit)();
+      setShowConfirmation(true);
       return;
     }
 
@@ -323,7 +333,7 @@ export const CreatePkiSyncForm = ({
                     <Field className="mt-2">
                       <Field orientation="horizontal">
                         <FieldContent>
-                          <Label htmlFor="auto-sync-enabled">Auto-sync on changes</Label>
+                          <Label htmlFor="auto-sync-enabled">Auto-sync on Change</Label>
                           <FieldDescription>
                             When certificates in the selected list change, sync automatically. Turn
                             off to only sync manually.
@@ -387,6 +397,47 @@ export const CreatePkiSyncForm = ({
           </Button>
         </div>
       </div>
+
+      <AlertDialog
+        open={showConfirmation}
+        onOpenChange={(open) => {
+          if (!createPkiSync.isPending) setShowConfirmation(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <AlertTriangleIcon className="text-warning" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Certificate Sync Behavior</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-2">
+                <p>Infisical is the source of truth for synced destinations.</p>
+                <p>
+                  Certificates in the destination will be overwritten, and any direct edits there
+                  may be overwritten by future syncs.
+                </p>
+                {syncOption?.canRemoveCertificates && canRemoveCertificates && (
+                  <p>
+                    Certificates in {destinationName} that are no longer active in Infisical will be
+                    removed.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={createPkiSync.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="project"
+              isDisabled={createPkiSync.isPending}
+              onClick={handleSubmit(onSubmit)}
+            >
+              I Understand
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 };

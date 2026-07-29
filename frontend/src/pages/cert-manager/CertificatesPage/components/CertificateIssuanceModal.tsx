@@ -19,6 +19,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  IconButton,
   Input,
   Select,
   SelectContent,
@@ -970,15 +971,14 @@ export const CertificateIssuanceModal = ({
                                     />
                                   )}
                                 />
-                                <Button
+                                <IconButton
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
                                   aria-label="Remove metadata entry"
                                   onClick={() => removeMetadata(index)}
                                 >
-                                  <Trash2 className="size-4" />
-                                </Button>
+                                  <Trash2 />
+                                </IconButton>
                               </div>
                             ))}
                             <Button
