@@ -380,7 +380,6 @@ import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal"
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { licenseClientFactory } from "@app/services/license-client";
-import { dualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
 import {
   buildMeteredFeatures,
   buildUsageReporter,
@@ -802,12 +801,9 @@ export const registerRoutes = async (
   // is the single read primitive; falls back to feature defaults until the server is configured.
   const licenseClient = licenseClientFactory({ envConfig, keyStore });
 
-  // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
-  const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
-
   // Created before licenseService so the latter can emit the v2 user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, envConfig });
 
   const licenseService = licenseServiceFactory({
     permissionService,
@@ -817,7 +813,6 @@ export const registerRoutes = async (
     projectDAL,
     envConfig,
     licenseClient,
-    licenseDualRead,
     usageMeteringService
   });
 
@@ -836,9 +831,11 @@ export const registerRoutes = async (
     cronJob,
     keyStore,
     orgDAL,
+    licenseService,
     usageMeteringService,
     meteredFeatures,
     usageReporter,
+    isCloud: envConfig.isCloud,
     source: usageSource
   });
 
