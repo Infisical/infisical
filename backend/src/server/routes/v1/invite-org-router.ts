@@ -81,7 +81,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       if (req.body.projectIds?.length) {
         for await (const projectId of req.body.projectIds) {
           try {
-            await server.services.membershipUser.createMembership({
+            const { memberships } = await server.services.membershipUser.createMembership({
               permission: req.permission,
               scopeData: {
                 scope: AccessScope.Project,
@@ -93,6 +93,24 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
                 roles: [{ isTemporary: false, role: ProjectMembershipRole.Member }]
               }
             });
+
+            if (memberships.length) {
+              await server.services.auditLog.createAuditLog({
+                ...req.auditLogInfo,
+                orgId: req.permission.orgId,
+                projectId,
+                event: {
+                  type: EventType.ADD_BATCH_PROJECT_MEMBER,
+                  metadata: {
+                    members: memberships.map(({ actorUserId, id }) => ({
+                      userId: actorUserId || "",
+                      membershipId: id,
+                      email: ""
+                    }))
+                  }
+                }
+              });
+            }
           } catch (err) {
             logger.error(err, `Failed to grant invitees access to project [projectId=${projectId}]`);
             failedProjectIds.push(projectId);
