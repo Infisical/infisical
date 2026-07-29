@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -852,4 +853,65 @@ func TestExpand_NestedRelativeMutualCycleAcrossEnvs(t *testing.T) {
 	expander.Expand()
 
 	assert.False(t, hasReferences(secrets[0].Value))
+}
+
+func TestExpand_SelfAbsoluteRefKeepsImportFallback(t *testing.T) {
+	// dev / imports staging /. An absolute reference that points back at the
+	// requested board must still resolve its nested relative references through
+	// the board's import fallback.
+	secrets := []*ProcessedSecret{
+		newTestSecret("IMPORT_ONLY", "from-import", "staging", "/"),
+		newTestSecret("ROOT", "${dev.B}", "dev", "/"),
+	}
+
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		BoardEnv:  "dev",
+		BoardPath: "/",
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				// IMPORT_ONLY does not exist in the dev folder itself.
+				if ref.Env == "dev" && ref.Path == "/" && ref.Key == "B" {
+					out = append(out, newTestSecret("B", "x-${IMPORT_ONLY}", "dev", "/"))
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.Equal(t, "x-from-import", secrets[1].Value)
+}
+
+func TestExpand_DepthLimitDoesNotLeakForeignRelativeRefs(t *testing.T) {
+	// A foreign chain longer than maxExpansionDepth must not hand an unresolved
+	// relative reference back to the requesting board, where a later pass would
+	// resolve it locally.
+	secrets := []*ProcessedSecret{
+		newTestSecret("K11", "DEV-VALUE", "dev", "/"),
+		newTestSecret("ROOT", "${prod.K0}", "dev", "/"),
+	}
+
+	expander := NewSecretExpander(secrets, ExpandOpts{
+		BoardEnv:  "dev",
+		BoardPath: "/",
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var out []*ProcessedSecret
+			for _, ref := range refs {
+				if ref.Env != "prod" {
+					continue
+				}
+				for i := range 15 {
+					if ref.Key == fmt.Sprintf("K%d", i) {
+						out = append(out, newTestSecret(ref.Key, fmt.Sprintf("${K%d}", i+1), "prod", "/"))
+					}
+				}
+			}
+			return out
+		},
+	})
+	expander.Expand()
+
+	assert.NotContains(t, secrets[1].Value, "DEV-VALUE")
+	assert.False(t, hasReferences(secrets[1].Value), "unresolved reference escaped to the requesting board")
 }

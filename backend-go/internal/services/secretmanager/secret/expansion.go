@@ -19,6 +19,13 @@ func (r AbsoluteSecretRef) CacheKey() string {
 
 // ExpandOpts configures the expansion behavior.
 type ExpandOpts struct {
+	// BoardEnv and BoardPath identify the requested board. An absolute
+	// reference that points back at it resolves its nested relative references
+	// through localLookup, keeping the board's import fallback and priority
+	// ordering. Leave empty to treat every absolute reference as foreign.
+	BoardEnv  string
+	BoardPath string
+
 	// CanAccessAbsolute checks if the actor can access an absolute reference.
 	// Called AFTER fetching, with actual tags from the database.
 	// Return false to deny (ref becomes empty string and is tracked as denied).
@@ -180,6 +187,16 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 	return result
 }
 
+// contextFor returns the expansion context for a value fetched from another
+// board. An absolute reference that resolves back to the requested board keeps
+// the local context so its imports and priority ordering still apply.
+func (e *SecretExpander) contextFor(sec *ProcessedSecret) expansionCtx {
+	if sec.Environment == e.opts.BoardEnv && sec.SecretPath == e.opts.BoardPath {
+		return expansionCtx{local: true}
+	}
+	return expansionCtx{env: sec.Environment, path: sec.SecretPath}
+}
+
 // expandValue recursively expands references in a value.
 // Returns the expanded string and any absolute refs that couldn't be resolved.
 //
@@ -193,6 +210,12 @@ func (e *SecretExpander) expandPass() []AbsoluteSecretRef {
 // behavior matching the Node.js implementation.
 func (e *SecretExpander) expandValue(value string, ctx expansionCtx, visited map[string]struct{}, depth int) (string, []AbsoluteSecretRef) {
 	if depth > maxExpansionDepth {
+		if !ctx.local {
+			// Relative references in a foreign value cannot be resolved past the
+			// depth limit. Leaving them in place would let a later pass resolve
+			// them against the requesting board, so blank them instead.
+			return blankRelativeRefs(value), nil
+		}
 		return value, nil
 	}
 
@@ -250,7 +273,7 @@ func (e *SecretExpander) expandValue(value string, ctx expansionCtx, visited map
 
 				if _, cyclic := visited[secretID]; !cyclic {
 					visited[secretID] = struct{}{}
-					expandedValue, moreNeeded := e.expandValue(sec.Value, expansionCtx{env: sec.Environment, path: sec.SecretPath}, visited, depth+1)
+					expandedValue, moreNeeded := e.expandValue(sec.Value, e.contextFor(sec), visited, depth+1)
 					delete(visited, secretID)
 
 					if len(moreNeeded) > 0 {
@@ -283,7 +306,7 @@ func (e *SecretExpander) expandValue(value string, ctx expansionCtx, visited map
 
 					if _, cyclic := visited[secretID]; !cyclic {
 						visited[secretID] = struct{}{}
-						expandedValue, moreNeeded := e.expandValue(sec.Value, expansionCtx{env: sec.Environment, path: sec.SecretPath}, visited, depth+1)
+						expandedValue, moreNeeded := e.expandValue(sec.Value, e.contextFor(sec), visited, depth+1)
 						delete(visited, secretID)
 
 						if len(moreNeeded) > 0 {
@@ -396,6 +419,17 @@ func (e *SecretExpander) replaceAbsoluteRefsWith(refs map[string]struct{}, repla
 			}
 		}
 	}
+}
+
+// blankRelativeRefs replaces relative references with empty string, leaving
+// absolute references untouched since those carry their own context.
+func blankRelativeRefs(value string) string {
+	return interpolationRegex.ReplaceAllStringFunc(value, func(syntax string) string {
+		if strings.Contains(interpolationRegex.FindStringSubmatch(syntax)[1], ".") {
+			return syntax
+		}
+		return ""
+	})
 }
 
 func hasReferences(value string) bool {
