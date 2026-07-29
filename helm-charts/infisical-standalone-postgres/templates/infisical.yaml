@@ -79,7 +79,7 @@ spec:
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
         {{- end }}
-        {{- if .Values.redis.useExistingRedisSecret.enabled }}
+        {{- if (.Values.redis.useExistingRedisSecret | default dict).enabled }}
         - name: REDIS_URL
           valueFrom:
             secretKeyRef:
