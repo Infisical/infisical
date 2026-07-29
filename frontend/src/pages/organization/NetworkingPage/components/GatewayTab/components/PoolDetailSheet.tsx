@@ -38,7 +38,10 @@ import {
   TableHead,
   TableHeader,
   TableHeadLabel,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgGatewayPoolPermissionActions,
@@ -235,7 +238,14 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span>{gw.name}</span>
-                          <Badge variant="neutral">V{gw.isV1 ? "1" : "2"}</Badge>
+                          {gw.isV1 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="neutral">V1</Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>Legacy</TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

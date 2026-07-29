@@ -32,9 +32,7 @@ export const GatewayHealthStatus = ({
         </Badge>
       </TooltipTrigger>
       <TooltipContent>
-        {heartbeatDate
-          ? `Last seen: ${format(heartbeatDate, "PPpp")} (${heartbeatDate.toUTCString()})`
-          : "No data available"}
+        {heartbeatDate ? `Last seen ${format(heartbeatDate, "PPp")}` : "No data available"}
       </TooltipContent>
     </Tooltip>
   );

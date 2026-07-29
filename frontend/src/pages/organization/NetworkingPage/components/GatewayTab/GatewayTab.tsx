@@ -350,9 +350,16 @@ export const GatewayTab = withPermission(
                                 </TooltipTrigger>
                                 <TooltipContent>{el.name}</TooltipContent>
                               </Tooltip>
-                              <Badge variant="neutral" className="shrink-0">
-                                V{el.isV1 ? "1" : "2"}
-                              </Badge>
+                              {el.isV1 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="neutral" className="shrink-0">
+                                      V1
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Legacy</TooltipContent>
+                                </Tooltip>
+                              )}
                             </div>
                           </TableCell>
                           {showPoolsTab && (
