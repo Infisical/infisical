@@ -13,14 +13,15 @@ type AnimatedCollapseProps = React.ComponentPropsWithoutRef<"div"> & {
 const AnimatedCollapse = React.forwardRef<HTMLDivElement, AnimatedCollapseProps>(
   ({ children, className, contentClassName, isOpen, variant = "default", ...props }, ref) => {
     const inertProps: { inert?: "" } = isOpen ? {} : { inert: "" };
-    const contentStateClassName =
-      variant === "subtle"
-        ? isOpen
-          ? "translate-y-0 opacity-100"
-          : "translate-y-px opacity-0"
-        : isOpen
-          ? "translate-y-0 scale-100 opacity-100 blur-none"
-          : "translate-y-8 scale-95 opacity-0 blur-[16px]";
+    let contentStateClassName = "translate-y-8 scale-95 opacity-0 blur-[16px]";
+
+    if (isOpen) {
+      contentStateClassName = "translate-y-0 scale-100 opacity-100 blur-none";
+    }
+
+    if (variant === "subtle") {
+      contentStateClassName = isOpen ? "translate-y-0 opacity-100" : "translate-y-px opacity-0";
+    }
 
     return (
       <div

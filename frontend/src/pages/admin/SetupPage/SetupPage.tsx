@@ -129,10 +129,9 @@ export const SetupPage = () => {
     defaultValues: {
       signUpMode: config.allowSignUp ? SignUpMode.Anyone : SignUpMode.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain ?? "",
-      enabledLoginMethods:
-        config.enabledLoginMethods?.filter((method) =>
-          loginMethods.some(({ value }) => value === method)
-        ) ?? [LoginMethod.EMAIL],
+      enabledLoginMethods: config.enabledLoginMethods?.filter((method) =>
+        loginMethods.some(({ value }) => value === method)
+      ) ?? [LoginMethod.EMAIL],
       defaultAuthOrgId: config.defaultAuthOrgId ?? ""
     }
   });
@@ -169,10 +168,7 @@ export const SetupPage = () => {
             formData.signUpMode === SignUpMode.Anyone
               ? formData.allowedSignUpDomain.trim() || null
               : null,
-          enabledLoginMethods: [
-            ...formData.enabledLoginMethods,
-            ...enabledIdentityProviderMethods
-          ]
+          enabledLoginMethods: [...formData.enabledLoginMethods, ...enabledIdentityProviderMethods]
         });
         next();
         return;
@@ -264,10 +260,7 @@ export const SetupPage = () => {
                             variant="project"
                             className="h-full"
                           >
-                            <Field
-                              orientation="horizontal"
-                              className="h-full items-center gap-2"
-                            >
+                            <Field orientation="horizontal" className="h-full items-center gap-2">
                               <div className="flex size-4 shrink-0 items-center justify-center text-muted">
                                 {method.imageSrc ? (
                                   <img
@@ -323,7 +316,6 @@ export const SetupPage = () => {
                   </Field>
                 )}
               />
-
             </div>
           </AnimatedCollapse>
         </FieldGroup>
@@ -445,11 +437,7 @@ export const SetupPage = () => {
               <ChevronLeft />
               Back
             </Button>
-            <Button
-              type="submit"
-              variant="project"
-              isPending={isSubmitting || isCompleting}
-            >
+            <Button type="submit" variant="project" isPending={isSubmitting || isCompleting}>
               {activeStep === SetupStep.Review ? "Finish setup" : "Continue"}
             </Button>
           </CardFooter>

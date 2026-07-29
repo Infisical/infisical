@@ -12,10 +12,7 @@ const hasRenderableContent = (content: React.ReactNode): boolean => {
   }
 
   return (
-    content !== null &&
-    content !== undefined &&
-    typeof content !== "boolean" &&
-    content !== ""
+    content !== null && content !== undefined && typeof content !== "boolean" && content !== ""
   );
 };
 
@@ -174,12 +171,7 @@ type FieldDescriptionProps = React.ComponentProps<"p"> & {
   isOpen?: boolean;
 };
 
-function FieldDescription({
-  children,
-  className,
-  isOpen,
-  ...props
-}: FieldDescriptionProps) {
+function FieldDescription({ children, className, isOpen, ...props }: FieldDescriptionProps) {
   const { hasContent, retainedContent } = useRetainedContent(children);
 
   return (
@@ -236,13 +228,7 @@ type FieldErrorProps = React.ComponentProps<"div"> & {
   isOpen?: boolean;
 };
 
-function FieldError({
-  className,
-  children,
-  errors,
-  isOpen,
-  ...props
-}: FieldErrorProps) {
+function FieldError({ className, children, errors, isOpen, ...props }: FieldErrorProps) {
   const content = useMemo(() => {
     if (children) {
       return children;
