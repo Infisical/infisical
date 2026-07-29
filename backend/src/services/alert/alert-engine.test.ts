@@ -57,7 +57,6 @@ const makeProvider = (targets: TTarget[], onFindDueTargets?: () => void): IResou
   resourceType: RESOURCE_TYPE,
   eventTypes: ["test.resource.expiration"],
   conditionSchema: z.any(),
-  buildTestTargets: () => [],
   findDueTargets: async () => {
     onFindDueTargets?.();
     return targets;

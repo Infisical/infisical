@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -13,12 +11,13 @@ import {
 } from "./alert-channel-config-fns";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
-import { TAlertChannelDeps, TAlertPayload, TAlertRecipient } from "./alert-channel-types";
+import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
-import { AlertPermissionAction, IResourceAlertProvider, TAlertContext, toAlertActor } from "./alert-types";
+import { buildTestAlertPayload } from "./alert-test-payload-fns";
+import { AlertPermissionAction, toAlertActor } from "./alert-types";
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
@@ -132,32 +131,6 @@ export const alertChannelTestServiceFactory = ({
     return (resolved.get(TEST_CHANNEL_ID) ?? []).slice(0, MAX_TEST_RECIPIENTS);
   };
 
-  const $buildTestPayload = async (
-    provider: IResourceAlertProvider,
-    dto: TTestAlertChannelDTO,
-    projectId: string | null
-  ): Promise<TAlertPayload> => {
-    const alertContext: TAlertContext = {
-      id: crypto.randomUUID(),
-      name: "Test alert",
-      orgId: dto.actorOrgId,
-      projectId,
-      resourceType: provider.resourceType,
-      resourceId: dto.resourceId ?? null,
-      eventType: provider.eventTypes[0],
-      condition: null
-    };
-
-    const viewUrl = await provider.buildViewUrl(alertContext);
-    const payload = provider.buildPayload(alertContext, provider.buildTestTargets(), viewUrl);
-
-    return {
-      ...payload,
-      severity: "info",
-      summary: `Test alert from Infisical. A real ${payload.resourceKind} ${payload.eventLabel.toLowerCase()} alert would look like this. No action is needed.`
-    };
-  };
-
   const $toError = (err: unknown): string => {
     const message = err instanceof Error ? err.message : String(err);
     return message.slice(0, MAX_ERROR_LENGTH);
@@ -194,7 +167,7 @@ export const alertChannelTestServiceFactory = ({
     await $assertCooldown(dto.actorOrgId, dto.actorId, dto.channelType);
 
     const deps: TAlertChannelDeps = { smtpService };
-    const payload = await $buildTestPayload(provider, dto, projectId);
+    const payload = buildTestAlertPayload({ orgId: dto.actorOrgId, projectId });
 
     try {
       if (!definition.directed) {

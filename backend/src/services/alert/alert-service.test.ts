@@ -34,7 +34,6 @@ const buildService = (opts?: {
     buildViewUrl: async () => "https://app.infisical.com/x",
     buildPayload: () => ({}) as TAlertPayload,
     targetId: () => "t",
-    buildTestTargets: () => [],
     assertPermission: async (input) => {
       permissionCalls.push(input);
       if (opts?.assertPermission) await opts.assertPermission(input);

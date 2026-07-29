@@ -13,6 +13,11 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
+// The generic test payload reads SITE_URL, and initEnvConfig() doesn't run in unit tests.
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
+}));
+
 const RESOURCE_TYPE = "test.resource";
 const ORG_ID = "org-1";
 const ACTOR_ID = "actor-1";
@@ -44,7 +49,6 @@ const buildProvider = (opts?: { assertPermission?: (input: TAlertPermissionInput
         items: (targets as { id: string }[]).map((target) => ({ id: target.id, title: "sample" }))
       }) as TAlertPayload,
     targetId: () => "t",
-    buildTestTargets: () => [{ id: "sample-target" }],
     assertPermission: async (input) => {
       if (opts?.assertPermission) await opts.assertPermission(input);
     },
@@ -145,7 +149,11 @@ describe("alertChannelTestService", () => {
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
       // A test must never page an on-call rotation at the severity a real firing would carry.
       expect(sent[0].payload.severity).toBe("info");
-      expect(sent[0].payload.summary).toContain("Test alert from Infisical");
+      expect(sent[0].payload.summary).toContain("test notification from Infisical");
+      // The payload is generic mock data: it must not carry the provider's resource type, and it
+      // must always carry at least one item (PagerDuty sends one event per item).
+      expect(sent[0].payload.alert.resourceType).not.toBe(RESOURCE_TYPE);
+      expect(sent[0].payload.items.length).toBeGreaterThan(0);
     } finally {
       restore();
     }
