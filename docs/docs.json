@@ -537,6 +537,7 @@
                         "group": "SaaS & Platforms",
                         "pages": [
                           "documentation/platform/secret-rotation/cloudflare-api-token",
+                          "documentation/platform/secret-rotation/cloudflare-r2-access-key",
                           "documentation/platform/secret-rotation/convex-access-key",
                           "documentation/platform/secret-rotation/databricks-service-principal-secret",
                           "documentation/platform/secret-rotation/datadog-application-key-secret",
@@ -2831,6 +2832,19 @@
                       "api-reference/endpoints/secret-rotations/cloudflare-api-token/list",
                       "api-reference/endpoints/secret-rotations/cloudflare-api-token/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/cloudflare-api-token/update"
+                    ]
+                  },
+                  {
+                    "group": "Cloudflare R2 Access Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/create",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/delete",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/list",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/update"
                     ]
                   },
                   {

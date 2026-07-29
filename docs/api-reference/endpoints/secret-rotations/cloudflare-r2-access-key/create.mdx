@@ -1,0 +1,100 @@
+---
+title: "Create"
+openapi: "POST /api/v2/secret-rotations/cloudflare-r2-access-key"
+---
+
+<Note>
+    Check out the configuration docs for [Cloudflare R2 Access Key Rotations](/documentation/platform/secret-rotation/cloudflare-r2-access-key) to learn how to obtain the required parameters.
+</Note>
+
+Creates a Cloudflare R2 Access Key secret rotation. Infisical will create and rotate the underlying Cloudflare API token via your [Cloudflare connection](/integrations/app-connections/cloudflare), derive the S3-compatible access key from it, and write the credentials to the specified secret path.
+
+## Request body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | A unique name for the rotation (max 100 characters). |
+| `projectId` | string (UUID) | Yes | The project ID. |
+| `connectionId` | string (UUID) | Yes | ID of the Cloudflare app connection. |
+| `environment` | string | Yes | Environment slug (e.g. `dev`, `prod`). |
+| `secretPath` | string | Yes | Path where the generated access key secrets will be stored. |
+| `isAutoRotationEnabled` | boolean | No | Whether to rotate automatically on the schedule. Defaults to `true`. |
+| `rotationInterval` | number | Yes | Days between rotations (minimum `1`). |
+| `rotateAtUtc` | object | No | Time of day (UTC) to run rotation: `{ "hours", "minutes" }`. Defaults to `{ "hours": 0, "minutes": 0 }`. |
+| `parameters.name` | string | Yes | The name for the generated Cloudflare API token that backs the access key (max 100 characters). A timestamp is appended to each generated token. |
+| `parameters.buckets` | array | Yes | The R2 buckets the generated access key is scoped to. At least one bucket is required, and each entry must be unique. |
+| `parameters.buckets[].name` | string | Yes | The bucket's name, exactly as it appears in Cloudflare. |
+| `parameters.buckets[].jurisdiction` | string | No | The bucket's storage jurisdiction: `"default"`, `"eu"`, or `"fedramp"`. Defaults to `"default"`. |
+| `parameters.accessLevel` | string | Yes | What the generated key can do on the selected buckets: `"object-read"` (get and list) or `"object-read-write"` (also put and delete). |
+| `parameters.allowedIps` | string[] | No | The IP addresses or CIDR blocks the generated access key is restricted to. |
+| `parameters.disallowedIps` | string[] | No | The IP addresses or CIDR blocks the generated access key is denied from. |
+| `secretsMapping.accessKeyId` | string | Yes | Secret key name to store the generated access key ID (e.g. `CLOUDFLARE_R2_ACCESS_KEY_ID`). |
+| `secretsMapping.secretAccessKey` | string | Yes | Secret key name to store the generated secret access key (e.g. `CLOUDFLARE_R2_SECRET_ACCESS_KEY`). |
+| `secretsMapping.apiToken` | string | Yes | Secret key name to store the underlying Cloudflare API token value (e.g. `CLOUDFLARE_R2_API_TOKEN`). |
+| `description` | string | No | Optional description. |
+
+## Sample request
+
+```bash
+curl --request POST \
+  --url https://us.infisical.com/api/v2/secret-rotations/cloudflare-r2-access-key \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer <ACCESS_TOKEN>' \
+  --data '{
+    "name": "my-r2-access-key-rotation",
+    "projectId": "<project-id>",
+    "description": "Cloudflare R2 access key rotation",
+    "connectionId": "<cloudflare-connection-id>",
+    "environment": "dev",
+    "secretPath": "/",
+    "isAutoRotationEnabled": true,
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "parameters": {
+      "name": "infisical-r2-access-key",
+      "buckets": [
+        { "name": "my-bucket", "jurisdiction": "default" },
+        { "name": "my-eu-bucket", "jurisdiction": "eu" }
+      ],
+      "accessLevel": "object-read",
+      "allowedIps": ["203.0.113.0/24"]
+    },
+    "secretsMapping": {
+      "accessKeyId": "CLOUDFLARE_R2_ACCESS_KEY_ID",
+      "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
+      "apiToken": "CLOUDFLARE_R2_API_TOKEN"
+    }
+  }'
+```
+
+## Sample response
+
+```json
+{
+  "secretRotation": {
+    "id": "<rotation-id>",
+    "name": "my-r2-access-key-rotation",
+    "description": "Cloudflare R2 access key rotation",
+    "secretsMapping": {
+      "accessKeyId": "CLOUDFLARE_R2_ACCESS_KEY_ID",
+      "secretAccessKey": "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
+      "apiToken": "CLOUDFLARE_R2_API_TOKEN"
+    },
+    "isAutoRotationEnabled": true,
+    "activeIndex": 0,
+    "connectionId": "<cloudflare-connection-id>",
+    "rotationInterval": 30,
+    "rotateAtUtc": { "hours": 0, "minutes": 0 },
+    "type": "cloudflare-r2-access-key",
+    "parameters": {
+      "name": "infisical-r2-access-key",
+      "buckets": [
+        { "name": "my-bucket", "jurisdiction": "default" },
+        { "name": "my-eu-bucket", "jurisdiction": "eu" }
+      ],
+      "accessLevel": "object-read",
+      "allowedIps": ["203.0.113.0/24"]
+    }
+  }
+}
+```
