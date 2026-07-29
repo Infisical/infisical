@@ -217,9 +217,12 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
   const { apiToken, accountId } = config.credentials;
 
   try {
-    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
-      headers: getCloudflareAuthHeaders(apiToken)
-    });
+    const resp = await safeRequest.get(
+      `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/verify`,
+      {
+        headers: getCloudflareAuthHeaders(apiToken)
+      }
+    );
 
     if (resp.data === null) {
       throw new BadRequestError({
