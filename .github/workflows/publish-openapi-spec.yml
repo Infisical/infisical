@@ -5,7 +5,8 @@ name: "Publish OpenAPI Spec"
 #
 # This job exists because of GitHub's cache scoping: a PR can read caches written on
 # the default branch, but caches a PR writes are visible only to that PR. Baselines
-# therefore have to be produced by a run on main.
+# therefore have to be produced by a run on main. The Docker layer cache the spec
+# generator uses is scoped the same way, so this job is also the only writer of that.
 #
 # The cache path below MUST stay identical to the one the checker restores, because
 # actions/cache folds the path into the cache version. A mismatched path misses even
@@ -48,6 +49,10 @@ jobs:
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
 
+      - name: Set up buildx
+        if: steps.probe.outputs.cache-hit != 'true'
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
       - name: Start postgres and redis
         if: steps.probe.outputs.cache-hit != 'true'
         run: touch .env && docker compose -f docker-compose.dev.yml up -d db redis
@@ -57,6 +62,7 @@ jobs:
         uses: ./.github/actions/generate-openapi-spec
         with:
           output: base-spec.json
+          write-layer-cache: "true"
 
       - name: Publish spec
         if: steps.probe.outputs.cache-hit != 'true'
