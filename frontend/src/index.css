@@ -235,6 +235,9 @@
   --color-blue-900: #00367d;
 }
 
+/* iOS Safari zooms the viewport when focusing an input whose font-size is below 16px.
+   Bumping the type scale on detected iOS devices keeps form controls at/above that
+   threshold to prevent the zoom while preserving their relationship to surrounding text. */
 html[data-platform="ios"] {
   --text-xs: 0.875rem;
   --text-sm: 1rem;
