@@ -1,5 +1,6 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
+import { applyJitter } from "@app/lib/dates";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -88,9 +89,11 @@ export const usageMeteringServiceFactory = ({
     }
 
     void (async () => {
+      // ±30min jitter so a cold-start burst of first-reconciles doesn't set markers that all expire
+      // together and trigger a synchronized reconcile wave an interval later.
       const acquired = await keyStore.setItemWithExpiryNX(
         KeyStorePrefixes.LicenseUsageReconcileMarker(orgId),
-        KeyStoreTtls.LicenseUsageReconcileIntervalInSeconds,
+        applyJitter(KeyStoreTtls.LicenseUsageReconcileIntervalInSeconds, 1800),
         "1"
       );
       if (acquired !== "OK") {

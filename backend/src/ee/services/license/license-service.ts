@@ -13,6 +13,7 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
+import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -82,6 +83,8 @@ const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 // A self-hosted v2 license is single-tenant: the license key identifies the tenant, so entitlement
 // reads carry no real org id. This fixed id only keys the local entitlement cache for the instance.
 const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
+
+const jitteredLicenseCloudPlanTtl = () => applyJitter(KeyStoreTtls.LicenseCloudPlanInSeconds, 90);
 
 export const licenseServiceFactory = ({
   orgDAL,
@@ -346,7 +349,7 @@ export const licenseServiceFactory = ({
 
     await keyStore.setItemWithExpiry(
       KeyStorePrefixes.LicenseCloudPlan(org.id),
-      KeyStoreTtls.LicenseCloudPlanInSeconds,
+      jitteredLicenseCloudPlanTtl(),
       JSON.stringify(currentPlan)
     );
 
@@ -419,7 +422,7 @@ export const licenseServiceFactory = ({
       );
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCloudPlan(orgId),
-        KeyStoreTtls.LicenseCloudPlanInSeconds,
+        jitteredLicenseCloudPlanTtl(),
         JSON.stringify(onPremFeatures)
       );
       return onPremFeatures;
