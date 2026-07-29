@@ -886,12 +886,14 @@ export const CreatePolicyModal = ({
     <div className="grid grid-cols-2 gap-x-6 gap-y-3">
       {options.map((usage) => (
         <div key={usage} className="flex items-center justify-between gap-2">
-          <span className="text-sm text-foreground">{formatter(usage as never)}</span>
+          <span className="text-sm leading-tight text-balance text-foreground">
+            {formatter(usage as never)}
+          </span>
           <Select
             value={policyOf(usage as never)}
             onValueChange={(value) => onChange(usage as never, value as UsagePolicy)}
           >
-            <SelectTrigger className="w-28">
+            <SelectTrigger className="w-24 shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent position="popper">

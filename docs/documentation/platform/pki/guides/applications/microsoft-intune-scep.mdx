@@ -77,7 +77,7 @@ The request flow is: the device retrieves its profile from Intune, submits the S
         Navigate to **Certificate Authorities**, open the CA behind your profile, and in the **CA Certificates** section select **Download CA Certificate**.
 
         <Note>
-          Infisical exports the certificate as `cert.pem`, and Intune's upload field expects a `.cer` extension. Rename it to `cert.cer` before uploading. No conversion is required, because a `.cer` file carries Base-64 encoded X.509 data, which is what `cert.pem` already contains.
+          Infisical exports the certificate as `cert.pem`. Intune's upload field expects a `.cer` extension, so rename the file to `cert.cer` before uploading it.
         </Note>
 
         ![Downloading the CA certificate from Infisical](/images/platform/pki/integrations/microsoft-intune/infisical-download-ca-cert.png)
@@ -127,7 +127,7 @@ The request flow is: the device retrieves its profile from Intune, submits the S
 
         Set the subject name format and subject alternative name to what your devices require, then complete the remaining fields.
 
-        Intune treats the remaining settings in two different ways. Some travel to Infisical inside the device's request, while others are policy that Intune enforces on its own side and never transmits:
+        The remaining settings fall into two categories. Some reach Infisical in the device's certificate signing request and shape the certificate it issues. Intune never transmits the others and does not verify them against the certificate it receives, so Infisical supplies those values:
 
         | Source of the issued value | Settings |
         |----------------------------|----------|
@@ -135,13 +135,13 @@ The request flow is: the device retrieves its profile from Intune, submits the S
         | The Infisical [certificate profile](/documentation/platform/pki/settings/profiles) | **Certificate validity period**, **Extended key usage** |
 
         <Warning>
-          **Define matching defaults on the Infisical certificate profile.** Set its TTL and extended key usages to the values configured here, so the issued certificates match the policy Intune enforces. A profile without a TTL falls back to 90 days, and one whose extended key usages are unset or empty issues certificates that carry none. Those values must also be permitted by the profile's [certificate policy](/documentation/platform/pki/settings/policies), which otherwise rejects issuance after Intune has already approved the challenge.
+          **Mirror these values on the Infisical certificate profile.** Intune reports the enrollment as successful without verifying the validity period or extended key usages of the certificate it receives, so any divergence from this profile passes silently. Configure the Infisical profile's TTL and extended key usages to match the values set here. A profile with no TTL defaults to 90 days, and a profile whose extended key usages are unset or empty issues certificates that carry none. The profile's [certificate policy](/documentation/platform/pki/settings/policies) must also permit these values, otherwise issuance fails after Intune has already validated the challenge.
         </Warning>
 
         ![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
 
         <Note>
-          Fields vary by platform. Windows profiles add **Hash algorithm** and **Key storage provider**. Apple profiles add **Deployment Channel**, which has to agree with **Certificate type**: Device Channel stores device certificates in the system keychain, User Channel stores user certificates in the user keychain, and under User Channel the certificate type can only be **User**. The channel cannot be changed after the profile is deployed.
+          The available fields vary by platform. **Certificate type** appears on every platform and determines whether the subject and subject alternative name may carry user attributes or only device attributes. **Key storage provider** applies to Windows, and **Hash algorithm** applies to Windows and Android. **Deployment Channel** determines which keychain stores the certificate: the Device Channel uses the system keychain and the User Channel uses the user keychain. On macOS, a profile assigned to the user channel supports only the **User** certificate type. Unlike the other fields, the deployment channel cannot be changed once the profile is deployed, so a different channel requires a new profile.
         </Note>
     </Step>
 

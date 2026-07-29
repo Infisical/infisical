@@ -428,7 +428,7 @@ export const generateSelfSignedCertificate = async ({
                     message: `Unsupported Subject Alternative Name type: ${san.type as string}`
                   });
                 }
-                return { type: generalNameType as "dns" | "ip" | "email" | "url" | "upn", value: san.value };
+                return { type: generalNameType, value: san.value };
               }) || [],
               false
             )

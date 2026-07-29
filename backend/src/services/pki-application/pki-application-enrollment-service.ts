@@ -19,6 +19,10 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -107,6 +111,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
@@ -130,6 +135,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
   appConnectionService,
+  approvalPolicyDAL,
   certificateProfileDAL,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
@@ -718,6 +724,23 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       throw new BadRequestError({
         message: `Microsoft Intune validation requires an internal certificate authority. This profile uses ${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType]}, which issues asynchronously and cannot complete within a SCEP request.`
       });
+    }
+
+    if (isIntune && profile) {
+      const certRequestApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
+        ApprovalPolicyType.CertRequest
+      );
+      const matchedApprovalPolicy = (await certRequestApprovalFactory.matchPolicy(
+        approvalPolicyDAL as TApprovalPolicyDALFactory,
+        projectId,
+        { profileName: profile.slug, applicationId }
+      )) as TCertRequestPolicy | null;
+
+      if (matchedApprovalPolicy) {
+        throw new BadRequestError({
+          message: `Microsoft Intune validation cannot be used on this profile because the certificate request approval policy '${matchedApprovalPolicy.name}' applies to it. Requests that require approval cannot complete within a SCEP request. Remove this profile from the policy, or use a static or dynamic SCEP challenge instead.`
+        });
+      }
     }
 
     const { signRaWithCa } = await resolveScepRaSigning({
