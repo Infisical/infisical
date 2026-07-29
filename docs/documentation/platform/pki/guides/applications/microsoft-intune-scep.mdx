@@ -100,10 +100,6 @@ Every step happens inside a single request. Intune has no pending state, so anyt
         </Note>
 
         ![Downloading the CA certificate from Infisical](/images/platform/pki/integrations/microsoft-intune/infisical-download-ca-cert.png)
-
-        <Note>
-          If that CA is an intermediate, devices must trust the CAs above it as well. Select **Download CA Certificate Chain** to get them, and create one Trusted certificate profile per certificate in the next step, since each profile holds a single certificate.
-        </Note>
     </Step>
 
     <Step title="Create the Trusted certificate profile in Intune">
