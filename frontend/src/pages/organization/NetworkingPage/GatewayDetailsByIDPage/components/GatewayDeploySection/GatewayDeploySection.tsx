@@ -77,6 +77,7 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
             <OrgPermissionCan
               I={OrgGatewayPermissionActions.EditGateways}
               a={OrgPermissionSubjects.Gateway}
+              passThrough={false}
             >
               <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
             </OrgPermissionCan>
