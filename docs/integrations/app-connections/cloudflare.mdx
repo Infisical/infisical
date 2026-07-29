@@ -87,6 +87,7 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
 
             **Required Permissions:**
             - **Account** - **API Tokens** - **Edit**
+            - **Account** - **Account Settings** - **Read**
 
             The **API Tokens** - **Edit** permission is what allows Infisical to create the replacement token and revoke the previous one on each rotation cycle. Without it, rotation fails when creating the new token.
 
@@ -104,8 +105,9 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
             **Required Permissions:**
             - **Account** - **API Tokens** - **Edit**
             - **Account** - **Workers R2 Storage** - **Read**
+            - **Account** - **Account Settings** - **Read**
 
-            **API Tokens** - **Edit** is what allows Infisical to create the replacement key and revoke the previous one on each rotation cycle. **Workers R2 Storage** - **Read** is used only to populate the bucket picker when you configure the rotation; without it the picker comes back empty and you cannot select buckets.
+            **API Tokens** - **Edit** is what allows Infisical to create the replacement key and revoke the previous one on each rotation cycle. **Workers R2 Storage** - **Read** is used only to populate the bucket picker when you configure the rotation; without it the picker comes back empty and you cannot select buckets. If you already know which bucket you plan to use and it is going to this using the API, you don't need it.
 
             The generated keys are not granted these permissions. Each rotated key only receives object access to the buckets you select on the [Cloudflare R2 Access Key rotation](/documentation/platform/secret-rotation/cloudflare-r2-access-key) itself.
 

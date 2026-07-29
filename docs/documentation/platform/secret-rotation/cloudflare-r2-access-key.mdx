@@ -25,7 +25,6 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
 <Tabs>
     <Tab title="Infisical UI">
         1. Navigate to your Secret Manager Project's Dashboard and select **Add Secret Rotation** from the actions dropdown.
-
         ![Secret Manager Dashboard](/images/secret-rotations-v2/generic/add-secret-rotation.png)
 
         2. Select the **Cloudflare R2 Access Key** option.
@@ -33,7 +32,6 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
         ![Select Cloudflare R2 Access Key](/images/secret-rotations-v2/cloudflare-r2-access-key/select-cloudflare-r2-access-key.png)
 
         3. Configure the rotation behavior, then click **Next**.
-
         - **Cloudflare Connection** - The connection that will create and delete access keys during rotation.
         - **Rotation Interval** - The interval, in days, after which a rotation is triggered.
         - **Rotate At** - The local time of day when rotation runs once the interval has elapsed.
@@ -156,17 +154,9 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
     </Tab>
 </Tabs>
 
-## Using the credentials
+<Warning>
+  **Buckets are granted by name.** The token's policy references each bucket by its name and jurisdiction, so renaming or recreating a bucket in Cloudflare breaks the grant. Cloudflare does not reject unknown bucket names, so a stale name produces a key that silently grants nothing on it. Update the rotation's parameters after renaming a bucket.
 
-The generated credentials work with any S3-compatible client:
+  **Parameter changes apply on the next rotation.** Editing the buckets or access level does not re-scope the key that is currently active; the change takes effect when the next key is generated. Trigger a manual rotation if you need it applied immediately.
+</Warning>
 
-```bash
-AWS_ACCESS_KEY_ID=$CLOUDFLARE_R2_ACCESS_KEY_ID \
-AWS_SECRET_ACCESS_KEY=$CLOUDFLARE_R2_SECRET_ACCESS_KEY \
-  aws s3 ls s3://my-bucket --endpoint-url https://<account-id>.r2.cloudflarestorage.com
-```
-
-## Notes
-
-- **Buckets are granted by name.** The token's policy references each bucket by its name and jurisdiction, so renaming or recreating a bucket in Cloudflare breaks the grant. Cloudflare does not reject unknown bucket names, so a stale name produces a key that silently grants nothing on it — update the rotation's parameters after renaming a bucket.
-- **Parameter changes apply on the next rotation.** Editing the buckets or access level does not re-scope the key that is currently active; the change takes effect when the next key is generated. Trigger a manual rotation if you need it applied immediately.
