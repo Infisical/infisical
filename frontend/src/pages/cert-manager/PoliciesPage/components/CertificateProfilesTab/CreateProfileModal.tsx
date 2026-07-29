@@ -972,6 +972,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                             onValueChange={(next) => {
                               if (next === IssuerType.SELF_SIGNED) {
                                 setValue("certificateAuthorityId", "");
+                                setValue("externalConfigs", undefined);
                               }
                               onChange(next);
                             }}
@@ -1011,17 +1012,22 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                               <FilterableSelect
                                 value={certificateAuthorities.find((ca) => ca.id === value) || null}
                                 onChange={(selectedCaValue) => {
+                                  let nextCaId = "";
                                   if (Array.isArray(selectedCaValue)) {
-                                    onChange(selectedCaValue[0]?.id || "");
+                                    nextCaId = selectedCaValue[0]?.id || "";
                                   } else if (
                                     selectedCaValue &&
                                     typeof selectedCaValue === "object" &&
                                     "id" in selectedCaValue
                                   ) {
-                                    onChange(selectedCaValue.id || "");
-                                  } else {
-                                    onChange("");
+                                    nextCaId = selectedCaValue.id || "";
                                   }
+                                  if (nextCaId !== value) {
+                                    // Templates are per-CA; a stale hidden template would
+                                    // fail step validation for non-ADCS issuers.
+                                    setValue("externalConfigs", undefined);
+                                  }
+                                  onChange(nextCaId);
                                 }}
                                 getOptionLabel={(ca) => ca.name}
                                 getOptionValue={(ca) => ca.id}
