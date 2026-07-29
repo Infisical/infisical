@@ -21,6 +21,7 @@ import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -57,6 +58,7 @@ type TMembershipGroupServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -75,7 +77,8 @@ export const membershipGroupServiceFactory = ({
   licenseService,
   applicationMembershipCleanupService,
   projectDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -421,6 +424,9 @@ export const membershipGroupServiceFactory = ({
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [dto.selector.groupId] }, tx);
+
       return doc;
     };
 

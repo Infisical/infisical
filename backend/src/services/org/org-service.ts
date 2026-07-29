@@ -45,6 +45,7 @@ import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membe
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorAuthMethod, ActorType, AuthMethod, AuthModeJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
@@ -129,6 +130,7 @@ type TOrgServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
@@ -166,6 +168,7 @@ export const orgServiceFactory = ({
   userGroupMembershipDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
+  alertChannelRecipientDAL,
   certificatePolicyDAL,
   usageMeteringService
 }: TOrgServiceFactoryDep) => {
@@ -1206,7 +1209,8 @@ export const orgServiceFactory = ({
       membershipRoleDAL,
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
-      approvalPolicyDAL
+      approvalPolicyDAL,
+      alertChannelRecipientDAL
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
@@ -1248,7 +1252,8 @@ export const orgServiceFactory = ({
       membershipRoleDAL,
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
-      approvalPolicyDAL
+      approvalPolicyDAL,
+      alertChannelRecipientDAL
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
