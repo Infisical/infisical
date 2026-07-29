@@ -204,6 +204,9 @@ export const KeyStoreTtls = {
   PamDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
+  // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
+  // after the customer finishes the hosted checkout/card-setup (which can take a few minutes).
+  LicenseCachePassThroughCheckoutInSeconds: 900, // 15 minutes
   // Throttle window for the single-flight background revalidation.
   LicenseCacheRevalidateLockInSeconds: 10,
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).

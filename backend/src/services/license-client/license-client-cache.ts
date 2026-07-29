@@ -30,11 +30,15 @@ export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementRe
   // mutation the license server reconciles asynchronously (Stripe webhook), so an immediate hard bust
   // would just re-cache the pre-reconciliation value for a full TTL. With the marker set, reads keep
   // serving the cached value while a background refresh converges the cache once reconciliation lands.
-  const markPassThrough = async (orgId: string): Promise<void> => {
+  // checkout uses a longer window because the change only applies once the customer finishes the
+  // Stripe-hosted checkout/card-setup, which can take several minutes.
+  const markPassThrough = async (orgId: string, opts?: { checkout?: boolean }): Promise<void> => {
     try {
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCachePassThrough(orgId),
-        KeyStoreTtls.LicenseCachePassThroughInSeconds,
+        opts?.checkout
+          ? KeyStoreTtls.LicenseCachePassThroughCheckoutInSeconds
+          : KeyStoreTtls.LicenseCachePassThroughInSeconds,
         "1"
       );
     } catch (error) {

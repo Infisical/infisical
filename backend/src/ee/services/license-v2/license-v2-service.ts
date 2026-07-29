@@ -874,7 +874,7 @@ export const licenseV2ServiceFactory = ({
     if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
-    await licenseClient.markEntitlementsStale(orgId);
+    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
     return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
   };
 
@@ -954,13 +954,15 @@ export const licenseV2ServiceFactory = ({
       productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
-    await licenseClient.markEntitlementsStale(orgId);
     if (result.outcome === "checkout_created") {
       if (!result.checkoutUrl) {
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
       }
+      // Longer window: the change only applies once the customer completes the hosted checkout.
+      await licenseClient.markEntitlementsStale(orgId, { checkout: true });
       return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
     }
+    await licenseClient.markEntitlementsStale(orgId);
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
@@ -988,7 +990,9 @@ export const licenseV2ServiceFactory = ({
       // The trial's card-setup checkout redirects here; built server-side from SITE_URL like checkout.
       returnUrl: buildReturnUrl(orgId)
     });
-    await licenseClient.markEntitlementsStale(orgId);
+    // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
+    // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
+    await licenseClient.markEntitlementsStale(orgId, { checkout: result.outcome === "awaiting_card" });
     return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
   };
 
