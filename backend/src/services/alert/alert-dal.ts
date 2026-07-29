@@ -90,6 +90,20 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByChannelId = async (channelId: string, tx?: Knex): Promise<TAlerts[]> => {
+    try {
+      const alerts = await (tx || db.replicaNode())(TableName.Alert)
+        .join(TableName.AlertChannelMembership, `${TableName.Alert}.id`, `${TableName.AlertChannelMembership}.alertId`)
+        .where(`${TableName.AlertChannelMembership}.channelId`, channelId)
+        .select(selectAllTableCols(TableName.Alert))
+        .orderBy(`${TableName.Alert}.createdAt`, "asc");
+
+      return alerts as TAlerts[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByChannelId" });
+    }
+  };
+
   const findScopedDuplicate = async (
     filter: {
       orgId: string;
@@ -123,6 +137,7 @@ export const alertDALFactory = (db: TDbClient) => {
     findEnabledByResourceType,
     findActiveById,
     findActiveByScope,
+    findByChannelId,
     findScopedDuplicate
   };
 };

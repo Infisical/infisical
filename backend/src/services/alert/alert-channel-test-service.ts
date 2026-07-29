@@ -14,6 +14,7 @@ import {
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelDeps, TAlertPayload, TAlertRecipient } from "./alert-channel-types";
+import { TAlertDALFactory } from "./alert-dal";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse } from "./alert-service-types";
@@ -21,6 +22,7 @@ import { AlertPermissionAction, IResourceAlertProvider, TAlertContext } from "./
 
 export type TAlertChannelTestServiceFactoryDep = {
   alertChannelDAL: Pick<TAlertChannelDALFactory, "findById">;
+  alertDAL: Pick<TAlertDALFactory, "findByChannelId">;
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   alertProviderRegistry: TAlertProviderRegistry;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -36,6 +38,7 @@ const MAX_ERROR_LENGTH = 300;
 
 export const alertChannelTestServiceFactory = ({
   alertChannelDAL,
+  alertDAL,
   alertRecipientResolver,
   alertProviderRegistry,
   kmsService,
@@ -52,6 +55,40 @@ export const alertChannelTestServiceFactory = ({
     throw new RateLimitError({
       message: `You already sent a ${channelType} test in the last minute. Try again in ${seconds}s.`
     });
+  };
+
+  const $assertChannelOwnersPermit = async (channelId: string, dto: TTestAlertChannelDTO) => {
+    const owners = await alertDAL.findByChannelId(channelId);
+    if (owners.length === 0) {
+      throw new NotFoundError({ message: `Channel with ID '${channelId}' was not found in this scope` });
+    }
+
+    for (const owner of owners) {
+      if (owner.orgId !== dto.actorOrgId) {
+        throw new NotFoundError({ message: `Channel with ID '${channelId}' was not found in this scope` });
+      }
+
+      const ownerProvider = alertProviderRegistry.get(owner.resourceType);
+      if (!ownerProvider) {
+        throw new BadRequestError({
+          message: `No alert provider is registered for resource type '${owner.resourceType}'`
+        });
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      await ownerProvider.assertPermission({
+        action: AlertPermissionAction.Edit,
+        orgId: owner.orgId,
+        projectId: owner.projectId,
+        resourceId: owner.resourceId,
+        actor: {
+          actor: dto.actor,
+          actorId: dto.actorId,
+          actorAuthMethod: dto.actorAuthMethod,
+          actorOrgId: dto.actorOrgId
+        }
+      });
+    }
   };
 
   const $resolveConfig = async (dto: TTestAlertChannelDTO, projectId: string | null) => {
@@ -72,6 +109,8 @@ export const alertChannelTestServiceFactory = ({
         message: `Channel '${dto.channelId}' is a ${channel.channelType} channel, not ${dto.channelType}`
       });
     }
+
+    await $assertChannelOwnersPermit(channel.id, dto);
 
     const { decryptor } = await getAlertChannelCipher(kmsService, {
       orgId: channel.orgId,

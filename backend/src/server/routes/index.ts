@@ -1071,6 +1071,7 @@ export const registerRoutes = async (
   });
   const alertChannelTestService = alertChannelTestServiceFactory({
     alertChannelDAL,
+    alertDAL,
     alertRecipientResolver,
     alertProviderRegistry,
     kmsService,

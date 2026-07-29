@@ -70,9 +70,18 @@ const buildKeyStore = () => {
   };
 };
 
+const OWNING_ALERT = {
+  id: "alert-1",
+  orgId: ORG_ID,
+  projectId: null,
+  resourceType: RESOURCE_TYPE,
+  resourceId: "resource-1"
+};
+
 const buildDeps = (overrides?: {
   registry?: ReturnType<typeof alertProviderRegistryFactory>;
   channel?: Record<string, unknown> | null;
+  channelOwners?: Record<string, unknown>[];
   recipients?: { email: string }[];
   keyStore?: ReturnType<typeof buildKeyStore>;
 }) => {
@@ -82,6 +91,9 @@ const buildDeps = (overrides?: {
     deps: {
       alertChannelDAL: {
         findById: async () => overrides?.channel ?? null
+      },
+      alertDAL: {
+        findByChannelId: async () => overrides?.channelOwners ?? [OWNING_ALERT]
       },
       alertRecipientResolver: {
         resolveMany: async (rowsByChannel: Map<string, unknown[]>) =>
@@ -133,7 +145,7 @@ describe("alertChannelTestService", () => {
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
       // A test must never page an on-call rotation at the severity a real firing would carry.
       expect(sent[0].payload.severity).toBe("info");
-      expect(sent[0].payload.summary).toContain("Test notification");
+      expect(sent[0].payload.summary).toContain("Test alert from Infisical");
     } finally {
       restore();
     }
@@ -178,6 +190,65 @@ describe("alertChannelTestService", () => {
       channel: {
         id: "channel-1",
         orgId: "other-org",
+        projectId: null,
+        channelType: "slack",
+        encryptedConfig: Buffer.from(JSON.stringify({ webhookUrl: "https://hooks.slack.com/services/T/B/stored" }))
+      }
+    });
+    const service = alertChannelTestServiceFactory(deps);
+
+    await expect(
+      service.testChannel({
+        ...actor,
+        resourceType: RESOURCE_TYPE,
+        channelId: "channel-1",
+        channelType: "slack" as never,
+        config: {}
+      })
+    ).rejects.toThrow(/not found in this scope/);
+  });
+
+  test("authorizes a saved channel against the alert that owns it, not the requested resource", async () => {
+    const checked: { action: string; resourceId?: string | null }[] = [];
+    const registry = buildProvider({
+      assertPermission: async (input) => {
+        checked.push({ action: input.action, resourceId: input.resourceId });
+        // The caller can edit their own resource but not the one the channel's alert watches.
+        if (input.resourceId === OWNING_ALERT.resourceId) throw new Error("forbidden");
+      }
+    });
+    const { deps } = buildDeps({
+      registry,
+      channel: {
+        id: "channel-1",
+        orgId: ORG_ID,
+        projectId: null,
+        channelType: "slack",
+        encryptedConfig: Buffer.from(JSON.stringify({ webhookUrl: "https://hooks.slack.com/services/T/B/stored" }))
+      }
+    });
+    const service = alertChannelTestServiceFactory(deps);
+
+    await expect(
+      service.testChannel({
+        ...actor,
+        resourceType: RESOURCE_TYPE,
+        resourceId: "resource-the-caller-owns",
+        channelId: "channel-1",
+        channelType: "slack" as never,
+        config: {}
+      })
+    ).rejects.toThrow("forbidden");
+
+    expect(checked).toContainEqual({ action: "edit", resourceId: OWNING_ALERT.resourceId });
+  });
+
+  test("rejects a saved channel that no alert owns", async () => {
+    const { deps } = buildDeps({
+      channelOwners: [],
+      channel: {
+        id: "channel-1",
+        orgId: ORG_ID,
         projectId: null,
         channelType: "slack",
         encryptedConfig: Buffer.from(JSON.stringify({ webhookUrl: "https://hooks.slack.com/services/T/B/stored" }))
