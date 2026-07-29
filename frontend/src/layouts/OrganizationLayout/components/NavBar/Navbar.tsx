@@ -452,7 +452,8 @@ export const Navbar = () => {
                       {/* Current Organization */}
                       <CommandGroup heading="Current Organization">
                         <CommandItem
-                          value={rootOrg.name}
+                          value={rootOrg.id}
+                          keywords={[rootOrg.name]}
                           onSelect={() => {
                             setIsOrgSelectOpen(false);
                             if (isSubOrganization) {
@@ -513,7 +514,8 @@ export const Navbar = () => {
                             {subOrganizations.map((subOrg) => (
                               <CommandItem
                                 key={subOrg.id}
-                                value={subOrg.name}
+                                value={subOrg.id}
+                                keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
                                   handleOrgSelection({ organizationId: subOrg.id });
@@ -558,7 +560,8 @@ export const Navbar = () => {
                             .map((org) => (
                               <CommandItem
                                 key={org.id}
-                                value={org.name}
+                                value={org.id}
+                                keywords={[org.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
                                   handleOrgNav(org);
