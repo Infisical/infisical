@@ -30,10 +30,14 @@ export const OAuthCallbackPage = () => {
 
   const { state: rawState, code } = search;
 
-  const state = stateSchema.parse(rawState);
+  const parsedState = stateSchema.safeParse(rawState);
 
   const clearState = () => {
-    if (state.csrfToken !== localStorage.getItem("latestCSRFToken")) {
+    if (!parsedState.success) {
+      throw new Error("Invalid state received from OAuth callback");
+    }
+
+    if (parsedState.data.csrfToken !== localStorage.getItem("latestCSRFToken")) {
       throw new Error("Invalid CSRF token");
     }
 
@@ -43,9 +47,15 @@ export const OAuthCallbackPage = () => {
   const handleMicrosoftTeams = useCallback(async () => {
     clearState();
 
+    if (!parsedState.success) {
+      throw new Error("Invalid state received from OAuth callback");
+    }
+
     if (!code) {
       throw new Error("No code provided");
     }
+
+    const { data: state } = parsedState;
 
     await createMicrosoftTeamsWorkflowIntegration.mutateAsync({
       orgId: currentOrg.id,
@@ -73,12 +83,24 @@ export const OAuthCallbackPage = () => {
     if (!isReady) return;
 
     (async () => {
-      await handleMicrosoftTeams();
+      try {
+        await handleMicrosoftTeams();
 
-      createNotification({
-        text: "Successfully created Microsoft Teams workflow integration",
-        type: "success"
-      });
+        createNotification({
+          text: "Successfully created Microsoft Teams workflow integration",
+          type: "success"
+        });
+      } catch (err) {
+        createNotification({
+          text:
+            err instanceof Error ? err.message : "Failed to complete Microsoft Teams integration",
+          type: "error"
+        });
+        navigate({
+          to: ROUTE_PATHS.Organization.SettingsPage.path,
+          params: { orgId: currentOrg.id }
+        });
+      }
     })();
   }, [isReady]);
 
