@@ -298,6 +298,7 @@ export const licenseServerBackend = (
         plan_key: payload.planKey,
         email: payload.email,
         name: payload.name,
+        declaredUsage: payload.declaredUsage,
         returnUrl: payload.returnUrl
       }),
       redirect: "manual"

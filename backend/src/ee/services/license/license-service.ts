@@ -69,7 +69,7 @@ type TLicenseServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItem" | "deleteItem">;
   projectDAL: TProjectDALFactory;
   licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription" | "refreshEntitlements">;
   licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
@@ -292,12 +292,44 @@ export const licenseServiceFactory = ({
     }
   };
 
+  // Stale-while-revalidate refresh fired (fire-and-forget) when a cache hit carries the passThrough
+  // marker a billing mutation set. Single-flight via a self-expiring NX lock, which doubles as a
+  // throttle (at most one refresh per org per lock window). Drops the projected plan cache and rebuilds
+  // it via getPlan, which fetches the (now reconciled) entitlements fresh from the license server. Never
+  // throws — it runs detached from the request.
+  const revalidatePlanInBackground = async (orgId: string) => {
+    try {
+      const acquired = await keyStore.setItemWithExpiryNX(
+        KeyStorePrefixes.LicenseCacheRevalidateLock(orgId),
+        KeyStoreTtls.LicenseCacheRevalidateLockInSeconds,
+        "1"
+      );
+      if (acquired !== "OK") {
+        return;
+      }
+
+      await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion; getPlan rebuilds the plan cache
+      await getPlan(orgId);
+    } catch (error) {
+      logger.error(error, `getPlan: background revalidation failed [orgId=${orgId}]`);
+    }
+  };
+
   const getPlan = async (orgId: string, projectId?: string) => {
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = await keyStore.getItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
+        const [cachedPlan, passThrough] = await Promise.all([
+          keyStore.getItem(KeyStorePrefixes.LicenseCloudPlan(orgId)),
+          keyStore.getItem(KeyStorePrefixes.LicenseCachePassThrough(orgId))
+        ]);
         if (cachedPlan) {
+          // A billing mutation flagged this org: serve the cached plan now but kick a background refresh
+          // so the cache converges as the license server reconciles, instead of waiting out the TTL.
+          if (passThrough) {
+            void revalidatePlanInBackground(orgId);
+          }
           logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
           return JSON.parse(cachedPlan) as TFeatureSet;
         }
