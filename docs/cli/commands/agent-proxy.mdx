@@ -219,7 +219,7 @@ $ infisical secrets agent-proxy run -- claude
   </Accordion>
 
   <Accordion title="--log-file">
-    Write the proxy's [per-request activity](/documentation/platform/agent-proxy/activity-logs) to this path. The agent owns the terminal, so activity is never written to it: by default it goes to a file in the per-run temporary directory, which is deleted on exit. Pass this to keep it somewhere you can `tail -f`; that path is appended to on every run and never rotated for you, so use `logrotate` (`copytruncate`) if you keep one. Errors and warnings still reach stderr either way. `--log-level` filters which decisions are recorded, the same as on `start`.
+    Write the proxy's [per-request activity](/documentation/platform/agent-proxy/activity-logs) to this path. Without it nothing is logged, since the agent owns the terminal: warnings and errors still print there, but the per-request trail is dropped. The path is appended to on every run and never rotated for you, so use `logrotate` (`copytruncate`) if you keep one. `--log-level` filters which decisions are recorded, the same as on `start`.
 
     ```bash
     # Example

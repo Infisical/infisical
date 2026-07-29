@@ -65,7 +65,7 @@ With [`agent-proxy run`](/documentation/platform/agent-proxy/local-agent-proxy) 
 
 - **The boundary is an OS sandbox**, not the network. It denies the agent your keyring, your credential files, the proxy's CA key, and any route to the network except the proxy.
 - **There is one identity, yours.** No agent identity, no proxy identity, and no proxy-authentication header on requests.
-- **The gate is `Read Value`.** There is no permission boundary between you and yourself, so `run` brokers what you could already read.
+- **The gate is your own access.** `run` runs as you: `Read` on proxied services to find them, `Read Value` on the secrets to broker them, and `Lease` to mint a dynamic one. There is no `Proxy` check and no agent identity to grant one to.
 - **The certificate chain is a self-signed root on your machine.** Your organization's root CA is never involved.
 
 The sandbox is therefore load-bearing in a way it is not here: read its [full description](/documentation/platform/agent-proxy/local-agent-proxy#the-sandbox) before using `run` for real work, and treat `--no-sandbox` as a debugging tool, since with it brokering still happens but nothing stops the agent reaching around the proxy.

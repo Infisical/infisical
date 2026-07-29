@@ -123,7 +123,6 @@ A per-run `0700` temporary directory holds the only things that touch disk:
   /tmp/infisical-agent-proxy-run-XXXXXX/     mode 0700, removed on exit
   |
   |-- local-ca.pem      public CA cert, the agent's HTTP clients point here
-  |-- agent-proxy.log   activity log, unless you set --log-file
   +-- proxy.sock        Linux only, how the isolated agent reaches the proxy
 
   never written anywhere:
@@ -270,7 +269,7 @@ On Linux the root is generated fresh in memory for each run and the environment 
 
 ## Permissions: it all runs as you
 
-`run` involves no agent identity and no `Proxy` permission check at all. Every API call is made with your own token, so **the gate is `Read Value`**: if you can read the secret, `run` can broker it.
+`run` involves no agent identity and no `Proxy` permission check at all. Every API call is made with your own token: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
 
 That is deliberate. You are running an agent as yourself, on your own machine, against secrets you could already read; a permission boundary between you and yourself would be theater. The sandbox is the security boundary here. The only question `run` asks is whether you can read the value.
 
@@ -286,7 +285,7 @@ That is deliberate. You are running an agent as yourself, on your own machine, a
 
 ## Watching what it does
 
-The agent owns your terminal, so per-request activity does not go there. It is always written to a file: by default one inside the per-run temporary directory, which is removed on exit and whose path is not printed. Pass `--log-file` to put it somewhere you can read:
+Nothing is logged unless you ask for it. Pass `--log-file` and the proxy writes a record per request to that path, which you can follow in another terminal:
 
 ```bash
 infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
@@ -295,12 +294,14 @@ infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
 tail -f /tmp/broker.log
 ```
 
-Every request records a decision: `brokered` (a service matched and a credential was applied), `passthrough` (no service matched, forwarded untouched), `blocked` (rejected by `--unmatched-host=block`), or `error`. Records carry the same fields as in [Activity Logs](/documentation/platform/agent-proxy/activity-logs), written in the human-readable console format. Startup messages print to your terminal: the sandbox status, the keychain prompt, and any path you re-opened. Anything the proxy reports while running goes to the log file instead, including a credential it had to skip and a dropped authorization, so pass `--log-file` when you are diagnosing why something was not brokered.
+Every request records a decision: `brokered` (a service matched and a credential was applied), `passthrough` (no service matched, forwarded untouched), `blocked` (rejected by `--unmatched-host=block`), or `error`. Records carry the same fields as in [Activity Logs](/documentation/platform/agent-proxy/activity-logs), written in the human-readable console format.
 
-`passthrough` is the one decision left out by default, and it is usually the bulk of an agent's traffic, so a session's log stays small. `--log-level debug` adds it, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
+Without `--log-file` you still see problems: warnings and errors print to your terminal, including a credential the proxy had to skip and a dropped authorization. What you lose is the per-request trail, so reach for `--log-file` when you need to see what happened on a specific request.
+
+`passthrough` is the one decision left out by default, and it is usually the bulk of an agent's traffic, so a log stays small. `--log-level debug` adds it, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
 
 <Note>
-  A path you pass to `--log-file` is appended to on every run and never rotated for you, so rotate it with `logrotate` (`copytruncate`) if you keep one around. The default file needs no attention: it lives in the per-run temporary directory and goes away with the run.
+  A path you pass to `--log-file` is appended to on every run and never rotated for you, so rotate it with `logrotate` (`copytruncate`) if you keep one around.
 </Note>
 
 ## Troubleshooting

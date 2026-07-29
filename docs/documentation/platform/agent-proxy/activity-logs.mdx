@@ -51,13 +51,13 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 
 ### Local proxy
 
-Records always go to a file, never your terminal, since the agent owns it. By default that file lives in the per-run temporary directory and goes away with the run; `--log-file <path>` keeps it somewhere you can `tail -f`:
+Nothing is written unless you pass `--log-file`, since the agent owns the terminal and a file you did not ask for is one you cannot find. With it, records go to that path and you can `tail -f` them:
 
 ```bash
 infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
 ```
 
-The file is written in the human-readable format shown above. A path you pass to `--log-file` is appended to on every run and never rotated for you, so use `logrotate` (`copytruncate`) if you keep one around.
+The file is written in the human-readable format shown above, and is appended to on every run without being rotated for you, so use `logrotate` (`copytruncate`) if you keep one around. Without the flag, warnings and errors still print to your terminal; only the per-request trail is dropped.
 
 ### Dedicated proxy
 
