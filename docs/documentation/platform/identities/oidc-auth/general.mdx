@@ -126,29 +126,41 @@ In the following steps, we explore how to create and use identities to access th
 
         #### Sample usage
         ```javascript
+        import * as core from "@actions/core";
+        import querystring from "node:querystring";
+        
         export const oidcLogin = async ({ identityId, domain, oidcAudience }) => {
-            const idToken = await core.getIDToken(oidcAudience);
-
-            const loginData = querystring.stringify({
-                identityId,
-                jwt: idToken,
+          const idToken = await core.getIDToken(oidcAudience);
+          const body = querystring.stringify({
+            identityId,
+            jwt: idToken,
+          });
+        
+          const url = `${domain}/api/v1/auth/oidc-auth/login`;
+        
+          let response;
+          try {
+            response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body,
             });
-
-            try {
-                const response = await axios({
-                method: "post",
-                url: `${domain}/api/v1/auth/oidc-auth/login`,
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data: loginData,
-                });
-
-                return response.data.accessToken;
-            } catch (err) {
-                core.error("Error:", err.message);
-                throw err;
-            }
+          } catch (err) {
+            core.error(`Network error contacting Infisical: ${err.message}`);
+            throw err;
+          }
+        
+          if (!response.ok) {
+            const errorBody = await response.text().catch(() => "<no body>");
+            const message = `Infisical OIDC login failed: ${response.status} ${response.statusText} — ${errorBody}`;
+            core.error(message);
+            throw new Error(message);
+          }
+        
+          const data = await response.json();
+          return data.accessToken;
         };
         ```
 
