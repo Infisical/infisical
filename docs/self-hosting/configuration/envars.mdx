@@ -305,8 +305,7 @@ ClickHouse can be used as an alternative audit log storage backend for high-volu
 Redis is used for caching and background tasks. You can use either a standalone Redis instance, Redis Sentinel, or Redis Cluster setup.
 
 Redis is required: the instance will not start unless one of `REDIS_URL`, `REDIS_SENTINEL_HOSTS`, or
-`REDIS_CLUSTER_HOSTS` is set. For what happens when a configured Redis becomes unreachable at
-runtime, see [Behavior when Redis is unavailable](/self-hosting/configuration/requirements#behavior-when-redis-is-unavailable).
+`REDIS_CLUSTER_HOSTS` is set.
 
 <Info>
 An **active-passive** setup is recommended for Redis. Infisical has not been tested with an **active-active** Redis setup, which may result in undocumented behavior.
