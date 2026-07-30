@@ -87,8 +87,8 @@ description: "One-time organization setup for AWS honey tokens."
 
       ```bash
       aws cloudformation update-stack \
-        --region 'us-east-1' \
-        --stack-name 'infisical-honey-tokens' \
+        --region '<region>' \
+        --stack-name '<stack-name>' \
         --template-url 'https://infisical-static-assets.s3.us-east-1.amazonaws.com/honey-tokens/honey-tokens-v1.yaml' \
         --capabilities CAPABILITY_NAMED_IAM \
         --parameters \
