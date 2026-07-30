@@ -43,8 +43,7 @@ export const PersonalSettingsPage = () => {
         selectedTab={selectedTab}
         onTabChange={(nextTab) =>
           navigate({
-            search: (previous) => ({ ...previous, selectedTab: nextTab }),
-            replace: true
+            search: (previous) => ({ ...previous, selectedTab: nextTab })
           })
         }
       />
