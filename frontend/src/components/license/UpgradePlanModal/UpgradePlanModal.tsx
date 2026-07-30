@@ -80,7 +80,7 @@ export const UpgradePlanModalContent = ({
 
   return (
     <DialogContent
-      className="z-[70] w-lg max-w-[calc(100%-2rem)] p-4"
+      className="z-[70] w-lg max-w-[calc(100%-2rem)]"
       overlayClassName="z-[70]"
     >
       <DialogHeader className="pr-8">
