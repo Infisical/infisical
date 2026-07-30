@@ -63,9 +63,7 @@ export default function CodeInputStep({
     verificationErrorMessage = t("signup.step2-code-error-exhausted");
   } else if (typeof triesLeft === "number") {
     verificationErrorMessage = t(
-      triesLeft === 1
-        ? "signup.step2-code-error-tries-singular"
-        : "signup.step2-code-error-tries",
+      triesLeft === 1 ? "signup.step2-code-error-tries-singular" : "signup.step2-code-error-tries",
       { triesLeft }
     );
   }
