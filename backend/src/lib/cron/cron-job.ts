@@ -43,7 +43,8 @@ export const CronJobName = {
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
   LicenseUsageFlush: "license-usage-flush",
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
-  InstanceUpdateCheck: "instance-update-check"
+  InstanceUpdateCheck: "instance-update-check",
+  MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice"
 } as const;
 
 // ── tuning constants ──────────────────────────────────────────────────────────

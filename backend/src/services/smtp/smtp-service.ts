@@ -27,6 +27,7 @@ import {
   HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
   MfaRecoveryCodeUsedTemplate,
+  NativeIntegrationDeprecationTemplate,
   NewDeviceLoginTemplate,
   OAuthPasswordResetTemplate,
   OrgAdminBreakglassAccessTemplate,
@@ -92,6 +93,7 @@ export enum SmtpTemplates {
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
+  NativeIntegrationDeprecation = "nativeIntegrationDeprecation",
   OrgInvite = "organizationInvitation",
   SubOrgInvite = "subOrganizationInvitation",
   OrgAssignment = "organizationAssignment",
@@ -140,6 +142,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SubOrgInvite]: SubOrganizationInvitationTemplate,
   [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
+  [SmtpTemplates.NativeIntegrationDeprecation]: NativeIntegrationDeprecationTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,
   [SmtpTemplates.SignupExistingAccount]: SignupExistingAccountTemplate,
   [SmtpTemplates.EmailMfa]: EmailMfaTemplate,

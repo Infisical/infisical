@@ -1,0 +1,99 @@
+import { Heading, Section, Text } from "@react-email/components";
+
+import { BaseButton } from "./BaseButton";
+import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
+import { BaseLink } from "./BaseLink";
+
+const BENEFITS = [
+  "Continuous, automatic syncing with no manual re-runs",
+  "Reusable App Connections shared across syncs",
+  "Actively maintained and supported"
+];
+
+interface NativeIntegrationDeprecationTemplateProps
+  extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
+  orgName: string;
+  // a single entry for the per-project email, every affected project for the org-wide email
+  projects: { name: string; integrations: string[]; url: string }[];
+}
+
+export const NativeIntegrationDeprecationTemplate = ({
+  siteUrl,
+  orgName,
+  projects
+}: NativeIntegrationDeprecationTemplateProps) => {
+  const isSingleProject = projects.length === 1;
+
+  return (
+    <BaseEmailWrapper
+      title="Native Integrations Are Moving to Secret Syncs"
+      preview="Native integrations are deprecated. Secret Syncs are the maintained replacement."
+      siteUrl={siteUrl}
+    >
+      <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
+        <strong>Native Integrations Are Moving to Secret Syncs</strong>
+      </Heading>
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
+        <Text className="text-black text-[14px] leading-[24px]">
+          {isSingleProject ? (
+            <>
+              The <strong>{projects[0].name}</strong> project in <strong>{orgName}</strong> still uses native
+              integrations.
+            </>
+          ) : (
+            <>
+              <strong>{projects.length}</strong> projects in <strong>{orgName}</strong> still use native integrations.
+            </>
+          )}{" "}
+          Native integrations are deprecated. Secret Syncs are the maintained replacement and cover the same third-party
+          services, so we recommend migrating.
+        </Text>
+        {BENEFITS.map((benefit) => (
+          <Text key={benefit} className="text-black text-[14px] leading-[20px] my-[4px]">
+            • {benefit}
+          </Text>
+        ))}
+      </Section>
+      <Section className="mb-[28px]">
+        <Text className="text-[14px] font-semibold mb-[12px]">
+          {isSingleProject ? "Integrations to migrate" : "Projects using native integrations"}
+        </Text>
+        {projects.map((project) => (
+          <Section
+            key={project.name}
+            className="mb-[16px] p-[16px] border border-solid border-gray-200 rounded-md bg-gray-50"
+          >
+            <Text className="text-[14px] font-semibold m-0 mb-[4px]">
+              <BaseLink href={project.url}>{project.name}</BaseLink>
+            </Text>
+            <Text className="text-[12px] text-gray-600 m-0">{project.integrations.join(", ")}</Text>
+          </Section>
+        ))}
+      </Section>
+      <Section className="text-center">
+        <BaseButton href="https://infisical.com/docs/integrations/secret-syncs/overview">
+          Explore Secret Syncs
+        </BaseButton>
+      </Section>
+    </BaseEmailWrapper>
+  );
+};
+
+export default NativeIntegrationDeprecationTemplate;
+
+NativeIntegrationDeprecationTemplate.PreviewProps = {
+  siteUrl: "https://infisical.com",
+  orgName: "Example Organization",
+  projects: [
+    {
+      name: "backend-api",
+      integrations: ["GitHub", "AWS Parameter Store", "Vercel"],
+      url: "https://infisical.com"
+    },
+    {
+      name: "web-app",
+      integrations: ["Netlify", "Cloudflare Pages"],
+      url: "https://infisical.com"
+    }
+  ]
+} as NativeIntegrationDeprecationTemplateProps;

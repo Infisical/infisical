@@ -204,5 +204,70 @@ export const integrationDALFactory = (db: TDbClient) => {
     );
   };
 
-  return { ...integrationOrm, find, findOne, findById, findByProjectId, findByProjectIdV2 };
+  // native integrations are deprecated in favour of secret syncs — the three helpers below back the monthly
+  // deprecation notice, which enumerates every org still holding one.
+  // filters Environment.deleteAfter AND Project.deleteAfter: an environment soft-delete does not imply a
+  // project soft-delete, so a cross-project enumeration has to exclude both independently.
+  const liveOrgIntegrationQuery = (conn: Knex) =>
+    conn(TableName.Integration)
+      .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`);
+
+  const findOrgIdsWithIntegrations = async (tx?: Knex) => {
+    try {
+      const orgIds = await liveOrgIntegrationQuery(tx || db.replicaNode())
+        .distinct(db.ref("orgId").withSchema(TableName.Project))
+        .pluck<string[]>(`${TableName.Project}.orgId`);
+
+      return orgIds;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOrgIdsWithIntegrations" });
+    }
+  };
+
+  const findProjectIntegrationsByOrgId = async (orgId: string, tx?: Knex) => {
+    try {
+      const docs = await liveOrgIntegrationQuery(tx || db.replicaNode())
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(
+          db.ref("id").withSchema(TableName.Project).as("projectId"),
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("integration").withSchema(TableName.Integration)
+        )
+        .orderBy(`${TableName.Project}.name` as "name");
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindProjectIntegrationsByOrgId" });
+    }
+  };
+
+  const hasIntegrationsByOrgId = async (orgId: string, tx?: Knex): Promise<boolean> => {
+    try {
+      // primary, not the replica: this check exists to catch an integration deleted moments ago, so reading a
+      // possibly stale replica would defeat its purpose
+      const doc = await liveOrgIntegrationQuery(tx || db)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(db.ref("id").withSchema(TableName.Integration))
+        .first();
+
+      return Boolean(doc);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "HasIntegrationsByOrgId" });
+    }
+  };
+
+  return {
+    ...integrationOrm,
+    find,
+    findOne,
+    findById,
+    findByProjectId,
+    findByProjectIdV2,
+    findOrgIdsWithIntegrations,
+    findProjectIntegrationsByOrgId,
+    hasIntegrationsByOrgId
+  };
 };
