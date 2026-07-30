@@ -6,7 +6,7 @@ import { RateLimitError } from "@app/lib/errors";
 
 export const globalRateLimiterCfg = (): RateLimitPluginOptions => {
   const appCfg = getConfig();
-  const redis = appCfg.isRedisConfigured ? buildRedisFromConfig(appCfg) : null;
+  const redis = appCfg.isRedisConfigured ? buildRedisFromConfig(appCfg, "rate-limiter") : null;
 
   return {
     errorResponseBuilder: (_, context) => {

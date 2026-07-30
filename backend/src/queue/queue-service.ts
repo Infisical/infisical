@@ -659,7 +659,7 @@ export type TQueueServiceFactory = {
 
 export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFactory => {
   const isClusterMode = Boolean(redisCfg?.REDIS_CLUSTER_HOSTS);
-  const connection = buildRedisFromConfig(redisCfg);
+  const connection = buildRedisFromConfig(redisCfg, "queue");
   const queueContainer: Partial<Record<QueueName, Queue<TQueueJobTypes[QueueName]["payload"], void, string>>> = {};
 
   const workerContainer: Partial<

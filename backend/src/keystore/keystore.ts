@@ -303,21 +303,23 @@ export const keyStoreFactory = (
   redisConfigKeys: TKeyStoreFactoryDTO,
   keyValueStoreDAL: TKeyValueStoreDALFactory
 ): TKeyStoreFactory => {
-  const primaryRedis = buildRedisFromConfig(redisConfigKeys);
+  const primaryRedis = buildRedisFromConfig(redisConfigKeys, "keystore");
 
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
+    const replicaName = `keystore-replica:${el.host}:${el.port}`;
+
     if (redisConfigKeys.REDIS_URL) {
       const primaryNode = new URL(redisConfigKeys?.REDIS_URL);
       primaryNode.hostname = el.host;
       primaryNode.port = String(el.port);
-      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_URL: primaryNode.toString() });
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_URL: primaryNode.toString() }, replicaName);
     }
 
     if (redisConfigKeys.REDIS_SENTINEL_HOSTS) {
-      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_SENTINEL_HOSTS: [el] });
+      return buildRedisFromConfig({ ...redisConfigKeys, REDIS_SENTINEL_HOSTS: [el] }, replicaName);
     }
 
-    return buildRedisFromConfig({ ...redisConfigKeys, REDIS_CLUSTER_HOSTS: [el] });
+    return buildRedisFromConfig({ ...redisConfigKeys, REDIS_CLUSTER_HOSTS: [el] }, replicaName);
   });
   const redisLock = new Redlock([primaryRedis], { retryCount: 2, retryDelay: 200 });
 

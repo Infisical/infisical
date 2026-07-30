@@ -21,7 +21,7 @@ export type TRedisConfigKeys = Partial<{
 
 const REDIS_ERROR_LOG_THROTTLE_MS = 10_000;
 
-const attachConnectionLogging = (client: Redis | Cluster) => {
+const attachConnectionLogging = (client: Redis | Cluster, name: string) => {
   let lastLoggedAt = 0;
   let isDown = false;
 
@@ -31,7 +31,7 @@ const attachConnectionLogging = (client: Redis | Cluster) => {
 
     lastLoggedAt = now;
     isDown = true;
-    logger.error({ err }, `Redis connection error [error=${err.message}]`);
+    logger.error({ err, redisClient: name }, `Redis connection error [client=${name}] [error=${err.message}]`);
   });
 
   client.on("ready", () => {
@@ -39,13 +39,13 @@ const attachConnectionLogging = (client: Redis | Cluster) => {
     if (!isDown) return;
     isDown = false;
     lastLoggedAt = 0;
-    logger.info("Redis connection restored");
+    logger.info({ redisClient: name }, `Redis connection restored [client=${name}]`);
   });
 
   return client;
 };
 
-export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
+export const buildRedisFromConfig = (cfg: TRedisConfigKeys, name = "unknown") => {
   if (cfg.REDIS_URL) {
     return attachConnectionLogging(
       new Redis(cfg.REDIS_URL, {
@@ -58,7 +58,8 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
           }
           return false;
         }
-      })
+      }),
+      name
     );
   }
 
@@ -81,7 +82,8 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
             return false;
           }
         }
-      })
+      }),
+      name
     );
   }
 
@@ -104,6 +106,7 @@ export const buildRedisFromConfig = (cfg: TRedisConfigKeys) => {
         }
         return false;
       }
-    })
+    }),
+    name
   );
 };

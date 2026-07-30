@@ -66,7 +66,7 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
     });
 
   console.log("Testing redis connection");
-  const redis = buildRedisFromConfig(appCfg);
+  const redis = buildRedisFromConfig(appCfg, "bootstrap");
   const redisPing = await redis?.ping();
   if (!redisPing) {
     console.error("Redis - Failed to connect");
