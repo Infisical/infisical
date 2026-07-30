@@ -174,7 +174,7 @@ export const ProxiedServiceTemplateSelect = ({ onSelect }: Props) => {
       )}
 
       <p className="text-xs text-muted">
-        Don&apos;t see the service you&apos;re looking for?{" "}
+        Don&apos;t see the service you&apos;re looking for, or using a protocol other than HTTP?{" "}
         <a
           target="_blank"
           rel="noopener noreferrer"
