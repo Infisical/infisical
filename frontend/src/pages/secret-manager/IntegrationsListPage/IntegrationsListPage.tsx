@@ -12,6 +12,7 @@ import {
   useProject
 } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -32,6 +33,16 @@ export const IntegrationsListPage = () => {
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
   });
+
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(currentProject.id, {
+    refetchInterval: false
+  });
+
+  // Native integrations are deprecated: the tab is only offered to projects that already have one.
+  // Keeping it mounted while the user is standing on it avoids an empty page when they delete their
+  // last integration.
+  const showNativeIntegrations =
+    integrations.length > 0 || selectedTab === IntegrationsListPageTabs.NativeIntegrations;
 
   const updateSelectedTab = (tab: string) => {
     navigate({
@@ -70,9 +81,11 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.InfrastructureIntegrations}>
                 Infrastructure Integrations
               </Tab>
-              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
-                Native Integrations
-              </Tab>
+              {showNativeIntegrations && (
+                <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                  Native Integrations
+                </Tab>
+              )}
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.AppConnections}>
               <AppConnectionsTab />
@@ -83,15 +96,17 @@ export const IntegrationsListPage = () => {
             <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
               <InfrastructureIntegrationTab />
             </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
-              <ProjectPermissionCan
-                renderGuardBanner
-                I={ProjectPermissionActions.Read}
-                a={ProjectPermissionSub.Integrations}
-              >
-                <NativeIntegrationsTab />
-              </ProjectPermissionCan>
-            </TabPanel>
+            {showNativeIntegrations && (
+              <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
+                <ProjectPermissionCan
+                  renderGuardBanner
+                  I={ProjectPermissionActions.Read}
+                  a={ProjectPermissionSub.Integrations}
+                >
+                  <NativeIntegrationsTab />
+                </ProjectPermissionCan>
+              </TabPanel>
+            )}
             <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
               <ProjectPermissionCan
                 renderGuardBanner
