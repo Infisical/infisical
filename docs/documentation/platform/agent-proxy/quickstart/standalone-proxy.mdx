@@ -132,13 +132,6 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
   Getting a `401`? The credential was not applied and the placeholder went out unchanged. Confirm the agent identity has `Proxy` on the service and the proxy identity has `Read Value` on `GITHUB_PAT`. A `407` or `403` from the proxy itself means the agent's token was missing, invalid, or revoked.
 </Note>
 
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Learn more" icon="book-open" href="/documentation/platform/agent-proxy/standalone-agent-proxy">
-    The Standalone Agent Proxy reference: deployment, network placement, high availability, and how agents are authorized on every request.
-  </Card>
-  <Card title="Local Proxy" icon="laptop-code" href="/documentation/platform/agent-proxy/quickstart/local-proxy">
-    The quickstart for an agent you run yourself, on your own computer, in one command.
-  </Card>
-</CardGroup>
+<Info>
+  For more depth, the [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) reference covers deployment, network placement, high availability, and how each agent is authorized on every request. To broker credentials to an agent on your own computer, follow the [Local Proxy](/documentation/platform/agent-proxy/quickstart/local-proxy) quickstart instead.
+</Info>

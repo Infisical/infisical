@@ -122,13 +122,6 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
   Getting a `401`? The proxy could not apply the credential and forwarded the placeholder unchanged. Confirm you have **Read Value** on `GITHUB_PAT`, since `run` brokers as you, and that the host pattern matches `api.github.com`. Add `--log-file=/tmp/broker.log` and `tail -f` it to see the decision for each request.
 </Note>
 
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Learn more" icon="book-open" href="/documentation/platform/agent-proxy/local-agent-proxy">
-    The Local Agent Proxy reference: what the sandbox allows and denies, how certificates work, and every flag `run` takes.
-  </Card>
-  <Card title="Standalone Proxy" icon="server" href="/documentation/platform/agent-proxy/quickstart/standalone-proxy">
-    The quickstart for agents that run unattended in your own infrastructure, on a host of their own.
-  </Card>
-</CardGroup>
+<Info>
+  For more depth, the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) reference covers what the sandbox allows and denies, how certificates work, and every flag `run` takes. To serve agents that run unattended in your own infrastructure, follow the [Standalone Proxy](/documentation/platform/agent-proxy/quickstart/standalone-proxy) quickstart instead.
+</Info>
