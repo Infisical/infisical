@@ -1141,11 +1141,6 @@
                 ]
               }
             ]
-          },
-          {
-            "item": "Agent Vault",
-            "icon": "arrow-up-right-from-square",
-            "href": "https://docs.agent-vault.dev/"
           }
         ]
       },
