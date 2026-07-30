@@ -38,16 +38,35 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
 
         - **Spacelift Connection**: Select the app connection to use for authentication.
         - **Context**: Select the Spacelift context that will receive the synced secrets.
-        - **Config Type**: Choose how secrets are stored in the Spacelift context:
-            - **Environment Variables**: Each secret is synced as an individual environment variable (default).
-            - **File Mount**: Secrets are mounted as files under `/mnt/workspace/`.
-        - **File Format** *(File Mount only)*: Choose the file format for mounted secrets:
-            - **.env File**: All secrets are bundled into a single `.env` file at the specified path (e.g., `/mnt/workspace/secrets.env`).
-            - **One Secret Per File**: Each secret is stored as a separate file. The filename is the secret key and the content is the secret value (e.g., `/mnt/workspace/secrets/MY_SECRET`).
-        - **File Path** *(.env File only)*: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`). Required.
-        - **Directory Path** *(One Secret Per File only)*: The directory under `/mnt/workspace/` where secret files are created (e.g., `secrets/`). Optional -- leave empty to mount files directly in `/mnt/workspace/`.
+        - **Config Type**: Choose how secrets are stored in the Spacelift context.
 
-        ![Configure Destination](/images/secret-syncs/spacelift/spacelift-sync-destination.png)
+        Secret keys are sanitized to conform to UNIX environment variable naming rules: any characters outside `a-zA-Z0-9_` are stripped, and keys that start with a digit are prefixed with an underscore. Keys that become empty after sanitization are skipped.
+
+        <Tabs>
+          <Tab title="Environment Variables">
+            Each secret is synced as an individual environment variable in the Spacelift context (default).
+
+            ![Environment Variables Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-env-vars.png)
+          </Tab>
+          <Tab title=".env File">
+            All secrets are bundled into a single `.env` file and mounted at the specified path under `/mnt/workspace/`. For example, if the mount path is `secrets.env`, the file is available at `/mnt/workspace/secrets.env` during runs.
+
+            - **File Path**: The path for the mounted `.env` file relative to `/mnt/workspace/` (e.g., `secrets.env`). Required.
+
+            ![.env File Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-dot-env.png)
+          </Tab>
+          <Tab title="One Secret Per File">
+            Each secret is stored as a separate file. The filename is the sanitized secret key and the file content is the secret value. For example, with a directory path of `secrets/`, a secret named `MY_SECRET` is available at `/mnt/workspace/secrets/MY_SECRET`.
+
+            - **Directory Path**: The directory under `/mnt/workspace/` where secret files are created (e.g., `secrets/`). Optional -- leave empty to mount files directly in `/mnt/workspace/`.
+
+            <Warning>
+              When secret deletion protection is disabled, any files in the target directory that do not correspond to a secret in Infisical will be removed. If you have files in that directory managed outside of Infisical, enable **Disable Secret Deletion** to prevent them from being deleted.
+            </Warning>
+
+            ![One Secret Per File Destination](/images/secret-syncs/spacelift/spacelift-sync-destination-secret-per-file.png)
+          </Tab>
+        </Tabs>
       </Step>
       <Step title="Configure sync options">
         Configure the **Sync Options**, then click **Next**.
