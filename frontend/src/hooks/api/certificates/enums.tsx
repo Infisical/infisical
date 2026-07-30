@@ -46,7 +46,8 @@ export enum CertExtendedKeyUsage {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   TIMESTAMPING = "time_stamping",
-  OCSP_SIGNING = "ocsp_signing"
+  OCSP_SIGNING = "ocsp_signing",
+  ANY_PURPOSE = "any_purpose"
 }
 
 export enum CertSource {

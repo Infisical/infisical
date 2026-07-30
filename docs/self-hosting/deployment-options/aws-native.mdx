@@ -1354,7 +1354,9 @@ After completing the above steps, your Infisical instance should be running on A
     - Scale ECS tasks horizontally (increase desired count)
     - Scale RDS vertically (larger instance class)
     - Enable RDS Performance Insights for query analysis
-    - Consider connection pooling (PgBouncer)
+    - Tune the per-task connection pool with [`DB_POOL_MAX`](/self-hosting/configuration/envars#connection-pool-sizing-optional). Connection pools are per task, so `DatabaseConnections` scales with your task count and rolling deploys briefly double it. Lowering `DB_POOL_MAX` is usually the cheaper fix.
+    - Offload reads to replicas with `DB_READ_REPLICAS`
+    - Consider a connection pooler (RDS Proxy or PgBouncer) only once task count alone pushes you near `max_connections`
   </Accordion>
 
   <Accordion title="ECS Exec not working">

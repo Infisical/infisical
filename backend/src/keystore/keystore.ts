@@ -86,6 +86,9 @@ export const KeyStorePrefixes = {
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
   RecentAnnouncements: "announcements:recent" as const,
 
+  AlertChannelTestCooldown: (orgId: string, actorId: string, channelType: string) =>
+    `alert-channel-test-cooldown:${orgId}:${actorId}:${channelType}` as const,
+
   ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
   ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
@@ -94,6 +97,8 @@ export const KeyStorePrefixes = {
   KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+  ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
+    `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
   MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
@@ -150,8 +155,12 @@ export const KeyStorePrefixes = {
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
-  LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
-  LicenseEntitlementsIdentitySynced: (orgId: string) => `license-entitlements-identity-synced-${orgId}` as const,
+  // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
+  LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
+  // Single-flight guard so only one background revalidation runs per org per lock window.
+  LicenseCacheRevalidateLock: (orgId: string) => `license-cache-revalidate-lock-${orgId}` as const,
+  // Throttles the demand-driven usage reconciliation (fired from getPlan) to once per org per interval.
+  LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
@@ -182,6 +191,7 @@ export const KeyStoreTtls = {
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes
   MfaCodeResendCooldownInSeconds: 60, // 1 minute
+  AlertChannelTestCooldownInSeconds: 60, // 1 minute
 
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
@@ -196,9 +206,17 @@ export const KeyStoreTtls = {
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
-  LicenseCloudPlanInSeconds: 300, // 5 minutes
+  LicenseCloudPlanInSeconds: 900, // 15 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
-  LicenseEntitlementsInSeconds: 1800, // 30 minutes
+  // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
+  LicenseCachePassThroughInSeconds: 180, // 3 minutes
+  // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
+  // after the customer finishes the hosted checkout/card-setup (which can take a few minutes).
+  LicenseCachePassThroughCheckoutInSeconds: 900, // 15 minutes
+  // Throttle window for the single-flight background revalidation.
+  LicenseCacheRevalidateLockInSeconds: 10,
+  // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
+  LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes

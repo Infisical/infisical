@@ -1,7 +1,14 @@
 import { ClipboardCheck, Copy } from "lucide-react";
 
-import { Modal, ModalContent } from "@app/components/v2";
-import { ButtonGroup, IconButton, Input } from "@app/components/v3";
+import {
+  ButtonGroup,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  IconButton,
+  Input
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -20,15 +27,18 @@ export const IdentityTokenAuthTokenModal = ({ popUp, handlePopUpToggle }: Props)
   };
 
   return (
-    <Modal
-      isOpen={popUp?.tokenAuthToken?.isOpen}
+    <Dialog
+      open={popUp?.tokenAuthToken?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("tokenAuthToken", isOpen);
       }}
     >
-      <ModalContent title="Access Token">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Access Token</DialogTitle>
+        </DialogHeader>
         {popUpData?.accessToken && (
-          <ButtonGroup className="mb-8 w-full">
+          <ButtonGroup className="w-full">
             <Input
               value={popUpData.accessToken}
               readOnly
@@ -47,7 +57,7 @@ export const IdentityTokenAuthTokenModal = ({ popUp, handlePopUpToggle }: Props)
             </IconButton>
           </ButtonGroup>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

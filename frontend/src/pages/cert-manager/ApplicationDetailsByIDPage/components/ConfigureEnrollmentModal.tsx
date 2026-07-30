@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -11,6 +12,7 @@ import {
   RotateCwIcon
 } from "lucide-react";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { createNotification } from "@app/components/notifications";
 import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
@@ -42,6 +44,7 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FilterableSelect,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -59,8 +62,14 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
-import { useToggle } from "@app/hooks";
+import { usePopUp, useToggle } from "@app/hooks";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { isScepRaCaSigningSupported } from "@app/hooks/api/ca/capabilities";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { useGetPkiApplicationEnrollment } from "@app/hooks/api/pkiApplications";
 import {
   useClearPkiApplicationAcmeEnrollment,
@@ -75,10 +84,13 @@ import {
   useSetPkiApplicationScepEnrollment
 } from "@app/hooks/api/pkiApplications/mutations";
 import { ScepChallengeType, TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
 const COPY_RESET_MS = 1000;
+
+const CREATE_CONNECTION_ID = "_create";
 
 type Props = {
   isOpen: boolean;
@@ -829,6 +841,7 @@ const ScepPanel = ({
   profileId,
   profileSlug,
   enabled,
+  caType,
   initial,
   onCancelPending,
   onDirtyChange
@@ -837,6 +850,7 @@ const ScepPanel = ({
   profileId: string;
   profileSlug: string;
   enabled: boolean;
+  caType: CaType;
   onCancelPending: () => void;
   onDirtyChange: (isDirty: boolean) => void;
   initial: {
@@ -849,8 +863,11 @@ const ScepPanel = ({
     challengeEndpointUrl: string | null;
     raCertificatePem: string;
     raCertExpiresAt: string;
+    validationConnectionId: string | null;
+    signRaWithCa: boolean;
   } | null;
 }) => {
+  const { currentProject } = useProject();
   const setMutation = useSetPkiApplicationScepEnrollment();
   const clearMutation = useClearPkiApplicationScepEnrollment();
   const {
@@ -858,6 +875,7 @@ const ScepPanel = ({
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { isDirty }
   } = useForm<{
     challengeType: ScepChallengeType;
@@ -866,25 +884,31 @@ const ScepPanel = ({
     allowCertBasedRenewal: boolean;
     dynamicChallengeExpiryMinutes?: number;
     dynamicChallengeMaxPending?: number;
+    validationConnectionId?: string;
+    signRaWithCa: boolean;
   }>({
     defaultValues: {
-      challengeType: initial?.challengeType ?? "static",
+      challengeType: initial?.challengeType ?? ScepChallengeType.STATIC,
       challengePassword: "",
       includeCaCertInResponse: initial?.includeCaCertInResponse ?? true,
       allowCertBasedRenewal: initial?.allowCertBasedRenewal ?? true,
       dynamicChallengeExpiryMinutes: initial?.dynamicChallengeExpiryMinutes ?? 60,
-      dynamicChallengeMaxPending: initial?.dynamicChallengeMaxPending ?? 100
+      dynamicChallengeMaxPending: initial?.dynamicChallengeMaxPending ?? 100,
+      validationConnectionId: initial?.validationConnectionId ?? undefined,
+      signRaWithCa: initial?.signRaWithCa ?? false
     }
   });
 
   useEffect(() => {
     reset({
-      challengeType: initial?.challengeType ?? "static",
+      challengeType: initial?.challengeType ?? ScepChallengeType.STATIC,
       challengePassword: "",
       includeCaCertInResponse: initial?.includeCaCertInResponse ?? true,
       allowCertBasedRenewal: initial?.allowCertBasedRenewal ?? true,
       dynamicChallengeExpiryMinutes: initial?.dynamicChallengeExpiryMinutes ?? 60,
-      dynamicChallengeMaxPending: initial?.dynamicChallengeMaxPending ?? 100
+      dynamicChallengeMaxPending: initial?.dynamicChallengeMaxPending ?? 100,
+      validationConnectionId: initial?.validationConnectionId ?? undefined,
+      signRaWithCa: initial?.signRaWithCa ?? false
     });
   }, [
     initial?.challengeType,
@@ -892,10 +916,31 @@ const ScepPanel = ({
     initial?.allowCertBasedRenewal,
     initial?.dynamicChallengeExpiryMinutes,
     initial?.dynamicChallengeMaxPending,
+    initial?.validationConnectionId,
+    initial?.signRaWithCa,
     reset
   ]);
 
   const challengeType = watch("challengeType");
+  const isIntune = challengeType === ScepChallengeType.MICROSOFT_INTUNE;
+  const isScepConfigured = Boolean(initial);
+  const raCaSigningSupported = isScepRaCaSigningSupported(caType);
+
+  const { permission } = useProjectPermission();
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
+  const canCreateConnection = permission.can(
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
+  );
+
+  useEffect(() => {
+    if (isIntune && !isScepConfigured && raCaSigningSupported) setValue("signRaWithCa", true);
+  }, [isIntune, isScepConfigured, raCaSigningSupported, setValue]);
+
+  const { data: intuneConnections, isPending: isIntuneConnectionsLoading } =
+    useListAvailableAppConnections(AppConnection.MicrosoftIntune, currentProject.id, {
+      enabled: isIntune
+    });
 
   useEffect(() => {
     onDirtyChange(isDirty);
@@ -903,7 +948,20 @@ const ScepPanel = ({
 
   const onSave = handleSubmit(async (values) => {
     try {
-      await setMutation.mutateAsync({ applicationId, profileId, ...values });
+      const signRaWithCa = raCaSigningSupported && values.signRaWithCa;
+      const payload = isIntune
+        ? {
+            applicationId,
+            profileId,
+            challengeType: values.challengeType,
+            includeCaCertInResponse: values.includeCaCertInResponse,
+            // Cert-based renewal would bypass Intune's per-request validation, so it is always off.
+            allowCertBasedRenewal: false,
+            signRaWithCa,
+            validationConnectionId: values.validationConnectionId
+          }
+        : { applicationId, profileId, ...values, signRaWithCa, validationConnectionId: undefined };
+      await setMutation.mutateAsync(payload);
       reset({ ...values, challengePassword: "" });
       createNotification({ type: "success", text: "SCEP enrollment saved" });
     } catch (err) {
@@ -940,7 +998,7 @@ const ScepPanel = ({
             value={initial.scepEndpointUrl}
             helper="Configure your MDM or SCEP client to point at this URL."
           />
-          {initial.challengeType === "dynamic" && initial.challengeEndpointUrl ? (
+          {initial.challengeType === ScepChallengeType.DYNAMIC && initial.challengeEndpointUrl ? (
             <CopyableField
               label="Challenge endpoint URL"
               value={initial.challengeEndpointUrl}
@@ -995,20 +1053,94 @@ const ScepPanel = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="static">Static password</SelectItem>
-                    <SelectItem value="dynamic">Dynamic (per-client)</SelectItem>
+                    <SelectItem value={ScepChallengeType.STATIC}>Static password</SelectItem>
+                    <SelectItem value={ScepChallengeType.DYNAMIC}>Dynamic (per-client)</SelectItem>
+                    <SelectItem value={ScepChallengeType.MICROSOFT_INTUNE}>
+                      Microsoft Intune
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </FieldContent>
               <FieldDescription>
-                {field.value === "static"
-                  ? "All clients present the same shared challenge password."
-                  : "Each client requests a fresh, one-time challenge before enrolling."}
+                {(() => {
+                  if (field.value === ScepChallengeType.STATIC)
+                    return "All clients present the same shared challenge password.";
+                  if (field.value === ScepChallengeType.DYNAMIC)
+                    return "Each client requests a fresh, one-time challenge before enrolling.";
+                  return "Requests are validated with Microsoft Intune, which seals its own challenge into each device request.";
+                })()}
               </FieldDescription>
             </Field>
           )}
         />
-        {challengeType === "static" && (
+        {isIntune && (
+          <Controller
+            control={control}
+            name="validationConnectionId"
+            rules={{ required: true }}
+            render={({ field: { value, onChange }, fieldState: { error } }) => {
+              const selected = intuneConnections?.find((c) => c.id === value) ?? null;
+              return (
+                <Field>
+                  <FieldLabel>Microsoft Intune connection</FieldLabel>
+                  <FieldContent>
+                    <FilterableSelect
+                      value={selected}
+                      isError={Boolean(error)}
+                      isLoading={isIntuneConnectionsLoading}
+                      onChange={(newValue) => {
+                        if (
+                          (newValue as SingleValue<{ id: string }>)?.id === CREATE_CONNECTION_ID
+                        ) {
+                          handlePopUpOpen("addConnection");
+                          onChange(undefined);
+                          return;
+                        }
+                        onChange((newValue as { id: string } | null)?.id ?? undefined);
+                      }}
+                      options={[
+                        ...(canCreateConnection
+                          ? [{ id: CREATE_CONNECTION_ID, name: "Create Connection" }]
+                          : []),
+                        ...(intuneConnections ?? [])
+                      ]}
+                      placeholder="Select connection..."
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      components={{ Option: AppConnectionOption }}
+                    />
+                  </FieldContent>
+                  <FieldDescription>
+                    Selecting the connection is all that is required. The transaction and
+                    certificate request arrive in the device request, and the expected subject and
+                    SAN are validated by Intune. See the{" "}
+                    <a
+                      href={PkiDocsUrls.appConnections.microsoftIntune}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-500 hover:text-primary-400"
+                    >
+                      setup guide
+                    </a>{" "}
+                    for what to configure on the Intune side.
+                  </FieldDescription>
+                  {!isIntuneConnectionsLoading &&
+                  !intuneConnections?.length &&
+                  !canCreateConnection ? (
+                    <FieldDescription className="text-warning">
+                      You do not have access to any Microsoft Intune Connections. Contact an admin
+                      to create one.
+                    </FieldDescription>
+                  ) : null}
+                  {error ? (
+                    <FieldError>A Microsoft Intune connection is required.</FieldError>
+                  ) : null}
+                </Field>
+              );
+            }}
+          />
+        )}
+        {challengeType === ScepChallengeType.STATIC && (
           <Controller
             control={control}
             name="challengePassword"
@@ -1034,7 +1166,7 @@ const ScepPanel = ({
             )}
           />
         )}
-        {challengeType === "dynamic" && (
+        {challengeType === ScepChallengeType.DYNAMIC && (
           <div className="grid grid-cols-2 gap-4">
             <Controller
               control={control}
@@ -1076,6 +1208,49 @@ const ScepPanel = ({
       <SectionCard title="Advanced options">
         <Controller
           control={control}
+          name="signRaWithCa"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <FieldLabel>Sign RA certificate with the CA</FieldLabel>
+                <p className="text-xs text-accent">
+                  Issue the SCEP RA certificate from this profile&apos;s CA so clients can build a
+                  chain to a CA they already trust. Required by strict clients such as Apple and
+                  Microsoft Intune, which reject a self-signed RA. Only available for internal
+                  certificate authorities.
+                </p>
+              </div>
+              {raCaSigningSupported && !isScepConfigured ? (
+                <Switch
+                  variant="project"
+                  id="scep-sign-ra-with-ca"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Switch
+                        variant="project"
+                        id="scep-sign-ra-with-ca"
+                        checked={raCaSigningSupported && field.value}
+                        disabled
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {raCaSigningSupported
+                      ? "Cannot be changed once SCEP enrollment is set up. Disable SCEP enrollment and set it up again to change it."
+                      : `Not supported for ${caType} certificate authorities.`}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          )}
+        />
+        <Controller
+          control={control}
           name="includeCaCertInResponse"
           render={({ field }) => (
             <Field orientation="horizontal">
@@ -1094,26 +1269,28 @@ const ScepPanel = ({
             </Field>
           )}
         />
-        <Controller
-          control={control}
-          name="allowCertBasedRenewal"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <Label>Allow cert-based renewal</Label>
-                <FieldDescription>
-                  Let clients renew using their existing certificate as authentication.
-                </FieldDescription>
-              </FieldContent>
-              <Switch
-                variant="project"
-                id="scep-cert-renewal"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </Field>
-          )}
-        />
+        {!isIntune && (
+          <Controller
+            control={control}
+            name="allowCertBasedRenewal"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label>Allow cert-based renewal</Label>
+                  <FieldDescription>
+                    Let clients renew using their existing certificate as authentication.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  variant="project"
+                  id="scep-cert-renewal"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </Field>
+            )}
+          />
+        )}
       </SectionCard>
       <div className="flex justify-end gap-2 pt-2">
         {!enabled && (
@@ -1132,6 +1309,18 @@ const ScepPanel = ({
           {enabled ? "Save" : "Enable"}
         </Button>
       </div>
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isAddConnectionOpen) =>
+          handlePopUpToggle("addConnection", isAddConnectionOpen)
+        }
+        projectType={currentProject.type}
+        projectId={currentProject.id}
+        app={AppConnection.MicrosoftIntune}
+        onComplete={(connection) => {
+          if (connection) setValue("validationConnectionId", connection.id);
+        }}
+      />
     </div>
   );
 };
@@ -1398,6 +1587,7 @@ export const ConfigureEnrollmentModal = ({
                         profileId={profileId}
                         profileSlug={profile?.profileSlug ?? ""}
                         enabled={Boolean(data?.scepConfigured)}
+                        caType={data?.caType ?? CaType.INTERNAL}
                         initial={data?.scep ?? null}
                         onCancelPending={() => handleCancelPending("scep")}
                         onDirtyChange={(d) => handleDirtyChange("scep", d)}

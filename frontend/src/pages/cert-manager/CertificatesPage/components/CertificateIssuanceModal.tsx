@@ -41,11 +41,8 @@ import { useGetCert } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca";
 import { useGetCertificatePolicyById } from "@app/hooks/api/certificatePolicies";
 import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import {
-  CertExtendedKeyUsage,
-  CertificateRequestStatus,
-  CertKeyUsage
-} from "@app/hooks/api/certificates/enums";
+import { buildExtendedKeyUsageToggleSchema } from "@app/hooks/api/certificates/constants";
+import { CertificateRequestStatus, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useUnifiedCertificateIssuance } from "@app/hooks/api/certificates/mutations";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -108,12 +105,7 @@ const keyUsagesField = z
 
 const extendedKeyUsagesField = z
   .object({
-    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+    ...buildExtendedKeyUsageToggleSchema(z.boolean().optional())
   })
   .default({});
 

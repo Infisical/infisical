@@ -1,1 +1,1 @@
-export { IdentitySection } from "./IdentitySection";
+export { IdentityAuthTemplatesSection, IdentitySection } from "./IdentitySection";

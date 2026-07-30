@@ -16,6 +16,17 @@ export type TMeteredFeature = {
   count: TFeatureCounterFn;
 };
 
+// Static list of every metered dimension key (no DAL needed). For callers that only need the keys, not
+// the count fns — e.g. background reconciliation emitting one event per dimension for an org.
+export const METERED_DIMENSION_KEYS: string[] = [
+  IdentitiesMeter,
+  InternalCas,
+  ActiveCerts,
+  SecretIdentities,
+  PamIdentities,
+  UserIdentities
+].map((feature) => feature.key);
+
 type TBuildMeteredFeaturesDep = {
   licenseDAL: Pick<TLicenseDALFactory, "countOrgUsersAndIdentities" | "countOfOrgMembers">;
   usageCounterDAL: TUsageCounterDALFactory;

@@ -58,4 +58,6 @@ export interface TScepConfigData {
   allowCertBasedRenewal?: boolean;
   dynamicChallengeExpiryMinutes?: number;
   dynamicChallengeMaxPending?: number;
+  validationConnectionId?: string;
+  signRaWithCa?: boolean;
 }

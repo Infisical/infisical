@@ -21,6 +21,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
@@ -88,6 +89,7 @@ type TMembershipUserServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -113,7 +115,8 @@ export const membershipUserServiceFactory = ({
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -552,7 +555,8 @@ export const membershipUserServiceFactory = ({
           userGroupMembershipDAL,
           membershipRoleDAL,
           additionalPrivilegeDAL,
-          approvalPolicyDAL
+          approvalPolicyDAL,
+          alertChannelRecipientDAL
         });
         return doc;
       }
@@ -578,6 +582,11 @@ export const membershipUserServiceFactory = ({
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
+
+      if (dto.scopeData.scope === AccessScope.Project) {
+        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [dto.selector.userId] }, tx);
+      }
+
       return doc;
     };
 
