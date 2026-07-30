@@ -52,12 +52,12 @@ export const WishForm = () => {
   return (
     <Popover onOpenChange={(open) => (open ? setIsOpen.on() : setIsOpen.off())} open={isOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="outline" size="sm">
           <MessageCircleIcon />
           Request a feature
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))]">
+      <PopoverContent align="end" className="w-72 sm:w-96">
         <form onSubmit={handleSubmit(createWish)}>
           <Field data-invalid={Boolean(errors.text)}>
             <FieldLabel htmlFor="feature-request">Feature request</FieldLabel>

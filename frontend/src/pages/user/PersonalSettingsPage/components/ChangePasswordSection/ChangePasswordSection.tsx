@@ -123,14 +123,14 @@ export const ChangePasswordSection = () => {
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Password</CardTitle>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Change Password</CardTitle>
           <CardDescription>
             Changing your password signs this session out after the update succeeds.
           </CardDescription>
         </CardHeader>
-        <CardContent className="max-w-md">
+        <CardContent className="max-w-md px-6 pb-6">
           <FieldGroup>
             <Controller
               defaultValue=""
@@ -164,10 +164,11 @@ export const ChangePasswordSection = () => {
             />
           </FieldGroup>
         </CardContent>
-        <CardFooter className="flex flex-wrap gap-2">
+        <CardFooter className="min-h-8 flex-wrap justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
           <Button
             type="submit"
             variant="neutral"
+            size="sm"
             isPending={isSubmitting}
             isDisabled={breachStatus === "checking" || breachStatus === "breached"}
           >
@@ -176,10 +177,11 @@ export const ChangePasswordSection = () => {
           <Button
             onClick={onSetupPassword}
             type="button"
-            variant="ghost"
+            variant="outline"
+            size="sm"
             isPending={sendSetupPasswordEmail.isPending}
           >
-            Send password setup email
+            Email setup link
           </Button>
         </CardFooter>
       </Card>

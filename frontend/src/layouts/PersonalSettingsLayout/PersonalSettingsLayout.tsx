@@ -4,9 +4,9 @@ import { InsecureConnectionBanner } from "../OrganizationLayout/components/Insec
 
 export const PersonalSettingsLayout = () => {
   return (
-    <div className="dark flex min-h-screen w-full flex-col bg-background">
+    <div className="dark flex h-screen w-full flex-col overflow-hidden bg-bunker-800">
       {!window.isSecureContext && <InsecureConnectionBanner />}
-      <main className="min-w-0 flex-1 dark:scheme-dark">
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto dark:scheme-dark">
         <Outlet />
       </main>
     </div>

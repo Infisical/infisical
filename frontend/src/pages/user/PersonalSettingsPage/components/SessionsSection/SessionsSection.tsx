@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { LogOutIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -13,9 +12,9 @@ import {
   AlertDialogTitle,
   Button,
   Card,
-  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle
 } from "@app/components/v3";
@@ -31,14 +30,14 @@ export const SessionsSection = () => {
     try {
       await mutateAsync();
       createNotification({
-        text: "All sessions signed out.",
+        text: "Signed out everywhere.",
         type: "success"
       });
       setIsRevokeAllOpen(false);
       window.location.href = "/login";
     } catch {
       createNotification({
-        text: "Failed to sign out all sessions.",
+        text: "Failed to sign out everywhere.",
         type: "error"
       });
     }
@@ -46,22 +45,21 @@ export const SessionsSection = () => {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Sessions</CardTitle>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Sessions</CardTitle>
           <CardDescription>
             Review browser and CLI sessions with access to your account.
           </CardDescription>
-          <CardAction>
-            <Button variant="danger" size="sm" onClick={() => setIsRevokeAllOpen(true)}>
-              <LogOutIcon />
-              Sign out all
-            </Button>
-          </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 pb-6">
           <SessionsTable />
         </CardContent>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <Button variant="neutral" size="sm" onClick={() => setIsRevokeAllOpen(true)}>
+            Sign out everywhere
+          </Button>
+        </CardFooter>
       </Card>
 
       <AlertDialog
@@ -70,7 +68,7 @@ export const SessionsSection = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out all sessions?</AlertDialogTitle>
+            <AlertDialogTitle>Sign out everywhere?</AlertDialogTitle>
             <AlertDialogDescription>
               This signs your account out of every browser and CLI, including this session. You will
               need to sign in again.
@@ -79,14 +77,13 @@ export const SessionsSection = () => {
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="danger"
               isPending={isPending}
               onClick={(event) => {
                 event.preventDefault();
                 onRevokeAllSessionsClick();
               }}
             >
-              Sign out all
+              Sign out everywhere
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

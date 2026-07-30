@@ -36,7 +36,7 @@ export const PersonalAuthTab = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {!user.authMethods.includes(AuthMethod.LDAP) && (
         <>
           <MFASection />

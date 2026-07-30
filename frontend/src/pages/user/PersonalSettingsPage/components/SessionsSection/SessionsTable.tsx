@@ -111,7 +111,7 @@ export const SessionsTable = () => {
             <TableHead>IP and session ID</TableHead>
             <TableHead>Device</TableHead>
             <TableHead>Last accessed</TableHead>
-            <TableHead>
+            <TableHead className="w-px">
               <span className="sr-only">Actions</span>
             </TableHead>
           </TableRow>
@@ -134,27 +134,34 @@ export const SessionsTable = () => {
 
             return (
               <TableRow key={`session-${id}`}>
-                <TableCell>
+                <TableCell className="h-auto py-2">
                   <div className="flex min-w-44 flex-col">
-                    <span className="font-medium">{ip || "Unknown IP"}</span>
-                    <span className="max-w-64 truncate font-mono text-xs text-muted" title={id}>
+                    <span className="text-sm leading-5 font-medium">{ip || "Unknown IP"}</span>
+                    <span
+                      className="max-w-64 truncate font-mono text-xs leading-4 text-muted"
+                      title={id}
+                    >
                       {id}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="h-auto py-2">
                   <div className="flex flex-col">
-                    <span className="font-medium">{os || "Unknown operating system"}</span>
-                    <span className="text-xs text-muted">{browser || "Unknown browser"}</span>
+                    <span className="text-sm leading-5 font-medium">
+                      {os || "Unknown operating system"}
+                    </span>
+                    <span className="text-xs leading-4 text-muted">
+                      {browser || "Unknown browser"}
+                    </span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="h-auto py-2">
                   <div className="flex flex-col">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="w-fit cursor-help rounded-sm bg-transparent p-0 text-left font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                          className="w-fit cursor-help rounded-sm bg-transparent p-0 text-left text-sm leading-5 font-medium focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                           <time dateTime={lastUsedDate.toISOString()}>
                             {timeAgo(lastUsedDate, new Date())}
@@ -167,7 +174,7 @@ export const SessionsTable = () => {
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="w-fit cursor-help rounded-sm bg-transparent p-0 text-left text-xs text-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                          className="w-fit cursor-help rounded-sm bg-transparent p-0 text-left text-xs leading-4 text-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                         >
                           <time dateTime={createdAtDate.toISOString()}>
                             Created {timeAgo(createdAtDate, new Date())}
@@ -178,10 +185,10 @@ export const SessionsTable = () => {
                     </Tooltip>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="h-auto py-2 text-right">
                   <Button
-                    variant="danger"
-                    size="sm"
+                    variant="outline"
+                    size="xs"
                     onClick={() => setSessionToRevoke({ id, ip, browser })}
                   >
                     Sign out
@@ -211,7 +218,6 @@ export const SessionsTable = () => {
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="danger"
               isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();

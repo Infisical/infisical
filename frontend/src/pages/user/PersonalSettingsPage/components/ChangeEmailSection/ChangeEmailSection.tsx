@@ -197,14 +197,14 @@ export const ChangeEmailSection = () => {
   return (
     <>
       <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Email</CardTitle>
+        <Card className="gap-0 overflow-hidden p-0">
+          <CardHeader className="p-6">
+            <CardTitle className="font-alliance">Change Email</CardTitle>
             <CardDescription>
               Verify both your current and new email addresses. A successful change signs you out.
             </CardDescription>
           </CardHeader>
-          <CardContent className="max-w-md">
+          <CardContent className="max-w-md px-6 pb-6">
             <Controller
               control={emailForm.control}
               name="newEmail"
@@ -229,10 +229,11 @@ export const ChangeEmailSection = () => {
               )}
             />
           </CardContent>
-          <CardFooter>
+          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
             <Button
               type="submit"
               variant="neutral"
+              size="sm"
               isPending={isRequestingOTP}
               isDisabled={!isEmailValid(watchedEmail) || isOtpModalOpen}
             >

@@ -116,7 +116,7 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
             )}
 
             {isPending && (
-              <div className="space-y-2" aria-label="Loading passkeys">
+              <div className="flex flex-col gap-2" aria-label="Loading passkeys">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </div>

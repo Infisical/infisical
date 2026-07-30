@@ -14,8 +14,8 @@ import {
   AlertDialogTitle,
   Button,
   Card,
-  CardAction,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -55,20 +55,20 @@ export const DeleteAccountSection = () => {
 
   return (
     <>
-      <Card className="border-danger/25">
-        <CardHeader>
-          <CardTitle>Delete Account</CardTitle>
+      <Card className="gap-0 overflow-hidden border-danger/25 p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Delete Account</CardTitle>
           <CardDescription>
             Permanently delete your account and revoke its access to Infisical. This cannot be
             undone.
           </CardDescription>
-          <CardAction>
-            <Button variant="danger" onClick={() => setIsOpen(true)}>
-              <Trash2Icon />
-              Delete account
-            </Button>
-          </CardAction>
         </CardHeader>
+        <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
+          <Button variant="danger" size="sm" onClick={() => setIsOpen(true)}>
+            <Trash2Icon />
+            Delete account
+          </Button>
+        </CardFooter>
       </Card>
 
       <AlertDialog

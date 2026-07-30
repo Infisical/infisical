@@ -62,12 +62,12 @@ export const UserNameSection = (): JSX.Element => {
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Profile</CardTitle>
           <CardDescription>Update the name shown across Infisical.</CardDescription>
         </CardHeader>
-        <CardContent className="max-w-md">
+        <CardContent className="max-w-md px-6 pb-6">
           <Controller
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
@@ -81,8 +81,14 @@ export const UserNameSection = (): JSX.Element => {
             name="name"
           />
         </CardContent>
-        <CardFooter>
-          <Button variant="neutral" type="submit" isPending={isPending} isDisabled={!isDirty}>
+        <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <Button
+            variant="neutral"
+            size="sm"
+            type="submit"
+            isPending={isPending}
+            isDisabled={!isDirty}
+          >
             Save changes
           </Button>
         </CardFooter>

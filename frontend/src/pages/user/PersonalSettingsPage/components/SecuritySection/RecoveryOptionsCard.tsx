@@ -46,20 +46,15 @@ export const RecoveryOptionsCard = () => {
   };
 
   return (
-    <div className="p-6">
-      <h3 className="mb-4 text-sm font-medium text-foreground">Recovery options</h3>
-      <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 items-start gap-3">
-          <KeyRoundIcon className="mt-0.5 text-muted" />
-          <div>
-            <p className="text-sm text-foreground">Recovery codes</p>
-            <p className="text-xs text-muted">
-              Recovery codes let you sign in if you lose access to your other methods. Each code
-              works once.
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
+    <>
+      <div className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0.5 py-3 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto]">
+        <KeyRoundIcon className="row-span-2 row-start-1 size-6 text-muted" />
+        <p className="col-start-2 row-start-1 text-sm text-foreground">Recovery codes</p>
+        <p className="col-start-2 row-start-2 text-sm text-muted">
+          Recovery codes let you sign in if you lose access to your other methods. Each code works
+          once.
+        </p>
+        <div className="col-start-2 row-start-3 flex flex-wrap items-center gap-2 justify-self-end sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:self-center">
           <Button variant="outline" size="sm" isDisabled={isBusy} onClick={viewCodes}>
             <EyeIcon /> View
           </Button>
@@ -97,7 +92,7 @@ export const RecoveryOptionsCard = () => {
               Store these somewhere safe. Each code can only be used once.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div className="max-h-80 overflow-y-auto">
             <RecoveryCodesView
               recoveryCodes={codes ?? []}
               acknowledgment={
@@ -132,6 +127,6 @@ export const RecoveryOptionsCard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };

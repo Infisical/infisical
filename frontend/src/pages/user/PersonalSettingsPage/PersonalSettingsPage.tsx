@@ -15,7 +15,7 @@ export const PersonalSettingsPage = () => {
   });
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <div className="mx-auto w-full max-w-5xl p-4 lg:p-8">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -28,9 +28,11 @@ export const PersonalSettingsPage = () => {
         Back to organization
       </Link>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Personal Settings</h1>
-          <p className="mt-1 text-sm text-muted">
+        <div className="grid gap-1">
+          <h1 className="font-alliance text-2xl font-semibold text-foreground">
+            Personal Settings
+          </h1>
+          <p className="text-sm text-muted">
             Manage your profile, authentication, and active sessions.
           </p>
         </div>

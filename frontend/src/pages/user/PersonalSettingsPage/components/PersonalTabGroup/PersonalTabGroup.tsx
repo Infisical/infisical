@@ -1,4 +1,4 @@
-import { ExternalLinkIcon, KeyRoundIcon, SettingsIcon, ShieldCheckIcon } from "lucide-react";
+import { ExternalLinkIcon, KeyRoundIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -21,10 +21,10 @@ type Props = {
 };
 
 const tabs = [
-  { name: "General", key: "general", icon: SettingsIcon },
-  { name: "Authentication", key: "authentication", icon: ShieldCheckIcon },
-  { name: "API keys", key: "api-keys", icon: KeyRoundIcon }
-] satisfies { name: string; key: PersonalSettingsTab; icon: typeof SettingsIcon }[];
+  { name: "General", key: "general" },
+  { name: "Authentication", key: "authentication" },
+  { name: "API keys", key: "api-keys", icon: TriangleAlertIcon }
+] satisfies { name: string; key: PersonalSettingsTab; icon?: typeof TriangleAlertIcon }[];
 
 export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
   return (
@@ -33,47 +33,45 @@ export const PersonalTabGroup = ({ selectedTab, onTabChange }: Props) => {
       onValueChange={(value) => onTabChange(value as PersonalSettingsTab)}
       className="mt-8"
     >
-      <TabsList
-        variant="filled"
-        aria-label="Personal settings sections"
-        className="max-w-full justify-start overflow-x-auto"
-      >
+      <TabsList variant="admin" aria-label="Personal settings sections">
         {tabs.map(({ name, key, icon: Icon }) => (
           <TabsTrigger value={key} key={key}>
-            <Icon />
+            {Icon && <Icon aria-hidden className="text-warning" />}
             {name}
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value="general" className="mt-6">
+      <TabsContent value="general">
         <PersonalGeneralTab />
       </TabsContent>
-      <TabsContent value="authentication" className="mt-6">
+      <TabsContent value="authentication">
         <PersonalAuthTab />
       </TabsContent>
-      <TabsContent value="api-keys" className="mt-6">
+      <TabsContent value="api-keys">
         <Alert variant="warning">
           <KeyRoundIcon />
           <AlertTitle>API keys are deprecated</AlertTitle>
           <AlertDescription>
-            Use machine identities for programmatic access. API keys will be removed according to
-            the published{" "}
-            <a
-              href="https://infisical.com/blog/deprecating-api-keys"
-              target="_blank"
-              rel="noreferrer"
-            >
-              deprecation timeline <ExternalLinkIcon className="inline size-3" />
-            </a>
-            . See the{" "}
-            <a
-              href="https://infisical.com/docs/documentation/platform/identities/overview"
-              target="_blank"
-              rel="noreferrer"
-            >
-              machine identities documentation <ExternalLinkIcon className="inline size-3" />
-            </a>
-            .
+            <p>
+              Use machine identities for programmatic access. API keys will be removed according to
+              the published{" "}
+              <a
+                href="https://infisical.com/blog/deprecating-api-keys"
+                target="_blank"
+                rel="noreferrer"
+              >
+                deprecation timeline <ExternalLinkIcon className="inline size-3" />
+              </a>
+              {". See the "}
+              <a
+                href="https://infisical.com/docs/documentation/platform/identities/overview"
+                target="_blank"
+                rel="noreferrer"
+              >
+                machine identities documentation <ExternalLinkIcon className="inline size-3" />
+              </a>
+              .
+            </p>
           </AlertDescription>
         </Alert>
       </TabsContent>
