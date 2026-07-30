@@ -2,7 +2,8 @@ export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
   EMAIL = "email",
-  URI = "uri"
+  URI = "uri",
+  UPN = "upn"
 }
 
 export enum CertKeyUsageType {
@@ -23,7 +24,8 @@ export enum CertExtendedKeyUsageType {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   OCSP_SIGNING = "ocsp_signing",
-  TIME_STAMPING = "time_stamping"
+  TIME_STAMPING = "time_stamping",
+  ANY_PURPOSE = "any_purpose"
 }
 
 export enum CertAttributeRule {
@@ -45,6 +47,7 @@ export enum CertPolicyState {
 }
 
 export enum CertDurationUnit {
+  HOURS = "hours",
   DAYS = "days",
   MONTHS = "months",
   YEARS = "years"
@@ -70,6 +73,8 @@ export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
       return "Email";
     case CertSubjectAlternativeNameType.URI:
       return "URI";
+    case CertSubjectAlternativeNameType.UPN:
+      return "UPN";
     default:
       return type;
   }
@@ -100,24 +105,18 @@ export const formatKeyUsage = (usage: CertKeyUsageType): string => {
   }
 };
 
-export const formatExtendedKeyUsage = (usage: CertExtendedKeyUsageType): string => {
-  switch (usage) {
-    case CertExtendedKeyUsageType.CLIENT_AUTH:
-      return "Client Auth";
-    case CertExtendedKeyUsageType.SERVER_AUTH:
-      return "Server Auth";
-    case CertExtendedKeyUsageType.CODE_SIGNING:
-      return "Code Signing";
-    case CertExtendedKeyUsageType.EMAIL_PROTECTION:
-      return "Email Protection";
-    case CertExtendedKeyUsageType.OCSP_SIGNING:
-      return "OCSP Signing";
-    case CertExtendedKeyUsageType.TIME_STAMPING:
-      return "Time Stamping";
-    default:
-      return usage;
-  }
+export const EXTENDED_KEY_USAGE_LABELS: Record<CertExtendedKeyUsageType, string> = {
+  [CertExtendedKeyUsageType.CLIENT_AUTH]: "Client Auth",
+  [CertExtendedKeyUsageType.SERVER_AUTH]: "Server Auth",
+  [CertExtendedKeyUsageType.CODE_SIGNING]: "Code Signing",
+  [CertExtendedKeyUsageType.EMAIL_PROTECTION]: "Email Protection",
+  [CertExtendedKeyUsageType.OCSP_SIGNING]: "OCSP Signing",
+  [CertExtendedKeyUsageType.TIME_STAMPING]: "Time Stamping",
+  [CertExtendedKeyUsageType.ANY_PURPOSE]: "Any Extended Key Usage"
 };
+
+export const formatExtendedKeyUsage = (usage: CertExtendedKeyUsageType): string =>
+  EXTENDED_KEY_USAGE_LABELS[usage] ?? usage;
 
 export const formatSubjectAttributeType = (type: CertSubjectAttributeType): string => {
   switch (type) {
@@ -176,6 +175,7 @@ export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 export const POLICY_STATE_OPTIONS = Object.values(CertPolicyState);
 
 export enum CertSubjectAttributeInclude {
+  REQUIRED = "required",
   OPTIONAL = "optional",
   PROHIBIT = "prohibit"
 }

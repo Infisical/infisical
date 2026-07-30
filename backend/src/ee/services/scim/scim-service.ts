@@ -29,9 +29,12 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordScimOperationMetric, ScimOperation } from "@app/lib/telemetry/metrics";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -130,6 +133,7 @@ type TScimServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -155,6 +159,7 @@ export const scimServiceFactory = ({
   membershipRoleDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
+  alertChannelRecipientDAL,
   scimEventsDAL,
   emailDomainDAL,
   telemetryService,
@@ -878,8 +883,13 @@ export const scimServiceFactory = ({
       membershipRoleDAL,
       userGroupMembershipDAL,
       additionalPrivilegeDAL,
-      approvalPolicyDAL
+      approvalPolicyDAL,
+      alertChannelRecipientDAL
     });
+
+    // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
+    usageMeteringService.emit(membership.scopeOrgId, SecretIdentities.key);
+    usageMeteringService.emit(membership.scopeOrgId, PamIdentities.key);
 
     await scimEventsDAL.create({
       orgId,
@@ -1345,6 +1355,7 @@ export const scimServiceFactory = ({
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
+          alertChannelRecipientDAL,
           tx,
           shouldFailOnMissingMembers
         });
@@ -1529,9 +1540,19 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const [group] = await groupDAL.delete({
-      id: groupId,
-      orgId
+    const [group] = await groupDAL.transaction(async (tx) => {
+      const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
+        { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
+
+      const deleted = await groupDAL.delete({ id: groupId, orgId }, tx);
+      if (!deleted.length) return deleted;
+
+      await finalizeAlertRecipients();
+
+      return deleted;
     });
 
     // Return success even if group not found (idempotent delete per SCIM RFC 7644)

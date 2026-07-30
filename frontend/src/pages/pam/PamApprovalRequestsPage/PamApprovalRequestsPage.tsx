@@ -40,9 +40,9 @@ import { useListPamPendingMyApproval } from "@app/hooks/api/pam";
 import { TPamAccessRequest } from "@app/hooks/api/pam/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { AccountPlatformIcon } from "../components/AccountPlatformIcon";
 import { getRequestStatusInfo } from "../components/approvalRequestStatus";
 import { formatDuration } from "../components/formatDuration";
-import { AccountPlatformIcon } from "../PamAccessPage/components/AccountPlatformIcon";
 import { ApprovalRequestDetailSheet } from "./components/ApprovalRequestDetailSheet";
 
 const RequestRow = ({

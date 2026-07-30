@@ -34,7 +34,7 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { MaxActiveCerts } from "@app/services/license-client";
+import { ActiveCerts } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
@@ -47,13 +47,19 @@ import { extractCertificateFields } from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
-  TAltNameMapping
+  TAltNameMapping,
+  TAltNameType
 } from "../../certificate/certificate-types";
-import { DEFAULT_CRL_VALIDITY_DAYS } from "../../certificate-common/certificate-constants";
+import {
+  DEFAULT_CRL_VALIDITY_DAYS,
+  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "../../certificate-common/certificate-constants";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
@@ -2072,7 +2078,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );
@@ -2216,7 +2222,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2526,7 +2532,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );
@@ -2553,10 +2559,12 @@ export const internalCertificateAuthorityServiceFactory = ({
         const sanNames = new x509.GeneralNames(sanExtension.value);
 
         altNamesArray = sanNames.items
-          .filter(
-            (value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip"
-          )
+          .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
           .map((name): TAltNameMapping => {
+            if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+              return { type: name.type as TAltNameType, value: name.value };
+            }
+
             const altNameType = validateAndMapAltNameType(name.value);
             if (!altNameType) {
               throw new Error(`Invalid altName from CSR: ${name.value}`);
@@ -2679,7 +2687,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(createSignedCert);
     }
 
-    usageMeteringService.emitForProject(ca.projectId, MaxActiveCerts.key);
+    usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
 
     return {
       certificate: leafCert,

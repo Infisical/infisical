@@ -5,7 +5,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { CertKeyAlgorithm, CertKeyType, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
+import {
+  CertExtendedKeyUsageNameToOID,
+  CertKeyAlgorithm,
+  CertKeyType,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -15,7 +20,12 @@ import {
   signatureAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 
-import { CertExtendedKeyUsageType, CertKeyUsageType, CertSubjectAlternativeNameType } from "./certificate-constants";
+import {
+  CERT_SUBJECT_ALTERNATIVE_NAMES,
+  CertExtendedKeyUsageType,
+  CertKeyUsageType,
+  CertSubjectAlternativeNameType
+} from "./certificate-constants";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -179,17 +189,13 @@ export const validateAlgorithmCompatibility = (
       }
 
       const parts = sigAlg.split("-");
-      if (parts.length === 0) {
-        return false;
-      }
-      const keyType = parts[parts.length - 1];
 
       if (caKeyAlgorithm.startsWith("RSA")) {
-        return keyType === CertKeyType.RSA;
+        return parts.includes(CertKeyType.RSA);
       }
 
       if (caKeyAlgorithm.startsWith("EC")) {
-        return keyType === CertKeyType.ECDSA;
+        return parts.includes(CertKeyType.ECDSA);
       }
 
       return false;
@@ -406,7 +412,7 @@ export const generateSelfSignedCertificate = async ({
         ? [
             new x509.ExtendedKeyUsageExtension(
               (convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || []).map(
-                (eku) => x509.ExtendedKeyUsage[eku]
+                (eku) => CertExtendedKeyUsageNameToOID[eku]
               ),
               false
             )
@@ -416,20 +422,13 @@ export const generateSelfSignedCertificate = async ({
         ? [
             new x509.SubjectAlternativeNameExtension(
               certificateRequest.altNames?.map((san) => {
-                switch (san.type) {
-                  case CertSubjectAlternativeNameType.DNS_NAME:
-                    return { type: "dns" as const, value: san.value };
-                  case CertSubjectAlternativeNameType.IP_ADDRESS:
-                    return { type: "ip" as const, value: san.value };
-                  case CertSubjectAlternativeNameType.EMAIL:
-                    return { type: "email" as const, value: san.value };
-                  case CertSubjectAlternativeNameType.URI:
-                    return { type: "url" as const, value: san.value };
-                  default:
-                    throw new BadRequestError({
-                      message: `Unsupported Subject Alternative Name type: ${san.type as string}`
-                    });
+                const generalNameType = CERT_SUBJECT_ALTERNATIVE_NAMES[san.type]?.generalNameType;
+                if (!generalNameType) {
+                  throw new BadRequestError({
+                    message: `Unsupported Subject Alternative Name type: ${san.type as string}`
+                  });
                 }
+                return { type: generalNameType, value: san.value };
               }) || [],
               false
             )

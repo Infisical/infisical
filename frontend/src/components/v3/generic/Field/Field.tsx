@@ -92,7 +92,7 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
 
 const fieldLabelVariants = cva(
   cn(
-    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border text-xs leading-snug text-accent transition-colors duration-75 group-data-[disabled=true]/field:opacity-50",
+    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border text-xs leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50",
     "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
     "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-transparent has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
     "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
@@ -171,7 +171,7 @@ function FieldSeparator({
       data-slot="field-separator"
       data-content={!!children}
       className={cn(
-        "relative -my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2",
+        "relative my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2",
         className
       )}
       {...props}

@@ -25,6 +25,7 @@ import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { initDbConnection } from "./instance";
 import { getMigrationEnvConfig, getMigrationHsmConfig } from "./migrations/utils/env-config";
@@ -33,6 +34,7 @@ import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SUPER_ADMIN_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
+const KEYCLOAK_ADMIN_EXTERNAL_ID = "00000000-0000-4000-8000-000000000003";
 
 // Parameterized variant of seed-data#generateUserSrpKeys; the SRP verifier is bound to the
 // username (the email here), so it can't be shared with the hardcoded seed user.
@@ -207,6 +209,20 @@ const main = async () => {
         .returning("*");
       await db(TableName.MembershipRole).insert({ membershipId: membership.id, role: OrgMembershipRole.Admin });
     }
+
+    // The local Keycloak realm gives its admin a stable subject ID. Seed the matching verified
+    // alias so the first OIDC login links to this already-verified admin instead of entering the
+    // email-verification signup flow. Replacing any previous alias also heals databases seeded
+    // before the realm subject became stable.
+    await db(TableName.UserAliases).where({ userId: user.id, orgId: org.id, aliasType: UserAliasType.OIDC }).del();
+    await db(TableName.UserAliases).insert({
+      userId: user.id,
+      aliasType: UserAliasType.OIDC,
+      externalId: KEYCLOAK_ADMIN_EXTERNAL_ID,
+      emails: [email],
+      orgId: org.id,
+      isEmailVerified: true
+    });
 
     // Pre-verified email domain (plain insert; email_domains has no encrypted columns).
     await db(TableName.EmailDomains).where({ orgId: org.id, domain }).del();

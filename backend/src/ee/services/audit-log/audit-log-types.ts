@@ -1,6 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
+import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -701,6 +702,7 @@ export enum EventType {
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+  SEARCH_SECRETS_BY_METADATA = "search-secrets-by-metadata",
 
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
@@ -931,7 +933,13 @@ export enum EventType {
 
   // Project Grants
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
-  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
+
+  // Alerts
+  CREATE_ALERT = "create-alert",
+  UPDATE_ALERT = "update-alert",
+  DELETE_ALERT = "delete-alert",
+  TEST_ALERT_CHANNEL = "test-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -1916,6 +1924,7 @@ interface AddIdentityTlsCertAuthEvent {
     identityId: string;
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
+    verifyClientCertificateChain: boolean;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1936,6 +1945,7 @@ interface UpdateIdentityTlsCertAuthEvent {
     identityId: string;
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
+    verifyClientCertificateChain?: boolean;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -4065,6 +4075,9 @@ interface SetPkiApplicationScepEnrollment {
     applicationId: string;
     profileId: string;
     challengeType: string;
+    signRaWithCa: boolean;
+    validationConnectionId?: string;
+    validationConnectionName?: string;
   };
 }
 
@@ -5735,6 +5748,17 @@ interface DashboardListSecretsEvent {
   };
 }
 
+interface SearchSecretsByMetadataEvent {
+  type: EventType.SEARCH_SECRETS_BY_METADATA;
+  metadata: {
+    operator: string;
+    filters: { key: string; value: string; operator: string }[];
+    tags?: string[];
+    numberOfSecrets: number;
+    secrets: { id: string; secretKey: string; environment: string; secretPath: string }[];
+  };
+}
+
 interface DashboardGetSecretValueEvent {
   type: EventType.DASHBOARD_GET_SECRET_VALUE;
   metadata: {
@@ -7029,7 +7053,7 @@ interface ScepEnrollmentEvent {
     transactionId: string;
     csrSubject: string;
     challengeType: ScepChallengeType;
-    status: "success" | "pending" | "failure";
+    status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
@@ -7045,7 +7069,7 @@ interface ScepRenewalEvent {
     transactionId: string;
     csrSubject: string;
     existingCertificateSerial?: string;
-    status: "success" | "pending" | "failure";
+    status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
@@ -7441,7 +7465,55 @@ interface DeleteProjectFolderGrantEvent {
   };
 }
 
+interface CreateAlertEvent {
+  type: EventType.CREATE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    resourceId?: string | null;
+    eventType: string;
+  };
+}
+
+interface UpdateAlertEvent {
+  type: EventType.UPDATE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+  };
+}
+
+interface DeleteAlertEvent {
+  type: EventType.DELETE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+  };
+}
+
+interface TestAlertChannelEvent {
+  type: EventType.TEST_ALERT_CHANNEL;
+  metadata: {
+    channelId?: string;
+    channelType: string;
+    resourceType: string;
+    resourceId?: string | null;
+    success: boolean;
+    deliveredTo?: number;
+    error?: string;
+  };
+}
+
 export type Event =
+  | CreateAlertEvent
+  | UpdateAlertEvent
+  | DeleteAlertEvent
+  | TestAlertChannelEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent
@@ -7913,6 +7985,7 @@ export type Event =
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
   | DashboardListSecretsEvent
+  | SearchSecretsByMetadataEvent
   | DashboardGetSecretValueEvent
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent

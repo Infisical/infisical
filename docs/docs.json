@@ -145,12 +145,14 @@
                       "integrations/app-connections/hasura-cloud",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/kemp-loadmaster",
                       "integrations/app-connections/external-infisical",
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/litellm",
                       "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
+                      "integrations/app-connections/microsoft-intune",
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
@@ -173,6 +175,7 @@
                       "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
+                      "integrations/app-connections/spacelift",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
@@ -518,7 +521,8 @@
                           "documentation/platform/secret-rotation/mysql-credentials",
                           "documentation/platform/secret-rotation/oracledb-credentials",
                           "documentation/platform/secret-rotation/postgres-credentials",
-                          "documentation/platform/secret-rotation/redis-credentials"
+                          "documentation/platform/secret-rotation/redis-credentials",
+                          "documentation/platform/secret-rotation/snowflake-user-key-pair"
                         ]
                       },
                       {
@@ -626,10 +630,23 @@
                     "group": "Agent Proxy",
                     "pages": [
                       "documentation/platform/agent-proxy/overview",
-                      "documentation/platform/agent-proxy/quickstart",
-                      "documentation/platform/agent-proxy/proxied-services",
-                      "documentation/platform/agent-proxy/activity-logs",
-                      "documentation/platform/agent-proxy/security"
+                      {
+                        "group": "Quickstart",
+                        "pages": [
+                          "documentation/platform/agent-proxy/quickstart/credentials",
+                          "documentation/platform/agent-proxy/quickstart/local-proxy",
+                          "documentation/platform/agent-proxy/quickstart/standalone-proxy"
+                        ]
+                      },
+                      {
+                        "group": "Reference",
+                        "pages": [
+                          "documentation/platform/agent-proxy/proxied-services",
+                          "documentation/platform/agent-proxy/local-agent-proxy",
+                          "documentation/platform/agent-proxy/standalone-agent-proxy",
+                          "documentation/platform/agent-proxy/activity-logs"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -727,6 +744,7 @@
                           "integrations/secret-syncs/octopus-deploy",
                           "integrations/secret-syncs/rundeck",
                           "integrations/secret-syncs/teamcity",
+                          "integrations/secret-syncs/spacelift",
                           "integrations/secret-syncs/terraform-cloud",
                           "integrations/secret-syncs/travis-ci"
                         ]
@@ -894,7 +912,8 @@
                           "documentation/platform/pki/guides/applications/jboss-certbot",
                           "documentation/platform/pki/guides/applications/windows-server-acme",
                           "documentation/platform/pki/guides/applications/gloo-mesh",
-                          "documentation/platform/pki/guides/applications/jamf-pro-scep"
+                          "documentation/platform/pki/guides/applications/jamf-pro-scep",
+                          "documentation/platform/pki/guides/applications/microsoft-intune-scep"
                         ]
                       },
                       {
@@ -953,6 +972,7 @@
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
                           "documentation/platform/pki/applications/certificate-syncs/windows-server",
                           "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central"
@@ -1113,7 +1133,8 @@
                       "documentation/platform/pam/product-reference/credential-rotation/overview",
                       "documentation/platform/pam/product-reference/credential-rotation/postgresql",
                       "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql"
+                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
+                      "documentation/platform/pam/product-reference/credential-rotation/windows"
                     ]
                   },
                   {
@@ -1122,6 +1143,12 @@
                       "documentation/platform/pam/discovery/overview",
                       "documentation/platform/pam/discovery/active-directory",
                       "documentation/platform/pam/discovery/unix"
+                    ]
+                  },
+                  {
+                    "group": "Dependencies",
+                    "pages": [
+                      "documentation/platform/pam/dependencies/overview"
                     ]
                   },
                   {
@@ -2795,6 +2822,19 @@
                     ]
                   },
                   {
+                    "group": "Snowflake User Key Pair",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/create",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/delete",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-by-id",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-by-name",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/list",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/snowflake-user-key-pair/update"
+                    ]
+                  },
+                  {
                     "group": "Supabase API Key",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/supabase-api-key/create",
@@ -3367,6 +3407,19 @@
                       "api-reference/endpoints/secret-syncs/snowflake/delete",
                       "api-reference/endpoints/secret-syncs/snowflake/sync-secrets",
                       "api-reference/endpoints/secret-syncs/snowflake/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Spacelift",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/spacelift/list",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-id",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-name",
+                      "api-reference/endpoints/secret-syncs/spacelift/create",
+                      "api-reference/endpoints/secret-syncs/spacelift/update",
+                      "api-reference/endpoints/secret-syncs/spacelift/delete",
+                      "api-reference/endpoints/secret-syncs/spacelift/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/spacelift/remove-secrets"
                     ]
                   },
                   {
@@ -4314,6 +4367,22 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/agent-proxy/quickstart",
+      "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/security",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/deployment",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#deployment"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/connecting-agents",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
+    },
     {
       "source": "/documentation/platform/kms/hsm-integration",
       "destination": "/self-hosting/guides/hsm-integration"

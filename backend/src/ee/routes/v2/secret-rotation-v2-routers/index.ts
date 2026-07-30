@@ -22,6 +22,7 @@ import { registerOracleDBCredentialsRotationRouter } from "./oracledb-credential
 import { registerPostgresCredentialsRotationRouter } from "./postgres-credentials-rotation-router";
 import { registerRedisCredentialsRotationRouter } from "./redis-credentials-rotation-router";
 import { registerSalesforceOauthCredentialsRotationRouter } from "./salesforce-oauth-credentials-rotation-router";
+import { registerSnowflakeUserKeyPairRotationRouter } from "./snowflake-user-key-pair-rotation-router";
 import { registerSupabaseApiKeyRotationRouter } from "./supabase-api-key-rotation-router";
 import { registerUnixLinuxLocalAccountRotationRouter } from "./unix-linux-local-account-rotation-router";
 import { registerWindowsLocalAccountRotationRouter } from "./windows-local-account-rotation-router";
@@ -56,5 +57,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.DatadogApplicationKeySecret]: registerDatadogApplicationKeySecretRotationRouter,
   [SecretRotation.DatadogApiKey]: registerDatadogApiKeyRotationRouter,
   [SecretRotation.ConvexAccessKey]: registerConvexAccessKeyRotationRouter,
-  [SecretRotation.FireworksApiKey]: registerFireworksApiKeyRotationRouter
+  [SecretRotation.FireworksApiKey]: registerFireworksApiKeyRotationRouter,
+  [SecretRotation.SnowflakeUserKeyPair]: registerSnowflakeUserKeyPairRotationRouter
 };

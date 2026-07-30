@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   FingerprintIcon,
   KeyIcon,
+  PlusIcon,
   SearchIcon
 } from "lucide-react";
 
@@ -29,13 +30,16 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { usePopUp } from "@app/hooks";
 import { useGetDynamicSecrets } from "@app/hooks/api/dynamicSecret/queries";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { useGetSecretApprovalPolicyOfABoard } from "@app/hooks/api/secretApproval";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawResponse } from "@app/hooks/api/secrets/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { BROKERABLE_DYNAMIC_SECRETS } from "./brokerableDynamicSecrets";
+import { CreateSecretModal } from "./CreateSecretModal";
 
 export type TCredentialSource = {
   secretKey?: string;
@@ -51,6 +55,7 @@ type Props = {
   onChange: (value: TCredentialSource) => void;
   isSecretError?: boolean;
   isFieldError?: boolean;
+  suggestedSecretKey?: string;
 };
 
 type SecretOption = {
@@ -105,7 +110,8 @@ export const CredentialSourceFields = ({
   value,
   onChange,
   isSecretError,
-  isFieldError
+  isFieldError,
+  suggestedSecretKey
 }: Props) => {
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
@@ -202,6 +208,34 @@ export const CredentialSourceFields = ({
     return dynamicSecrets.find((ds) => ds.name === value.dynamicSecretName)?.type;
   }, [value.dynamicSecretName, dynamicSecrets]);
 
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["createSecret"] as const);
+
+  const { data: boardPolicy } = useGetSecretApprovalPolicyOfABoard({
+    projectId,
+    environment,
+    secretPath
+  });
+  const isProtectedBranch = Boolean(boardPolicy);
+
+  // needs Create to make one and ReadValue to then pick it, otherwise they'd create a secret that
+  // lands in the list greyed out
+  const canCreateSecret =
+    permission.can(
+      ProjectPermissionSecretActions.Create,
+      subject(ProjectPermissionSub.Secrets, {
+        environment,
+        secretPath,
+        secretName: "*",
+        secretTags: ["*"]
+      })
+    ) &&
+    hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath,
+      secretName: "*",
+      secretTags: ["*"]
+    });
+
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -294,6 +328,29 @@ export const CredentialSourceFields = ({
           </div>
 
           <div className="p-1">
+            {canCreateSecret && (
+              <>
+                {isProtectedBranch ? (
+                  <GreyedRow
+                    icon={<PlusIcon className="size-4 shrink-0 text-muted" />}
+                    label="Create new secret"
+                    reason="This path requires approval, so a new secret would go to review before you could use it here."
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpen(false);
+                      handlePopUpOpen("createSecret");
+                    }}
+                  >
+                    <PlusIcon className="size-4 shrink-0 text-muted" />
+                    <span className="truncate">Create new secret</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+              </>
+            )}
+
             {hasSelection && !query && (
               <>
                 <DropdownMenuItem className="text-muted" onSelect={() => commit({})}>
@@ -372,6 +429,16 @@ export const CredentialSourceFields = ({
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <CreateSecretModal
+        isOpen={popUp.createSecret.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("createSecret", isOpen)}
+        projectId={projectId}
+        environment={environment}
+        secretPath={secretPath}
+        suggestedKey={suggestedSecretKey}
+        onComplete={(secretKey) => commit({ secretKey })}
+      />
     </div>
   );
 };

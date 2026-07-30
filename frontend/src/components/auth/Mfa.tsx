@@ -1,14 +1,21 @@
-import React, { useEffect, useRef, useState } from "react";
-import ReactCodeInput from "react-code-input";
+import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
 
 import Error from "@app/components/basic/Error";
 import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import {
+  Button,
+  CardContent,
+  useClientResendDelay,
+  VerificationCodeForm,
+  VerificationCodeHeader,
+  VerificationCodeResend
+} from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useActivateMfa, useLogoutUser, useSendMfaToken } from "@app/hooks/api";
 import {
@@ -23,59 +30,26 @@ import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
 import { RecoveryCodesStep } from "../mfa/setup";
+import { AuthPageLayout } from "./AuthPageLayout";
+import { AuthPagePanel } from "./AuthPagePanel";
 
 const MAX_MFA_ATTEMPTS = 5;
-
-// The style for the verification code input
-const codeInputProps = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "55px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "55px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
-    textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
-  }
-} as const;
-
-const codeInputPropsPhone = {
-  inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "40px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "40px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid #2d2f33",
-    textAlign: "center",
-    outlineColor: "#8ca542",
-    borderColor: "#2d2f33"
-  }
-} as const;
+const CLIENT_RESEND_DELAY_SECONDS = 20;
 
 type Props = {
   successCallback: () => void | Promise<void>;
   closeMfa?: () => void;
-  hideLogo?: boolean;
   email: string;
   method: MfaMethod;
+  onChangeAccount?: () => void | Promise<void>;
 };
 
-export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Props) => {
+export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount }: Props) => {
   const [mfaCode, setMfaCode] = useState("");
   const [showRecoveryCodeInput, setShowRecoveryCodeInput] = useState(false);
+  const resendDelay = useClientResendDelay(
+    method === MfaMethod.EMAIL ? CLIENT_RESEND_DELAY_SECONDS : 0
+  );
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingResend, setIsLoadingResend] = useState(false);
@@ -172,9 +146,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     await completeLogin();
   };
 
-  const verifyMfa = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const verifyMfa = async () => {
     if (!mfaCode.trim() || !isCodeComplete) return;
 
     setIsLoading(true);
@@ -223,6 +195,7 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
     try {
       setIsLoadingResend(true);
       await sendMfaToken.mutateAsync({ email });
+      resendDelay.restartDelay();
       setIsLoadingResend(false);
     } catch (err) {
       console.error(err);
@@ -310,28 +283,30 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
 
   if (newRecoveryCodes) {
     return (
-      <div className="mx-auto flex w-full max-w-md flex-col gap-4 pt-4 pb-4 md:mb-16 md:px-8">
-        <RecoveryCodesStep
-          recoveryCodes={newRecoveryCodes}
-          acknowledgment={{
-            isAcknowledged: hasSavedRecoveryCodes,
-            onAcknowledgedChange: setHasSavedRecoveryCodes,
-            confirmLabel: "Continue",
-            isConfirmPending: isLoading,
-            labelClassName: "text-bunker-200",
-            onConfirm: async () => {
-              setIsLoading(true);
-              await completeLogin();
-            }
-          }}
-        />
-      </div>
+      <AuthPageLayout variant="focused" showFooter={false}>
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+          <RecoveryCodesStep
+            recoveryCodes={newRecoveryCodes}
+            acknowledgment={{
+              isAcknowledged: hasSavedRecoveryCodes,
+              onAcknowledgedChange: setHasSavedRecoveryCodes,
+              confirmLabel: "Continue",
+              isConfirmPending: isLoading,
+              labelClassName: "text-bunker-200",
+              onConfirm: async () => {
+                setIsLoading(true);
+                await completeLogin();
+              }
+            }}
+          />
+        </div>
+      </AuthPageLayout>
     );
   }
 
   if (shouldShowTotpRegistration || shouldShowWebAuthnRegistration) {
     return (
-      <div className="mx-auto w-max pt-4 pb-4 md:mb-16 md:px-8">
+      <AuthPageLayout variant="focused" showFooter={false} contentClassName="max-w-xl">
         <MfaEnrollment
           method={method}
           onComplete={async () => {
@@ -340,217 +315,141 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
             await successCallback();
           }}
         />
-      </div>
+      </AuthPageLayout>
     );
   }
 
-  return (
-    <div className="mx-auto w-max pt-6 pb-6 md:mb-16 md:px-8">
-      {!hideLogo && (
-        <Link to="/">
-          <div className="mb-4 flex justify-center">
-            <img src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-          </div>
-        </Link>
-      )}
-      {method === MfaMethod.EMAIL &&
-        (showRecoveryCodeInput ? (
-          <div className="mb-8 text-center">
-            <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
-            <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-              Enter one of your backup recovery codes
-            </p>
-          </div>
-        ) : (
-          <>
-            <p className="text-l flex justify-center text-bunker-300">{t("mfa.step2-message")}</p>
-            <p className="text-l my-1 flex justify-center font-medium text-bunker-300">{email}</p>
-          </>
-        ))}
-      {method === MfaMethod.TOTP && (
-        <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-100">Two-Factor Authentication</h2>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-            {showRecoveryCodeInput
-              ? "Enter one of your backup recovery codes"
-              : "Enter the verification code from your authenticator app"}
-          </p>
-        </div>
-      )}
-      {method === MfaMethod.WEBAUTHN && (
-        <div className="mb-8 text-center">
-          <h2 className="mb-3 text-xl font-medium text-bunker-100">Passkey Authentication</h2>
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-bunker-300">
-            {showRecoveryCodeInput
-              ? "Enter one of your backup recovery codes"
-              : "Use your registered passkey to complete two-factor authentication"}
-          </p>
-        </div>
-      )}
-      {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
-        <>
-          {typeof triesLeft === "number" && (
-            <Error text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`} />
-          )}
-          <div className="mx-auto mt-6 flex w-full max-w-sm flex-col items-center justify-center text-center">
-            <Button
-              size="md"
-              onClick={handleWebAuthnVerification}
-              isFullWidth
-              className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isLoading}
-              isDisabled={typeof triesLeft === "number" && triesLeft <= 0}
-            >
-              Authenticate with Passkey
-            </Button>
-          </div>
-        </>
-      ) : (
-        <form onSubmit={verifyMfa}>
-          <div className="mx-auto hidden md:block" style={{ minWidth: "600px" }}>
-            {method === MfaMethod.EMAIL && (
-              <div className="flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery" : "email"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mt-6 mb-2"
-                  {...codeInputProps}
-                />
-              </div>
-            )}
-            {(method === MfaMethod.TOTP || method === MfaMethod.WEBAUTHN) && (
-              <div className="mt-8 mb-6 flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery" : "totp"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mb-2"
-                  {...codeInputProps}
-                />
-              </div>
-            )}
-          </div>
-          <div className="mx-auto mt-4 block md:hidden" style={{ minWidth: "400px" }}>
-            {method === MfaMethod.EMAIL && (
-              <div className="flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery-mobile" : "email-mobile"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mt-2 mb-2"
-                  {...codeInputPropsPhone}
-                />
-              </div>
-            )}
-            {(method === MfaMethod.TOTP || method === MfaMethod.WEBAUTHN) && (
-              <div className="mt-4 mb-6 flex justify-center">
-                <ReactCodeInput
-                  key={showRecoveryCodeInput ? "recovery-mobile" : "totp-mobile"}
-                  name=""
-                  inputMode="tel"
-                  type="text"
-                  fields={showRecoveryCodeInput ? 8 : 6}
-                  onChange={setMfaCode}
-                  className="mb-2"
-                  {...codeInputPropsPhone}
-                />
-              </div>
-            )}
-          </div>
-          {typeof triesLeft === "number" && (
-            <Error text={`Invalid code. You have ${triesLeft} attempt(s) remaining.`} />
-          )}
-          <div className="mx-auto mt-6 flex w-full max-w-sm flex-col items-center justify-center text-center">
-            <Button
-              size="md"
-              type="submit"
-              isFullWidth
-              className="h-11 rounded-lg font-medium shadow-xs transition-all duration-200 hover:shadow-md"
-              colorSchema="primary"
-              variant="outline_bg"
-              isLoading={isLoading}
-              isDisabled={!isCodeComplete || (typeof triesLeft === "number" && triesLeft <= 0)}
-            >
-              {String(t("mfa.verify"))}
-            </Button>
-          </div>
-        </form>
-      )}
-      {method === MfaMethod.EMAIL && !showRecoveryCodeInput && (
-        <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-          <div className="flex flex-row items-baseline gap-1 text-sm">
-            <span className="text-bunker-400">{t("signup.step2-resend-alert")}</span>
-            <div className="text-md mt-2 flex flex-row text-bunker-400">
-              <button disabled={isLoadingResend} onClick={handleResendMfaCode} type="button">
-                <span className="cursor-pointer duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4">
-                  {isLoadingResend
-                    ? t("signup.step2-resend-progress")
-                    : t("signup.step2-resend-submit")}
-                </span>
-              </button>
+  let headerTitle = "Two-factor authentication";
+  let headerDescription: string | undefined;
+  let headerRecipient: string | undefined;
+
+  if (showRecoveryCodeInput) {
+    headerDescription = "Enter one of your backup recovery codes.";
+  } else if (method === MfaMethod.EMAIL) {
+    headerTitle = String(t("mfa.step2-message"));
+    headerRecipient = email;
+  } else if (method === MfaMethod.TOTP) {
+    headerDescription = "Enter the verification code from your authenticator app.";
+  } else if (method === MfaMethod.WEBAUTHN) {
+    headerTitle = "Passkey authentication";
+    headerDescription = "Use your registered passkey to continue.";
+  }
+
+  const recoveryActions = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      {showRecoveryCodeInput ? (
+        <Tooltip
+          position="bottom"
+          content={
+            <div className="max-w-xs text-center text-xs">
+              {isInfisicalCloud() ? (
+                <>
+                  <div className="mb-2">Account Recovery Required</div>
+                  <div className="mb-2 text-gray-300">
+                    Contact support with valid proof of account ownership to initiate recovery
+                  </div>
+                  <div className="mt-1">support@infisical.com</div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-2">Account Recovery Required</div>
+                  <div className="text-gray-300">
+                    Contact your instance administrator with valid proof of account ownership to
+                    initiate recovery
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-          <p className="pb-2 text-sm text-bunker-400">{t("signup.step2-spam-alert")}</p>
-        </div>
+          }
+        >
+          <span className="cursor-help text-label transition-colors duration-200 hover:text-foreground">
+            Lost your recovery codes?
+          </span>
+        </Tooltip>
+      ) : (
+        method === MfaMethod.EMAIL && (
+          <VerificationCodeResend
+            isResending={isLoadingResend}
+            remainingSeconds={resendDelay.remainingSeconds}
+            onResend={handleResendMfaCode}
+          />
+        )
       )}
-      {(method === MfaMethod.EMAIL ||
-        method === MfaMethod.TOTP ||
-        method === MfaMethod.WEBAUTHN) && (
-        <div className="mt-6 flex flex-col items-center gap-4 text-sm">
-          <button
-            type="button"
-            onClick={() => {
-              setShowRecoveryCodeInput(!showRecoveryCodeInput);
-              setMfaCode("");
-            }}
-            className="text-bunker-400 transition-colors duration-200 hover:text-bunker-200 hover:underline hover:decoration-primary-700 hover:underline-offset-4"
-          >
-            {getRecoveryToggleLabel()}
-          </button>
-          <div className="text-center text-sm">
-            <Tooltip
-              position="bottom"
-              content={
-                <div className="max-w-xs text-center text-xs">
-                  {isInfisicalCloud() ? (
-                    <>
-                      <div className="mb-2">Account Recovery Required</div>
-                      <div className="mb-2 text-gray-300">
-                        Contact support with valid proof of account ownership to initiate recovery
-                      </div>
-                      <div className="mt-1">support@infisical.com</div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mb-2">Account Recovery Required</div>
-                      <div className="text-gray-300">
-                        Contact your instance administrator with valid proof of account ownership to
-                        initiate recovery
-                      </div>
-                    </>
-                  )}
-                </div>
+      <button
+        type="button"
+        onClick={() => {
+          setShowRecoveryCodeInput(!showRecoveryCodeInput);
+          setMfaCode("");
+        }}
+        className="ml-auto cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+      >
+        {getRecoveryToggleLabel()}
+      </button>
+    </div>
+  );
+
+  return (
+    <AuthPageLayout variant="focused" showFooter={false}>
+      <AuthPagePanel>
+        <VerificationCodeHeader
+          title={headerTitle}
+          recipient={headerRecipient}
+          description={headerDescription}
+          action={
+            onChangeAccount ? (
+              <button
+                aria-label={`Sign out ${email}`}
+                className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+                onClick={onChangeAccount}
+                type="button"
+              >
+                Sign out
+              </button>
+            ) : undefined
+          }
+        />
+        <CardContent>
+          {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
+            <div className="flex flex-col gap-5">
+              {typeof triesLeft === "number" && (
+                <Error
+                  text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
+                />
+              )}
+              <Button
+                size="lg"
+                onClick={handleWebAuthnVerification}
+                isFullWidth
+                variant="project"
+                isPending={isLoading}
+                isDisabled={typeof triesLeft === "number" && triesLeft <= 0}
+              >
+                Authenticate with passkey
+              </Button>
+              {recoveryActions}
+            </div>
+          ) : (
+            <VerificationCodeForm
+              key={showRecoveryCodeInput ? "recovery" : method}
+              name="mfa-code"
+              fields={showRecoveryCodeInput ? 8 : 6}
+              value={mfaCode}
+              onChange={setMfaCode}
+              onSubmit={verifyMfa}
+              submitLabel={String(t("mfa.verify"))}
+              isPending={isLoading}
+              isDisabled={typeof triesLeft === "number" && triesLeft <= 0}
+              error={
+                typeof triesLeft === "number"
+                  ? `Invalid code. You have ${triesLeft} attempt(s) remaining.`
+                  : undefined
               }
             >
-              <span className="cursor-help text-bunker-400 transition-colors duration-200 hover:text-bunker-200">
-                Lost your recovery codes?
-              </span>
-            </Tooltip>
-          </div>
-        </div>
-      )}
-    </div>
+              {recoveryActions}
+            </VerificationCodeForm>
+          )}
+        </CardContent>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };

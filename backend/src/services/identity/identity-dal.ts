@@ -27,7 +27,9 @@ export const identityDALFactory = (db: TDbClient) => {
     } as const;
     const tableName = authMethodToTableName[authMethod];
     if (!tableName) return;
-    const data = await db.replicaNode()(tableName).where({ identityId }).first();
+    // Authorization read: must observe the latest committed allowlist. Read from
+    // the primary, never a replica.
+    const data = await db(tableName).where({ identityId }).first();
     if (!data) return;
     return data.accessTokenTrustedIps;
   };

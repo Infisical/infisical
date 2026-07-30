@@ -120,10 +120,7 @@ const FormShell = ({
   footer: React.ReactNode;
 }) => (
   <>
-    <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4">
-      {children}
-      <div aria-hidden className="h-4 shrink-0" />
-    </div>
+    <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">{children}</div>
     <SheetFooter className="justify-end border-t">{footer}</SheetFooter>
   </>
 );
@@ -320,7 +317,7 @@ const TypeSelectorStep = ({
   onNext: () => void;
 }) => (
   <>
-    <div className="flex min-h-0 flex-1 flex-col px-4">
+    <div className="flex min-h-0 flex-1 flex-col p-4">
       <RadioGroup
         value={selectedType ?? ""}
         onValueChange={(value) => onSelect(value as PamDiscoveryType)}

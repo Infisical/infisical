@@ -80,7 +80,8 @@ const ProxiedServicePolicyActionSchema = z.object({
   [ProjectPermissionProxiedServiceActions.Create]: z.boolean().optional(),
   [ProjectPermissionProxiedServiceActions.Edit]: z.boolean().optional(),
   [ProjectPermissionProxiedServiceActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionProxiedServiceActions.Proxy]: z.boolean().optional()
+  [ProjectPermissionProxiedServiceActions.Proxy]: z.boolean().optional(),
+  [ProjectPermissionProxiedServiceActions.ReportUsage]: z.boolean().optional()
 });
 
 const CertificatePolicyActionSchema = z.object({
@@ -108,8 +109,7 @@ const SecretPolicyActionSchema = z.object({
   [ProjectPermissionSecretActions.Edit]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Delete]: z.boolean().optional(),
   [ProjectPermissionSecretActions.Create]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional(),
-  [ProjectPermissionSecretActions.PersonalOverride]: z.boolean().optional()
+  [ProjectPermissionSecretActions.Subscribe]: z.boolean().optional()
 });
 
 const ApprovalPolicyActionSchema = z.object({
@@ -1207,9 +1207,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           const canDelete = action.includes(ProjectPermissionSecretActions.Delete);
           const canCreate = action.includes(ProjectPermissionSecretActions.Create);
           const canSubscribe = action.includes(ProjectPermissionSecretActions.Subscribe);
-          const canPersonalOverride = action.includes(
-            ProjectPermissionSecretActions.PersonalOverride
-          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1220,7 +1217,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             edit: canEdit,
             delete: canDelete,
             subscribe: canSubscribe,
-            [ProjectPermissionSecretActions.PersonalOverride]: canPersonalOverride,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
           });
@@ -1445,6 +1441,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ),
             [ProjectPermissionProxiedServiceActions.Proxy]: action.includes(
               ProjectPermissionProxiedServiceActions.Proxy
+            ),
+            [ProjectPermissionProxiedServiceActions.ReportUsage]: action.includes(
+              ProjectPermissionProxiedServiceActions.ReportUsage
             ),
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted
@@ -2128,12 +2127,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         description: "Create new secrets in the project",
         value: ProjectPermissionSecretActions.Create
-      },
-      {
-        label: "Personal Override",
-        description:
-          "Create, modify, and delete personal secret overrides. Does not grant access to shared secrets.",
-        value: ProjectPermissionSecretActions.PersonalOverride
       }
     ]
   },
@@ -2546,6 +2539,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Proxy",
         value: ProjectPermissionProxiedServiceActions.Proxy,
         description: "Route traffic through proxied services (for agent identities)"
+      },
+      {
+        label: "Report Usage",
+        value: ProjectPermissionProxiedServiceActions.ReportUsage,
+        description: "Record last-used timestamps for proxied services (for the agent proxy)"
       }
     ]
   },
@@ -4047,7 +4045,40 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         subject: ProjectPermissionSub.Webhooks,
         actions: Object.values(ProjectPermissionActions)
       }
-    ])
+    ]),
+    {
+      id: "agent-proxy",
+      name: "Agent Proxy Policies",
+      description: "Reads secret values, mints dynamic secret leases, and reports service usage",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.Secrets,
+          actions: [
+            ProjectPermissionSecretActions.DescribeSecret,
+            ProjectPermissionSecretActions.ReadValue
+          ]
+        },
+        {
+          subject: ProjectPermissionSub.DynamicSecrets,
+          actions: [ProjectPermissionDynamicSecretActions.Lease]
+        },
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: [ProjectPermissionProxiedServiceActions.ReportUsage]
+        }
+      ]
+    },
+    {
+      id: "agent",
+      name: "Agent Policies",
+      description: "Routes traffic through proxied services",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.ProxiedServices,
+          actions: [ProjectPermissionProxiedServiceActions.Proxy]
+        }
+      ]
+    }
   ],
   [ProjectType.PAM]: [projectManagerTemplate()],
   [ProjectType.AI]: [projectManagerTemplate()]

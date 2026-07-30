@@ -14,6 +14,7 @@ export type TCreatePamAccountDTO = {
   gatewayPoolId?: string;
   recordingConnectionId?: string;
   settingsOverrides?: TPamAccountSettingsOverrides | null;
+  skipConnectionTest?: boolean;
 };
 
 export type TUpdatePamAccountDTO = {
@@ -46,6 +47,7 @@ export type TListPamAccountsDTO = {
   projectId: string;
   folderId?: string;
   templateId?: string;
+  accountType?: string;
   search?: string;
 };
 

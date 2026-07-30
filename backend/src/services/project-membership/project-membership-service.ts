@@ -11,7 +11,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { SecretIdentities } from "@app/services/license-client";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
@@ -20,6 +20,7 @@ import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-gro
 import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
@@ -66,6 +67,7 @@ type TProjectMembershipServiceFactoryDep = {
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -89,7 +91,8 @@ export const projectMembershipServiceFactory = ({
   userDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -302,6 +305,7 @@ export const projectMembershipServiceFactory = ({
       });
     }
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return orgMembers;
   };
 
@@ -402,6 +406,11 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients(
+        { userIds: projectMembers.map(({ user }) => user.id) },
+        tx
+      );
+
       return deletedMemberships;
     };
 
@@ -410,6 +419,7 @@ export const projectMembershipServiceFactory = ({
       : await membershipUserDAL.transaction(performDelete);
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return memberships;
   };
 
@@ -437,6 +447,15 @@ export const projectMembershipServiceFactory = ({
 
     const actorMembership = projectMembers.find((member) => member.userId === actorId);
     if (!actorMembership) {
+      const [groupMembership] = await userGroupMembershipDAL.findUserGroupMembershipsInProjectByUserIds(
+        [actorId],
+        project.id
+      );
+      if (groupMembership) {
+        throw new BadRequestError({
+          message: "You have access to this project through a group rather than a direct membership."
+        });
+      }
       throw new BadRequestError({ message: "You are not a member of this project" });
     }
 
@@ -483,6 +502,8 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [actorId] }, tx);
+
       return membership;
     });
 
@@ -491,6 +512,7 @@ export const projectMembershipServiceFactory = ({
     }
 
     usageMeteringService.emitForProject(projectId, SecretIdentities.key);
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
     return deletedMembership;
   };
 

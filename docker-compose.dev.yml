@@ -53,6 +53,7 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    profiles: [clickhouse]
 
   redis-commander:
     container_name: infisical-dev-redis-commander
@@ -96,12 +97,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev.fips
+      args:
+        TOOLCHAIN_IMAGE: ${TOOLCHAIN_IMAGE:-ghcr.io/infisical/backend-fips-toolchain:main}
     depends_on:
       db:
         condition: service_started
       redis:
-        condition: service_started
-      clickhouse:
         condition: service_started
     env_file:
       - .env

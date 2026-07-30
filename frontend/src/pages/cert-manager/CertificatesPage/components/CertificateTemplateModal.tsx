@@ -34,10 +34,11 @@ import {
 } from "@app/hooks/api";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import {
+  buildExtendedKeyUsageToggleSchema,
   EXTENDED_KEY_USAGES_OPTIONS,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
+import { CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const validateTemplateRegexField = z.string().trim().min(1).max(100);
@@ -61,12 +62,7 @@ const schema = z.object({
     [CertKeyUsage.DECIPHER_ONLY]: z.boolean().optional()
   }),
   extendedKeyUsages: z.object({
-    [CertExtendedKeyUsage.CLIENT_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.CODE_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.EMAIL_PROTECTION]: z.boolean().optional(),
-    [CertExtendedKeyUsage.OCSP_SIGNING]: z.boolean().optional(),
-    [CertExtendedKeyUsage.SERVER_AUTH]: z.boolean().optional(),
-    [CertExtendedKeyUsage.TIMESTAMPING]: z.boolean().optional()
+    ...buildExtendedKeyUsageToggleSchema(z.boolean().optional())
   })
 });
 

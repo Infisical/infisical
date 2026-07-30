@@ -29,6 +29,7 @@ export const useUpdateSlackIntegration = () => {
       queryClient.invalidateQueries({
         queryKey: workflowIntegrationKeys.getSlackIntegrations(orgId)
       });
+      queryClient.invalidateQueries({ queryKey: workflowIntegrationKeys.getIntegrations(orgId) });
     }
   });
 };

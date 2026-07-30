@@ -13,7 +13,8 @@ export const getUserAgentType = (userAgent: string | undefined) => {
   if (userAgent === UserAgentType.CLI) {
     return UserAgentType.CLI;
   }
-  if (userAgent === UserAgentType.K8_OPERATOR) {
+  // also match the versioned UA, e.g. "k8-operator/0.11.4"
+  if (userAgent === UserAgentType.K8_OPERATOR || userAgent.startsWith(`${UserAgentType.K8_OPERATOR}/`)) {
     return UserAgentType.K8_OPERATOR;
   }
   if (userAgent === UserAgentType.TERRAFORM) {

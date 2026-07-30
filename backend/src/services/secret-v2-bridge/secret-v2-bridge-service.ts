@@ -13,7 +13,6 @@ import {
 import { TPermissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import {
   hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretPersonalOverridePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -28,8 +27,8 @@ import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-app
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
-import { TSecretSnapshotServiceFactory } from "@app/ee/services/secret-snapshot/secret-snapshot-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -45,7 +44,8 @@ import {
   recordSecretOperationDuration,
   recordSecretReadMetric,
   recordSecretWriteMetric,
-  SecretCacheAccessResult
+  SecretCacheAccessResult,
+  SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -165,7 +165,6 @@ type TSecretV2BridgeServiceFactoryDep = {
     TSecretApprovalRequestSecretDALFactory,
     "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
-  snapshotService: Pick<TSecretSnapshotServiceFactory, "performSnapshot">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -193,7 +192,6 @@ export const secretV2BridgeServiceFactory = ({
   folderDAL,
   permissionService,
   permissionDAL,
-  snapshotService,
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
@@ -374,7 +372,8 @@ export const secretV2BridgeServiceFactory = ({
     const { secretName, type, ...inputSecretData } = inputSecret;
 
     if (type === SecretType.Personal) {
-      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Create, {
+      // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName,
@@ -491,7 +490,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
         orgId: actorOrgId,
@@ -584,7 +582,8 @@ export const secretV2BridgeServiceFactory = ({
         folderId
       });
 
-      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Edit, {
+      // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName: inputSecret.secretName,
@@ -818,7 +817,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (inputSecret.type === SecretType.Shared) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         secretPath,
         actorId,
@@ -917,7 +915,8 @@ export const secretV2BridgeServiceFactory = ({
         folderId
       });
 
-      throwIfMissingSecretPersonalOverridePermission(permission, ProjectPermissionSecretActions.Delete, {
+      // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName: inputSecret.secretName,
@@ -960,7 +959,6 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       if (inputSecret.type === SecretType.Shared) {
-        await snapshotService.performSnapshot(folderId);
         await secretQueueService.syncSecrets({
           secretPath,
           actorId,
@@ -1264,11 +1262,20 @@ export const secretV2BridgeServiceFactory = ({
     let permissionFingerprint = "";
 
     if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
-      permissionFingerprint = await permissionDAL.getPermissionFingerprint({
-        projectId,
-        orgId: actorOrgId,
-        actorId,
-        actorType: actor
+      // Cache the fingerprint for the marker window so repeated polls
+      // skip the per-request DB query. Same 10s TTL as getProjectPermission's marker, so no new staleness.
+      // This gates only the Etag cache, the real permission check is still done on the getProjectPermission call.
+      permissionFingerprint = await withCache({
+        keyStore,
+        key: KeyStorePrefixes.SecretPermissionFingerprint(projectId, actor, actorId),
+        ttlSeconds: KeyStoreTtls.ProjectPermissionMarkerTtlSeconds,
+        fetcher: () =>
+          permissionDAL.getPermissionFingerprint({
+            projectId,
+            orgId: actorOrgId,
+            actorId,
+            actorType: actor
+          })
       });
     }
 
@@ -1292,12 +1299,16 @@ export const secretV2BridgeServiceFactory = ({
     });
     const etagField = `${actorId}:${permissionFingerprint}:${requestParamsHash}`;
 
+    const hasIfNoneMatch = ifNoneMatch !== undefined;
+    let etagMissReason: SecretEtagMissReason | undefined;
+
     if (ifNoneMatch) {
       const storedEtag = await keyStore.hashGet(etagRedisKey, etagField);
       if (storedEtag && storedEtag === ifNoneMatch) {
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.NOT_MODIFIED, { hasIfNoneMatch: true });
         return { notModified: true, etag: ifNoneMatch, secrets: [], imports: [] };
       }
+      etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
     }
 
     const { permission } = await permissionService.getProjectPermission({
@@ -1357,7 +1368,7 @@ export const secretV2BridgeServiceFactory = ({
         const payload = { secrets, imports };
         await keyStore.hashSet(etagRedisKey, etagField, cachedEtag);
         await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
-        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT);
+        recordSecretCacheAccessMetric(SecretCacheAccessResult.HIT, { hasIfNoneMatch, etagMissReason });
         return { ...payload, etag: cachedEtag };
       } catch (err) {
         logger.error(err, "Secret service layer cache miss");
@@ -1617,7 +1628,7 @@ export const secretV2BridgeServiceFactory = ({
         await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
       }
       recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
+      recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
       return { ...payload, etag: computedEtag };
@@ -1708,7 +1719,7 @@ export const secretV2BridgeServiceFactory = ({
       await keyStore.setItemWithExpiry(cacheKey, SECRET_DAL_TTL(), encryptedUpdatedCachedSecrets.toString("base64"));
     }
     recordSecretCacheWriteMetric({ bytes: cacheBytes, stored });
-    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS);
+    recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
     return { ...payload, etag: computedEtag };
@@ -2223,7 +2234,6 @@ export const secretV2BridgeServiceFactory = ({
       : await secretDAL.transaction(executeBulkInsert);
 
     if (!skipPostProcessing) {
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         actor,
         actorId,
@@ -2716,7 +2726,6 @@ export const secretV2BridgeServiceFactory = ({
       : await secretDAL.transaction(executeBulkUpdate);
 
     if (!skipPostProcessing) {
-      await Promise.allSettled(folders.map((el) => (el?.id ? snapshotService.performSnapshot(el.id) : undefined)));
       await Promise.allSettled(
         folders.map((el) =>
           el
@@ -2858,7 +2867,6 @@ export const secretV2BridgeServiceFactory = ({
         ? await executeBulkDelete(providedTx)
         : await secretDAL.transaction(executeBulkDelete);
 
-      await snapshotService.performSnapshot(folderId);
       await secretQueueService.syncSecrets({
         actor,
         actorId,
@@ -3075,11 +3083,9 @@ export const secretV2BridgeServiceFactory = ({
     sourceFolder,
     destinationFolder,
     isSourceUpdated,
-    isDestinationUpdated,
-    skipSourceSnapshot = false
+    isDestinationUpdated
   }: TDispatchSecretMoveSideEffectsDTO) => {
     if (isDestinationUpdated) {
-      await snapshotService.performSnapshot(destinationFolder.id);
       await secretQueueService.syncSecrets({
         projectId,
         orgId,
@@ -3100,11 +3106,6 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (isSourceUpdated) {
-      // a folder move deletes the source folder before dispatching side effects, so snapshotting it would
-      // only hit a NotFoundError; the sync still runs so secret imports referencing the path re-resolve.
-      if (!skipSourceSnapshot) {
-        await snapshotService.performSnapshot(sourceFolder.id);
-      }
       await secretQueueService.syncSecrets({
         projectId,
         orgId,

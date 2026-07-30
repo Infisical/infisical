@@ -1,11 +1,19 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useRouterState } from "@tanstack/react-router";
+import { Info } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FilterableSelect,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
@@ -62,18 +70,22 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Specify the {appName} Connection to use to connect to {connectionName} and configure
-        destination parameters.
-      </p>
       <Controller
+        control={control}
+        name="connection"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipText="App Connections can be created from the Project Settings page."
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label={`${connectionName} Connection`}
-          >
+          <Field className="mb-4">
+            <FieldLabel>
+              {connectionName} Connection
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  App Connections can be created from the Project Settings page.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
             <FilterableSelect
               value={value}
               onChange={(newValue) => {
@@ -98,18 +110,18 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
               components={{ Option: AppConnectionOption }}
+              isError={Boolean(error)}
             />
-          </FormControl>
+            {!isPending && !availableConnections?.length && !canCreateConnection ? (
+              <FieldDescription className="text-warning">
+                You do not have access to any {appName} Connections. Contact an admin to create one.
+              </FieldDescription>
+            ) : (
+              <FieldError errors={[error]} />
+            )}
+          </Field>
         )}
-        control={control}
-        name="connection"
       />
-      {!isPending && !availableConnections?.length && !canCreateConnection && (
-        <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
-          <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          You do not have access to any {appName} Connections. Contact an admin to create one.
-        </p>
-      )}
       <AddAppConnectionModal
         isOpen={popUp.addConnection.isOpen}
         onOpenChange={(isOpen) => {

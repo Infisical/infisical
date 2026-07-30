@@ -6,8 +6,26 @@ import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
@@ -70,70 +88,75 @@ export const EncryptionPageForm = () => {
 
   return (
     <>
-      <form
-        className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-        onSubmit={handleSubmit(onSubmit)}
-      >
-        <div className="flex flex-col justify-start">
-          <div className="flex w-full justify-between">
-            <div className="mb-2 text-xl font-medium text-mineshaft-100">
-              KMS Encryption Strategy
-            </div>
-          </div>
-          <div className="mb-4 max-w-sm text-sm text-mineshaft-400">
+      <Card>
+        <CardHeader>
+          <CardTitle>KMS Encryption Strategy</CardTitle>
+          <CardDescription>
             Select which type of encryption strategy you want to use for your KMS root key. HSM is
             supported on Enterprise plans.
-          </div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {!!rootKmsDetails && (
+              <Controller
+                control={control}
+                name="encryptionStrategy"
+                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                  <Field className="max-w-sm">
+                    <FieldLabel htmlFor="server-encryption-strategy">
+                      Encryption strategy
+                    </FieldLabel>
+                    <Select value={value} onValueChange={onChange}>
+                      <SelectTrigger
+                        id="server-encryption-strategy"
+                        isError={Boolean(error)}
+                        className="w-full"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rootKmsDetails.strategies?.map((strategy) => (
+                          <SelectItem key={strategy.strategy} value={strategy.strategy}>
+                            {strategies[strategy.strategy]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            )}
 
-          {!!rootKmsDetails && (
-            <Controller
-              control={control}
-              name="encryptionStrategy"
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  className="max-w-sm"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Select
-                    className="w-full bg-mineshaft-700"
-                    dropdownContainerClassName="bg-mineshaft-800"
-                    defaultValue={field.value}
-                    onValueChange={(e) => onChange(e)}
-                    {...field}
-                  >
-                    {rootKmsDetails.strategies?.map((strategy) => (
-                      <SelectItem key={strategy.strategy} value={strategy.strategy}>
-                        {strategies[strategy.strategy]}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
+            <div className="mt-6 flex w-full items-center justify-between">
+              <Button
+                variant="neutral"
+                type="submit"
+                isPending={isSubmitting}
+                isDisabled={!isDirty}
+              >
+                Save
+              </Button>
+
+              {config.fipsEnabled && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="info">
+                      FIPS mode enabled
+                      <InfoIcon />
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    FIPS mode is enabled. Cryptographic operations within the FIPS boundaries are
+                    validated as FIPS compliant.
+                  </TooltipContent>
+                </Tooltip>
               )}
-            />
-          )}
-        </div>
-
-        <div className="flex w-full items-center justify-between">
-          <Button
-            className="mt-2"
-            type="submit"
-            isLoading={isSubmitting}
-            isDisabled={isSubmitting || !isDirty}
-          >
-            Save
-          </Button>
-
-          {config.fipsEnabled && (
-            <Tooltip content="FIPS mode of operation is enabled for your instance. All cryptographic operations within the FIPS boundaries are validated to be FIPS compliant.">
-              <Badge variant="info">
-                FIPS Mode: Enabled
-                <InfoIcon />
-              </Badge>
-            </Tooltip>
-          )}
-        </div>
-      </form>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}

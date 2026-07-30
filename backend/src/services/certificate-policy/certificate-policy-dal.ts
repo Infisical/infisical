@@ -36,7 +36,7 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
 
     jsonFields.forEach((field) => {
       const value = serialized[field];
-      if (value !== undefined && typeof value !== "string") {
+      if (value && typeof value !== "string") {
         serialized[field] = JSON.stringify(value);
       }
     });

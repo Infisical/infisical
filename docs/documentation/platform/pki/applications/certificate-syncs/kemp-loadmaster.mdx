@@ -1,0 +1,187 @@
+---
+title: "Kemp LoadMaster"
+sidebarTitle: "Kemp LoadMaster"
+description: "Deploy certificates to Progress Kemp LoadMaster load balancers."
+---
+
+Deploy certificates to Progress Kemp LoadMaster load balancers via the RESTful API. Certificates can be automatically bound to a Virtual Service for seamless load balancer integration.
+
+<Info>
+  Certificate Syncs are configured per Application. First select which certificates to sync, then configure the Kemp LoadMaster destination.
+</Info>
+
+## Prerequisites
+
+- A [Kemp LoadMaster Connection](/integrations/app-connections/kemp-loadmaster) with API access
+- The LoadMaster must be reachable over HTTPS from Infisical, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
+- The **API Interface** must be enabled on the LoadMaster (Certificates & Security > Remote Access > Enable API Interface)
+- A user account with permission to manage SSL certificates and, if you bind to a Virtual Service, to modify Virtual Services
+
+## Create a Kemp LoadMaster Sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        1. In your Application, go to the **Certificate Syncs** tab and click **Create Sync**.
+
+        2. Select the **Kemp LoadMaster** option.
+
+        3. Configure the **Destination**:
+            - **Kemp LoadMaster Connection**: The connection to authenticate with.
+            - **Virtual Service** (Optional): Select the Virtual Service to bind the certificate to from the list fetched from the LoadMaster (shown as name and VIP:port). Leave unset to only import the certificate without binding.
+
+        4. Configure the **Sync Options**:
+            - **Enable Removal of Expired/Revoked Certificates**: Remove certificates from the destination if they are no longer active.
+            - **Preserve Certificate on Renewal**: When a certificate is renewed, keep using the original certificate's identifier on the LoadMaster instead of generating a new name from the schema. This preserves the entry and any Virtual Service binding, and matters when your name schema is certificate-specific (for example it includes `{{certificateId}}`, which changes on renewal).
+            - **CA Certificate Name Schema**: Controls how each certificate's chain (intermediate CA certificates) is named in the LoadMaster's Intermediate Certs store, using the `{{fingerprint}}` and `{{commonName}}` placeholders. Defaults to `Infisical-ca-{{fingerprint}}`.
+            - **Certificate Name Schema**: Customize certificate identifiers using placeholders such as `{{certificateId}}`, `{{commonName}}`, `{{profileId}}`, and `{{applicationId}}`. Must include `{{certificateId}}` or `{{shortCertificateId}}`. Defaults to `Infisical-{{certificateId}}`. See [Certificate Name Schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema) for the full placeholder reference.
+            - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
+
+        5. Configure the **Details**:
+            - **Name**: The name of your sync (slug-friendly).
+            - **Description**: Optional description.
+
+        6. Select which certificates should be synced.
+
+        7. Review and click **Create Sync**.
+    </Tab>
+    <Tab title="API">
+        To create a **Kemp LoadMaster Certificate Sync**, make an API request to the [Create Kemp LoadMaster PKI Sync](/api-reference/endpoints/pki/syncs/kemp-loadmaster/create) endpoint.
+
+        ### Sample request
+
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/kemp-loadmaster \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-kemp-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "an example certificate sync",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "destination": "kemp-loadmaster",
+            "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000"
+            ],
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "preserveItemOnRenewal": true,
+                "certificateNameSchema": "Infisical-{{certificateId}}"
+            },
+            "destinationConfig": {
+                "virtualServiceId": "1"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-kemp-cert-sync",
+                "description": "an example certificate sync",
+                "destination": "kemp-loadmaster",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "virtualServiceId": "1"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "preserveItemOnRenewal": true,
+                    "certificateNameSchema": "Infisical-{{certificateId}}"
+                },
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+                "createdAt": "2026-03-31T00:00:00.000Z",
+                "updatedAt": "2026-03-31T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+<Note>
+  The LoadMaster certificate identifier is limited to 251 characters and may contain letters, numbers, hyphens, underscores, and periods. Full UUID placeholders (`{{certificateId}}`, `{{profileId}}`, `{{applicationId}}`) each resolve to 32 characters and `{{shortCertificateId}}` resolves to 22, so a schema has room to combine several.
+</Note>
+
+## Certificate Management
+
+The Kemp LoadMaster Certificate Sync provides:
+
+- **Automatic Deployment**: Import certificates from Infisical into the LoadMaster certificate store with customizable naming.
+- **Certificate Updates**: Replace certificates on the LoadMaster when renewals occur.
+- **Virtual Service Binding**: Optionally bind certificates to a Virtual Service, alongside any certificates the LoadMaster already serves there.
+- **Expiration Handling**: Optionally remove expired or revoked certificates from the LoadMaster (if enabled).
+
+<Note>
+  Kemp LoadMaster Certificate Syncs support both automatic and manual synchronization modes. When auto-sync is enabled, certificates are automatically deployed as they are issued or renewed.
+</Note>
+
+## How It Works
+
+Infisical automatically keeps your LoadMaster certificates in sync:
+
+- Uploads certificates, with their chains and private keys, to the LoadMaster.
+- Uploads the intermediate CA certificates into the LoadMaster's Intermediate Certs store so clients receive the complete trust chain.
+- Optionally binds them to a Virtual Service for HTTPS termination.
+- Optionally removes certificates that are no longer active in Infisical.
+
+## Certificate Renewal Behavior
+
+When a certificate is renewed in Infisical, the behavior depends on the **Preserve Certificate on Renewal** option:
+
+- **Preserve enabled (default)**: The renewed certificate reuses the original certificate's identifier and replaces that entry in place, so the name and any Virtual Service binding are preserved. This matters when your name schema is certificate-specific (for example it includes `{{certificateId}}`, which would otherwise resolve to a new name on renewal). Ideal for production environments.
+- **Preserve disabled**: The renewed certificate is imported under a newly generated identifier, and the original certificate remains on the LoadMaster until it is revoked or removed.
+
+## Removing Certificates
+
+When certificate removal is enabled and a certificate is no longer active in Infisical:
+
+1. If a Virtual Service is configured, the certificate is removed from that Virtual Service's bound certificate list.
+2. The certificate is deleted from the LoadMaster certificate store.
+
+## Manual Certificate Sync
+
+You can manually trigger certificate synchronization to the LoadMaster using the sync certificates functionality. This is useful for:
+
+- Initial setup when you have existing certificates to deploy
+- One-time sync of specific certificates
+- Testing certificate sync configurations
+- Force sync after making changes
+
+To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/kemp-loadmaster/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
+
+## FAQ
+
+<Accordion title="Can I import certificates from the LoadMaster back into Infisical?">
+  The LoadMaster does not support importing certificates back into Infisical, because private keys cannot be extracted from the appliance.
+</Accordion>
+
+<Accordion title="What happens to other certificates already bound to my Virtual Service?">
+  Certificates that this sync does not manage are left in place. Infisical reads the Virtual Service's current certificate list, keeps the certificates it does not manage, and ensures its own managed certificates are bound. This supports serving multiple certificates on one Virtual Service through SNI.
+</Accordion>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
+    Deploy certificates to Citrix NetScaler appliances.
+  </Card>
+  <Card title="Auto-Renewal" icon="arrows-spin" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+    Enable automatic certificate renewal and syncing.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Other Sync Destinations" icon="arrows-rotate" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

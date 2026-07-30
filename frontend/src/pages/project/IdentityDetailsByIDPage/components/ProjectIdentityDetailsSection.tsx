@@ -34,6 +34,8 @@ import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
+import { ProjectIdentityAlertDetail } from "./ProjectIdentityAlertDetail";
+
 type Props = {
   identity: TProjectIdentity;
   isOrgIdentity?: boolean;
@@ -196,7 +198,22 @@ export const ProjectIdentityDetailsSection = ({
                     )}
                   </DetailValue>
                 </Detail>
+                {currentProject && (
+                  <ProjectIdentityAlertDetail
+                    identityId={identity.id}
+                    identityName={identity.name}
+                    projectId={currentProject.id}
+                    projectName={currentProject.name}
+                  />
+                )}
               </>
+            )}
+            {isOrgIdentity && (
+              <ProjectIdentityAlertDetail
+                identityId={identity.id}
+                identityName={identity.name}
+                readOnly
+              />
             )}
           </DetailGroup>
         </CardContent>

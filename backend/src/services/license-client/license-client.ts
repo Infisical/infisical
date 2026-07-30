@@ -6,10 +6,9 @@ import { featureReaderFactory } from "./feature-reader";
 import { licenseServerBackend, licenseServerSelfHostedBackend } from "./license-client-backends";
 import { entitlementResolverFactory } from "./license-client-cache";
 import {
-  TAddSubscriptionItemsPayload,
+  TBuyProductPayload,
   TCancelTrialPayload,
-  TChangeCommitmentPayload,
-  TCreateCheckoutPayload,
+  TChangeCommitmentsPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TLicenseClientBackend,
@@ -96,21 +95,30 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     await resolver.invalidateEntitlements(orgId);
   };
 
-  // Ask the license server to recompute its cached entitlements (used after a license change), then
-  // drop the local cache so the next read reflects them. No-op when the backend is dormant.
+  // Flag the org's license caches for stale-while-revalidate after a billing mutation instead of a hard
+  // bust, so reads keep serving cached data while a background refresh converges once Stripe reconciles.
+  const markEntitlementsStale = async (orgId: string, opts?: { checkout?: boolean }) => {
+    if (!resolver) {
+      return;
+    }
+    await resolver.markPassThrough(orgId, opts);
+  };
+
+  // Drop the local plan cache so the next read reflects a change immediately. The license server no
+  // longer caches entitlements (reads are always live), so there's nothing to ask it to recompute.
+  // No-op when the backend is dormant.
   const refreshEntitlements = async (org: TEntitlementOrg) => {
     if (!backend) {
       return;
     }
-    await backend.refreshEntitlements(org);
     await invalidateEntitlements(org.id);
   };
 
-  const getCatalog = async () => {
+  const getCatalog = async (orgId: string) => {
     if (!backend) {
       return null;
     }
-    return backend.fetchCatalog();
+    return backend.fetchCatalog(orgId);
   };
 
   const getSubscription = async (orgId: string) => {
@@ -134,13 +142,6 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.fetchBillingProfile(orgId);
   };
 
-  const createCheckout = async (orgId: string, payload: TCreateCheckoutPayload) => {
-    if (!backend) {
-      throw new Error("license client backend is not configured");
-    }
-    return backend.createCheckoutSession(orgId, payload);
-  };
-
   const createPortal = async (orgId: string, payload: TCreatePortalPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -155,25 +156,25 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     return backend.previewSubscriptionChange(orgId, payload);
   };
 
-  const addSubscriptionItems = async (orgId: string, payload: TAddSubscriptionItemsPayload) => {
+  const buyProduct = async (orgId: string, payload: TBuyProductPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.addSubscriptionItems(orgId, payload);
+    return backend.buyProduct(orgId, payload);
   };
 
-  const removeSubscriptionItem = async (orgId: string, productId: string) => {
+  const removeProduct = async (orgId: string, productId: string) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.removeSubscriptionItem(orgId, productId);
+    return backend.removeProduct(orgId, productId);
   };
 
-  const changeCommitment = async (orgId: string, payload: TChangeCommitmentPayload) => {
+  const changeCommitments = async (orgId: string, payload: TChangeCommitmentsPayload) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
     }
-    return backend.changeCommitment(orgId, payload);
+    return backend.changeCommitments(orgId, payload);
   };
 
   const startTrial = async (orgId: string, payload: TStartTrialPayload) => {
@@ -216,17 +217,17 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     ...featureReaderFactory({ getEntitlements }),
     getEntitlements,
     invalidateEntitlements,
+    markEntitlementsStale,
     refreshEntitlements,
     getCatalog,
     getSubscription,
     getCloudPlan,
     getBillingProfile,
-    createCheckout,
     createPortal,
     previewSubscriptionChange,
-    addSubscriptionItems,
-    removeSubscriptionItem,
-    changeCommitment,
+    buyProduct,
+    removeProduct,
+    changeCommitments,
     startTrial,
     cancelTrial,
     getTrials,

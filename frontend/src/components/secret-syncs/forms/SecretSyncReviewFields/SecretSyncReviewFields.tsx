@@ -66,6 +66,10 @@ import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
 import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
+import {
+  SpaceliftSyncOptionsReviewFields,
+  SpaceliftSyncReviewFields
+} from "./SpaceliftSyncReviewFields";
 import { SupabaseSyncReviewFields } from "./SupabaseSyncReviewFields";
 import { TeamCitySyncReviewFields } from "./TeamCitySyncReviewFields";
 import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields";
@@ -254,6 +258,10 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Cloud66:
       DestinationFieldsComponent = <Cloud66SyncReviewFields />;
+      break;
+    case SecretSync.Spacelift:
+      DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

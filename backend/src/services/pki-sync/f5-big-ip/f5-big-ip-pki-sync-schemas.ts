@@ -2,9 +2,12 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  BasePkiSyncOptionsSchema,
+  buildDestinationCertificateNameSchema,
+  PkiSyncSchema
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { F5_BIG_IP_NAMING, F5BigIpProfileType } from "./f5-big-ip-pki-sync-constants";
 
@@ -53,29 +56,12 @@ export const F5BigIpPkiSyncConfigSchema = z
     path: ["profileName"]
   });
 
-export const F5BigIpPkiSyncOptionsSchema = z.object({
-  canRemoveCertificates: z.boolean().default(true),
-  includeRootCa: z.boolean().default(false),
-  preserveItemOnRenewal: z.boolean().default(true),
-  certificateNameSchema: z
-    .string()
-    .trim()
-    .min(1, "Certificate name schema is required")
-    .refine(
-      (schema) => {
-        const testName = buildCertificateNameSchemaTestName(schema);
-
-        const hasForbiddenChars = F5_BIG_IP_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
-          testName.includes(char)
-        );
-
-        return F5_BIG_IP_NAMING.NAME_PATTERN.test(testName) && !hasForbiddenChars;
-      },
-      {
-        message:
-          "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for F5 BIG-IP. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
-      }
-    )
+export const F5BigIpPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
+  certificateNameSchema: buildDestinationCertificateNameSchema({
+    naming: F5_BIG_IP_NAMING,
+    message:
+      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for F5 BIG-IP. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
+  })
 });
 
 export const F5BigIpPkiSyncSchema = PkiSyncSchema.extend({

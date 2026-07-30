@@ -1,0 +1,129 @@
+---
+title: "Local proxy quickstart"
+sidebarTitle: "Local Proxy"
+description: "Run an agent on your own computer, sandboxed, with a proxy that starts and stops alongside it."
+---
+
+With a local proxy, everything happens on the computer you are already working on. The proxy starts alongside your agent, hands it placeholder credentials, swaps in the real ones as its requests leave, and stops when the agent exits. There is nothing to deploy and no machine identity to create: the proxy brokers as your logged-in user, against secrets you can already read.
+
+Because the proxy and the agent share a machine, an **OS sandbox** is what keeps them apart. The agent cannot read your keyring or your credential files, and its only route to the network is the proxy.
+
+```text
+  +- your computer ------------------------+
+  |  +- sandbox ----+    +--------------+  |      +----------------+
+  |  |  your agent  |--->|    proxy     |  |----->| api.github.com |
+  |  +--------------+    +--------------+  |      +----------------+
+  +----------------------------------------+
+```
+
+By the end of this page an agent on your machine makes authenticated GitHub calls with a token it never sees.
+
+## Before you begin
+
+- [Set up credentials](/documentation/platform/agent-proxy/quickstart/credentials) finished, so you have a `GITHUB_PAT` secret and a `github` proxied service in `/coding-agent`.
+- The [Infisical CLI](/cli/overview) installed.
+- macOS, or Linux with [bubblewrap](https://github.com/containers/bubblewrap) installed.
+- Optional: [GitHub's `gh` CLI](https://cli.github.com/), used for the check at the end. A `curl` fallback is provided, so this is not required.
+
+The sandbox comes from the operating system, so what you install depends on which one you are on:
+
+<Tabs>
+  <Tab title="macOS">
+    Nothing to install. The sandbox is part of macOS.
+  </Tab>
+  <Tab title="Linux">
+    Linux gets the sandbox from [bubblewrap](https://github.com/containers/bubblewrap), which provides the `bwrap` binary that `run` calls:
+
+    <Tabs>
+      <Tab title="Debian / Ubuntu">
+        ```bash
+        sudo apt install bubblewrap
+        ```
+      </Tab>
+      <Tab title="Fedora / RHEL">
+        ```bash
+        sudo dnf install bubblewrap
+        ```
+      </Tab>
+      <Tab title="Arch">
+        ```bash
+        sudo pacman -S bubblewrap
+        ```
+      </Tab>
+      <Tab title="Alpine">
+        ```bash
+        apk add bubblewrap
+        ```
+      </Tab>
+    </Tabs>
+
+    On a distribution not listed here, look for `bubblewrap` in your package manager.
+  </Tab>
+</Tabs>
+
+## 1. Log in
+
+```bash
+infisical login
+```
+
+`run` brokers as you, so this is the only credential involved.
+
+## 2. Launch your agent
+
+Everything after `--` is your agent's own command. Run it from the directory you want the agent to work in:
+
+```bash
+infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+```
+
+This one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it cannot read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
+
+<Note>
+  In a directory with an `.infisical.json` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
+</Note>
+
+<Note>
+  **On macOS the first run asks for your password once.** It adds the proxy's local CA to your login keychain, which is what lets tools like `gh` accept its certificates.
+</Note>
+
+## 3. Verify it works
+
+Each check below makes the same `GET /user` call to `api.github.com`, and the client only ever sends the fake `ghp_…` placeholder. As the request passes through the proxy the placeholder is swapped for the real value of your `GITHUB_PAT`, so GitHub returns your account profile even though the real token never reached the client. That is the whole point: real authenticated work without the caller ever holding the credential.
+
+<Tabs>
+  <Tab title="Ask your agent">
+    The agent you just launched is already brokering. In its session, send:
+
+    > Run `gh api user` and show me the output.
+
+    [GitHub's `gh` CLI](https://cli.github.com/) reads `GITHUB_TOKEN` from the environment on its own, so the agent needs no token wiring: it runs the command and GitHub answers with your profile. Requires `gh` on your machine.
+  </Tab>
+  <Tab title="gh CLI">
+    Not driving an interactive agent? Run the check in place of the agent command:
+
+    ```bash
+    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- gh api user
+    ```
+
+    `gh` reads `GITHUB_TOKEN` automatically, so there is nothing else to pass.
+  </Tab>
+  <Tab title="curl">
+    No `gh`? Any HTTP client works the same way. `curl` sends the placeholder in the header and the proxy swaps it:
+
+    ```bash
+    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- \
+      sh -c 'curl -sS https://api.github.com/user -H "Authorization: Bearer $GITHUB_TOKEN"'
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Getting a `401`? The proxy could not apply the credential and forwarded the placeholder unchanged. Confirm you have **Read Value** on `GITHUB_PAT`, since `run` brokers as you, and that the host pattern matches `api.github.com`. Add `--log-file=/tmp/broker.log` and `tail -f` it to see the decision for each request.
+</Note>
+
+For more depth, the [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) reference covers what the sandbox allows and denies, how certificates work, and every flag `run` takes.
+
+<Info>
+  For agents running on your infrastructure, follow the [Standalone Proxy](/documentation/platform/agent-proxy/quickstart/standalone-proxy) quickstart instead.
+</Info>

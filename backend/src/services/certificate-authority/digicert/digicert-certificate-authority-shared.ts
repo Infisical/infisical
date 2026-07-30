@@ -1,5 +1,4 @@
 import * as x509 from "@peculiar/x509";
-import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -7,14 +6,13 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
+import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
 import { TDigiCertCertificateAuthority } from "./digicert-certificate-authority-types";
-
-const PEM_CERTIFICATE_RE2 = new RE2("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----", "g");
 
 export const castDbEntryToDigiCertCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
@@ -95,7 +93,7 @@ export const getDigiCertClientCredentials = async (
 };
 
 export const extractLeafAndChain = (pemBundle: string): { leaf: string; chain: string } => {
-  const matches = pemBundle.match(PEM_CERTIFICATE_RE2);
+  const matches = splitPemChain(pemBundle);
   if (!matches || matches.length === 0) {
     throw new BadRequestError({ message: "DigiCert returned an empty certificate bundle" });
   }

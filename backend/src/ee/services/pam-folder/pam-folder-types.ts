@@ -1,3 +1,5 @@
+import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+
 export type TCreatePamFolderDTO = {
   projectId: string;
   name: string;
@@ -25,4 +27,5 @@ export type TListPamFoldersDTO = {
   projectId: string;
   search?: string;
   onlyAccessible?: boolean;
+  filterByAction?: ResourcePermissionPamResourceActions;
 };

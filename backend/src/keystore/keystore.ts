@@ -73,8 +73,11 @@ export const KeyStorePrefixes = {
   IdentityRevocationVersion: (identityId: string) => `identity-revocation-version:${identityId}` as const,
   IdentityRevocationVerdict: (identityId: string, fingerprint: string) =>
     `identity-revocation-verdict:${identityId}:${fingerprint}` as const,
+  IdentityTrustedIps: (identityId: string, authMethod: string) =>
+    `identity-trusted-ips:${identityId}:${authMethod}` as const,
   IdentityUaClientSecretUsageDebounce: (clientSecretId: string) =>
     `identity-ua-client-secret-usage-debounce:${clientSecretId}` as const,
+  ProxiedServiceUsageDebounce: (serviceId: string) => `proxied-service-usage-debounce:${serviceId}` as const,
   ServiceTokenStatusUpdate: (serviceTokenId: string) => `service-token-status:${serviceTokenId}`,
   GatewayIdentityCredential: (identityId: string) => `gateway-credentials:${identityId}`,
   ActiveSSEConnectionsSet: (projectId: string, identityId: string) =>
@@ -83,12 +86,19 @@ export const KeyStorePrefixes = {
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
   RecentAnnouncements: "announcements:recent" as const,
 
+  AlertChannelTestCooldown: (orgId: string, actorId: string, channelType: string) =>
+    `alert-channel-test-cooldown:${orgId}:${actorId}:${channelType}` as const,
+
   ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
   ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
 
+  KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
+
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+  ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
+    `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
   MfaCodeResendCooldown: (userId: string) => `mfa-code-resend-cooldown:${userId}` as const,
   WebAuthnChallenge: (userId: string) => `webauthn-challenge:${userId}` as const,
@@ -124,6 +134,8 @@ export const KeyStorePrefixes = {
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
+  SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
+    `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
@@ -138,12 +150,17 @@ export const KeyStorePrefixes = {
   InsightsCache: (projectId: string, endpoint: string) => `insights-cache:${projectId}:${endpoint}` as const,
 
   AdminConfig: "infisical-admin-cfg",
+  UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
-  LicenseEntitlements: (orgId: string) => `license-entitlements-${orgId}` as const,
-  LicenseEntitlementsIdentitySynced: (orgId: string) => `license-entitlements-identity-synced-${orgId}` as const,
+  // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
+  LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
+  // Single-flight guard so only one background revalidation runs per org per lock window.
+  LicenseCacheRevalidateLock: (orgId: string) => `license-cache-revalidate-lock-${orgId}` as const,
+  // Throttles the demand-driven usage reconciliation (fired from getPlan) to once per org per interval.
+  LicenseUsageReconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}` as const,
   LicenseUsageLastReported: (orgId: string, featureKey: string) =>
     `license-usage-last-reported-${orgId}-${featureKey}` as const,
   IdentityLockoutState: (identityId: string, authMethod: string, slug: string) =>
@@ -167,12 +184,14 @@ export const KeyStoreTtls = {
   IdentityRevocationVerdictBaseInSeconds: 600, // 10 minutes
   IdentityRevocationVerdictJitterInSeconds: 120, // +/- 2 minutes
   IdentityRevocationVersionInSeconds: 604800, // 7 days
+  IdentityTrustedIpsInSeconds: 300, // 5 minutes
   ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
 
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes
   MfaCodeResendCooldownInSeconds: 60, // 1 minute
+  AlertChannelTestCooldownInSeconds: 60, // 1 minute
 
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin
@@ -184,12 +203,21 @@ export const KeyStoreTtls = {
   InsightsCacheInSeconds: 300, // 5 minutes
   InsightsDuplicationCacheInSeconds: 3600, // 1 hour
   AdminConfigInSeconds: 60,
+  UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
-  LicenseCloudPlanInSeconds: 300, // 5 minutes
+  LicenseCloudPlanInSeconds: 900, // 15 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
-  LicenseEntitlementsInSeconds: 1800, // 30 minutes
-  LicenseUsageLastReportedInSeconds: 7776000, // 90 days (~3 billing cycles) so orphaned meter keys self-clean
+  // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
+  LicenseCachePassThroughInSeconds: 180, // 3 minutes
+  // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only
+  // after the customer finishes the hosted checkout/card-setup (which can take a few minutes).
+  LicenseCachePassThroughCheckoutInSeconds: 900, // 15 minutes
+  // Throttle window for the single-flight background revalidation.
+  LicenseCacheRevalidateLockInSeconds: 10,
+  // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
+  LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
+  LicenseUsageLastReportedInSeconds: 604800, // 7 days
   AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
   AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes

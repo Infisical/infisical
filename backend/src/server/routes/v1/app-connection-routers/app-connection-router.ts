@@ -142,6 +142,10 @@ import {
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
 import {
+  KempLoadMasterConnectionListItemSchema,
+  SanitizedKempLoadMasterConnectionSchema
+} from "@app/services/app-connection/kemp-loadmaster";
+import {
   LaravelForgeConnectionListItemSchema,
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
@@ -150,6 +154,10 @@ import {
   LiteLLMConnectionListItemSchema,
   SanitizedLiteLLMConnectionSchema
 } from "@app/services/app-connection/litellm";
+import {
+  MicrosoftIntuneConnectionListItemSchema,
+  SanitizedMicrosoftIntuneConnectionSchema
+} from "@app/services/app-connection/microsoft-intune";
 import {
   MongoDBConnectionListItemSchema,
   SanitizedMongoDBConnectionSchema
@@ -211,6 +219,10 @@ import {
   SanitizedSnowflakeConnectionSchema,
   SnowflakeConnectionListItemSchema
 } from "@app/services/app-connection/snowflake";
+import {
+  SanitizedSpaceliftConnectionSchema,
+  SpaceliftConnectionListItemSchema
+} from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
@@ -311,10 +323,12 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAnthropicConnectionSchema.options,
   ...SanitizedDevinConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedMicrosoftIntuneConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedKempLoadMasterConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
@@ -330,7 +344,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
-  ...SanitizedNutanixPrismCentralConnectionSchema.options
+  ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedSpaceliftConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -392,11 +407,13 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   OpenAIConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
+  MicrosoftIntuneConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   VenafiTppConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
+  KempLoadMasterConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,
@@ -413,7 +430,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
-  NutanixPrismCentralConnectionListItemSchema
+  NutanixPrismCentralConnectionListItemSchema,
+  SpaceliftConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

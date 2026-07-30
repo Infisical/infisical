@@ -43,9 +43,11 @@ import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-r
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerLiteLLMConnectionRouter } from "./litellm-connection-router";
+import { registerMicrosoftIntuneConnectionRouter } from "./microsoft-intune-connection-router";
 import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
@@ -68,6 +70,7 @@ import { registerRundeckConnectionRouter } from "./rundeck-connection-router";
 import { registerSalesforceConnectionRouter } from "./salesforce-connection-router";
 import { registerSmbConnectionRouter } from "./smb-connection-router";
 import { registerSnowflakeConnectionRouter } from "./snowflake-connection-router";
+import { registerSpaceliftConnectionRouter } from "./spacelift-connection-router";
 import { registerSshConnectionRouter } from "./ssh-connection-router";
 import { registerSupabaseConnectionRouter } from "./supabase-connection-router";
 import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
@@ -142,11 +145,13 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.CircleCI]: registerCircleCIConnectionRouter,
     [AppConnection.Cloud66]: registerCloud66ConnectionRouter,
     [AppConnection.AzureEntraId]: registerAzureEntraIdConnectionRouter,
+    [AppConnection.MicrosoftIntune]: registerMicrosoftIntuneConnectionRouter,
     [AppConnection.Venafi]: registerVenafiConnectionRouter,
     [AppConnection.VenafiTpp]: registerVenafiTppConnectionRouter,
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.KempLoadMaster]: registerKempLoadMasterConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
     [AppConnection.OVH]: registerOvhConnectionRouter,
     [AppConnection.Devin]: registerDevinConnectionRouter,
@@ -164,5 +169,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Qovery]: registerQoveryConnectionRouter,
     [AppConnection.LiteLLM]: registerLiteLLMConnectionRouter,
     [AppConnection.Fireworks]: registerFireworksConnectionRouter,
-    [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter
+    [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
+    [AppConnection.Spacelift]: registerSpaceliftConnectionRouter
   };

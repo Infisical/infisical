@@ -62,6 +62,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
   [AppConnection.Anthropic]: "Anthropic",
   [AppConnection.OVH]: "OVH",
   [AppConnection.Devin]: "Devin",
@@ -80,7 +81,9 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Cloud66]: "Cloud 66",
   [AppConnection.LiteLLM]: "LiteLLM",
   [AppConnection.Fireworks]: "Fireworks",
-  [AppConnection.NutanixPrismCentral]: "Nutanix Prism Central"
+  [AppConnection.NutanixPrismCentral]: "Nutanix Prism Central",
+  [AppConnection.Spacelift]: "Spacelift",
+  [AppConnection.MicrosoftIntune]: "Microsoft Intune"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -145,6 +148,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.KempLoadMaster]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
   [AppConnection.OVH]: AppConnectionPlanType.Regular,
   [AppConnection.Devin]: AppConnectionPlanType.Regular,
@@ -163,5 +167,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Cloud66]: AppConnectionPlanType.Regular,
   [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
   [AppConnection.Fireworks]: AppConnectionPlanType.Regular,
-  [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular
+  [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular,
+  [AppConnection.Spacelift]: AppConnectionPlanType.Regular,
+  [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise
 };

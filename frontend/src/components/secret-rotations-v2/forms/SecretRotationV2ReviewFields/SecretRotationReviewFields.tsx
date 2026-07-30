@@ -24,6 +24,7 @@ import { OpenRouterApiKeyRotationReviewFields } from "./OpenRouterApiKeyRotation
 import { RedisCredentialsRotationReviewFields } from "./RedisCredentialsRotationReviewFields";
 import { SalesforceOauthCredentialsRotationReviewFields } from "./SalesforceOauthCredentialsRotationReviewFields";
 import { SqlCredentialsRotationReviewFields } from "./shared";
+import { SnowflakeUserKeyPairRotationReviewFields } from "./SnowflakeUserKeyPairRotationReviewFields";
 import { SupabaseApiKeyRotationReviewFields } from "./SupabaseApiKeyRotationReviewFields";
 import { UnixLinuxLocalAccountRotationReviewFields } from "./UnixLinuxLocalAccountRotationReviewFields";
 import { WindowsLocalAccountRotationReviewFields } from "./WindowsLocalAccountRotationReviewFields";
@@ -54,7 +55,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DatadogApplicationKeySecret]: DatadogApplicationKeySecretRotationReviewFields,
   [SecretRotation.DatadogApiKey]: DatadogApiKeyRotationReviewFields,
   [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields,
-  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields
+  [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields,
+  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

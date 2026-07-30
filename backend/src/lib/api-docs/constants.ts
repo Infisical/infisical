@@ -429,6 +429,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The maximum number of times that an access token can be used.",
@@ -441,6 +443,8 @@ export const TLS_CERT_AUTH = {
     allowedSubjectAltNames:
       "The comma-separated list of trusted subject alternative names that are allowed to authenticate with Infisical. Prefix entries by type (URI:, DNS:, IP:, EMAIL:). Bare entries are treated as DNS names.",
     caCertificate: "The PEM-encoded CA certificate to validate client certificates.",
+    verifyClientCertificateChain:
+      "When false (default), the CA certificate must be the direct issuer of the client's leaf certificate. When true, the CA certificate is treated as a trust anchor and the client-presented chain (leaf plus intermediates) is validated up to it, supporting issuers that rotate beneath a stable root such as SPIRE X.509-SVIDs.",
     accessTokenTTL: "The new lifetime for an access token in seconds.",
     accessTokenMaxTTL: "The new maximum lifetime for an access token in seconds.",
     accessTokenNumUsesLimit: "The new maximum number of times that an access token can be used.",
@@ -993,16 +997,6 @@ export const PROJECTS = {
   },
   GET_KEY: {
     projectId: "The ID of the project to get the key from."
-  },
-  GET_SNAPSHOTS: {
-    projectId: "The ID of the project to get snapshots from.",
-    environment: "The environment to get snapshots from.",
-    path: "The secret path to get snapshots from.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th snapshot.",
-    limit: "The number of snapshots to return."
-  },
-  ROLLBACK_TO_SNAPSHOT: {
-    secretSnapshotId: "The ID of the snapshot to rollback to."
   },
   ADD_GROUP_TO_PROJECT: {
     projectId: "The ID of the project to add the group to.",
@@ -3053,6 +3047,11 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    SPACELIFT: {
+      apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
+      apiKeyId: "The API Key ID used to authenticate with Spacelift.",
+      apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
   }
 };
@@ -3149,6 +3148,10 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
         "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+    },
+    SPACELIFT: {
+      writeOnly:
+        "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
     }
   },
   DESTINATION_CONFIG: {
@@ -3194,7 +3197,9 @@ export const SecretSyncs = {
     GCP: {
       scope: "The Google project scope that secrets should be synced to.",
       projectId: "The ID of the Google project secrets should be synced to.",
-      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").'
+      locationId: 'The ID of the Google project location secrets should be synced to (ie "us-west4").',
+      userReplicaLocationIds:
+        'The Google project locations to replicate secrets to under user-managed replication (global scope, ie ["us-west4"]).'
     },
     DATABRICKS: {
       scope: "The Databricks secret scope that secrets should be synced to."
@@ -3397,6 +3402,16 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    SPACELIFT: {
+      contextId: "The ID of the Spacelift context to sync secrets to.",
+      contextName: "The name of the Spacelift context to sync secrets to.",
+      configType:
+        "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
+      mountPath:
+        "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
+      fileMountFormat:
+        "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
     }
   }
 };
@@ -3583,6 +3598,11 @@ export const SecretRotations = {
     },
     FIREWORKS_API_KEY: {
       serviceAccountUserId: "The user ID of the Fireworks service account to create the API key for."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      username:
+        "The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.",
+      modulusLength: "The modulus length in bits of the generated RSA key pairs. Defaults to 2048."
     }
   },
   SECRETS_MAPPING: {
@@ -3670,6 +3690,10 @@ export const SecretRotations = {
     },
     FIREWORKS_API_KEY: {
       apiKey: "The name of the secret that the rotated Fireworks API key will be mapped to."
+    },
+    SNOWFLAKE_USER_KEY_PAIR: {
+      privateKey: "The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.",
+      publicKey: "The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to."
     }
   }
 };

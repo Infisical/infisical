@@ -41,9 +41,11 @@ import { THasuraCloudConnection } from "./hasura-cloud-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
 import { TLiteLLMConnection } from "./litellm-connection";
+import { TMicrosoftIntuneConnection } from "./microsoft-intune-connection";
 import { TMongoDBConnection } from "./mongodb-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
@@ -68,6 +70,7 @@ import { TRundeckConnection } from "./rundeck-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
+import { TSpaceliftConnection } from "./spacelift-connection";
 import { TSshConnection } from "./ssh-connection";
 import { TSupabaseConnection } from "./supabase-connection";
 import { TTeamCityConnection } from "./teamcity-connection";
@@ -119,9 +122,11 @@ export * from "./hasura-cloud-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
+export * from "./kemp-loadmaster-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
 export * from "./litellm-connection";
+export * from "./microsoft-intune-connection";
 export * from "./mongodb-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
@@ -146,6 +151,7 @@ export * from "./rundeck-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
+export * from "./spacelift-connection";
 export * from "./ssh-connection";
 export * from "./supabase-connection";
 export * from "./teamcity-connection";
@@ -217,10 +223,12 @@ export type TAppConnection =
   | TCircleCIConnection
   | TCloud66Connection
   | TAzureEntraIdConnection
+  | TMicrosoftIntuneConnection
   | TVenafiConnection
   | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TNetScalerConnection
+  | TKempLoadMasterConnection
   | TDopplerConnection
   | TOvhConnection
   | TDevinConnection
@@ -239,7 +247,8 @@ export type TAppConnection =
   | TQoveryConnection
   | TLiteLLMConnection
   | TFireworksConnection
-  | TNutanixPrismCentralConnection;
+  | TNutanixPrismCentralConnection
+  | TSpaceliftConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

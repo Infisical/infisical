@@ -76,6 +76,17 @@ export const constructPemChainFromCerts = (certificates: x509.X509Certificate[])
 export const prependCertToPemChain = (cert: x509.X509Certificate, pemChain: string) =>
   `${cert.toString("pem")}\n${pemChain}`;
 
+// Concatenates a certificate, its chain, and its private key into a single PEM bundle. Used by sync
+// destinations that upload the full certificate as one file.
+export const buildCertificateBundle = (cert: string, privateKey: string, certificateChain?: string): string => {
+  const parts = [cert.trim()];
+  if (certificateChain) {
+    parts.push(certificateChain.trim());
+  }
+  parts.push(privateKey.trim());
+  return `${parts.join("\n")}\n`;
+};
+
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
 

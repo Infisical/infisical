@@ -263,6 +263,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TKempLoadMasterConnection,
+  TKempLoadMasterConnectionConfig,
+  TKempLoadMasterConnectionInput,
+  TValidateKempLoadMasterConnectionCredentialsSchema
+} from "./kemp-loadmaster";
+import {
   TLaravelForgeConnection,
   TLaravelForgeConnectionConfig,
   TLaravelForgeConnectionInput,
@@ -280,6 +286,12 @@ import {
   TLiteLLMConnectionInput,
   TValidateLiteLLMConnectionCredentialsSchema
 } from "./litellm";
+import {
+  TMicrosoftIntuneConnection,
+  TMicrosoftIntuneConnectionConfig,
+  TMicrosoftIntuneConnectionInput,
+  TValidateMicrosoftIntuneConnectionCredentialsSchema
+} from "./microsoft-intune/microsoft-intune-connection-types";
 import {
   TMongoDBConnection,
   TMongoDBConnectionConfig,
@@ -401,6 +413,12 @@ import {
   TSnowflakeConnectionInput,
   TValidateSnowflakeConnectionCredentialsSchema
 } from "./snowflake";
+import {
+  TSpaceliftConnection,
+  TSpaceliftConnectionConfig,
+  TSpaceliftConnectionInput,
+  TValidateSpaceliftConnectionCredentialsSchema
+} from "./spacelift";
 import {
   TSshConnection,
   TSshConnectionConfig,
@@ -534,11 +552,13 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TCircleCIConnection
   | TCloud66Connection
   | TAzureEntraIdConnection
+  | TMicrosoftIntuneConnection
   | TVenafiConnection
   | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection
+  | TKempLoadMasterConnection
   | TAnthropicConnection
   | TOvhConnection
   | TDevinConnection
@@ -557,6 +577,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
+  | TSpaceliftConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -625,11 +646,13 @@ export type TAppConnectionInput = { id: string } & (
   | TCircleCIConnectionInput
   | TCloud66ConnectionInput
   | TAzureEntraIdConnectionInput
+  | TMicrosoftIntuneConnectionInput
   | TVenafiConnectionInput
   | TVenafiTppConnectionInput
   | TExternalInfisicalConnectionInput
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
+  | TKempLoadMasterConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
   | TDevinConnectionInput
@@ -648,6 +671,7 @@ export type TAppConnectionInput = { id: string } & (
   | TLiteLLMConnectionInput
   | TFireworksConnectionInput
   | TNutanixPrismCentralConnectionInput
+  | TSpaceliftConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -748,11 +772,13 @@ export type TAppConnectionConfig =
   | TCircleCIConnectionConfig
   | TCloud66ConnectionConfig
   | TAzureEntraIdConnectionConfig
+  | TMicrosoftIntuneConnectionConfig
   | TVenafiConnectionConfig
   | TVenafiTppConnectionConfig
   | TExternalInfisicalConnectionConfig
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
+  | TKempLoadMasterConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
   | TDevinConnectionConfig
@@ -770,7 +796,8 @@ export type TAppConnectionConfig =
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
   | TFireworksConnectionConfig
-  | TNutanixPrismCentralConnectionConfig;
+  | TNutanixPrismCentralConnectionConfig
+  | TSpaceliftConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -830,11 +857,13 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateCircleCIConnectionCredentialsSchema
   | TValidateCloud66ConnectionCredentialsSchema
   | TValidateAzureEntraIdConnectionCredentialsSchema
+  | TValidateMicrosoftIntuneConnectionCredentialsSchema
   | TValidateVenafiConnectionCredentialsSchema
   | TValidateVenafiTppConnectionCredentialsSchema
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
+  | TValidateKempLoadMasterConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
   | TValidateDevinConnectionCredentialsSchema
@@ -852,7 +881,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
   | TValidateFireworksConnectionCredentialsSchema
-  | TValidateNutanixPrismCentralConnectionCredentialsSchema;
+  | TValidateNutanixPrismCentralConnectionCredentialsSchema
+  | TValidateSpaceliftConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

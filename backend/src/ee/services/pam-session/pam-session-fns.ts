@@ -5,8 +5,70 @@ import { GatewayProxyProtocol } from "@app/lib/gateway/types";
 import { createGatewayConnection, createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionEndReason } from "../pam/pam-enums";
+
+export const resolvePamSessionDistinctId = async ({
+  session,
+  userDAL
+}: {
+  session: { actorEmail: string; userId?: string | null };
+  userDAL: Pick<TUserDALFactory, "findById">;
+}) => {
+  if (session.userId) {
+    const user = await userDAL.findById(session.userId);
+    if (user?.username) return user.username;
+  }
+  return session.actorEmail;
+};
+
+export const reportPamSessionEnded = async ({
+  session,
+  orgId,
+  endReason,
+  telemetryService,
+  userDAL
+}: {
+  session: {
+    accountType: string;
+    actorEmail: string;
+    userId?: string | null;
+    accessMethod?: string | null;
+    startedAt?: Date | null;
+    endedAt?: Date | null;
+  };
+  orgId: string;
+  endReason: PamSessionEndReason;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+}) => {
+  // Callers fire this without awaiting, so it must never reject: the actor lookup hits the DB and an
+  // unhandled rejection would take the process down in development.
+  try {
+    // Unstarted sessions have no meaningful length, so they report none rather than a "Starting" wait.
+    const durationMs = session.startedAt
+      ? Math.max(0, (session.endedAt ?? new Date()).getTime() - session.startedAt.getTime())
+      : undefined;
+
+    await telemetryService.sendPostHogEvents({
+      event: PostHogEventTypes.PamSessionEnded,
+      distinctId: await resolvePamSessionDistinctId({ session, userDAL }),
+      organizationId: orgId,
+      properties: {
+        accountType: session.accountType,
+        orgId,
+        endReason,
+        durationMs,
+        accessMethod: session.accessMethod ?? PamAccessMethod.Cli
+      }
+    });
+  } catch (err) {
+    logger.error(err, "Failed to report PAM session ended telemetry");
+  }
+};
 
 // Flipping a session row to terminated does not cut a live tunnel; only this ALPN signal does. Sent
 // best-effort (fire-and-forget) so callers don't block on the gateway round-trip, and shared by every

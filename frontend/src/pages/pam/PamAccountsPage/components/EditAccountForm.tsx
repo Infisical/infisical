@@ -19,7 +19,7 @@ import {
   useGetPamAccountById,
   useListPamAccountTemplates,
   useListPamAccountTypes,
-  useListPamFoldersAdmin,
+  useListPamFolders,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
@@ -64,7 +64,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
   const { data: account, isLoading: isLoadingAccount } = useGetPamAccountById(accountId);
   const updateAccount = useUpdatePamAccount({ skipValidationToast: true });
   const { data: accountTypes = [] } = useListPamAccountTypes();
-  const { data: folders = [] } = useListPamFoldersAdmin();
+  const { data: folders = [] } = useListPamFolders();
   const { data: templates = [] } = useListPamAccountTemplates(
     account ? { type: account.accountType } : undefined
   );
