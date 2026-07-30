@@ -18,6 +18,8 @@ type TSpaceliftConfigElement = {
 
 type ElementType = "ENVIRONMENT_VARIABLE" | "FILE_MOUNT";
 
+const BATCH_SIZE = 5;
+
 const authenticateSpacelift = async (instanceUrl: string, apiKeyId: string, apiKeySecret: string): Promise<string> => {
   const { data } = await safeRequest.post<{
     data?: { apiKeyUser?: { jwt: string } };
@@ -68,37 +70,79 @@ const getContextConfigElements = async (
   return data?.context?.config ?? [];
 };
 
-const addContextConfigElement = async (
+type TConfigElementInput = {
+  key: string;
+  value: string;
+  writeOnly: boolean;
+  type?: ElementType;
+};
+
+const batchAddContextConfigElements = async (
   instanceUrl: string,
   jwt: string,
   contextId: string,
-  key: string,
-  value: string,
-  writeOnly: boolean,
-  type: ElementType = "ENVIRONMENT_VARIABLE"
+  elements: TConfigElementInput[]
 ) => {
-  await graphqlRequest(
-    instanceUrl,
-    jwt,
-    `mutation AddContextConfig($context: ID!, $config: ConfigInput!) {
-      contextConfigAdd(context: $context, config: $config) { id }
-    }`,
-    {
-      context: contextId,
-      config: { id: key, value, type, writeOnly }
-    }
-  );
+  const aliases = elements.map((_, i) => `add${i}: contextConfigAdd(context: $context, config: $c${i}) { id }`);
+  const varDefs = [`$context: ID!`, ...elements.map((_, i) => `$c${i}: ConfigInput!`)];
+
+  const query = `mutation BatchAdd(${varDefs.join(", ")}) {\n${aliases.join("\n")}\n}`;
+
+  const variables: Record<string, unknown> = { context: contextId };
+  for (let i = 0; i < elements.length; i += 1) {
+    variables[`c${i}`] = {
+      id: elements[i].key,
+      value: elements[i].value,
+      type: elements[i].type ?? "ENVIRONMENT_VARIABLE",
+      writeOnly: elements[i].writeOnly
+    };
+  }
+
+  await graphqlRequest(instanceUrl, jwt, query, variables);
 };
 
-const deleteContextConfigElement = async (instanceUrl: string, jwt: string, contextId: string, key: string) => {
-  await graphqlRequest(
-    instanceUrl,
-    jwt,
-    `mutation DeleteContextConfig($context: ID!, $id: ID!) {
-      contextConfigDelete(context: $context, id: $id) { id }
-    }`,
-    { context: contextId, id: key }
-  );
+const batchDeleteContextConfigElements = async (
+  instanceUrl: string,
+  jwt: string,
+  contextId: string,
+  keys: string[]
+) => {
+  const aliases = keys.map((_, i) => `del${i}: contextConfigDelete(context: $context, id: $id${i}) { id }`);
+  const varDefs = [`$context: ID!`, ...keys.map((_, i) => `$id${i}: ID!`)];
+
+  const query = `mutation BatchDelete(${varDefs.join(", ")}) {\n${aliases.join("\n")}\n}`;
+
+  const variables: Record<string, unknown> = { context: contextId };
+  for (let i = 0; i < keys.length; i += 1) {
+    variables[`id${i}`] = keys[i];
+  }
+
+  await graphqlRequest(instanceUrl, jwt, query, variables);
+};
+
+const chunk = <T>(arr: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+};
+
+const addConfigElements = async (
+  instanceUrl: string,
+  jwt: string,
+  contextId: string,
+  elements: TConfigElementInput[]
+) => {
+  for (const batch of chunk(elements, BATCH_SIZE)) {
+    await batchAddContextConfigElements(instanceUrl, jwt, contextId, batch);
+  }
+};
+
+const deleteConfigElements = async (instanceUrl: string, jwt: string, contextId: string, keys: string[]) => {
+  for (const batch of chunk(keys, BATCH_SIZE)) {
+    await batchDeleteContextConfigElements(instanceUrl, jwt, contextId, batch);
+  }
 };
 
 const sanitizeEnvVarName = (name: string): string => {
@@ -126,13 +170,6 @@ const toDirectoryPrefix = (path: string): string => {
   return `${path}/`;
 };
 
-const buildFileMountPrefix = (basePath: string): string => {
-  return `/mnt/workspace/${toDirectoryPrefix(basePath)}`;
-};
-
-const buildFileMountPath = (basePath: string): string => {
-  return `/mnt/workspace/${basePath}`;
-};
 
 const isDirectChild = (elementId: string, prefix: string): boolean => {
   if (!elementId.startsWith(prefix)) return false;
@@ -174,22 +211,22 @@ const syncSecretPerFile = async (
   writeOnly: boolean,
   disableSecretDeletion?: boolean
 ) => {
-  const prefix = buildFileMountPrefix(basePath);
+  const prefix = toDirectoryPrefix(basePath);
+  const sanitizedSecretMap = sanitizeSecretMapForEnvVars(secretMap);
 
-  for (const [key, { value }] of Object.entries(secretMap)) {
-    const fileId = `${prefix}${key}`;
-    const encoded = Buffer.from(value).toString("base64");
+  const elements: TConfigElementInput[] = Object.entries(sanitizedSecretMap).map(([key, { value }]) => ({
+    key: `${prefix}${key}`,
+    value: Buffer.from(value).toString("base64"),
+    writeOnly,
+    type: "FILE_MOUNT" as ElementType
+  }));
 
-    try {
-      await addContextConfigElement(instanceUrl, jwt, contextId, fileId, encoded, writeOnly, "FILE_MOUNT");
-    } catch (error) {
-      throw new SecretSyncError({ error, secretKey: key });
-    }
-  }
+  await addConfigElements(instanceUrl, jwt, contextId, elements);
 
   if (!disableSecretDeletion) {
     const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
 
+    const keysToDelete: string[] = [];
     for (const element of existingElements) {
       if (element.type !== "FILE_MOUNT" || !isDirectChild(element.id, prefix)) {
         // eslint-disable-next-line no-continue
@@ -197,14 +234,12 @@ const syncSecretPerFile = async (
       }
 
       const key = getRelativeKey(element.id, prefix);
-      if (!(key in secretMap)) {
-        try {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
-        } catch (error) {
-          throw new SecretSyncError({ error, secretKey: key });
-        }
+      if (!(key in sanitizedSecretMap)) {
+        keysToDelete.push(element.id);
       }
     }
+
+    await deleteConfigElements(instanceUrl, jwt, contextId, keysToDelete);
   }
 };
 
@@ -215,20 +250,22 @@ const syncDotEnvFile = async (
   writeOnly: boolean,
   disableSecretDeletion?: boolean
 ) => {
-  const filePath = buildFileMountPath(basePath);
-  const hasSecrets = Object.keys(secretMap).length > 0;
+  const sanitizedSecretMap = sanitizeSecretMapForEnvVars(secretMap);
+  const hasSecrets = Object.keys(sanitizedSecretMap).length > 0;
 
   if (hasSecrets) {
-    const envContent = secretMapToEnvFileContent(secretMap);
+    const envContent = secretMapToEnvFileContent(sanitizedSecretMap);
     const encoded = Buffer.from(envContent).toString("base64");
-    await addContextConfigElement(instanceUrl, jwt, contextId, filePath, encoded, writeOnly, "FILE_MOUNT");
+    await addConfigElements(instanceUrl, jwt, contextId, [
+      { key: basePath, value: encoded, writeOnly, type: "FILE_MOUNT" }
+    ]);
   } else if (!disableSecretDeletion) {
-    await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
+    await deleteConfigElements(instanceUrl, jwt, contextId, [basePath]);
   }
 };
 
 const getSecretsPerFile = (existingElements: TSpaceliftConfigElement[], basePath: string): TSecretMap => {
-  const prefix = buildFileMountPrefix(basePath);
+  const prefix = toDirectoryPrefix(basePath);
   const secretMap: TSecretMap = {};
 
   for (const element of existingElements) {
@@ -242,8 +279,7 @@ const getSecretsPerFile = (existingElements: TSpaceliftConfigElement[], basePath
 };
 
 const getSecretsDotEnvFile = (existingElements: TSpaceliftConfigElement[], basePath: string): TSecretMap => {
-  const filePath = buildFileMountPath(basePath);
-  const fileElement = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
+  const fileElement = existingElements.find((e) => e.id === basePath && e.type === "FILE_MOUNT");
 
   if (!fileElement || fileElement.writeOnly) return {};
 
@@ -257,20 +293,19 @@ const removeSecretsPerFile = async (
   basePath: string,
   secretMap: TSecretMap
 ) => {
-  const prefix = buildFileMountPrefix(basePath);
+  const prefix = toDirectoryPrefix(basePath);
 
+  const keysToDelete: string[] = [];
   for (const element of existingElements) {
     if (element.type === "FILE_MOUNT" && isDirectChild(element.id, prefix)) {
       const secretKey = getRelativeKey(element.id, prefix);
       if (secretKey in secretMap) {
-        try {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
-        } catch (error) {
-          throw new SecretSyncError({ error, secretKey });
-        }
+        keysToDelete.push(element.id);
       }
     }
   }
+
+  await deleteConfigElements(instanceUrl, jwt, contextId, keysToDelete);
 };
 
 const removeDotEnvFile = async (
@@ -278,15 +313,10 @@ const removeDotEnvFile = async (
   existingElements: TSpaceliftConfigElement[],
   basePath: string
 ) => {
-  const filePath = buildFileMountPath(basePath);
-  const fileElement = existingElements.find((e) => e.id === filePath && e.type === "FILE_MOUNT");
+  const fileElement = existingElements.find((e) => e.id === basePath && e.type === "FILE_MOUNT");
 
   if (fileElement) {
-    try {
-      await deleteContextConfigElement(instanceUrl, jwt, contextId, filePath);
-    } catch (error) {
-      throw new SecretSyncError({ error, secretKey: filePath });
-    }
+    await deleteConfigElements(instanceUrl, jwt, contextId, [basePath]);
   }
 };
 
@@ -315,31 +345,30 @@ export const SpaceliftSyncFns = {
 
     const sanitizedSecretMap = sanitizeSecretMapForEnvVars(secretMap);
 
-    for (const key of Object.keys(sanitizedSecretMap)) {
-      try {
-        await addContextConfigElement(instanceUrl, jwt, contextId, key, sanitizedSecretMap[key].value, writeOnly);
-      } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
-      }
-    }
+    const elements: TConfigElementInput[] = Object.entries(sanitizedSecretMap).map(([key, { value }]) => ({
+      key,
+      value,
+      writeOnly
+    }));
+
+    await addConfigElements(instanceUrl, jwt, contextId, elements);
 
     if (disableSecretDeletion) return;
 
     const existingElements = await getContextConfigElements(instanceUrl, jwt, contextId);
     const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE");
 
+    const keysToDelete: string[] = [];
     for (const element of existingSecrets) {
       if (
         matchesSchema(element.id, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema) &&
         !(element.id in sanitizedSecretMap)
       ) {
-        try {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
-        } catch (error) {
-          throw new SecretSyncError({ error, secretKey: element.id });
-        }
+        keysToDelete.push(element.id);
       }
     }
+
+    await deleteConfigElements(instanceUrl, jwt, contextId, keysToDelete);
   },
 
   getSecrets: async (secretSync: TSpaceliftSyncWithCredentials): Promise<TSecretMap> => {
@@ -392,15 +421,13 @@ export const SpaceliftSyncFns = {
       return;
     }
 
-    const existingSecrets = existingElements.filter((e) => e.type === "ENVIRONMENT_VARIABLE");
-    for (const element of existingSecrets) {
-      if (element.id in secretMap) {
-        try {
-          await deleteContextConfigElement(instanceUrl, jwt, contextId, element.id);
-        } catch (error) {
-          throw new SecretSyncError({ error, secretKey: element.id });
-        }
+    const keysToDelete: string[] = [];
+    for (const element of existingElements) {
+      if (element.type === "ENVIRONMENT_VARIABLE" && element.id in secretMap) {
+        keysToDelete.push(element.id);
       }
     }
+
+    await deleteConfigElements(instanceUrl, jwt, contextId, keysToDelete);
   }
 };
