@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -30,6 +31,7 @@ type Props = {
   environment: string;
   secretPath: string;
   onComplete: (secretKey: string) => void;
+  suggestedKey?: string;
 };
 
 // value is required here, unlike the dashboard: this secret exists to be brokered as a credential,
@@ -47,7 +49,8 @@ export const CreateSecretModal = ({
   projectId,
   environment,
   secretPath,
-  onComplete
+  onComplete,
+  suggestedKey
 }: Props) => {
   const queryClient = useQueryClient();
   const { mutateAsync, isPending } = useCreateSecretV3();
@@ -56,11 +59,17 @@ export const CreateSecretModal = ({
     control,
     handleSubmit,
     reset,
+    setFocus,
     formState: { isSubmitting }
   } = useForm<TFormSchema>({
     resolver: zodResolver(schema),
     defaultValues: { key: "", value: "" }
   });
+
+  // the modal stays mounted, so seed the key each time it opens rather than once at mount
+  useEffect(() => {
+    if (isOpen) reset({ key: suggestedKey?.trim() ?? "", value: "" });
+  }, [isOpen, suggestedKey, reset]);
 
   const onFormSubmit = async ({ key, value }: TFormSchema) => {
     const res = await mutateAsync({
@@ -108,7 +117,14 @@ export const CreateSecretModal = ({
         if (!open) reset();
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(e) => {
+          // land on the field that still needs typing
+          e.preventDefault();
+          setFocus(suggestedKey?.trim() ? "value" : "key");
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create Secret</DialogTitle>
           <DialogDescription>

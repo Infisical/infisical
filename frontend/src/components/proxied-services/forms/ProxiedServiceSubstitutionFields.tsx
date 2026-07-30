@@ -156,6 +156,7 @@ export const ProxiedServiceSubstitutionFields = ({
                     dynamicSecretName: watchedSubstitutions?.[i]?.dynamicSecretName,
                     dynamicSecretField: watchedSubstitutions?.[i]?.dynamicSecretField
                   }}
+                  suggestedSecretKey={watchedSubstitutions?.[i]?.placeholderKey}
                   onChange={(v) => setSubstitutionSource(i, v)}
                   isSecretError={Boolean(errors.substitutions?.[i]?.secretKey)}
                   isFieldError={Boolean(errors.substitutions?.[i]?.dynamicSecretField)}

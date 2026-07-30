@@ -55,6 +55,7 @@ type Props = {
   onChange: (value: TCredentialSource) => void;
   isSecretError?: boolean;
   isFieldError?: boolean;
+  suggestedSecretKey?: string;
 };
 
 type SecretOption = {
@@ -109,7 +110,8 @@ export const CredentialSourceFields = ({
   value,
   onChange,
   isSecretError,
-  isFieldError
+  isFieldError,
+  suggestedSecretKey
 }: Props) => {
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
@@ -434,6 +436,7 @@ export const CredentialSourceFields = ({
         projectId={projectId}
         environment={environment}
         secretPath={secretPath}
+        suggestedKey={suggestedSecretKey}
         onComplete={(secretKey) => commit({ secretKey })}
       />
     </div>
