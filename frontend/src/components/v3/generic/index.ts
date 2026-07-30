@@ -30,6 +30,7 @@ export * from "./Popover";
 export * from "./RadioGroup";
 export * from "./ReactSelect";
 export * from "./Select";
+export * from "./SelectedActionBar";
 export * from "./Separator";
 export * from "./Sheet";
 export * from "./Sidebar";

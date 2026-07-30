@@ -1,10 +1,15 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
 import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Button,
+  SelectedActionBar,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -43,7 +48,6 @@ export enum EntryType {
 
 type Props = {
   secretPath: string;
-  resetSelectedEntries: () => void;
   selectedEntries: {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
@@ -94,7 +98,6 @@ export const SelectionPanel = ({
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: createCommit } = useCreateCommit();
 
-  const isMultiSelectActive = selectedCount > 0;
 
   // user should have the ability to delete secrets/folders in at least one of the envs
   const shouldShowDelete = userAvailableEnvs.some((env) =>
@@ -368,28 +371,16 @@ export const SelectionPanel = ({
 
   return (
     <>
-      <div
-        className={twMerge(
-          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
-          isMultiSelectActive && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedCount}
+        onClearSelection={resetSelectedEntries}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
-          <div className="mr-2 text-sm">{selectedCount} Selected</div>
-          <button
-            type="button"
-            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
-            onClick={resetSelectedEntries}
-          >
-            Unselect All
-          </button>
           {selectedKeysCount > 0 && (
             <Tooltip open={isTagActionDisabled ? undefined : false}>
               <TooltipTrigger>
                 <Button
                   isDisabled={isTagActionDisabled}
                   variant="project"
-                  className="ml-2"
                   onClick={() => handlePopUpOpen("bulkTagSecrets")}
                   size="xs"
                 >
@@ -406,7 +397,6 @@ export const SelectionPanel = ({
                 <Button
                   isDisabled={isMoveDisabled}
                   variant="project"
-                  className="ml-2"
                   onClick={() => handlePopUpOpen("bulkMoveSecrets")}
                   size="xs"
                 >
@@ -423,7 +413,6 @@ export const SelectionPanel = ({
                 <Button
                   isDisabled={isDuplicateDisabled}
                   variant="project"
-                  className="ml-2"
                   onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
                   size="xs"
                 >
@@ -440,7 +429,6 @@ export const SelectionPanel = ({
                 <Button
                   isDisabled={isDeleteDisabled}
                   variant="danger"
-                  className="ml-2"
                   onClick={() => handlePopUpOpen("bulkDeleteEntries")}
                   size="xs"
                 >
@@ -451,8 +439,7 @@ export const SelectionPanel = ({
               <TooltipContent>{deleteDisabledReason}</TooltipContent>
             </Tooltip>
           )}
-        </div>
-      </div>
+      </SelectedActionBar>
       <MoveSecretsModal
         isOpen={popUp.bulkMoveSecrets.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkMoveSecrets", isOpen)}
