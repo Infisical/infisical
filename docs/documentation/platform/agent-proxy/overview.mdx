@@ -44,7 +44,7 @@ Then you route your agent's traffic through Agent Proxy. The agent needs no code
 
 ## Where the proxy runs
 
-The proxy has to sit between your agent and the internet, so where it runs follows from where your agent runs. A **local proxy** runs on your own computer for the length of a single agent run, sandboxed away from your credentials, and suits an agent you are driving yourself in a terminal. A **standalone proxy** runs on a host of its own and serves agents across your network, which is what unattended agents and shared team setups need.
+The proxy has to sit between your agent and the internet, so where it runs follows from where your agent runs. A **local proxy** is for agents that live as long as your terminal session: it starts and stops with the agent on your own computer, sandboxed away from your credentials. A **standalone proxy** is for agents running on your infrastructure: it runs on a host of its own and serves agents across your network.
 
 The Quickstart starts with the parts both need, then hands you this choice at the point you have to make it.
 
