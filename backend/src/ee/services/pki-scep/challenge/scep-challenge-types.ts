@@ -1,6 +1,7 @@
 export enum ScepChallengeType {
   STATIC = "static",
-  DYNAMIC = "dynamic"
+  DYNAMIC = "dynamic",
+  MICROSOFT_INTUNE = "microsoft-intune"
 }
 
 export interface IScepChallengeValidator {

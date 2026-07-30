@@ -97,6 +97,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev.fips
+      args:
+        TOOLCHAIN_IMAGE: ${TOOLCHAIN_IMAGE:-ghcr.io/infisical/backend-fips-toolchain:main}
     depends_on:
       db:
         condition: service_started

@@ -91,10 +91,7 @@ import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
-import {
-  hasSecretPersonalOverridePermission,
-  hasSecretReadValueOrDescribePermission
-} from "@app/lib/fn/permission";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -884,9 +881,10 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
-  const canCreatePersonalOverride = hasSecretPersonalOverridePermission(
+  // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+  const canCreatePersonalOverride = hasSecretReadValueOrDescribePermission(
     permission,
-    ProjectPermissionSecretActions.Create,
+    ProjectPermissionSecretActions.DescribeSecret,
     { environment, secretPath, secretName, secretTags: ["*"] }
   );
 
@@ -1878,7 +1876,6 @@ export const SecretEditTableRow = ({
             <SheetTitle>Version History</SheetTitle>
             <SheetDescription>Audit secret history and rollback changes</SheetDescription>
           </SheetHeader>
-          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">
@@ -1910,7 +1907,6 @@ export const SecretEditTableRow = ({
               View and manage user, group, and machine identity access to this secret
             </SheetDescription>
           </SheetHeader>
-          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">

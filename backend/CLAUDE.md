@@ -24,6 +24,70 @@ Unit tests go next to source as `*.test.ts` and test pure functions with Vitest 
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
 
+#### FIPS test image and the prebuilt toolchain
+
+CI (`.github/workflows/run-backend-tests.yml`) runs the e2e suite inside a FIPS image built
+from `Dockerfile.dev.fips`. The expensive, rarely-changing parts of that image (SoftHSM2,
+Oracle Instant Client, the FIPS OpenSSL 3.1.2 build and the PQC OpenSSL 3.5.6 build) live in
+**`Dockerfile.fips-toolchain`**, which is published to
+`ghcr.io/infisical/backend-fips-toolchain` for amd64 and arm64 by
+`.github/workflows/publish-fips-toolchain.yml` on pushes to `main`.
+
+`Dockerfile.dev.fips` consumes it via the `TOOLCHAIN_IMAGE` build arg, so CI and local dev
+pull the toolchain instead of spending ~15min compiling it. Consequences worth knowing:
+
+- **Editing `Dockerfile.fips-toolchain` is expensive.** CI pins the image by the content hash
+  of that file, so a PR touching it has no published tag and rebuilds from source (the old,
+  slow path). It publishes once the PR lands on `main`. Keep app-level changes in
+  `Dockerfile.dev.fips`.
+- **Don't add `cache-to: type=gha` back to the image build.** GHA cache is PR-scoped (so it
+  never hits on a PR's first run) and the repo's 10GB cache budget is already full; writing
+  image blobs there evicts the `node_modules` caches of every workflow.
+- **The published image is an internal CI build cache, not a supported artifact.** It is
+  public only so CI and local dev can pull it; it carries no support or compatibility
+  guarantee. It is *not* the FIPS product image; that one is `infisical/infisical-fips`,
+  built from `Dockerfile.fips.standalone-infisical`. OCI labels on the image say the same.
+- **Keep every third-party fetch pinned and checksummed.** SoftHSM2 is pinned to a commit
+  SHA (tags are mutable); both OpenSSL tarballs and the Oracle Instant Client zip are
+  SHA256-verified; the Infisical CLI apt package is version-pinned. Oracle Instant Client
+  is redistributed under the Oracle Free Distribution, Hosting, and Use Terms, which
+  require the license to travel with it, so `/opt/oracle/instantclient_23_26/BASIC_LICENSE`
+  must not be removed.
+
+##### Building the dev stack without GHCR
+
+`docker compose -f docker-compose.dev.yml build backend` pulls the toolchain from GHCR by
+default. If GHCR is down, the package is private, you're offline, or you're iterating on the
+toolchain itself, build it locally once and point the compose build at it:
+
+```bash
+# 1. Build the toolchain from source (~15min, or ~2min if your layer cache is warm)
+docker build -f backend/Dockerfile.fips-toolchain -t fips-toolchain:local backend
+
+# 2. Prefer .env, so it survives every compose invocation (see the warning below)
+echo 'TOOLCHAIN_IMAGE=fips-toolchain:local' >> .env
+
+# ...or pass it per-invocation. Both forms work but are easy to forget:
+TOOLCHAIN_IMAGE=fips-toolchain:local docker compose -f docker-compose.dev.yml build backend
+docker compose -f docker-compose.dev.yml build --build-arg TOOLCHAIN_IMAGE=fips-toolchain:local backend
+```
+
+**Use `.env` rather than a one-off env var.** The documented start command in
+`docs/contributing/platform/developing.mdx` is `up --build`, which rebuilds the backend and
+re-resolves the `TOOLCHAIN_IMAGE` default, so a per-invocation override silently stops
+applying and you're back to a failing GHCR pull. Compose interpolates the project `.env` for
+every invocation, so putting it there sticks.
+
+Notes:
+
+- Step 1 is only needed once per change to `Dockerfile.fips-toolchain`. The local tag name is
+  arbitrary; it just has to match what you point `TOOLCHAIN_IMAGE` at.
+- An already-built `backend` image keeps working if GHCR is unreachable, as long as you don't
+  pass `--build`. This only bites on a rebuild.
+- This is not an offline story. The toolchain build itself still fetches Debian packages, both
+  OpenSSL tarballs, SoftHSM sources, and the Oracle client. With no network at all, neither
+  path works and you need a previously built image.
+
 ### Database
 
 - `npm run migration:new` — create new migration (interactive prompt)
@@ -228,6 +292,26 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 
 See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `src/services/resource-cleanup/resource-cleanup-queue.ts` for a service with multiple registrations, and `src/ee/services/secret-rotation-v2/secret-rotation-v2-queue.ts` for a cron-tick that fans out into a BullMQ queue.
 
+### Alerting (shared module — reuse it, don't fork it)
+
+`src/services/alert/` is **the** alerting module: one `alerts` table, one channel stack (email, Slack, webhook, PagerDuty), one recipient resolver, one encryption story for channel configs, one dedup + history + retention path, one cron tick that fans out into the `AlertDispatch` queue, and one set of routes (`src/server/routes/v1/alert-router.ts`, including `POST /channels/test`).
+
+**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is the thing we are converging away from, not a template to copy.
+
+Adding a new alertable resource type:
+
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), `eventTypes`, a `conditionSchema` for the "when", `findDueTargets`, `buildViewUrl` / `buildPayload` / `targetId` / `buildTestTargets`, and the two authorization hooks `assertPermission` + `assertResourceInScope`.
+2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
+
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
+
+Invariants worth knowing before extending it:
+
+- **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
+- **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
+- **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
+- **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.
@@ -272,6 +356,10 @@ logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]
 // NOT preferred: identifiers only in structured object, not in message
 logger.error({ sessionId, err }, "Failed to get connection details");
 ```
+
+**Never log an outbound URL verbatim — a URL is often itself a credential.** Incoming-webhook providers put the bearer secret in the path (`https://hooks.slack.com/services/T…/B…/<secret>`, Discord, Teams, Telegram) and many APIs accept a token as a query param, so a raw URL in a log line ships a working credential to the log sink. Pass it through `sanitizeUrlForLog` from `@app/lib/logger` first (`src/lib/logger/sanitize-url.ts`): it keeps only the origin, strips userinfo and the fragment, redacts the entire path, and redacts every query value. Token formats can't be recognised reliably, so the path is redacted by default for every host rather than sniffed with heuristics. The global axios response interceptor (`src/lib/config/request.ts`) and `safeRequest`'s dispatch log already do this.
+
+Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
 ### Enterprise (EE) Features
 

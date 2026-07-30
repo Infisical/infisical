@@ -18,6 +18,7 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { Badge, Button, Card } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 
+import { ForbiddenPage } from "../ForbiddenPage/ForbiddenPage";
 import { ProjectAccessError } from "./components";
 
 const isProjectAccessDeniedError = (error: unknown): error is AxiosError =>
@@ -68,6 +69,11 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
 
   const isAxios = error instanceof AxiosError;
   const status = isAxios ? (error.status ?? error.response?.status) : undefined;
+
+  if (status === 403) {
+    return <ForbiddenPage error={error} />;
+  }
+
   const isGatewayIssue =
     status === 502 || status === 503 || status === 504 || (isAxios && !error.response);
 

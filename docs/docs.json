@@ -152,6 +152,7 @@
                       "integrations/app-connections/litellm",
                       "integrations/app-connections/ssh",
                       "integrations/app-connections/mssql",
+                      "integrations/app-connections/microsoft-intune",
                       "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
@@ -900,7 +901,8 @@
                           "documentation/platform/pki/guides/applications/jboss-certbot",
                           "documentation/platform/pki/guides/applications/windows-server-acme",
                           "documentation/platform/pki/guides/applications/gloo-mesh",
-                          "documentation/platform/pki/guides/applications/jamf-pro-scep"
+                          "documentation/platform/pki/guides/applications/jamf-pro-scep",
+                          "documentation/platform/pki/guides/applications/microsoft-intune-scep"
                         ]
                       },
                       {

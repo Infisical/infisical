@@ -11,10 +11,13 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  FormControl,
-  Input
-} from "@app/components/v2";
-import { useToggle } from "@app/hooks";
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput
+} from "@app/components/v3";
 import { useUpdateServerConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
@@ -32,9 +35,6 @@ type Props = {
 
 export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
   const { mutateAsync: updateAdminServerConfig } = useUpdateServerConfig();
-  const [isMicrosoftTeamsAppIdFocused, setIsMicrosoftTeamsAppIdFocused] = useToggle();
-  const [isMicrosoftTeamsClientSecretFocused, setIsMicrosoftTeamsClientSecretFocused] = useToggle();
-  const [isMicrosoftTeamsBotIdFocused, setIsMicrosoftTeamsBotIdFocused] = useToggle();
   const {
     control,
     handleSubmit,
@@ -72,28 +72,30 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
           value="microsoft-teams-integration"
           className="data-[state=open]:border-none"
         >
-          <AccordionTrigger className="flex h-fit w-full justify-start rounded-md border border-mineshaft-500 bg-mineshaft-700 px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
-            <div className="text-md group order-1 ml-3 flex items-center gap-2">
-              <BsMicrosoftTeams className="text-lg group-hover:text-primary-400" />
+          <AccordionTrigger>
+            <div className="flex items-center gap-2">
+              <BsMicrosoftTeams className="text-lg" />
               <div className="text-[15px] font-medium">Microsoft Teams</div>
             </div>
           </AccordionTrigger>
-          <AccordionContent childrenClassName="px-0 py-0">
-            <div className="flex w-full flex-col justify-start rounded-md rounded-t-none border border-t-0 border-mineshaft-500 bg-mineshaft-700 px-4 py-4">
-              <div className="mb-2 max-w-lg text-sm text-mineshaft-300">
+          <AccordionContent>
+            <div className="flex w-full flex-col gap-4">
+              <div className="max-w-lg text-sm text-label">
                 Step 1: Create and configure Microsoft Teams bot and Azure Resources. Please refer
                 to the documentation below for more information.
               </div>
-              <div className="mb-6">
-                <a
-                  href="https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button colorSchema="secondary">Documentation</Button>
-                </a>
+              <div>
+                <Button variant="neutral" asChild>
+                  <a
+                    href="https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Documentation
+                  </a>
+                </Button>
               </div>
-              <div className="mb-4 max-w-lg text-sm text-mineshaft-300">
+              <div className="max-w-lg text-sm text-label">
                 Step 2: Configure your instance-wide settings to enable integration with Microsoft
                 Teams. Copy the App ID and Client Secret from your Microsoft Teams bot&apos;s App
                 Registration page. The Client Secret is the password for the bot.
@@ -102,43 +104,37 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
                 control={control}
                 name="appId"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Application (Client) ID"
-                    className="w-96"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
+                  <Field className="max-w-96">
+                    <FieldLabel htmlFor="teams-app-client-id">Application (Client) ID</FieldLabel>
                     <Input
+                      id="teams-app-client-id"
                       {...field}
                       value={field.value || ""}
-                      type={isMicrosoftTeamsAppIdFocused ? "text" : "password"}
-                      onFocus={() => setIsMicrosoftTeamsAppIdFocused.on()}
-                      onBlur={() => setIsMicrosoftTeamsAppIdFocused.off()}
+                      isError={Boolean(error)}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
-                  </FormControl>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
               <Controller
                 control={control}
                 name="clientSecret"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Client Secret"
-                    tooltipText="You can find your Client Secret in the Certificates & Secrets section of your Microsoft Teams bot's App Registration."
-                    className="w-96"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input
+                  <Field className="max-w-96">
+                    <FieldLabel htmlFor="teams-client-secret">Client secret</FieldLabel>
+                    <SecretInput
+                      id="teams-client-secret"
                       {...field}
                       value={field.value || ""}
-                      type={isMicrosoftTeamsClientSecretFocused ? "text" : "password"}
-                      onFocus={() => setIsMicrosoftTeamsClientSecretFocused.on()}
-                      onBlur={() => setIsMicrosoftTeamsClientSecretFocused.off()}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
-                  </FormControl>
+                    <FieldDescription>
+                      Find this value under Certificates &amp; secrets in the bot&apos;s app
+                      registration.
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
 
@@ -146,30 +142,28 @@ export const MicrosoftTeamsIntegrationForm = ({ adminIntegrationsConfig }: Props
                 control={control}
                 name="botId"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Microsoft Teams App ID"
-                    tooltipText="You can find the Microsoft Teams App ID in the overview of your Microsoft Teams App inside the Microsoft Teams Developer Portal."
-                    className="w-96"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
+                  <Field className="max-w-96">
+                    <FieldLabel htmlFor="teams-app-id">Microsoft Teams App ID</FieldLabel>
                     <Input
+                      id="teams-app-id"
                       {...field}
                       value={field.value || ""}
-                      type={isMicrosoftTeamsBotIdFocused ? "text" : "password"}
-                      onFocus={() => setIsMicrosoftTeamsBotIdFocused.on()}
-                      onBlur={() => setIsMicrosoftTeamsBotIdFocused.off()}
+                      isError={Boolean(error)}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
-                  </FormControl>
+                    <FieldDescription>
+                      Find this value in the app overview in the Microsoft Teams Developer Portal.
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
               <div>
                 <Button
-                  className="mt-2"
+                  variant="neutral"
                   type="submit"
-                  isLoading={isSubmitting}
-                  isDisabled={isSubmitting || !isDirty}
+                  isPending={isSubmitting}
+                  isDisabled={!isDirty}
                 >
                   Save
                 </Button>

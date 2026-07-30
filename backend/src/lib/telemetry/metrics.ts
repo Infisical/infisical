@@ -602,6 +602,46 @@ export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: strin
   });
 };
 
+export enum AlertDispatchOutcome {
+  // Every channel the run touched delivered.
+  DeliverySuccess = "delivery_success",
+  // Some channels delivered and at least one did not, so a notification was dropped on the failed
+  // channels only. Dedup is per (channel, target), so the next run retries just those channels.
+  DeliveryPartial = "delivery_partial",
+  // No channel delivered: the whole run dropped.
+  DeliveryFailed = "delivery_failed",
+  // The alert row is gone by the time the job runs: deleted, or its project soft-deleted.
+  AlertNotFound = "alert_not_found",
+  // The alert still exists but was disabled between being enqueued and the job running.
+  AlertDisabled = "alert_disabled",
+  // No provider registered for the alert's resource type (misconfiguration).
+  NoProvider = "no_provider",
+  // Nothing matched the alert condition in this run.
+  NoDueTargets = "no_due_targets",
+  // The alert has no enabled channels, so the run is skipped before scanning for targets.
+  NoChannels = "no_channels",
+  // Every channel in the run was directed (email) with no resolvable recipient — the recipients left
+  // the org, or the recipient group emptied out. Customer config drift, not a delivery fault, so it
+  // is kept out of delivery_failed and must not alarm.
+  NoRecipients = "no_recipients",
+  // Targets matched, but every one had already been alerted inside the dedup window.
+  AllDeduped = "all_deduped"
+}
+
+export const alertDispatchOutcomeCounter = infisicalCoreMeter.createCounter("infisical.alert.dispatch.outcome.count", {
+  description:
+    "Alert dispatch jobs by alert resource type and outcome. Alarm on delivery_failed + delivery_partial: both mean a channel could not be reached, so a notification was dropped. Watch the delivery_* share of total separately: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead.",
+  unit: "{job}"
+});
+
+export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string; outcome: AlertDispatchOutcome }) => {
+  if (!isTelemetryEnabled()) return;
+  alertDispatchOutcomeCounter.add(1, {
+    type: params.resourceType,
+    outcome: params.outcome
+  });
+};
+
 // -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------
 // Registered once at boot from main.ts with the primary Knex instance. Runs AFTER setupTelemetry() has
 // installed the real MeterProvider, so we resolve the real meter directly here (observable gauges can't

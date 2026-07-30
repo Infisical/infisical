@@ -53,7 +53,7 @@ type TLicenseV2ServiceFactoryDep = {
   licenseClient: Pick<
     TLicenseClientFactory,
     | "getEntitlements"
-    | "invalidateEntitlements"
+    | "markEntitlementsStale"
     | "refreshEntitlements"
     | "getCatalog"
     | "getSubscription"
@@ -866,7 +866,7 @@ export const licenseV2ServiceFactory = ({
     });
 
     if (result.outcome === "subscription_updated") {
-      await licenseClient.invalidateEntitlements(orgId);
+      await licenseClient.markEntitlementsStale(orgId);
       return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
     }
 
@@ -874,6 +874,7 @@ export const licenseV2ServiceFactory = ({
     if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
+    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
     return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
   };
 
@@ -953,13 +954,15 @@ export const licenseV2ServiceFactory = ({
       productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
-    await licenseClient.invalidateEntitlements(orgId);
     if (result.outcome === "checkout_created") {
       if (!result.checkoutUrl) {
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
       }
+      // Longer window: the change only applies once the customer completes the hosted checkout.
+      await licenseClient.markEntitlementsStale(orgId, { checkout: true });
       return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
     }
+    await licenseClient.markEntitlementsStale(orgId);
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
@@ -970,15 +973,26 @@ export const licenseV2ServiceFactory = ({
     // The trial has no Stripe customer yet, so the server creates one from the org's own name + the
     // authenticated user's email; neither is client-supplied.
     const organization = await orgDAL.findById(orgId);
+
+    // Seed the trial with the org's present usage so it opens showing current quantities, exactly as
+    // checkout does. A trial converts to a monthly usage-based line, so derive declaredUsage at the
+    // monthly cadence; skip it silently if the product/plan can't be resolved (server floors it).
+    const catalog = await licenseClient.getCatalog(orgId);
+    const product = catalog?.products.find((candidate) => candidate.id === productId);
+    const resolved = product ? await buildProductLineItem(product, "monthly", orgId, plan) : null;
+
     const result = await licenseClient.startTrial(orgId, {
       productKey: productId,
       planKey: plan,
       email,
       name: organization?.name,
+      declaredUsage: resolved?.declaredUsage,
       // The trial's card-setup checkout redirects here; built server-side from SITE_URL like checkout.
       returnUrl: buildReturnUrl(orgId)
     });
-    await licenseClient.invalidateEntitlements(orgId);
+    // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
+    // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
+    await licenseClient.markEntitlementsStale(orgId, { checkout: result.outcome === "awaiting_card" });
     return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
   };
 
@@ -987,7 +1001,7 @@ export const licenseV2ServiceFactory = ({
   const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
-    await licenseClient.invalidateEntitlements(orgId);
+    await licenseClient.markEntitlementsStale(orgId);
     return { outcome: result.outcome };
   };
 
@@ -996,21 +1010,21 @@ export const licenseV2ServiceFactory = ({
   const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.removeProduct(orgId, productId);
-    await licenseClient.invalidateEntitlements(orgId);
+    await licenseClient.markEntitlementsStale(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 
   const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.cancelSubscription(orgId);
-    await licenseClient.invalidateEntitlements(orgId);
+    await licenseClient.markEntitlementsStale(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 
   const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.resumeSubscription(orgId);
-    await licenseClient.invalidateEntitlements(orgId);
+    await licenseClient.markEntitlementsStale(orgId);
     return { subscriptionId: result.subscriptionId };
   };
 

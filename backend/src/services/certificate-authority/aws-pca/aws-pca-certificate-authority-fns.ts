@@ -33,11 +33,13 @@ import { extractCertificateFields } from "@app/services/certificate/certificate-
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
   CertSubjectAlternativeNameType,
   CrlReason,
+  getSanOtherNameOid,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
@@ -657,7 +659,7 @@ export const AwsPcaCertificateAuthorityFns = ({
       if (extendedKeyUsages && extendedKeyUsages.length > 0) {
         extensions.push(
           new x509.ExtendedKeyUsageExtension(
-            extendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+            extendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
             true
           )
         );
@@ -712,6 +714,8 @@ export const AwsPcaCertificateAuthorityFns = ({
           return { Rfc822Name: san.value };
         case CertSubjectAlternativeNameType.URI:
           return { UniformResourceIdentifier: san.value };
+        case CertSubjectAlternativeNameType.UPN:
+          return { OtherName: { TypeId: getSanOtherNameOid(san.type)!, Value: san.value } };
         default:
           return { DnsName: san.value };
       }

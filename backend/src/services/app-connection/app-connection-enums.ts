@@ -79,6 +79,7 @@ export enum AppConnection {
   LiteLLM = "litellm",
   Fireworks = "fireworks",
   KempLoadMaster = "kemp-loadmaster",
+  MicrosoftIntune = "microsoft-intune",
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift"
 }

@@ -92,7 +92,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
           <SheetDescription>{poolName}</SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 px-4">
+        <div className="flex-1 p-4">
           {isPending ? (
             <div className="flex h-32 items-center justify-center">
               <Spinner size="lg" />

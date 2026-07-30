@@ -28,6 +28,7 @@ import { PamAccessStatus, PamAccountType, PamProductRole } from "../pam/pam-enum
 import {
   checkAccountAccess,
   checkFolderPermission,
+  getAccountPermissionRulesMap,
   getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
@@ -43,7 +44,7 @@ import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-acces
 import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { PAM_CONNECTION_TEST_BUILDERS, TestConnectionMode } from "./pam-account-connection-test";
+import { buildGatewayConnectionTest, CLOUD_CONNECTION_VALIDATORS } from "./pam-account-connection-test";
 import { TPamAccountDALFactory } from "./pam-account-dal";
 import {
   getAccountAccessibilityIssues,
@@ -182,7 +183,14 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
   const checkFolder = (folderId: string, projectId: string, ctx: TActorContext) =>
     checkFolderPermission(permissionService, folderId, projectId, ctx);
 
-  const list = async ({ projectId, folderId, templateId, search, ...ctx }: TListPamAccountsDTO & TActorContext) => {
+  const list = async ({
+    projectId,
+    folderId,
+    templateId,
+    accountType,
+    search,
+    ...ctx
+  }: TListPamAccountsDTO & TActorContext) => {
     await verifyMembership(projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
@@ -197,25 +205,38 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     const { accounts } = await pamAccountDAL.findAccessible(projectId, folderIds, accountIds, {
       folderId,
       templateId,
+      accountType,
       search
     });
 
+    const accountsRequiringApproval = accounts.filter(
+      (a) => resolveAccessControls(a.templatePolicies).requiresApproval
+    );
+    const accountIdsRequiringApproval = accountsRequiringApproval.map((a) => a.id);
     const folderIdsRequiringApproval = [
-      ...new Set(
-        accounts
-          .filter((a) => resolveAccessControls(a.templatePolicies).requiresApproval && a.folderId)
-          .map((a) => a.folderId!)
-      )
+      ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
-    const foldersWithApprovalPolicy =
-      await deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval);
+
+    const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
+      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
+      // Resolve every account's effective permissions in one membership fetch
+      getAccountPermissionRulesMap(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        accounts.map((a) => ({ id: a.id, folderId: a.folderId })),
+        ctx
+      )
+    ]);
 
     return accounts.map((a) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval } = resolveAccessControls(a.templatePolicies);
+      const { requiresApproval, requireReason } = resolveAccessControls(a.templatePolicies);
       if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
+      const statusEntry = accessStatusMap.get(a.id);
       return {
         id: a.id,
         name: a.name,
@@ -231,6 +252,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         recordingConnectionId: a.recordingConnectionId,
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
+        requiresApproval,
+        requireReason,
+        accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
+        grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
+        permissions: permissionsByAccountId.get(a.id) ?? [],
         createdAt: a.createdAt,
         updatedAt: a.updatedAt
       };
@@ -293,10 +319,23 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       gatewayPoolId?: string | null;
       templateGatewayId?: string | null;
       templateGatewayPoolId?: string | null;
-    }
+    },
+    orgId: string
   ): Promise<void> => {
-    const buildRequest = PAM_CONNECTION_TEST_BUILDERS[accountType];
-    if (!buildRequest) return;
+    const validateCloud = CLOUD_CONNECTION_VALIDATORS[accountType];
+    if (validateCloud) {
+      try {
+        await validateCloud({ connectionDetails, credentials, orgId });
+      } catch (err) {
+        throw new BadRequestError({
+          message: `Connection test failed: ${err instanceof Error ? err.message : "unable to validate credentials"}`
+        });
+      }
+      return;
+    }
+
+    const test = await buildGatewayConnectionTest(accountType, connectionDetails, credentials);
+    if (!test) return;
 
     const effectiveGatewayId = gateway.gatewayId ?? gateway.templateGatewayId;
     const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
@@ -308,18 +347,12 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new BadRequestError({ message: "A gateway must be attached to this account." });
     }
 
-    const cd = connectionDetails as { host: string; port: number };
-    const request =
-      credentials === null || !isCredentialConfigured(accountType, credentials)
-        ? { mode: TestConnectionMode.Tcp }
-        : buildRequest(connectionDetails, credentials);
-
     const result = await testConnectionWithGateway(
-      cd.host,
-      cd.port,
+      test.host,
+      test.port,
       gatewayId,
       gatewayV2Service,
-      request,
+      test.request,
       CONNECTION_TEST_TIMEOUT_MS
     );
 
@@ -416,12 +449,18 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     // discovery import creates accounts in bulk from a scan that already reached them, so it skips the test
     if (!skipConnectionTest) {
-      await assertConnectionOk(accountType, validatedConnectionDetails, validatedCredentials, {
-        gatewayId,
-        gatewayPoolId,
-        templateGatewayId: template.gatewayId,
-        templateGatewayPoolId: template.gatewayPoolId
-      });
+      await assertConnectionOk(
+        accountType,
+        validatedConnectionDetails,
+        validatedCredentials,
+        {
+          gatewayId,
+          gatewayPoolId,
+          templateGatewayId: template.gatewayId,
+          templateGatewayPoolId: template.gatewayPoolId
+        },
+        ctx.actorOrgId
+      );
     }
 
     const encryptedConnectionDetails = await encrypt(projectId, validatedConnectionDetails);
@@ -631,13 +670,22 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         : validateConnectionDetails(accountType, await decrypt(projectId, existing.encryptedConnectionDetails));
 
       // only test with credentials supplied in this request to prevent exfiltration
-      const testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
-      await assertConnectionOk(accountType, effectiveConnectionDetails, testCredentials, {
-        gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
-        gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,
-        templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
-        templateGatewayPoolId: template ? template.gatewayPoolId : existing.templateGatewayPoolId
-      });
+      let testCredentials = credentials ? validateCredentials(accountType, credentials) : null;
+      if (!testCredentials && CLOUD_CONNECTION_VALIDATORS[accountType]) {
+        testCredentials = validateCredentials(accountType, await decrypt(projectId, existing.encryptedCredentials));
+      }
+      await assertConnectionOk(
+        accountType,
+        effectiveConnectionDetails,
+        testCredentials,
+        {
+          gatewayId: gatewayId !== undefined ? gatewayId : existing.gatewayId,
+          gatewayPoolId: gatewayPoolId !== undefined ? gatewayPoolId : existing.gatewayPoolId,
+          templateGatewayId: template ? template.gatewayId : existing.templateGatewayId,
+          templateGatewayPoolId: template ? template.gatewayPoolId : existing.templateGatewayPoolId
+        },
+        ctx.actorOrgId
+      );
     }
 
     try {

@@ -62,7 +62,9 @@ const createStubBackend = (response: TEntitlementsResponse, opts: { fail?: boole
 };
 
 describe("entitlementResolverFactory", () => {
-  test("fetches once then serves subsequent reads from the cache", async () => {
+  // Entitlements are no longer cached here — the hot reader (getPlan) caches its projection upstream —
+  // so every read hits the backend directly.
+  test("fetches from the backend on every read", async () => {
     const keyStore = createFakeKeyStore();
     const { backend, getCalls } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
     const resolver = entitlementResolverFactory({ keyStore, backend });
@@ -72,7 +74,7 @@ describe("entitlementResolverFactory", () => {
     expect(getCalls()).toBe(1);
 
     await resolver.getEntitlements({ id: ORG_ID });
-    expect(getCalls()).toBe(1); // served from the cache
+    expect(getCalls()).toBe(2); // no cache — fetched again
   });
 
   test("returns null when the server is unreachable", async () => {
@@ -83,32 +85,13 @@ describe("entitlementResolverFactory", () => {
     expect(await resolver.getEntitlements({ id: ORG_ID })).toBeNull();
   });
 
-  test("forwards org identity to the backend even after an identity-less call seeded the cache", async () => {
+  test("forwards the org identity to the backend so the license server stays current", async () => {
     const keyStore = createFakeKeyStore();
-    const { backend, getCalls, getOrgs } = createStubBackend(
-      makeEntitlements({ identities: { value: 100, source: "plan" } })
-    );
-    const resolver = entitlementResolverFactory({ keyStore, backend });
-
-    await resolver.getEntitlements({ id: ORG_ID }); // feature-check style, identity-less
-    expect(getCalls()).toBe(1);
-    expect(getOrgs()[0]).toEqual({ id: ORG_ID });
-
-    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-    expect(getCalls()).toBe(2); // bypassed the identity-less cache entry
-    expect(getOrgs()[1]).toEqual({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-  });
-
-  test("syncs org identity once per ttl window then serves from the cache", async () => {
-    const keyStore = createFakeKeyStore();
-    const { backend, getCalls } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
+    const { backend, getOrgs } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
     await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-    expect(getCalls()).toBe(1);
-
-    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-    expect(getCalls()).toBe(1); // identity already synced, served from the cache
+    expect(getOrgs()[0]).toEqual({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
   });
 });
 

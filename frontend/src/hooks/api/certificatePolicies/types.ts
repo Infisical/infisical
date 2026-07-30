@@ -15,7 +15,7 @@ export type TCertificatePolicyRule = {
     denied?: string[];
   }>;
   sans?: Array<{
-    type: "dns_name" | "ip_address" | "email" | "uri";
+    type: "dns_name" | "ip_address" | "email" | "uri" | "upn";
     allowed?: string[];
     required?: string[];
     denied?: string[];

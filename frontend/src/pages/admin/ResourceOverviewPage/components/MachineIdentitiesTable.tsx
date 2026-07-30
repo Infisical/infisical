@@ -10,26 +10,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ServerCogIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EmptyState,
-  IconButton,
-  Input,
-  Pagination,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, Pagination } from "@app/components/v3";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -39,6 +20,26 @@ import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/h
 import { useAdminRemoveIdentitySuperAdminAccess } from "@app/hooks/api/admin";
 import { useAdminGetIdentities } from "@app/hooks/api/admin/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import {
+  EmptyState,
+  Table,
+  TableContainer,
+  TableSkeleton,
+  TBody,
+  Td,
+  Th,
+  THead,
+  Tr
+} from "@app/pages/admin/components/AdminTable";
+import {
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+  Input
+} from "@app/pages/admin/components/AdminV3Adapters";
 
 const IdentityPanelTable = ({
   handlePopUpOpen
@@ -87,6 +88,7 @@ const IdentityPanelTable = ({
     <>
       <div className="flex gap-2">
         <Input
+          aria-label="Search machine identities"
           value={searchIdentityFilter}
           onChange={(e) => setSearchIdentityFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -122,12 +124,7 @@ const IdentityPanelTable = ({
                         <div className="flex justify-end">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <IconButton
-                                ariaLabel="Options"
-                                colorSchema="secondary"
-                                className="w-6"
-                                variant="plain"
-                              >
+                              <IconButton ariaLabel="Options" size="xs" variant="plain">
                                 <FontAwesomeIcon icon={faEllipsisV} />
                               </IconButton>
                             </DropdownMenuTrigger>
@@ -135,7 +132,10 @@ const IdentityPanelTable = ({
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handlePopUpOpen("removeServerAdmin", { name, id });
+                                  handlePopUpOpen("removeServerAdmin", {
+                                    name,
+                                    id
+                                  });
                                 }}
                                 icon={
                                   <div className="relative">
@@ -180,10 +180,13 @@ export const MachineIdentitiesTable = () => {
     "removeServerAdmin"
   ] as const);
 
-  const { mutate: deleteIdentitySuperAdminAccess } = useAdminRemoveIdentitySuperAdminAccess();
+  const { mutateAsync: deleteIdentitySuperAdminAccess } = useAdminRemoveIdentitySuperAdminAccess();
 
   const handleRemoveServerAdmin = async () => {
-    const { id } = popUp?.removeServerAdmin?.data as { id: string; name: string };
+    const { id } = popUp?.removeServerAdmin?.data as {
+      id: string;
+      name: string;
+    };
 
     await deleteIdentitySuperAdminAccess(id);
     createNotification({
@@ -195,7 +198,7 @@ export const MachineIdentitiesTable = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+    <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xl font-medium text-mineshaft-100">Machine Identities</p>

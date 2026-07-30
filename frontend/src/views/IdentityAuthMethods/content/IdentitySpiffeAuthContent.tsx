@@ -2,6 +2,7 @@ import { BanIcon, EyeIcon } from "lucide-react";
 
 import {
   Badge,
+  DetailGroup,
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -45,7 +46,7 @@ export const IdentitySpiffeAuthContent = ({ identityId }: ViewAuthMethodProps) =
   const { trustBundleDistribution: dist } = data;
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <DetailGroup className="grid grid-cols-2 gap-x-6 gap-y-5">
       <IdentityAuthFieldDisplay className="col-span-2" label="Trust Domain">
         {data.trustDomain}
       </IdentityAuthFieldDisplay>
@@ -118,6 +119,6 @@ export const IdentitySpiffeAuthContent = ({ identityId }: ViewAuthMethodProps) =
         accessTokenNumUsesLimit={data.accessTokenNumUsesLimit}
         accessTokenTrustedIps={data.accessTokenTrustedIps}
       />
-    </div>
+    </DetailGroup>
   );
 };

@@ -13,6 +13,8 @@ import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 import { IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -52,6 +54,7 @@ type TIdentityServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
     "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
@@ -74,6 +77,7 @@ export const identityServiceFactory = ({
   membershipRoleDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
+  alertService,
   identityAccessTokenService
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
@@ -383,6 +387,14 @@ export const identityServiceFactory = ({
         throw new BadRequestError({ message: "Identity has delete protection" });
 
       const deletedIdentity = await identityDAL.transaction(async (tx) => {
+        await alertService.deleteAlertsForResource(
+          {
+            orgId: identityOrgMembership.scopeOrgId,
+            resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+            resourceId: id
+          },
+          tx
+        );
         await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: id, tx });
         return identityDAL.deleteById(id, tx);
       });

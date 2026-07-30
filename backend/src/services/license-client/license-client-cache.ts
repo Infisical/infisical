@@ -1,5 +1,4 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
 import { logger } from "@app/lib/logger";
 
 import { TEntitlementOrg, TEntitlementsResponse, TLicenseClientBackend } from "./license-client-types";
@@ -12,62 +11,51 @@ type TEntitlementResolverDep = {
 export type TEntitlementResolver = ReturnType<typeof entitlementResolverFactory>;
 
 export const entitlementResolverFactory = ({ keyStore, backend }: TEntitlementResolverDep) => {
-  const ttlSeconds = KeyStoreTtls.LicenseEntitlementsInSeconds;
-  const entitlementsCacheKey = (orgId: string) => KeyStorePrefixes.LicenseEntitlements(orgId);
-  const identitySyncedKey = (orgId: string) => KeyStorePrefixes.LicenseEntitlementsIdentitySynced(orgId);
-
-  // The license server learns an org's name/slug from whatever identity a request carries. Entitlement
-  // reads are cached per org and most callers (feature checks) send no identity, so a cached read would
-  // usually answer without reaching the server and the name/slug would never get there. So the first
-  // identity-carrying read in a cache window is sent uncached (delivering the identity); this marker then
-  // records that the window's identity has been delivered so later reads can serve from the cache again.
-  const identityNeedsSync = async (org: TEntitlementOrg): Promise<boolean> => {
-    if (!org.name && !org.slug) {
-      return false;
-    }
-    const alreadySynced = await keyStore.getItem(identitySyncedKey(org.id));
-    return !alreadySynced;
-  };
-
-  // One uncached read that carries the org's identity to the server, then primes the entitlement cache
-  // with the response and marks this window's identity as delivered.
-  const fetchForwardingIdentity = async (org: TEntitlementOrg): Promise<TEntitlementsResponse> => {
-    const entitlements = await backend.fetchEntitlements(org);
-    await keyStore.setItemWithExpiry(entitlementsCacheKey(org.id), ttlSeconds, JSON.stringify(entitlements));
-    await keyStore.setItemWithExpiry(identitySyncedKey(org.id), ttlSeconds, "1");
-    return entitlements;
-  };
-
-  // Returns null on total failure so the caller falls back to the feature's declared fallback.
+  // Entitlements are not cached here: the only hot reader is licenseService.getPlan, which caches its
+  // projection in LicenseCloudPlan and so only reaches this on an L1 miss. The remaining callers
+  // (billing overview, self-hosted sync) are low frequency and want fresh reads, so a direct fetch is
+  // simpler and avoids a second cache to keep coherent. Returns null on failure so the caller falls back
+  // to the feature's declared default. The org's name/slug ride along on the query params, keeping the
+  // license server's copy current.
   const getEntitlements = async (org: TEntitlementOrg): Promise<TEntitlementsResponse | null> => {
     try {
-      if (await identityNeedsSync(org)) {
-        return await fetchForwardingIdentity(org);
-      }
-
-      return await withCache({
-        keyStore,
-        key: entitlementsCacheKey(org.id),
-        ttlSeconds,
-        fetcher: () => backend.fetchEntitlements(org)
-      });
+      return await backend.fetchEntitlements(org);
     } catch (error) {
       logger.error(error, `license-client: failed to resolve entitlements [orgId=${org.id}]`);
       return null;
     }
   };
 
-  // Drop the cached entitlements so the next read reflects a just-committed subscription change
-  // instead of waiting out the 30-minute TTL. The license server reconciles asynchronously via
-  // its Stripe webhook, so a stale read here is what otherwise makes a removed product linger.
+  // Flag the org's license caches for stale-while-revalidate instead of dropping them. After a billing
+  // mutation the license server reconciles asynchronously (Stripe webhook), so an immediate hard bust
+  // would just re-cache the pre-reconciliation value for a full TTL. With the marker set, reads keep
+  // serving the cached value while a background refresh converges the cache once reconciliation lands.
+  // checkout uses a longer window because the change only applies once the customer finishes the
+  // Stripe-hosted checkout/card-setup, which can take several minutes.
+  const markPassThrough = async (orgId: string, opts?: { checkout?: boolean }): Promise<void> => {
+    try {
+      await keyStore.setItemWithExpiry(
+        KeyStorePrefixes.LicenseCachePassThrough(orgId),
+        opts?.checkout
+          ? KeyStoreTtls.LicenseCachePassThroughCheckoutInSeconds
+          : KeyStoreTtls.LicenseCachePassThroughInSeconds,
+        "1"
+      );
+    } catch (error) {
+      logger.error(error, `license-client: failed to mark entitlements for revalidation [orgId=${orgId}]`);
+    }
+  };
+
+  // Hard-drop the projected plan cache so the next read reflects a just-committed change instead of
+  // waiting out the TTL. Used by the explicit refresh path (refreshEntitlements); billing mutations use
+  // markPassThrough for stale-while-revalidate instead.
   const invalidateEntitlements = async (orgId: string): Promise<void> => {
     try {
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
-      await keyStore.deleteItem(KeyStorePrefixes.LicenseEntitlements(orgId));
     } catch (error) {
       logger.error(error, `license-client: failed to invalidate entitlements [orgId=${orgId}]`);
     }
   };
 
-  return { getEntitlements, invalidateEntitlements };
+  return { getEntitlements, invalidateEntitlements, markPassThrough };
 };
