@@ -31,9 +31,11 @@ type Props = {
   onComplete: (secretKey: string) => void;
 };
 
+// value is required here, unlike the dashboard: this secret exists to be brokered as a credential,
+// so an empty one would only fail later as a 401 from the upstream service
 const schema = z.object({
   key: z.string().trim().min(1, { message: "Secret key is required" }),
-  value: z.string().optional()
+  value: z.string().min(1, { message: "Secret value is required" })
 });
 
 type TFormSchema = z.infer<typeof schema>;
@@ -65,7 +67,7 @@ export const CreateSecretModal = ({
       environment,
       secretPath,
       secretKey: key,
-      secretValue: value ?? "",
+      secretValue: value,
       secretComment: "",
       type: SecretType.Shared
     });
