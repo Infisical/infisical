@@ -66,6 +66,39 @@ export const assertRepositoryWithinSizeLimit = (resourceName: string, sizeMb: nu
   if (sizeMb > limitMb) throw new SecretScanningSizeLimitError(resourceName, sizeMb, limitMb);
 };
 
+const BYTES_PER_MB = 1024 * 1024;
+
+/**
+ * Reads a provider's reported repository size and applies the ceiling to it. The lookup is an
+ * optimisation — `assertClonedRepositoryWithinSizeLimit` enforces the same ceiling once the clone
+ * is on disk — so a rate-limited, forbidden or otherwise failing metadata call must never fail a
+ * scan that would otherwise have run. A size the provider doesn't report is "unknown", not zero:
+ * `null` (GitLab hides statistics from tokens without the privilege) must not read as 0 MB and
+ * quietly pass the gate.
+ */
+export const assertProviderRepositorySizeWithinLimit = async (
+  resourceName: string,
+  readSizeBytes: () => Promise<number | string | null | undefined>
+) => {
+  let sizeBytes: number | string | null | undefined;
+
+  try {
+    sizeBytes = await readSizeBytes();
+  } catch (error) {
+    logger.warn(
+      error,
+      `secretScanningV2: Repository size lookup failed, deferring to the post-clone check [resourceName=${resourceName}]`
+    );
+    return;
+  }
+
+  if (sizeBytes === null || sizeBytes === undefined) return;
+
+  const sizeMb = Math.round(Number(sizeBytes) / BYTES_PER_MB);
+
+  assertRepositoryWithinSizeLimit(resourceName, Number.isNaN(sizeMb) ? undefined : sizeMb);
+};
+
 const SizePackRegex = new RE2(/^size-pack:\s*(\d+)/m);
 
 /**

@@ -256,7 +256,7 @@ export const secretScanningV2QueueServiceFactory = ({
           throw new Error("Unhandled resource type");
       }
 
-      const allFindings = await secretScanningV2DAL.findings.transaction(async (tx) => {
+      const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
         if (findingsPayload.length) {
           findings = await secretScanningV2DAL.findings.upsert(
@@ -275,16 +275,27 @@ export const secretScanningV2QueueServiceFactory = ({
           );
         }
 
-        await secretScanningV2DAL.scans.update(
-          { id: scanId },
+        // Guarded on the state this run is finishing: if the reaper already gave up on this scan,
+        // the row keeps its failure and this update matches nothing. Findings are still written —
+        // they are real — but the outcome the customer was told about is not rewritten underneath
+        // them.
+        const completedScans = await secretScanningV2DAL.scans.update(
+          { id: scanId, status: SecretScanningScanStatus.Scanning },
           {
             status: SecretScanningScanStatus.Completed,
             statusMessage: null
           }
         );
 
-        return findings;
+        return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
       });
+
+      if (!closedOutByThisRun) {
+        logger.warn(
+          `secretScanningV2Queue: Full Scan finished after the scan was already closed out ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
+        );
+        return;
+      }
 
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
@@ -332,45 +343,53 @@ export const secretScanningV2QueueServiceFactory = ({
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
-        await secretScanningV2DAL.scans.update(
-          { id: scanId },
+        // Only a scan this run still owns is closed out here. A failure before the status was set
+        // to `scanning` leaves the row `queued`, which is why that state is accepted too — but a
+        // scan the reaper has already failed and notified on is left exactly as it is.
+        const failedScans = await secretScanningV2DAL.scans.update(
+          {
+            id: scanId,
+            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+          },
           {
             status: SecretScanningScanStatus.Failed,
             statusMessage: errorMessage
           }
         );
 
-        await queueService.queue(
-          QueueName.SecretScanningV2,
-          QueueJobs.SecretScanningV2SendNotification,
-          {
-            status: SecretScanningScanStatus.Failed,
-            resourceName: resource.name,
-            dataSource,
-            errorMessage
-          },
-          { jobId: `secret-scanning-notification-${scanId}`, removeOnFail: true }
-        );
+        if (failedScans.length) {
+          await queueService.queue(
+            QueueName.SecretScanningV2,
+            QueueJobs.SecretScanningV2SendNotification,
+            {
+              status: SecretScanningScanStatus.Failed,
+              resourceName: resource.name,
+              dataSource,
+              errorMessage
+            },
+            { jobId: `secret-scanning-notification-${scanId}`, removeOnFail: true }
+          );
 
-        await auditLogService.createAuditLog({
-          projectId: dataSource.projectId,
-          actor: {
-            type: ActorType.PLATFORM,
-            metadata: {}
-          },
-          event: {
-            type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
-            metadata: {
-              dataSourceId: dataSource.id,
-              dataSourceType: dataSource.type,
-              resourceId: resource.id,
-              resourceType: resource.type,
-              scanId,
-              scanStatus: SecretScanningScanStatus.Failed,
-              scanType: SecretScanningScanType.FullScan
+          await auditLogService.createAuditLog({
+            projectId: dataSource.projectId,
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            event: {
+              type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+              metadata: {
+                dataSourceId: dataSource.id,
+                dataSourceType: dataSource.type,
+                resourceId: resource.id,
+                resourceType: resource.type,
+                scanId,
+                scanStatus: SecretScanningScanStatus.Failed,
+                scanType: SecretScanningScanType.FullScan
+              }
             }
-          }
-        });
+          });
+        }
       }
 
       logger.error(
@@ -511,7 +530,7 @@ export const secretScanningV2QueueServiceFactory = ({
         configPath
       });
 
-      const allFindings = await secretScanningV2DAL.findings.transaction(async (tx) => {
+      const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
 
         if (findingsPayload.length) {
@@ -531,15 +550,23 @@ export const secretScanningV2QueueServiceFactory = ({
           );
         }
 
-        await secretScanningV2DAL.scans.update(
-          { id: scanId },
+        // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
+        const completedScans = await secretScanningV2DAL.scans.update(
+          { id: scanId, status: SecretScanningScanStatus.Scanning },
           {
             status: SecretScanningScanStatus.Completed
           }
         );
 
-        return findings;
+        return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
       });
+
+      if (!closedOutByThisRun) {
+        logger.warn(
+          `secretScanningV2Queue: Diff Scan finished after the scan was already closed out ${logDetails} findings=[${findingsPayload.length}] durationMs=[${Date.now() - startedAt}]`
+        );
+        return;
+      }
 
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
@@ -590,45 +617,52 @@ export const secretScanningV2QueueServiceFactory = ({
       if (retryCount === retryLimit) {
         const errorMessage = parseScanErrorMessage(error);
 
-        await secretScanningV2DAL.scans.update(
-          { id: scanId },
+        // Same guard as the full scan: `queued` covers a failure before the scan started, and a
+        // scan the reaper already closed out is left alone.
+        const failedScans = await secretScanningV2DAL.scans.update(
+          {
+            id: scanId,
+            $in: { status: [SecretScanningScanStatus.Queued, SecretScanningScanStatus.Scanning] }
+          },
           {
             status: SecretScanningScanStatus.Failed,
             statusMessage: errorMessage
           }
         );
 
-        await queueService.queue(
-          QueueName.SecretScanningV2,
-          QueueJobs.SecretScanningV2SendNotification,
-          {
-            status: SecretScanningScanStatus.Failed,
-            resourceName: resource.name,
-            dataSource,
-            errorMessage
-          },
-          { jobId: `secret-scanning-notification-${scanId}` }
-        );
+        if (failedScans.length) {
+          await queueService.queue(
+            QueueName.SecretScanningV2,
+            QueueJobs.SecretScanningV2SendNotification,
+            {
+              status: SecretScanningScanStatus.Failed,
+              resourceName: resource.name,
+              dataSource,
+              errorMessage
+            },
+            { jobId: `secret-scanning-notification-${scanId}` }
+          );
 
-        await auditLogService.createAuditLog({
-          projectId: dataSource.projectId,
-          actor: {
-            type: ActorType.PLATFORM,
-            metadata: {}
-          },
-          event: {
-            type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
-            metadata: {
-              dataSourceId: dataSource.id,
-              dataSourceType: dataSource.type,
-              resourceId: resource.id,
-              resourceType: resource.type,
-              scanId,
-              scanStatus: SecretScanningScanStatus.Failed,
-              scanType: SecretScanningScanType.DiffScan
+          await auditLogService.createAuditLog({
+            projectId: dataSource.projectId,
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            event: {
+              type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+              metadata: {
+                dataSourceId: dataSource.id,
+                dataSourceType: dataSource.type,
+                resourceId: resource.id,
+                resourceType: resource.type,
+                scanId,
+                scanStatus: SecretScanningScanStatus.Failed,
+                scanType: SecretScanningScanType.DiffScan
+              }
             }
-          }
-        });
+          });
+        }
       }
 
       logger.error(

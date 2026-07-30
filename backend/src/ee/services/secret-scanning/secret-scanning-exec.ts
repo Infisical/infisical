@@ -1,4 +1,6 @@
 import { spawn } from "child_process";
+import RE2 from "re2";
+import { StringDecoder } from "string_decoder";
 
 import { getConfig } from "@app/lib/config/env";
 
@@ -20,6 +22,14 @@ export enum SecretScanningExecPhase {
 }
 
 const MAX_RETAINED_OUTPUT_CHARS = 4_000;
+
+// Clone URLs carry the credential inline (`https://x-access-token:<token>@github.com/...`). Current
+// git strips the userinfo before printing a URL back, but that is git's choice, not a guarantee we
+// hold — the token is redacted here, at the point of capture, so nothing downstream has to be
+// careful about logging `output`.
+const UrlCredentialsRegex = new RE2(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi);
+
+const redactUrlCredentials = (value: string) => value.replace(UrlCredentialsRegex, "$1[REDACTED]@");
 
 type TSecretScanningExecErrorParams = {
   failure: SecretScanningExecFailure;
@@ -72,7 +82,9 @@ export class SecretScanningExecError extends Error {
     this.phase = phase;
     this.command = command;
     // Only the tail is retained — it carries the actual failure reason and keeps log lines bounded.
-    this.output = output.length > MAX_RETAINED_OUTPUT_CHARS ? output.slice(-MAX_RETAINED_OUTPUT_CHARS) : output;
+    const retainedOutput =
+      output.length > MAX_RETAINED_OUTPUT_CHARS ? output.slice(-MAX_RETAINED_OUTPUT_CHARS) : output;
+    this.output = redactUrlCredentials(retainedOutput);
     this.exitCode = exitCode;
     this.signal = signal;
     this.timeoutMs = timeoutMs;
@@ -128,14 +140,38 @@ export const execFileBounded = (
 
     let output = "";
     let capturedBytes = 0;
-    const capture = (chunk: Buffer) => {
+    // One decoder per stream: a multi-byte character split across two reads would otherwise be
+    // decoded as two replacement characters.
+    const decoders = { stdout: new StringDecoder("utf8"), stderr: new StringDecoder("utf8") };
+    const capture = (stream: keyof typeof decoders) => (chunk: Buffer) => {
       if (capturedBytes >= MAX_CAPTURED_OUTPUT_BYTES) return;
       capturedBytes += chunk.length;
-      output += chunk.toString("utf8");
+      output += decoders[stream].write(chunk);
     };
 
-    child.stdout.on("data", capture);
-    child.stderr.on("data", capture);
+    child.stdout.on("data", capture("stdout"));
+    child.stderr.on("data", capture("stderr"));
+
+    // Killing the process group can tear a pipe down mid-read. An `error` with no listener is an
+    // uncaught exception, which would take the worker down over a child we were killing anyway, so
+    // it is recorded and folded into the captured output; the exit path reports the failure.
+    let stdioError: Error | undefined;
+    const rememberStdioError = (err: Error) => {
+      stdioError = err;
+    };
+    child.stdout.on("error", rememberStdioError);
+    child.stderr.on("error", rememberStdioError);
+
+    // Flush whatever each decoder is still holding, so a trailing partial character isn't dropped.
+    // `error` and `close` can both fire, so this only takes effect once.
+    let finalized = false;
+    const finalizeOutput = () => {
+      if (finalized) return;
+      finalized = true;
+      output += decoders.stdout.end();
+      output += decoders.stderr.end();
+      if (stdioError) output += `\n[stdio error] ${stdioError.message}`;
+    };
 
     let timedOut = false;
     const timer = setTimeout(() => {
@@ -145,6 +181,7 @@ export const execFileBounded = (
 
     child.on("error", (err) => {
       clearTimeout(timer);
+      finalizeOutput();
       reject(
         new SecretScanningExecError({
           failure: SecretScanningExecFailure.Spawn,
@@ -158,6 +195,7 @@ export const execFileBounded = (
 
     child.on("close", (exitCode, signal) => {
       clearTimeout(timer);
+      finalizeOutput();
 
       if (timedOut) {
         reject(

@@ -37,6 +37,13 @@ const zodStrBool = z
   .optional()
   .transform((val) => val === "true");
 
+/**
+ * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
+ * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
+ * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan.
+ */
+const SECRET_SCANNING_SCAN_OVERHEAD_MS = 5 * 60 * 1000;
+
 const databaseReadReplicaSchema = z
   .object({
     DB_CONNECTION_URI: z.string().describe("Postgres read replica database connection string"),
@@ -605,15 +612,13 @@ const envSchema = z
       }
     });
 
-    // A scan that is still inside its own clone + scan budget is healthy, so the reaper must not be
-    // able to reach it: raising one of the two timeouts without raising this one would otherwise
-    // mark in-flight scans failed and notify on them.
-    const scanBudgetMs = data.SECRET_SCANNING_CLONE_TIMEOUT_MS + data.SECRET_SCANNING_SCAN_TIMEOUT_MS;
+    const scanBudgetMs =
+      data.SECRET_SCANNING_CLONE_TIMEOUT_MS + data.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS;
     if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS <= scanBudgetMs) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"],
-        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT_MS + SECRET_SCANNING_SCAN_TIMEOUT_MS (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT_MS + SECRET_SCANNING_SCAN_TIMEOUT_MS plus ${SECRET_SCANNING_SCAN_OVERHEAD_MS}ms of measurement and bookkeeping (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
       });
     }
   })

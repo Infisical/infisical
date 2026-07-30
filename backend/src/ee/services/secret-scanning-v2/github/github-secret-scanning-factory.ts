@@ -9,7 +9,7 @@ import {
   SecretScanningResource
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
-  assertRepositoryWithinSizeLimit,
+  assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
   replaceNonChangesWithNewlines
@@ -136,8 +136,10 @@ export const GitHubSecretScanningFactory = () => {
 
     // Checked before the clone: measuring afterwards means the network, wall clock and ephemeral
     // disk have already been spent. GitHub reports `size` in KB.
-    const { data: repository } = await octokit.repos.get({ owner, repo });
-    assertRepositoryWithinSizeLimit(resourceName, Math.round(repository.size / 1024));
+    await assertProviderRepositorySizeWithinLimit(resourceName, async () => {
+      const { data: repository } = await octokit.repos.get({ owner, repo });
+      return repository.size == null ? null : repository.size * 1024;
+    });
 
     await cloneRepository({
       cloneUrl: `https://x-access-token:${token}@github.com/${resourceName}.git`,

@@ -989,10 +989,10 @@ You can configure third-party app connections for re-use across Infisical Projec
 
 <Note>
   The limits apply from the release that introduces them, on existing instances too. A repository
-  above `SECRET_SCANNING_MAX_REPO_SIZE_MB` that scanned before the upgrade is now rejected before
-  cloning, and the scanner runs under a memory ceiling it previously did not have. If you scan
-  repositories larger than the defaults, raise both values or set them to `0` for the previous
-  unbounded behaviour.
+  above `SECRET_SCANNING_MAX_REPO_SIZE_MB` that scanned before the upgrade is now rejected — before
+  cloning when the provider reports a size, otherwise once the clone is measured on disk — and the
+  scanner runs under a memory ceiling it previously did not have. If you scan repositories larger
+  than the defaults, raise both values or set them to `0` for the previous unbounded behaviour.
 </Note>
 
 {" "}
@@ -1003,8 +1003,8 @@ You can configure third-party app connections for re-use across Infisical Projec
   default="600000"
   optional
 >
-  How long a single scan may run before it is cancelled and the scan is marked
-  failed.
+  How long, in milliseconds, a single scan may run before it is cancelled and
+  the scan is marked failed. Defaults to `600000` (10 minutes).
 </ParamField>
 
 {" "}
@@ -1015,8 +1015,8 @@ You can configure third-party app connections for re-use across Infisical Projec
   default="600000"
   optional
 >
-  How long cloning a repository may take before it is cancelled and the scan is
-  marked failed.
+  How long, in milliseconds, cloning a repository may take before it is
+  cancelled and the scan is marked failed. Defaults to `600000` (10 minutes).
 </ParamField>
 
 {" "}
@@ -1027,9 +1027,9 @@ You can configure third-party app connections for re-use across Infisical Projec
   default="2048"
   optional
 >
-  Soft memory ceiling for the scanner process. It collects garbage more
-  aggressively as it approaches this limit rather than growing. Set to `0` to
-  disable.
+  Soft memory ceiling for the scanner process, in MB. It collects garbage more
+  aggressively as it approaches this limit rather than growing. Defaults to
+  `2048` (2 GB). Set to `0` to disable.
 </ParamField>
 
 {" "}
@@ -1040,13 +1040,15 @@ You can configure third-party app connections for re-use across Infisical Projec
   default="5120"
   optional
 >
-  Repositories larger than this are rejected instead of scanned. Set to `0` to
-  disable.
+  Repositories larger than this many MB are rejected instead of scanned.
+  Defaults to `5120` (5 GB). Set to `0` to disable.
 </ParamField>
 
   <ParamField query="SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS" type="number" default="3600000" optional>
-    How long a scan may stay in progress before it is assumed dead — its worker was killed — and
-    marked failed. Must be larger than the clone and scan timeouts combined.
+    How long, in milliseconds, a scan may stay in progress before it is assumed dead — its worker
+    was killed — and marked failed. Defaults to `3600000` (1 hour). Must exceed the clone and scan
+    timeouts plus the time a scan spends measuring the repository and writing its results; the
+    server refuses to start otherwise.
   </ParamField>
 </Accordion>
 

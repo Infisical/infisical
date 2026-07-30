@@ -55,6 +55,36 @@ describe("execFileBounded", () => {
     expect(execError.message).not.toContain("boom");
   });
 
+  test("redacts credentials embedded in a URL out of the retained output", async () => {
+    // What a clone against a rejected token can print: the remote URL carries the credential
+    // inline, and `output` ends up in logs wherever the error object is serialized.
+    const error = await execFileBounded(
+      "sh",
+      [
+        "-c",
+        "echo \"fatal: could not read from 'https://x-access-token:ghs_supersecret@github.com/acme/app.git'\" >&2; exit 128"
+      ],
+      { phase: SecretScanningExecPhase.Clone, timeoutMs: 10_000 }
+    ).catch((err: unknown) => err);
+
+    const execError = error as SecretScanningExecError;
+    expect(execError.output).not.toContain("ghs_supersecret");
+    expect(execError.output).not.toContain("x-access-token");
+    // The rest of the line survives: it is what tells an operator what actually failed.
+    expect(execError.output).toContain("github.com/acme/app.git");
+  });
+
+  test("decodes multi-byte output split across chunk boundaries", async () => {
+    // printf writes the two halves of a 3-byte character in separate writes, so a per-chunk
+    // toString would turn one character into replacement characters.
+    const output = await execFileBounded("sh", ["-c", 'printf "\\xe2\\x9c"; sleep 0.2; printf "\\x93"'], {
+      phase: SecretScanningExecPhase.Scan,
+      timeoutMs: 10_000
+    });
+
+    expect(output).toBe("✓");
+  });
+
   test("rejects when the binary cannot be started", async () => {
     const error = await execFileBounded("this-binary-does-not-exist", [], {
       phase: SecretScanningExecPhase.Scan,
