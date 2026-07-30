@@ -170,7 +170,7 @@ export const SecretRotationV2Form = ({
       <div className="flex min-h-0 flex-1 flex-col">
         <FormProvider {...formMethods}>
           <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+            <Tab.List className="-pb-1 mb-6 w-full flex-shrink-0 border-b-2 border-mineshaft-600">
               {FORM_TABS.map((tab, index) => (
                 <Tab
                   onClick={async (e) => {
@@ -191,7 +191,7 @@ export const SecretRotationV2Form = ({
                 </Tab>
               ))}
             </Tab.List>
-            <Tab.Panels>
+            <Tab.Panels className="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
               <Tab.Panel>
                 <SecretRotationV2ConfigurationFields
                   isUpdate={Boolean(secretRotation)}

@@ -144,12 +144,7 @@ export const CloudflareApiTokenRotationParametersFields = () => {
           label="Access Policies"
           tooltipText="Each row grants one permission group over the entire account, all zones in the account, or a specific set of zones. Rows targeting the same resources are combined into a single Cloudflare policy."
         />
-        <div
-          className={twMerge(
-            "mb-3 flex w-full flex-col space-y-2",
-            policyFields.fields.length >= 3 ? "max-h-96 overflow-y-auto" : ""
-          )}
-        >
+        <div className="mb-3 flex w-full flex-col space-y-2">
           {policyFields.fields.map(({ id: policyFieldId }, i) => {
             const policyScope = policies?.[i]?.scope ?? CloudflareApiTokenPolicyScope.Account;
             const permissionGroupOptions = permissionGroupsByScope[policyScope];
