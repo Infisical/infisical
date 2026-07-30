@@ -2,7 +2,6 @@
 import { parseEnvFile, serializeEnvFile } from "@app/lib/dotenv";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { safeRequest } from "@app/lib/validator";
-import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -170,7 +169,6 @@ const toDirectoryPrefix = (path: string): string => {
   return `${path}/`;
 };
 
-
 const isDirectChild = (elementId: string, prefix: string): boolean => {
   if (!elementId.startsWith(prefix)) return false;
   const relativePath = elementId.slice(prefix.length);
@@ -326,7 +324,7 @@ export const SpaceliftSyncFns = {
     const { apiKeyId, apiKeySecret } = secretSync.connection.credentials;
     const { contextId, configType, mountPath, fileMountFormat } = secretSync.destinationConfig;
     const writeOnly = secretSync.syncOptions?.writeOnly ?? false;
-    const disableSecretDeletion = secretSync.syncOptions.disableSecretDeletion;
+    const { disableSecretDeletion } = secretSync.syncOptions;
 
     const jwt = await authenticateSpacelift(instanceUrl, apiKeyId, apiKeySecret);
     const connection: TSpaceliftConnection = { instanceUrl, jwt, contextId };
