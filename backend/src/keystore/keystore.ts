@@ -86,6 +86,9 @@ export const KeyStorePrefixes = {
     `sse-connections:${projectId}:${identityId}:${connectionId}` as const,
   RecentAnnouncements: "announcements:recent" as const,
 
+  AlertChannelTestCooldown: (orgId: string, actorId: string, channelType: string) =>
+    `alert-channel-test-cooldown:${orgId}:${actorId}:${channelType}` as const,
+
   ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
     `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
   ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
@@ -188,6 +191,7 @@ export const KeyStoreTtls = {
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes
   MfaCodeResendCooldownInSeconds: 60, // 1 minute
+  AlertChannelTestCooldownInSeconds: 60, // 1 minute
 
   WebAuthnChallengeInSeconds: 300, // 5 minutes
   UsedTotpCodeInSeconds: 120, // covers the full ±30s acceptance window (window:1 → 90s) with margin

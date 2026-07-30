@@ -292,6 +292,26 @@ Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cro
 
 See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `src/services/resource-cleanup/resource-cleanup-queue.ts` for a service with multiple registrations, and `src/ee/services/secret-rotation-v2/secret-rotation-v2-queue.ts` for a cron-tick that fans out into a BullMQ queue.
 
+### Alerting (shared module — reuse it, don't fork it)
+
+`src/services/alert/` is **the** alerting module: one `alerts` table, one channel stack (email, Slack, webhook, PagerDuty), one recipient resolver, one encryption story for channel configs, one dedup + history + retention path, one cron tick that fans out into the `AlertDispatch` queue, and one set of routes (`src/server/routes/v1/alert-router.ts`, including `POST /channels/test`).
+
+**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is the thing we are converging away from, not a template to copy.
+
+Adding a new alertable resource type:
+
+1. Implement `IResourceAlertProvider` (`alert-types.ts`) in `src/services/alert/providers/<name>-alert-provider.ts`, with its DAL alongside it. You supply: a dot-namespaced `resourceType` (e.g. `identity.authentication`), `eventTypes`, a `conditionSchema` for the "when", `findDueTargets`, `buildViewUrl` / `buildPayload` / `targetId` / `buildTestTargets`, and the two authorization hooks `assertPermission` + `assertResourceInScope`.
+2. Register it on the singleton registry in `src/server/routes/index.ts` (`alertProviderRegistry.register(...)`).
+
+That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS encryption, dedup, history, retention pruning, test sends, and dispatch metrics all come for free, because the cron tick enumerates `alertProviderRegistry.resourceTypes()`. See `src/services/alert/providers/identity-credential-alert-provider.ts` for a complete example.
+
+Invariants worth knowing before extending it:
+
+- **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
+- **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
+- **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
+- **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.
@@ -336,6 +356,10 @@ logger.info(`getPlan: Process done for [orgId=${orgId}] [projectId=${projectId}]
 // NOT preferred: identifiers only in structured object, not in message
 logger.error({ sessionId, err }, "Failed to get connection details");
 ```
+
+**Never log an outbound URL verbatim — a URL is often itself a credential.** Incoming-webhook providers put the bearer secret in the path (`https://hooks.slack.com/services/T…/B…/<secret>`, Discord, Teams, Telegram) and many APIs accept a token as a query param, so a raw URL in a log line ships a working credential to the log sink. Pass it through `sanitizeUrlForLog` from `@app/lib/logger` first (`src/lib/logger/sanitize-url.ts`): it keeps only the origin, strips userinfo and the fragment, redacts the entire path, and redacts every query value. Token formats can't be recognised reliably, so the path is redacted by default for every host rather than sniffed with heuristics. The global axios response interceptor (`src/lib/config/request.ts`) and `safeRequest`'s dispatch log already do this.
+
+Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
 ### Enterprise (EE) Features
 

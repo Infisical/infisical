@@ -20,6 +20,7 @@ import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-gro
 import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
@@ -66,6 +67,7 @@ type TProjectMembershipServiceFactoryDep = {
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TProjectMembershipServiceFactory = ReturnType<typeof projectMembershipServiceFactory>;
@@ -89,7 +91,8 @@ export const projectMembershipServiceFactory = ({
   userDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
     userIds: string[],
@@ -403,6 +406,11 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients(
+        { userIds: projectMembers.map(({ user }) => user.id) },
+        tx
+      );
+
       return deletedMemberships;
     };
 
@@ -493,6 +501,8 @@ export const projectMembershipServiceFactory = ({
         },
         tx
       );
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [actorId] }, tx);
 
       return membership;
     });

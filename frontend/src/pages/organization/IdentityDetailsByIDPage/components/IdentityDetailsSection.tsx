@@ -25,6 +25,8 @@ import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { IdentityAlertDetail } from "./IdentityAlertDetail";
+
 type Props = {
   identityId: string;
   isCurrentOrgIdentity?: boolean;
@@ -187,6 +189,9 @@ export const IdentityDetailsSection = ({
                   )}
                 </DetailValue>
               </Detail>
+              {!data.identity.projectId && (
+                <IdentityAlertDetail identityId={identityId} identityName={data.identity.name} />
+              )}
             </>
           )}
         </DetailGroup>

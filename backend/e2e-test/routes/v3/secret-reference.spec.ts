@@ -1,11 +1,39 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { createSecretImport, deleteSecretImport } from "e2e-test/testUtils/secret-imports";
-import { createSecretV2, deleteSecretV2, getSecretByNameV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
+import {
+  createSecretV2,
+  deleteSecretV2,
+  getSecretByNameV2,
+  getSecretsV2,
+  waitForReplicatedSecret
+} from "e2e-test/testUtils/secrets";
 
 import { seedData1 } from "@app/db/seed-data";
 
 describe("Secret expansion", () => {
   const projectId = seedData1.projectV3.id;
+
+  const createdSecrets: Parameters<typeof deleteSecretV2>[0][] = [];
+  const createdImports: Parameters<typeof deleteSecretImport>[0][] = [];
+
+  const createTrackedSecret = async (dto: Parameters<typeof createSecretV2>[0]) => {
+    const secret = await createSecretV2(dto);
+    createdSecrets.push(dto);
+    return secret;
+  };
+
+  const createTrackedImport = async (dto: Parameters<typeof createSecretImport>[0]) => {
+    const secretImport = await createSecretImport(dto);
+    createdImports.push({ ...dto, id: secretImport.id });
+    return secretImport;
+  };
+
+  afterEach(async () => {
+    const imports = createdImports.splice(0);
+    const secrets = createdSecrets.splice(0);
+    await Promise.all(imports.map((el) => deleteSecretImport(el)));
+    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
+  });
 
   beforeAll(async () => {
     const prodRootFolder = await createFolder({
@@ -58,7 +86,7 @@ describe("Secret expansion", () => {
 
     for (const secret of secrets) {
       // eslint-disable-next-line no-await-in-loop
-      await createSecretV2(secret);
+      await createTrackedSecret(secret);
     }
 
     const expandedSecret = await getSecretByNameV2({
@@ -84,8 +112,6 @@ describe("Secret expansion", () => {
         })
       ])
     );
-
-    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 
   test("Local secret reference with empty value", async () => {
@@ -111,7 +137,7 @@ describe("Secret expansion", () => {
 
     for (const secret of secrets) {
       // eslint-disable-next-line no-await-in-loop
-      await createSecretV2(secret);
+      await createTrackedSecret(secret);
     }
 
     const expandedSecret = await getSecretByNameV2({
@@ -137,8 +163,6 @@ describe("Secret expansion", () => {
         })
       ])
     );
-
-    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 
   test("Local secret reference to non-existent secret keeps literal reference", async () => {
@@ -156,7 +180,7 @@ describe("Secret expansion", () => {
 
     for (const secret of secrets) {
       // eslint-disable-next-line no-await-in-loop
-      await createSecretV2(secret);
+      await createTrackedSecret(secret);
     }
 
     const expandedSecret = await getSecretByNameV2({
@@ -184,8 +208,6 @@ describe("Secret expansion", () => {
         })
       ])
     );
-
-    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 
   test("Local secret reference with repeated non-existent secret keeps literal references", async () => {
@@ -203,7 +225,7 @@ describe("Secret expansion", () => {
 
     for (const secret of secrets) {
       // eslint-disable-next-line no-await-in-loop
-      await createSecretV2(secret);
+      await createTrackedSecret(secret);
     }
 
     const expandedSecret = await getSecretByNameV2({
@@ -231,8 +253,6 @@ describe("Secret expansion", () => {
         })
       ])
     );
-
-    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 
   test("Cross environment secret reference", async () => {
@@ -275,7 +295,7 @@ describe("Secret expansion", () => {
 
     for (const secret of secrets) {
       // eslint-disable-next-line no-await-in-loop
-      await createSecretV2(secret);
+      await createTrackedSecret(secret);
     }
 
     const expandedSecret = await getSecretByNameV2({
@@ -301,8 +321,6 @@ describe("Secret expansion", () => {
         })
       ])
     );
-
-    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
   });
 
   test("Non replicated secret import secret expansion on local reference and nested reference", async () => {
@@ -345,10 +363,10 @@ describe("Secret expansion", () => {
 
     for (const secret of secrets) {
       // eslint-disable-next-line no-await-in-loop
-      await createSecretV2(secret);
+      await createTrackedSecret(secret);
     }
 
-    const secretImportFromProdToDev = await createSecretImport({
+    await createTrackedImport({
       environmentSlug: seedData1.environment.slug,
       workspaceId: projectId,
       secretPath: "/",
@@ -381,15 +399,6 @@ describe("Secret expansion", () => {
         })
       ])
     );
-
-    await Promise.all(secrets.map((el) => deleteSecretV2(el)));
-    await deleteSecretImport({
-      environmentSlug: seedData1.environment.slug,
-      workspaceId: projectId,
-      authToken: jwtAuthToken,
-      id: secretImportFromProdToDev.id,
-      secretPath: "/"
-    });
   });
 
   test(
@@ -434,10 +443,10 @@ describe("Secret expansion", () => {
 
       for (const secret of secrets) {
         // eslint-disable-next-line no-await-in-loop
-        await createSecretV2(secret);
+        await createTrackedSecret(secret);
       }
 
-      const secretImportFromProdToDev = await createSecretImport({
+      await createTrackedImport({
         environmentSlug: seedData1.environment.slug,
         workspaceId: projectId,
         secretPath: "/",
@@ -447,9 +456,13 @@ describe("Secret expansion", () => {
         isReplication: true
       });
 
-      // wait for 5 second for  replication to finish
-      await new Promise((resolve) => {
-        setTimeout(resolve, 5000); // time to breathe for db
+      await waitForReplicatedSecret({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: projectId,
+        secretPath: "/",
+        authToken: jwtAuthToken,
+        key: "NESTED_KEY_2",
+        value: "secret reference testing"
       });
 
       const listSecrets = await getSecretsV2({
@@ -476,16 +489,7 @@ describe("Secret expansion", () => {
           })
         ])
       );
-
-      await Promise.all(secrets.map((el) => deleteSecretV2(el)));
-      await deleteSecretImport({
-        environmentSlug: seedData1.environment.slug,
-        workspaceId: projectId,
-        authToken: jwtAuthToken,
-        id: secretImportFromProdToDev.id,
-        secretPath: "/"
-      });
     },
-    { timeout: 10000 }
+    { timeout: 60_000 }
   );
 });

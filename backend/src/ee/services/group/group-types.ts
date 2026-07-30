@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -147,6 +148,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TRemoveIdentitiesFromGroup = {

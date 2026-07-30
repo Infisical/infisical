@@ -11,6 +11,7 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
+import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
@@ -331,7 +332,9 @@ const resolveBaseUrl = (url: string, baseURL?: string): string => {
 
 const logDispatch = (method: string, effectiveUrl: string, validated: TValidatedHost | undefined) => {
   const pinned = validated ? formatEntries(validated.entries) : "none";
-  logger.debug(`safeRequest: dispatching [method=${method}] [url=${effectiveUrl}] [pinned=${pinned}]`);
+  logger.debug(
+    `safeRequest: dispatching [method=${method}] [url=${sanitizeUrlForLog(effectiveUrl)}] [pinned=${pinned}]`
+  );
 };
 
 const dispatch = async <T>(
