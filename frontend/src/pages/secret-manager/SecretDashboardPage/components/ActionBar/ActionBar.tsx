@@ -918,6 +918,7 @@ export const ActionBar = ({
                   }
 
                   handlePopUpOpen("upgradePlan", {
+                    featureKey: "pit_recovery",
                     featureName: "PIT Recovery"
                   });
                 }}
@@ -1034,6 +1035,7 @@ export const ActionBar = ({
                           return;
                         }
                         handlePopUpOpen("upgradePlan", {
+                          featureKey: "dynamic_secret",
                           featureName: "Dynamic Secrets",
                           isEnterpriseFeature: true
                         });
@@ -1064,6 +1066,7 @@ export const ActionBar = ({
                           return;
                         }
                         handlePopUpOpen("upgradePlan", {
+                          featureKey: "secret_rotation",
                           featureName: "Secret Rotation"
                         });
                       }}
@@ -1305,6 +1308,7 @@ export const ActionBar = ({
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          featureKey={popUp.upgradePlan.data?.featureKey}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
           text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
         />

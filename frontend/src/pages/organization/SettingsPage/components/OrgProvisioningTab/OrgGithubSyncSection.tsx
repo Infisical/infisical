@@ -198,6 +198,7 @@ export const OrgGithubSyncSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="github_org_sync"
         text="Your current plan does not include access to GitHub Organization Sync. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />

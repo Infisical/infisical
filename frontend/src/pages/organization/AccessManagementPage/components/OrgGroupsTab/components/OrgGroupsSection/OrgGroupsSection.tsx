@@ -140,6 +140,7 @@ export const OrgGroupsSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="groups"
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         text={popUp.upgradePlan?.data?.text}
       />

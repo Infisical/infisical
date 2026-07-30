@@ -149,6 +149,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="enterprise_certificate_syncs"
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         text={popUp.upgradePlan.data?.text}
       />

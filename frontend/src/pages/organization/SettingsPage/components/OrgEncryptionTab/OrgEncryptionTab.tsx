@@ -181,6 +181,7 @@ export const OrgEncryptionTab = withPermission(
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          featureKey="external_kms"
           text="Your current plan does not include access to external KMS. To unlock this feature, please upgrade to Infisical Enterprise plan."
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />

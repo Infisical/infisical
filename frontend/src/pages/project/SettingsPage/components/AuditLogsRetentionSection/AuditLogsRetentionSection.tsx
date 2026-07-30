@@ -114,6 +114,7 @@ export const AuditLogsRetentionSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="audit_logs"
         text={popUp.upgradePlan?.data?.text}
       />
     </>

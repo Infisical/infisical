@@ -13,7 +13,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { UpgradePlanModal, useUpgradeOffer } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -69,6 +69,17 @@ export const HsmConnectorsTab = () => {
   const { orgId, projectId } = useParams({ strict: false });
   const { subscription } = useSubscription();
   const isLicensed = Boolean(subscription?.hsm);
+  const upgradeOffer = useUpgradeOffer({
+    featureKey: "hsm",
+    isEnterpriseFeature: true,
+    isOpen: !isLicensed
+  });
+  let upgradeButtonLabel = upgradeOffer.primaryLabel ?? "Review billing status";
+  if (!upgradeOffer.primaryLabel && upgradeOffer.kind === "ask-admin") {
+    upgradeButtonLabel = "Ask an admin";
+  } else if (!upgradeOffer.primaryLabel && upgradeOffer.kind === "loading") {
+    upgradeButtonLabel = "Checking plan options";
+  }
   const [addOpen, setAddOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<THsmConnector | null>(null);
@@ -114,11 +125,13 @@ export const HsmConnectorsTab = () => {
             HSM Connectors let Infisical use keys backed by a Hardware Security Module. Every
             cryptographic operation is routed through your HSM.
           </p>
-          <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Enterprise</Button>
+          <Button onClick={() => setUpgradeOpen(true)}>{upgradeButtonLabel}</Button>
         </div>
         <UpgradePlanModal
           isOpen={upgradeOpen}
           onOpenChange={setUpgradeOpen}
+          featureKey="hsm"
+          isEnterpriseFeature
           text="To use HSM Connectors, upgrade to Infisical's Enterprise plan."
         />
       </div>

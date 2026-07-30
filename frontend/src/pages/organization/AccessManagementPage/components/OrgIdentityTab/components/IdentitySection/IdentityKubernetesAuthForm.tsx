@@ -892,7 +892,10 @@ export const IdentityKubernetesAuthForm = ({
               label="Access Token Trusted IPs"
               isAllowed={Boolean(subscription?.ipAllowlisting)}
               onUpgradeRequired={() =>
-                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+                handlePopUpOpen("upgradePlan", {
+                  featureKey: "ip_allowlisting",
+                  featureName: "IP allowlisting"
+                })
               }
               tooltip="The IPs or CIDR ranges that access tokens can be used from. By default, each token is given the 0.0.0.0/0, allowing usage from any network address."
             />

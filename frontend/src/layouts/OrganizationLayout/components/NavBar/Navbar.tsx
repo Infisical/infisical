@@ -64,8 +64,10 @@ import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { envConfig } from "@app/config/env";
 import {
   OrgPermissionActions,
+  OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
+  useOrgPermission,
   useServerConfig,
   useSubscription,
   useUser
@@ -143,7 +145,12 @@ export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { permission } = useOrgPermission();
   const { config: serverConfig } = useServerConfig();
+  const canManageBilling = permission.can(
+    OrgPermissionBillingActions.ManageBilling,
+    OrgPermissionSubjects.Billing
+  );
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
@@ -267,7 +274,7 @@ export const Navbar = () => {
     }
   };
 
-  const { mutateAsync } = useGetOrgTrialUrl();
+  const orgTrial = useGetOrgTrialUrl();
 
   const logout = useLogoutUser();
   const logOutUser = async () => {
@@ -598,27 +605,36 @@ export const Navbar = () => {
       <VersionBadge />
       {subscription &&
       subscription.slug === SubscriptionPlanTypes.Starter &&
-      !subscription.has_used_trial ? (
+      !subscription.has_used_trial &&
+      canManageBilling ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="info"
               size="xs"
               className="mt-px mr-2"
+              isPending={orgTrial.isPending}
               onClick={async () => {
                 if (!subscription || !rootOrg) return;
-                const url = await mutateAsync({
-                  orgId: rootOrg.id,
-                  success_url: window.location.href
-                });
-                window.location.href = url;
+                try {
+                  const url = await orgTrial.mutateAsync({
+                    orgId: rootOrg.id,
+                    success_url: window.location.href
+                  });
+                  window.location.href = url;
+                } catch {
+                  createNotification({
+                    type: "error",
+                    text: "Unable to start a Free 2-week trial. Please try again."
+                  });
+                }
               }}
             >
               <Infinity />
-              Free Pro Trial
+              Start a Free 2-week trial
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Start Free Pro Trial</TooltipContent>
+          <TooltipContent>Start a Free 2-week trial</TooltipContent>
         </Tooltip>
       ) : (
         <Badge variant="info" className="mt-[3px] mr-3 hidden md:inline-flex">

@@ -214,6 +214,7 @@ const LogsSectionComponent = ({
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
           }}
+          featureKey="audit_logs"
           text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
         />
       </Card>
@@ -298,6 +299,7 @@ const LogsSectionComponent = ({
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
         }}
+        featureKey="audit_logs"
         text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </div>

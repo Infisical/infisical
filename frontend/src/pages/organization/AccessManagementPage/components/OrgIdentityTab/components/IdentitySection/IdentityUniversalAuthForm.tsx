@@ -330,7 +330,10 @@ export const IdentityUniversalAuthForm = ({
               label="Client Secret Trusted IPs"
               isAllowed={Boolean(subscription?.ipAllowlisting)}
               onUpgradeRequired={() =>
-                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+                handlePopUpOpen("upgradePlan", {
+                  featureKey: "ip_allowlisting",
+                  featureName: "IP allowlisting"
+                })
               }
             />
             <TrustedIpsField
@@ -339,7 +342,10 @@ export const IdentityUniversalAuthForm = ({
               label="Access Token Trusted IPs"
               isAllowed={Boolean(subscription?.ipAllowlisting)}
               onUpgradeRequired={() =>
-                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+                handlePopUpOpen("upgradePlan", {
+                  featureKey: "ip_allowlisting",
+                  featureName: "IP allowlisting"
+                })
               }
             />
           </FieldGroup>

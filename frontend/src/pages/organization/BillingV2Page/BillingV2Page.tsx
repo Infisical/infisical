@@ -48,6 +48,23 @@ export const BillingV2Page = () => {
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
 
+  // Upgrade prompts can deep-link to the product that grants the attempted feature. Consume the
+  // search parameter once the catalog is available, then remove it so closing the sheet stays closed.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const productId = url.searchParams.get("product");
+    if (!productId || catalog.length === 0) {
+      return;
+    }
+
+    if (catalog.some((product) => product.id === productId)) {
+      setFlow({ type: "sheet", prodId: productId });
+    }
+
+    url.searchParams.delete("product");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [catalog]);
+
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
     const checkout = new URLSearchParams(window.location.search).get("checkout");

@@ -189,6 +189,9 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  // Entitlement feature keys mapped to the product that grants them. Upgrade prompts use this to
+  // open the relevant product instead of guessing from legacy plan names.
+  featureProductMap: Record<string, string>;
   // Product keys whose one-per-product trial is used up (any outcome); the UI gates the trial CTA on it.
   trialedProductKeys: string[];
   // Total monthly on-demand overage across all products (dollars), for the summary's on-demand note.

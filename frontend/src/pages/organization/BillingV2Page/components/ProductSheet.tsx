@@ -264,7 +264,7 @@ const PlanCard = ({
         isDisabled={!selfServe}
         onClick={() => onActivate(plan.tier)}
       >
-        Start a free trial
+        Start a Free 2-week trial
       </Button>
     ) : (
       <Button
@@ -712,9 +712,9 @@ export const ProductSheet = ({
             <AlertDialogMedia>
               <Sparkles />
             </AlertDialogMedia>
-            <AlertDialogTitle>Start your {prod.name} trial</AlertDialogTitle>
+            <AlertDialogTitle>Start a Free 2-week {prod.name} trial</AlertDialogTitle>
             <AlertDialogDescription>
-              Your 14-day trial is free. After it ends, your subscription continues automatically
+              Your 2-week trial is Free. After it ends, your subscription continues automatically
               and you&apos;ll be billed monthly based on usage. Cancel before the trial ends to
               avoid charges.
             </AlertDialogDescription>
@@ -730,7 +730,7 @@ export const ProductSheet = ({
                 handleConfirmTrial();
               }}
             >
-              Start free trial
+              Start a Free 2-week trial
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

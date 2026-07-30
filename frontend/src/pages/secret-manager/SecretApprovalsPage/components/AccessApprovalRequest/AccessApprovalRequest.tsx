@@ -844,6 +844,7 @@ export const AccessApprovalRequest = ({
 
       <UpgradePlanModal
         text={popUp.upgradePlan.data?.text}
+        featureKey="secret_approval"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={() => handlePopUpClose("upgradePlan")}
       />

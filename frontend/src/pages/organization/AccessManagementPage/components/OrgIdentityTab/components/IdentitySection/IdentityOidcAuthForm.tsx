@@ -590,7 +590,10 @@ export const IdentityOidcAuthForm = ({
               label="Access Token Trusted IPs"
               isAllowed={Boolean(subscription?.ipAllowlisting)}
               onUpgradeRequired={() =>
-                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+                handlePopUpOpen("upgradePlan", {
+                  featureKey: "ip_allowlisting",
+                  featureName: "IP allowlisting"
+                })
               }
             />
           </FieldGroup>

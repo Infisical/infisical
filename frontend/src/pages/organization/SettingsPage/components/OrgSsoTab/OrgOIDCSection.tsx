@@ -242,6 +242,7 @@ export const OrgOIDCSection = ({ onSwitchProvider }: Props): JSX.Element => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="oidc_sso"
         text="Your current plan does not include access to OIDC SSO. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature
       />

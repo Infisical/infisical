@@ -178,7 +178,7 @@ export const ActivateView = ({
 
   let chargedNote = "Calculating…";
   if (trialFlow) {
-    chargedNote = "Free during your trial";
+    chargedNote = "Free during your 2-week trial";
   } else if (!isCalculating) {
     chargedNote = hasActiveSubscription
       ? "Prorated onto your shared billing date"
@@ -230,7 +230,7 @@ export const ActivateView = ({
     }
   };
 
-  let primaryLabel = "Start a free trial";
+  let primaryLabel = "Start a Free 2-week trial";
   if (!trialFlow) {
     primaryLabel = isCalculating
       ? "Activate"

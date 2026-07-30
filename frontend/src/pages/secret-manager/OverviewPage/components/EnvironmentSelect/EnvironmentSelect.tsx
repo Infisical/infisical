@@ -117,6 +117,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
+        featureKey="environment_limit"
         text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
       />
       <Popover open={isOpen} onOpenChange={setIsOpen}>

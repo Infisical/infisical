@@ -128,6 +128,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey={popUp.upgradePlan.data?.featureKey}
         text={(popUp.upgradePlan?.data as { description: string })?.description}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />

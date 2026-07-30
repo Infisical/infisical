@@ -96,6 +96,7 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="pki_est"
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         text="Your current plan does not include access to managing template enrollment options for EST. To unlock this feature, please upgrade to Infisical Enterprise plan."
       />

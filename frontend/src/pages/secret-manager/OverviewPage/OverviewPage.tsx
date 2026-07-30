@@ -940,6 +940,7 @@ const OverviewPageContent = () => {
   const handleViewCommitHistory = async (envSlug: string, preloadedFolderId?: string) => {
     if (!subscription?.pitRecovery) {
       handlePopUpOpen("upgradePlan", {
+        featureKey: "pit_recovery",
         text: "You can use point-in-time recovery if you upgrade your Infisical plan."
       });
       return;
@@ -2691,6 +2692,7 @@ const OverviewPageContent = () => {
                         return;
                       }
                       handlePopUpOpen("upgradePlan", {
+                        featureKey: "dynamic_secret",
                         isEnterpriseFeature: true,
                         text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
                       });
@@ -2701,6 +2703,7 @@ const OverviewPageContent = () => {
                         return;
                       }
                       handlePopUpOpen("upgradePlan", {
+                        featureKey: "secret_rotation",
                         text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
                       });
                     }}
@@ -2716,6 +2719,7 @@ const OverviewPageContent = () => {
 
                           if (data.used >= data.limit) {
                             handlePopUpOpen("upgradePlan", {
+                              featureKey: "honey_tokens",
                               text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
                             });
                             return;
@@ -2732,6 +2736,7 @@ const OverviewPageContent = () => {
                         return;
                       }
                       handlePopUpOpen("upgradePlan", {
+                        featureKey: "honey_tokens",
                         text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
                       });
                     }}
@@ -2741,6 +2746,7 @@ const OverviewPageContent = () => {
                         return;
                       }
                       handlePopUpOpen("upgradePlan", {
+                        featureKey: "secrets_brokering",
                         isEnterpriseFeature: true,
                         text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
                       });
@@ -2849,6 +2855,7 @@ const OverviewPageContent = () => {
                     handlePopUpOpen("createEnvironment");
                   } else {
                     handlePopUpOpen("upgradePlan", {
+                      featureKey: "environment_limit",
                       text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
                     });
                   }
@@ -3687,6 +3694,7 @@ const OverviewPageContent = () => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          featureKey={popUp.upgradePlan.data?.featureKey}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
           text={popUp.upgradePlan.data?.text}
         />

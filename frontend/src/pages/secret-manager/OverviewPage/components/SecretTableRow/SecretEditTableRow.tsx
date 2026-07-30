@@ -1926,6 +1926,7 @@ export const SecretEditTableRow = ({
       <UpgradePlanModal
         isOpen={popUp.accessInsightsUpgrade.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
+        featureKey="secret_access_insights"
         text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
       />
 

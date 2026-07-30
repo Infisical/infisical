@@ -197,6 +197,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
 
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
+        featureKey="enterprise_secret_syncs"
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={popUp.upgradePlan.data?.text}

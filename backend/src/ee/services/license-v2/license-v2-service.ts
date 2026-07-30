@@ -425,6 +425,7 @@ export const licenseV2ServiceFactory = ({
   // per-product entitlement map, keyed by the server's product ids.
   const buildEntitlements = async (org: TEntitlementOrg, subscription: TSubscriptionResponse | null) => {
     const entitlements: Record<string, BillingV2Entitlement> = {};
+    const featureProductMap: Record<string, string> = {};
 
     const labelByDimension = new Map<string, string>();
     const nounByDimension = new Map<string, string>();
@@ -637,18 +638,19 @@ export const licenseV2ServiceFactory = ({
     });
 
     if (features) {
-      Object.values(features).forEach((feature) => {
+      Object.entries(features).forEach(([featureKey, feature]) => {
         const productId = feature.from_product;
         if (!productId) {
           return;
         }
+        featureProductMap[featureKey] = productId;
         if (!entitlements[productId]) {
           entitlements[productId] = { entitled: true };
         }
       });
     }
 
-    return entitlements;
+    return { entitlements, featureProductMap };
   };
 
   const getOverview = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
@@ -711,7 +713,7 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
-    const entitlements = await buildEntitlements(
+    const { entitlements, featureProductMap } = await buildEntitlements(
       { id: orgId, name: organization.name, slug: organization.slug },
       subscription
     );
@@ -775,6 +777,7 @@ export const licenseV2ServiceFactory = ({
       billingDetails,
       invoices,
       entitlements,
+      featureProductMap,
       trialedProductKeys,
       onDemandAmount,
       checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false,

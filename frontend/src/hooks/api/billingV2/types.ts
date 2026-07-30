@@ -185,6 +185,9 @@ export type BillingV2Overview = {
   } | null;
   invoices: BillingV2Invoice[];
   entitlements: Record<string, BillingV2Entitlement>;
+  // Entitlement feature keys mapped to the product that grants them. Upgrade prompts use this to
+  // open the correct product sheet.
+  featureProductMap: Record<string, string>;
   // Product keys whose one-per-product trial is used up (any outcome); gates the trial CTA.
   trialedProductKeys: string[];
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.

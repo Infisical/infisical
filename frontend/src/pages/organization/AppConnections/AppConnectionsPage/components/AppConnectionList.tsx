@@ -222,6 +222,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="enterprise_app_connections"
         text="All App Connections can be unlocked if you switch to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />

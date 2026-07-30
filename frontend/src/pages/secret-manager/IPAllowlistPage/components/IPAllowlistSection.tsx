@@ -97,6 +97,7 @@ export const IPAllowlistSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="ip_allowlisting"
         text="Your current plan does not include access to IP allowlisting. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </div>

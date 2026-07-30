@@ -380,6 +380,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
       <UpgradePlanModal
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        featureKey="rbac"
         text="Assigning custom roles to groups can be unlocked if you upgrade to Infisical Enterprise plan."
         isEnterpriseFeature
       />
