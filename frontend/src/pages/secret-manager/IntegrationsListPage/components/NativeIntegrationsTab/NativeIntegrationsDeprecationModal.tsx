@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRightIcon, CheckIcon, RefreshCwIcon } from "lucide-react";
+import { CheckIcon, RefreshCwIcon } from "lucide-react";
 
 import {
   Button,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -60,11 +61,13 @@ export const NativeIntegrationsDeprecationModal = () => {
             </div>
           ))}
         </div>
-        <DialogFooter className="sm:items-center sm:justify-between">
+        <DialogFooter className="sm:justify-end">
           <div className="flex gap-2">
+            <DialogClose asChild>
+              <Button variant="ghost">Stay here</Button>
+            </DialogClose>
             <Button variant="project" onClick={handleExploreSecretSyncs}>
               Explore Secret Syncs
-              <ArrowRightIcon />
             </Button>
           </div>
         </DialogFooter>
