@@ -247,7 +247,9 @@ describe("CertificateV3Service", () => {
         updateById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
         findById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
         create: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
-        transaction: vi.fn()
+        transaction: vi.fn(),
+        transitionFromPending: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        attachCertificate: vi.fn().mockResolvedValue({ id: "cert-req-123" })
       },
       userDAL: {
         findById: vi.fn().mockResolvedValue({ id: "user-123" })

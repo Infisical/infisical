@@ -109,6 +109,21 @@ import {
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
 
+/**
+ * How long an order may sit in `processing` before reconciliation treats the issuance attempt as
+ * abandoned. Finalization claims the order, signs outside of any transaction, then records the
+ * outcome, so a crash in between leaves the order in `processing` with nothing to resolve it.
+ *
+ * This has to exceed the worst case of every issuance path, because an attempt that outlives it gets
+ * resolved while it is still legitimately in flight. The binding constraint is the async external-CA
+ * path: `queueCertificateIssuance` gives AWS ACM Public CA `attempts: 30` with a fixed 60s backoff
+ * (~30 minutes) and the certificate request stays PENDING for that entire window. Reaping earlier
+ * would fail the request mid-issuance, and the queue's later `attachCertificate` would then no-op
+ * because the row is no longer in an attachable status, stranding a certificate that AWS did issue.
+ * Keep this above the queue's retry budget in `certificate-issuance-queue.ts` if that changes.
+ */
+const STALE_PROCESSING_ORDER_TIMEOUT_MS = 60 * 60 * 1000;
+
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
@@ -154,7 +169,7 @@ type TPkiAcmeServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById" | "transitionFromPending">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
 };
@@ -416,16 +431,59 @@ export const pkiAcmeServiceFactory = ({
         throw new NotFoundError({ message: "ACME order not found" });
       }
       // Check the status again after we have acquired the lock, as things may have changed since we last checked
-      if (
-        orderWithCertificateRequest.status !== AcmeOrderStatus.Processing ||
-        !orderWithCertificateRequest.certificateRequest
-      ) {
+      if (orderWithCertificateRequest.status !== AcmeOrderStatus.Processing) {
         return orderWithCertificateRequest;
       }
+
+      // Finalization stamps `updatedAt` when it claims the order into `processing`, and nothing touches
+      // the order again until it reaches a terminal state, so this measures how long the current
+      // issuance attempt has been running.
+      const isAttemptStale =
+        Date.now() - new Date(orderWithCertificateRequest.updatedAt).getTime() > STALE_PROCESSING_ORDER_TIMEOUT_MS;
+
+      if (!orderWithCertificateRequest.certificateRequest) {
+        // Finalization claims the order before it records a certificate request, so a `processing`
+        // order with no linked request means the process died in between. Issuance always writes the
+        // request before it does anything irreversible, so no certificate can exist yet, which makes
+        // it safe to hand the order back as `ready` for the client to retry. Only act once the
+        // attempt is stale — before that this is simply an issuance still in flight.
+        if (!isAttemptStale) {
+          return orderWithCertificateRequest;
+        }
+        logger.info(
+          { orderId, processingSince: orderWithCertificateRequest.updatedAt },
+          `Reverting abandoned ACME order to ready [orderId=${orderId}]`
+        );
+        return acmeOrderDAL.updateById(orderId, { status: AcmeOrderStatus.Ready }, tx);
+      }
+
       let newStatus: AcmeOrderStatus | undefined;
       let newCertificateId: string | undefined;
       switch (orderWithCertificateRequest.certificateRequest.status) {
-        case CertificateRequestStatus.PENDING:
+        case CertificateRequestStatus.PENDING: {
+          // Unlike the no-request case above, signing may already have happened here, so this cannot
+          // be rolled back to `ready` without risking a duplicate certificate. Fail it instead and
+          // let the client create a fresh order.
+          if (!isAttemptStale) break;
+          const failedRequest = await certificateRequestDAL.transitionFromPending(
+            orderWithCertificateRequest.certificateRequest.id,
+            CertificateRequestStatus.FAILED,
+            "Certificate issuance did not complete",
+            tx
+          );
+          // A null result means the request left PENDING between our read and this update (it was
+          // issued concurrently). Leave the order alone so the next sync resolves it as valid.
+          if (failedRequest) {
+            logger.info(
+              { orderId, certificateRequestId: orderWithCertificateRequest.certificateRequest.id },
+              `Failing abandoned ACME certificate issuance [orderId=${orderId}]`
+            );
+            newStatus = AcmeOrderStatus.Invalid;
+          }
+          break;
+        }
+        // Both of these are legitimately long-lived — one waits on a human approver, the other on
+        // external DNS validation — so they are never reaped on staleness.
         case CertificateRequestStatus.PENDING_APPROVAL:
         case CertificateRequestStatus.PENDING_VALIDATION:
           break;
@@ -1167,7 +1225,7 @@ export const pkiAcmeServiceFactory = ({
       // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
       const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId))!;
 
-      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
       if (!ca) {
         throw new NotFoundError({ message: "Certificate Authority not found" });
       }
@@ -1370,6 +1428,10 @@ export const pkiAcmeServiceFactory = ({
         });
 
         const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+        // Set once the certificate and its order-linked request are durably committed, which happens
+        // inside processCertificateIssuanceForOrder rather than here. Anything that fails after that
+        // point must not invalidate the order, or a real certificate is stranded.
+        let issuedCertificateId: string | undefined;
         try {
           // Signing runs with no ambient transaction. The internal CA and the external-CA paths
           // each open their own short write transaction internally, so at no point does one
@@ -1387,6 +1449,7 @@ export const pkiAcmeServiceFactory = ({
             ca,
             applicationId: accountApplicationId ?? undefined
           });
+          issuedCertificateId = result.certificateId;
           await acmeOrderDAL.updateById(orderId, {
             status: result.certificateId ? AcmeOrderStatus.Valid : AcmeOrderStatus.Processing,
             csr,
@@ -1394,13 +1457,23 @@ export const pkiAcmeServiceFactory = ({
           });
           certIssuanceJobData = result.certIssuanceJobData;
         } catch (exp) {
+          logger.error(exp, "Failed to sign certificate");
+          // TODO: audit log the error
+          if (issuedCertificateId) {
+            // The certificate is already issued and committed, and its certificate request is marked
+            // ISSUED against this order, so marking the order invalid here would strand a real
+            // certificate that nothing reconciles. Leave the order in `processing` instead —
+            // checkAndSyncAcmeOrderStatus resolves it to `valid` off the linked request on the next
+            // poll. Only the order bookkeeping failed; the client's certificate is intact.
+            throw new AcmeServerInternalError({
+              message: "Failed to finalize certificate issuance"
+            });
+          }
           await acmeOrderDAL.updateById(orderId, {
             csr,
             status: AcmeOrderStatus.Invalid,
             error: exp instanceof Error ? exp.message : "Unknown error"
           });
-          logger.error(exp, "Failed to sign certificate");
-          // TODO: audit log the error
           if (exp instanceof BadRequestError) {
             throw new AcmeBadCSRError({ message: `Invalid CSR: ${exp.message}` });
           }

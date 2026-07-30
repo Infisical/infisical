@@ -15,7 +15,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -1868,7 +1868,22 @@ export const certificateV3ServiceFactory = ({
           await certificateDAL.updateById(newCert.id, updateData, tx);
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
-          await certificateRequestDAL.attachCertificate(pendingRequest.id, newCert.id, tx);
+          // Returns null when the request is no longer attachable, meaning it left a pending status
+          // while the signing above was in flight — cancelled by a user, or failed by ACME order
+          // reconciliation. Throwing here rolls this transaction back, certificate rows included, so a
+          // cancelled request can never silently yield an issued certificate. The signature itself is
+          // wasted, which is the right trade: an unstored signature costs an HSM operation and a
+          // serial, whereas committing would hand back a certificate nothing accounts for.
+          const attachedRequest = await certificateRequestDAL.attachCertificate(pendingRequest.id, newCert.id, tx);
+          if (!attachedRequest) {
+            logger.error(
+              { certificateRequestId: pendingRequest.id, projectId: profile.projectId },
+              `Certificate request left a pending status during signing, aborting issuance [certificateRequestId=${pendingRequest.id}]`
+            );
+            throw new InternalServerError({
+              message: "Certificate request is no longer pending, so issuance was aborted"
+            });
+          }
 
           if (metadata && metadata.length > 0) {
             await insertMetadataForCertificate(resourceMetadataDAL, {
@@ -1888,13 +1903,21 @@ export const certificateV3ServiceFactory = ({
         }
       });
     } catch (err) {
-      // The request row is why this is recoverable. Mark it failed so the certificate is accounted
-      // for as an attempt rather than disappearing silently.
-      await certificateRequestDAL.transitionFromPending(
-        pendingRequest.id,
-        CertificateRequestStatus.FAILED,
-        err instanceof Error ? err.message : "Certificate issuance failed"
-      );
+      // The request row is why this is recoverable. Mark it failed so the attempt is accounted for
+      // rather than disappearing silently. This is best-effort bookkeeping on an already-failing path,
+      // so its own failure must not replace the error the caller actually needs to see.
+      try {
+        await certificateRequestDAL.transitionFromPending(
+          pendingRequest.id,
+          CertificateRequestStatus.FAILED,
+          err instanceof Error ? err.message : "Certificate issuance failed"
+        );
+      } catch (bookkeepingErr) {
+        logger.error(
+          bookkeepingErr,
+          `Failed to mark certificate request as failed [certificateRequestId=${pendingRequest.id}]`
+        );
+      }
       throw err;
     }
 
