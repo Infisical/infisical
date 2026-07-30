@@ -48,14 +48,14 @@ The proxy has to sit between your agent and the internet, so where it runs follo
 
 <CardGroup cols={2}>
   <Card title="Local proxy" icon="laptop-code" href="/documentation/platform/agent-proxy/local-agent-proxy">
-    You never start a proxy: `agent-proxy run` starts one alongside your agent and stops it when the agent exits. It all happens on your own computer, with the agent sandboxed away from your credentials.
+    `agent-proxy run` starts a proxy alongside your agent and stops it when the agent exits. It all happens on your own computer, with the agent sandboxed away from your credentials.
 
     **Pick this when you are the one running the agent:** Claude Code or Codex in your terminal, or a script you are iterating on.
   </Card>
   <Card title="Standalone proxy" icon="server" href="/documentation/platform/agent-proxy/standalone-agent-proxy">
-    You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. A different machine from your credentials.
+    You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. The credentials stay on the proxy host, a machine of its own.
 
-    **Pick this when the agent runs without you there:** an agent that stays up, one on a machine other than yours, or one proxy shared across your team.
+    **Pick this when the agent runs unattended:** an agent that stays up, one on a host of its own, or one proxy shared across your team.
   </Card>
 </CardGroup>
 

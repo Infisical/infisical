@@ -38,18 +38,18 @@ description: "Run the Infisical Agent Proxy and connect agents to it"
 
 These subcommands run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), which brokers real credentials onto your agents' traffic on the wire. Which you use depends on where the agent runs:
 
-- `run` is for an agent on your own computer. It does the proxy's work and the agent's launch in one process, authenticating as your logged-in user, and sandboxes the agent. It is not `connect` with convenient defaults, and it cannot be pointed at a proxy elsewhere: `--proxy` is rejected rather than ignored. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
-- `start` runs the proxy as a long-running service, for agents that do not run on your own computer.
+- `run` is for an agent on your own computer. It does the proxy's work and the agent's launch in one process, authenticating as your logged-in user, and sandboxes the agent. It always starts its own proxy, so `--proxy` is rejected rather than ignored. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
+- `start` runs the proxy as a long-running service on a host of its own, serving agents across your network.
 - `connect` launches an agent behind a proxy **already running elsewhere**, setting up proxy routing, CA trust, and placeholder credentials. It needs a proxy address, which is why it goes with `start`. Both authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from your agents'; see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
-Neither arrangement depends on the other: `run` needs no `start`, and a deployed proxy needs no `run`. All three read the same [proxied services](/documentation/platform/agent-proxy/proxied-services) and secrets from Infisical.
+Each arrangement stands on its own: `run` is complete by itself, and a deployed proxy pairs only with `connect`. All three read the same [proxied services](/documentation/platform/agent-proxy/proxied-services) and secrets from Infisical.
 
 ## Subcommands & flags
 
 ### Local proxy, on your own computer
 
 <Accordion title="infisical secrets agent-proxy run" defaultOpen="true">
-  Launch an agent on your own computer, sandboxed, with credentials brokered on the wire. Everything after `--` is the agent's own start command. You never start a proxy: `run` starts one alongside the agent, authenticating as your logged-in user, and stops it when the agent exits. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) for the full picture.
+  Launch an agent on your own computer, sandboxed, with credentials brokered on the wire. Everything after `--` is the agent's own start command. `run` starts a proxy alongside the agent, authenticating as your logged-in user, and stops it when the agent exits. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) for the full picture.
 
   Because the proxy and the agent share a machine, the sandbox is the boundary: the agent cannot read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
 

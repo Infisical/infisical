@@ -1,0 +1,50 @@
+## 1. Add a secret
+
+First, get a GitHub personal access token to broker:
+
+1. Go to [GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens](https://github.com/settings/personal-access-tokens).
+2. Click **Generate new token**, give it a name, set an expiration, and choose the resource owner.
+3. Leave the permissions at their defaults. The check at the end of this guide calls `GET /user`, which any valid token can reach, so no permissions are needed here; later, grant only what your agent actually does.
+4. Click **Generate token** and copy the `github_pat_…` value. GitHub only shows it once.
+
+Then, in your Infisical project, create a folder for the agent (for example `/coding-agent` in the `dev` environment) and add a secret named `GITHUB_PAT` with that token as its value. It is a regular Infisical secret.
+
+![The /coding-agent folder with GITHUB_PAT added](/images/platform/agent-proxy/quickstart-add-secret.png)
+
+## 2. Create a proxied service
+
+A proxied service maps a host to the secret the proxy applies. In the same folder, open the **Add Secret** dropdown and select **Add Proxied Service**, then work through the steps:
+
+![The Add Secret dropdown open with Add Proxied Service highlighted](/images/platform/agent-proxy/quickstart-add-proxied-service.png)
+
+<Steps>
+  <Step title="Pick the GitHub template">
+    The template fills everything in for you: the host `api.github.com` and a **Secret Substitution** rule that hands the agent a realistic `ghp_…` placeholder and swaps in the real token on the way out.
+
+    ![The proxied service template picker with GitHub available](/images/platform/agent-proxy/quickstart-template-picker.png)
+  </Step>
+  <Step title="Details">
+    Keep the service name `github` and the host pattern `api.github.com`.
+
+    ![The Details step with the service name and host pattern](/images/platform/agent-proxy/service-details.png)
+  </Step>
+  <Step title="Header Rewrites">
+    This step is skipped automatically for GitHub. The token does travel in the `Authorization` header, but this template handles that with **Secret Substitution** (next step): the agent itself puts a placeholder in the header, and the proxy swaps it for the real token.
+  </Step>
+  <Step title="Secret Substitution">
+    Select `GITHUB_PAT` as the secret holding the real value.
+
+    Here is how the pieces fit together. When your agent connects, it gets an environment variable `GITHUB_TOKEN` (the placeholder name the GitHub template uses) set to the fake `ghp_…` placeholder. The agent uses it like any GitHub token and sends `Authorization: Bearer <placeholder>`. As the request passes through the proxy, the placeholder is replaced with the real value of your `GITHUB_PAT` secret. The template scopes this swap to headers, since that is where GitHub expects the token; a substitution can also target the URL path, query, or body.
+
+    ![The Secret Substitution step swapping a placeholder for the real secret](/images/platform/agent-proxy/secret-substitution.png)
+  </Step>
+  <Step title="Review and create">
+    Double-check the host pattern and the substitution rule, then click **Create Proxied Service**.
+
+    ![The Review step showing the Secret Substitution rule for GITHUB_PAT](/images/platform/agent-proxy/quickstart-review.png)
+  </Step>
+</Steps>
+
+<Note>
+  Not on the template list? Pick **Custom** and configure a [header rewrite or secret substitution](/documentation/platform/agent-proxy/proxied-services) by hand.
+</Note>

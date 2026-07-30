@@ -4,7 +4,7 @@ sidebarTitle: "Local Proxy"
 description: "Run an agent on your own computer, sandboxed, with a proxy that starts and stops alongside it."
 ---
 
-A local proxy runs an agent on your own computer. You never start a proxy: `agent-proxy run` starts one alongside your agent and stops it when the agent exits. It all happens on the one machine, with the agent sandboxed away from your credentials:
+A local proxy runs an agent on your own computer. `agent-proxy run` starts a proxy alongside your agent and stops it when the agent exits. It all happens on the one machine, with the agent sandboxed away from your credentials:
 
 ```bash
 infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
@@ -25,15 +25,15 @@ Two things exist, and you already have both:
    +------------------------------+          +--------------------+
 ```
 
-That is the entire setup. No host to provision, no machine identities to create, no service to keep running, and no proxy address to configure: you are logged in, so `run` authenticates as you, and it starts and stops its own proxy around the agent.
+That is the entire setup. You are already logged in, so `run` authenticates as you, and it starts and stops its own proxy around the agent.
 
-For agents running anywhere else it is the other way round: a [standalone proxy](/documentation/platform/agent-proxy/standalone-agent-proxy) buys a stronger boundary, but there is real infrastructure to stand up first.
+To serve agents running elsewhere, see [standalone proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
 ## What the sandbox is for
 
 The proxy holds real credentials, and it runs on the same machine as the agent. Something has to keep the agent away from them, and that something is an **OS-level sandbox**: the agent cannot read the proxy's files, your keyring, or your credential files, and it cannot reach the network except through the proxy.
 
-You do not assemble any of this. `run` builds it each time you start an agent, and takes it down when the agent exits:
+`run` builds it for you each time you start an agent, and takes it down when the agent exits:
 
 ```mermaid
 flowchart LR
@@ -63,29 +63,37 @@ flowchart LR
   <Tab title="macOS">
     Nothing to install. The sandbox is part of macOS.
   </Tab>
-  <Tab title="Debian / Ubuntu">
-    ```bash
-    sudo apt install bubblewrap
-    ```
-  </Tab>
-  <Tab title="Fedora / RHEL">
-    ```bash
-    sudo dnf install bubblewrap
-    ```
-  </Tab>
-  <Tab title="Arch">
-    ```bash
-    sudo pacman -S bubblewrap
-    ```
-  </Tab>
-  <Tab title="Alpine">
-    ```bash
-    apk add bubblewrap
-    ```
+  <Tab title="Linux">
+    Linux gets the sandbox from [bubblewrap](https://github.com/containers/bubblewrap), which provides the `bwrap` binary that `run` calls:
+
+    <Tabs>
+      <Tab title="Debian / Ubuntu">
+        ```bash
+        sudo apt install bubblewrap
+        ```
+      </Tab>
+      <Tab title="Fedora / RHEL">
+        ```bash
+        sudo dnf install bubblewrap
+        ```
+      </Tab>
+      <Tab title="Arch">
+        ```bash
+        sudo pacman -S bubblewrap
+        ```
+      </Tab>
+      <Tab title="Alpine">
+        ```bash
+        apk add bubblewrap
+        ```
+      </Tab>
+    </Tabs>
+
+    On a distribution not listed here, look for `bubblewrap` in your package manager.
   </Tab>
 </Tabs>
 
-On a Linux distribution not listed above, look for `bubblewrap` in your package manager. It provides the `bwrap` binary that `run` calls. See [Platform support](#platform-support) for what happens where the sandbox is unavailable.
+See [Platform support](#platform-support) for what happens where the sandbox is unavailable.
 
 ## Running an agent
 
@@ -269,18 +277,18 @@ On Linux the root is generated fresh in memory for each run and the environment 
 
 ## Permissions: it all runs as you
 
-`run` involves no agent identity and no `Proxy` permission check at all, and requests carry no proxy-authentication header. Every API call is made with your own token: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
+Every API call is made with your own token, and it needs three permissions: **`Read` on proxied services** to find them, **`Read Value` on the secrets** they reference to broker them, and **`Lease`** to mint a dynamic one. A default project member already has all three.
 
 That is deliberate. You are running an agent as yourself, on your own machine, against secrets you could already read; a permission boundary between you and yourself would be theater. The sandbox is the security boundary here. The only question `run` asks is whether you can read the value.
 
-[Activity records](/documentation/platform/agent-proxy/activity-logs) attribute requests to your email (or `token` when you pass `--token`), since there is no agent token to derive an identity from, and a brokered service's **last used** time is reported under your own account.
+[Activity records](/documentation/platform/agent-proxy/activity-logs) attribute requests to your email (or `token` when you pass `--token`), since the run is authenticated as you, and a brokered service's **last used** time is reported under your own account.
 
 ### Dynamic secrets
 
 [Dynamic secrets](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets) are brokered like any other credential, with one thing to know about who mints them. The proxy leases lazily on the first request that needs the credential, caches the output fields in memory, renews before expiry, and revokes on a clean exit. With `run` it mints using **your** token, so your own `Lease` permission on that dynamic secret is the gate. A dynamic credential you cannot lease is skipped up front, with a single warning in the log file naming the secret, rather than failing every request that needs it.
 
 <Note>
-  If you have read that an identity holding `Lease` on a brokered dynamic secret is a misconfiguration, that rule is about *agent* identities and does not apply here. You are the minter, so you need it. The agent still cannot mint for itself: it has no token and no route to Infisical.
+  You are the minter here, so `Lease` on the dynamic secret is a permission you need yourself. The agent still cannot mint for itself: it has no token and no route to Infisical.
 </Note>
 
 ## Watching what it does
