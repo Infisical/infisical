@@ -81,6 +81,23 @@ description: "One-time organization setup for AWS honey tokens."
     Run the command in a terminal with AWS credentials that can deploy CloudFormation stacks in your target account and region.
 
     ![Deploy CloudFormation Stack Command](/images/platform/honey-tokens/cloudformation-deploy.png)
+
+    <Note>
+      If you already deployed the stack and need to apply the latest Infisical CloudFormation template, run:
+
+      ```bash
+      aws cloudformation update-stack \
+        --region 'us-east-1' \
+        --stack-name 'infisical-honey-tokens' \
+        --template-url 'https://infisical-static-assets.s3.us-east-1.amazonaws.com/honey-tokens/honey-tokens-v1.yaml' \
+        --capabilities CAPABILITY_NAMED_IAM \
+        --parameters \
+          ParameterKey=WebhookUrl,UsePreviousValue=true \
+          ParameterKey=WebhookSigningKey,UsePreviousValue=true
+      ```
+
+      Replace `--region` and `--stack-name` with the values saved in Infisical if you customized them. `UsePreviousValue=true` keeps your existing webhook settings so only the template is updated.
+    </Note>
   </Step>
   <Step title="Verify deployment">
     After the CloudFormation stack finishes deploying, click **Verify connection** in the **AWS Honey Tokens** section.
