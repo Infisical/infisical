@@ -16,6 +16,6 @@ export const SPACELIFT_SYNC_LIST_OPTION: TSecretSyncListItem = {
   name: "Spacelift",
   destination: SecretSync.Spacelift,
   connection: AppConnection.Spacelift,
-  canImportSecrets: true,
+  canImportSecrets: false,
   canRemoveSecretsOnDeletion: true
 };

@@ -52,18 +52,11 @@ description: "Learn how to configure a Spacelift Sync for Infisical."
       <Step title="Configure sync options">
         Configure the **Sync Options**, then click **Next**.
 
-        - **Initial Sync Behavior**: Determines how Infisical resolves the first sync.
-            - **Overwrite Destination Secrets**: Removes any secrets at the destination not present in Infisical.
-            - **Import Secrets (Prioritize Infisical)**: Imports secrets from Spacelift before syncing, prioritizing values from Infisical over Spacelift when keys conflict.
-            - **Import Secrets (Prioritize Spacelift)**: Imports secrets from Spacelift before syncing, prioritizing values from Spacelift over Infisical when keys conflict.
+        - **Initial Sync Behavior**: Only **Overwrite Destination Secrets** is supported. Infisical cannot read secrets back from Spacelift because variables marked as secret in the Spacelift API are write-only, so importing is not possible.
         - **Key Schema**: A template that transforms secret names when syncing. Use `{{secretKey}}` for the original secret name and `{{environment}}` for the environment.
         - **Auto-Sync Enabled**: Automatically sync secrets from the source location when changes occur. Disable this to sync manually only.
         - **Disable Secret Deletion**: Prevents Infisical from removing secrets at the destination. Enable this when you intend to manage destination secrets outside Infisical.
         - **Mark as Secret**: When enabled, synced variables are marked as secrets in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API.
-
-        <Warning>
-          Variables marked as secret in Spacelift cannot be read back by Infisical. When using an import sync behavior, only plaintext variable values will be imported. If **Disable Secret Deletion** is not enabled, any existing secret variables in the Spacelift context that are not present in Infisical will be deleted during sync.
-        </Warning>
 
         ![Configure Sync Options](/images/secret-syncs/spacelift/spacelift-sync-options.png)
       </Step>

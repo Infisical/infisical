@@ -46,7 +46,7 @@ const SpaceliftSyncDestinationConfigSchema = z
     }
   });
 
-const SpaceliftSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+const SpaceliftSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
 const SpaceliftSyncOptionsSchema = z.object({
   writeOnly: z.boolean().optional().default(false).describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.SPACELIFT.writeOnly)
@@ -84,7 +84,7 @@ export const SpaceliftSyncListItemSchema = z
     name: z.literal("Spacelift"),
     connection: z.literal(AppConnection.Spacelift),
     destination: z.literal(SecretSync.Spacelift),
-    canImportSecrets: z.literal(true),
+    canImportSecrets: z.literal(false),
     canRemoveSecretsOnDeletion: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Spacelift] }));

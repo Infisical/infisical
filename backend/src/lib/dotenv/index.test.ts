@@ -60,6 +60,14 @@ describe("serializeEnvFile", () => {
   test("allows underscores and dots in keys", () => {
     expect(serializeEnvFile({ "MY_KEY.sub": "val" })).toBe("MY_KEY.sub=val");
   });
+
+  test("quotes values containing hash to prevent inline comment parsing", () => {
+    expect(serializeEnvFile({ KEY: "foo#bar" })).toBe('KEY="foo#bar"');
+  });
+
+  test("quotes values containing equals sign", () => {
+    expect(serializeEnvFile({ KEY: "a=b" })).toBe('KEY="a=b"');
+  });
 });
 
 describe("parseEnvFile", () => {
@@ -87,8 +95,16 @@ describe("parseEnvFile", () => {
     expect(parseEnvFile("# comment\n\nKEY=val\n  \n# another")).toEqual({ KEY: "val" });
   });
 
-  test("handles value containing equals sign", () => {
+  test("handles unquoted value containing equals sign", () => {
     expect(parseEnvFile("KEY=a=b=c")).toEqual({ KEY: "a=b=c" });
+  });
+
+  test("handles quoted value containing equals sign", () => {
+    expect(parseEnvFile('KEY="a=b=c"')).toEqual({ KEY: "a=b=c" });
+  });
+
+  test("handles quoted value containing hash", () => {
+    expect(parseEnvFile('KEY="foo#bar"')).toEqual({ KEY: "foo#bar" });
   });
 
   test("handles empty value", () => {
@@ -120,6 +136,9 @@ describe("round-trip", () => {
     { QUOTES: 'say "hello"' },
     { BACKSLASH: "C:\\Users\\test" },
     { MIXED: 'val with "quotes" and\nnewlines and \\backslash' },
+    { HASH: "foo#bar#baz" },
+    { EQUALS: "a=b=c" },
+    { HASH_EQUALS_BACKSLASH: "path\\to#file=value" },
     { EMPTY: "" },
     { A: "1", B: "2", C: "3" },
     { "my-secret": "hyphenated" },

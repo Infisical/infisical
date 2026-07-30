@@ -29,7 +29,7 @@ Infisical supports connecting to Spacelift using an API key ID and API key secre
     ![Set API Key Name](/images/app-connections/spacelift/spacelift-set-api-key-name.png)
   </Step>
   <Step title="Configure Roles, Space, and Create">
-    Select the roles **Space reader** and **Space writer**, choose the Space that will be managed by this credential, then click **Add** and **Create API Key**. A file will be downloaded containing your credentials.
+    Select the **Space admin** role (or a custom role with at least **Space reader**, **Space writer**, and **Context update** permissions), choose the Space that will be managed by this credential, then click **Add** and **Create API Key**. A file will be downloaded containing your credentials.
 
     ![Select Roles](/images/app-connections/spacelift/spacelift-select-roles.png)
   </Step>
@@ -43,7 +43,7 @@ Infisical supports connecting to Spacelift using an API key ID and API key secre
 <Steps>
   <Step title="Navigate to App Connections">
     Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
-    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+    ![App Connections Tab](/images/app-connections/general/revamped-app-connection-tab.png)
   </Step>
   <Step title="Add Connection">
     Select the **Spacelift Connection** option from the connection options modal.
@@ -52,6 +52,11 @@ Infisical supports connecting to Spacelift using an API key ID and API key secre
   <Step title="Input Credentials">
     Enter your Spacelift API URL, API Key ID, and API Key Secret in the provided fields and
     click **Connect to Spacelift** to establish the connection.
+
+    <Note>
+      The API URL is the base URL of your Spacelift account (e.g., `https://myorgname.app.us.spacelift.io/`).
+    </Note>
+
     ![Connect to Spacelift](/images/app-connections/spacelift/spacelift-app-connection-form.png)
   </Step>
   <Step title="Connection Created">

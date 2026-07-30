@@ -3,7 +3,7 @@ import RE2 from "re2";
 const DOTENV_KEY_RE = new RE2(/^[^\n\r=]+$/);
 
 const escapeValue = (value: string): string => {
-  if (/[\n\r"\\]/.test(value) || value !== value.trim()) {
+  if (/[\n\r"\\#=]/.test(value) || value !== value.trim()) {
     const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r");
     return `"${escaped}"`;
   }
