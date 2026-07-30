@@ -8,6 +8,7 @@ import {
   SecretScanningResource
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
+  assertRepositoryWithinSizeLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
   replaceNonChangesWithNewlines
@@ -179,6 +180,25 @@ export const BitbucketSecretScanningFactory = () => {
     }
 
     const { username } = await getBitbucketUser({ email, apiToken });
+
+    // Checked before the clone: measuring afterwards means the network, wall clock and ephemeral
+    // disk have already been spent. Bitbucket reports `size` in bytes.
+    // `resourceName` is `workspace/repo`: the slash is a path separator here, so it must survive
+    // into the URL. BasicRepositoryRegex above already constrains both segments to URL-safe
+    // characters, which is what makes interpolating it directly safe.
+    const { data: repository } = await request.get<{ size?: number }>(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/repositories/${resourceName}`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`,
+          Accept: "application/json"
+        }
+      }
+    );
+    assertRepositoryWithinSizeLimit(
+      resourceName,
+      repository.size === undefined ? undefined : Math.round(repository.size / 1024 / 1024)
+    );
 
     await cloneRepository({
       cloneUrl: `https://${encodeURIComponent(username)}:${apiToken}@bitbucket.org/${resourceName}.git`,

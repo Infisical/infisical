@@ -344,6 +344,40 @@ const envSchema = z
     SECRET_SCANNING_PRIVATE_KEY: zpStr(z.string().optional()),
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
+    SECRET_SCANNING_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10 * 60 * 1000)
+      .describe("Wall-clock ceiling for a single `infisical scan` invocation before its process group is killed"),
+    SECRET_SCANNING_CLONE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10 * 60 * 1000)
+      .describe("Wall-clock ceiling for a single `git clone` invocation before its process group is killed"),
+    SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(2048)
+      .describe(
+        "Soft memory ceiling (GOMEMLIMIT) handed to the Go scanner process. The runtime GCs harder as it approaches the limit rather than growing. Set to 0 to disable."
+      ),
+    SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(5120)
+      .describe("Repositories larger than this are rejected before/after cloning. Set to 0 to disable."),
+    SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(60 * 60 * 1000)
+      .describe(
+        "A scan left in the `scanning` state for longer than this is marked failed by the reaper. Must exceed clone + scan timeouts combined."
+      ),
     // LICENSE
     LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
@@ -570,6 +604,18 @@ const envSchema = z
         });
       }
     });
+
+    // A scan that is still inside its own clone + scan budget is healthy, so the reaper must not be
+    // able to reach it: raising one of the two timeouts without raising this one would otherwise
+    // mark in-flight scans failed and notify on them.
+    const scanBudgetMs = data.SECRET_SCANNING_CLONE_TIMEOUT_MS + data.SECRET_SCANNING_SCAN_TIMEOUT_MS;
+    if (data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS <= scanBudgetMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS"],
+        message: `SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS (${data.SECRET_SCANNING_STUCK_SCAN_TIMEOUT_MS}ms) must exceed SECRET_SCANNING_CLONE_TIMEOUT_MS + SECRET_SCANNING_SCAN_TIMEOUT_MS (${scanBudgetMs}ms), otherwise healthy in-flight scans are reaped as stuck.`
+      });
+    }
   })
   .transform((data) => ({
     ...data,

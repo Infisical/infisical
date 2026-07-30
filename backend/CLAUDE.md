@@ -248,6 +248,8 @@ Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the
 
 `queueService.start(name, handler, opts)` accepts `concurrency` (per-worker parallelism ceiling) and BullMQ's `limiter: { max, duration }` (fleet-wide throughput cap, coordinated via Redis). Use both to **rate-shape DB-heavy background work** so a large backlog drains as an even plateau instead of a burst — see `src/services/project/project-cleanup-queue.ts`. The cron cadence must not be the pacer; load is bounded by `concurrency × per-job cost`, and the limiter caps steady throughput.
 
+**`QUEUE_WORKER_PROFILE` gates the consumer, never the producer.** `start()` always creates the BullMQ `Queue` and only skips creating the `Worker` when the queue isn't in this pod's profile. This invariant is what makes splitting the fleet by profile safe: a pod that doesn't consume a queue must still be able to enqueue onto it, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another profile's worker. Anything that calls `upsertJobScheduler` must tolerate a missing queue — it throws when the queue was never created (`QUEUE_WORKERS_ENABLED=false`), and boot must not fail over a schedule another pod owns.
+
 ### Scheduled Jobs (Cron Manager)
 
 Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.

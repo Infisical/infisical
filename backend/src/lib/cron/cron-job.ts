@@ -43,6 +43,7 @@ export const CronJobName = {
   LicenseUsageFlush: "license-usage-flush",
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
   DailyAlertProcessing: "daily-alert-processing",
+  SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
   InstanceUpdateCheck: "instance-update-check"
 } as const;
 

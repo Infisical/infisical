@@ -1,11 +1,21 @@
 import { Octokit } from "@octokit/rest";
-import { execFile } from "child_process";
 import { readFile, rm, writeFile } from "fs";
 import { mkdtemp } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
+import {
+  execFileBounded,
+  getScannerProcessEnv,
+  GIT_PROCESS_ENV,
+  SecretScanningExecPhase
+} from "@app/ee/services/secret-scanning/secret-scanning-exec";
+import { getConfig } from "@app/lib/config/env";
+
 import { SecretMatch } from "./secret-scanning-queue-types";
+
+// The scanner exits 77 when it wrote findings; that is a successful scan, not a failure.
+const SCAN_FINDINGS_EXIT_CODE = 77;
 
 export function createTempFolder(): Promise<string> {
   return mkdtemp(join(tmpdir(), "infisical-scan-"));
@@ -33,42 +43,34 @@ export async function cloneRepo(
   // eslint-disable-next-line no-new
   new URL(cloneUrl);
 
-  return new Promise((resolve, reject) => {
-    execFile("git", ["clone", cloneUrl, repoPath, "--bare"], (error) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    });
+  await execFileBounded("git", ["clone", cloneUrl, repoPath, "--bare"], {
+    phase: SecretScanningExecPhase.Clone,
+    timeoutMs: getConfig().SECRET_SCANNING_CLONE_TIMEOUT_MS,
+    env: GIT_PROCESS_ENV
   });
 }
 
-export function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    execFile("infisical", ["scan", "--exit-code=77", "-r", outputPath], { cwd: repoPath }, (error) => {
-      if (error && error.code !== 77) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    });
+export async function runInfisicalScanOnRepo(repoPath: string, outputPath: string): Promise<void> {
+  await execFileBounded("infisical", ["scan", "--exit-code=77", "-r", outputPath], {
+    phase: SecretScanningExecPhase.Scan,
+    cwd: repoPath,
+    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT_MS,
+    env: getScannerProcessEnv(),
+    successExitCodes: [0, SCAN_FINDINGS_EXIT_CODE]
   });
 }
 
-export function runInfisicalScan(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const args = ["scan", "--exit-code=77", "--source", inputPath, "--no-git", "-r", outputPath];
-    if (configPath) {
-      args.push("-c", configPath);
-    }
-    execFile("infisical", args, (error) => {
-      if (error && error.code !== 77) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    });
+export async function runInfisicalScan(inputPath: string, outputPath: string, configPath?: string): Promise<void> {
+  const args = ["scan", "--exit-code=77", "--source", inputPath, "--no-git", "-r", outputPath];
+  if (configPath) {
+    args.push("-c", configPath);
+  }
+
+  await execFileBounded("infisical", args, {
+    phase: SecretScanningExecPhase.Scan,
+    timeoutMs: getConfig().SECRET_SCANNING_SCAN_TIMEOUT_MS,
+    env: getScannerProcessEnv(),
+    successExitCodes: [0, SCAN_FINDINGS_EXIT_CODE]
   });
 }
 
