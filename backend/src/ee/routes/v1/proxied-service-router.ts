@@ -77,7 +77,11 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
               (c) => c.role === ProxiedServiceCredentialRole.CredentialSubstitution
             ).length,
             substitutionSurfaces: [
-              ...new Set(req.body.credentials.flatMap((c) => c.substitutionSurfaces ?? []))
+              ...new Set(
+                req.body.credentials
+                  .filter((c) => c.role === ProxiedServiceCredentialRole.CredentialSubstitution)
+                  .flatMap((c) => c.substitutionSurfaces ?? [])
+              )
             ].sort(),
             hostPatternCount: req.body.hostPattern.split(",").filter((p) => p.trim()).length,
             usesDynamicSecret: req.body.credentials.some((c) => Boolean(c.dynamicSecretName)),
