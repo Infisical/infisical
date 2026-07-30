@@ -4,7 +4,7 @@ sidebarTitle: "Local Proxy"
 description: "Run an agent on your own computer, sandboxed, with a proxy that starts and stops alongside it."
 ---
 
-A local proxy is one command. `infisical secrets agent-proxy run` starts a proxy next to your agent on your own computer, hands the agent placeholder credentials, swaps in the real ones as its requests leave, and shuts the proxy down when the agent exits. Nothing to deploy, and no machine identities to create: the proxy brokers as your logged-in user.
+With a local proxy, everything happens on the computer you are already working on. The proxy starts alongside your agent, hands it placeholder credentials, swaps in the real ones as its requests leave, and stops when the agent exits. There is nothing to deploy and no machine identity to create: the proxy brokers as your logged-in user, against secrets you can already read.
 
 Because the proxy and the agent share a machine, an **OS sandbox** is what keeps them apart. The agent cannot read your keyring or your credential files, and its only route to the network is the proxy.
 
@@ -125,10 +125,10 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Local Proxy reference" icon="laptop-code" href="/documentation/platform/agent-proxy/local-agent-proxy">
+  <Card title="Local Agent Proxy" icon="laptop-code" href="/documentation/platform/agent-proxy/local-agent-proxy">
     What the sandbox allows and denies, how certificates work, and every flag `run` takes.
   </Card>
-  <Card title="Agents in your own infrastructure" icon="server" href="/documentation/platform/agent-proxy/quickstart/standalone-proxy">
-    Deploy a proxy on a host of its own and point long-running agents at it.
+  <Card title="Standalone Proxy" icon="server" href="/documentation/platform/agent-proxy/quickstart/standalone-proxy">
+    The quickstart for agents that run unattended in your own infrastructure, on a host of their own.
   </Card>
 </CardGroup>

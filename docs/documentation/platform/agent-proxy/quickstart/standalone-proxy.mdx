@@ -4,7 +4,7 @@ sidebarTitle: "Standalone Proxy"
 description: "Run an Agent Proxy on a host of its own and launch agents behind it."
 ---
 
-A standalone proxy is a long-lived process on a machine of its own. `infisical secrets agent-proxy start` runs it, and `infisical secrets agent-proxy connect` launches each agent so its traffic routes through it. This is the setup for agents that run unattended, and for one proxy shared across a team.
+A standalone proxy runs as a long-lived process on a machine of its own, and your agents run elsewhere. Each agent is launched so that its outbound requests route through the proxy, which applies the real credentials on the way out and leaves everything else untouched. This is the setup for agents that run unattended, and for one proxy shared across a team.
 
 The agent is on a different host from the proxy, so it has no access at all to the process holding the real credentials. The two authenticate as **two separate machine identities with opposite access**: the proxy can read your secrets, the agent never can. That split is the security model, and it is why this page creates two identities rather than one.
 
@@ -135,10 +135,10 @@ Each check below makes the same `GET /user` call to `api.github.com`, and the cl
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Standalone Proxy reference" icon="server" href="/documentation/platform/agent-proxy/standalone-agent-proxy">
+  <Card title="Standalone Agent Proxy" icon="server" href="/documentation/platform/agent-proxy/standalone-agent-proxy">
     Deployment, network placement, high availability, and how agents are authorized on every request.
   </Card>
-  <Card title="An agent in your terminal" icon="laptop-code" href="/documentation/platform/agent-proxy/quickstart/local-proxy">
-    Broker credentials to Claude Code or Codex on your own computer, in one command.
+  <Card title="Local Proxy" icon="laptop-code" href="/documentation/platform/agent-proxy/quickstart/local-proxy">
+    The quickstart for an agent you run yourself, on your own computer, in one command.
   </Card>
 </CardGroup>
