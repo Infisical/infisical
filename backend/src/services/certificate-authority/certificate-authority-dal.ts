@@ -386,12 +386,35 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
     }
   };
 
+  // External CAs of one type across all of the org's projects, excluding soft-deleted projects. Used to
+  // grandfather deprecated CA types: an org that already runs one can keep adding more, everyone else
+  // is turned away at creation.
+  const countExternalCasByOrgIdAndType = async (orgId: string, type: string, tx?: Knex) => {
+    try {
+      const doc = await (tx || db.replicaNode())(TableName.CertificateAuthority)
+        .join(
+          TableName.ExternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.ExternalCertificateAuthority}.caId`
+        )
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.ExternalCertificateAuthority}.type`, type)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count();
+      return Number(doc?.[0]?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count External CAs By Org ID And Type - Certificate Authority" });
+    }
+  };
+
   return {
     ...caOrm,
     findWithAssociatedCa,
     buildCertificateChain,
     findByIdWithAssociatedCa,
     findByNameAndProjectIdWithAssociatedCa,
-    countInternalCasByOrgId
+    countInternalCasByOrgId,
+    countExternalCasByOrgIdAndType
   };
 };
