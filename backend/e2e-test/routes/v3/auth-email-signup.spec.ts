@@ -77,7 +77,8 @@ describe("Auth Email Signup V3", () => {
       body: { email: testEmail, code: "000000" }
     });
 
-    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().details).toEqual({ triesLeft: 2 });
   });
 
   test("Complete account with valid signup token creates user", async () => {
@@ -236,11 +237,12 @@ describe("Auth Email Signup V3", () => {
     // Exhaust all 3 tries with a wrong code
     for (let i = 0; i < 3; i++) {
       // eslint-disable-next-line no-await-in-loop
-      await testServer.inject({
+      const attempt = await testServer.inject({
         method: "POST",
         url: "/api/v3/signup/email/verify",
         body: { email, code: "000000" }
       });
+      expect(attempt.json().details).toEqual({ triesLeft: 2 - i });
     }
 
     // Correct code should now also fail because the record was deleted

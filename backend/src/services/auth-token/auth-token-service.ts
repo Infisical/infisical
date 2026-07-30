@@ -534,9 +534,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
             JSON.stringify({ ...parsed, triesLeft: remainingTries })
           );
         }
-        throw new UnauthorizedError({
+        throw new BadRequestError({
           message: "Invalid token",
-          name: "InvalidToken"
+          name: "InvalidToken",
+          details: {
+            triesLeft: Math.max(0, remainingTries)
+          }
         });
       }
 

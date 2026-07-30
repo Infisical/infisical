@@ -13,6 +13,7 @@ import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "
 
 import SecurityClient from "../utilities/SecurityClient";
 import { AuthPagePanel } from "./AuthPagePanel";
+import { waitForMinimumAuthVerificationLoading } from "./authTiming";
 
 interface CodeInputStepProps {
   email: string;
@@ -33,12 +34,14 @@ export default function CodeInputStep({
   const {
     mutateAsync: verifyCode,
     isPending: isVerifying,
-    isError: isCodeError
+    reset: resetVerificationCode
   } = useVerifySignupEmailVerificationCode();
 
   const { t } = useTranslation();
 
   const [code, setCode] = useState("");
+  const [isCompletingVerification, setIsCompletingVerification] = useState(false);
+  const [verificationError, setVerificationError] = useState<unknown>();
 
   const [, forceRender] = useState(0);
 
@@ -52,14 +55,41 @@ export default function CodeInputStep({
   }, []);
 
   const remainingCooldown = Math.max(0, Math.ceil((resendCooldownEndTime - Date.now()) / 1000));
+  const triesLeft = axios.isAxiosError(verificationError)
+    ? verificationError.response?.data?.details?.triesLeft
+    : undefined;
+  let verificationErrorMessage = t("signup.step2-code-error");
+  if (triesLeft === 0) {
+    verificationErrorMessage = t("signup.step2-code-error-exhausted");
+  } else if (typeof triesLeft === "number") {
+    verificationErrorMessage = t(
+      triesLeft === 1
+        ? "signup.step2-code-error-tries-singular"
+        : "signup.step2-code-error-tries",
+      { triesLeft }
+    );
+  }
 
   const handleVerify = async () => {
-    const { token } = await verifyCode({ email, code });
-    SecurityClient.setSignupToken(token);
-    onComplete();
+    const verificationStartedAt = Date.now();
+    setIsCompletingVerification(true);
+
+    try {
+      const { token } = await verifyCode({ email, code });
+      await waitForMinimumAuthVerificationLoading(verificationStartedAt);
+      SecurityClient.setSignupToken(token);
+      onComplete();
+    } catch (error) {
+      setVerificationError(error);
+    } finally {
+      setIsCompletingVerification(false);
+    }
   };
 
   const handleResend = async () => {
+    setVerificationError(undefined);
+    resetVerificationCode();
+
     try {
       const { cooldownSeconds } = await resendEmail({ email });
       onResendCooldownChange(Date.now() + cooldownSeconds * 1000);
@@ -96,8 +126,8 @@ export default function CodeInputStep({
             value={code}
             onChange={setCode}
             onSubmit={handleVerify}
-            isPending={isVerifying}
-            error={isCodeError ? t("signup.step2-code-error") : undefined}
+            isPending={isVerifying || isCompletingVerification}
+            error={verificationError ? verificationErrorMessage : undefined}
           >
             <VerificationCodeResend
               isResending={isResending}

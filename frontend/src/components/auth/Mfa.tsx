@@ -32,6 +32,7 @@ import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/
 import { RecoveryCodesStep } from "../mfa/setup";
 import { AuthPageLayout } from "./AuthPageLayout";
 import { AuthPagePanel } from "./AuthPagePanel";
+import { waitForMinimumAuthVerificationLoading } from "./authTiming";
 
 const MAX_MFA_ATTEMPTS = 5;
 const CLIENT_RESEND_DELAY_SECONDS = 20;
@@ -149,6 +150,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const verifyMfa = async () => {
     if (!mfaCode.trim() || !isCodeComplete) return;
 
+    const verificationStartedAt = Date.now();
     setIsLoading(true);
 
     let sessionToken: string;
@@ -185,6 +187,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     }
 
     try {
+      await waitForMinimumAuthVerificationLoading(verificationStartedAt);
       await finalizeAfterMfaVerification(sessionToken, method, showRecoveryCodeInput);
     } finally {
       setIsLoading(false);
@@ -204,6 +207,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   };
 
   const handleWebAuthnVerification = async () => {
+    const verificationStartedAt = Date.now();
     setIsLoading(true);
     const mfaToken = getMfaTempToken();
 
@@ -275,6 +279,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     }
 
     try {
+      await waitForMinimumAuthVerificationLoading(verificationStartedAt);
       await finalizeAfterMfaVerification(sessionToken, MfaMethod.WEBAUTHN, false);
     } finally {
       setIsLoading(false);

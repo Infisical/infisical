@@ -113,7 +113,9 @@ export const VerificationCodeForm = ({
           value={value}
           isError={hasError && !hasChangedSinceError}
         />
-        {error && <FieldError>{error}</FieldError>}
+        <div className="min-h-4.5">
+          {error && <FieldError className="mt-0">{error}</FieldError>}
+        </div>
       </div>
       <AnimatedCollapse isOpen={hasAttemptedVerification}>
         <Button
