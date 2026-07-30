@@ -1,37 +1,17 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
 import { useMemo } from "react";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { BanIcon, RefreshCwIcon } from "lucide-react";
 
 import { PkiSyncStatusBadge } from "@app/components/pki-syncs";
-import { IconButton } from "@app/components/v2";
-import { PkiSyncStatus, TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
-
-const GenericFieldLabel = ({
-  label,
-  children,
-  labelClassName,
-  truncate
-}: {
-  label: string;
-  children: React.ReactNode;
-  labelClassName?: string;
-  truncate?: boolean;
-}) => (
-  <div className="mb-4">
-    <p className={`text-sm font-medium text-mineshaft-300 ${labelClassName || ""}`}>{label}</p>
-    <div className={`text-sm text-mineshaft-300 ${truncate ? "truncate" : ""}`}>{children}</div>
-  </div>
-);
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
-  onEditDetails: VoidFunction;
 };
 
-export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, subscriber } = pkiSync;
+export const PkiSyncDetailsSection = ({ pkiSync }: Props) => {
+  const { syncStatus, lastSyncMessage, lastSyncedAt, isAutoSyncEnabled } = pkiSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === PkiSyncStatus.Failed) {
@@ -47,46 +27,46 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
     return null;
   }, [syncStatus, lastSyncMessage]);
 
-  const { canEdit } = usePkiSyncPermissions(pkiSync);
-
   return (
-    <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="text-lg font-medium text-mineshaft-100">Details</h3>
-        <IconButton
-          variant="plain"
-          colorSchema="secondary"
-          isDisabled={!canEdit}
-          ariaLabel="Edit sync details"
-          onClick={onEditDetails}
-        >
-          <FontAwesomeIcon icon={faEdit} />
-        </IconButton>
-      </div>
-      <div className="pt-2">
-        <GenericFieldLabel label="Name" truncate>
-          {name}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Description">{description || "None"}</GenericFieldLabel>
-        {subscriber && (
-          <GenericFieldLabel label="Source Subscriber">{subscriber.name}</GenericFieldLabel>
-        )}
-        {syncStatus && (
-          <GenericFieldLabel label="Status">
+    <>
+      {syncStatus && (
+        <Detail>
+          <DetailLabel>Status</DetailLabel>
+          <DetailValue>
             <PkiSyncStatusBadge status={syncStatus} />
-          </GenericFieldLabel>
-        )}
-        {lastSyncedAt && (
-          <GenericFieldLabel label="Last Synced">
-            {format(new Date(lastSyncedAt), "yyyy-MM-dd, h:mm aaa")}
-          </GenericFieldLabel>
-        )}
-        {syncStatus === PkiSyncStatus.Failed && failureMessage && (
-          <GenericFieldLabel labelClassName="text-red" label="Last Sync Error">
+          </DetailValue>
+        </Detail>
+      )}
+      <Detail>
+        <DetailLabel>Auto-Sync</DetailLabel>
+        <DetailValue>
+          {isAutoSyncEnabled ? (
+            <Badge variant="info">
+              <RefreshCwIcon />
+              Enabled
+            </Badge>
+          ) : (
+            <Badge variant="neutral">
+              <BanIcon />
+              Disabled
+            </Badge>
+          )}
+        </DetailValue>
+      </Detail>
+      {lastSyncedAt && (
+        <Detail>
+          <DetailLabel>Last Synced</DetailLabel>
+          <DetailValue>{format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}</DetailValue>
+        </Detail>
+      )}
+      {syncStatus === PkiSyncStatus.Failed && failureMessage && (
+        <Detail>
+          <DetailLabel className="text-red">Last Sync Error</DetailLabel>
+          <DetailValue>
             <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">{failureMessage}</p>
-          </GenericFieldLabel>
-        )}
-      </div>
-    </div>
+          </DetailValue>
+        </Detail>
+      )}
+    </>
   );
 };

@@ -39,6 +39,7 @@ import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { RundeckSyncDestinationCol } from "./RundeckSyncDestinationCol";
 import { SnowflakeSyncDestinationCol } from "./SnowflakeSyncDestinationCol";
+import { SpaceliftSyncDestinationCol } from "./SpaceliftSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
 import { TeamCitySyncDestinationCol } from "./TeamCitySyncDestinationCol";
 import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinationCol";
@@ -148,6 +149,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <QoverySyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Cloud66:
       return <Cloud66SyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Spacelift:
+      return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

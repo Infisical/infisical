@@ -398,7 +398,8 @@ export const removeUsersFromGroupByUserIds = async ({
   tx: outerTx,
   membershipGroupDAL,
   shouldFailOnMissingMembers = true,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
@@ -528,6 +529,8 @@ export const removeUsersFromGroupByUserIds = async ({
         tx
       );
     }
+
+    await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
     // These users may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);

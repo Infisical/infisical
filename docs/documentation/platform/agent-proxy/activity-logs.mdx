@@ -4,9 +4,7 @@ sidebarTitle: "Activity Logs"
 description: "See what the agent proxy brokered on every request."
 ---
 
-Activity logs record what the agent proxy did with each request: which agent called which host, and which credential was applied. Together they form an audit trail of every credential your agents used, and a way to spot blocked or failed requests.
-
-The proxy emits these records in its log output. To keep them, forward that output with a collector such as Fluent Bit or the OpenTelemetry Collector to your logging platform: Splunk, Datadog, Elastic, or anything else.
+Activity logs record what the agent proxy did with each request: which agent called which host, and which credential was applied. Together they form an audit trail of every credential your agents used, and a way to spot blocked or failed requests. Both setups produce the same records; only where they are written differs, so [Where the records go](#where-the-records-go) has a section for each.
 
 <Note>
   Only requests that reach the forwarding stage are logged. Requests rejected earlier (malformed proxy auth, an invalid `CONNECT` target, TLS failures) never reach it and aren't logged. A request whose identity can't be resolved at forwarding is still logged as an `error`, just with an empty agent.
@@ -20,12 +18,19 @@ Each request is logged with these fields (plus the standard `time`, `level`, and
 | --- | --- |
 | `event` | Always `agent-proxy.request`, so activity is easy to filter from other logs |
 | `decision` | `brokered`, `passthrough`, `blocked`, or `error` |
-| `agentId` / `agentName` | The agent that made the request, read from its access token |
+| `agentId` / `agentName` | Who made the request: the agent's machine identity behind a standalone proxy, or your own account (or `token`) on a local proxy |
 | `projectId` / `environment` / `secretPath` | The folder the request was scoped to |
 | `serviceName` / `serviceId` | The matched proxied service (omitted when none matched) |
 | `method` / `host` / `port` / `path` | The request line, before substitution (so `path` shows the placeholder) |
 | `status` | Upstream status on `brokered` / `passthrough`; `403` on `blocked`; `502` on `error` |
 | `credentials` | What was injected: each entry's secret key (or, for a dynamic secret, its name and output field), and the header or surfaces it landed in |
+
+Written out, two records look like this:
+
+```text
+2026-07-17T14:32:09 INF agent request  event=agent-proxy.request decision=brokered agentName=claude-agent serviceName=github method=POST host=api.github.com path=/repos/acme/app/issues status=201 credentials=[{"key":"GITHUB_PAT","role":"header-rewrite","header":"Authorization"}]
+2026-07-17T14:32:12 WRN agent request  event=agent-proxy.request decision=blocked agentName=claude-agent host=evil.example.com method=GET status=403
+```
 
 <Warning>
   A record never contains a real secret. Requests are logged as the agent sent them, before the swap, so `path` shows only the placeholder; `credentials` lists secret **names**, not values; header values and request bodies are never logged.
@@ -42,29 +47,21 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 | `blocked` | warn |
 | `error` | error |
 
-## Log format
+## Where the records go
 
-`--log-format` sets the shape of each record: `console` (the default, human-readable) or `json` for machines and SIEMs. Logs go to **stderr** (capture with `2>` or `2>&1`).
+### Local proxy
 
-<Tabs>
-  <Tab title="console">
-    ```text
-    2026-07-17T14:32:09 INF agent request  event=agent-proxy.request decision=brokered agentName=claude-agent serviceName=github method=POST host=api.github.com path=/repos/acme/app/issues status=201 credentials=[{"key":"GITHUB_PAT","role":"header-rewrite","header":"Authorization"}]
-    2026-07-17T14:32:12 WRN agent request  event=agent-proxy.request decision=blocked agentName=claude-agent host=evil.example.com method=GET status=403
-    ```
-  </Tab>
-  <Tab title="json">
-    ```json
-    {"level":"info","time":"2026-07-17T14:32:09+05:30","message":"agent request","event":"agent-proxy.request","decision":"brokered","agentId":"9c1e40cf-...","agentName":"claude-agent","projectId":"53c8b330-...","environment":"prod","secretPath":"/coding-agent","serviceName":"github","method":"POST","host":"api.github.com","port":443,"path":"/repos/acme/app/issues","status":201,"credentials":[{"key":"GITHUB_PAT","role":"header-rewrite","header":"Authorization"}]}
-    ```
-  </Tab>
-</Tabs>
+Nothing is written unless you pass `--log-file`, since the agent owns the terminal and a file you did not ask for is one you cannot find. With it, records go to that path and you can `tail -f` them:
 
-## Log file
+```bash
+infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
+```
 
-`--log-file` writes `json` records to a file, in addition to the console output. This lets you watch a readable stream in the terminal while persisting machine-readable logs for your collector.
+The file is written in the human-readable format shown above, and is appended to on every run without being rotated for you, so use `logrotate` (`copytruncate`) if you keep one around. Without the flag, warnings and errors still print to your terminal; only the per-request trail is dropped.
 
-## Common setups
+### Standalone proxy
+
+Records go to **stderr**, so whatever supervises the proxy collects them. `--log-format` sets their shape, and `--log-file` additionally writes `json` to a file, which lets you watch a readable stream while persisting machine-readable records for a collector:
 
 ```bash
 # Watch live, readable (default)
@@ -77,7 +74,13 @@ infisical secrets agent-proxy start --log-file /var/log/infisical/agent-proxy.lo
 infisical secrets agent-proxy start --log-format json
 ```
 
-For rotation, containers let the platform rotate the stream; for `--log-file`, use `logrotate` with `copytruncate` (or restart the proxy).
+In `json`, the same record looks like this:
+
+```json
+{"level":"info","time":"2026-07-17T14:32:09+05:30","message":"agent request","event":"agent-proxy.request","decision":"brokered","agentId":"9c1e40cf-...","agentName":"claude-agent","projectId":"53c8b330-...","environment":"prod","secretPath":"/coding-agent","serviceName":"github","method":"POST","host":"api.github.com","port":443,"path":"/repos/acme/app/issues","status":201,"credentials":[{"key":"GITHUB_PAT","role":"header-rewrite","header":"Authorization"}]}
+```
+
+To keep records long-term, forward that output with a collector such as Fluent Bit or the OpenTelemetry Collector to your logging platform: Splunk, Datadog, Elastic, or anything else. For rotation, containers let the platform rotate the stream; for `--log-file`, use `logrotate` with `copytruncate`.
 
 ## Next steps
 

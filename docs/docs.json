@@ -175,6 +175,7 @@
                       "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
                       "integrations/app-connections/snowflake",
+                      "integrations/app-connections/spacelift",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
@@ -629,12 +630,23 @@
                     "group": "Agent Proxy",
                     "pages": [
                       "documentation/platform/agent-proxy/overview",
-                      "documentation/platform/agent-proxy/quickstart",
-                      "documentation/platform/agent-proxy/proxied-services",
-                      "documentation/platform/agent-proxy/deployment",
-                      "documentation/platform/agent-proxy/connecting-agents",
-                      "documentation/platform/agent-proxy/activity-logs",
-                      "documentation/platform/agent-proxy/security"
+                      {
+                        "group": "Quickstart",
+                        "pages": [
+                          "documentation/platform/agent-proxy/quickstart/credentials",
+                          "documentation/platform/agent-proxy/quickstart/local-proxy",
+                          "documentation/platform/agent-proxy/quickstart/standalone-proxy"
+                        ]
+                      },
+                      {
+                        "group": "Reference",
+                        "pages": [
+                          "documentation/platform/agent-proxy/proxied-services",
+                          "documentation/platform/agent-proxy/local-agent-proxy",
+                          "documentation/platform/agent-proxy/standalone-agent-proxy",
+                          "documentation/platform/agent-proxy/activity-logs"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -732,6 +744,7 @@
                           "integrations/secret-syncs/octopus-deploy",
                           "integrations/secret-syncs/rundeck",
                           "integrations/secret-syncs/teamcity",
+                          "integrations/secret-syncs/spacelift",
                           "integrations/secret-syncs/terraform-cloud",
                           "integrations/secret-syncs/travis-ci"
                         ]
@@ -3397,6 +3410,19 @@
                     ]
                   },
                   {
+                    "group": "Spacelift",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/spacelift/list",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-id",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-name",
+                      "api-reference/endpoints/secret-syncs/spacelift/create",
+                      "api-reference/endpoints/secret-syncs/spacelift/update",
+                      "api-reference/endpoints/secret-syncs/spacelift/delete",
+                      "api-reference/endpoints/secret-syncs/spacelift/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/spacelift/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Supabase",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/supabase/list",
@@ -4341,6 +4367,22 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/agent-proxy/quickstart",
+      "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/security",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/deployment",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#deployment"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/connecting-agents",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
+    },
     {
       "source": "/documentation/platform/kms/hsm-integration",
       "destination": "/self-hosting/guides/hsm-integration"

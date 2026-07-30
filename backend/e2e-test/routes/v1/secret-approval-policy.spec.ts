@@ -8,6 +8,26 @@ import { ApproverType } from "@app/ee/services/access-approval-policy/access-app
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
+// Policies are created on the *shared* seeded project and environment, so any
+// that outlive this file change how every later spec behaves: a policy at "/"
+// makes secret writes there return an approval request instead of a secret,
+// which breaks specs that have nothing to do with approvals. Track what we
+// create and remove it after each test.
+const createdPolicyIds: string[] = [];
+
+const deletePolicy = async (sapId: string) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/secret-approvals/${sapId}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    }
+  });
+  if (res.statusCode !== 200 && res.statusCode !== 404) {
+    throw new Error(`cleanup: unexpected ${res.statusCode} deleting policy ${sapId} — ${res.payload}`);
+  }
+};
+
 const createPolicy = async (dto: {
   name: string;
   secretPath: string;
@@ -31,11 +51,15 @@ const createPolicy = async (dto: {
   });
 
   expect(res.statusCode).toBe(200);
-  return res.json().approval;
+  const { approval } = res.json();
+  createdPolicyIds.push(approval.id);
+  return approval;
 };
 
-const createPolicyWithGroupApprover = (dto: { name: string; groupId: string; secretPath: string }) =>
-  testServer.inject({
+// Returns the raw response because callers assert on rejections too, so only
+// register a policy when one was actually created.
+const createPolicyWithGroupApprover = async (dto: { name: string; groupId: string; secretPath: string }) => {
+  const res = await testServer.inject({
     method: "POST",
     url: `/api/v1/secret-approvals`,
     headers: {
@@ -50,6 +74,12 @@ const createPolicyWithGroupApprover = (dto: { name: string; groupId: string; sec
       approvals: 1
     }
   });
+
+  if (res.statusCode === 200) {
+    createdPolicyIds.push(res.json().approval.id);
+  }
+  return res;
+};
 
 const seedGroup = async (db: Knex, dto: { slug: string; addToProject: boolean }) => {
   const [group] = await db(TableName.Groups)
@@ -95,6 +125,11 @@ const cleanupGroup = async (db: Knex, groupId: string) => {
 };
 
 describe("Secret approval policy router", async () => {
+  afterEach(async () => {
+    const ids = createdPolicyIds.splice(0);
+    await Promise.all(ids.map(deletePolicy));
+  });
+
   test("Create policy", async () => {
     const policy = await createPolicy({
       secretPath: "/",

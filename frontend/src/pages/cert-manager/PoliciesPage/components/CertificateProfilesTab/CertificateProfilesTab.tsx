@@ -4,7 +4,6 @@ import { PlusIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -137,17 +137,19 @@ export const CertificateProfilesTab = () => {
             mode="clone"
           />
 
-          <DeleteActionModal
+          <DeleteConfirmDialog
             isOpen={isDeleteModalOpen}
-            title={`Delete Certificate Profile ${selectedProfile.slug}?`}
-            onChange={(isOpen) => {
+            onOpenChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
               if (!isOpen) {
                 setSelectedProfile(null);
               }
             }}
-            deleteKey={selectedProfile.slug}
-            onDeleteApproved={handleDeleteConfirm}
+            title={`Delete Certificate Profile ${selectedProfile.slug}?`}
+            description="This permanently removes the profile. Certificates already issued from it are not affected."
+            confirmKey={selectedProfile.slug}
+            confirmLabel="Delete Profile"
+            onConfirm={handleDeleteConfirm}
           />
         </>
       )}

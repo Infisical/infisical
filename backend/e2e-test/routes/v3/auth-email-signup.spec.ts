@@ -234,7 +234,7 @@ describe("Auth Email Signup V3", () => {
     expect(correctCode).toBeDefined();
 
     // Exhaust all 3 tries with a wrong code
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       await testServer.inject({
         method: "POST",
