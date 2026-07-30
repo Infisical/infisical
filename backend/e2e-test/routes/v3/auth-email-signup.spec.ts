@@ -78,7 +78,25 @@ describe("Auth Email Signup V3", () => {
     });
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().details).toEqual({ triesLeft: 2 });
+    expect(res.json()).toMatchObject({
+      statusCode: 400,
+      message: "Invalid token",
+      error: "InvalidToken"
+    });
+    expect(res.json()).not.toHaveProperty("details");
+
+    const missingChallenge = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/verify",
+      body: { email: "signup-missing-challenge@localhost.local", code: "000000" }
+    });
+    expect(missingChallenge.statusCode).toBe(400);
+    expect(missingChallenge.json()).toMatchObject({
+      statusCode: 400,
+      message: "Invalid token",
+      error: "InvalidToken"
+    });
+    expect(missingChallenge.json()).not.toHaveProperty("details");
   });
 
   test("Complete account with valid signup token creates user", async () => {
@@ -219,7 +237,7 @@ describe("Auth Email Signup V3", () => {
       body: { email, code: "000000" }
     });
     expect(verifyAttempt.statusCode).toBe(400);
-    expect(verifyAttempt.json().details).toEqual({ triesLeft: 2 });
+    expect(verifyAttempt.json()).not.toHaveProperty("details");
 
     // Step 4: second request within cooldown — must return 400 for both paths to be indistinguishable
     const second = await testServer.inject({
@@ -251,7 +269,8 @@ describe("Auth Email Signup V3", () => {
         url: "/api/v3/signup/email/verify",
         body: { email, code: "000000" }
       });
-      expect(attempt.json().details).toEqual({ triesLeft: 2 - i });
+      expect(attempt.statusCode).toBe(400);
+      expect(attempt.json()).not.toHaveProperty("details");
     }
 
     // Correct code should now also fail because the record was deleted

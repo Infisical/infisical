@@ -502,7 +502,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       if (!raw) {
         // Always compute the HMAC and compare with timingSafeEqual for constant-time behaviour.
         crypto.nativeCrypto.timingSafeEqual(Buffer.from(computedHash, "hex"), Buffer.from("0".repeat(64), "hex"));
-        throw new UnauthorizedError({
+        throw new BadRequestError({
           message: "Invalid token",
           name: "InvalidToken"
         });
@@ -516,7 +516,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
 
       if (Date.now() > parsed.expiresAt) {
         await keyStore.deleteItem(key);
-        throw new UnauthorizedError({
+        throw new BadRequestError({
           message: "Invalid token",
           name: "InvalidToken"
         });
@@ -536,10 +536,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         }
         throw new BadRequestError({
           message: "Invalid token",
-          name: "InvalidToken",
-          details: {
-            triesLeft: Math.max(0, remainingTries)
-          }
+          name: "InvalidToken"
         });
       }
 

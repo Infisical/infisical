@@ -79,10 +79,6 @@ export const authSignupServiceFactory = ({
     // Case sensitive email resolution
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
     if (existingUser?.isAccepted) {
-      // Keep verification responses indistinguishable from new-account signups by creating a
-      // challenge that is never sent to the existing account.
-      await tokenService.createEmailSignupToken(emailHash);
-
       // Send informational email for existing accounts instead of throwing error to prevent user enumeration vulnerability
       const appCfg = getConfig();
       await smtpService

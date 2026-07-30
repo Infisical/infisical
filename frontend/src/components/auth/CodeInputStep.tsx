@@ -15,6 +15,8 @@ import SecurityClient from "../utilities/SecurityClient";
 import { AuthPagePanel } from "./AuthPagePanel";
 import { waitForMinimumAuthVerificationLoading } from "./authTiming";
 
+const MAX_SIGNUP_VERIFICATION_ATTEMPTS = 3;
+
 interface CodeInputStepProps {
   email: string;
   onComplete: () => void;
@@ -42,6 +44,7 @@ export default function CodeInputStep({
   const [code, setCode] = useState("");
   const [isCompletingVerification, setIsCompletingVerification] = useState(false);
   const [verificationError, setVerificationError] = useState<unknown>();
+  const [triesLeft, setTriesLeft] = useState(MAX_SIGNUP_VERIFICATION_ATTEMPTS);
 
   const [, forceRender] = useState(0);
 
@@ -55,13 +58,13 @@ export default function CodeInputStep({
   }, []);
 
   const remainingCooldown = Math.max(0, Math.ceil((resendCooldownEndTime - Date.now()) / 1000));
-  const triesLeft = axios.isAxiosError(verificationError)
-    ? verificationError.response?.data?.details?.triesLeft
-    : undefined;
+  const isInvalidTokenError =
+    axios.isAxiosError(verificationError) &&
+    verificationError.response?.data?.error === "InvalidToken";
   let verificationErrorMessage = t("signup.step2-code-error");
-  if (triesLeft === 0) {
+  if (isInvalidTokenError && triesLeft === 0) {
     verificationErrorMessage = t("signup.step2-code-error-exhausted");
-  } else if (typeof triesLeft === "number") {
+  } else if (isInvalidTokenError) {
     verificationErrorMessage = t(
       triesLeft === 1 ? "signup.step2-code-error-tries-singular" : "signup.step2-code-error-tries",
       { triesLeft }
@@ -78,6 +81,9 @@ export default function CodeInputStep({
       SecurityClient.setSignupToken(token);
       onComplete();
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error === "InvalidToken") {
+        setTriesLeft((current) => Math.max(0, current - 1));
+      }
       setVerificationError(error);
     } finally {
       setIsCompletingVerification(false);
@@ -86,6 +92,7 @@ export default function CodeInputStep({
 
   const handleResend = async () => {
     setVerificationError(undefined);
+    setTriesLeft(MAX_SIGNUP_VERIFICATION_ATTEMPTS);
     resetVerificationCode();
 
     try {
