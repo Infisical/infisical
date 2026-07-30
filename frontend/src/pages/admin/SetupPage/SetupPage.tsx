@@ -34,7 +34,7 @@ import {
   SelectValue
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useServerConfig } from "@app/context";
+import { useServerConfig, useUser } from "@app/context";
 import { useOnboarding } from "@app/hooks";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -53,14 +53,22 @@ enum SignUpMode {
 const steps = [SetupStep.Access, SetupStep.IdentityRouting, SetupStep.Review] as const;
 const setupFormId = "self-hosted-server-setup-form";
 
-const formSchema = z.object({
-  signUpMode: z.nativeEnum(SignUpMode),
-  allowedSignUpDomain: z.string(),
-  enabledLoginMethods: z.nativeEnum(LoginMethod).array().min(1, {
-    message: "Select at least one login method."
-  }),
-  defaultAuthOrgId: z.string()
-});
+const formSchema = z
+  .object({
+    signUpMode: z.nativeEnum(SignUpMode),
+    allowedSignUpDomain: z.string(),
+    enabledLoginMethods: z.nativeEnum(LoginMethod).array(),
+    defaultAuthOrgId: z.string()
+  })
+  .superRefine(({ enabledLoginMethods, signUpMode }, context) => {
+    if (signUpMode === SignUpMode.Anyone && enabledLoginMethods.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["enabledLoginMethods"],
+        message: "Select at least one login method."
+      });
+    }
+  });
 
 type TSetupForm = z.infer<typeof formSchema>;
 
@@ -120,6 +128,7 @@ export const SetupPage = () => {
     from: "/_authenticate/_inject-org-details/admin/setup"
   });
   const { config } = useServerConfig();
+  const { user } = useUser();
   const organizations = useGetOrganizations();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
 
@@ -143,6 +152,7 @@ export const SetupPage = () => {
   const { activeStep, activeStepIndex, back, complete, isCompleting, next, setActiveStep } =
     useOnboarding({
       id: "self-hosted-server-setup",
+      progressScope: user.id,
       steps,
       persistLocally: true,
       completionFlag: true,

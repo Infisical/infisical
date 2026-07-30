@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 type TUseOnboardingOptions<TStep extends string> = {
   id: string;
+  progressScope?: string;
   steps: readonly [TStep, ...TStep[]];
   persistLocally?: boolean;
   completionFlag?: boolean;
@@ -9,7 +10,8 @@ type TUseOnboardingOptions<TStep extends string> = {
   onComplete?: () => Promise<void> | void;
 };
 
-const getStorageKey = (id: string) => `infisical:onboarding:${id}:step`;
+const getStorageKey = (id: string, progressScope?: string) =>
+  `infisical:onboarding:${id}${progressScope ? `:${progressScope}` : ""}:step`;
 
 const getStoredStep = <TStep extends string>(
   storageKey: string,
@@ -25,13 +27,14 @@ const getStoredStep = <TStep extends string>(
 
 export const useOnboarding = <TStep extends string>({
   id,
+  progressScope,
   steps,
   persistLocally = false,
   completionFlag = false,
   onPersistCompletion,
   onComplete
 }: TUseOnboardingOptions<TStep>) => {
-  const storageKey = getStorageKey(id);
+  const storageKey = getStorageKey(id, progressScope);
   const [activeStep, setActiveStepState] = useState<TStep>(() =>
     persistLocally ? getStoredStep(storageKey, steps) : steps[0]
   );
