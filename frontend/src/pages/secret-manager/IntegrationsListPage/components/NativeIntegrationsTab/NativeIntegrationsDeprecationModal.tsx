@@ -9,8 +9,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DocumentationLinkBadge
+  DialogTitle
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
@@ -62,11 +61,7 @@ export const NativeIntegrationsDeprecationModal = () => {
           ))}
         </div>
         <DialogFooter className="sm:items-center sm:justify-between">
-          <DocumentationLinkBadge href="https://infisical.com/docs/integrations/secret-syncs/overview" />
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
-              Remind Me Later
-            </Button>
             <Button variant="project" onClick={handleExploreSecretSyncs}>
               Explore Secret Syncs
               <ArrowRightIcon />
