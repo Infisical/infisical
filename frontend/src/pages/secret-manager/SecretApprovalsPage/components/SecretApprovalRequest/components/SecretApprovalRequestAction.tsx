@@ -102,6 +102,8 @@ export const SecretApprovalRequestAction = ({
   // and policy approvers can all merge once the required approvals are met.
   const canMerge = canApprove || isCommitter || hasProjectRole(ProjectMembershipRole.Admin);
 
+  const isBypassMerge = isSoftEnforcement && !isMergable;
+
   if (!hasMerged && status === "open") {
     return (
       <div className="flex w-full flex-col gap-3">
@@ -181,10 +183,10 @@ export const SecretApprovalRequestAction = ({
                 }
                 isPending={isMerging}
                 onClick={handleSecretApprovalRequestMerge}
-                variant={isSoftEnforcement && !canMerge ? "danger" : "project"}
+                variant={isBypassMerge ? "warning" : "project"}
                 size="sm"
               >
-                {!canMerge ? <ShieldAlertIcon /> : <GitMergeIcon />}
+                {isBypassMerge ? <ShieldAlertIcon /> : <GitMergeIcon />}
                 Merge
               </Button>
             </div>

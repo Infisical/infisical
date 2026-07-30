@@ -184,7 +184,10 @@ export const SecretApprovalRequestChanges = ({
 
   const { mutateAsync: performSecretApprovalMerge } = usePerformSecretApprovalRequestMerge();
 
-  const handleReview = async (status: ApprovalStatus) => {
+  const handleReview = async (
+    status: ApprovalStatus,
+    { notify = true }: { notify?: boolean } = {}
+  ) => {
     if (!secretApprovalRequestDetails) return;
     await updateSecretApprovalRequestStatus({
       id: approvalRequestId,
@@ -192,10 +195,12 @@ export const SecretApprovalRequestChanges = ({
       comment,
       projectId
     });
-    createNotification({
-      type: "success",
-      text: `Successfully ${status} the request`
-    });
+    if (notify) {
+      createNotification({
+        type: "success",
+        text: `Successfully ${status} the request`
+      });
+    }
     setComment("");
     setIsReviewPopoverOpen(false);
   };
@@ -204,8 +209,12 @@ export const SecretApprovalRequestChanges = ({
     if (!secretApprovalRequestDetails) return;
     try {
       setWillMerge(true);
-      await handleReview(ApprovalStatus.APPROVED);
+      await handleReview(ApprovalStatus.APPROVED, { notify: false });
       await performSecretApprovalMerge({ projectId, id: secretApprovalRequestDetails.id });
+      createNotification({
+        type: "success",
+        text: "Successfully merged the request"
+      });
     } catch {
       // Approval or merge failed, error already shown via mutation
     } finally {
