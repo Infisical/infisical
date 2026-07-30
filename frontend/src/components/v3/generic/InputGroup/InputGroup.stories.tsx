@@ -38,10 +38,6 @@ const meta = {
   },
   tags: ["autodocs"],
   argTypes: {
-    variant: {
-      control: "select",
-      options: ["default", "outlined"]
-    },
     className: { table: { disable: true } },
     children: { table: { disable: true } }
   },

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { cva, type VariantProps } from "cva";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -60,25 +61,44 @@ function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.V
   return <SelectPrimitive.Value data-slot="select-value" {...props} />;
 }
 
+const selectTriggerVariants = cva(
+  "flex w-fit !cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap text-foreground select-none disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted data-[size=default]:h-9 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 *:data-[slot=select-value]:truncate [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&>span]:truncate",
+  {
+    variants: {
+      variant: {
+        default:
+          "outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-danger aria-invalid:ring-danger/40",
+        outlined:
+          "outline-1 outline-offset-4 outline-transparent transition-colors outline-solid hover:border-foreground/20 focus-visible:border-accent focus-visible:outline-accent/60 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger/60"
+      }
+    },
+    defaultVariants: {
+      variant: "default"
+    }
+  }
+);
+
+type SelectTriggerProps = React.ComponentProps<typeof SelectPrimitive.Trigger> &
+  VariantProps<typeof selectTriggerVariants> & {
+    size?: "sm" | "default";
+    isError?: boolean;
+  };
+
 function SelectTrigger({
   className,
   size = "default",
+  variant = "default",
   isError,
   children,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
-  size?: "sm" | "default";
-  isError?: boolean;
-}) {
+}: SelectTriggerProps) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
+      data-variant={variant}
       aria-invalid={isError}
-      className={cn(
-        "flex w-fit !cursor-pointer items-center justify-between gap-1.5 rounded-md border border-border bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap text-foreground outline-1 outline-offset-4 outline-transparent transition-colors outline-solid select-none hover:border-foreground/20 focus-visible:border-accent focus-visible:outline-accent/60 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-danger aria-invalid:focus-visible:outline-danger/60 data-placeholder:text-muted data-[size=default]:h-9 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 *:data-[slot=select-value]:truncate [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&>span]:truncate",
-        className
-      )}
+      className={cn(selectTriggerVariants({ variant, className }))}
       {...props}
     >
       {children}
@@ -197,5 +217,7 @@ export {
   SelectScrollUpButton,
   SelectSeparator,
   SelectTrigger,
-  SelectValue
+  type SelectTriggerProps,
+  SelectValue,
+  selectTriggerVariants
 };

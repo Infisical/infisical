@@ -313,6 +313,7 @@ export default function UserInfoStep({
                   Where did you hear about us? <span className="font-light">(optional)</span>
                 </FieldLabel>
                 <TextArea
+                  variant="outlined"
                   {...register("attributionSource")}
                   id="signup-attribution-source"
                   placeholder="Where did you hear about us? (optional)"
