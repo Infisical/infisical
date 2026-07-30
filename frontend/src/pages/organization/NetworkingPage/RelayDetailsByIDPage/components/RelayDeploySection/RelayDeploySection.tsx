@@ -80,7 +80,7 @@ export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) =>
         </CardHeader>
         <CardContent className="space-y-4">
           {!canEditRelay ? (
-            <Alert>
+            <Alert variant="warning" appearance="borderless">
               <LockKeyholeIcon />
               <AlertTitle>Access restricted</AlertTitle>
               <AlertDescription>

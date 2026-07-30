@@ -210,16 +210,16 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </OrgPermissionCan>
             </div>
 
-            <Table>
+            <Table className="min-w-[32rem] table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="w-80 min-w-80">
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="w-36">
                     <TableHeadLabel>Status</TableHeadLabel>
                   </TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,13 +235,15 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
                   return (
                     <TableRow key={gw.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{gw.name}</span>
+                      <TableCell className="min-w-80">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate">{gw.name}</span>
                           {gw.isV1 && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge variant="neutral">V1</Badge>
+                                <Badge variant="neutral" className="shrink-0">
+                                  V1
+                                </Badge>
                               </TooltipTrigger>
                               <TooltipContent>Legacy</TooltipContent>
                             </Tooltip>

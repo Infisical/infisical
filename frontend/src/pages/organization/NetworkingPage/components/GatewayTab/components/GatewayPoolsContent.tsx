@@ -106,16 +106,16 @@ export const GatewayPoolsContent = ({ search }: Props) => {
           </EmptyHeader>
         </Empty>
       ) : (
-        <Table>
+        <Table className="min-w-[52rem] table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-1/3">
+              <TableHead className="w-80 min-w-80">
                 <TableHeadLabel>Name</TableHeadLabel>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-36">
                 <TableHeadLabel>Connected</TableHeadLabel>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-40">
                 <TableHeadLabel>Health</TableHeadLabel>
               </TableHead>
               <TableHead className="w-12" />
@@ -134,7 +134,9 @@ export const GatewayPoolsContent = ({ search }: Props) => {
               ))}
             {filteredPools?.map((pool) => (
               <TableRow key={pool.id} onClick={() => setSelectedPoolId(pool.id)}>
-                <TableCell className="font-medium">{pool.name}</TableCell>
+                <TableCell className="min-w-80 font-medium">
+                  <span className="block truncate">{pool.name}</span>
+                </TableCell>
                 <TableCell>
                   {pool.connectedResourcesCount > 0 ? (
                     <button

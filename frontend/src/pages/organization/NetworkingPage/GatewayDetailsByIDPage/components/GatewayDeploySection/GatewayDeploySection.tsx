@@ -82,7 +82,7 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
         </CardHeader>
         <CardContent className="space-y-4">
           {!canEditGateway ? (
-            <Alert>
+            <Alert variant="warning" appearance="borderless">
               <LockKeyholeIcon />
               <AlertTitle>Access restricted</AlertTitle>
               <AlertDescription>

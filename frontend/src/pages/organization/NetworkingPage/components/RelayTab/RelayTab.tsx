@@ -192,19 +192,19 @@ export const RelayTab = withPermission(
               </EmptyHeader>
             </Empty>
           ) : (
-            <Table>
+            <Table className="min-w-[62rem] table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-1/3">
+                  <TableHead className="w-80 min-w-80">
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="w-72">
                     <TableHeadLabel>Host</TableHeadLabel>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="w-44">
                     <TableHeadLabel>Created</TableHeadLabel>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="w-40">
                     <TableHeadLabel
                       trailing={
                         <Tooltip>
@@ -247,13 +247,15 @@ export const RelayTab = withPermission(
                         : undefined
                     }
                   >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span>{el.name}</span>
+                    <TableCell className="min-w-80">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate">{el.name}</span>
                         {!el.orgId && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="neutral">Managed</Badge>
+                              <Badge variant="neutral" className="shrink-0">
+                                Managed
+                              </Badge>
                             </TooltipTrigger>
                             <TooltipContent>This relay is managed by Infisical.</TooltipContent>
                           </Tooltip>
