@@ -976,7 +976,10 @@ export const pkiAcmeServiceFactory = ({
           : // ttl is not used if notAfter is provided
             ({ ttl: "0d" } as const),
         enrollmentType: EnrollmentType.ACME,
-        applicationId
+        applicationId,
+        // Links the certificate request to this order so checkAndSyncAcmeOrderStatus can reconcile
+        // an order left in `processing` if the process dies mid-issuance.
+        acmeOrderId: orderId
       });
       if ("certificateId" in result) {
         return {
@@ -1106,117 +1109,137 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "ACME order not found" });
     }
     if (order.status === AcmeOrderStatus.Ready) {
-      const {
-        order: updatedOrder,
-        error,
-        certIssuanceJobData
-      } = await acmeOrderDAL.transaction(async (tx) => {
-        const finalizingOrder = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
-        // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
-        const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
-        if (finalizingOrder.status !== AcmeOrderStatus.Ready) {
+      const { csr } = payload;
+
+      // Everything that can reject the request is validated *before* the order is claimed, so a
+      // rejected finalization leaves the order in `ready` and the client can retry with a
+      // corrected CSR. This mirrors the previous behaviour, where these errors rolled the
+      // enclosing transaction back.
+      const certificateRequest = extractCertificateRequestFromCSR(csr);
+      const allowedSanTypes = new Set([
+        CertSubjectAlternativeNameType.DNS_NAME,
+        CertSubjectAlternativeNameType.IP_ADDRESS
+      ]);
+      if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
+        throw new AcmeBadCSRError({
+          message: "Invalid CSR: Only DNS and IP subject alternative names are supported"
+        });
+      }
+
+      // Build a set of "type:value" pairs from CSR SANs to match against authorized identifiers
+      const sanTypeToIdentifierType: Partial<Record<CertSubjectAlternativeNameType, AcmeIdentifierType>> = {
+        [CertSubjectAlternativeNameType.DNS_NAME]: AcmeIdentifierType.DNS,
+        [CertSubjectAlternativeNameType.IP_ADDRESS]: AcmeIdentifierType.IP
+      };
+      const csrIdentifierPairs = new Set(
+        (certificateRequest.subjectAlternativeNames ?? [])
+          .map((san) => {
+            const identifierType = sanTypeToIdentifierType[san.type];
+            return identifierType ? `${identifierType}:${san.value.toLowerCase()}` : null;
+          })
+          .filter(Boolean)
+      );
+      // ACME clients (e.g., lego) set the CN to the IP address for IP certificate requests.
+      // We need to detect whether the CN is an IP to match it against the correct identifier type,
+      // otherwise "ip:127.0.0.1" in the authorization won't match "dns:127.0.0.1" from the CN.
+      if (certificateRequest.commonName) {
+        const cnType = validateIpIdentifier(certificateRequest.commonName)
+          ? AcmeIdentifierType.IP
+          : AcmeIdentifierType.DNS;
+        csrIdentifierPairs.add(`${cnType}:${certificateRequest.commonName.toLowerCase()}`);
+      }
+      const authIdentifierPairs = new Set(
+        order.authorizations.map((auth) => {
+          const value = auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue;
+          return `${auth.identifierType}:${value.toLowerCase()}`;
+        })
+      );
+      if (
+        csrIdentifierPairs.size !== authIdentifierPairs.size ||
+        ![...authIdentifierPairs].every((id) => csrIdentifierPairs.has(id))
+      ) {
+        throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
+      }
+
+      // Issuance context. These are reads only, and they deliberately run outside a transaction:
+      // holding a pooled connection across signing is what let concurrent finalizations exhaust
+      // the connection pool and deadlock every request in the process.
+      // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
+      const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId))!;
+
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
+      if (!ca) {
+        throw new NotFoundError({ message: "Certificate Authority not found" });
+      }
+
+      assertCaInProfileProject(ca, profile);
+
+      const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
+      const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
+        ?.applicationProfileId;
+      const accountApplicationId = accountApplicationProfileId
+        ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
+        : null;
+
+      const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
+        ApprovalPolicyType.CertRequest
+      );
+      const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
+        approvalPolicyDAL as TApprovalPolicyDALFactory,
+        profile.projectId,
+        {
+          profileName: profile.slug,
+          applicationId: accountApplicationId ?? undefined
+        }
+      )) as TCertRequestPolicy | null;
+
+      const approvalContext = matchedApprovalPolicy
+        ? await (async () => {
+            const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+            if (!policy) {
+              throw new NotFoundError({ message: "Certificate policy not found" });
+            }
+
+            const validationResult = await certificatePolicyService.validateCertificateRequest(
+              policy.id,
+              certificateRequest
+            );
+            if (!validationResult.isValid) {
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+            }
+
+            return {
+              approvalPolicy: matchedApprovalPolicy,
+              policy,
+              policySteps: await approvalPolicyDAL.findStepsByPolicyId(matchedApprovalPolicy.id)
+            };
+          })()
+        : undefined;
+
+      // Claims the order under a row lock and asserts it is still finalizable. The approval path
+      // runs this inside the same transaction as its writes, since it never signs and so never
+      // holds a connection across network I/O. The signing path commits the claim on its own, so
+      // that no connection stays held while the certificate is signed.
+      const $claimOrderForFinalization = async (tx: Knex) => {
+        const claimedOrder = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
+        if (claimedOrder.status !== AcmeOrderStatus.Ready) {
           throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
         }
-        if (finalizingOrder.expiresAt < new Date()) {
+        if (claimedOrder.expiresAt < new Date()) {
           throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
         }
+        return claimedOrder;
+      };
 
-        const { csr } = payload;
+      let certIssuanceJobData: TIssueCertificateFromProfileJobData | undefined;
 
-        // Check and validate the CSR
-        const certificateRequest = extractCertificateRequestFromCSR(csr);
-        const allowedSanTypes = new Set([
-          CertSubjectAlternativeNameType.DNS_NAME,
-          CertSubjectAlternativeNameType.IP_ADDRESS
-        ]);
-        if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
-          throw new AcmeBadCSRError({
-            message: "Invalid CSR: Only DNS and IP subject alternative names are supported"
-          });
-        }
-        const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
-          accountId,
-          orderId,
-          tx
-        ))!;
+      if (approvalContext) {
+        const { approvalPolicy, policy, policySteps } = approvalContext;
 
-        // Build a set of "type:value" pairs from CSR SANs to match against authorized identifiers
-        const sanTypeToIdentifierType: Partial<Record<CertSubjectAlternativeNameType, AcmeIdentifierType>> = {
-          [CertSubjectAlternativeNameType.DNS_NAME]: AcmeIdentifierType.DNS,
-          [CertSubjectAlternativeNameType.IP_ADDRESS]: AcmeIdentifierType.IP
-        };
-        const csrIdentifierPairs = new Set(
-          (certificateRequest.subjectAlternativeNames ?? [])
-            .map((san) => {
-              const identifierType = sanTypeToIdentifierType[san.type];
-              return identifierType ? `${identifierType}:${san.value.toLowerCase()}` : null;
-            })
-            .filter(Boolean)
-        );
-        // ACME clients (e.g., lego) set the CN to the IP address for IP certificate requests.
-        // We need to detect whether the CN is an IP to match it against the correct identifier type,
-        // otherwise "ip:127.0.0.1" in the authorization won't match "dns:127.0.0.1" from the CN.
-        if (certificateRequest.commonName) {
-          const cnType = validateIpIdentifier(certificateRequest.commonName)
-            ? AcmeIdentifierType.IP
-            : AcmeIdentifierType.DNS;
-          csrIdentifierPairs.add(`${cnType}:${certificateRequest.commonName.toLowerCase()}`);
-        }
-        const authIdentifierPairs = new Set(
-          orderWithAuthorizations.authorizations.map((auth) => {
-            const value = auth.wildcard ? `*.${auth.identifierValue}` : auth.identifierValue;
-            return `${auth.identifierType}:${value.toLowerCase()}`;
-          })
-        );
-        if (
-          csrIdentifierPairs.size !== authIdentifierPairs.size ||
-          ![...authIdentifierPairs].every((id) => csrIdentifierPairs.has(id))
-        ) {
-          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
-        }
-
-        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
-        if (!ca) {
-          throw new NotFoundError({ message: "Certificate Authority not found" });
-        }
-
-        assertCaInProfileProject(ca, profile);
-
-        const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
-        const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
-          ?.applicationProfileId;
-        const accountApplicationId = accountApplicationProfileId
-          ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
-          : null;
-
-        const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-          ApprovalPolicyType.CertRequest
-        );
-        const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
-          approvalPolicyDAL as TApprovalPolicyDALFactory,
-          profile.projectId,
-          {
-            profileName: profile.slug,
-            applicationId: accountApplicationId ?? undefined
-          }
-        )) as TCertRequestPolicy | null;
-
-        if (matchedApprovalPolicy) {
-          const approvalPolicy = matchedApprovalPolicy;
-          const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-          if (!policy) {
-            throw new NotFoundError({ message: "Certificate policy not found" });
-          }
-
-          const validationResult = await certificatePolicyService.validateCertificateRequest(
-            policy.id,
-            certificateRequest
-          );
-          if (!validationResult.isValid) {
-            throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
-          }
-
-          const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
+        // No signing happens on this path, so it keeps its original single-transaction shape: the
+        // claim, the certificate request, its approval request and the status flip stay atomic.
+        await acmeOrderDAL.transaction(async (tx) => {
+          const finalizingOrder = await $claimOrderForFinalization(tx);
 
           const requesterName = `ACME Account (${accountId})`;
 
@@ -1324,14 +1347,8 @@ export const pkiAcmeServiceFactory = ({
             tx
           );
 
-          await acmeOrderDAL.updateById(
-            orderId,
-            {
-              status: AcmeOrderStatus.Processing,
-              csr
-            },
-            tx
-          );
+          // Return the order in processing status - client will poll until approved
+          await acmeOrderDAL.updateById(orderId, { status: AcmeOrderStatus.Processing, csr }, tx);
 
           logger.info(
             {
@@ -1343,19 +1360,20 @@ export const pkiAcmeServiceFactory = ({
             },
             "ACME certificate request requires approval"
           );
-
-          // Return the order in processing status - client will poll until approved
-          return {
-            order: (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx))!,
-            error: undefined,
-            certIssuanceJobData: undefined
-          };
-        }
+        });
+      } else {
+        // Commit the claim on its own so the connection is released before signing starts.
+        const finalizingOrder = await acmeOrderDAL.transaction(async (tx) => {
+          const claimedOrder = await $claimOrderForFinalization(tx);
+          await acmeOrderDAL.updateById(orderId, { status: AcmeOrderStatus.Processing, csr }, tx);
+          return claimedOrder;
+        });
 
         const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
-        let errorToReturn: Error | undefined;
-        let certIssuanceJobDataToReturn: TIssueCertificateFromProfileJobData | undefined;
         try {
+          // Signing runs with no ambient transaction. The internal CA and the external-CA paths
+          // each open their own short write transaction internally, so at no point does one
+          // request hold a connection while waiting for another.
           const result = await processCertificateIssuanceForOrder({
             caType,
             accountId,
@@ -1367,54 +1385,40 @@ export const pkiAcmeServiceFactory = ({
             certificateRequest,
             profile,
             ca,
-            tx,
             applicationId: accountApplicationId ?? undefined
           });
-          await acmeOrderDAL.updateById(
-            orderId,
-            {
-              status: result.certificateId ? AcmeOrderStatus.Valid : AcmeOrderStatus.Processing,
-              csr,
-              certificateId: result.certificateId
-            },
-            tx
-          );
-          certIssuanceJobDataToReturn = result.certIssuanceJobData;
+          await acmeOrderDAL.updateById(orderId, {
+            status: result.certificateId ? AcmeOrderStatus.Valid : AcmeOrderStatus.Processing,
+            csr,
+            certificateId: result.certificateId
+          });
+          certIssuanceJobData = result.certIssuanceJobData;
         } catch (exp) {
-          await acmeOrderDAL.updateById(
-            orderId,
-            {
-              csr,
-              status: AcmeOrderStatus.Invalid,
-              error: exp instanceof Error ? exp.message : "Unknown error"
-            },
-            tx
-          );
+          await acmeOrderDAL.updateById(orderId, {
+            csr,
+            status: AcmeOrderStatus.Invalid,
+            error: exp instanceof Error ? exp.message : "Unknown error"
+          });
           logger.error(exp, "Failed to sign certificate");
           // TODO: audit log the error
           if (exp instanceof BadRequestError) {
-            errorToReturn = new AcmeBadCSRError({ message: `Invalid CSR: ${exp.message}` });
-          } else if (exp instanceof AcmeError) {
-            errorToReturn = exp;
-          } else {
-            errorToReturn = new AcmeServerInternalError({
-              message: "Failed to sign certificate with internal error"
-            });
+            throw new AcmeBadCSRError({ message: `Invalid CSR: ${exp.message}` });
           }
+          if (exp instanceof AcmeError) {
+            throw exp;
+          }
+          throw new AcmeServerInternalError({
+            message: "Failed to sign certificate with internal error"
+          });
         }
-        return {
-          order: (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx))!,
-          error: errorToReturn,
-          certIssuanceJobData: certIssuanceJobDataToReturn
-        };
-      });
-      if (error) {
-        throw error;
       }
+
       if (certIssuanceJobData) {
-        // We commit the transaction before queuing the job, otherwise the job may fail with a not-found error.
+        // We commit the order writes before queuing the job, otherwise the job may fail with a
+        // not-found error.
         await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
+      const updatedOrder = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId))!;
       order = updatedOrder;
       await auditLogService.createAuditLog({
         ...auditLogInfo,

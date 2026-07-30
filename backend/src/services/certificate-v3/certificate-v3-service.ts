@@ -159,7 +159,10 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById" | "create" | "transaction">;
+  certificateRequestDAL: Pick<
+    TCertificateRequestDALFactory,
+    "updateById" | "findById" | "create" | "transaction" | "attachCertificate" | "transitionFromPending"
+  >;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
@@ -1517,7 +1520,8 @@ export const certificateV3ServiceFactory = ({
     metadata,
     removeRootsFromChain,
     basicConstraints,
-    applicationId: explicitApplicationId
+    applicationId: explicitApplicationId,
+    acmeOrderId
   }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
@@ -1780,106 +1784,121 @@ export const certificateV3ServiceFactory = ({
       domainComponents: certificateRequest.domainComponents
     });
 
-    const { certificate, certificateChain, issuingCaCertificate, serialNumber, cert, certificateRequestId } =
-      await certificateDAL.transaction(async (tx) => {
-        const certResult = await internalCaService.signCertFromCa({
-          isInternal: true,
-          caId: ca.id,
-          csr,
-          subjectOverride,
-          basicConstraints: caBasicConstraints,
-          pathLength: effectiveBasicConstraints?.pathLength,
-          ttl: effectiveTtl,
-          altNames: undefined,
-          notBefore: normalizeDateForApi(notBefore),
-          notAfter: normalizeDateForApi(notAfter),
-          keyUsages: certificateRequest.keyUsages
-            ? convertKeyUsageArrayToLegacy(certificateRequest.keyUsages)
-            : undefined,
-          extendedKeyUsages: certificateRequest.extendedKeyUsages
-            ? convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages)
-            : undefined,
-          signatureAlgorithm: effectiveSignatureAlgorithm,
-          keyAlgorithm: effectiveKeyAlgorithm,
-          isFromProfile: true,
-          tx
-        });
+    // Record intent before the irreversible act. Signing is an external side effect that no database
+    // rollback can undo, so the only way to stay accountable for it is to have a row on disk that
+    // says what we were about to do. If signing or persistence fails, this request is what makes the
+    // failure reportable and reconcilable, instead of leaving behind a stored certificate that
+    // nothing references.
+    const pendingRequest = await certificateRequestService.createCertificateRequest({
+      internal: true,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId: profile.projectId,
+      caId: ca.id,
+      profileId: profile.id,
+      applicationId,
+      acmeOrderId,
+      csr,
+      commonName: mappedCertificateRequest.commonName,
+      altNames: mappedCertificateRequest.subjectAlternativeNames,
+      domainComponents: mappedCertificateRequest.domainComponents,
+      keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages),
+      extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages),
+      notBefore,
+      notAfter,
+      keyAlgorithm: effectiveKeyAlgorithm,
+      signatureAlgorithm: effectiveSignatureAlgorithm,
+      status: CertificateRequestStatus.PENDING,
+      basicConstraints,
+      ttl: validity.ttl,
+      enrollmentType
+    });
 
-        const signedCertRecord = await certificateDAL.findById(certResult.certificateId, tx);
-        if (!signedCertRecord) {
-          throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
+    const effectiveApiConfig = await resolveEffectiveApiConfig({
+      applicationId,
+      profileId: profile.id,
+      profileApiConfig: profile.apiConfig,
+      pkiApplicationProfileDAL,
+      apiEnrollmentConfigDAL
+    });
+
+    let certResult: Awaited<ReturnType<typeof internalCaService.signCertFromCa>>;
+    try {
+      // No transaction is open across this call. signCertFromCa does its reads, CA key access and
+      // signing unwrapped, then opens one short transaction for the writes and invokes onPersisted
+      // inside it, so the certificate rows and the bookkeeping below commit together.
+      certResult = await internalCaService.signCertFromCa({
+        isInternal: true,
+        caId: ca.id,
+        csr,
+        subjectOverride,
+        basicConstraints: caBasicConstraints,
+        pathLength: effectiveBasicConstraints?.pathLength,
+        ttl: effectiveTtl,
+        altNames: undefined,
+        notBefore: normalizeDateForApi(notBefore),
+        notAfter: normalizeDateForApi(notAfter),
+        keyUsages: certificateRequest.keyUsages
+          ? convertKeyUsageArrayToLegacy(certificateRequest.keyUsages)
+          : undefined,
+        extendedKeyUsages: certificateRequest.extendedKeyUsages
+          ? convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages)
+          : undefined,
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        keyAlgorithm: effectiveKeyAlgorithm,
+        isFromProfile: true,
+        onPersisted: async (newCert, tx) => {
+          const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+            { apiConfig: effectiveApiConfig },
+            effectiveTtl,
+            new Date(newCert.notAfter)
+          );
+
+          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+            profileId
+          };
+          if (finalRenewBeforeDays !== undefined) {
+            updateData.renewBeforeDays = finalRenewBeforeDays;
+          }
+          if (applicationId) {
+            updateData.applicationId = applicationId;
+          }
+          await certificateDAL.updateById(newCert.id, updateData, tx);
+
+          // Records the outcome: flips the request to ISSUED and links the certificate in one update.
+          await certificateRequestDAL.attachCertificate(pendingRequest.id, newCert.id, tx);
+
+          if (metadata && metadata.length > 0) {
+            await insertMetadataForCertificate(resourceMetadataDAL, {
+              metadata,
+              certificateId: newCert.id,
+              orgId: actorOrgId,
+              tx
+            });
+            await insertMetadataForCertificateRequest(resourceMetadataDAL, {
+              metadata,
+              certificateRequestId: pendingRequest.id,
+              certificateRequestCreatedAt: pendingRequest.createdAt,
+              orgId: actorOrgId,
+              tx
+            });
+          }
         }
-
-        const effectiveApiConfig = await resolveEffectiveApiConfig({
-          applicationId,
-          profileId: profile.id,
-          profileApiConfig: profile.apiConfig,
-          pkiApplicationProfileDAL,
-          apiEnrollmentConfigDAL
-        });
-        const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
-          { apiConfig: effectiveApiConfig },
-          effectiveTtl,
-          new Date(signedCertRecord.notAfter)
-        );
-
-        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
-          profileId
-        };
-        if (finalRenewBeforeDays !== undefined) {
-          updateData.renewBeforeDays = finalRenewBeforeDays;
-        }
-        if (applicationId) {
-          updateData.applicationId = applicationId;
-        }
-        await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
-
-        const certRequestResult = await certificateRequestService.createCertificateRequest({
-          internal: true,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
-          projectId: profile.projectId,
-          tx,
-          caId: ca.id,
-          profileId: profile.id,
-          applicationId,
-          csr,
-          commonName: mappedCertificateRequest.commonName,
-          altNames: mappedCertificateRequest.subjectAlternativeNames,
-          domainComponents: mappedCertificateRequest.domainComponents,
-          keyUsages: convertKeyUsageArrayToLegacy(mappedCertificateRequest.keyUsages),
-          extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(mappedCertificateRequest.extendedKeyUsages),
-          notBefore,
-          notAfter,
-          keyAlgorithm: effectiveKeyAlgorithm,
-          signatureAlgorithm: effectiveSignatureAlgorithm,
-          status: CertificateRequestStatus.ISSUED,
-          certificateId: certResult.certificateId,
-          basicConstraints,
-          ttl: validity.ttl,
-          enrollmentType
-        });
-
-        if (metadata && metadata.length > 0) {
-          await insertMetadataForCertificate(resourceMetadataDAL, {
-            metadata,
-            certificateId: certResult.certificateId,
-            orgId: actorOrgId,
-            tx
-          });
-          await insertMetadataForCertificateRequest(resourceMetadataDAL, {
-            metadata,
-            certificateRequestId: certRequestResult.id,
-            certificateRequestCreatedAt: certRequestResult.createdAt,
-            orgId: actorOrgId,
-            tx
-          });
-        }
-
-        return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
       });
+    } catch (err) {
+      // The request row is why this is recoverable. Mark it failed so the certificate is accounted
+      // for as an attempt rather than disappearing silently.
+      await certificateRequestDAL.transitionFromPending(
+        pendingRequest.id,
+        CertificateRequestStatus.FAILED,
+        err instanceof Error ? err.message : "Certificate issuance failed"
+      );
+      throw err;
+    }
+
+    const { certificate, certificateChain, issuingCaCertificate, serialNumber } = certResult;
 
     const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
     let certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
@@ -1889,7 +1908,7 @@ export const certificateV3ServiceFactory = ({
 
     try {
       await pkiAlertV2Queue?.queueCertificateEvent({
-        certificateId: cert.id,
+        certificateId: certResult.certificateId,
         projectId: profile.projectId,
         eventType: PkiAlertEventType.ISSUANCE,
         applicationId: applicationId ?? null
@@ -1904,11 +1923,11 @@ export const certificateV3ServiceFactory = ({
       issuingCaCertificate: extractCertificateFromBuffer(issuingCaCertificate as unknown as Buffer),
       certificateChain: certificateChainString,
       serialNumber,
-      certificateId: cert.id,
-      certificateRequestId,
+      certificateId: certResult.certificateId,
+      certificateRequestId: pendingRequest.id,
       projectId: profile.projectId,
       profileName: profile.slug,
-      commonName: cert.commonName || ""
+      commonName: certResult.commonName || ""
     };
   };
 

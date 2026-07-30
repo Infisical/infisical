@@ -2680,11 +2680,22 @@ export const internalCertificateAuthorityServiceFactory = ({
       return newCert;
     };
 
+    // Everything above this point is reads, CA key access and signing, and deliberately runs with no
+    // transaction open. Only the writes below take a connection, so a caller can get atomic issuance
+    // without pinning one across the KMS/HSM round trips.
+    const persist = async (transaction: Knex) => {
+      const newCert = await createSignedCert(transaction);
+      if (dto.onPersisted) {
+        await dto.onPersisted(newCert, transaction);
+      }
+      return newCert;
+    };
+
     let cert;
     if (tx) {
-      cert = await createSignedCert(tx);
+      cert = await persist(tx);
     } else {
-      cert = await certificateDAL.transaction(createSignedCert);
+      cert = await certificateDAL.transaction(persist);
     }
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);
