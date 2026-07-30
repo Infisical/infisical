@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
+import { AxiosError } from "axios";
 import {
   ActivityIcon,
   ArrowLeftIcon,
@@ -22,7 +23,14 @@ const TONES = {
   success: { chip: "bg-success/10 text-success", dot: "bg-success", text: "text-success" }
 };
 
-export const ForbiddenPage = () => {
+type Props = {
+  // The 403 originates from an Axios request, so forward the error to preserve the backend
+  // request ID and response detail for support/log correlation. Optional so the page still
+  // renders when no error is supplied.
+  error?: unknown;
+};
+
+export const ForbiddenPage = ({ error }: Props = {}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // The 403 is rendered by the error boundary, so it can appear full-screen at the root or
   // nested inside the app layout chrome (sidebar, header) for a forbidden sub-route, where
@@ -63,7 +71,18 @@ export const ForbiddenPage = () => {
     }
   ];
 
+  const isAxios = error instanceof AxiosError;
+
+  const reqId =
+    isAxios && typeof error.response?.data?.reqId === "string"
+      ? error.response.data.reqId
+      : undefined;
+
+  const responseData =
+    isAxios && error.response?.data ? JSON.stringify(error.response.data, null, 2) : null;
+
   const monoRows: [string, string][] = [
+    ...(reqId ? ([["request", reqId]] as [string, string][]) : []),
     ["route", window.location.pathname],
     ["time", occurredAt]
   ];
@@ -71,8 +90,12 @@ export const ForbiddenPage = () => {
   const report = [
     `route: ${window.location.pathname}`,
     "error: 403 Access Denied",
-    `time: ${occurredAt}`
-  ].join("\n");
+    reqId ? `request: ${reqId}` : null,
+    `time: ${occurredAt}`,
+    responseData ? `response: ${responseData}` : null
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return (
     <div

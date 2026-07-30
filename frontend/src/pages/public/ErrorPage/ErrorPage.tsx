@@ -71,7 +71,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
   const status = isAxios ? (error.status ?? error.response?.status) : undefined;
 
   if (status === 403) {
-    return <ForbiddenPage />;
+    return <ForbiddenPage error={error} />;
   }
 
   const isGatewayIssue =
