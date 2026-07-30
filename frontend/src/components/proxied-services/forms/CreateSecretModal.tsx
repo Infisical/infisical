@@ -9,7 +9,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -109,9 +108,6 @@ export const CreateSecretModal = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Secret</DialogTitle>
-          <DialogDescription>
-            {environment} &middot; {secretPath}
-          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
           <Controller
