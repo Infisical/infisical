@@ -167,7 +167,7 @@ export const RelayPageHeader = ({
               />
             </Field>
           </AlertDialogConfirmationField>
-          <Alert variant="danger">
+          <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>

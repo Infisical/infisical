@@ -180,7 +180,7 @@ export const GatewayPageHeader = ({ gateway, orgId }: { gateway: TGatewayV2; org
               />
             </Field>
           </AlertDialogConfirmationField>
-          <Alert variant="danger">
+          <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>

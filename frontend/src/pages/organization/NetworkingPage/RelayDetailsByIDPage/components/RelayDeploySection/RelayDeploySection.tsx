@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { RefreshCwIcon, RocketIcon } from "lucide-react";
+import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
   CardAction,
@@ -16,6 +18,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useOrgPermission } from "@app/context";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -37,7 +40,12 @@ export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) =>
   const [deploymentMethod, setDeploymentMethod] = useState("cli");
   const [mintedEnrollment, setMintedEnrollment] = useState<Enrollment | null>(null);
   const { mutateAsync: mint, isPending: isMinting } = useGenerateRelayEnrollmentToken();
+  const { permission } = useOrgPermission();
   const enrollment = mintedEnrollment?.relayId === relayId ? mintedEnrollment : null;
+  const canEditRelay = permission.can(
+    OrgRelayPermissionActions.EditRelays,
+    OrgPermissionSubjects.Relay
+  );
 
   if (authMethod.method === "identity") return null;
 
@@ -61,7 +69,7 @@ export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) =>
             <DocumentationLinkBadge href="https://infisical.com/docs/cli/overview" />
           </CardTitle>
           <CardDescription>Run this relay on a target host.</CardDescription>
-          {showDeploymentControls && (
+          {canEditRelay && showDeploymentControls && (
             <CardAction>
               <TabsList variant="filled">
                 <TabsTrigger value="cli">CLI</TabsTrigger>
@@ -71,61 +79,58 @@ export const RelayDeploySection = ({ relayId, relayName, authMethod }: Props) =>
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {authMethod.method === "aws" && (
-            <OrgPermissionCan
-              I={OrgRelayPermissionActions.EditRelays}
-              a={OrgPermissionSubjects.Relay}
-            >
-              <RelayDeployCommandContent relayId={relayId} relayName={relayName} authMethod="aws" />
-            </OrgPermissionCan>
-          )}
+          {!canEditRelay ? (
+            <Alert>
+              <LockKeyholeIcon />
+              <AlertTitle>Access restricted</AlertTitle>
+              <AlertDescription>
+                You don&apos;t have permission to generate relay deployment commands.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {authMethod.method === "aws" && (
+                <RelayDeployCommandContent
+                  relayId={relayId}
+                  relayName={relayName}
+                  authMethod="aws"
+                />
+              )}
 
-          {authMethod.method === "token" && !enrollment && (
-            <OrgPermissionCan
-              I={OrgRelayPermissionActions.EditRelays}
-              a={OrgPermissionSubjects.Relay}
-            >
-              {(isAllowed) => (
+              {authMethod.method === "token" && !enrollment && (
                 <Button
                   variant="neutral"
                   size="sm"
                   isPending={isMinting}
-                  isDisabled={!isAllowed || isMinting}
+                  isDisabled={isMinting}
                   onClick={handleGenerate}
                 >
                   <RocketIcon className="size-4" />
                   Generate deploy command
                 </Button>
               )}
-            </OrgPermissionCan>
-          )}
 
-          {authMethod.method === "token" && enrollment && (
-            <>
-              <RelayDeployCommandContent
-                relayId={relayId}
-                relayName={relayName}
-                authMethod="token"
-                enrollmentToken={enrollment.token}
-                expiresAt={enrollment.expiresAt}
-              />
-              <OrgPermissionCan
-                I={OrgRelayPermissionActions.EditRelays}
-                a={OrgPermissionSubjects.Relay}
-              >
-                {(isAllowed) => (
+              {authMethod.method === "token" && enrollment && (
+                <>
+                  <RelayDeployCommandContent
+                    relayId={relayId}
+                    relayName={relayName}
+                    authMethod="token"
+                    enrollmentToken={enrollment.token}
+                    expiresAt={enrollment.expiresAt}
+                  />
                   <Button
                     variant="neutral"
                     size="sm"
                     isPending={isMinting}
-                    isDisabled={!isAllowed || isMinting}
+                    isDisabled={isMinting}
                     onClick={handleGenerate}
                   >
                     <RefreshCwIcon className="size-4" />
                     Regenerate command
                   </Button>
-                )}
-              </OrgPermissionCan>
+                </>
+              )}
             </>
           )}
         </CardContent>

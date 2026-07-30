@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { RefreshCwIcon, RocketIcon } from "lucide-react";
+import { LockKeyholeIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
   CardAction,
@@ -16,6 +18,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useOrgPermission } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -39,7 +42,12 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
   >(null);
   const [isCommandDirty, setIsCommandDirty] = useState(false);
   const { mutateAsync: mint, isPending: isMinting } = useMintGatewayToken();
+  const { permission } = useOrgPermission();
   const enrollment = mintedEnrollment?.gatewayId === gatewayId ? mintedEnrollment : null;
+  const canEditGateway = permission.can(
+    OrgGatewayPermissionActions.EditGateways,
+    OrgPermissionSubjects.Gateway
+  );
 
   if (authMethod.method === "identity") return null;
 
@@ -63,7 +71,7 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
             <DocumentationLinkBadge href="https://infisical.com/docs/cli/overview" />
           </CardTitle>
           <CardDescription>Run this gateway on a target host.</CardDescription>
-          {showDeploymentControls && (
+          {canEditGateway && showDeploymentControls && (
             <CardAction>
               <TabsList variant="filled">
                 <TabsTrigger value="cli">CLI</TabsTrigger>
@@ -73,61 +81,53 @@ export const GatewayDeploySection = ({ gatewayId, gatewayName, authMethod }: Pro
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {authMethod.method === "aws" && (
-            <OrgPermissionCan
-              I={OrgGatewayPermissionActions.EditGateways}
-              a={OrgPermissionSubjects.Gateway}
-              passThrough={false}
-            >
-              <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
-            </OrgPermissionCan>
-          )}
+          {!canEditGateway ? (
+            <Alert>
+              <LockKeyholeIcon />
+              <AlertTitle>Access restricted</AlertTitle>
+              <AlertDescription>
+                You don&apos;t have permission to generate gateway deployment commands.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {authMethod.method === "aws" && (
+                <AwsStartCommandContent gatewayId={gatewayId} gatewayName={gatewayName} />
+              )}
 
-          {authMethod.method === "token" && !enrollment && (
-            <OrgPermissionCan
-              I={OrgGatewayPermissionActions.EditGateways}
-              a={OrgPermissionSubjects.Gateway}
-            >
-              {(isAllowed) => (
+              {authMethod.method === "token" && !enrollment && (
                 <Button
                   variant="neutral"
                   size="sm"
                   isPending={isMinting}
-                  isDisabled={!isAllowed || isMinting}
+                  isDisabled={isMinting}
                   onClick={handleGenerate}
                 >
                   <RocketIcon className="size-4" />
                   Generate deploy command
                 </Button>
               )}
-            </OrgPermissionCan>
-          )}
 
-          {authMethod.method === "token" && enrollment && (
-            <>
-              <EnrollmentTokenContent
-                gatewayName={gatewayName}
-                enrollmentToken={enrollment.token}
-                expiresAt={enrollment.expiresAt}
-                onCommandDirtyChange={setIsCommandDirty}
-              />
-              <OrgPermissionCan
-                I={OrgGatewayPermissionActions.EditGateways}
-                a={OrgPermissionSubjects.Gateway}
-              >
-                {(isAllowed) => (
+              {authMethod.method === "token" && enrollment && (
+                <>
+                  <EnrollmentTokenContent
+                    gatewayName={gatewayName}
+                    enrollmentToken={enrollment.token}
+                    expiresAt={enrollment.expiresAt}
+                    onCommandDirtyChange={setIsCommandDirty}
+                  />
                   <Button
                     variant={isCommandDirty ? "warning" : "neutral"}
                     size="sm"
                     isPending={isMinting}
-                    isDisabled={!isAllowed || isMinting}
+                    isDisabled={isMinting}
                     onClick={handleGenerate}
                   >
                     <RefreshCwIcon className="size-4" />
                     {isCommandDirty ? "Update command for selected relay" : "Regenerate command"}
                   </Button>
-                )}
-              </OrgPermissionCan>
+                </>
+              )}
             </>
           )}
         </CardContent>

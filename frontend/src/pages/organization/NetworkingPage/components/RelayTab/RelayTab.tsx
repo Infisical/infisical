@@ -237,15 +237,15 @@ export const RelayTab = withPermission(
                 {filteredRelays?.map((el) => (
                   <TableRow
                     key={el.id}
-                    className={el.orgId ? "cursor-pointer hover:bg-mineshaft-700" : ""}
-                    onClick={() => {
-                      if (el.orgId) {
-                        navigate({
-                          to: "/organizations/$orgId/networking/relays/$relayId",
-                          params: { orgId, relayId: el.id }
-                        });
-                      }
-                    }}
+                    onClick={
+                      el.orgId
+                        ? () =>
+                            navigate({
+                              to: "/organizations/$orgId/networking/relays/$relayId",
+                              params: { orgId, relayId: el.id }
+                            })
+                        : undefined
+                    }
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -335,7 +335,7 @@ export const RelayTab = withPermission(
                   />
                 </Field>
               </AlertDialogConfirmationField>
-              <Alert variant="danger">
+              <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>

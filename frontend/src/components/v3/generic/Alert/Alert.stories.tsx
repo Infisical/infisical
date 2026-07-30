@@ -26,17 +26,11 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: [
-        "default",
-        "outline",
-        "info",
-        "success",
-        "warning",
-        "danger",
-        "project",
-        "org",
-        "sub-org"
-      ]
+      options: ["default", "info", "success", "warning", "danger", "project", "org", "sub-org"]
+    },
+    appearance: {
+      control: "select",
+      options: ["default", "borderless"]
     },
     children: {
       table: {
@@ -78,15 +72,15 @@ export const Default: Story = {
   )
 };
 
-export const Outline: Story = {
-  name: "Variant: Outline",
+export const Borderless: Story = {
+  name: "Appearance: Borderless",
   args: {
-    variant: "outline"
+    appearance: "borderless"
   },
   parameters: {
     docs: {
       description: {
-        story: "Use this variant for neutral informational messages that need a bordered container."
+        story: "Use this appearance for alerts that should not render a border."
       }
     }
   },

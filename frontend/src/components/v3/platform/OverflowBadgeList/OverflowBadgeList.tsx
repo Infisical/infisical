@@ -10,6 +10,8 @@ type TOverflowBadgeListProps<T> = {
   getKey: (item: T) => React.Key;
   getLabel: (item: T) => string;
   getVariant?: (item: T) => TBadgeProps["variant"];
+  appearance?: "badge" | "text";
+  onItemClick?: (item: T) => void;
   maxBadgeWidth?: number;
   className?: string;
 };
@@ -24,6 +26,8 @@ export const OverflowBadgeList = <T,>({
   getKey,
   getLabel,
   getVariant,
+  appearance = "badge",
+  onItemClick,
   maxBadgeWidth = 160,
   className
 }: TOverflowBadgeListProps<T>) => {
@@ -102,8 +106,29 @@ export const OverflowBadgeList = <T,>({
     return () => resizeObserver.disconnect();
   }, [getLabel, getVariant, items, maxBadgeWidth]);
 
-  const renderBadge = (item: T, width?: number) => {
+  const renderItem = (item: T, width?: number) => {
     const label = getLabel(item);
+
+    if (appearance === "text") {
+      return (
+        <Tooltip key={getKey(item)}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="min-w-0 cursor-pointer truncate text-sm text-foreground underline decoration-muted underline-offset-2 hover:decoration-foreground"
+              style={{ maxWidth: width ?? maxBadgeWidth }}
+              onClick={(event) => {
+                event.stopPropagation();
+                onItemClick?.(item);
+              }}
+            >
+              {label}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
+      );
+    }
 
     return (
       <Tooltip key={getKey(item)}>
@@ -129,7 +154,7 @@ export const OverflowBadgeList = <T,>({
       className={cn("relative flex min-w-0 items-center gap-2 overflow-hidden", className)}
     >
       {visibleItems.map((item, index) =>
-        renderBadge(
+        renderItem(
           item,
           index === visibleItems.length - 1 && hiddenCount > 0 ? layout.lastBadgeWidth : undefined
         )
@@ -157,7 +182,7 @@ export const OverflowBadgeList = <T,>({
             className="flex w-auto max-w-sm flex-wrap gap-1.5 p-2"
             onClick={(event) => event.stopPropagation()}
           >
-            {hiddenItems.map((item) => renderBadge(item))}
+            {hiddenItems.map((item) => renderItem(item))}
           </PopoverContent>
         </Popover>
       )}
@@ -166,20 +191,35 @@ export const OverflowBadgeList = <T,>({
         aria-hidden
         className="pointer-events-none invisible absolute flex w-max items-center"
       >
-        {items.map((item) => (
-          <Badge
-            key={getKey(item)}
-            data-overflow-badge-measure
-            variant={getVariant?.(item) ?? "neutral"}
-            isTruncatable
-            style={{ maxWidth: maxBadgeWidth }}
-          >
-            <span>{getLabel(item)}</span>
+        {items.map((item) =>
+          appearance === "text" ? (
+            <span
+              key={getKey(item)}
+              data-overflow-badge-measure
+              className="truncate text-sm"
+              style={{ maxWidth: maxBadgeWidth }}
+            >
+              {getLabel(item)}
+            </span>
+          ) : (
+            <Badge
+              key={getKey(item)}
+              data-overflow-badge-measure
+              variant={getVariant?.(item) ?? "neutral"}
+              isTruncatable
+              style={{ maxWidth: maxBadgeWidth }}
+            >
+              <span>{getLabel(item)}</span>
+            </Badge>
+          )
+        )}
+        {appearance === "text" ? (
+          <span data-overflow-badge-minimum className="w-6 text-sm" />
+        ) : (
+          <Badge data-overflow-badge-minimum isTruncatable>
+            <span />
           </Badge>
-        ))}
-        <Badge data-overflow-badge-minimum isTruncatable>
-          <span />
-        </Badge>
+        )}
         {items.map((_, index) => {
           const rollupCount = index + 1;
           return (

@@ -327,7 +327,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 />
               </Field>
             </AlertDialogConfirmationField>
-            <Alert variant="warning">
+            <Alert variant="warning" appearance="borderless">
               <AlertDescription>
                 Removing this gateway may interrupt traffic through this gateway pool. The gateway
                 will not be deleted and can be added back.

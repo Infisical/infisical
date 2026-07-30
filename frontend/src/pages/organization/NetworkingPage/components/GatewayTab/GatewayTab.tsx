@@ -91,7 +91,7 @@ import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
 import { GatewayDeployModal } from "./components/GatewayDeployModal";
 import { GatewayHealthStatus } from "./components/GatewayHealthStatus";
 import { GatewayPoolsContent } from "./components/GatewayPoolsContent";
-import { getPoolHealthBadgeVariant } from "./components/PoolHealthBadge";
+import { PoolDetailSheet } from "./components/PoolDetailSheet";
 
 export const GatewayTab = withPermission(
   () => {
@@ -105,12 +105,14 @@ export const GatewayTab = withPermission(
     const showPoolsTab = subscription?.gatewayPool;
     const [search, setSearch] = useState("");
     const [poolSearch, setPoolSearch] = useState("");
+    const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
     const [deleteConfirmation, setDeleteConfirmation] = useState("");
     const { data: gateways, isPending: isGatewaysLoading } = useQuery({
       ...gatewaysQueryKeys.listWithTokens(),
       refetchInterval: 15_000
     });
     const { data: pools } = useListGatewayPools({ enabled: Boolean(showPoolsTab) });
+    const selectedPool = pools?.find((pool) => pool.id === selectedPoolId) ?? null;
 
     // Build reverse map: gatewayId -> pools
     const gatewayPoolMap = new Map<string, TGatewayPool[]>();
@@ -369,7 +371,8 @@ export const GatewayTab = withPermission(
                                   items={gatewayPoolMap.get(el.id) ?? []}
                                   getKey={(pool) => pool.id}
                                   getLabel={(pool) => pool.name}
-                                  getVariant={getPoolHealthBadgeVariant}
+                                  appearance="text"
+                                  onItemClick={(pool) => setSelectedPoolId(pool.id)}
                                   maxBadgeWidth={144}
                                 />
                               ) : (
@@ -504,7 +507,7 @@ export const GatewayTab = withPermission(
                       />
                     </Field>
                   </AlertDialogConfirmationField>
-                  <Alert variant="danger">
+                  <Alert variant="danger" appearance="borderless">
                     <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                   </Alert>
                   <AlertDialogFooter>
@@ -537,6 +540,13 @@ export const GatewayTab = withPermission(
             </>
           )}
         </CardContent>
+        <PoolDetailSheet
+          isOpen={Boolean(selectedPoolId)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedPoolId(null);
+          }}
+          pool={selectedPool}
+        />
         <CreateGatewayPoolModal
           isOpen={popUp.createPool.isOpen}
           onToggle={(isOpen) => handlePopUpToggle("createPool", isOpen)}

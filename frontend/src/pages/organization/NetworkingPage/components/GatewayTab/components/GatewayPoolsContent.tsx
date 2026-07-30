@@ -263,7 +263,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
               />
             </Field>
           </AlertDialogConfirmationField>
-          <Alert variant="danger">
+          <Alert variant="danger" appearance="borderless">
             <AlertDescription>Deleting this gateway pool cannot be undone.</AlertDescription>
           </Alert>
           <AlertDialogFooter>
