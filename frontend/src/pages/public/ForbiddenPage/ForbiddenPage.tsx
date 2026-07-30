@@ -1,53 +1,40 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { ErrorComponentProps, Link } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
+import { Link } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
   ActivityIcon,
-  BugIcon,
+  ArrowLeftIcon,
   CheckIcon,
   CopyIcon,
   HouseIcon,
+  LockIcon,
   MonitorCheckIcon,
-  RefreshCwIcon,
-  ServerCrashIcon,
   ShieldCheckIcon,
-  TriangleAlertIcon
+  ShieldXIcon
 } from "lucide-react";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { Badge, Button, Card } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 
-import { ForbiddenPage } from "../ForbiddenPage/ForbiddenPage";
-import { ProjectAccessError } from "./components";
-
-const isProjectAccessDeniedError = (error: unknown): error is AxiosError =>
-  error instanceof AxiosError &&
-  error.status === 403 &&
-  error.response?.data?.error === "ProjectMembershipNotFound";
-
-const STATUS_LABELS: Record<number, string> = {
-  400: "Bad Request",
-  401: "Unauthorized",
-  403: "Access Denied",
-  404: "Not Found",
-  408: "Request Timeout",
-  429: "Too Many Requests",
-  500: "Server Error",
-  502: "Gateway Unavailable",
-  503: "Service Unavailable",
-  504: "Gateway Timeout"
-};
-
 const TONES = {
   warning: { chip: "bg-warning/10 text-warning", dot: "bg-warning", text: "text-warning" },
   success: { chip: "bg-success/10 text-success", dot: "bg-success", text: "text-success" }
 };
 
-export const ErrorPage = ({ error }: ErrorComponentProps) => {
+type Props = {
+  // The 403 originates from an Axios request, so forward the error to preserve the backend
+  // request ID and response detail for support/log correlation. Optional so the page still
+  // renders when no error is supplied.
+  error?: unknown;
+};
+
+export const ForbiddenPage = ({ error }: Props = {}) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Errors thrown in nested routes render inside the app layout chrome (sidebar,
-  // header), where the full-screen vault backdrop doesn't fit
+  // The 403 is rendered by the error boundary, so it can appear full-screen at the root or
+  // nested inside the app layout chrome (sidebar, header) for a forbidden sub-route, where
+  // the full-screen vault backdrop doesn't fit
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [occurredAt] = useState(
     () => `${new Date().toISOString().slice(0, 19).replace("T", " ")} UTC`
@@ -63,53 +50,13 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
     setIsFullScreen(rect.top < 2 && rect.left < 2 && window.innerWidth - rect.width < 4);
   }, []);
 
-  if (isProjectAccessDeniedError(error)) {
-    return <ProjectAccessError />;
-  }
-
-  const isAxios = error instanceof AxiosError;
-  const status = isAxios ? (error.status ?? error.response?.status) : undefined;
-
-  if (status === 403) {
-    return <ForbiddenPage error={error} />;
-  }
-
-  const isGatewayIssue =
-    status === 502 || status === 503 || status === 504 || (isAxios && !error.response);
-
-  let badgeText: string;
-  let causeSentence: string;
-  if (isAxios && status) {
-    badgeText = `${status} · ${STATUS_LABELS[status] ?? "Request Failed"}`;
-    if (status === 504) {
-      causeSentence = "A gateway timeout stopped this page from loading.";
-    } else if (isGatewayIssue) {
-      causeSentence = "A gateway error stopped this page from loading.";
-    } else {
-      causeSentence = "A failed request stopped this page from loading.";
-    }
-  } else if (isAxios) {
-    badgeText = "Network Error";
-    causeSentence = "A network error stopped this page from loading.";
-  } else {
-    badgeText = error?.name || "Unexpected Error";
-    causeSentence = "An unexpected error stopped this page from loading.";
-  }
-
   const statusRows = [
-    isAxios
-      ? {
-          icon: <ServerCrashIcon className="size-4" />,
-          label: isGatewayIssue ? "Secrets gateway" : "API request",
-          state: isGatewayIssue ? "Unavailable" : `Failed${status ? ` (${status})` : ""}`,
-          tone: TONES.warning
-        }
-      : {
-          icon: <BugIcon className="size-4" />,
-          label: "This page",
-          state: "Render error",
-          tone: TONES.warning
-        },
+    {
+      icon: <ShieldXIcon className="size-4" />,
+      label: "Access",
+      state: "Denied (403)",
+      tone: TONES.warning
+    },
     {
       icon: <MonitorCheckIcon className="size-4" />,
       label: "Dashboard",
@@ -123,6 +70,8 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
       tone: TONES.success
     }
   ];
+
+  const isAxios = error instanceof AxiosError;
 
   const reqId =
     isAxios && typeof error.response?.data?.reqId === "string"
@@ -138,11 +87,9 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
     ["time", occurredAt]
   ];
 
-  const errorReport = [
+  const report = [
     `route: ${window.location.pathname}`,
-    `error: ${error?.name ?? "Unknown"}`,
-    `message: ${error?.message ?? ""}`,
-    status ? `status: ${status}` : null,
+    "error: 403 Access Denied",
     reqId ? `request: ${reqId}` : null,
     `time: ${occurredAt}`,
     responseData ? `response: ${responseData}` : null
@@ -159,22 +106,26 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
           : "min-h-full"
       }`}
     >
+      <Helmet>
+        <title>Infisical | Access Denied</title>
+      </Helmet>
       {isFullScreen && <AuthPageBackground />}
-      <Card className="relative z-10 grid w-full max-w-4xl gap-0 overflow-hidden p-0 md:grid-cols-2">
+      <Card className="relative z-10 grid w-full max-w-5xl gap-0 overflow-hidden p-0 lg:grid-cols-[1fr_26rem]">
         <div className="flex flex-col p-8">
           <img alt="Infisical" src="/images/logotransparent.png" className="h-5 self-start" />
           <div className="mt-6 flex flex-col items-start gap-5">
             <Badge variant="warning" className="h-6 px-2">
-              <TriangleAlertIcon />
-              {badgeText}
+              <LockIcon />
+              403 · Access Denied
             </Badge>
-            <h1 className="text-3xl font-semibold text-foreground md:text-4xl">
-              The page broke.
+            <h1 className="text-3xl font-semibold text-foreground">
+              You&rsquo;ve hit a wall.
               <br />
-              Your secrets didn&rsquo;t.
+              <span className="text-2xl">Your secrets are behind it.</span>
             </h1>
             <p className="max-w-md text-sm leading-relaxed text-accent">
-              {causeSentence} Retry, or head back home.
+              You don&rsquo;t have permission to view this page. Check with your admin, or head back
+              home.
             </p>
             <div className="flex flex-wrap items-center gap-2.5">
               <Button variant="project" asChild>
@@ -183,9 +134,9 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
                   Back to Home
                 </Link>
               </Button>
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                <RefreshCwIcon />
-                Retry
+              <Button variant="outline" onClick={() => window.history.back()}>
+                <ArrowLeftIcon />
+                Go Back
               </Button>
             </div>
             <p className="text-xs text-muted">
@@ -219,7 +170,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
               variant="outline"
               size="xs"
               onClick={() => {
-                navigator.clipboard.writeText(errorReport).then(() => {
+                navigator.clipboard.writeText(report).then(() => {
                   setCopyLabel("Copied");
                 });
               }}
@@ -241,7 +192,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
               <span className="text-sm text-foreground">{row.label}</span>
               <div className="ml-auto flex items-center gap-2">
                 <span className={`size-1.5 rounded-full ${row.tone.dot}`} />
-                <span className={`text-sm ${row.tone.text}`}>{row.state}</span>
+                <span className={`text-sm whitespace-nowrap ${row.tone.text}`}>{row.state}</span>
               </div>
             </div>
           ))}
