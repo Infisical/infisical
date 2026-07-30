@@ -39,6 +39,7 @@ import { RailwaySyncDestinationSchema } from "./railway-sync-destination-schema"
 import { RenderSyncDestinationSchema } from "./render-sync-destination-schema";
 import { RundeckSyncDestinationSchema } from "./rundeck-sync-destination-schema";
 import { SnowflakeSyncDestinationSchema } from "./snowflake-sync-destination-schema";
+import { SpaceliftSyncDestinationSchema } from "./spacelift-sync-destination-schema";
 import { SupabaseSyncDestinationSchema } from "./supabase-sync-destination-schema";
 import { TeamCitySyncDestinationSchema } from "./teamcity-sync-destination-schema";
 import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destination-schema";
@@ -95,7 +96,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   TriggerDevSyncDestinationSchema,
   HasuraCloudSyncDestinationSchema,
   QoverySyncDestinationSchema,
-  Cloud66SyncDestinationSchema
+  Cloud66SyncDestinationSchema,
+  SpaceliftSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

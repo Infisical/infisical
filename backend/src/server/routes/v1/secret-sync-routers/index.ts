@@ -39,6 +39,7 @@ import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerRundeckSyncRouter } from "./rundeck-sync-router";
 import { registerSnowflakeSyncRouter } from "./snowflake-sync-router";
+import { registerSpaceliftSyncRouter } from "./spacelift-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
 import { registerTeamCitySyncRouter } from "./teamcity-sync-router";
 import { registerTerraformCloudSyncRouter } from "./terraform-cloud-sync-router";
@@ -97,5 +98,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Snowflake]: registerSnowflakeSyncRouter,
   [SecretSync.HasuraCloud]: registerHasuraCloudSyncRouter,
   [SecretSync.Qovery]: registerQoverySyncRouter,
-  [SecretSync.Cloud66]: registerCloud66SyncRouter
+  [SecretSync.Cloud66]: registerCloud66SyncRouter,
+  [SecretSync.Spacelift]: registerSpaceliftSyncRouter
 };

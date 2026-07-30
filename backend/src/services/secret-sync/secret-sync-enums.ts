@@ -45,7 +45,8 @@ export enum SecretSync {
   Rundeck = "rundeck",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
-  Cloud66 = "cloud-66"
+  Cloud66 = "cloud-66",
+  Spacelift = "spacelift"
 }
 
 export enum SecretSyncInitialSyncBehavior {

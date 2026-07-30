@@ -3047,6 +3047,11 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    SPACELIFT: {
+      apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
+      apiKeyId: "The API Key ID used to authenticate with Spacelift.",
+      apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
   }
 };
@@ -3143,6 +3148,10 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
         "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+    },
+    SPACELIFT: {
+      writeOnly:
+        "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
     }
   },
   DESTINATION_CONFIG: {
@@ -3393,6 +3402,16 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    SPACELIFT: {
+      contextId: "The ID of the Spacelift context to sync secrets to.",
+      contextName: "The name of the Spacelift context to sync secrets to.",
+      configType:
+        "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
+      mountPath:
+        "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
+      fileMountFormat:
+        "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
     }
   }
 };
