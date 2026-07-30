@@ -31,6 +31,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Separator,
   Skeleton
 } from "@app/components/v3";
 import { useGetOrganizations, useGetUser } from "@app/hooks/api";
@@ -41,11 +42,10 @@ import { AuthMethod } from "@app/hooks/api/users/types";
 import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 
 import { MfaMethodsCard } from "./MfaMethodsCard";
+import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
 import { useChangePreferredMfa } from "./useChangePreferredMfa";
 import { useDisableMfa } from "./useDisableMfa";
 import { useEnableMfa } from "./useEnableMfa";
-
-const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
 
 export const MFASection = () => {
   const { data: user, isPending, isError: isUserError, refetch: refetchUser } = useGetUser();
@@ -194,17 +194,8 @@ export const MFASection = () => {
       </h2>
       <CardDescription>
         {user.isMfaEnabled
-          ? "Two-factor authentication is protecting your account. Manage your methods and recovery options below."
-          : "Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to sign in."}{" "}
-        <a
-          href={LEARN_MORE_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
-        >
-          Read more
-        </a>
-        .
+          ? "Manage your methods and recovery options."
+          : "Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to sign in."}
       </CardDescription>
     </CardHeader>
   );
@@ -212,9 +203,15 @@ export const MFASection = () => {
   const preferredMethodSection = (
     <section className="grid gap-4" aria-labelledby="preferred-2fa-method-title">
       <CardHeader>
-        <h3 id="preferred-2fa-method-title" className="font-alliance text-sm font-semibold">
-          Preferred 2FA method
-        </h3>
+        <div className="flex items-center gap-4">
+          <h3
+            id="preferred-2fa-method-title"
+            className="shrink-0 font-alliance text-sm font-semibold"
+          >
+            Preferred 2FA method
+          </h3>
+          <Separator className="flex-1" />
+        </div>
         <CardDescription>Set the method used first when signing in to Infisical.</CardDescription>
       </CardHeader>
       <div className="max-w-xs">
@@ -292,7 +289,8 @@ export const MFASection = () => {
       >
         {header}
         <CardContent className="flex flex-col gap-6 px-6 pb-6">
-          <MfaMethodsCard showRecoveryCodes={hasRecoveryCodes} />
+          <MfaMethodsCard />
+          {hasRecoveryCodes && <RecoveryOptionsCard />}
           {preferredMethodSection}
         </CardContent>
         {footer}

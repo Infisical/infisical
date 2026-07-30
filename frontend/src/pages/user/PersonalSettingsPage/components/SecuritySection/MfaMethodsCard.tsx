@@ -23,7 +23,6 @@ import { useGetWebAuthnCredentials } from "@app/hooks/api/webauthn";
 
 import { MethodSetupDialog } from "./MethodSetupDialog";
 import { PasskeyManagerDialog } from "./PasskeyManagerDialog";
-import { RecoveryOptionsCard } from "./RecoveryOptionsCard";
 import { useRemoveTotp } from "./useRemoveTotp";
 
 type MethodRowProps = {
@@ -48,11 +47,7 @@ const MethodRow = ({ icon: Icon, title, description, badge, action }: MethodRowP
   </div>
 );
 
-type MfaMethodsCardProps = {
-  showRecoveryCodes: boolean;
-};
-
-export const MfaMethodsCard = ({ showRecoveryCodes }: MfaMethodsCardProps) => {
+export const MfaMethodsCard = () => {
   const queryClient = useQueryClient();
   const { data: totpConfiguration } = useGetUserTotpConfiguration();
   const { data: webAuthnData } = useGetWebAuthnCredentials();
@@ -136,7 +131,6 @@ export const MfaMethodsCard = ({ showRecoveryCodes }: MfaMethodsCardProps) => {
             </Button>
           }
         />
-        {showRecoveryCodes && <RecoveryOptionsCard />}
       </div>
 
       <MethodSetupDialog

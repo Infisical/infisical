@@ -12,11 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  CardHeader,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  Separator
 } from "@app/components/v3";
 
 import { useRecoveryCodesMfa } from "./useRecoveryCodesMfa";
@@ -46,7 +48,15 @@ export const RecoveryOptionsCard = () => {
   };
 
   return (
-    <>
+    <section className="grid gap-4" aria-labelledby="recovery-options-title">
+      <CardHeader>
+        <div className="flex items-center gap-4">
+          <h3 id="recovery-options-title" className="shrink-0 font-alliance text-sm font-semibold">
+            Recovery options
+          </h3>
+          <Separator className="flex-1" />
+        </div>
+      </CardHeader>
       <div className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0.5 py-3 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto]">
         <KeyRoundIcon className="row-span-2 row-start-1 size-6 text-muted" />
         <p className="col-start-2 row-start-1 text-sm text-foreground">Recovery codes</p>
@@ -127,6 +137,6 @@ export const RecoveryOptionsCard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </section>
   );
 };
