@@ -16,6 +16,7 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
+import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
@@ -262,7 +263,10 @@ export enum PostHogEventTypes {
   DynamicSecretLeaseRevoked = "Dynamic Secret Lease Revoked",
   SecretApprovalPolicyUpdated = "Secret Approval Policy Updated",
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
-  SecretRotationV2Failed = "Secret Rotation V2 Failed"
+  SecretRotationV2Failed = "Secret Rotation V2 Failed",
+
+  // Agent Proxy
+  ProxiedServiceCreated = "Proxied Service Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -533,6 +537,8 @@ export type TTelemetryInstanceStatsEvent = {
     pamAccounts: number;
     accessApprovalPolicies: number;
     honeyTokens: number;
+    proxiedServices: number;
+    proxiedServicesUsedLast7Days: number;
     integrationBreakdown: Record<string, number>;
     projectTypeBreakdown: Record<string, number>;
     secretSyncBreakdown: Record<string, number>;
@@ -1982,6 +1988,20 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
+export type TProxiedServiceCreatedEvent = {
+  event: PostHogEventTypes.ProxiedServiceCreated;
+  properties: {
+    projectId: string;
+    headerRewriteCount: number;
+    substitutionCount: number;
+    substitutionSurfaces: ProxiedServiceSubstitutionSurface[];
+    hostPatternCount: number;
+    usesDynamicSecret: boolean;
+    usesBasicAuth: boolean;
+    isEnabled: boolean;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -2179,4 +2199,5 @@ export type TPostHogEvent = {
   | TSecretApprovalPolicyUpdatedEvent
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
+  | TProxiedServiceCreatedEvent
 );
