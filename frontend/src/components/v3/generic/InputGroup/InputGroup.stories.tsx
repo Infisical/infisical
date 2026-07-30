@@ -38,6 +38,10 @@ const meta = {
   },
   tags: ["autodocs"],
   argTypes: {
+    variant: {
+      control: "select",
+      options: ["default", "outlined"]
+    },
     className: { table: { disable: true } },
     children: { table: { disable: true } }
   },
@@ -68,6 +72,22 @@ export const Default: Story = {
   },
   render: () => (
     <InputGroup>
+      <InputGroupInput placeholder="Acme Corporation" />
+    </InputGroup>
+  )
+};
+
+export const Outlined: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
+      }
+    }
+  },
+  render: () => (
+    <InputGroup variant="outlined">
       <InputGroupInput placeholder="Acme Corporation" />
     </InputGroup>
   )

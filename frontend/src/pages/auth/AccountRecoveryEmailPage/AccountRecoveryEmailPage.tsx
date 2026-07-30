@@ -69,6 +69,7 @@ export const AccountRecoveryEmailPage = () => {
                   Enter your email to receive recovery instructions.
                 </p>
                 <Input
+                  variant="outlined"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"

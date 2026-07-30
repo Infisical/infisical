@@ -49,7 +49,7 @@ export const PasswordField = ({
   return (
     <Field data-invalid={Boolean(error)}>
       <FieldLabel htmlFor={id}>Password</FieldLabel>
-      <InputGroup>
+      <InputGroup variant="outlined">
         <InputGroupInput
           {...registration}
           id={id}

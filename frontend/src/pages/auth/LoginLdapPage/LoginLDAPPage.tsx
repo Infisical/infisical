@@ -102,6 +102,7 @@ export const LoginLdapPage = () => {
           <CardContent className="flex flex-col gap-4">
             {!config.defaultAuthOrgSlug && !passedOrgSlug && (
               <Input
+                variant="outlined"
                 value={organizationSlug}
                 onChange={(e) => setOrganizationSlug(e.target.value)}
                 type="text"
@@ -111,6 +112,7 @@ export const LoginLdapPage = () => {
               />
             )}
             <Input
+              variant="outlined"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               type="text"
@@ -120,6 +122,7 @@ export const LoginLdapPage = () => {
               className="h-10"
             />
             <Input
+              variant="outlined"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
