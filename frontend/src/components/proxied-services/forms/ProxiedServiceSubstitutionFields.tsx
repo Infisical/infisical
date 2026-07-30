@@ -133,7 +133,11 @@ export const ProxiedServiceSubstitutionFields = ({
                   control={control}
                   name={`substitutions.${i}.surfaces`}
                   render={({ field }) => (
-                    <SurfaceSelect value={field.value} onChange={field.onChange} />
+                    <SurfaceSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      isError={Boolean(errors.substitutions?.[i]?.surfaces)}
+                    />
                   )}
                 />
                 <FieldError errors={[errors.substitutions?.[i]?.surfaces]} />
