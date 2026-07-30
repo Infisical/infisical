@@ -156,6 +156,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
           {showDangerState && errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
         </Field>
         <PasswordField
+          variant="outlined"
           id="admin-signup-password"
           value={password}
           policy={config.passwordPolicy}

@@ -115,6 +115,7 @@ export const PasswordSetupPage = () => {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <PasswordField
+              variant="outlined"
               id="password-setup-password"
               value={password}
               policy={config.passwordPolicy}

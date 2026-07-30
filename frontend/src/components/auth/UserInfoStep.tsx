@@ -226,6 +226,7 @@ export default function UserInfoStep({
                 </Field>
               )}
               <PasswordField
+                variant="outlined"
                 id="new-password"
                 value={passwordValue}
                 policy={config.passwordPolicy}

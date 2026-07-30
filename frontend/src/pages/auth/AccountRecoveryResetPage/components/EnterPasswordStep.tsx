@@ -98,6 +98,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
       </p>
       <div className="mt-8 w-full">
         <PasswordField
+          variant="outlined"
           id="account-recovery-password"
           value={password}
           policy={config.passwordPolicy}
