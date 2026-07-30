@@ -232,7 +232,7 @@ export const SecretApprovalRequestChanges = ({
     if (!secretApprovalRequestDetails) return;
     try {
       setWillMerge(true);
-      await handleReview(ApprovalStatus.APPROVED);
+      await handleReview(ApprovalStatus.APPROVED, { notify: false });
       await performSecretApprovalMerge({
         projectId,
         id: secretApprovalRequestDetails.id,
