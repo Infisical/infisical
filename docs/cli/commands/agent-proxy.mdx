@@ -53,7 +53,7 @@ Each arrangement stands on its own: `run` is complete by itself, and a deployed 
 
   Because the proxy and the agent share a machine, the sandbox is the boundary: the agent cannot read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
 
-  Requires macOS, or Linux with `bubblewrap` installed; see [Before you begin](/documentation/platform/agent-proxy/local-agent-proxy#before-you-begin) for the per-distribution command. Where no OS sandbox is available, `run` refuses to start unless you pass `--no-sandbox`.
+  Requires macOS, or Linux with `bubblewrap` installed; see [Requirements](/documentation/platform/agent-proxy/local-agent-proxy#requirements) for the per-distribution command. Where no OS sandbox is available, `run` refuses to start unless you pass `--no-sandbox`.
 
   <Note>
     `--proxy` is rejected: `run` always starts its own proxy. To route through a proxy on another host, use `agent-proxy connect --proxy=<host>:<port>`.

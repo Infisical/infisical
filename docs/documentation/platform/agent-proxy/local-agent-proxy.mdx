@@ -10,11 +10,11 @@ A local proxy runs an agent on your own computer. `agent-proxy run` starts a pro
 infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
 ```
 
-To set one up, follow the **Local proxy** tab of the [Quickstart](/documentation/platform/agent-proxy/quickstart). This page is the reference behind it: what the sandbox allows and denies, how certificates work, and every flag `run` takes.
+This page is the reference for that setup: what the sandbox allows and denies, how certificates work, how permissions are decided, and every flag `run` takes.
 
 ## What you set up
 
-Two things exist, and you already have both:
+There are only two moving parts:
 
 ```text
    +------------------------------+          +--------------------+
@@ -25,7 +25,7 @@ Two things exist, and you already have both:
    +------------------------------+          +--------------------+
 ```
 
-That is the entire setup. You are already logged in, so `run` authenticates as you, and it starts and stops its own proxy around the agent.
+That is the entire setup. There is no proxy to deploy and no machine identity to create: you log in once, `run` authenticates as you, and it starts and stops its own proxy around the agent.
 
 To serve agents running elsewhere, see [standalone proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
@@ -53,7 +53,7 @@ flowchart LR
   **`run` cannot be pointed at a proxy running elsewhere.** It always starts its own, so `--proxy` is rejected with an error rather than silently ignored. To route an agent through a proxy on another host, see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 </Warning>
 
-## Before you begin
+## Requirements
 
 - The [Infisical CLI](/cli/overview) installed, and `infisical login` completed.
 - At least one [proxied service](/documentation/platform/agent-proxy/proxied-services) in the folder you point `run` at. Brokering only happens for hosts a service matches; if you have none, everything simply passes through uncredentialed.
@@ -339,7 +339,7 @@ Without `--log-file` you still see problems: warnings and errors print to your t
     The credential was not applied and the request was forwarded as the agent sent it; the proxy does not block the call. Check the activity log for the decision, and that you have `Read Value` on the secret the service references.
   </Accordion>
   <Accordion title="The sandbox will not start on Linux">
-    Either bubblewrap is missing (install it as shown in [Before you begin](#before-you-begin)) or unprivileged user namespaces are restricted on the host. The error says which. `run` refuses to start rather than running your agent uncontained.
+    Either bubblewrap is missing (install it as shown in [Requirements](#requirements)) or unprivileged user namespaces are restricted on the host. The error says which. `run` refuses to start rather than running your agent uncontained.
   </Accordion>
   <Accordion title="A tool cannot prompt for a password">
     On Linux the agent runs in its own session, which is what stops a sandboxed process from pushing keystrokes into your terminal. Its stdin and stdout are still terminals, so TUIs behave normally, but a tool that opens `/dev/tty` directly to prompt, `sudo` for instance, cannot. Run that step yourself, outside the agent.

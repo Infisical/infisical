@@ -42,22 +42,11 @@ Two things, and they are the same no matter where your agent runs:
 
 Then you route your agent's traffic through Agent Proxy. The agent needs no code changes: the [Infisical CLI](/cli/overview) launches it with its HTTP clients pointed at the proxy, and the proxy applies the real credential to matching requests on the way out.
 
-## Local proxy or standalone proxy
+## Where the proxy runs
 
-The proxy has to sit between your agent and the internet, so where it runs follows from where your agent runs. That gives two ways to set it up:
+The proxy has to sit between your agent and the internet, so where it runs follows from where your agent runs. A **local proxy** runs on your own computer for the length of a single agent run, sandboxed away from your credentials, and suits an agent you are driving yourself in a terminal. A **standalone proxy** runs on a host of its own and serves agents across your network, which is what unattended agents and shared team setups need.
 
-<CardGroup cols={2}>
-  <Card title="Local proxy" icon="laptop-code" href="/documentation/platform/agent-proxy/local-agent-proxy">
-    `agent-proxy run` starts a proxy alongside your agent and stops it when the agent exits. It all happens on your own computer, with the agent sandboxed away from your credentials.
-
-    **Pick this when you are the one running the agent:** Claude Code or Codex in your terminal, or a script you are iterating on.
-  </Card>
-  <Card title="Standalone proxy" icon="server" href="/documentation/platform/agent-proxy/standalone-agent-proxy">
-    You run the proxy yourself with `agent-proxy start`, on a host of its own, then launch each agent with `agent-proxy connect` so its traffic routes through it. The credentials stay on the proxy host, a machine of its own.
-
-    **Pick this when the agent runs unattended:** an agent that stays up, one on a host of its own, or one proxy shared across your team.
-  </Card>
-</CardGroup>
+The Quickstart starts with the parts both need, then hands you this choice at the point you have to make it.
 
 ## What you work with
 
@@ -78,6 +67,6 @@ The proxy has to sit between your agent and the internet, so where it runs follo
 
 ## Next steps
 
-<Card title="Quick Start" icon="rocket" href="/documentation/platform/agent-proxy/quickstart">
+<Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-proxy/quickstart/credentials">
   Broker your first credential to an agent.
 </Card>

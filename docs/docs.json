@@ -628,11 +628,23 @@
                     "group": "Agent Proxy",
                     "pages": [
                       "documentation/platform/agent-proxy/overview",
-                      "documentation/platform/agent-proxy/quickstart",
-                      "documentation/platform/agent-proxy/proxied-services",
-                      "documentation/platform/agent-proxy/local-agent-proxy",
-                      "documentation/platform/agent-proxy/standalone-agent-proxy",
-                      "documentation/platform/agent-proxy/activity-logs"
+                      {
+                        "group": "Quickstart",
+                        "pages": [
+                          "documentation/platform/agent-proxy/quickstart/credentials",
+                          "documentation/platform/agent-proxy/quickstart/local-proxy",
+                          "documentation/platform/agent-proxy/quickstart/standalone-proxy"
+                        ]
+                      },
+                      {
+                        "group": "Reference",
+                        "pages": [
+                          "documentation/platform/agent-proxy/proxied-services",
+                          "documentation/platform/agent-proxy/local-agent-proxy",
+                          "documentation/platform/agent-proxy/standalone-agent-proxy",
+                          "documentation/platform/agent-proxy/activity-logs"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -4332,16 +4344,20 @@
   },
   "redirects": [
     {
+      "source": "/documentation/platform/agent-proxy/quickstart",
+      "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
+    },
+    {
       "source": "/documentation/platform/agent-proxy/security",
       "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
     },
     {
       "source": "/documentation/platform/agent-proxy/deployment",
-      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#deployment"
     },
     {
       "source": "/documentation/platform/agent-proxy/connecting-agents",
-      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
     },
     {
       "source": "/documentation/platform/kms/hsm-integration",
