@@ -51,12 +51,14 @@ description: "Learn how to automatically rotate Cloudflare API tokens."
 
         Policies that target the same effect, scope, and zones are combined into a single policy when the token is created.
 
+        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-api-token/step-2.png)
+
         The **Restrictions** tab optionally limits where the generated token can be used:
 
         - **Allowed IPs** (optional) - The generated token can only be used from these IP addresses or CIDR blocks, one entry per line. Leave empty to allow any IP.
         - **Disallowed IPs** (optional) - The generated token cannot be used from these IP addresses or CIDR blocks, one entry per line.
 
-        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-api-token/step-2.png)
+        ![Restrictions](/images/secret-rotations-v2/cloudflare-api-token/restrictions-api-token.png)
 
         5. Specify the secret names that the rotated API token will be mapped to. Then click **Next**.
 

@@ -49,12 +49,14 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
             - `Object Read only` - Read and list objects.
             - `Object Read & Write` - Read, list, write, and delete objects.
 
+        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-r2-access-key/step-3.png)
+
         The **Restrictions** tab optionally limits where the generated key can be used:
 
         - **Allowed IPs** (optional) - The generated key can only be used from these IP addresses or CIDR blocks, one entry per line. Leave empty to allow any IP.
         - **Disallowed IPs** (optional) - The generated key cannot be used from these IP addresses or CIDR blocks, one entry per line.
 
-        ![Rotation Parameters](/images/secret-rotations-v2/cloudflare-r2-access-key/step-3.png)
+        ![Restrictions](/images/secret-rotations-v2/cloudflare-r2-access-key/restrictions-r2-access-key.png.png)
 
         5. Specify the secret names that the rotated credentials will be mapped to. Then click **Next**.
 
