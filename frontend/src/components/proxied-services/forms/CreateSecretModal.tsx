@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -110,6 +111,9 @@ export const CreateSecretModal = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Secret</DialogTitle>
+          <DialogDescription>
+            The secret will be created at the current secret path.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-6">
           <Controller
@@ -153,7 +157,7 @@ export const CreateSecretModal = ({
               isPending={isPending || isSubmitting}
               isDisabled={isPending || isSubmitting}
             >
-              Create &amp; use
+              Create and Use
             </Button>
           </DialogFooter>
         </form>
