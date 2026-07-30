@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
@@ -61,7 +63,7 @@ export const KempLoadMasterPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateKempLoadMasterPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: KempLoadMasterPkiSyncConfigSchema,
   syncOptions: KempLoadMasterPkiSyncOptionsSchema,
@@ -74,7 +76,7 @@ export const CreateKempLoadMasterPkiSyncSchema = z.object({
 
 export const UpdateKempLoadMasterPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: KempLoadMasterPkiSyncConfigSchema.optional(),
   syncOptions: KempLoadMasterPkiSyncOptionsSchema.optional(),

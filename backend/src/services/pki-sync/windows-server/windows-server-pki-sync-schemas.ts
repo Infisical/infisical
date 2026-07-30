@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
@@ -109,7 +111,7 @@ export const WindowsServerPkiSyncSchema = PkiSyncSchema.extend({
 export const CreateWindowsServerPkiSyncSchema = z
   .object({
     name: z.string().trim().min(1).max(256),
-    description: z.string().optional(),
+    description: pkiDescriptionSchema.optional(),
     isAutoSyncEnabled: z.boolean().default(true),
     destinationConfig: WindowsServerPkiSyncConfigSchema,
     syncOptions: WindowsServerPkiSyncOptionsSchema,
@@ -131,7 +133,7 @@ export const CreateWindowsServerPkiSyncSchema = z
 
 export const UpdateWindowsServerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: WindowsServerPkiSyncConfigSchema.optional(),
   syncOptions: WindowsServerPkiSyncOptionsSchema.optional(),

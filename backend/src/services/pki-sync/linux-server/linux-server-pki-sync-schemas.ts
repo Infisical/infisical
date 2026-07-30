@@ -1,6 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
@@ -90,7 +92,7 @@ export const LinuxServerPkiSyncSchema = PkiSyncSchema.extend({
 export const CreateLinuxServerPkiSyncSchema = z
   .object({
     name: z.string().trim().min(1).max(256),
-    description: z.string().optional(),
+    description: pkiDescriptionSchema.optional(),
     isAutoSyncEnabled: z.boolean().default(true),
     destinationConfig: LinuxServerPkiSyncConfigSchema,
     syncOptions: LinuxServerPkiSyncOptionsSchema,
@@ -112,7 +114,7 @@ export const CreateLinuxServerPkiSyncSchema = z
 
 export const UpdateLinuxServerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: LinuxServerPkiSyncConfigSchema.optional(),
   syncOptions: LinuxServerPkiSyncOptionsSchema.optional(),

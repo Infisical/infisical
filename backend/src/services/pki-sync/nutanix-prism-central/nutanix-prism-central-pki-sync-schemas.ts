@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
@@ -23,7 +25,7 @@ export const NutanixPrismCentralPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateNutanixPrismCentralPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: NutanixPrismCentralPkiSyncConfigSchema,
   syncOptions: NutanixPrismCentralPkiSyncOptionsSchema.optional().default({
@@ -39,7 +41,7 @@ export const CreateNutanixPrismCentralPkiSyncSchema = z.object({
 
 export const UpdateNutanixPrismCentralPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: NutanixPrismCentralPkiSyncConfigSchema.optional(),
   syncOptions: NutanixPrismCentralPkiSyncOptionsSchema.optional(),

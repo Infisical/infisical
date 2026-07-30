@@ -18,6 +18,7 @@ import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const NetworkTargetConfigSchema = z
@@ -80,7 +81,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         .object({
           projectId: z.string().optional().describe(openApiHidden()),
           name: slugSchema({ field: "Name", max: 100 }).describe("Name of the discovery configuration"),
-          description: z.string().max(500).optional().describe("Description of the discovery configuration"),
+          description: pkiDescriptionSchema.optional().describe("Description of the discovery configuration"),
           discoveryType: z
             .nativeEnum(PkiDiscoveryType)
             .optional()
@@ -283,7 +284,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           name: slugSchema({ field: "Name", max: 100 }).optional().describe("Name of the discovery configuration"),
-          description: z.string().max(500).optional().nullable().describe("Description of the discovery configuration"),
+          description: pkiDescriptionSchema.optional().nullable().describe("Description of the discovery configuration"),
           targetConfig: NetworkTargetConfigSchema.optional().describe("Target configuration for discovery scans"),
           isAutoScanEnabled: z.boolean().optional().describe("Enable automatic scheduled scans"),
           scanIntervalDays: z

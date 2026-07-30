@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
@@ -72,7 +74,7 @@ export const F5BigIpPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateF5BigIpPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: F5BigIpPkiSyncConfigSchema,
   syncOptions: F5BigIpPkiSyncOptionsSchema,
@@ -85,7 +87,7 @@ export const CreateF5BigIpPkiSyncSchema = z.object({
 
 export const UpdateF5BigIpPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: F5BigIpPkiSyncConfigSchema.optional(),
   syncOptions: F5BigIpPkiSyncOptionsSchema.optional(),

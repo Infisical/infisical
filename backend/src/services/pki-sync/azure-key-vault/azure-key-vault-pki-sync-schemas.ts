@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { isValidAzureKeyVaultUrl } from "@app/lib/validator";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -53,7 +55,7 @@ export const AzureKeyVaultPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema,
@@ -66,7 +68,7 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
 
 export const UpdateAzureKeyVaultPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema.optional(),
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional(),

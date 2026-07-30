@@ -58,6 +58,7 @@ import {
 import {
   DEFAULT_CRL_VALIDITY_DAYS,
   GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  PKI_TEXT_COLUMN_MAX_LENGTH,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "../../certificate-common/certificate-constants";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
@@ -347,6 +348,14 @@ export const internalCertificateAuthorityServiceFactory = ({
       province,
       locality
     });
+
+    // The composed DN is persisted in a varchar(255) column, so bounding each subject attribute on its
+    // own is not enough — the escaped RFC 4514 string has to fit too.
+    if (dn.length > PKI_TEXT_COLUMN_MAX_LENGTH) {
+      throw new BadRequestError({
+        message: `The combined subject (${dn.length} characters) cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters. Shorten the commonName, organization, ou, country, province, or locality fields.`
+      });
+    }
 
     const alg = keyAlgorithmToAlgCfg(keyAlgorithm);
 

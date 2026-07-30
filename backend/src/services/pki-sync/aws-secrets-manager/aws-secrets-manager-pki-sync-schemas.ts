@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
@@ -70,7 +72,7 @@ export const AwsSecretsManagerPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateAwsSecretsManagerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsSecretsManagerPkiSyncConfigSchema,
   syncOptions: AwsSecretsManagerPkiSyncOptionsSchema,
@@ -83,7 +85,7 @@ export const CreateAwsSecretsManagerPkiSyncSchema = z.object({
 
 export const UpdateAwsSecretsManagerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AwsSecretsManagerPkiSyncConfigSchema.optional(),
   syncOptions: AwsSecretsManagerPkiSyncOptionsSchema.optional(),

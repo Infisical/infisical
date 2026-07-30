@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
+
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
@@ -74,7 +76,7 @@ export const ChefPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateChefPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ChefPkiSyncConfigSchema,
   syncOptions: ChefPkiSyncOptionsSchema,
@@ -87,7 +89,7 @@ export const CreateChefPkiSyncSchema = z.object({
 
 export const UpdateChefPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: ChefPkiSyncConfigSchema.optional(),
   syncOptions: ChefPkiSyncOptionsSchema.optional(),
