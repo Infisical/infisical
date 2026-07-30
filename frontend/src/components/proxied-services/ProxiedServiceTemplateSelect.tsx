@@ -127,7 +127,6 @@ export const ProxiedServiceTemplateSelect = ({ onSelect }: Props) => {
 
       {isSearching ? (
         <section>
-          {!filtered.length && <SectionLabel>No exact matches</SectionLabel>}
           <Grid>
             <CustomCard onClick={() => onSelect(null)} />
             {filtered.map((template) => (
