@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useRouter } from "@tanstack/react-router";
-import { Check, ChevronLeft, type LucideIcon, Mail } from "lucide-react";
+import { useNavigate, useRouteContext, useRouter } from "@tanstack/react-router";
+import { Check, ChevronLeft, ChevronRight, type LucideIcon, Mail } from "lucide-react";
 import { z } from "zod";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
@@ -14,7 +14,6 @@ import {
   Button,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
   Checkbox,
@@ -34,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useServerConfig } from "@app/context";
 import { useOnboarding } from "@app/hooks";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
@@ -51,6 +51,7 @@ enum SignUpMode {
 }
 
 const steps = [SetupStep.Access, SetupStep.IdentityRouting, SetupStep.Review] as const;
+const setupFormId = "self-hosted-server-setup-form";
 
 const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpMode),
@@ -115,6 +116,9 @@ const stepContent = {
 export const SetupPage = () => {
   const navigate = useNavigate();
   const router = useRouter();
+  const { organizationId } = useRouteContext({
+    from: "/_authenticate/_inject-org-details/admin/setup"
+  });
   const { config } = useServerConfig();
   const organizations = useGetOrganizations();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
@@ -136,19 +140,23 @@ export const SetupPage = () => {
     }
   });
 
-  const { activeStep, activeStepIndex, back, complete, isCompleting, next } = useOnboarding({
-    id: "self-hosted-server-setup",
-    steps,
-    persistLocally: true,
-    completionFlag: true,
-    onPersistCompletion: async () => {
-      await updateServerConfig({ onboardingCompleted: true });
-    },
-    onComplete: async () => {
-      await router.invalidate();
-      await navigate({ to: "/admin" });
-    }
-  });
+  const { activeStep, activeStepIndex, back, complete, isCompleting, next, setActiveStep } =
+    useOnboarding({
+      id: "self-hosted-server-setup",
+      steps,
+      persistLocally: true,
+      completionFlag: true,
+      onPersistCompletion: async () => {
+        await updateServerConfig({ onboardingCompleted: true });
+      },
+      onComplete: async () => {
+        await router.invalidate();
+        await navigate({
+          to: "/organizations/$orgId/projects",
+          params: { orgId: organizationId }
+        });
+      }
+    });
 
   const values = watch();
   const selectedOrganization = useMemo(
@@ -220,7 +228,7 @@ export const SetupPage = () => {
                   <FieldLabel htmlFor="signup-anyone">
                     <Field orientation="horizontal">
                       <FieldContent>
-                        <FieldTitle className="font-alliance text-base">Allow Sign-ups</FieldTitle>
+                        <FieldTitle className="font-alliance text-base">Anyone</FieldTitle>
                         <FieldDescription>Optionally limit by source/domain</FieldDescription>
                       </FieldContent>
                       <RadioGroupItem value={SignUpMode.Anyone} id="signup-anyone" />
@@ -230,93 +238,96 @@ export const SetupPage = () => {
               </Field>
             )}
           />
+          <Controller
+            control={control}
+            name="enabledLoginMethods"
+            render={({ field }) => (
+              <Field>
+                <div>
+                  <h3 className="font-alliance text-base font-medium text-foreground">
+                    Allowed authentication methods
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {loginMethods.map((method) => {
+                    const isChecked = field.value.includes(method.value);
+                    const MethodIcon = method.icon;
+
+                    return (
+                      <FieldLabel
+                        key={method.value}
+                        htmlFor={`login-method-${method.value}`}
+                        className={cn(
+                          "h-full transition-opacity",
+                          !isChecked && "border-transparent opacity-60 hover:opacity-80"
+                        )}
+                      >
+                        <Field orientation="horizontal" className="h-full items-center gap-2">
+                          <div className="flex size-4 shrink-0 items-center justify-center text-muted">
+                            {method.imageSrc ? (
+                              <img
+                                src={method.imageSrc}
+                                alt=""
+                                aria-hidden="true"
+                                className="size-4 object-contain"
+                              />
+                            ) : (
+                              MethodIcon && <MethodIcon className="size-4" />
+                            )}
+                          </div>
+                          <FieldTitle className="h-4 text-sm leading-none">
+                            {method.label}
+                          </FieldTitle>
+                          <Checkbox
+                            id={`login-method-${method.value}`}
+                            aria-label={method.label}
+                            variant="project"
+                            isChecked={isChecked}
+                            onCheckedChange={(checked) => {
+                              field.onChange(
+                                checked
+                                  ? [...field.value, method.value]
+                                  : field.value.filter((value) => value !== method.value)
+                              );
+                            }}
+                          />
+                        </Field>
+                      </FieldLabel>
+                    );
+                  })}
+                </div>
+                <FieldDescription>
+                  SAML, LDAP, and OIDC can be configured after onboarding in the Server Console.
+                </FieldDescription>
+                <FieldError>{errors.enabledLoginMethods?.message}</FieldError>
+              </Field>
+            )}
+          />
+
           <AnimatedCollapse
             isOpen={values.signUpMode === SignUpMode.Anyone}
             contentClassName="-m-2 p-2"
           >
-            <div className="flex flex-col gap-4">
-              <Controller
-                control={control}
-                name="enabledLoginMethods"
-                render={({ field }) => (
-                  <Field>
-                    <div>
-                      <h3 className="font-alliance text-base font-medium text-foreground">
-                        Sign-in methods
-                      </h3>
-                      <p className="mt-1 text-xs text-muted">
-                        Select the sign-in methods to make available
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {loginMethods.map((method) => {
-                        const isChecked = field.value.includes(method.value);
-                        const MethodIcon = method.icon;
-
-                        return (
-                          <FieldLabel
-                            key={method.value}
-                            htmlFor={`login-method-${method.value}`}
-                            variant="project"
-                            className="h-full"
-                          >
-                            <Field orientation="horizontal" className="h-full items-center gap-2">
-                              <div className="flex size-4 shrink-0 items-center justify-center text-muted">
-                                {method.imageSrc ? (
-                                  <img
-                                    src={method.imageSrc}
-                                    alt=""
-                                    aria-hidden="true"
-                                    className="size-4 object-contain"
-                                  />
-                                ) : (
-                                  MethodIcon && <MethodIcon className="size-4" />
-                                )}
-                              </div>
-                              <FieldTitle className="h-4 text-sm leading-none">
-                                {method.label}
-                              </FieldTitle>
-                              <Checkbox
-                                id={`login-method-${method.value}`}
-                                aria-label={method.label}
-                                variant="project"
-                                isChecked={isChecked}
-                                onCheckedChange={(checked) => {
-                                  field.onChange(
-                                    checked
-                                      ? [...field.value, method.value]
-                                      : field.value.filter((value) => value !== method.value)
-                                  );
-                                }}
-                              />
-                            </Field>
-                          </FieldLabel>
-                        );
-                      })}
-                    </div>
-                    <FieldError>{errors.enabledLoginMethods?.message}</FieldError>
-                  </Field>
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="allowedSignUpDomain"
-                render={({ field }) => (
-                  <Field>
-                    <FieldLabel htmlFor="allowed-signup-domain" className="text-xs">
-                      Signup domain restrictions (optional)
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      id="allowed-signup-domain"
-                      placeholder="acme.com, example.com"
-                    />
-                    <FieldDescription>Leave blank to allow any email domain.</FieldDescription>
-                  </Field>
-                )}
-              />
-            </div>
+            <Controller
+              control={control}
+              name="allowedSignUpDomain"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel htmlFor="allowed-signup-domain" className="text-xs">
+                    <span>
+                      Limit allowed email domains{" "}
+                      <span className="opacity-60">(optional, applies to all sign-up methods)</span>
+                    </span>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="allowed-signup-domain"
+                    placeholder="acme.com, example.com"
+                  />
+                  <FieldDescription>Leave blank to allow any email domain.</FieldDescription>
+                </Field>
+              )}
+            />
           </AnimatedCollapse>
         </FieldGroup>
       );
@@ -368,32 +379,47 @@ export const SetupPage = () => {
     }
 
     return (
-      <div className="rounded-lg border border-border bg-card">
-        <div className="flex items-start gap-3 border-b border-border p-4">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <button
+          type="button"
+          className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-border p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          onClick={() => setActiveStep(SetupStep.Access)}
+        >
           <Check className="mt-0.5 size-4 text-success" />
-          <div>
-            <p className="text-sm font-medium text-foreground">User access</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">{signUpSummary}</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3 border-b border-border p-4">
+          <span>
+            <span className="block text-sm font-medium text-foreground">User access</span>
+            <span className="block text-sm leading-relaxed text-muted">{signUpSummary}</span>
+          </span>
+          <ChevronRight className="size-4 self-center text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+        </button>
+        <button
+          type="button"
+          className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-border p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          onClick={() => setActiveStep(SetupStep.Access)}
+        >
           <Check className="mt-0.5 size-4 text-success" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Login methods</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">{enabledMethodLabels}</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-3 p-4">
+          <span>
+            <span className="block text-sm font-medium text-foreground">Login methods</span>
+            <span className="block text-sm leading-relaxed text-muted">{enabledMethodLabels}</span>
+          </span>
+          <ChevronRight className="size-4 self-center text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+        </button>
+        <button
+          type="button"
+          className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          onClick={() => setActiveStep(SetupStep.IdentityRouting)}
+        >
           <Check className="mt-0.5 size-4 text-success" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Identity routing</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted">
+          <span>
+            <span className="block text-sm font-medium text-foreground">Identity routing</span>
+            <span className="block text-sm leading-relaxed text-muted">
               {selectedOrganization
                 ? `Route users to ${selectedOrganization.name}`
                 : "Allow users to select an organization"}
-            </p>
-          </div>
-        </div>
+            </span>
+          </span>
+          <ChevronRight className="size-4 self-center text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+        </button>
       </div>
     );
   };
@@ -405,13 +431,40 @@ export const SetupPage = () => {
       totalSteps={steps.length}
       contentClassName="max-w-xl"
       showFooter={false}
+      anchorBottomContent
+      bottomContent={
+        <div className="mx-auto flex w-full max-w-xl justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (activeStepIndex === 0) {
+                navigate({ to: "/admin/welcome" });
+                return;
+              }
+              back();
+            }}
+          >
+            <ChevronLeft />
+            Back
+          </Button>
+          <Button
+            type="submit"
+            form={setupFormId}
+            variant="project"
+            isPending={isSubmitting || isCompleting}
+          >
+            {activeStep === SetupStep.Review ? "Finish setup" : "Continue"}
+          </Button>
+        </div>
+      }
     >
       <Helmet>
         <title>Configure your instance | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <AuthPagePanel>
-        <form onSubmit={onSubmit}>
+        <form id={setupFormId} onSubmit={onSubmit}>
           <CardHeader className="mb-8 gap-2">
             <CardTitle className="font-alliance text-3xl leading-tight font-normal">
               {stepContent[activeStep].title}
@@ -422,25 +475,6 @@ export const SetupPage = () => {
           </CardHeader>
 
           <CardContent>{renderStep()}</CardContent>
-
-          <CardFooter className="mt-8 justify-between gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (activeStepIndex === 0) {
-                  navigate({ to: "/admin/welcome" });
-                  return;
-                }
-                back();
-              }}
-            >
-              <ChevronLeft />
-              Back
-            </Button>
-            <Button type="submit" variant="project" isPending={isSubmitting || isCompleting}>
-              {activeStep === SetupStep.Review ? "Finish setup" : "Continue"}
-            </Button>
-          </CardFooter>
         </form>
       </AuthPagePanel>
     </OnboardingPageLayout>

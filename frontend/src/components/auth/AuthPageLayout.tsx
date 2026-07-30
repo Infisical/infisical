@@ -9,6 +9,7 @@ import { AuthPageFooter } from "./AuthPageFooter";
 import { AuthPageHeader } from "./AuthPageHeader";
 
 type Props = {
+  anchorBottomContent?: boolean;
   bottomContent?: ReactNode;
   children: ReactNode;
   contentClassName?: string;
@@ -18,6 +19,7 @@ type Props = {
 };
 
 export const AuthPageLayout = ({
+  anchorBottomContent = false,
   bottomContent,
   children,
   contentClassName,
@@ -38,16 +40,31 @@ export const AuthPageLayout = ({
     >
       <section
         className={cn(
-          "flex h-screen min-h-0 min-w-0 flex-col overflow-y-auto px-5 sm:px-8 lg:px-10 xl:px-14",
+          "flex h-screen min-h-0 min-w-0 flex-col",
+          anchorBottomContent ? "overflow-hidden" : "thin-scrollbar overflow-y-auto",
           isSplit && "lg:border-r lg:border-border"
         )}
       >
         <AuthPageHeader>{headerAction}</AuthPageHeader>
-        <main className="flex flex-1 items-center justify-center py-10">
-          <div className={cn("w-full max-w-md", contentClassName)}>{children}</div>
+        <main
+          className={cn(
+            "flex flex-1 px-5 py-10 sm:px-8 lg:px-10 xl:px-14",
+            anchorBottomContent
+              ? "min-h-0 thin-scrollbar overflow-x-hidden overflow-y-auto"
+              : "items-center justify-center"
+          )}
+        >
+          <div className={cn("w-full max-w-md", anchorBottomContent && "m-auto", contentClassName)}>
+            {children}
+          </div>
         </main>
         {(bottomContent || showFooter) && (
-          <div className="relative z-10 pb-6 text-center">
+          <div
+            className={cn(
+              "relative z-10 px-5 pb-6 text-center sm:px-8 lg:px-10 xl:px-14",
+              anchorBottomContent && "shrink-0 border-t border-border pt-4"
+            )}
+          >
             {bottomContent}
             {showFooter && <AuthPageFooter />}
           </div>

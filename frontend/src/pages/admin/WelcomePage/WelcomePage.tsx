@@ -54,38 +54,46 @@ export const WelcomePage = ({ organizationId }: Props) => {
         </CardHeader>
 
         <CardContent className="mt-8 space-y-8">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             <button
               type="button"
               disabled={isSkippingSetup}
-              className="group flex min-h-36 cursor-pointer flex-col rounded-md border border-primary/30 bg-primary/25 p-4 text-left text-foreground transition-all select-none hover:border-primary/35 hover:bg-primary/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
+              className="group grid min-h-18 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center rounded-md border border-primary/30 bg-primary/25 p-4 text-left text-foreground transition-all select-none hover:border-primary/35 hover:bg-primary/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
               onClick={() => navigate({ to: "/admin/setup" })}
             >
-              <ServerCog className="mb-6 size-5 text-foreground" />
-              <span className="font-alliance text-base font-medium text-foreground">
-                Configure Server Console
+              <span className="min-w-0">
+                <span className="flex items-start gap-2">
+                  <ServerCog className="size-5 text-foreground" />
+                  <span className="font-alliance text-base font-medium text-foreground">
+                    Configure Server Console
+                  </span>
+                </span>
+                <span className="block text-sm leading-relaxed text-foreground/70">
+                  Set authentication, signups, encryption, and access policies.
+                </span>
               </span>
-              <span className="mt-1 py-1 text-sm leading-relaxed text-foreground/70">
-                Set authentication, signups, encryption, and access policies.
-              </span>
-              <ArrowRight className="mt-auto size-4 self-end text-foreground/70 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              <ArrowRight className="size-4 text-foreground/70 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
 
             <button
               type="button"
               aria-busy={isSkippingSetup}
               disabled={isSkippingSetup}
-              className="group flex min-h-36 flex-col rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
+              className="group grid min-h-18 grid-cols-[minmax(0,1fr)_auto] items-center rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
               onClick={handleContinueToOrganization}
             >
-              <Building2 className="mb-6 size-5 text-foreground" />
-              <span className="font-alliance text-base font-medium text-foreground">
-                Go to your organization
+              <span className="min-w-0">
+                <span className="flex items-start gap-2">
+                  <Building2 className="size-5 text-foreground" />
+                  <span className="font-alliance text-base font-medium text-foreground">
+                    Go to your organization
+                  </span>
+                </span>
+                <span className="block text-sm leading-relaxed text-label">
+                  Skip guided setup and go straight to projects, secrets, and your team.
+                </span>
               </span>
-              <span className="mt-1 py-1 text-sm leading-relaxed text-label">
-                Skip guided setup and go straight to projects, secrets, and your team.
-              </span>
-              <ArrowRight className="mt-auto size-4 self-end text-label transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              <ArrowRight className="size-4 text-label transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
           </div>
 
