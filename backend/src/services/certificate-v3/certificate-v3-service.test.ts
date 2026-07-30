@@ -792,6 +792,9 @@ describe("CertificateV3Service", () => {
         certificateChain: "chain",
         issuingCaCertificate: "issuing-ca",
         serialNumber: "789012",
+        // signCertFromCa always returns the id of the certificate it persisted, and the response is
+        // built from that rather than from a follow-up read.
+        certificateId: "cert-456",
         commonName: "test.example.com",
         ca: {
           id: "ca-123",
