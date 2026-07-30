@@ -191,7 +191,7 @@ export const SecretRotationV2Form = ({
                 </Tab>
               ))}
             </Tab.List>
-            <Tab.Panels className="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <Tab.Panels className="min-h-0 thin-scrollbar flex-1 overflow-y-auto">
               <Tab.Panel>
                 <SecretRotationV2ConfigurationFields
                   isUpdate={Boolean(secretRotation)}
