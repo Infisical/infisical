@@ -47,6 +47,11 @@ export const coreMappings: TFeatureMapping[] = [
     extractV1: (p) => p.eventSubscriptions
   },
   {
+    v2Key: "pam_slack_notifications",
+    v1Field: "pamSlackNotifications",
+    extractV1: (p) => p.pamSlackNotifications
+  },
+  {
     v2Key: "machine_identity_auth_templates",
     v1Field: "machineIdentityAuthTemplates",
     extractV1: (p) => p.machineIdentityAuthTemplates
@@ -72,13 +77,33 @@ export const coreMappings: TFeatureMapping[] = [
     extractV1: (p) => p.enterpriseSecretSyncs
   },
   {
+    v2Key: "enterprise_app_connections",
+    v1Field: "enterpriseAppConnections",
+    extractV1: (p) => p.enterpriseAppConnections
+  },
+  {
     v2Key: "enterprise_certificate_syncs",
     v1Field: "enterpriseCertificateSyncs",
     extractV1: (p) => p.enterpriseCertificateSyncs
   },
   {
-    v2Key: "enterprise_app_connections",
-    v1Field: "enterpriseAppConnections",
-    extractV1: (p) => p.enterpriseAppConnections
+    v2Key: "pam",
+    v1Field: "pam",
+    extractV1: (p) => p.pam
+  },
+  {
+    v2Key: "cert_manager",
+    v1Field: "certManager",
+    extractV1: (p) => p.certManager
+  },
+  {
+    v2Key: "secrets_temporary_access",
+    v1Field: "secretsTemporaryAccess",
+    extractV1: (p) => p.secretsTemporaryAccess
+  },
+  {
+    v2Key: "enterprise_pam_account",
+    v1Field: "enterprisePamAccount",
+    extractV1: (p) => p.enterprisePamAccount
   }
 ];

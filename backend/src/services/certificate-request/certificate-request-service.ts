@@ -19,6 +19,7 @@ import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { domainComponentSchema } from "@app/services/certificate-common/certificate-constants";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -81,7 +82,8 @@ const certificateRequestDataSchema = z
     organizationalUnit: z.string().max(255).optional(),
     country: z.string().max(100).optional(),
     state: z.string().max(255).optional(),
-    locality: z.string().max(255).optional()
+    locality: z.string().max(255).optional(),
+    domainComponents: z.array(domainComponentSchema).max(50).optional()
   })
   .refine(
     (data) => {
@@ -177,7 +179,7 @@ export const certificateRequestServiceFactory = ({
     // Validate input data before creating the request
     const validatedData = validateCertificateRequestData(requestData);
 
-    const { altNames: altNamesInput, ...restValidatedData } = validatedData;
+    const { altNames: altNamesInput, domainComponents: domainComponentsInput, ...restValidatedData } = validatedData;
 
     // Explicitly set createdAt to ensure millisecond precision matches when used in FK references.
     // PostgreSQL's DEFAULT now() has microsecond precision, but JavaScript Date only has millisecond precision.
@@ -190,6 +192,8 @@ export const certificateRequestServiceFactory = ({
         acmeOrderId,
         ...restValidatedData,
         altNames: altNamesInput ? JSON.stringify(altNamesInput) : null,
+        domainComponents:
+          domainComponentsInput && domainComponentsInput.length > 0 ? domainComponentsInput.join(",") : null,
         createdAt: new Date()
       } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
       tx
@@ -339,6 +343,7 @@ export const certificateRequestServiceFactory = ({
           country: certificateRequest.country || null,
           state: certificateRequest.state || null,
           locality: certificateRequest.locality || null,
+          domainComponents: certificateRequest.domainComponents ? certificateRequest.domainComponents.split(",") : null,
           basicConstraints: parsedBasicConstraints,
           metadata: requestMetadata,
           createdAt: certificateRequest.createdAt,
@@ -416,6 +421,7 @@ export const certificateRequestServiceFactory = ({
         country: certificateRequest.country || null,
         state: certificateRequest.state || null,
         locality: certificateRequest.locality || null,
+        domainComponents: certificateRequest.domainComponents ? certificateRequest.domainComponents.split(",") : null,
         basicConstraints: parsedBasicConstraints,
         metadata: requestMetadata,
         createdAt: certificateRequest.createdAt,

@@ -12,10 +12,19 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority/certificate-authority-fns";
+import {
+  createDistinguishedName,
+  extractDnParts,
+  keyAlgorithmToAlgCfg
+} from "../certificate-authority/certificate-authority-fns";
 import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
-import { mapLegacyExtendedKeyUsageToStandard, mapLegacyKeyUsageToStandard } from "./certificate-constants";
+import {
+  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "./certificate-constants";
 
 /**
  * Extracts certificate request data from a CSR string
@@ -34,6 +43,8 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   // can distinguish "absent" (use default) from "explicitly set".
   const certificateRequest: TCertificateRequest = {};
   if (subject.commonName) certificateRequest.commonName = subject.commonName;
+  const domainComponents = csrObj.subjectName.getField("DC");
+  if (domainComponents.length > 0) certificateRequest.domainComponents = domainComponents;
   if (subject.organization) certificateRequest.organization = subject.organization;
   if (subject.ou) certificateRequest.organizationalUnit = subject.ou;
   if (subject.locality) certificateRequest.locality = subject.locality;
@@ -54,10 +65,13 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
 
   const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
   if (csrExtendedKeyUsageExtension) {
-    const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages.map(
-      (ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string]
-    );
-    const mapped = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
+    const mapped = csrExtendedKeyUsageExtension.usages.map((ekuOid) => {
+      const name = CertExtendedKeyUsageOIDToName[ekuOid as string];
+      if (!name) {
+        throw new BadRequestError({ message: `Unsupported extended key usage in CSR: ${ekuOid as string}` });
+      }
+      return mapLegacyExtendedKeyUsageToStandard(name);
+    });
     if (mapped.length > 0) {
       certificateRequest.extendedKeyUsages = mapped;
     }
@@ -67,14 +81,12 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   if (sanExtension) {
     const sanNames = new x509.GeneralNames(sanExtension.value);
     const altNamesArray: TAltNameMapping[] = sanNames.items
-      .filter(
-        (value) =>
-          value.type === TAltNameType.EMAIL ||
-          value.type === TAltNameType.DNS ||
-          value.type === TAltNameType.IP ||
-          value.type === TAltNameType.URL
-      )
+      .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
       .map((name): TAltNameMapping => {
+        if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+          return { type: name.type as TAltNameType, value: name.value };
+        }
+
         const altNameType = validateAndMapAltNameType(name.value);
         if (!altNameType) {
           throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
@@ -98,6 +110,26 @@ export const extractCertificateRequestFromCSR = (csr: string): TCertificateReque
   }
 
   return certificateRequest;
+};
+
+export const buildSubjectOverrideForCsr = (
+  csr: string,
+  request: Pick<
+    TCertificateRequest,
+    "commonName" | "organization" | "organizationalUnit" | "country" | "state" | "locality" | "domainComponents"
+  >
+): string => {
+  const csrSubject = extractDnParts(new x509.Pkcs10CertificateRequest(csr).subjectName);
+
+  return createDistinguishedName({
+    commonName: csrSubject.commonName ?? request.commonName,
+    organization: csrSubject.organization ?? request.organization,
+    ou: csrSubject.ou ?? request.organizationalUnit,
+    country: csrSubject.country ?? request.country,
+    province: csrSubject.province ?? request.state,
+    locality: csrSubject.locality ?? request.locality,
+    domainComponents: csrSubject.domainComponents ?? request.domainComponents
+  });
 };
 
 /**

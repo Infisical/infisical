@@ -102,6 +102,8 @@ import {
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
+import { getAccessDurationLabel } from "../AccessApprovalRequest.utils";
+
 const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
   if (status === ApprovalStatus.APPROVED)
     return (
@@ -333,15 +335,6 @@ export const ReviewAccessRequestModal = ({
       conditions: group.conditions ? formatConditions(group.conditions) : []
     }));
   }, [request.permissions]);
-
-  const getAccessLabel = () => {
-    if (!accessDetails.temporaryAccess.isTemporary || !accessDetails.temporaryAccess.temporaryRange)
-      return "Permanent";
-
-    return `Valid for ${ms(ms(accessDetails.temporaryAccess.temporaryRange), {
-      long: true
-    })} after approval`;
-  };
 
   const reviewAccessRequest = useReviewAccessRequest();
   const revokeAccessRequest = useRevokeAccessRequest();
@@ -781,7 +774,10 @@ export const ReviewAccessRequestModal = ({
                     <DetailLabel>Access Duration</DetailLabel>
                     <DetailValue>
                       <div className="flex items-center gap-1">
-                        {getAccessLabel()}
+                        {getAccessDurationLabel(
+                          accessDetails.temporaryAccess.isTemporary,
+                          accessDetails.temporaryAccess.temporaryRange
+                        )}
                         {request.isApprover && request.status === ApprovalStatus.PENDING && (
                           <>
                             <EditAccessRequestModal

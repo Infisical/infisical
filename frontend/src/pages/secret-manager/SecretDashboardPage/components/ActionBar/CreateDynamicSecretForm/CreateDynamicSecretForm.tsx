@@ -11,7 +11,8 @@ import {
   SiMongodb,
   SiRabbitmq,
   SiSap,
-  SiSnowflake
+  SiSnowflake,
+  SiTailscale
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
 import { faAws, faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
@@ -48,6 +49,7 @@ import { SapHanaInputForm } from "./SapHanaInputForm";
 import { SnowflakeInputForm } from "./SnowflakeInputForm";
 import { SqlDatabaseInputForm } from "./SqlDatabaseInputForm";
 import { SshInputForm } from "./SshInputForm";
+import { TailscaleInputForm } from "./TailscaleInputForm";
 import { TotpInputForm } from "./TotpInputForm";
 import { VerticaInputForm } from "./VerticaInputForm";
 
@@ -195,6 +197,11 @@ const DYNAMIC_SECRET_LIST = [
     icon: <FontAwesomeIcon icon={faGlobe} size="lg" />,
     provider: DynamicSecretProviders.IbmApiConnect,
     title: "IBM API Connect"
+  },
+  {
+    icon: <SiTailscale size="1.5rem" />,
+    provider: DynamicSecretProviders.Tailscale,
+    title: "Tailscale"
   }
 ];
 
@@ -761,6 +768,25 @@ export const CreateDynamicSecretForm = ({
                 exit={{ opacity: 0, translateX: -30 }}
               >
                 <IbmApiConnectInputForm
+                  onCompleted={handleFormReset}
+                  onCancel={handleFormReset}
+                  projectSlug={projectSlug}
+                  secretPath={secretPath}
+                  environments={environments}
+                  isSingleEnvironmentMode={isSingleEnvironmentMode}
+                />
+              </motion.div>
+            )}
+          {wizardStep === WizardSteps.ProviderInputs &&
+            selectedProvider === DynamicSecretProviders.Tailscale && (
+              <motion.div
+                key="dynamic-tailscale-step"
+                transition={{ duration: 0.1 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: -30 }}
+              >
+                <TailscaleInputForm
                   onCompleted={handleFormReset}
                   onCancel={handleFormReset}
                   projectSlug={projectSlug}

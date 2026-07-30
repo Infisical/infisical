@@ -1,4 +1,5 @@
 export * from "./DateRangeFilter";
+export * from "./DeleteConfirmDialog";
 export * from "./DocumentationLinkBadge";
 export * from "./GatewayPicker";
 export * from "./IdentityRoleBadges";
@@ -8,3 +9,4 @@ export * from "./PermissionActionSelect";
 export * from "./ScopeIcons";
 export * from "./SecretInput";
 export * from "./SecretPathInput";
+export * from "./VerificationCode";

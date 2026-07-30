@@ -13,9 +13,11 @@ import {
   AccessPamRequestBypassedTemplate,
   AccessPamRequestTemplate,
   AccountDeletionConfirmationTemplate,
+  AlertNotificationTemplate,
   AuditLogMigrationAlertTemplate,
   AuditReportTemplate,
   CredentialRotationFailedTemplate,
+  EmailChangeExistingAccountTemplate,
   EmailChangeRequestNotificationTemplate,
   EmailMfaTemplate,
   EmailVerificationTemplate,
@@ -25,6 +27,7 @@ import {
   HealthAlertTemplate,
   HoneyTokenTriggeredTemplate,
   IntegrationSyncFailedTemplate,
+  MfaRecoveryCodeUsedTemplate,
   NewDeviceLoginTemplate,
   OAuthPasswordResetTemplate,
   OrgAdminBreakglassAccessTemplate,
@@ -33,6 +36,7 @@ import {
   OrganizationInvitationTemplate,
   PasswordResetTemplate,
   PasswordSetupTemplate,
+  PkiApprovalRequestNeedsReviewTemplate,
   PkiExpirationAlertTemplate,
   ProjectAccessRequestTemplate,
   ProjectInvitationTemplate,
@@ -75,14 +79,17 @@ export enum SmtpTemplates {
   SignupExistingAccount = "signupExistingAccount",
   EmailVerification = "emailVerification",
   EmailChangeRequestNotification = "emailChangeRequestNotification",
+  EmailChangeExistingAccount = "emailChangeExistingAccount",
   SecretReminder = "secretReminder",
   EmailMfa = "emailMfa",
+  MfaRecoveryCodeUsed = "mfaRecoveryCodeUsed",
   UnlockAccount = "unlockAccount",
   AccessApprovalRequest = "accessApprovalRequest",
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
   AccessPamRequestBypassed = "accessPamRequestBypassed",
   AccessPamRequest = "accessPamRequest",
+  PkiApprovalRequestNeedsReview = "pkiApprovalRequestNeedsReview",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
@@ -116,7 +123,8 @@ export enum SmtpTemplates {
   CredentialRotationFailed = "credentialRotationFailed",
   AuditLogMigrationAlert = "auditLogMigrationAlert",
   HoneyTokenTriggered = "honeyTokenTriggered",
-  AuditReport = "auditReport"
+  AuditReport = "auditReport",
+  AlertNotification = "alertNotification"
 }
 
 export enum SmtpHost {
@@ -137,16 +145,19 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,
   [SmtpTemplates.SignupExistingAccount]: SignupExistingAccountTemplate,
   [SmtpTemplates.EmailMfa]: EmailMfaTemplate,
+  [SmtpTemplates.MfaRecoveryCodeUsed]: MfaRecoveryCodeUsedTemplate,
   [SmtpTemplates.AccessApprovalRequest]: AccessApprovalRequestTemplate,
   [SmtpTemplates.AccessApprovalRequestUpdated]: AccessApprovalRequestUpdatedTemplate,
   [SmtpTemplates.EmailVerification]: EmailVerificationTemplate,
   [SmtpTemplates.EmailChangeRequestNotification]: EmailChangeRequestNotificationTemplate,
+  [SmtpTemplates.EmailChangeExistingAccount]: EmailChangeExistingAccountTemplate,
   [SmtpTemplates.ExternalImportFailed]: ExternalImportFailedTemplate,
   [SmtpTemplates.ExternalImportStarted]: ExternalImportStartedTemplate,
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequest]: AccessPamRequestTemplate,
+  [SmtpTemplates.PkiApprovalRequestNeedsReview]: PkiApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,
   [SmtpTemplates.OrgAdminBreakglassAccess]: OrgAdminBreakglassAccessTemplate,
   [SmtpTemplates.SecretLeakIncident]: SecretLeakIncidentTemplate,
@@ -174,7 +185,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.CredentialRotationFailed]: CredentialRotationFailedTemplate,
   [SmtpTemplates.AuditLogMigrationAlert]: AuditLogMigrationAlertTemplate,
   [SmtpTemplates.HoneyTokenTriggered]: HoneyTokenTriggeredTemplate,
-  [SmtpTemplates.AuditReport]: AuditReportTemplate
+  [SmtpTemplates.AuditReport]: AuditReportTemplate,
+  [SmtpTemplates.AlertNotification]: AlertNotificationTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

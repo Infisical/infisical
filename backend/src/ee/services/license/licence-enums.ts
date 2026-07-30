@@ -16,7 +16,8 @@ export const BillingPlanRows = {
   SecretRotation: { name: "Secret rotation", field: "secretRotation" },
   InstanceUserManagement: { name: "Instance User Management", field: "instanceUserManagement" },
   ExternalKms: { name: "External KMS", field: "externalKms" },
-  HoneyTokens: { name: "Honey Tokens", field: "honeyTokens" }
+  HoneyTokens: { name: "Honey Tokens", field: "honeyTokens" },
+  SecretsBrokering: { name: "Secrets Brokering", field: "secretsBrokering" }
 } as const;
 
 export const BillingPlanTableHead = {

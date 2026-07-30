@@ -28,6 +28,7 @@ import { EditDynamicSecretSapHanaForm } from "./EditDynamicSecretSapHanaForm";
 import { EditDynamicSecretSnowflakeForm } from "./EditDynamicSecretSnowflakeForm";
 import { EditDynamicSecretSqlProviderForm } from "./EditDynamicSecretSqlProviderForm";
 import { EditDynamicSecretSshForm } from "./EditDynamicSecretSshForm";
+import { EditDynamicSecretTailscaleForm } from "./EditDynamicSecretTailscaleForm";
 import { EditDynamicSecretTotpForm } from "./EditDynamicSecretTotpForm";
 import { EditDynamicSecretVerticaForm } from "./EditDynamicSecretVertica";
 
@@ -503,6 +504,23 @@ export const EditDynamicSecretForm = ({
           exit={{ opacity: 0, translateX: -30 }}
         >
           <EditDynamicSecretIbmApiConnectForm
+            onClose={onClose}
+            projectSlug={projectSlug}
+            secretPath={secretPath}
+            dynamicSecret={dynamicSecretDetails}
+            environment={environment}
+          />
+        </motion.div>
+      )}
+      {dynamicSecretDetails?.type === DynamicSecretProviders.Tailscale && (
+        <motion.div
+          key="tailscale-edit"
+          transition={{ duration: 0.1 }}
+          initial={{ opacity: 0, translateX: 30 }}
+          animate={{ opacity: 1, translateX: 0 }}
+          exit={{ opacity: 0, translateX: -30 }}
+        >
+          <EditDynamicSecretTailscaleForm
             onClose={onClose}
             projectSlug={projectSlug}
             secretPath={secretPath}

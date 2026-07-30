@@ -1,5 +1,4 @@
 export {
-  useDeleteWebAuthnCredential,
   useGenerateAuthenticationOptions,
   useGenerateRegistrationOptions,
   useUpdateWebAuthnCredential,
@@ -16,3 +15,4 @@ export type {
   TVerifyRegistrationDTO,
   TWebAuthnCredential
 } from "./types";
+export { useRegisterPasskey } from "./useRegisterPasskey";

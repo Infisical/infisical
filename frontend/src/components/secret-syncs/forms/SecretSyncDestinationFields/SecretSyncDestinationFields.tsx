@@ -42,6 +42,7 @@ import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
 import { RundeckSyncFields } from "./RundeckSyncFields";
 import { SnowflakeSyncFields } from "./SnowflakeSyncFields";
+import { SpaceliftSyncFields } from "./SpaceliftSyncFields";
 import { SupabaseSyncFields } from "./SupabaseSyncFields";
 import { TeamCitySyncFields } from "./TeamCitySyncFields";
 import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
@@ -151,6 +152,8 @@ export const SecretSyncDestinationFields = () => {
       return <QoverySyncFields />;
     case SecretSync.Cloud66:
       return <Cloud66SyncFields />;
+    case SecretSync.Spacelift:
+      return <SpaceliftSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

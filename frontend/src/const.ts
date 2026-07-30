@@ -7,6 +7,8 @@ export const publicPaths = [
   "/signup/sso",
   "/login",
   "/login/ldap",
+  "/login/oidc",
+  "/login/saml",
   "/blog",
   "/docs",
   "/changelog",
@@ -21,7 +23,6 @@ export const publicPaths = [
   "/password-reset",
   "/saml-sso",
   "/login/provider/error",
-  "/login/sso",
   "/admin/signup",
   "/shared/secret/[id]",
   "/secret-request/secret/[id]",
@@ -56,6 +57,10 @@ export const plans = plansProd || plansDev;
 
 export const leaveConfirmDefaultMessage =
   "Your changes will be lost if you leave the page. Are you sure you want to continue?";
+
+// Name of the sample project created during onboarding (see UserInfoStep). Referenced when
+// excluding the demo project from growth nudges; use this constant instead of the bare literal.
+export const EXAMPLE_PROJECT_NAME = "Example Project";
 
 export enum SessionStorageKeys {
   CLI_TERMINAL_TOKEN = "CLI_TERMINAL_TOKEN",

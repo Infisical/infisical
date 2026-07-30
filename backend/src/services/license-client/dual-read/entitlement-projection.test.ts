@@ -31,7 +31,7 @@ describe("projectV2ToFeatureSet", () => {
   });
 
   test("projects a nested rateLimits field via its dotted v1Field", () => {
-    const plan = projectV2ToFeatureSet(makeBase({}), makeEntitlements({ rate_limits_read_limit: { value: 500 } }));
+    const plan = projectV2ToFeatureSet(makeBase({}), makeEntitlements({ read_rate_limit: { value: 500 } }));
     expect(plan.rateLimits.readLimit).toBe(500);
   });
 

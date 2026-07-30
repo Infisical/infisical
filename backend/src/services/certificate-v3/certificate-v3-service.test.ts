@@ -27,7 +27,6 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
-import { createDistinguishedName, extractDnParts } from "../certificate-authority/certificate-authority-fns";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -36,7 +35,8 @@ import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./cer
 
 vi.mock("../certificate-common/certificate-csr-utils", () => ({
   extractCertificateRequestFromCSR: vi.fn(),
-  extractAlgorithmsFromCSR: vi.fn()
+  extractAlgorithmsFromCSR: vi.fn(),
+  buildSubjectOverrideForCsr: vi.fn()
 }));
 
 vi.mock("@peculiar/x509", async (importOriginal) => {
@@ -50,10 +50,6 @@ vi.mock("@peculiar/x509", async (importOriginal) => {
 });
 
 vi.mock("../certificate-authority/certificate-authority-fns", () => ({
-  extractDnParts: vi.fn().mockReturnValue({
-    commonName: "test.example.com"
-  }),
-  createDistinguishedName: vi.fn().mockReturnValue("CN=test.example.com"),
   assertCaInProfileProject: vi.fn()
 }));
 
@@ -62,11 +58,12 @@ describe("CertificateV3Service", () => {
 
   const mockCertificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
+    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find" | "getRequestEnrollmentTypeByCertId"
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
     updateById: vi.fn(),
+    getRequestEnrollmentTypeByCertId: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue({
       id: "new-cert-id",
       serialNumber: "123456789",
@@ -164,6 +161,7 @@ describe("CertificateV3Service", () => {
       const mockTx = {};
       return callback(mockTx);
     });
+    vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(null);
 
     // Mock ForbiddenError.from static method
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
@@ -192,11 +190,6 @@ describe("CertificateV3Service", () => {
       keyAlgorithm: "RSA_2048" as any,
       signatureAlgorithm: "RSA-SHA256" as any
     });
-
-    vi.mocked(extractDnParts).mockReturnValue({
-      commonName: "test.example.com"
-    });
-    vi.mocked(createDistinguishedName).mockReturnValue("CN=test.example.com");
 
     service = certificateV3ServiceFactory({
       certificateDAL: mockCertificateDAL,
@@ -1976,6 +1969,27 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("certificates issued from CSR (external private key) cannot be renewed");
     });
 
+    it("should reject renewal for a protocol-enrolled certificate", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(EnrollmentType.ACME);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(ForbiddenRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Certificate is not eligible for renewal: ACME certificates cannot be renewed");
+    });
+
     it("should reject renewal if certificate is already renewed", async () => {
       const alreadyRenewedCert = { ...mockOriginalCert, renewedByCertificateId: "cert-456" };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(alreadyRenewedCert);
@@ -2315,7 +2329,50 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate has already been renewed");
     });
 
-    it("should reject update with accurate enrollment type when profile is ACME", async () => {
+    it("should allow update for an API-issued certificate under a legacy ACME-labeled profile", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedByCertificateId: null,
+        notBefore: new Date(),
+        notAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null,
+        commonName: ""
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.ACME,
+        issuerType: IssuerType.CA,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(EnrollmentType.API);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
+
+      const result = await service.updateRenewalConfig({
+        actor: ActorType.USER,
+        actorId: "user-123",
+        actorAuthMethod: AuthMethod.EMAIL,
+        actorOrgId: "org-123",
+        certificateId: "cert-123",
+        renewBeforeDays: 7
+      });
+
+      expect(result).toEqual({
+        projectId: "project-123",
+        renewBeforeDays: 7,
+        commonName: ""
+      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", { renewBeforeDays: 7 }, expect.anything());
+    });
+
+    it("should reject update for a protocol-enrolled certificate regardless of key presence", async () => {
       const mockCert = {
         id: "cert-123",
         profileId: "profile-123",
@@ -2329,24 +2386,15 @@ describe("CertificateV3Service", () => {
 
       const mockProfile = {
         id: "profile-123",
-        enrollmentType: EnrollmentType.ACME,
+        enrollmentType: EnrollmentType.API,
         issuerType: IssuerType.CA,
         projectId: "project-123"
       };
 
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
-
-      await expect(
-        service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
-          certificateId: "cert-123",
-          renewBeforeDays: 7
-        })
-      ).rejects.toThrow(ForbiddenRequestError);
+      vi.mocked(mockCertificateDAL.getRequestEnrollmentTypeByCertId).mockResolvedValue(EnrollmentType.ACME);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       await expect(
         service.updateRenewalConfig({

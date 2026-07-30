@@ -236,12 +236,11 @@ export const auditLogDALFactory = (db: TDbClient) => {
       try {
         // eslint-disable-next-line no-await-in-loop
         deletedAuditLogIds = await db.transaction(async (trx) => {
-          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+          await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
 
           const findExpiredLogSubQuery = trx(TableName.AuditLog)
             .where("expiresAt", "<", today)
             .where("createdAt", "<", today) // to use audit log partition
-            .orderBy(`${TableName.AuditLog}.createdAt`, "desc")
             .select("id")
             .limit(AUDIT_LOG_PRUNE_BATCH_SIZE);
 

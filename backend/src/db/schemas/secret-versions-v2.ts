@@ -20,7 +20,6 @@ export const SecretVersionsV2Schema = z.object({
   reminderRepeatDays: z.number().nullable().optional(),
   skipMultilineEncoding: z.boolean().default(false).nullable().optional(),
   metadata: z.unknown().nullable().optional(),
-  envId: z.string().uuid().nullable().optional(),
   secretId: z.string().uuid(),
   folderId: z.string().uuid(),
   userId: z.string().uuid().nullable().optional(),

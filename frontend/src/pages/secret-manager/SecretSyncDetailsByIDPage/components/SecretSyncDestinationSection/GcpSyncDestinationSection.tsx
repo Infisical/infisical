@@ -24,6 +24,13 @@ export const GcpSyncDestinationSection = ({ secretSync }: Props) => {
           <DetailValue>{destinationConfig.locationId}</DetailValue>
         </Detail>
       )}
+      {destinationConfig.scope === GcpSyncScope.Global &&
+        Boolean(destinationConfig.userReplicaLocationIds?.length) && (
+          <Detail>
+            <DetailLabel>Replica Regions</DetailLabel>
+            <DetailValue>{destinationConfig.userReplicaLocationIds?.join(", ")}</DetailValue>
+          </Detail>
+        )}
     </>
   );
 };

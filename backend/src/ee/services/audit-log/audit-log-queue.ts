@@ -132,8 +132,7 @@ export const auditLogQueueServiceFactory = async ({
     await keyStore.streamAdd(AUDIT_LOG_STREAM_KEY, "*", { data: JSON.stringify(entry) });
     auditLogEnqueuedCounter.add(1, {
       "audit_log.event_type": entry.event?.type ?? "unknown",
-      "audit_log.actor_type": entry.actor?.type ?? "unknown",
-      "infisical.organization.id": entry.orgId
+      "audit_log.actor_type": entry.actor?.type ?? "unknown"
     });
   };
 

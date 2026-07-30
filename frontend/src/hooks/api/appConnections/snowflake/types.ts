@@ -6,6 +6,10 @@ export type TSnowflakeSchema = {
   name: string;
 };
 
+export type TSnowflakeUser = {
+  name: string;
+};
+
 export type TListSnowflakeSchemas = {
   connectionId: string;
   database: string;

@@ -4,6 +4,7 @@ import { Auth0ClientSecretRotationSchema } from "@app/ee/services/secret-rotatio
 import { AwsIamUserSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { DatabricksServicePrincipalSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
+import { DatadogApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/datadog-api-key";
 import { DatadogApplicationKeySecretRotationSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { LiteLLMApiKeyRotationSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
@@ -24,6 +25,7 @@ import { ConvexAccessKeyRotationSchema } from "./convex-access-key";
 import { DbtServiceTokenRotationSchema } from "./dbt-service-token";
 import { FireworksApiKeyRotationSchema } from "./fireworks-api-key";
 import { HpIloRotationSchema } from "./hp-ilo-rotation";
+import { SnowflakeUserKeyPairRotationSchema } from "./snowflake-user-key-pair";
 import { SupabaseApiKeyRotationSchema } from "./supabase-api-key";
 
 export const SecretRotationV2Schema = z.discriminatedUnion("type", [
@@ -49,6 +51,8 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   SupabaseApiKeyRotationSchema,
   SalesforceOauthCredentialsRotationSchema,
   DatadogApplicationKeySecretRotationSchema,
+  DatadogApiKeyRotationSchema,
   ConvexAccessKeyRotationSchema,
-  FireworksApiKeyRotationSchema
+  FireworksApiKeyRotationSchema,
+  SnowflakeUserKeyPairRotationSchema
 ]);

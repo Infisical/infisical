@@ -290,6 +290,22 @@ export const RequestDetailModal = ({ popUp, handlePopUpToggle }: Props) => {
                     : "Not specified"}
                 </span>
               </div>
+              {requestData.certificateRequest?.domainComponents &&
+                requestData.certificateRequest.domainComponents.length > 0 && (
+                  <div>
+                    <span className="text-sm text-mineshaft-400">Domain Components</span>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {requestData.certificateRequest.domainComponents.map((dc) => (
+                        <span
+                          key={dc}
+                          className="rounded bg-mineshaft-600 px-2 py-0.5 text-xs text-mineshaft-200"
+                        >
+                          {dc}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               {requestData.certificateRequest?.altNames &&
                 requestData.certificateRequest.altNames.length > 0 && (
                   <div>

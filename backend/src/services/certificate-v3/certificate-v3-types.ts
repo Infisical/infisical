@@ -17,6 +17,7 @@ export type TIssueCertificateFromProfileDTO = {
     country?: string;
     state?: string;
     locality?: string;
+    domainComponents?: string[];
     keyUsages?: CertKeyUsageType[];
     extendedKeyUsages?: CertExtendedKeyUsageType[];
     altNames?: Array<{

@@ -157,7 +157,7 @@ export const getProjectDescription = (type: ProjectType) => {
     [ProjectType.SecretScanning]:
       "Continuously scan repositories, builds, and runtime artifacts for leaked secrets and misconfigurations.",
     [ProjectType.PAM]:
-      "Grant privileged users and machines just-in-time access with session brokering and credential vaulting."
+      "Connect to databases and servers securely with session brokering, recording, and credential vaulting."
   };
   return descriptions[type] ?? "";
 };

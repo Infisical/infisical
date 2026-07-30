@@ -50,12 +50,16 @@ const SanitizedAccountListItemSchema = BaseAccountFields.extend({
   accountType: z.string()
 });
 
-// The admin list surfaces accessibility so unusable accounts can be flagged in the UI
-const AdminAccountListItemSchema = SanitizedAccountListItemSchema.extend({
+const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
   accessibilityIssues: z
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
-    .describe("Reasons the account cannot launch a session, if any")
+    .describe("Reasons the account cannot launch a session, if any"),
+  requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
+  requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
+  accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
+  grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
+  permissions: z.any().array().describe("The caller's effective (packed) resource permissions on this account")
 });
 
 const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([accountType, config]) =>
@@ -107,9 +111,9 @@ const registerPerTypeEndpoints = (
         gatewayId: z.string().uuid().optional().describe("The ID of the gateway to use"),
         gatewayPoolId: z.string().uuid().optional().describe("The ID of the gateway pool to use"),
         recordingConnectionId: z.string().uuid().optional().describe("The ID of the recording connection to use"),
-        settingsOverrides: PamAccountSettingsOverridesSchema.optional().describe(
-          "Account-level template settings overrides"
-        )
+        settingsOverrides: PamAccountSettingsOverridesSchema.nullable()
+          .optional()
+          .describe("Account-level template settings overrides")
       }),
       response: {
         200: z.object({
@@ -192,9 +196,9 @@ const registerPerTypeEndpoints = (
           .nullable()
           .optional()
           .describe("The ID of the recording connection to use"),
-        settingsOverrides: PamAccountSettingsOverridesSchema.optional().describe(
-          "Account-level template settings overrides"
-        )
+        settingsOverrides: PamAccountSettingsOverridesSchema.nullable()
+          .optional()
+          .describe("Account-level template settings overrides")
       }),
       response: {
         200: z.object({
@@ -346,10 +350,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         folderId: z.string().uuid().optional().describe("Filter accounts by folder ID"),
         templateId: z.string().uuid().optional().describe("Filter accounts by template ID"),
-        search: z.string().optional().describe("Filter accounts by name")
+        accountType: z.nativeEnum(PamAccountType).optional().describe("Filter accounts by platform type"),
+        search: z.string().trim().optional().describe("Filter accounts by name")
       }),
       response: {
-        200: z.object({ accounts: z.array(AdminAccountListItemSchema) })
+        200: z.object({ accounts: z.array(PamAccountListItemSchema) })
       }
     },
     config: { rateLimit: readLimit },
@@ -359,6 +364,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
         templateId: req.query.templateId,
+        accountType: req.query.accountType,
         search: req.query.search,
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -481,7 +487,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     lastRotatedAt: z.date().nullable(),
     rotationStatus: z.string().nullable(),
     lastRotationError: z.string().nullable(),
-    isReady: z.boolean()
+    isReady: z.boolean(),
+    sharedIdentity: z.object({ id: z.string(), name: z.string(), discoverySources: z.string().array() }).array()
   });
 
   server.route({
@@ -506,6 +513,47 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod
       });
       return { rotation };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accountId/dependencies",
+    schema: {
+      operationId: "listPamAccountDependencies",
+      description:
+        "List the detected dependencies (Windows services, scheduled tasks, IIS app pools) for a PAM account",
+      tags: [ApiDocsTags.PamAccounts],
+      params: z.object({ accountId: z.string().uuid().describe("The ID of the account") }),
+      response: {
+        200: z.object({
+          dependencies: z.array(
+            z.object({
+              id: z.string(),
+              type: z.string(),
+              name: z.string(),
+              machine: z.string(),
+              data: z.unknown(),
+              rotationStatus: z.string().nullable(),
+              lastRotatedAt: z.date().nullable(),
+              lastRotationMessage: z.string().nullable()
+            })
+          )
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const dependencies = await server.services.pamDiscovery.listAccountDependencies({
+        accountId: req.params.accountId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { dependencies };
     }
   });
 
@@ -549,7 +597,21 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return result;
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotationConfigured,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: result.accountType,
+            orgId: req.permission.orgId,
+            hasRotationAccount: Boolean(result.rotationAccountId),
+            scheduledRotationEnabled: result.scheduledRotationEnabled
+          }
+        })
+        .catch(() => {});
+
+      return { rotationAccountId: result.rotationAccountId };
     }
   });
 
@@ -596,6 +658,19 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       if (result.rotationStatus !== ROTATION_STATUS.Success) {
         throw new BadRequestError({ message: result.message ?? "Rotation failed" });
       }
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.PamAccountRotated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            accountType: result.accountType,
+            orgId: req.permission.orgId
+          }
+        })
+        .catch(() => {});
+
       return { rotationStatus: result.rotationStatus };
     }
   });
@@ -696,7 +771,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
             metadata: {
               accountId: req.params.accountId,
-              keyAlgorithm: result.keyAlgorithm!
+              keyAlgorithm: result.keyAlgorithm || "unknown"
             }
           }
         });
@@ -721,7 +796,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.pamAccount.getSshCaPublicKey({
+      const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -729,6 +804,23 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+
+      if (result.created) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+            metadata: {
+              accountId: req.params.accountId,
+              keyAlgorithm: result.keyAlgorithm!
+            }
+          }
+        });
+      }
+
+      return { publicKey: result.publicKey };
     }
   });
 
@@ -747,7 +839,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, reply) => {
-      const { publicKey: caPublicKey } = await server.services.pamAccount.getSshCaPublicKey({
+      const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -755,6 +847,23 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+      // Trim trailing newline; otherwise the script's echo/grep treat it as a blank line and skip later keys.
+      const caPublicKey = result.publicKey.trim();
+
+      if (result.created) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalPamProjectId,
+          event: {
+            type: EventType.PAM_ACCOUNT_SSH_CA_CREATE,
+            metadata: {
+              accountId: req.params.accountId,
+              keyAlgorithm: result.keyAlgorithm || "unknown"
+            }
+          }
+        });
+      }
 
       const setupScript = `#!/bin/bash
 set -e
@@ -771,21 +880,32 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-echo "==> Writing CA public key to \${CA_FILE}..."
-echo "\${CA_PUBLIC_KEY}" > "\${CA_FILE}"
-chmod 644 "\${CA_FILE}"
-echo "    Done."
+echo "==> Configuring the trusted CA file..."
 
-if grep -q "^TrustedUserCAKeys" "\${SSHD_CONFIG}"; then
-    EXISTING_CA_FILE=$(grep "^TrustedUserCAKeys" "\${SSHD_CONFIG}" | awk '{print $2}')
-    if [ "\${EXISTING_CA_FILE}" = "\${CA_FILE}" ]; then
-        echo "==> TrustedUserCAKeys already configured for \${CA_FILE}"
-    else
-        echo "Warning: TrustedUserCAKeys is already set to \${EXISTING_CA_FILE}"
-        echo "         You may need to manually update sshd_config to use \${CA_FILE}"
-        echo "         or combine multiple CA keys into a single file."
+# Reuse the host's existing TrustedUserCAKeys file if set (sshd honors only the first); else use our own.
+CONFIGURE_SSHD=true
+if grep -qE "^[[:space:]]*TrustedUserCAKeys[[:space:]]" "\${SSHD_CONFIG}"; then
+    EXISTING_CA_FILE=$(grep -E "^[[:space:]]*TrustedUserCAKeys[[:space:]]" "\${SSHD_CONFIG}" | head -n1 | awk '{print $2}')
+    if [ -n "\${EXISTING_CA_FILE}" ]; then
+        CA_FILE="\${EXISTING_CA_FILE}"
+        CONFIGURE_SSHD=false
+        echo "    Adding to existing TrustedUserCAKeys file: \${CA_FILE}"
     fi
+fi
+
+# Ensure the file exists and is sshd-readable (public keys are not secret)
+touch "\${CA_FILE}"
+chmod 644 "\${CA_FILE}"
+
+# Additive + idempotent: append only if not already trusted; never removes existing CAs
+if grep -qxF "\${CA_PUBLIC_KEY}" "\${CA_FILE}"; then
+    echo "    CA key already present in \${CA_FILE}"
 else
+    echo "\${CA_PUBLIC_KEY}" >> "\${CA_FILE}"
+    echo "    Added Infisical CA key to \${CA_FILE}"
+fi
+
+if [ "\${CONFIGURE_SSHD}" = "true" ]; then
     echo "==> Adding TrustedUserCAKeys to \${SSHD_CONFIG}..."
     echo "" >> "\${SSHD_CONFIG}"
     echo "# Infisical SSH CA - Added by setup script" >> "\${SSHD_CONFIG}"

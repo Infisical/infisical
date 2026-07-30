@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { featureReaderFactory } from "./feature-reader";
-import { AuditRetentionDays, MaxIdentities, SsoEnforcement } from "./features";
+import { AuditRetentionDays, IdentitiesMeter, SsoEnforcement } from "./features";
 import { licenseClientFactory } from "./license-client";
 import { entitlementResolverFactory } from "./license-client-cache";
 import { TEntitlementsResponse } from "./license-client-types";
@@ -62,19 +62,19 @@ const createStubBackend = (response: TEntitlementsResponse, opts: { fail?: boole
 };
 
 describe("entitlementResolverFactory", () => {
-  test("fetches once then serves subsequent reads from the cache", async () => {
+  // Entitlements are no longer cached here — the hot reader (getPlan) caches its projection upstream —
+  // so every read hits the backend directly.
+  test("fetches from the backend on every read", async () => {
     const keyStore = createFakeKeyStore();
-    const { backend, getCalls } = createStubBackend(
-      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
-    );
+    const { backend, getCalls } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
     const first = await resolver.getEntitlements({ id: ORG_ID });
-    expect(first?.features.max_identities.value).toBe(100);
+    expect(first?.features.identities.value).toBe(100);
     expect(getCalls()).toBe(1);
 
     await resolver.getEntitlements({ id: ORG_ID });
-    expect(getCalls()).toBe(1); // served from the cache
+    expect(getCalls()).toBe(2); // no cache — fetched again
   });
 
   test("returns null when the server is unreachable", async () => {
@@ -85,34 +85,13 @@ describe("entitlementResolverFactory", () => {
     expect(await resolver.getEntitlements({ id: ORG_ID })).toBeNull();
   });
 
-  test("forwards org identity to the backend even after an identity-less call seeded the cache", async () => {
+  test("forwards the org identity to the backend so the license server stays current", async () => {
     const keyStore = createFakeKeyStore();
-    const { backend, getCalls, getOrgs } = createStubBackend(
-      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
-    );
-    const resolver = entitlementResolverFactory({ keyStore, backend });
-
-    await resolver.getEntitlements({ id: ORG_ID }); // feature-check style, identity-less
-    expect(getCalls()).toBe(1);
-    expect(getOrgs()[0]).toEqual({ id: ORG_ID });
-
-    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-    expect(getCalls()).toBe(2); // bypassed the identity-less cache entry
-    expect(getOrgs()[1]).toEqual({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-  });
-
-  test("syncs org identity once per ttl window then serves from the cache", async () => {
-    const keyStore = createFakeKeyStore();
-    const { backend, getCalls } = createStubBackend(
-      makeEntitlements({ max_identities: { value: 100, source: "plan" } })
-    );
+    const { backend, getOrgs } = createStubBackend(makeEntitlements({ identities: { value: 100, source: "plan" } }));
     const resolver = entitlementResolverFactory({ keyStore, backend });
 
     await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-    expect(getCalls()).toBe(1);
-
-    await resolver.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-    expect(getCalls()).toBe(1); // identity already synced, served from the cache
+    expect(getOrgs()[0]).toEqual({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
   });
 });
 
@@ -122,35 +101,35 @@ describe("featureReaderFactory", () => {
 
     expect((await reader.getFeature(ORG_ID, SsoEnforcement)).value).toBe(false);
     expect((await reader.getFeature(ORG_ID, AuditRetentionDays)).value).toBe(30);
-    expect((await reader.getFeature(ORG_ID, MaxIdentities)).value).toBe(0);
+    expect((await reader.getFeature(ORG_ID, IdentitiesMeter)).value).toBe(0);
   });
 
   test("returns server-resolved values when present", async () => {
     const entitlements = makeEntitlements({
       sso_enforcement: { value: true, source: "plan", from_product: "boost" },
-      max_identities: { value: 100, source: "plan", from_product: "secrets_management" }
+      identities: { value: 100, source: "plan", from_product: "secrets_management" }
     });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
 
     expect((await reader.getFeature(ORG_ID, SsoEnforcement)).value).toBe(true);
-    expect((await reader.getFeature(ORG_ID, MaxIdentities)).value).toBe(100);
+    expect((await reader.getFeature(ORG_ID, IdentitiesMeter)).value).toBe(100);
   });
 
   test("canUse enforces the cap against a registered counter", async () => {
-    const entitlements = makeEntitlements({ max_identities: { value: 100, source: "plan" } });
+    const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
-    reader.registerCounter(MaxIdentities, async () => 99);
+    reader.registerCounter(IdentitiesMeter, async () => 99);
 
-    const limit = await reader.getFeature(ORG_ID, MaxIdentities);
+    const limit = await reader.getFeature(ORG_ID, IdentitiesMeter);
     expect(await limit.canUse(1)).toBe(true);
     expect(await limit.canUse(2)).toBe(false);
   });
 
   test("canUse without a registered counter compares the request against the cap", async () => {
-    const entitlements = makeEntitlements({ max_identities: { value: 100, source: "plan" } });
+    const entitlements = makeEntitlements({ identities: { value: 100, source: "plan" } });
     const reader = featureReaderFactory({ getEntitlements: async () => entitlements });
 
-    const limit = await reader.getFeature(ORG_ID, MaxIdentities);
+    const limit = await reader.getFeature(ORG_ID, IdentitiesMeter);
     expect(await limit.canUse(50)).toBe(true);
     expect(await limit.canUse(101)).toBe(false);
   });
@@ -169,7 +148,7 @@ describe("licenseClientFactory (usage example)", () => {
   });
 
   // A metered feature needs its live-count source registered once at init.
-  licenseClient.registerCounter(MaxIdentities, async () => 4);
+  licenseClient.registerCounter(IdentitiesMeter, async () => 4);
 
   test("boolean gate", async () => {
     const sso = await licenseClient.getFeature(ORG_ID, SsoEnforcement);
@@ -180,7 +159,7 @@ describe("licenseClientFactory (usage example)", () => {
   });
 
   test("limit gate via canUse", async () => {
-    const identities = await licenseClient.getFeature(ORG_ID, MaxIdentities);
+    const identities = await licenseClient.getFeature(ORG_ID, IdentitiesMeter);
     // throw a LimitExceededError here in real code
     expect(await identities.canUse(1)).toBe(false); // fallback cap is 0, current is 4
   });

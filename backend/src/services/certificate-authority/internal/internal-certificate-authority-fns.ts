@@ -14,6 +14,7 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
@@ -179,7 +180,7 @@ export const InternalCertificateAuthorityFns = ({
 
     if (subscriber.extendedKeyUsages.length) {
       const extendedKeyUsagesExtension = new x509.ExtendedKeyUsageExtension(
-        subscriber.extendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku as CertExtendedKeyUsage]),
+        subscriber.extendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku as CertExtendedKeyUsage]),
         true
       );
       extensions.push(extendedKeyUsagesExtension);
@@ -467,7 +468,7 @@ export const InternalCertificateAuthorityFns = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );

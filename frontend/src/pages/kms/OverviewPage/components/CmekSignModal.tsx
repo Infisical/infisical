@@ -74,9 +74,8 @@ const SignForm = ({ cmek }: FormProps) => {
   };
 
   const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.encryptionAlgorithm?.startsWith("ML_DSA"))
-      return (a as string) === (cmek.encryptionAlgorithm as string);
-    if (cmek?.encryptionAlgorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
+    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
+    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
     return a.toLowerCase().startsWith("ecdsa");
   });
 

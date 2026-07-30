@@ -8,7 +8,10 @@ export enum TriggerFeature {
   SECRET_APPROVAL = "secret-approval",
   ACCESS_REQUEST = "access-request",
   ACCESS_REQUEST_UPDATED = "access-request-updated",
-  SECRET_SYNC_ERROR = "secret-sync-error"
+  SECRET_SYNC_ERROR = "secret-sync-error",
+  PAM_ACCESS_REQUESTED = "pam-access-requested",
+  PAM_ACCESS_REQUEST_APPROVED = "pam-access-request-approved",
+  PAM_ACCESS_REQUEST_DENIED = "pam-access-request-denied"
 }
 
 export type TNotification =
@@ -69,6 +72,29 @@ export type TNotification =
         secretPath: string;
         projectName: string;
         projectPath: string;
+      };
+    }
+  | {
+      type: TriggerFeature.PAM_ACCESS_REQUESTED;
+      payload: {
+        requesterFullName: string;
+        requesterEmail: string;
+        accountName: string;
+        folderName: string;
+        accessDuration: string;
+        reason?: string;
+        approvalUrl: string;
+      };
+    }
+  | {
+      type: TriggerFeature.PAM_ACCESS_REQUEST_APPROVED | TriggerFeature.PAM_ACCESS_REQUEST_DENIED;
+      payload: {
+        requesterFullName: string;
+        requesterEmail: string;
+        accountName: string;
+        folderName: string;
+        comment?: string;
+        approvalUrl: string;
       };
     };
 

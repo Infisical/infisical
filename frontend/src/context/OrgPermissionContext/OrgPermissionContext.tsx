@@ -4,11 +4,8 @@ import { unpackRules } from "@casl/ability/extra";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 
-import {
-  conditionsMatcher,
-  fetchUserOrgPermissions,
-  roleQueryKeys
-} from "@app/hooks/api/roles/queries";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
+import { fetchUserOrgPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
 
 import { OrgPermissionSet } from "./types";
 

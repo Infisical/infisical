@@ -11,6 +11,7 @@ import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/
 
 import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
+import { registerAlertRouter } from "./alert-router";
 import { registerAnnouncementRouter } from "./announcement-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
@@ -93,6 +94,7 @@ import { registerSignerRouter } from "./signer-routers";
 import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
+import { registerUserActivationRouter } from "./user-activation-router";
 import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
@@ -137,9 +139,11 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
   await server.register(registerNotificationRouter, { prefix: "/notifications" });
+  await server.register(registerAlertRouter, { prefix: "/alerts" });
   await server.register(registerAnnouncementRouter, { prefix: "/announcement" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
+  await server.register(registerUserActivationRouter, { prefix: "/user-activation" });
   await server.register(registerDeprecatedSecretImportRouter, { prefix: "/secret-imports" });
   await server.register(registerProjectFolderGrantRouter, { prefix: "/project-folder-grants" });
   await server.register(registerDeprecatedSecretFolderRouter, { prefix: "/folders" });

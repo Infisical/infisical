@@ -80,6 +80,9 @@ const checkIfUserNeedsToApprove = (
   userId: string,
   userGroups: string[]
 ): boolean => {
+  if (request.type === ApprovalPolicyType.CertCodeSigning && request.requesterId === userId)
+    return false;
+
   const currentStep = request.steps.find(
     (step) => step.status === ApprovalRequestStepStatus.InProgress
   );

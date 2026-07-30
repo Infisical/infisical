@@ -42,6 +42,7 @@ import {
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
+import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
 const addMemberFormSchema = z.object({
   orgMemberships: z
@@ -203,23 +204,12 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             ? `${firstName} ${lastName}`
             : firstName || lastName || email || inviteEmail
       }));
-    const requesterStatus = { isProjectUser: wsUserUsernames.has(requesterEmail), userLabel: "" };
-    if (!requesterStatus.isProjectUser) {
-      const userDetails = orgUsers?.find((el) => el.user.username === requesterEmail);
-      if (userDetails) {
-        const { user } = userDetails;
-        const label =
-          user.firstName && user.lastName
-            ? `${user.firstName} ${user.lastName}`
-            : user.firstName || user.lastName || (user.email as string);
-        requesterStatus.userLabel = label;
-        setValue("orgMemberships", [
-          {
-            value: userDetails.id,
-            label
-          }
-        ]);
-      }
+
+    const requesterStatus = getRequesterStatus(requesterEmail, orgUsers, wsUserUsernames);
+    if (!requesterStatus.isProjectUser && requesterStatus.userId) {
+      setValue("orgMemberships", [
+        { value: requesterStatus.userId, label: requesterStatus.userLabel }
+      ]);
     }
 
     return { list, requesterStatus };

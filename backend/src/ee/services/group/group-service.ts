@@ -2,7 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipRole, TGroups, TRoles } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrganizationActionScope,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TGroups,
+  TRoles
+} from "@app/db/schemas";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
@@ -16,7 +23,12 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -90,6 +102,9 @@ type TGroupServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -109,7 +124,10 @@ export const groupServiceFactory = ({
   licenseService,
   oidcConfigDAL,
   membershipGroupDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  usageMeteringService,
+  identityAccessTokenService,
+  alertChannelRecipientDAL
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -420,6 +438,8 @@ export const groupServiceFactory = ({
 
       const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
       await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds }, tx);
     });
   };
 
@@ -540,6 +560,8 @@ export const groupServiceFactory = ({
       membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
 
       await deleteMembershipsInBatch(membershipIdsToDelete, tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
     });
 
     return group;
@@ -558,12 +580,25 @@ export const groupServiceFactory = ({
       });
     }
 
-    const [deletedGroup] = await groupDAL.delete({
-      id: groupId,
-      orgId: actorOrgId
-    });
+    return groupDAL.transaction(async (tx) => {
+      const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
+        { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
 
-    return deletedGroup;
+      const [deletedGroup] = await groupDAL.delete(
+        {
+          id: groupId,
+          orgId: actorOrgId
+        },
+        tx
+      );
+
+      await finalizeAlertRecipients();
+
+      return deletedGroup;
+    });
   };
 
   const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
@@ -603,10 +638,16 @@ export const groupServiceFactory = ({
         groupMembershipId: groupMembership.id,
         actorOrgId
       });
+      // Removing the group drops its members from any project it was on.
+      usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+      usageMeteringService.emit(actorOrgId, PamIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorOrgId });
+    // Deleting the group drops its members from any project it was on.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -950,7 +991,32 @@ export const groupServiceFactory = ({
       projectBotDAL
     });
 
+    // The user may now be in a secret-manager or PAM project through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { user: users[0], group: groupMembership.group };
+  };
+
+  // Joining/leaving this group changes the identity's effective org
+  // access only in orgs where the group holds a membership row and the identity
+  // has no direct access.
+  const groupMembershipAffectsIdentityOrgAccess = async (groupId: string, identityId: string) => {
+    const groupOrgMemberships = await membershipDAL.find({
+      scope: AccessScope.Organization,
+      actorGroupId: groupId
+    });
+    if (groupOrgMemberships.length === 0) return false;
+
+    const identityDirectMemberships = await membershipDAL.find({
+      scope: AccessScope.Organization,
+      actorIdentityId: identityId
+    });
+    const directOrgIds = new Set(
+      identityDirectMemberships
+        .filter((membership) => !membership.status || membership.status === OrgMembershipStatus.Accepted)
+        .map((membership) => membership.scopeOrgId)
+    );
+    return groupOrgMemberships.some((membership) => !directOrgIds.has(membership.scopeOrgId));
   };
 
   const addMachineIdentityToGroup = async ({
@@ -1031,6 +1097,16 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL
     });
 
+    // Gaining a group can restore the identity's effective org access, so cached
+    // membership denies must re-check. Skipped when the group grants no org the
+    // identity lacks directly.
+    if (await groupMembershipAffectsIdentityOrgAccess(id, identityId)) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
+
+    // The identity may now be in a secret-manager or PAM project through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1114,7 +1190,8 @@ export const groupServiceFactory = ({
       userDAL,
       userGroupMembershipDAL,
       membershipGroupDAL,
-      projectKeyDAL
+      projectKeyDAL,
+      alertChannelRecipientDAL
     });
 
     await cleanUpSubOrgProjectMemberships({
@@ -1123,6 +1200,9 @@ export const groupServiceFactory = ({
       identityIds: []
     });
 
+    // The user may have left a secret-manager or PAM project it only reached through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1209,6 +1289,15 @@ export const groupServiceFactory = ({
       identityIds: [identityId]
     });
 
+    // Losing a group can remove the identity's effective org access. Skipped when
+    // the group granted no org the identity lacks directly
+    if (await groupMembershipAffectsIdentityOrgAccess(id, identityId)) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
+
+    // The identity may have left a secret-manager or PAM project it only reached through this group.
+    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, PamIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

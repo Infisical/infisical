@@ -205,96 +205,98 @@ export const HsmConnectorsTab = () => {
           <Skeleton className="h-24" />
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Reached from</TableHead>
-                  <TableHead>Slot</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-[60px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    className="cursor-pointer hover:bg-mineshaft-700"
-                    onClick={() => openDetail(c.id)}
-                  >
-                    <TableCell>{c.name}</TableCell>
-                    <TableCell>{reachedFromLabel(c)}</TableCell>
-                    <TableCell>{c.slotLabel}</TableCell>
-                    <TableCell>{format(new Date(c.createdAt), "MMM d, yyyy")}</TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton aria-label="Actions" variant="ghost">
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              navigator.clipboard.writeText(c.id);
-                              setCopiedId(c.id);
-                            }}
-                          >
-                            {copiedId === c.id ? <CheckIcon /> : <CopyIcon />}
-                            Copy Connector ID
-                          </DropdownMenuItem>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionHsmConnectorActions.Test}
-                            a={ProjectPermissionSub.HsmConnectors}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed || testingId === c.id}
-                                onClick={() => handleTest(c.id)}
-                              >
-                                <CheckCircle2Icon />
-                                {testingId === c.id ? "Verifying..." : "Verify"}
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionHsmConnectorActions.Edit}
-                            a={ProjectPermissionSub.HsmConnectors}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                isDisabled={!isAllowed}
-                                onClick={() => setEditing(c)}
-                              >
-                                <PencilIcon />
-                                Edit Details
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionHsmConnectorActions.Delete}
-                            a={ProjectPermissionSub.HsmConnectors}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                variant="danger"
-                                isDisabled={!isAllowed}
-                                onClick={() => setDeleting(c)}
-                              >
-                                <Trash2Icon />
-                                Delete Connector
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            {filtered.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Reached from</TableHead>
+                    <TableHead>Slot</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="w-[60px]" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((c) => (
+                    <TableRow
+                      key={c.id}
+                      className="cursor-pointer hover:bg-mineshaft-700"
+                      onClick={() => openDetail(c.id)}
+                    >
+                      <TableCell>{c.name}</TableCell>
+                      <TableCell>{reachedFromLabel(c)}</TableCell>
+                      <TableCell>{c.slotLabel}</TableCell>
+                      <TableCell>{format(new Date(c.createdAt), "MMM d, yyyy")}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton aria-label="Actions" variant="ghost">
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                navigator.clipboard.writeText(c.id);
+                                setCopiedId(c.id);
+                              }}
+                            >
+                              {copiedId === c.id ? <CheckIcon /> : <CopyIcon />}
+                              Copy Connector ID
+                            </DropdownMenuItem>
+                            <ProjectPermissionCan
+                              I={ProjectPermissionHsmConnectorActions.Test}
+                              a={ProjectPermissionSub.HsmConnectors}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  isDisabled={!isAllowed || testingId === c.id}
+                                  onClick={() => handleTest(c.id)}
+                                >
+                                  <CheckCircle2Icon />
+                                  {testingId === c.id ? "Verifying..." : "Verify"}
+                                </DropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                            <ProjectPermissionCan
+                              I={ProjectPermissionHsmConnectorActions.Edit}
+                              a={ProjectPermissionSub.HsmConnectors}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  isDisabled={!isAllowed}
+                                  onClick={() => setEditing(c)}
+                                >
+                                  <PencilIcon />
+                                  Edit Details
+                                </DropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                            <ProjectPermissionCan
+                              I={ProjectPermissionHsmConnectorActions.Delete}
+                              a={ProjectPermissionSub.HsmConnectors}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  variant="danger"
+                                  isDisabled={!isAllowed}
+                                  onClick={() => setDeleting(c)}
+                                >
+                                  <Trash2Icon />
+                                  Delete Connector
+                                </DropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
             {filtered.length === 0 && (
-              <Empty className="border border-solid">
+              <Empty className="border">
                 <EmptyHeader>
                   <EmptyTitle>No HSM Connectors</EmptyTitle>
                   <EmptyDescription>

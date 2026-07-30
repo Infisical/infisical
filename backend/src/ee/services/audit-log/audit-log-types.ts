@@ -1,6 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
+import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
   TCreateProjectTemplateDTO,
   TUpdateProjectTemplateDTO
@@ -29,6 +30,7 @@ import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certif
 import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
 import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
+import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -541,6 +543,8 @@ export enum EventType {
   CMEK_DECRYPT = "cmek-decrypt",
   CMEK_SIGN = "cmek-sign",
   CMEK_VERIFY = "cmek-verify",
+  CMEK_GENERATE_MAC = "cmek-generate-mac",
+  CMEK_VERIFY_MAC = "cmek-verify-mac",
   CMEK_LIST_SIGNING_ALGORITHMS = "cmek-list-signing-algorithms",
   CMEK_GET_PUBLIC_KEY = "cmek-get-public-key",
   CMEK_GET_PRIVATE_KEY = "cmek-get-private-key",
@@ -698,6 +702,7 @@ export enum EventType {
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
+  SEARCH_SECRETS_BY_METADATA = "search-secrets-by-metadata",
 
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
@@ -744,6 +749,11 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
+  PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
+  PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
+  PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
+  PAM_DISCOVERY_SCAN = "pam-discovery-scan",
+  PAM_DISCOVERED_ACCOUNT_IMPORT = "pam-discovered-account-import",
   PAM_ACCOUNT_ROTATE_CREDENTIALS = "pam-account-rotate-credentials",
   PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
@@ -816,6 +826,12 @@ export enum EventType {
   DELETE_DYNAMIC_SECRET = "delete-dynamic-secret",
   GET_DYNAMIC_SECRET = "get-dynamic-secret",
   LIST_DYNAMIC_SECRETS = "list-dynamic-secrets",
+
+  // Proxied Services
+  CREATE_PROXIED_SERVICE = "create-proxied-service",
+  UPDATE_PROXIED_SERVICE = "update-proxied-service",
+  DELETE_PROXIED_SERVICE = "delete-proxied-service",
+  SIGN_AGENT_PROXY_INTERMEDIATE_CA = "sign-agent-proxy-intermediate-ca",
 
   // Dynamic Secret Leases
   CREATE_DYNAMIC_SECRET_LEASE = "create-dynamic-secret-lease",
@@ -917,7 +933,13 @@ export enum EventType {
 
   // Project Grants
   CREATE_PROJECT_FOLDER_GRANT = "create-project-folder-grant",
-  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant"
+  DELETE_PROJECT_FOLDER_GRANT = "delete-project-folder-grant",
+
+  // Alerts
+  CREATE_ALERT = "create-alert",
+  UPDATE_ALERT = "update-alert",
+  DELETE_ALERT = "delete-alert",
+  TEST_ALERT_CHANNEL = "test-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -1902,6 +1924,7 @@ interface AddIdentityTlsCertAuthEvent {
     identityId: string;
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
+    verifyClientCertificateChain: boolean;
     accessTokenTTL: number;
     accessTokenMaxTTL: number;
     accessTokenNumUsesLimit: number;
@@ -1922,6 +1945,7 @@ interface UpdateIdentityTlsCertAuthEvent {
     identityId: string;
     allowedCommonNames: string | null | undefined;
     allowedSubjectAltNames: string[] | null | undefined;
+    verifyClientCertificateChain?: boolean;
     accessTokenTTL?: number;
     accessTokenMaxTTL?: number;
     accessTokenNumUsesLimit?: number;
@@ -4051,6 +4075,9 @@ interface SetPkiApplicationScepEnrollment {
     applicationId: string;
     profileId: string;
     challengeType: string;
+    signRaWithCa: boolean;
+    validationConnectionId?: string;
+    validationConnectionName?: string;
   };
 }
 
@@ -4330,7 +4357,7 @@ interface CreateCmekEvent {
     keyId: string;
     name: string;
     description?: string;
-    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm;
+    encryptionAlgorithm: SymmetricKeyAlgorithm | AsymmetricKeyAlgorithm | HmacAlgorithm;
     isExportable?: boolean;
   };
 }
@@ -4403,6 +4430,25 @@ interface CmekVerifyEvent {
     signingAlgorithm: SigningAlgorithm;
     signature: string;
     signatureValid: boolean;
+  };
+}
+
+interface CmekGenerateMacEvent {
+  type: EventType.CMEK_GENERATE_MAC;
+  metadata: {
+    keyId: string;
+    macAlgorithm: HmacAlgorithm;
+    mac: string;
+  };
+}
+
+interface CmekVerifyMacEvent {
+  type: EventType.CMEK_VERIFY_MAC;
+  metadata: {
+    keyId: string;
+    macAlgorithm: HmacAlgorithm;
+    mac: string;
+    macValid: boolean;
   };
 }
 
@@ -4765,6 +4811,8 @@ interface CreatePkiSyncEvent {
     name: string;
     destination: string;
     applicationId?: string;
+    connectionId?: string;
+    hasCredentials?: boolean;
   };
 }
 
@@ -5700,6 +5748,17 @@ interface DashboardListSecretsEvent {
   };
 }
 
+interface SearchSecretsByMetadataEvent {
+  type: EventType.SEARCH_SECRETS_BY_METADATA;
+  metadata: {
+    operator: string;
+    filters: { key: string; value: string; operator: string }[];
+    tags?: string[];
+    numberOfSecrets: number;
+    secrets: { id: string; secretKey: string; environment: string; secretPath: string }[];
+  };
+}
+
 interface DashboardGetSecretValueEvent {
   type: EventType.DASHBOARD_GET_SECRET_VALUE;
   metadata: {
@@ -6142,6 +6201,45 @@ interface PamAccountSshCaCreateEvent {
   };
 }
 
+interface PamDiscoverySourceCreateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_CREATE;
+  metadata: { sourceId: string; discoveryType: string; name: string };
+}
+
+interface PamDiscoverySourceUpdateEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_UPDATE;
+  metadata: { sourceId: string; discoveryType: string };
+}
+
+interface PamDiscoverySourceDeleteEvent {
+  type: EventType.PAM_DISCOVERY_SOURCE_DELETE;
+  metadata: { sourceId: string; discoveryType: string };
+}
+
+interface PamDiscoveryScanEvent {
+  type: EventType.PAM_DISCOVERY_SCAN;
+  metadata: {
+    sourceId: string;
+    discoveryType: string;
+    runId?: string;
+    status?: string;
+    triggeredBy?: string;
+    discoveredCount?: number;
+    newCount?: number;
+    errorMessage?: string;
+  };
+}
+
+interface PamDiscoveredAccountImportEvent {
+  type: EventType.PAM_DISCOVERED_ACCOUNT_IMPORT;
+  metadata: {
+    sourceId: string;
+    folderId: string;
+    importedCount: number;
+    importedAccounts: { discoveredAccountId: string; accountId?: string; name?: string }[];
+  };
+}
+
 interface PamAccountRotateCredentialsEvent {
   type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS;
   metadata: {
@@ -6200,6 +6298,7 @@ interface PamApprovalConfigUpdateEvent {
     folderId: string;
     policyId: string | null;
     stepCount: number;
+    notificationConfigCount?: number;
   };
 }
 
@@ -6885,6 +6984,52 @@ interface ListDynamicSecretsEvent {
   };
 }
 
+interface CreateProxiedServiceEvent {
+  type: EventType.CREATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    // secret / dynamic secret names only; never placeholder/secret/lease values
+    secretKeys: string[];
+    dynamicSecretNames: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface UpdateProxiedServiceEvent {
+  type: EventType.UPDATE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    hostPattern: string;
+    updatedFields: string[];
+    secretKeys: string[];
+    dynamicSecretNames: string[];
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteProxiedServiceEvent {
+  type: EventType.DELETE_PROXIED_SERVICE;
+  metadata: {
+    proxiedServiceId: string;
+    name: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface SignAgentProxyIntermediateCaEvent {
+  type: EventType.SIGN_AGENT_PROXY_INTERMEDIATE_CA;
+  metadata: {
+    serialNumber: string;
+    expiration: string;
+  };
+}
+
 interface ListDynamicSecretLeasesEvent {
   type: EventType.LIST_DYNAMIC_SECRET_LEASES;
   metadata: {
@@ -6908,7 +7053,7 @@ interface ScepEnrollmentEvent {
     transactionId: string;
     csrSubject: string;
     challengeType: ScepChallengeType;
-    status: "success" | "pending" | "failure";
+    status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
@@ -6924,7 +7069,7 @@ interface ScepRenewalEvent {
     transactionId: string;
     csrSubject: string;
     existingCertificateSerial?: string;
-    status: "success" | "pending" | "failure";
+    status: ScepEnrollmentStatus;
     failReason?: string;
     issuedCertificateId?: string;
     issuedSerialNumber?: string;
@@ -7320,7 +7465,55 @@ interface DeleteProjectFolderGrantEvent {
   };
 }
 
+interface CreateAlertEvent {
+  type: EventType.CREATE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    resourceId?: string | null;
+    eventType: string;
+  };
+}
+
+interface UpdateAlertEvent {
+  type: EventType.UPDATE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+  };
+}
+
+interface DeleteAlertEvent {
+  type: EventType.DELETE_ALERT;
+  metadata: {
+    alertId: string;
+    name: string;
+    resourceType: string;
+    eventType: string;
+  };
+}
+
+interface TestAlertChannelEvent {
+  type: EventType.TEST_ALERT_CHANNEL;
+  metadata: {
+    channelId?: string;
+    channelType: string;
+    resourceType: string;
+    resourceId?: string | null;
+    success: boolean;
+    deliveredTo?: number;
+    error?: string;
+  };
+}
+
 export type Event =
+  | CreateAlertEvent
+  | UpdateAlertEvent
+  | DeleteAlertEvent
+  | TestAlertChannelEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent
@@ -7635,6 +7828,8 @@ export type Event =
   | CmekDecryptEvent
   | CmekSignEvent
   | CmekVerifyEvent
+  | CmekGenerateMacEvent
+  | CmekVerifyMacEvent
   | CmekListSigningAlgorithmsEvent
   | CmekGetPublicKeyEvent
   | CmekGetPrivateKeyEvent
@@ -7790,6 +7985,7 @@ export type Event =
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
   | DashboardListSecretsEvent
+  | SearchSecretsByMetadataEvent
   | DashboardGetSecretValueEvent
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
@@ -7838,6 +8034,11 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountSshCaCreateEvent
+  | PamDiscoverySourceCreateEvent
+  | PamDiscoverySourceUpdateEvent
+  | PamDiscoverySourceDeleteEvent
+  | PamDiscoveryScanEvent
+  | PamDiscoveredAccountImportEvent
   | PamAccountRotateCredentialsEvent
   | PamAccountSetRotationAccountEvent
   | PamAccessRequestCreateEvent
@@ -7912,6 +8113,10 @@ export type Event =
   | DeleteDynamicSecretEvent
   | GetDynamicSecretEvent
   | ListDynamicSecretsEvent
+  | CreateProxiedServiceEvent
+  | UpdateProxiedServiceEvent
+  | DeleteProxiedServiceEvent
+  | SignAgentProxyIntermediateCaEvent
   | ListDynamicSecretLeasesEvent
   | CreateDynamicSecretLeaseEvent
   | DeleteDynamicSecretLeaseEvent

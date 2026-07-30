@@ -33,11 +33,13 @@ import { extractCertificateFields } from "@app/services/certificate/certificate-
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
   CertSubjectAlternativeNameType,
   CrlReason,
+  getSanOtherNameOid,
   mapSanTypeToX509Type
 } from "@app/services/certificate/certificate-types";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
@@ -48,7 +50,7 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
+import { createDistinguishedName, extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
   API_CSR_PASSTHROUGH_TEMPLATE_ARN,
@@ -657,20 +659,23 @@ export const AwsPcaCertificateAuthorityFns = ({
       if (extendedKeyUsages && extendedKeyUsages.length > 0) {
         extensions.push(
           new x509.ExtendedKeyUsageExtension(
-            extendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+            extendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
             true
           )
         );
       }
 
-      const dnParts: string[] = [];
-      if (commonName) dnParts.push(`CN=${commonName}`);
-      if (organization) dnParts.push(`O=${organization}`);
-      if (organizationalUnit) dnParts.push(`OU=${organizationalUnit}`);
-      if (locality) dnParts.push(`L=${locality}`);
-      if (state) dnParts.push(`ST=${state}`);
-      if (country) dnParts.push(`C=${country}`);
-      const subjectDn = dnParts.join(", ") || `CN=${commonName}`;
+      // Build the DN via x509.Name (RFC 4514 escaping) rather than raw string concat so that
+      // special characters in the attributes cannot inject additional RDNs.
+      const subjectDn =
+        createDistinguishedName({
+          commonName,
+          organization,
+          ou: organizationalUnit,
+          locality,
+          province: state,
+          country
+        }) || `CN=${commonName}`;
 
       const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
         name: subjectDn,
@@ -709,6 +714,8 @@ export const AwsPcaCertificateAuthorityFns = ({
           return { Rfc822Name: san.value };
         case CertSubjectAlternativeNameType.URI:
           return { UniformResourceIdentifier: san.value };
+        case CertSubjectAlternativeNameType.UPN:
+          return { OtherName: { TypeId: getSanOtherNameOid(san.type)!, Value: san.value } };
         default:
           return { DnsName: san.value };
       }

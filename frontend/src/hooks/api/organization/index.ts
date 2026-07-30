@@ -1,5 +1,6 @@
 export type { TOrgWithSubOrgs } from "./queries";
 export {
+  fetchOrganizations,
   fetchOrganizationsWithSubOrgs,
   organizationKeys,
   useAddOrgPmtMethod,

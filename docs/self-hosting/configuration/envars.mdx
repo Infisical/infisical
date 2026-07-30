@@ -54,18 +54,80 @@ Example values:
   this to `false`.
 </ParamField>
 
+<ParamField query="DISABLE_UPDATE_CHECK" type="bool" default="false" optional>
+  Self-hosted instances check GitHub for the latest Infisical release once a week
+  (and once at startup) and show a subtle indicator in the UI when a newer version
+  is available. Set this to `true` to disable the check; no request is made to
+  GitHub when disabled.
+
+  Air-gapped deployments should set this to `true` to suppress the outbound
+  request entirely. Instances configured with an offline license disable the
+  check automatically.
+</ParamField>
+
 <ParamField
   query="ALLOW_INTERNAL_IP_CONNECTIONS"
   type="bool"
   default="false"
   optional
 >
-  Determines whether App Connections, Dynamic Secrets, and PKI Certificate
-  Discovery jobs are permitted to connect with internal/private IP addresses.
+  Global escape hatch that permits App Connections, Dynamic Secrets, and PKI
+  Certificate Discovery jobs to connect to internal/private IP addresses on the
+  **direct egress** path.
+
+  For reaching private resources, prefer the [Gateway](/documentation/platform/gateways/overview),
+  which tunnels traffic through an agent inside your network and does not require
+  opening any internal IP range on the Infisical instance. Use this flag (or the
+  more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP`
+  flags) only for the features that egress directly, without a Gateway.
 
   <Warning>
-    Relaxes the SSRF protection. Only enable it if you trust the users who can configure streams.
+    Relaxes the SSRF protection. In addition to allowing private IPs, enabling
+    this also disables DNS-rebinding pin protection for the affected direct-egress
+    path (validation and connection may resolve to different IPs). Only enable it
+    if you trust the users who can configure these integrations, and scope it as
+    narrowly as possible using the per-feature flags.
   </Warning>
+</ParamField>
+
+<ParamField
+  query="DYNAMIC_SECRET_ALLOW_INTERNAL_IP"
+  type="bool"
+  default="false"
+  optional
+>
+  Narrower, per-feature variant of `ALLOW_INTERNAL_IP_CONNECTIONS` that permits
+  only Dynamic Secrets to connect to internal/private IP addresses. Prefer this
+  over the global flag when only Dynamic Secrets need internal access.
+
+  <Warning>
+    Relaxes the SSRF protection for the Dynamic Secrets path, including disabling
+    DNS-rebinding pin protection for that path. Prefer the [Gateway](/documentation/platform/gateways/overview)
+    for private resources.
+  </Warning>
+</ParamField>
+
+<ParamField
+  query="SAFE_REQUEST_FORCE_DIRECT_EGRESS"
+  type="bool"
+  default="false"
+  optional
+>
+  Forces outbound requests made through Infisical's SSRF-safe HTTP client (App
+  Connections, Webhooks, Audit Log Streams, and similar direct-egress features)
+  to bypass any ambient forward proxy (sets axios `proxy: false`). This guarantees
+  the request connects to the exact IP that passed SSRF validation, closing a gap
+  where an `HTTP_PROXY` / `HTTPS_PROXY` would re-resolve the target and defeat the
+  IP pin.
+
+  Defaults to `false` so an operator-configured forward proxy keeps working.
+
+  <Note>
+    Enable this only if your instance does **not** rely on an outbound
+    `HTTP_PROXY` / `HTTPS_PROXY` for egress. When a proxy is in use, the IP pin
+    cannot extend past the proxy (the proxy resolves the target itself), so
+    leaving this off is the correct choice for proxied deployments.
+  </Note>
 </ParamField>
 
 <ParamField
@@ -180,6 +242,64 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
   </Expandable>
 </ParamField>
 
+#### Connection pool sizing (Optional)
+
+Each Infisical instance keeps its own pool of Postgres connections. The defaults suit a small deployment and
+most self-hosters never need to change them, but they become relevant once you run many instances: pools are
+**per instance**, so the total number of connections your database sees grows with your instance count.
+
+Work out your total like this:
+
+```
+per instance = DB_POOL_MAX
+             + (DB_REPLICA_POOL_MAX x number of read replicas)
+             + AUDIT_LOGS_DB_POOL_MAX   (only if AUDIT_LOGS_DB_CONNECTION_URI is set)
+
+total        = per instance x number of instances
+```
+
+Then compare that total against your database's `max_connections` (`SHOW max_connections;`). Two things are
+easy to miss:
+
+- **Rolling deploys briefly double the total.** Old and new instances both hold pools while the rollout
+  completes, so size against roughly twice your steady-state number.
+- **Autoscaling sets the ceiling, not your current instance count.** If you autoscale, do the math with the
+  maximum replica count, not today's.
+
+Aim to keep the peak comfortably under `max_connections`, leaving headroom for migrations, admin tools, and
+your own `psql` sessions. If you are close to the limit, **lower `DB_POOL_MAX`** rather than raising
+`max_connections`: each Postgres connection costs memory on the server, and a large number of mostly-idle
+connections wastes it. If instead you see queries queueing while your database is idle, the pool is too small
+and raising it is the right move.
+
+<Tip>
+  Prefer scaling reads with `DB_READ_REPLICAS` over enlarging the primary pool. A connection pooler such as
+  PgBouncer or RDS Proxy is only worth the extra hop and failure domain once instance count alone pushes you
+  near `max_connections`, and note that a pooler in transaction mode does **not** reclaim connections held
+  open inside a transaction.
+</Tip>
+
+<ParamField query="DB_POOL_MIN" type="int" default="0" optional>
+  Minimum connections kept open in the primary database pool. `0` lets idle connections close, which is
+  usually what you want. Raise it only to avoid connection-setup latency on bursty traffic, and be aware that
+  a non-zero value holds connections open on the server even while the instance is idle.
+</ParamField>
+
+<ParamField query="DB_POOL_MAX" type="int" default="10" optional>
+  Maximum connections in the primary database pool. Must be at least `1` and greater than or equal to
+  `DB_POOL_MIN`.
+</ParamField>
+
+<ParamField query="DB_REPLICA_POOL_MIN" type="int" default="0" optional>
+  Minimum connections kept open per read replica pool. Applies to each replica in `DB_READ_REPLICAS`
+  individually.
+</ParamField>
+
+<ParamField query="DB_REPLICA_POOL_MAX" type="int" default="10" optional>
+  Maximum connections **per read replica**. With three replicas and the default of `10`, each instance can
+  open up to 30 replica connections in addition to its primary pool.
+</ParamField>
+
 ### Audit Log PostgreSQL (Optional)
 
 <ParamField query="AUDIT_LOGS_DB_CONNECTION_URI" type="string" optional>
@@ -188,6 +308,16 @@ DB_READ_REPLICAS=[{"DB_CONNECTION_URI":""}]
 
 <ParamField query="AUDIT_LOGS_DB_ROOT_CERT" type="string" optional>
   Base64-encoded CA certificate for the audit log PostgreSQL database connection. Only needed if `AUDIT_LOGS_DB_CONNECTION_URI` is set.
+</ParamField>
+
+<ParamField query="AUDIT_LOGS_DB_POOL_MIN" type="int" default="0" optional>
+  Minimum connections kept open in the audit log database pool. Only used when
+  `AUDIT_LOGS_DB_CONNECTION_URI` is set.
+</ParamField>
+
+<ParamField query="AUDIT_LOGS_DB_POOL_MAX" type="int" default="10" optional>
+  Maximum connections in the audit log database pool. Only used when `AUDIT_LOGS_DB_CONNECTION_URI` is set.
+  This pool is separate from the primary pool, so it adds to your per-instance total.
 </ParamField>
 
 ### ClickHouse (Optional)

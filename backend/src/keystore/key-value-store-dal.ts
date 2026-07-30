@@ -54,7 +54,7 @@ export const keyValueStoreDALFactory = (db: TDbClient): TKeyValueStoreDALFactory
       try {
         // eslint-disable-next-line no-await-in-loop
         deletedIds = await db.transaction(async (trx) => {
-          await trx.raw(`SET statement_timeout = ${QUERY_TIMEOUT_MS}`);
+          await trx.raw(`SET LOCAL statement_timeout = ${QUERY_TIMEOUT_MS}`);
 
           const findExpiredKeysSubQuery = trx(TableName.KeyValueStore)
             .where("expiresAt", "<", db.fn.now())

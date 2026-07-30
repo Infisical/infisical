@@ -10,7 +10,7 @@ export const AWS_STS_MIN_DURATION_SECONDS = 900;
 
 const AWS_STS_DEFAULT_REGION = "us-east-1";
 
-const createStsClient = (credentials?: Credentials): STSClient => {
+const createStsClient = (): STSClient => {
   const appCfg = getConfig();
 
   const config: STSClientConfig = {
@@ -19,13 +19,7 @@ const createStsClient = (credentials?: Credentials): STSClient => {
     sha256: CustomAWSHasher
   };
 
-  if (credentials) {
-    config.credentials = {
-      accessKeyId: credentials.AccessKeyId!,
-      secretAccessKey: credentials.SecretAccessKey!,
-      sessionToken: credentials.SessionToken
-    };
-  } else if (appCfg.PAM_AWS_ACCESS_KEY_ID && appCfg.PAM_AWS_SECRET_ACCESS_KEY) {
+  if (appCfg.PAM_AWS_ACCESS_KEY_ID && appCfg.PAM_AWS_SECRET_ACCESS_KEY) {
     config.credentials = {
       accessKeyId: appCfg.PAM_AWS_ACCESS_KEY_ID,
       secretAccessKey: appCfg.PAM_AWS_SECRET_ACCESS_KEY
@@ -35,64 +29,34 @@ const createStsClient = (credentials?: Credentials): STSClient => {
   return new STSClient(config);
 };
 
-const assumePamRole = async ({
-  connectionDetails,
-  projectId,
-  sessionDuration = AWS_STS_MIN_DURATION_SECONDS,
-  sessionNameSuffix = "validation"
+// Infisical assumes the account's role directly (single hop). The role's trust policy must allow
+// Infisical's AWS account with the org's Infisical ID as the External ID (confused-deputy guard).
+const assumeRole = async ({
+  roleArn,
+  externalId,
+  roleSessionName,
+  sessionDuration = AWS_STS_MIN_DURATION_SECONDS
 }: {
-  connectionDetails: { roleArn: string };
-  projectId: string;
+  roleArn: string;
+  externalId: string;
+  roleSessionName: string;
   sessionDuration?: number;
-  sessionNameSuffix?: string;
 }): Promise<Credentials> => {
   const stsClient = createStsClient();
 
   const result = await stsClient.send(
     new AssumeRoleCommand({
-      RoleArn: connectionDetails.roleArn,
-      RoleSessionName: `infisical-pam-${sessionNameSuffix}-${Date.now()}`,
-      DurationSeconds: sessionDuration,
-      ExternalId: projectId
-    })
-  );
-
-  if (!result.Credentials) {
-    throw new InternalServerError({
-      message: "Failed to assume PAM role - AWS STS did not return credentials"
-    });
-  }
-
-  return result.Credentials;
-};
-
-const assumeTargetRole = async ({
-  pamCredentials,
-  targetRoleArn,
-  projectId,
-  roleSessionName,
-  sessionDuration = AWS_STS_MIN_DURATION_SECONDS
-}: {
-  pamCredentials: Credentials;
-  targetRoleArn: string;
-  projectId: string;
-  roleSessionName: string;
-  sessionDuration?: number;
-}): Promise<Credentials> => {
-  const chainedStsClient = createStsClient(pamCredentials);
-
-  const result = await chainedStsClient.send(
-    new AssumeRoleCommand({
-      RoleArn: targetRoleArn,
+      RoleArn: roleArn,
       RoleSessionName: roleSessionName,
       DurationSeconds: sessionDuration,
-      ExternalId: projectId
+      ExternalId: externalId
     })
   );
 
   if (!result.Credentials) {
     throw new BadRequestError({
-      message: "Failed to assume target role - verify the target role trust policy allows the PAM role to assume it"
+      message:
+        "Failed to assume role - verify the role's trust policy allows Infisical using your Infisical Organization ID as the External ID"
     });
   }
 
@@ -107,34 +71,24 @@ export type TAwsIamSessionCredentials = {
 };
 
 export const generateAwsIamSessionCredentials = async ({
-  connectionDetails,
-  targetRoleArn,
+  roleArn,
+  externalId,
   roleSessionName,
-  projectId,
   sessionDuration
 }: {
-  connectionDetails: { roleArn: string };
-  targetRoleArn: string;
+  roleArn: string;
+  externalId: string;
   roleSessionName: string;
-  projectId: string;
   sessionDuration: number;
 }): Promise<TAwsIamSessionCredentials> => {
-  const pamCredentials = await assumePamRole({
-    connectionDetails,
-    projectId,
-    sessionDuration,
-    sessionNameSuffix: "session"
-  });
-
-  const targetCredentials = await assumeTargetRole({
-    pamCredentials,
-    targetRoleArn,
-    projectId,
+  const credentials = await assumeRole({
+    roleArn,
+    externalId,
     roleSessionName,
     sessionDuration
   });
 
-  const { AccessKeyId, SecretAccessKey, SessionToken, Expiration } = targetCredentials;
+  const { AccessKeyId, SecretAccessKey, SessionToken, Expiration } = credentials;
 
   if (!AccessKeyId || !SecretAccessKey || !SessionToken) {
     throw new InternalServerError({

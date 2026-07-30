@@ -1,11 +1,15 @@
 import { Knex } from "knex";
 
 import { IdentityAuthMethod, OrgMembershipStatus, TableName, TIdentityAccessTokens } from "@app/db/schemas";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
+import { applyJitter } from "@app/lib/dates";
+import { delay } from "@app/lib/delay";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { recordTokenRenewalMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
@@ -16,11 +20,16 @@ import {
   assertMinimalRenewClaims,
   assertRevocableClaims,
   computeIssuedTtl,
+  computePerTokenMarkerExpiry,
+  computeRevocationVerdictFingerprint,
+  evaluateRevocationMarkers,
   hasFullRenewClaims,
   hasLegacyTokenWithoutExpExceededMaxAge,
   hasNonWildcardTrustedIps,
+  isMembershipDenyReason,
   parseUsesRemaining,
   resolveTtlInputs,
+  revocationDenyReasonToMessage,
   signIdentityAccessToken,
   verifyAccessTokenJwt
 } from "./identity-access-token-fns";
@@ -32,7 +41,8 @@ import {
   TMinimalRenewClaims,
   TOidcAuthDetails,
   TRenewAccessTokenDTO,
-  TRenewSource
+  TRenewSource,
+  TRevocationDenyReason
 } from "./identity-access-token-types";
 
 export type TIssueIdentityAccessTokenInput = {
@@ -70,7 +80,20 @@ type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenRevocationDAL: TIdentityAccessTokenRevocationDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership" | "findOne">;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "incrementBy" | "setItemWithExpiry">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    | "getItem"
+    | "getItemPrimary"
+    | "incrementBy"
+    | "setItemWithExpiry"
+    | "setItemWithExpiryNX"
+    | "incrementSeededWithExpiry"
+    | "deleteItem"
+  >;
+};
+
+type TTrustedIpsCachePayload = {
+  accessTokenTrustedIps: TIp[] | null;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
@@ -90,12 +113,76 @@ export const identityAccessTokenServiceFactory = ({
     );
   };
 
+  // Delayed re-delete: a request that missed cache before this delete can still
+  // write a stale allowlist back. Second delete ~1s later helps with race conditions, but still best effort.
+  const TRUSTED_IPS_CACHE_REDELETE_DELAY_MS = 1000;
+
+  const invalidateTrustedIpsCache = async (identityId: string, authMethod: IdentityAuthMethod | string) => {
+    const key = KeyStorePrefixes.IdentityTrustedIps(identityId, authMethod);
+    try {
+      await keyStore.deleteItem(key);
+    } catch (error) {
+      logger.warn(error, `identity-trusted-ips: failed to invalidate cache [identityId=${identityId}]`);
+    }
+
+    void delay(TRUSTED_IPS_CACHE_REDELETE_DELAY_MS)
+      .then(() => keyStore.deleteItem(key))
+      .catch((error) => {
+        logger.warn(error, `identity-trusted-ips: failed delayed re-delete [identityId=${identityId}]`);
+      });
+  };
+
+  // On revoke, bump this identity's version number. Every cached "allowed" answer
+  // remembers the version it was written under, so one bump instantly makes them
+  // all stale. Run it after the revocation record is saved and outside any
+  // transaction, so a request reading in parallel can't cache an allow under the
+  // old version.
+  const bumpRevocationVersion = async (identityId: string) => {
+    try {
+      const versionKey = KeyStorePrefixes.IdentityRevocationVersion(identityId);
+      await keyStore.incrementSeededWithExpiry(versionKey, Date.now(), KeyStoreTtls.IdentityRevocationVersionInSeconds);
+    } catch (error) {
+      logger.warn(error, `identity-revocation: failed to bump version [identityId=${identityId}]`);
+    }
+  };
+
+  // Reads this identity's current version number, creating it (from the current
+  // time) if it doesn't exist yet. Returns null only when the cache is down,
+  // which tells the caller not to store an "allowed" answer.
+  const getOrSeedRevocationVersion = async (identityId: string): Promise<number | null> => {
+    const versionKey = KeyStorePrefixes.IdentityRevocationVersion(identityId);
+    // Read the version from the primary, never a replica, so a revoke's bump is
+    // always observed here (see assertTokenIsNotRevoked).
+    const existing = await keyStore.getItemPrimary(versionKey);
+    if (existing !== null) {
+      return Number(existing);
+    }
+
+    // Only set it if still missing, so a concurrent revoke's bump wins; then read
+    // back whatever value stuck.
+    await keyStore.setItemWithExpiryNX(versionKey, KeyStoreTtls.IdentityRevocationVersionInSeconds, Date.now());
+    const seeded = await keyStore.getItemPrimary(versionKey);
+    return seeded === null ? null : Number(seeded);
+  };
+
+  // A cached "allowed" answer is only trusted while the identity's version
+  // number still matches, so a revoke instantly invalidates it without ever
+  // storing the set of revocation records. A cached "denied" answer from a
+  // revocation needs no version check and stands for its whole lifetime,
+  // because a revocation record always outlives any token it can block.
+  //
+  // Org membership is folded into this path: on a cache miss / version change we
+  // re-check membership in Postgres; on a stamped allow hit we skip that query.
+  // Membership denies are reversible (re-add / reactivate), so they are
+  // version-stamped like allows and only trusted while the version matches;
+  // restoring membership bumps the version to force an immediate re-check.
   const assertTokenIsNotRevoked = async ({
     tokenId,
     identityId,
     issuedAtMs,
     clientSecretId,
     authMethod,
+    orgId,
     messagePrefix = "Failed to authorize"
   }: {
     tokenId: string;
@@ -103,11 +190,71 @@ export const identityAccessTokenServiceFactory = ({
     issuedAtMs: number;
     clientSecretId?: string;
     authMethod?: string;
+    orgId?: string;
     messagePrefix?: "Failed to authorize" | "Cannot renew";
   }) => {
     const scopes: string[] = [];
     if (clientSecretId) scopes.push(clientSecretId);
     if (authMethod) scopes.push(authMethod);
+    if (orgId) scopes.push(orgId);
+
+    const fingerprint = computeRevocationVerdictFingerprint({ tokenId, issuedAtMs, clientSecretId, authMethod });
+    const verdictKey = KeyStorePrefixes.IdentityRevocationVerdict(identityId, fingerprint);
+    const versionKey = KeyStorePrefixes.IdentityRevocationVersion(identityId);
+
+    let cacheAvailable = true;
+    let cachedVersion: number | null = null;
+    let cachedVerdictRaw: string | null = null;
+
+    try {
+      // Two separate reads (not MGET) to stay Redis-Cluster-safe. The version is
+      // read from the primary, never a replica.
+      const [versionRaw, verdictRaw] = await Promise.all([
+        keyStore.getItemPrimary(versionKey),
+        keyStore.getItem(verdictKey)
+      ]);
+      cachedVersion = versionRaw === null ? null : Number(versionRaw);
+      cachedVerdictRaw = verdictRaw;
+    } catch (error) {
+      cacheAvailable = false;
+      logger.warn(error, `identity-revocation: verdict cache read failed, falling back to primary`);
+    }
+
+    if (cacheAvailable && cachedVerdictRaw) {
+      let parsed: { v?: number; deny?: TRevocationDenyReason } | null = null;
+      try {
+        parsed = JSON.parse(cachedVerdictRaw) as { v?: number; deny?: TRevocationDenyReason };
+      } catch {
+        parsed = null;
+      }
+
+      if (parsed?.deny) {
+        // A membership deny is only honored while its stamped version matches the
+        // live one; a stale one falls through to the cold path and re-checks.
+        const denyIsCurrent =
+          !isMembershipDenyReason(parsed.deny) ||
+          (typeof parsed.v === "number" && cachedVersion !== null && parsed.v === cachedVersion);
+        if (denyIsCurrent) {
+          throw new UnauthorizedError({ message: revocationDenyReasonToMessage(parsed.deny, messagePrefix) });
+        }
+      }
+      // An allow only holds while the stamped version still matches the live one.
+      if (parsed && typeof parsed.v === "number" && cachedVersion !== null && parsed.v === cachedVersion) {
+        return;
+      }
+    }
+
+    // Resolve the version to stamp before the fill so a concurrent revoke's bump
+    // follows it and invalidates this allow.
+    let versionForStamp: number | null = null;
+    if (cacheAvailable) {
+      try {
+        versionForStamp = cachedVersion !== null ? cachedVersion : await getOrSeedRevocationVersion(identityId);
+      } catch (error) {
+        cacheAvailable = false;
+        logger.warn(error, `identity-revocation: version resolve failed, falling back to primary`);
+      }
+    }
 
     const activeRevocations = await identityAccessTokenRevocationDAL.findActiveRevocationsForToken({
       tokenId,
@@ -115,31 +262,56 @@ export const identityAccessTokenServiceFactory = ({
       scopes
     });
 
-    for (const revocation of activeRevocations) {
-      // Legacy markers have scope=null and key off polymorphic `id`.
-      if (revocation.scope === null || revocation.scope === undefined) {
-        if (revocation.id === tokenId) {
-          throw new UnauthorizedError({ message: `${messagePrefix}: token has been revoked` });
-        }
-        if (revocation.id === identityId) {
-          const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
-          if (issuedAtMs < revokedAtMs) {
-            throw new UnauthorizedError({ message: `${messagePrefix}: identity tokens have been revoked` });
-          }
-        }
-      } else {
-        // Scoped marker: scope holds the value the JWT must NOT match
-        // (clientSecretId for UA tokens, authMethod for any token).
-        const revokedAtMs = (revocation.revokedAt ?? revocation.createdAt).getTime();
-        if (issuedAtMs < revokedAtMs) {
-          if (clientSecretId && revocation.scope === clientSecretId) {
-            throw new UnauthorizedError({ message: `${messagePrefix}: client secret has been revoked` });
-          }
-          if (authMethod && revocation.scope === authMethod) {
-            throw new UnauthorizedError({ message: `${messagePrefix}: auth method has been revoked` });
-          }
-        }
+    let denyReason = evaluateRevocationMarkers({
+      markers: activeRevocations,
+      tokenId,
+      identityId,
+      issuedAtMs,
+      clientSecretId,
+      authMethod,
+      orgId
+    });
+
+    // Cold-path membership check. Skipped on a stamped allow hit above; after a
+    // version bump every live token rechecks once, and only org-scoped markers
+    // deny (other orgs re-allow and re-cache).
+    if (!denyReason && orgId) {
+      const orgMembership = await orgDAL.findEffectiveOrgMembership({
+        actorType: ActorType.IDENTITY,
+        actorId: identityId,
+        orgId,
+        status: OrgMembershipStatus.Accepted
+      });
+      if (!orgMembership) {
+        denyReason = "org-membership";
+      } else if (!orgMembership.isActive) {
+        denyReason = "org-membership-inactive";
       }
+    }
+
+    if (cacheAvailable) {
+      try {
+        const ttl = applyJitter(
+          KeyStoreTtls.IdentityRevocationVerdictBaseInSeconds,
+          KeyStoreTtls.IdentityRevocationVerdictJitterInSeconds
+        );
+        if (denyReason && !isMembershipDenyReason(denyReason)) {
+          await keyStore.setItemWithExpiry(verdictKey, ttl, JSON.stringify({ deny: denyReason }));
+        } else if (denyReason) {
+          // Version-stamped so restoring membership (bump) invalidates it instantly.
+          if (versionForStamp !== null) {
+            await keyStore.setItemWithExpiry(verdictKey, ttl, JSON.stringify({ deny: denyReason, v: versionForStamp }));
+          }
+        } else if (versionForStamp !== null) {
+          await keyStore.setItemWithExpiry(verdictKey, ttl, JSON.stringify({ v: versionForStamp }));
+        }
+      } catch (error) {
+        logger.warn(error, `identity-revocation: verdict cache write failed [identityId=${identityId}]`);
+      }
+    }
+
+    if (denyReason) {
+      throw new UnauthorizedError({ message: revocationDenyReasonToMessage(denyReason, messagePrefix) });
     }
   };
 
@@ -307,7 +479,8 @@ export const identityAccessTokenServiceFactory = ({
         identityId: token.identityId,
         issuedAtMs,
         clientSecretId: source.clientSecretId,
-        authMethod: source.authMethod
+        authMethod: source.authMethod,
+        orgId: source.orgId
       }),
       keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(token.identityId, tokenId))
     ]);
@@ -337,26 +510,25 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     if (ipAddress) {
-      const trustedIps = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
-      if (hasNonWildcardTrustedIps(trustedIps as TIp[] | null | undefined)) {
+      const { accessTokenTrustedIps: trustedIps } = await withCache<TTrustedIpsCachePayload>({
+        // A Redis read replica can lag behind the primary's DEL on invalidation and serve a stale allowlist
+        keyStore: {
+          getItem: (key, prefix) => keyStore.getItemPrimary(key, prefix),
+          setItemWithExpiry: keyStore.setItemWithExpiry
+        },
+        key: KeyStorePrefixes.IdentityTrustedIps(token.identityId, source.authMethod),
+        ttlSeconds: KeyStoreTtls.IdentityTrustedIpsInSeconds,
+        fetcher: async () => {
+          const ips = await identityDAL.getTrustedIpsByAuthMethod(token.identityId, source.authMethod);
+          return { accessTokenTrustedIps: (ips as TIp[] | null | undefined) ?? null };
+        }
+      });
+      if (hasNonWildcardTrustedIps(trustedIps)) {
         checkIPAgainstBlocklist({
           ipAddress,
           trustedIps: trustedIps as TIp[]
         });
       }
-    }
-
-    const orgMembership = await orgDAL.findEffectiveOrgMembership({
-      actorType: ActorType.IDENTITY,
-      actorId: token.identityId,
-      orgId: source.orgId,
-      status: OrgMembershipStatus.Accepted
-    });
-    if (!orgMembership) {
-      throw new UnauthorizedError({ message: "Identity is not a member of the organization" });
-    }
-    if (!orgMembership.isActive) {
-      throw new UnauthorizedError({ message: "Identity organization membership is inactive" });
     }
 
     return {
@@ -413,6 +585,7 @@ export const identityAccessTokenServiceFactory = ({
         issuedAtMs: decodedToken.iat * 1000,
         clientSecretId: source.clientSecretId,
         authMethod: source.authMethod,
+        orgId: source.orgId,
         messagePrefix: "Cannot renew"
       }),
       keyStore.getItem(KeyStorePrefixes.IdentityTokenUsesRemaining(decodedToken.identityId, tokenId))
@@ -487,8 +660,6 @@ export const identityAccessTokenServiceFactory = ({
   };
 
   const revokeAccessToken = async (accessToken: string) => {
-    const appCfg = getConfig();
-
     const decodedToken = assertRevocableClaims(verifyAccessTokenJwt(accessToken));
     const { identityId } = decodedToken;
     const tokenId = decodedToken.jti ?? decodedToken.identityAccessTokenId;
@@ -510,17 +681,22 @@ export const identityAccessTokenServiceFactory = ({
         }
       : await loadLegacyTokenSource(decodedToken);
 
-    const maxLifetimeSeconds =
-      source.accessTokenMaxTTL > 0
-        ? source.creationEpoch + source.accessTokenMaxTTL
-        : Math.floor(Date.now() / 1000) + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE;
-    const expiresAt = new Date(maxLifetimeSeconds * 1000);
+    // Cap the marker at the latest exp of any JWT it must block so it self-drains
+    // within a token TTL rather than the full maxTTL window.
+    const expiresAt = computePerTokenMarkerExpiry({
+      exp: decodedToken.exp,
+      requestedTTL: source.accessTokenTTL,
+      accessTokenMaxTTL: source.accessTokenMaxTTL,
+      accessTokenPeriod: source.accessTokenPeriod,
+      creationEpoch: source.creationEpoch
+    });
 
     await identityAccessTokenRevocationDAL.insertRevocation({
       id: tokenId,
       identityId,
       expiresAt
     });
+    await bumpRevocationVersion(identityId);
 
     return { revokedToken: { id: decodedToken.identityAccessTokenId, identityId, isAccessTokenRevoked: true } };
   };
@@ -548,19 +724,29 @@ export const identityAccessTokenServiceFactory = ({
       identityId,
       expiresAt
     });
+    await bumpRevocationVersion(identityId);
   };
 
-  // Identity-wide revoke: any JWT with iat < this epoch is rejected on auth.
-  const revokeAllTokensForIdentity = async (identityId: string) => {
+  // Identity-wide revoke marker: any JWT with iat < this epoch is rejected on
+  // auth. Uses the 90d fallback since it is one marker per deleted identity.
+  const insertIdentityWideRevocationMarker = async ({ identityId, tx }: { identityId: string; tx?: Knex }) => {
     const appCfg = getConfig();
     const revokedAt = new Date();
 
-    await identityAccessTokenRevocationDAL.insertRevocation({
-      id: identityId,
-      identityId,
-      revokedAt,
-      expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
-    });
+    await identityAccessTokenRevocationDAL.insertRevocation(
+      {
+        id: identityId,
+        identityId,
+        revokedAt,
+        expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+      },
+      tx
+    );
+  };
+
+  const revokeAllTokensForIdentity = async (identityId: string) => {
+    await insertIdentityWideRevocationMarker({ identityId });
+    await bumpRevocationVersion(identityId);
   };
 
   // Scoped revoke for Universal Auth client secret deletion: rejects every JWT
@@ -583,6 +769,7 @@ export const identityAccessTokenServiceFactory = ({
       revokedAt,
       expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
     });
+    await bumpRevocationVersion(identityId);
   };
 
   // Scoped revoke for auth-method removal: rejects every JWT issued via the
@@ -605,16 +792,71 @@ export const identityAccessTokenServiceFactory = ({
       revokedAt,
       expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
     });
+    await bumpRevocationVersion(identityId);
+  };
+
+  // Org-scoped revoke marker for membership deactivate / remove-from-org: rejects
+  // every JWT for this identity whose orgId claim matches, with iat < revokedAt.
+  // Tokens scoped to other orgs (sub-org hierarchy) stay valid. Accepts the caller's
+  // tx so the marker commits atomically with the membership mutation, making it the
+  // durable source of truth for the deny (see bumpIdentityRevocationVersion).
+  const insertOrgMembershipRevocationMarker = async ({
+    identityId,
+    orgId,
+    tx
+  }: {
+    identityId: string;
+    orgId: string;
+    tx?: Knex;
+  }) => {
+    const appCfg = getConfig();
+    const revokedAt = new Date();
+
+    await identityAccessTokenRevocationDAL.insertRevocation(
+      {
+        id: crypto.nativeCrypto.randomUUID(),
+        identityId,
+        scope: orgId,
+        revokedAt,
+        expiresAt: new Date(revokedAt.getTime() + appCfg.MAX_MACHINE_IDENTITY_TOKEN_AGE * 1000)
+      },
+      tx
+    );
+  };
+
+  // Inverse of insertOrgMembershipRevocationMarker, for restoring org access (membership re-added or reactivated)
+  const removeOrgMembershipRevocationMarkers = async ({
+    identityId,
+    orgId,
+    tx
+  }: {
+    identityId: string;
+    orgId: string;
+    tx?: Knex;
+  }) => {
+    await identityAccessTokenRevocationDAL.deleteRevocationsByScope({ identityId, scope: orgId }, tx);
+  };
+
+  // Best-effort cache accelerator: bumps the version so cached allow verdicts are
+  // rechecked once. A failed bump only defers enforcement to the verdict TTL, since the committed
+  // membership row (and marker) remain the durable deny that the cold path reads.
+  const bumpIdentityRevocationVersion = async ({ identityId }: { identityId: string }) => {
+    await bumpRevocationVersion(identityId);
   };
 
   return {
     issueIdentityAccessToken,
     renewAccessToken,
+    insertIdentityWideRevocationMarker,
     revokeAccessToken,
     revokeAllTokensForIdentity,
     revokeAllTokensForClientSecret,
     revokeTokensForIdentityAuthMethod,
+    insertOrgMembershipRevocationMarker,
+    removeOrgMembershipRevocationMarkers,
+    bumpIdentityRevocationVersion,
     markPerTokenRevocation,
+    invalidateTrustedIpsCache,
     fnValidateIdentityAccessTokenFast
   };
 };

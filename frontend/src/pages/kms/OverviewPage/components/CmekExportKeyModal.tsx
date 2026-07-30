@@ -23,7 +23,7 @@ type FormProps = Pick<Props, "cmek">;
 const ExportKeyForm = ({ cmek }: FormProps) => {
   const { permission } = useProjectPermission();
   const isAsymmetricKey = Object.values(AsymmetricKeyAlgorithm).includes(
-    cmek?.encryptionAlgorithm as AsymmetricKeyAlgorithm
+    cmek?.algorithm as AsymmetricKeyAlgorithm
   );
 
   const canReadPublicKey = permission.can(

@@ -19,6 +19,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         200: z.object({
           grants: ProjectFolderGrantsSchema.extend({
             folderName: z.string(),
+            secretPath: z.string(),
             environmentName: z.string(),
             environmentSlug: z.string(),
             targetProjectName: z.string(),
@@ -52,6 +53,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
         200: z.object({
           grants: ProjectFolderGrantsSchema.extend({
             folderName: z.string(),
+            secretPath: z.string(),
             environmentName: z.string(),
             environmentSlug: z.string(),
             sourceProjectName: z.string(),

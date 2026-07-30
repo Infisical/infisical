@@ -378,9 +378,16 @@ export const projectEnvServiceFactory = ({
 
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
-        if (!target || target.projectId !== projectId || target.deleteAfter === null) {
+        if (!target || target.projectId !== projectId || !target.deleteAfter) {
           throw new NotFoundError({
             message: `Soft-deleted environment with id '${id}' in project with ID '${projectId}' not found`,
+            name: "RestoreEnvironment"
+          });
+        }
+
+        if (new Date(target.deleteAfter).getTime() <= Date.now()) {
+          throw new BadRequestError({
+            message: "Cannot restore environment: its deletion grace period has already elapsed.",
             name: "RestoreEnvironment"
           });
         }

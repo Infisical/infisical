@@ -56,6 +56,12 @@ export const createDistinguishedName = (parts: TDNParts) => {
   if (parts.province) jsonName.push({ ST: [parts.province] });
   if (parts.commonName) jsonName.push({ CN: [parts.commonName] });
   if (parts.locality) jsonName.push({ L: [parts.locality] });
+  // DC is multi-valued and ordered; emit one RDN per value in the given order (after CN, AD-style).
+  if (parts.domainComponents) {
+    for (const dc of parts.domainComponents) {
+      if (dc) jsonName.push({ DC: [dc] });
+    }
+  }
 
   // Create Name object from JSON and convert to properly escaped string
   const name = new x509.Name(jsonName);
@@ -76,14 +82,19 @@ const getNameField = (name: x509.Name, field: string): string | undefined => {
  * Extract DN parts directly from an x509 Name object.
  * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
  */
-export const extractDnParts = (name: x509.Name): TDNParts => ({
-  country: getNameField(name, "C"),
-  organization: getNameField(name, "O"),
-  ou: getNameField(name, "OU"),
-  province: getNameField(name, "ST"),
-  commonName: getNameField(name, "CN"),
-  locality: getNameField(name, "L")
-});
+export const extractDnParts = (name: x509.Name): TDNParts => {
+  // DC is multi-valued (ordered); keep all values rather than the last-wins single-value helper.
+  const domainComponents = name.getField("DC");
+  return {
+    country: getNameField(name, "C"),
+    organization: getNameField(name, "O"),
+    ou: getNameField(name, "OU"),
+    province: getNameField(name, "ST"),
+    commonName: getNameField(name, "CN"),
+    locality: getNameField(name, "L"),
+    domainComponents: domainComponents.length > 0 ? domainComponents : undefined
+  };
+};
 
 /**
  * Extract the common name, SANs, key usages, and extended key usages from an issued X.509

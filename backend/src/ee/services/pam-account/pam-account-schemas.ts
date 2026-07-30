@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
 
-import { GcpServiceAccountAuthMethod, PamAccountType } from "../pam/pam-enums";
+import { GcpServiceAccountAuthMethod, PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 import {
   PamAccountSettingsOverridesSchema,
@@ -319,12 +319,12 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }),
     credentials: z.discriminatedUnion("authMethod", [
       z.object({
-        authMethod: z.literal("password"),
+        authMethod: z.literal(PamSshAuthMethod.Password),
         username: z.string().trim().min(1),
         password: optionalTrimmedString
       }),
       z.object({
-        authMethod: z.literal("public-key"),
+        authMethod: z.literal(PamSshAuthMethod.PublicKey),
         username: z.string().trim().min(1),
         privateKey: z
           .string()
@@ -333,7 +333,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           .transform((v) => v || undefined)
           .optional()
       }),
-      z.object({ authMethod: z.literal("certificate"), username: z.string().trim().min(1) })
+      z.object({ authMethod: z.literal(PamSshAuthMethod.Certificate), username: z.string().trim().min(1) })
     ]),
     sanitizedCredentials: z.object({
       authMethod: z.string(),
@@ -453,7 +453,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
     icon: "Windows.png",
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
-      port: z.coerce.number().int().min(1).max(65535)
+      port: z.coerce.number().int().min(1).max(65535),
+      winrmPort: z.coerce.number().int().min(1).max(65535).default(5985),
+      useWinrmHttps: z.boolean().default(false),
+      winrmRejectUnauthorized: z.boolean().default(true),
+      winrmCaCert: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -463,7 +467,18 @@ export const ACCOUNT_TYPE_CONFIGS = {
       username: z.string()
     }),
     ui: {
-      port: { defaultValue: 3389 },
+      port: { label: "RDP Port", defaultValue: 3389 },
+      winrmPort: { label: "WinRM Port", defaultValue: 5985 },
+      useWinrmHttps: { label: "Use WinRM HTTPS" },
+      winrmRejectUnauthorized: {
+        label: "Reject Unauthorized (WinRM)",
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
+      winrmCaCert: {
+        label: "WinRM CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
   },
@@ -480,7 +495,11 @@ export const ACCOUNT_TYPE_CONFIGS = {
       useLdaps: z.boolean(),
       ldapRejectUnauthorized: z.boolean(),
       ldapCaCert: optionalTrimmedString,
-      ldapTlsServerName: optionalTrimmedString
+      ldapTlsServerName: optionalTrimmedString,
+      winrmPort: z.coerce.number().int().min(1).max(65535).default(5985),
+      useWinrmHttps: z.boolean().default(false),
+      winrmRejectUnauthorized: z.boolean().default(true),
+      winrmCaCert: optionalTrimmedString
     }),
     credentials: z.object({
       username: z.string().trim().min(1).max(255),
@@ -517,6 +536,17 @@ export const ACCOUNT_TYPE_CONFIGS = {
         label: "TLS Server Name",
         showWhen: { field: "useLdaps", equals: true }
       },
+      winrmPort: { label: "WinRM Port", defaultValue: 5985 },
+      useWinrmHttps: { label: "Use WinRM HTTPS" },
+      winrmRejectUnauthorized: {
+        label: "Reject Unauthorized (WinRM)",
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
+      winrmCaCert: {
+        label: "WinRM CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "useWinrmHttps", equals: true }
+      },
       username: {
         tooltip: "Use the DOMAIN\\username format for domain authentication (e.g. CORP\\Administrator)."
       },
@@ -531,20 +561,61 @@ export const ACCOUNT_TYPE_CONFIGS = {
     connectionDetails: z.object({
       roleArn: z.string().trim().min(1).max(2048)
     }),
-    credentials: z.object({
-      targetRoleArn: z.string().trim().min(1).max(2048)
-    }),
-    sanitizedCredentials: z.object({
-      targetRoleArn: z.string().optional()
-    }),
+    credentials: z.object({}),
+    sanitizedCredentials: z.object({}),
     ui: {
       roleArn: {
-        label: "PAM Role ARN",
-        tooltip: "The ARN of the IAM role that Infisical assumes to broker access to the target role."
+        label: "Role ARN",
+        tooltip:
+          "The ARN of the IAM role Infisical assumes when accessing this account. Its trust policy must allow Infisical using your Infisical Organization ID as the External ID.\n\nOrganization ID: {{organizationId}}"
+      }
+    }
+  },
+
+  [PamAccountType.AzureCli]: {
+    name: "Azure CLI",
+    icon: "Microsoft Azure.png",
+    connectionDetails: z.object({
+      tenantId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(new RE2(/^[A-Za-z0-9.-]+$/), "Must be a valid Azure tenant ID or domain"),
+      subscriptionId: z
+        .string()
+        .trim()
+        .refine((v) => v === "" || z.string().uuid().safeParse(v).success, {
+          message: "Must be a valid Azure subscription ID"
+        })
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    credentials: z.object({
+      clientId: z.string().trim().uuid("Must be a valid Azure application (client) ID"),
+      clientSecret: z.string().trim().min(1).max(512)
+    }),
+    sanitizedCredentials: z.object({
+      clientId: z.string().optional()
+    }),
+    ui: {
+      tenantId: {
+        label: "Tenant ID",
+        tooltip: "The Microsoft Entra ID (Azure AD) directory (tenant) ID the service principal belongs to."
       },
-      targetRoleArn: {
-        label: "Target Role ARN",
-        tooltip: "The ARN of the IAM role the user will assume when accessing this account."
+      subscriptionId: {
+        label: "Subscription ID",
+        tooltip: "Optional. The Azure subscription the CLI session defaults to (az account set)."
+      },
+      clientId: {
+        label: "Client ID",
+        tooltip: "The application (client) ID of the service principal Infisical brokers access to."
+      },
+      clientSecret: {
+        label: "Client Secret",
+        widget: PamFieldWidget.Password,
+        secret: true,
+        tooltip: "A client secret for the service principal. Stored encrypted and never returned in read responses."
       }
     }
   }
@@ -576,6 +647,38 @@ export const ACCOUNT_TYPE_CONFIGS = {
 >;
 
 type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
+
+export type TWindowsConnectionDetails = z.infer<
+  (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.Windows]["connectionDetails"]
+>;
+export type TWindowsAdConnectionDetails = z.infer<
+  (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.WindowsAd]["connectionDetails"]
+>;
+
+export const SQL_ROTATABLE_ACCOUNT_TYPES = [
+  PamAccountType.Postgres,
+  PamAccountType.MySQL,
+  PamAccountType.MsSQL
+] as const;
+
+// Windows accounts rotate over WinRM through the gateway: local accounts on their host, domain accounts
+// on the DC. They do not use the SQL rotation path.
+export const WINDOWS_ROTATABLE_ACCOUNT_TYPES = [PamAccountType.Windows, PamAccountType.WindowsAd] as const;
+
+export const ROTATABLE_ACCOUNT_TYPES = [...SQL_ROTATABLE_ACCOUNT_TYPES, ...WINDOWS_ROTATABLE_ACCOUNT_TYPES] as const;
+
+export type TSqlRotatableType = (typeof SQL_ROTATABLE_ACCOUNT_TYPES)[number];
+export type TWindowsRotatableType = (typeof WINDOWS_ROTATABLE_ACCOUNT_TYPES)[number];
+export type TRotatableType = (typeof ROTATABLE_ACCOUNT_TYPES)[number];
+
+export const isRotatableAccountType = (accountType: PamAccountType | string): accountType is TRotatableType =>
+  (ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
+
+export const isWindowsRotatableType = (accountType: PamAccountType | string): accountType is TWindowsRotatableType =>
+  (WINDOWS_ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
+
+export const isSqlRotatableType = (accountType: PamAccountType | string): accountType is TSqlRotatableType =>
+  (SQL_ROTATABLE_ACCOUNT_TYPES as readonly string[]).includes(accountType);
 
 const getAccountTypeConfig = (accountType: PamAccountType | string) => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType];
@@ -624,7 +727,8 @@ export const extractGatewayTarget = async (
     case PamAccountType.Kubernetes: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
-      return { host: parsed.hostname };
+      const defaultPort = parsed.protocol === "http:" ? 80 : 443;
+      return { host: parsed.hostname, port: parsed.port ? Number(parsed.port) : defaultPort };
     }
     case PamAccountType.MongoDB: {
       const { connectionString } = validated as { connectionString: string };
@@ -660,6 +764,8 @@ export const extractGatewayTarget = async (
       return { host: "googleapis.com", port: 443 };
     case PamAccountType.AwsIam:
       throw new Error("AWS IAM accounts do not use gateway routing");
+    case PamAccountType.AzureCli:
+      return { host: "management.azure.com", port: 443 };
     default:
       throw new Error(`No gateway target extraction defined for account type '${accountType}'`);
   }
@@ -709,6 +815,22 @@ export const buildSessionGatewayConnectionDetails = (
   }
 
   return validated;
+};
+
+// A username already carries its domain if it's NT4 (`DOMAIN\user`) or UPN (`user@domain`)
+export const isDomainQualifiedUsername = (username: string) => username.includes("\\") || username.includes("@");
+
+// Domain-qualifies a bare username to `NETBIOS\user` for RDP/NLA; already-qualified forms pass through
+export const qualifyUsernameWithDomain = (username: string, domainFqdn: string) => {
+  if (isDomainQualifiedUsername(username)) return username;
+  return `${domainFqdn.split(".")[0].toUpperCase()}\\${username}`;
+};
+
+// Normalizes any form to a NetBIOS `DOMAIN\user` login
+export const toNetbiosUsername = (username: string, domainFqdn: string) => {
+  if (username.includes("\\")) return username;
+  const localPart = username.includes("@") ? username.split("@")[0] : username;
+  return `${domainFqdn.split(".")[0].toUpperCase()}\\${localPart}`;
 };
 
 // -- Account accessibility
@@ -810,6 +932,7 @@ export const PamAccountTypeMetadataSchema = z.object({
   icon: z.string(),
   supportsWebAccess: z.boolean(),
   requiresGateway: z.boolean(),
+  supportsDependencies: z.boolean(),
   connectionFields: z.array(PamFieldDescriptorSchema),
   credentialFields: z.array(PamFieldDescriptorSchema),
   applicablePolicies: z.array(PamPolicyDescriptorSchema)
@@ -966,6 +1089,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     icon: config.icon,
     supportsWebAccess: webAccessSupportedTypes.has(type),
     requiresGateway: accountTypeRequiresGateway(type),
+    supportsDependencies: isWindowsRotatableType(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui),
     applicablePolicies: getApplicablePolicies(type)

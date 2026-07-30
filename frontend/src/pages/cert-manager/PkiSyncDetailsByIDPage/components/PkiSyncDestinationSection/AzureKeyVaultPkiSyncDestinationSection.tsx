@@ -1,12 +1,5 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TAzureKeyVaultPkiSync } from "@app/hooks/api/pkiSyncs/types/azure-key-vault-sync";
-
-const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="mb-4">
-    <p className="text-sm font-medium text-mineshaft-300">{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
-  </div>
-);
 
 type Props = {
   pkiSync: TAzureKeyVaultPkiSync;
@@ -14,8 +7,9 @@ type Props = {
 
 export const AzureKeyVaultPkiSyncDestinationSection = ({ pkiSync }: Props) => {
   return (
-    <GenericFieldLabel label="Key Vault URL">
-      {pkiSync.destinationConfig.vaultBaseUrl}
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Key Vault URL</DetailLabel>
+      <DetailValue>{pkiSync.destinationConfig.vaultBaseUrl}</DetailValue>
+    </Detail>
   );
 };

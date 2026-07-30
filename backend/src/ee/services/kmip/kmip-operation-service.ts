@@ -133,6 +133,9 @@ export const kmipOperationServiceFactory = ({
     }
 
     const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    if (!completeKeyDetails) {
+      throw new NotFoundError({ message: `Key with ID '${id}' not found` });
+    }
     if (!completeKeyDetails.internalKms) {
       throw new BadRequestError({
         message: "Cannot destroy external keys"
@@ -187,6 +190,9 @@ export const kmipOperationServiceFactory = ({
     }
 
     const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    if (!completeKeyDetails) {
+      throw new NotFoundError({ message: `Key with ID '${id}' not found` });
+    }
 
     if (!completeKeyDetails.internalKms) {
       throw new BadRequestError({
@@ -284,6 +290,9 @@ export const kmipOperationServiceFactory = ({
     }
 
     const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    if (!completeKeyDetails) {
+      throw new NotFoundError({ message: `Key with ID '${id}' not found` });
+    }
 
     if (!completeKeyDetails.internalKms) {
       throw new BadRequestError({
@@ -346,6 +355,9 @@ export const kmipOperationServiceFactory = ({
     }
 
     const completeKeyDetails = await kmsDAL.findByIdWithAssociatedKms(id);
+    if (!completeKeyDetails) {
+      throw new NotFoundError({ message: `Key with ID '${id}' not found` });
+    }
 
     if (!completeKeyDetails.internalKms) {
       throw new BadRequestError({

@@ -53,7 +53,7 @@ const DEFAULT_VALUES: CaWizardForm = {
   commonName: "",
   keySource: CertKeySource.Infisical,
   hsmConnectorId: null,
-  keyAlgorithm: CertKeyAlgorithm.RSA_2048,
+  keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
   notAfter: getDateTenYearsFromToday(),
   maxPathLength: "-1",
   disableManagedCrlDistributionPointUrl: false,

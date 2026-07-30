@@ -55,7 +55,9 @@ const run = async () => {
   const db = initDbConnection({
     dbConnectionUri: databaseCredentials.dbConnectionUri,
     dbRootCert: databaseCredentials.dbRootCert,
-    readReplicas: databaseCredentials.readReplicas
+    readReplicas: databaseCredentials.readReplicas,
+    pool: databaseCredentials.pool,
+    replicaPool: databaseCredentials.replicaPool
   });
 
   // Register connection-pool and entity-count observable gauges. No-ops when telemetry is disabled.
@@ -72,7 +74,8 @@ const run = async () => {
   const auditLogDb = envConfig.AUDIT_LOGS_DB_CONNECTION_URI
     ? initAuditLogDbConnection({
         dbConnectionUri: envConfig.AUDIT_LOGS_DB_CONNECTION_URI,
-        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT
+        dbRootCert: envConfig.AUDIT_LOGS_DB_ROOT_CERT,
+        pool: { min: envConfig.AUDIT_LOGS_DB_POOL_MIN, max: envConfig.AUDIT_LOGS_DB_POOL_MAX }
       })
     : undefined;
 

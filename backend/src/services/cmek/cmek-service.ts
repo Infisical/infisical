@@ -14,12 +14,14 @@ import {
   TCmekBulkImportKeysResult,
   TCmekDecryptDTO,
   TCmekEncryptDTO,
+  TCmekGenerateMacDTO,
   TCmekGetPrivateKeyDTO,
   TCmekGetPublicKeyDTO,
   TCmekKeyEncryptionAlgorithm,
   TCmekListSigningAlgorithmsDTO,
   TCmekSignDTO,
   TCmekVerifyDTO,
+  TCmekVerifyMacDTO,
   TCreateCmekDTO,
   TListCmeksByProjectIdDTO,
   TUpdabteCmekByIdDTO
@@ -538,6 +540,81 @@ export const cmekServiceFactory = ({
     };
   };
 
+  const cmekGenerateMac = async ({ keyId, data }: TCmekGenerateMacDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.GenerateMac, ProjectPermissionSub.Cmek);
+
+    if (key.keyUsage !== KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for MAC generation` });
+    }
+
+    const generate = await kmsService.generateMac({ kmsId: keyId });
+
+    const { mac, algorithm } = generate({ data: Buffer.from(data, "base64") });
+
+    return {
+      mac: mac.toString("base64"),
+      keyId: key.id,
+      projectId: key.projectId,
+      macAlgorithm: algorithm
+    };
+  };
+
+  const cmekVerifyMac = async ({ keyId, data, mac }: TCmekVerifyMacDTO, actor: OrgServiceActor) => {
+    const key = await kmsDAL.findCmekById(keyId);
+
+    if (!key) throw new NotFoundError({ message: `Key with ID "${keyId}" not found` });
+
+    if (!key.projectId || key.isReserved) throw new BadRequestError({ message: "Key is not customer managed" });
+
+    if (key.isDisabled) throw new BadRequestError({ message: "Key is disabled" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: key.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.KMS
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.VerifyMac, ProjectPermissionSub.Cmek);
+
+    if (key.keyUsage !== KmsKeyUsage.GENERATE_VERIFY_MAC) {
+      throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for MAC verification` });
+    }
+
+    const verify = await kmsService.verifyMac({ kmsId: keyId });
+
+    const { macValid, algorithm } = verify({
+      data: Buffer.from(data, "base64"),
+      mac: Buffer.from(mac, "base64")
+    });
+
+    return {
+      macValid,
+      keyId: key.id,
+      projectId: key.projectId,
+      macAlgorithm: algorithm
+    };
+  };
+
   const cmekDecrypt = async ({ keyId, ciphertext }: TCmekDecryptDTO, actor: OrgServiceActor) => {
     const key = await kmsDAL.findById(keyId);
 
@@ -650,6 +727,8 @@ export const cmekServiceFactory = ({
     findCmekByName,
     cmekSign,
     cmekVerify,
+    cmekGenerateMac,
+    cmekVerifyMac,
     listSigningAlgorithms,
     getPublicKey,
     getPrivateKey,

@@ -34,12 +34,14 @@ import {
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -104,6 +106,7 @@ type TOidcConfigServiceFactoryDep = {
     | "filterProjectsByUserMembership"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -111,6 +114,7 @@ type TOidcConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -129,13 +133,15 @@ export const oidcConfigServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   projectKeyDAL,
+  alertChannelRecipientDAL,
   projectDAL,
   projectBotDAL,
   auditLogService,
   kmsService,
   loginService,
   emailDomainDAL,
-  telemetryService
+  telemetryService,
+  usageMeteringService
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -401,7 +407,8 @@ export const oidcConfigServiceFactory = ({
           membershipGroupDAL,
           projectKeyDAL,
           projectDAL,
-          projectBotDAL
+          projectBotDAL,
+          usageMeteringService
         });
       }
 
@@ -431,7 +438,9 @@ export const oidcConfigServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
-          projectKeyDAL
+          projectKeyDAL,
+          usageMeteringService,
+          alertChannelRecipientDAL
         });
       }
 

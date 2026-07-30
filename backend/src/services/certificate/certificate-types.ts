@@ -1,6 +1,11 @@
-import * as x509 from "@peculiar/x509";
-
 import { TProjectPermission } from "@app/lib/types";
+import {
+  CERT_EXTENDED_KEY_USAGES,
+  CERT_SUBJECT_ALTERNATIVE_NAMES,
+  CertExtendedKeyUsage,
+  CertSubjectAlternativeNameType,
+  TAltNameType
+} from "@app/services/certificate-common/certificate-constants";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -79,15 +84,6 @@ export enum CertKeyUsage {
   DECIPHER_ONLY = "decipherOnly"
 }
 
-export enum CertExtendedKeyUsage {
-  CLIENT_AUTH = "clientAuth",
-  SERVER_AUTH = "serverAuth",
-  CODE_SIGNING = "codeSigning",
-  EMAIL_PROTECTION = "emailProtection",
-  TIMESTAMPING = "timeStamping",
-  OCSP_SIGNING = "ocspSigning"
-}
-
 export enum CertSignatureType {
   RSA = "RSA",
   ECDSA = "ECDSA",
@@ -95,14 +91,13 @@ export enum CertSignatureType {
   SLH_DSA = "SLH-DSA"
 }
 
-export const CertExtendedKeyUsageOIDToName: Record<string, CertExtendedKeyUsage> = {
-  [x509.ExtendedKeyUsage.clientAuth]: CertExtendedKeyUsage.CLIENT_AUTH,
-  [x509.ExtendedKeyUsage.serverAuth]: CertExtendedKeyUsage.SERVER_AUTH,
-  [x509.ExtendedKeyUsage.codeSigning]: CertExtendedKeyUsage.CODE_SIGNING,
-  [x509.ExtendedKeyUsage.emailProtection]: CertExtendedKeyUsage.EMAIL_PROTECTION,
-  [x509.ExtendedKeyUsage.ocspSigning]: CertExtendedKeyUsage.OCSP_SIGNING,
-  [x509.ExtendedKeyUsage.timeStamping]: CertExtendedKeyUsage.TIMESTAMPING
-};
+export const CertExtendedKeyUsageOIDToName: Record<string, CertExtendedKeyUsage> = Object.fromEntries(
+  Object.values(CERT_EXTENDED_KEY_USAGES).map(({ oid, legacyName }) => [oid, legacyName])
+);
+
+export const CertExtendedKeyUsageNameToOID: Record<CertExtendedKeyUsage, string> = Object.fromEntries(
+  Object.values(CERT_EXTENDED_KEY_USAGES).map(({ oid, legacyName }) => [legacyName, oid])
+) as Record<CertExtendedKeyUsage, string>;
 
 export enum CrlReason {
   UNSPECIFIED = "UNSPECIFIED",
@@ -182,46 +177,33 @@ export type TGetCertificateCredentialsDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
-export enum CertSubjectAlternativeNameType {
-  DNS_NAME = "dns_name",
-  IP_ADDRESS = "ip_address",
-  EMAIL = "email",
-  URI = "uri"
-}
+export { CertExtendedKeyUsage, CertSubjectAlternativeNameType, TAltNameType };
 
-export enum TAltNameType {
-  EMAIL = "email",
-  DNS = "dns",
-  IP = "ip",
-  URL = "url"
-}
+const SAN_TYPE_TO_X509_TYPE = Object.fromEntries(
+  Object.entries(CERT_SUBJECT_ALTERNATIVE_NAMES).map(([sanType, { generalNameType }]) => [sanType, generalNameType])
+) as Record<CertSubjectAlternativeNameType, TAltNameType>;
+
+const X509_TYPE_TO_SAN_TYPE = new Map<TAltNameType, CertSubjectAlternativeNameType>(
+  Object.entries(SAN_TYPE_TO_X509_TYPE).map(([sanType, legacyType]) => [
+    legacyType,
+    sanType as CertSubjectAlternativeNameType
+  ])
+);
 
 export const mapLegacyAltNameType = (legacyType: TAltNameType): CertSubjectAlternativeNameType => {
-  switch (legacyType) {
-    case TAltNameType.EMAIL:
-      return CertSubjectAlternativeNameType.EMAIL;
-    case TAltNameType.DNS:
-      return CertSubjectAlternativeNameType.DNS_NAME;
-    case TAltNameType.IP:
-      return CertSubjectAlternativeNameType.IP_ADDRESS;
-    case TAltNameType.URL:
-      return CertSubjectAlternativeNameType.URI;
-    default:
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      throw new Error(`Unknown legacy alt name type: ${legacyType}`);
+  const sanType = X509_TYPE_TO_SAN_TYPE.get(legacyType);
+  if (!sanType) {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    throw new Error(`Unknown legacy alt name type: ${legacyType}`);
   }
+  return sanType;
 };
 
-const SAN_TYPE_TO_X509_TYPE: Record<CertSubjectAlternativeNameType, TAltNameType> = {
-  [CertSubjectAlternativeNameType.IP_ADDRESS]: TAltNameType.IP,
-  [CertSubjectAlternativeNameType.EMAIL]: TAltNameType.EMAIL,
-  [CertSubjectAlternativeNameType.URI]: TAltNameType.URL,
-  [CertSubjectAlternativeNameType.DNS_NAME]: TAltNameType.DNS
-};
+export const mapSanTypeToX509Type = (sanType: CertSubjectAlternativeNameType): TAltNameType =>
+  SAN_TYPE_TO_X509_TYPE[sanType] ?? TAltNameType.DNS;
 
-export const mapSanTypeToX509Type = (sanType: CertSubjectAlternativeNameType): TAltNameType => {
-  return SAN_TYPE_TO_X509_TYPE[sanType] ?? TAltNameType.DNS;
-};
+export const getSanOtherNameOid = (sanType: CertSubjectAlternativeNameType): string | undefined =>
+  CERT_SUBJECT_ALTERNATIVE_NAMES[sanType]?.otherNameOid;
 
 export type TAltNameMapping = {
   type: TAltNameType;
@@ -247,6 +229,7 @@ export type TCertificateSubject = {
   country?: string;
   state?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TCertificateFingerprints = {

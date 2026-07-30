@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
-import {
-  faCheck,
-  faCopy,
-  faEllipsisVertical,
-  faPenToSquare,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
-import { ChevronLeftIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronLeftIcon,
+  CopyIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon
+} from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { AccessRestrictedBanner, DeleteActionModal, PageHeader } from "@app/components/v2";
+import { AccessRestrictedBanner, PageHeader } from "@app/components/v2";
 import {
   Button,
+  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +50,36 @@ import { ApplicationMembersTab } from "./components/ApplicationMembersTab";
 import { ApplicationRequestsTab } from "./components/ApplicationRequestsTab";
 import { ApplicationSettingsTab } from "./components/ApplicationSettingsTab";
 import { ApplicationSyncsTab } from "./components/ApplicationSyncsTab";
+
+type PermissionedTabProps = {
+  value: string;
+  label: string;
+  isBlocked: boolean;
+  blockedReason: string;
+};
+
+const PermissionedTab = ({ value, label, isBlocked, blockedReason }: PermissionedTabProps) => {
+  if (!isBlocked) {
+    return (
+      <TabsTrigger value={value} className="flex-none">
+        {label}
+      </TabsTrigger>
+    );
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">
+          <TabsTrigger value={value} disabled className="flex-none">
+            {label}
+          </TabsTrigger>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{blockedReason}</TooltipContent>
+    </Tooltip>
+  );
+};
 
 export const ApplicationDetailsByIDPage = () => {
   const params = useParams({ strict: false }) as {
@@ -195,21 +225,21 @@ export const ApplicationDetailsByIDPage = () => {
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="xs">
-                    <FontAwesomeIcon icon={faEllipsisVertical} />
+                  <Button variant="outline">
+                    <MoreHorizontalIcon />
                     Options
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={2}>
                   <DropdownMenuItem onClick={handleCopyId}>
-                    <FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />
+                    {isIdCopied ? <CheckIcon /> : <CopyIcon />}
                     Copy ID
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     isDisabled={!canEditApplication}
                     onClick={() => handleEditPopUpOpen("application", application)}
                   >
-                    <FontAwesomeIcon icon={faPenToSquare} />
+                    <PencilIcon />
                     Edit Application
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -217,7 +247,7 @@ export const ApplicationDetailsByIDPage = () => {
                     isDisabled={!canDeleteApplication}
                     onClick={() => setIsDeleteOpen(true)}
                   >
-                    <FontAwesomeIcon icon={faTrash} />
+                    <Trash2Icon />
                     Delete Application
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -242,64 +272,28 @@ export const ApplicationDetailsByIDPage = () => {
             >
               <TabsList variant="project" className="w-full justify-start">
                 {(canViewCertificates || isNonMemberAdmin) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <TabsTrigger
-                          value="certificates"
-                          disabled={isNonMemberAdmin}
-                          className="flex-none"
-                        >
-                          Certificate Inventory
-                        </TabsTrigger>
-                      </span>
-                    </TooltipTrigger>
-                    {isNonMemberAdmin && (
-                      <TooltipContent>
-                        You do not have permission to view certificates
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <PermissionedTab
+                    value="certificates"
+                    label="Certificate Inventory"
+                    isBlocked={isNonMemberAdmin}
+                    blockedReason="You do not have permission to view certificates"
+                  />
                 )}
                 {(canViewRequests || isNonMemberAdmin) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <TabsTrigger
-                          value="requests"
-                          disabled={isNonMemberAdmin}
-                          className="flex-none"
-                        >
-                          Certificate Requests
-                        </TabsTrigger>
-                      </span>
-                    </TooltipTrigger>
-                    {isNonMemberAdmin && (
-                      <TooltipContent>
-                        You do not have permission to view certificate requests
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <PermissionedTab
+                    value="requests"
+                    label="Certificate Requests"
+                    isBlocked={isNonMemberAdmin}
+                    blockedReason="You do not have permission to view certificate requests"
+                  />
                 )}
                 {(canViewSyncs || isNonMemberAdmin) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <TabsTrigger
-                          value="syncs"
-                          disabled={isNonMemberAdmin}
-                          className="flex-none"
-                        >
-                          Certificate Syncs
-                        </TabsTrigger>
-                      </span>
-                    </TooltipTrigger>
-                    {isNonMemberAdmin && (
-                      <TooltipContent>
-                        You do not have permission to view certificate syncs
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <PermissionedTab
+                    value="syncs"
+                    label="Certificate Syncs"
+                    isBlocked={isNonMemberAdmin}
+                    blockedReason="You do not have permission to view certificate syncs"
+                  />
                 )}
                 <TabsTrigger value="members" className="flex-none">
                   Members
@@ -345,13 +339,14 @@ export const ApplicationDetailsByIDPage = () => {
         </div>
       </div>
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
         title={`Delete ${application.name}?`}
-        subTitle="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in Certificate Manager but lose their application tag."
-        onChange={(open) => setIsDeleteOpen(open)}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This unattaches all Profiles, app-scoped syncs/alerts, and revokes app-only memberships. Issued certificates remain in Certificate Manager but lose their application tag."
+        confirmKey={application.name}
+        confirmLabel="Delete Application"
+        onConfirm={handleDelete}
       />
 
       <PkiApplicationModal popUp={editPopUp} handlePopUpToggle={handleEditPopUpToggle} />

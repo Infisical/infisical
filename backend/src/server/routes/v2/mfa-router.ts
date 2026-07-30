@@ -191,7 +191,9 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      return handleMfaVerification(req, res, server, req.body.recoveryCode, MfaMethod.TOTP, true);
+      // Recovery codes are account-level; pass the method the challenge required
+      // so users on any MFA method (email, TOTP or WebAuthn) can fall back to them.
+      return handleMfaVerification(req, res, server, req.body.recoveryCode, req.mfa.requiredMfaMethod, true);
     }
   });
 
@@ -212,7 +214,7 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       try {
-        const credentials = await server.services.webAuthn.getUserWebAuthnCredentials({
+        const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
           userId: req.mfa.userId
         });
 

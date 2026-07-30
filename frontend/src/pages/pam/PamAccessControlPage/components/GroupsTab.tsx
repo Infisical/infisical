@@ -98,7 +98,7 @@ export const GroupsTab = () => {
 
         {!isPending && filteredGroups.length === 0 ? (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {search ? "No groups match your search" : "No groups found"}

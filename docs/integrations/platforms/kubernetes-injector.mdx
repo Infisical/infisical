@@ -1,11 +1,16 @@
 ---
 title: "Kubernetes Agent Injector"
+sidebarTitle: "Agent Injector"
 description: "How to use the Infisical Kubernetes Agent Injector to inject secrets directly into Kubernetes pods."
 ---
 
 ## Overview
 
 The Infisical Kubernetes Agent Injector allows you to inject secrets directly into your Kubernetes pods. The Injector will create a [Infisical Agent](/integrations/platforms/infisical-agent) container within your pod that syncs secrets from Infisical into a shared volume mount within your pod.
+
+<Tip>
+  For a complete Helm chart reference including all configurable values, see the [Agent Injector Helm chart documentation](/self-hosting/helm-charts/agent-injector).
+</Tip>
 
 
 The Infisical Agent Injector will patch and modify your pod's deployment to contain an [Infisical Agent](/integrations/platforms/infisical-agent) container which renders your Infisical secrets into a shared volume mount within your pod.

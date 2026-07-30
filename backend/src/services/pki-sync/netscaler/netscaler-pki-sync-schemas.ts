@@ -2,9 +2,12 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import {
+  BasePkiSyncOptionsSchema,
+  buildDestinationCertificateNameSchema,
+  PkiSyncSchema
+} from "@app/services/pki-sync/pki-sync-schemas";
 
 import { NETSCALER_NAMING } from "./netscaler-pki-sync-constants";
 
@@ -12,33 +15,12 @@ export const NetScalerPkiSyncConfigSchema = z.object({
   vserverName: z.string().max(127, "vServer name cannot exceed 127 characters").optional()
 });
 
-export const NetScalerPkiSyncOptionsSchema = z.object({
-  canRemoveCertificates: z.boolean().default(true),
-  includeRootCa: z.boolean().default(false),
-  preserveItemOnRenewal: z.boolean().default(true),
-  certificateNameSchema: z
-    .string()
-    .trim()
-    .min(1, "Certificate name schema is required")
-    .refine(
-      (schema) => {
-        if (!schema.includes("{{certificateId}}") && !schema.includes("{{shortCertificateId}}")) {
-          return false;
-        }
-
-        const testName = buildCertificateNameSchemaTestName(schema);
-
-        const hasForbiddenChars = NETSCALER_NAMING.FORBIDDEN_CHARACTERS.split("").some((char) =>
-          testName.includes(char)
-        );
-
-        return NETSCALER_NAMING.NAME_PATTERN.test(testName) && !hasForbiddenChars;
-      },
-      {
-        message:
-          "Certificate name schema must include the {{certificateId}} or {{shortCertificateId}} placeholder and result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}"
-      }
-    )
+export const NetScalerPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
+  certificateNameSchema: buildDestinationCertificateNameSchema({
+    naming: NETSCALER_NAMING,
+    message:
+      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
+  })
 });
 
 export const NetScalerPkiSyncSchema = PkiSyncSchema.extend({

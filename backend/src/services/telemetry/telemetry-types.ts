@@ -15,6 +15,8 @@ import {
   UnknownUserActor,
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
+import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
+import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
@@ -107,6 +109,11 @@ export enum PostHogEventTypes {
   PamAccountUpdated = "PAM Account Updated",
   PamAccountDeleted = "PAM Account Deleted",
   PamAccountAccessed = "PAM Account Accessed",
+  PamDiscoverySourceCreated = "PAM Discovery Source Created",
+  PamDiscoverySourceUpdated = "PAM Discovery Source Updated",
+  PamDiscoverySourceDeleted = "PAM Discovery Source Deleted",
+  PamDiscoveryScanTriggered = "PAM Discovery Scan Triggered",
+  PamDiscoveredAccountsImported = "PAM Discovered Accounts Imported",
   PamSessionStarted = "PAM Session Started",
   PamSessionEnded = "PAM Session Ended",
   PamSessionTerminated = "PAM Session Terminated",
@@ -119,6 +126,11 @@ export enum PostHogEventTypes {
   PamAccountMemberAdded = "PAM Account Member Added",
   PamAccountMemberUpdated = "PAM Account Member Updated",
   PamAccountMemberRemoved = "PAM Account Member Removed",
+  PamAccountRotationConfigured = "PAM Account Rotation Configured",
+  PamAccountRotated = "PAM Account Rotated",
+  PamAccessRequestCreated = "PAM Access Request Created",
+  PamAccessRequestReviewed = "PAM Access Request Reviewed",
+  PamAccessGrantRevoked = "PAM Access Grant Revoked",
 
   ResourceAuthMethodLogin = "Resource Auth Method Login",
   ResourceAuthMethodUpdated = "Resource Auth Method Updated",
@@ -251,7 +263,10 @@ export enum PostHogEventTypes {
   DynamicSecretLeaseRevoked = "Dynamic Secret Lease Revoked",
   SecretApprovalPolicyUpdated = "Secret Approval Policy Updated",
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
-  SecretRotationV2Failed = "Secret Rotation V2 Failed"
+  SecretRotationV2Failed = "Secret Rotation V2 Failed",
+
+  // Agent Proxy
+  ProxiedServiceCreated = "Proxied Service Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -522,6 +537,8 @@ export type TTelemetryInstanceStatsEvent = {
     pamAccounts: number;
     accessApprovalPolicies: number;
     honeyTokens: number;
+    proxiedServices: number;
+    proxiedServicesUsedLast7Days: number;
     integrationBreakdown: Record<string, number>;
     projectTypeBreakdown: Record<string, number>;
     secretSyncBreakdown: Record<string, number>;
@@ -994,12 +1011,33 @@ export type TPamAccountEvent = {
   };
 };
 
+export type TPamDiscoveryEvent = {
+  event:
+    | PostHogEventTypes.PamDiscoverySourceCreated
+    | PostHogEventTypes.PamDiscoverySourceUpdated
+    | PostHogEventTypes.PamDiscoverySourceDeleted
+    | PostHogEventTypes.PamDiscoveryScanTriggered;
+  properties: {
+    discoveryType: string;
+    orgId: string;
+  };
+};
+
+export type TPamDiscoveredAccountsImportedEvent = {
+  event: PostHogEventTypes.PamDiscoveredAccountsImported;
+  properties: {
+    orgId: string;
+    importedCount: number;
+  };
+};
+
 export type TPamAccountAccessedEvent = {
   event: PostHogEventTypes.PamAccountAccessed;
   properties: {
     accountType: string;
     orgId: string;
     duration: number;
+    accessMethod: string;
   };
 };
 
@@ -1012,11 +1050,21 @@ export type TPamSessionStartedEvent = {
 };
 
 export type TPamSessionEndedEvent = {
-  event: PostHogEventTypes.PamSessionEnded | PostHogEventTypes.PamSessionTerminated;
+  event: PostHogEventTypes.PamSessionEnded;
   properties: {
     accountType: string;
     orgId: string;
     durationMs?: number;
+    endReason: PamSessionEndReason;
+    accessMethod: string;
+  };
+};
+
+export type TPamSessionTerminatedEvent = {
+  event: PostHogEventTypes.PamSessionTerminated;
+  properties: {
+    accountType: string;
+    orgId: string;
   };
 };
 
@@ -1045,6 +1093,47 @@ export type TPamAccountMemberEvent = {
     | PostHogEventTypes.PamAccountMemberAdded
     | PostHogEventTypes.PamAccountMemberUpdated
     | PostHogEventTypes.PamAccountMemberRemoved;
+  properties: {
+    orgId: string;
+  };
+};
+
+export type TPamAccountRotationConfiguredEvent = {
+  event: PostHogEventTypes.PamAccountRotationConfigured;
+  properties: {
+    accountType: string;
+    orgId: string;
+    hasRotationAccount: boolean;
+    scheduledRotationEnabled: boolean;
+  };
+};
+
+export type TPamAccountRotatedEvent = {
+  event: PostHogEventTypes.PamAccountRotated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamAccessRequestCreatedEvent = {
+  event: PostHogEventTypes.PamAccessRequestCreated;
+  properties: {
+    accountType: string;
+    orgId: string;
+  };
+};
+
+export type TPamAccessRequestReviewedEvent = {
+  event: PostHogEventTypes.PamAccessRequestReviewed;
+  properties: {
+    orgId: string;
+    status: string;
+  };
+};
+
+export type TPamAccessGrantRevokedEvent = {
+  event: PostHogEventTypes.PamAccessGrantRevoked;
   properties: {
     orgId: string;
   };
@@ -1899,6 +1988,20 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
+export type TProxiedServiceCreatedEvent = {
+  event: PostHogEventTypes.ProxiedServiceCreated;
+  properties: {
+    projectId: string;
+    headerRewriteCount: number;
+    substitutionCount: number;
+    substitutionSurfaces: ProxiedServiceSubstitutionSurface[];
+    hostPatternCount: number;
+    usesDynamicSecret: boolean;
+    usesBasicAuth: boolean;
+    isEnabled: boolean;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -1979,12 +2082,20 @@ export type TPostHogEvent = {
   | TPamAccountTemplateEvent
   | TPamFolderEvent
   | TPamAccountEvent
+  | TPamDiscoveryEvent
+  | TPamDiscoveredAccountsImportedEvent
   | TPamAccountAccessedEvent
   | TPamSessionStartedEvent
   | TPamSessionEndedEvent
+  | TPamSessionTerminatedEvent
   | TPamProductMemberEvent
   | TPamFolderMemberEvent
   | TPamAccountMemberEvent
+  | TPamAccountRotationConfiguredEvent
+  | TPamAccountRotatedEvent
+  | TPamAccessRequestCreatedEvent
+  | TPamAccessRequestReviewedEvent
+  | TPamAccessGrantRevokedEvent
   | TResourceAuthMethodEvent
   | THoneyTokenCreatedEvent
   | THoneyTokenUpdatedEvent
@@ -2088,4 +2199,5 @@ export type TPostHogEvent = {
   | TSecretApprovalPolicyUpdatedEvent
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
+  | TProxiedServiceCreatedEvent
 );

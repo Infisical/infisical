@@ -1,22 +1,18 @@
-import { useCallback, useMemo } from "react";
-import {
-  faCalendarCheck,
-  faCheck,
-  faCopy,
-  faDownload,
-  faEllipsisV,
-  faEraser,
-  faInfoCircle,
-  faRotate,
-  faToggleOff,
-  faToggleOn,
-  faTrash,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
-import { BanIcon } from "lucide-react";
+import {
+  BanIcon,
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  EraserIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  RotateCwIcon,
+  ToggleLeftIcon,
+  ToggleRightIcon,
+  Trash2Icon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -26,13 +22,18 @@ import {
   PkiSyncStatusBadge
 } from "@app/components/pki-syncs";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import { Badge, IconButton, TableCell, TableRow } from "@app/components/v3";
+  IconButton,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -102,25 +103,8 @@ export const PkiSyncRow = ({
       type: "info"
     });
 
-    const timer = setTimeout(() => setIsIdCopied.off(), 2000);
-
-    // eslint-disable-next-line consistent-return
-    return () => clearTimeout(timer);
-  }, [isIdCopied]);
-
-  const failureMessage = useMemo(() => {
-    if (syncStatus === PkiSyncStatus.Failed) {
-      if (lastSyncMessage)
-        try {
-          return JSON.stringify(JSON.parse(lastSyncMessage), null, 2);
-        } catch {
-          return lastSyncMessage;
-        }
-
-      return "An Unknown Error Occurred.";
-    }
-    return null;
-  }, [syncStatus, lastSyncMessage]);
+    setTimeout(() => setIsIdCopied.off(), 2000);
+  }, [id, setIsIdCopied]);
 
   const destinationDetails = PKI_SYNC_MAP[destination];
   const destinationName = destinationDetails.name;
@@ -142,8 +126,8 @@ export const PkiSyncRow = ({
         });
       }}
       className={twMerge(
-        "group h-14 transition-colors duration-100 hover:bg-mineshaft-700 [&>td]:py-2",
-        syncStatus === PkiSyncStatus.Failed && "bg-red/5 hover:bg-red/10",
+        "group h-14 transition-colors duration-100 [&>td]:py-2",
+        syncStatus === PkiSyncStatus.Failed && "bg-danger/5 hover:bg-danger/10",
         canReadSync ? "cursor-pointer" : "cursor-not-allowed"
       )}
       key={`sync-${id}`}
@@ -152,7 +136,7 @@ export const PkiSyncRow = ({
         <img
           alt={`${destinationDetails.name} sync`}
           src={`/images/integrations/${destinationDetails.image}`}
-          className="min-w-7"
+          className="w-5 min-w-5"
         />
       </TableCell>
       <TableCell className="max-w-0 min-w-32!">
@@ -160,12 +144,11 @@ export const PkiSyncRow = ({
           <div className="flex w-full items-center">
             <p className="truncate">{name}</p>
             {description && (
-              <Tooltip content={description}>
-                <FontAwesomeIcon
-                  icon={faInfoCircle}
-                  size="xs"
-                  className="ml-1 text-mineshaft-400"
-                />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="ml-1 size-3.5 text-muted" />
+                </TooltipTrigger>
+                <TooltipContent>{description}</TooltipContent>
               </Tooltip>
             )}
             {!applicationId && (
@@ -181,64 +164,33 @@ export const PkiSyncRow = ({
       <TableCell>
         <div className="flex items-center gap-1">
           {syncStatus ? (
-            <Tooltip
-              position="left"
-              className="max-w-sm"
-              content={
-                [PkiSyncStatus.Succeeded, PkiSyncStatus.Failed].includes(syncStatus) ? (
-                  <div className="flex flex-col gap-2 py-1 whitespace-normal">
-                    {lastSyncedAt && (
-                      <div>
-                        <div
-                          className={`mb-2 flex self-start ${syncStatus === PkiSyncStatus.Failed ? "text-yellow" : "text-green"}`}
-                        >
-                          <FontAwesomeIcon
-                            icon={faCalendarCheck}
-                            className="ml-1 pt-0.5 pr-1.5 text-sm"
-                          />
-                          <div className="text-xs">Last Synced</div>
-                        </div>
-                        <div className="rounded-sm bg-mineshaft-600 p-2 text-xs">
-                          {format(new Date(lastSyncedAt), "yyyy-MM-dd, hh:mm aaa")}
-                        </div>
-                      </div>
-                    )}
-                    {failureMessage && (
-                      <div>
-                        <div className="mb-2 flex self-start text-red">
-                          <FontAwesomeIcon icon={faXmark} className="ml-1 pt-0.5 pr-1.5 text-sm" />
-                          <div className="text-xs">Failure Reason</div>
-                        </div>
-                        <div className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
-                          {failureMessage}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : undefined
-              }
-            >
-              <div>
-                <PkiSyncStatusBadge status={syncStatus} />
-              </div>
-            </Tooltip>
+            <PkiSyncStatusBadge
+              status={syncStatus}
+              lastSyncedAt={lastSyncedAt}
+              lastSyncMessage={lastSyncMessage}
+            />
           ) : (
-            <Tooltip
-              className="text-xs"
-              content="This sync has not run yet — no certificates have been pushed to the destination."
-            >
-              <Badge variant="neutral">Not Synced</Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="neutral">Not Synced</Badge>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                This sync has not run yet. No certificates have been pushed to the destination.
+              </TooltipContent>
             </Tooltip>
           )}
           {!isAutoSyncEnabled && (
-            <Tooltip
-              className="text-xs"
-              content="Auto-Sync is disabled. Certificate changes in this application will not be automatically synced to the destination."
-            >
-              <Badge variant="neutral">
-                <BanIcon />
-                Auto-Sync Disabled
-              </Badge>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="neutral">
+                  <BanIcon />
+                  {!syncStatus && "Auto-Sync Disabled"}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="text-xs">
+                Auto-Sync is disabled. Certificate changes in this application will not be
+                automatically synced to the destination.
+              </TooltipContent>
             </Tooltip>
           )}
           {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge mini pkiSync={pkiSync} />}
@@ -249,96 +201,110 @@ export const PkiSyncRow = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton variant="ghost" size="xs" aria-label="Options">
-              <FontAwesomeIcon icon={faEllipsisV} />
+              <MoreHorizontalIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent sideOffset={2} align="end">
             <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
               onClick={(e) => {
                 e.stopPropagation();
                 handleCopyId();
               }}
             >
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
               Copy Sync ID
             </DropdownMenuItem>
             <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={faRotate} />}
               onClick={(e) => {
                 e.stopPropagation();
                 onTriggerSyncCertificates(pkiSync);
               }}
               isDisabled={!canTriggerSync}
             >
-              <Tooltip
-                position="left"
-                sideOffset={42}
-                content={`Manually trigger a sync for this ${destinationName} destination.`}
-              >
-                <div className="flex h-full w-full items-center justify-between gap-1">
-                  <span> Trigger Sync</span>
-                  <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
-                </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex w-full items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      <RotateCwIcon />
+                      Trigger Sync
+                    </span>
+                    <InfoIcon className="size-3.5 text-bunker-300" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={20}>
+                  {`Manually trigger a sync for this ${destinationName} destination.`}
+                </TooltipContent>
               </Tooltip>
             </DropdownMenuItem>
             {syncOption?.canImportCertificates && (
               <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={faDownload} />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onTriggerImportCertificates(pkiSync);
                 }}
                 isDisabled={!canImportCertificates}
               >
-                <Tooltip
-                  position="left"
-                  sideOffset={42}
-                  content={`Import certificates from this ${destinationName} destination into Infisical.`}
-                >
-                  <div className="flex h-full w-full items-center justify-between gap-1">
-                    <span>Import Certificates</span>
-                    <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
-                  </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <DownloadIcon />
+                        Import Certificates
+                      </span>
+                      <InfoIcon className="size-3.5 text-bunker-300" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="left"
+                    sideOffset={20}
+                  >{`Import certificates from this ${destinationName} destination into Infisical.`}</TooltipContent>
+                </Tooltip>
+              </DropdownMenuItem>
+            )}
+            {syncOption?.canRemoveCertificates && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTriggerRemoveCertificates(pkiSync);
+                }}
+                isDisabled={!canRemoveCertificates}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        <EraserIcon />
+                        Remove Certificates
+                      </span>
+                      <InfoIcon className="size-3.5 text-bunker-300" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="left"
+                    sideOffset={20}
+                  >{`Remove certificates synced by Infisical from this ${destinationName} destination.`}</TooltipContent>
                 </Tooltip>
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={faEraser} />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onTriggerRemoveCertificates(pkiSync);
-              }}
-              isDisabled={!canRemoveCertificates}
-            >
-              <Tooltip
-                position="left"
-                sideOffset={42}
-                content={`Remove certificates synced by Infisical from this ${destinationName} destination.`}
-              >
-                <div className="flex h-full w-full items-center justify-between gap-1">
-                  <span>Remove Certificates</span>
-                  <FontAwesomeIcon className="text-bunker-300" size="sm" icon={faInfoCircle} />
-                </div>
-              </Tooltip>
-            </DropdownMenuItem>
-            <DropdownMenuItem
               isDisabled={!canEditSync}
-              icon={<FontAwesomeIcon icon={isAutoSyncEnabled ? faToggleOff : faToggleOn} />}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleEnable(pkiSync);
               }}
             >
+              {isAutoSyncEnabled ? <ToggleLeftIcon /> : <ToggleRightIcon />}
               {isAutoSyncEnabled ? "Disable" : "Enable"} Auto-Sync
             </DropdownMenuItem>
             <DropdownMenuItem
+              variant="danger"
               isDisabled={!canDeleteSync}
-              icon={<FontAwesomeIcon icon={faTrash} />}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(pkiSync);
               }}
             >
+              <Trash2Icon />
               Delete Sync
             </DropdownMenuItem>
           </DropdownMenuContent>

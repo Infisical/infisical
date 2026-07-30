@@ -13,7 +13,7 @@ import { TSmbConnectionConfig } from "./smb-connection-types";
 
 export const getSmbConnectionListItem = () => {
   return {
-    name: "Windows" as const,
+    name: "Windows (SMB)" as const,
     app: AppConnection.SMB as const,
     methods: Object.values(SmbConnectionMethod) as [SmbConnectionMethod.Credentials]
   };

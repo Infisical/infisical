@@ -77,6 +77,7 @@ type Props = {
   importedSecrets: ImportedSecretData[];
   index: number;
   secretImport?: TSecretImport;
+  isVisible?: boolean;
 };
 
 export const SecretImportTableRow = ({
@@ -92,7 +93,8 @@ export const SecretImportTableRow = ({
   onDelete,
   importedSecrets,
   index,
-  secretImport
+  secretImport,
+  isVisible
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
@@ -536,6 +538,7 @@ export const SecretImportTableRow = ({
                   }
                   secretPath={getImportedSecretPath(selectedImport)}
                   isEmpty={secret.isEmpty}
+                  isVisible={isVisible}
                 />
               ))}
             </TableBody>
@@ -599,6 +602,7 @@ export const SecretImportTableRow = ({
                   }
                   isEmpty={secret.isEmpty}
                   missingFromEnvs={missingEnvNames}
+                  isVisible={isVisible}
                 />
               );
             })}
@@ -657,6 +661,7 @@ export const SecretImportTableRow = ({
               }
               secretPath={getImportedSecretPath(singleEnvImport)}
               isEmpty={secret.isEmpty}
+              isVisible={isVisible}
             />
           ))}
         </TableBody>

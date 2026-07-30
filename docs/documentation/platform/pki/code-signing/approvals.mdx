@@ -158,7 +158,7 @@ There are two ways someone gets active access on a Signer: Administrators **pre-
         </Note>
       </Step>
       <Step title="Submit">
-        Press **Submit**. The first step's approvers are notified. Each step advances when its required approvals are reached. When the last step completes, the access record is automatically created with the terms you requested (clamped to policy caps).
+        Press **Submit**. The first step's approvers are notified in-app and by email. Each step advances when its required approvals are reached. When the last step completes, the access record is automatically created with the terms you requested (clamped to policy caps).
       </Step>
     </Steps>
 
@@ -182,6 +182,10 @@ If you're an eligible approver for the **current** step of a pending request, an
     - **Reject** terminates the workflow. No access is created. The requester can submit a new request.
   </Step>
 </Steps>
+
+<Note>
+  You can never approve your own signing request, even if you are listed as an approver for the current step. This is always enforced and cannot be disabled. (Pre-approving signing for yourself is allowed. It is an administrator action, not an approval of your own request.)
+</Note>
 
 ## Revoking access
 

@@ -19,6 +19,7 @@ export const userKeys = {
   listUsers: ["user-list"] as const,
   totpRegistration: ["totp-registration"],
   totpConfiguration: ["totp-configuration"],
+  mfaRecoveryCodes: ["mfa-recovery-codes"],
   listUserGroupMemberships: (username: string) => [{ username }, "user-group-memberships"] as const,
   myOrganizationProjects: (orgId: string) => [{ orgId }, "organization-projects"] as const
 };

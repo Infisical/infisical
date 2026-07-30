@@ -579,7 +579,6 @@ describe("folderCommitServiceFactory", () => {
           encryptedComment: Buffer.from("comment"),
           skipMultilineEncoding: false,
           userId: "user-1",
-          envId: "env-1",
           metadata: {}
         } as TSecretVersionsV2
       };

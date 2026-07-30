@@ -1,501 +1,174 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Input, Switch, Tooltip } from "@app/components/v2";
+import { Field, FieldDescription, FieldError, FieldLabel, Input } from "@app/components/v3";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
+import { AwsCertificateManagerSyncOptions } from "./AwsCertificateManagerSyncOptions";
+import { AwsElasticLoadBalancerSyncOptions } from "./AwsElasticLoadBalancerSyncOptions";
+import { AwsSecretsManagerSyncOptions } from "./AwsSecretsManagerSyncOptions";
+import { AzureKeyVaultSyncOptions } from "./AzureKeyVaultSyncOptions";
+import { ChefSyncOptions } from "./ChefSyncOptions";
+import { F5BigIpSyncOptions } from "./F5BigIpSyncOptions";
+import { KempLoadMasterSyncOptions } from "./KempLoadMasterSyncOptions";
+import { LinuxServerSyncOptions } from "./LinuxServerSyncOptions";
+import { NameSchemaHoverCard } from "./NameSchemaHoverCard";
+import { NetScalerSyncOptions } from "./NetScalerSyncOptions";
+import { SyncSwitchField } from "./SyncSwitchField";
+import { WindowsServerSyncOptions } from "./WindowsServerSyncOptions";
 
 type Props = {
   destination?: PkiSync;
+  isUpdate?: boolean;
 };
 
-export const PkiSyncOptionsFields = ({ destination }: Props) => {
+const renderDestinationOptions = (currentDestination: PkiSync, isUpdate?: boolean) => {
+  switch (currentDestination) {
+    case PkiSync.AwsCertificateManager:
+      return <AwsCertificateManagerSyncOptions />;
+    case PkiSync.AwsElasticLoadBalancer:
+      return <AwsElasticLoadBalancerSyncOptions />;
+    case PkiSync.AzureKeyVault:
+      return <AzureKeyVaultSyncOptions />;
+    case PkiSync.AwsSecretsManager:
+      return <AwsSecretsManagerSyncOptions />;
+    case PkiSync.Chef:
+      return <ChefSyncOptions />;
+    case PkiSync.NetScaler:
+      return <NetScalerSyncOptions />;
+    case PkiSync.F5BigIp:
+      return <F5BigIpSyncOptions />;
+    case PkiSync.KempLoadMaster:
+      return <KempLoadMasterSyncOptions />;
+    case PkiSync.LinuxServer:
+      return <LinuxServerSyncOptions isUpdate={isUpdate} />;
+    case PkiSync.WindowsServer:
+      return <WindowsServerSyncOptions isUpdate={isUpdate} />;
+    default:
+      return null;
+  }
+};
+
+export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const currentDestination = destination || watch("destination");
   const { syncOption } = usePkiSyncOption(currentDestination);
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">Configure how certificates should be synced.</p>
-      {/*
-      TODO: Re-enable this when we have a way to import certificates
-      <Controller
-        control={control}
-        name="syncOptions.canImportCertificates"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message}>
-            <Switch
-              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-              id="can-import-certificates"
-              thumbClassName="bg-mineshaft-800"
-              onCheckedChange={onChange}
-              isChecked={value}
-            >
-              <p>
-                Auto Import Certificates{" "}
-                <Tooltip
-                  className="max-w-md"
-                  content={
-                    <>
-                      <p>
-                        When enabled, Infisical will automatically import certificates from the PKI
-                        subscriber to the destination during sync operations.
-                      </p>
-                      <p className="mt-4">
-                        This allows you to automatically populate your destination with certificates
-                        issued by your Certificate Authority.
-                      </p>
-                    </>
-                  }
-                >
-                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                </Tooltip>
-              </p>
-            </Switch>
-          </FormControl>
+      {syncOption?.canRemoveCertificates && (
+        <SyncSwitchField
+          name="syncOptions.canRemoveCertificates"
+          id="can-remove-certificates"
+          label="Enable removal of expired/revoked certificates"
+          description={
+            <>
+              When enabled, Infisical removes certificates from the destination during a sync once
+              they are no longer active in Infisical. Disable this if you manage some certificates
+              manually outside of Infisical.
+              {currentDestination === PkiSync.AwsElasticLoadBalancer &&
+                " For AWS Elastic Load Balancer, this removes the certificate from both the load balancer listeners and AWS Certificate Manager, affecting only certificates managed by this sync."}
+            </>
+          }
+        />
+      )}
+
+      {currentDestination !== PkiSync.CloudflareCustomCertificate &&
+        currentDestination !== PkiSync.NutanixPrismCentral && (
+          <SyncSwitchField
+            name="syncOptions.includeRootCa"
+            id="include-root-ca"
+            label="Include root CA in certificate chain"
+            description="When enabled, the full certificate chain including the root CA is synced. When disabled, the root CA is excluded to reduce the chain size; most applications validate correctly with intermediate certificates only."
+          />
         )}
-      />
-      */}
-      <Controller
-        control={control}
-        name="syncOptions.canRemoveCertificates"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message}>
-            <Switch
-              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-              id="can-remove-certificates"
-              thumbClassName="bg-mineshaft-800"
-              onCheckedChange={onChange}
-              isChecked={value}
-            >
-              <p>
-                Enable Removal of Expired/Revoked Certificates{" "}
-                <Tooltip
-                  className="max-w-md"
-                  content={
-                    <>
-                      <p>
-                        When enabled, Infisical will remove certificates from the destination during
-                        a sync if they are no longer active in Infisical.
-                      </p>
-                      {currentDestination === PkiSync.AwsElasticLoadBalancer && (
-                        <p className="mt-4">
-                          For AWS Elastic Load Balancer, this will remove the certificate from both
-                          the load balancer listeners and AWS Certificate Manager. This only affects
-                          certificates managed by this specific sync and will not interfere with
-                          certificates managed by other syncs (such as ACM syncs or other ELB
-                          syncs).
-                        </p>
-                      )}
-                      <p className="mt-4">
-                        Disable this option if you intend to manage some certificates manually
-                        outside of Infisical.
-                      </p>
-                    </>
-                  }
-                >
-                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                </Tooltip>
-              </p>
-            </Switch>
-          </FormControl>
-        )}
-      />
 
-      {currentDestination !== PkiSync.CloudflareCustomCertificate && (
+      {renderDestinationOptions(currentDestination, isUpdate)}
+
+      {currentDestination !== PkiSync.NutanixPrismCentral && (
         <Controller
           control={control}
-          name="syncOptions.includeRootCa"
+          name="syncOptions.certificateNameSchema"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="include-root-ca"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Include Root CA in Certificate Chain{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          When enabled, the full certificate chain including the root CA will be
-                          synced to the destination.
-                        </p>
-                        <p className="mt-4">
-                          When disabled, the root CA will be excluded from the certificate chain
-                          during sync operations, reducing the size of the synced certificate chain.
-                        </p>
-                        <p className="mt-4">
-                          Most applications and services work correctly with intermediate
-                          certificates only, as they can validate the trust chain up to a root CA
-                          they already trust.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {(currentDestination === PkiSync.AwsCertificateManager ||
-        currentDestination === PkiSync.AwsElasticLoadBalancer) && (
-        <Controller
-          control={control}
-          name="syncOptions.preserveArn"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="preserve-arn"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Preserve ARN on Renewal{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          When enabled, Infisical will replace the contents of existing certificates
-                          while preserving the same ARN during certificate renewal syncs.
-                        </p>
-                        <p className="mt-4">
-                          This allows consuming services like load balancers to continue using the
-                          same ARN without requiring manual updates.
-                        </p>
-                        <p className="mt-4">
-                          When disabled, new certificates will be created with new ARNs, and old
-                          certificates will be removed.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {currentDestination === PkiSync.AzureKeyVault && (
-        <Controller
-          control={control}
-          name="syncOptions.enableVersioning"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="preserve-version"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Enable Versioning on Renewal{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          When enabled, Infisical will create a new version of the existing
-                          certificate in Azure Key Vault during certificate renewal syncs,
-                          preserving the original certificate name.
-                        </p>
-                        <p className="mt-4">
-                          This allows consuming services to continue using the same certificate name
-                          while automatically using the latest version without requiring manual
-                          updates.
-                        </p>
-                        <p className="mt-4">
-                          When disabled, new certificates will be created with new names, and old
-                          certificates will be removed.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {currentDestination === PkiSync.AwsSecretsManager && (
-        <Controller
-          control={control}
-          name="syncOptions.preserveSecretOnRenewal"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="preserve-secret-on-renewal"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Preserve Secret on Renewal{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          <strong>Only applies to certificate renewals:</strong> When a certificate
-                          is renewed in Infisical, this option controls how the renewed certificate
-                          is handled in AWS Secrets Manager.
-                        </p>
-                        <p className="mt-4">
-                          When enabled, the renewed certificate will update the existing secret,
-                          preserving the same secret name and ARN. This allows consuming services to
-                          continue using the same secret reference without requiring updates.
-                        </p>
-                        <p className="mt-4">
-                          When disabled, the renewed certificate will be created as a new secret
-                          with a new name, and the old secret will be removed.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {currentDestination === PkiSync.Chef && (
-        <Controller
-          control={control}
-          name="syncOptions.preserveItemOnRenewal"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="preserve-item-on-renewal"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Preserve Data Bag Item on Renewal{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          <strong>Only applies to certificate renewals:</strong> When a certificate
-                          is renewed in Infisical, this option controls how the renewed certificate
-                          is handled in Chef.
-                        </p>
-                        <p className="mt-4">
-                          When enabled, the renewed certificate will update the existing data bag
-                          item, preserving the same item name. This allows consuming services to
-                          continue using the same data bag item without requiring updates to Chef
-                          cookbooks or recipes.
-                        </p>
-                        <p className="mt-4">
-                          When disabled, the renewed certificate will be created as a new data bag
-                          item with a new name, and the old item will be removed.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {currentDestination === PkiSync.NetScaler && (
-        <Controller
-          control={control}
-          name="syncOptions.preserveItemOnRenewal"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="preserve-item-on-renewal"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Preserve Certificate on Renewal{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          <strong>Only applies to certificate renewals:</strong> When a certificate
-                          is renewed in Infisical, this option controls how the renewed certificate
-                          is handled in NetScaler.
-                        </p>
-                        <p className="mt-4">
-                          When enabled, the renewed certificate will update the existing certkey
-                          object, preserving the same name and vServer bindings.
-                        </p>
-                        <p className="mt-4">
-                          When disabled, the renewed certificate will be created as a new certkey
-                          object with a new name, and the old certificate will remain on NetScaler.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      {currentDestination === PkiSync.F5BigIp && (
-        <Controller
-          control={control}
-          name="syncOptions.preserveItemOnRenewal"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                id="preserve-item-on-renewal"
-                thumbClassName="bg-mineshaft-800"
-                onCheckedChange={onChange}
-                isChecked={value}
-              >
-                <p>
-                  Preserve Certificate on Renewal{" "}
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        <p>
-                          <strong>Only applies to certificate renewals:</strong> controls what
-                          happens on the BIG-IP when Infisical renews a certificate.
-                        </p>
-                        <p className="mt-4">
-                          When on, the renewed certificate replaces the existing one under the same
-                          name, so any profile that uses it keeps working without any extra setup.
-                        </p>
-                        <p className="mt-4">
-                          When off, the renewed certificate is uploaded with a new name and the
-                          original stays on the BIG-IP.
-                        </p>
-                      </>
-                    }
-                  >
-                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
-                  </Tooltip>
-                </p>
-              </Switch>
-            </FormControl>
-          )}
-        />
-      )}
-
-      <Controller
-        control={control}
-        name="syncOptions.certificateNameSchema"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            tooltipClassName="max-w-md"
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <span>
-                  When a certificate is synced, the certificate name schema will be applied before
-                  it reaches the destination.
-                </span>
-
-                <div className="flex flex-col">
-                  <span>Available placeholders:</span>
-                  <ul className="list-disc pl-4 text-sm">
-                    <li>
-                      <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
-                    </li>
-                    <li>
-                      <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of the
-                      certificate ID. Use it instead of <code>{"{{certificateId}}"}</code> when the
-                      destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63 characters).
-                    </li>
-                    <li>
-                      <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
-                    </li>
-                    <li>
-                      <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to the
-                      certificate ID when none is set)
-                    </li>
-                    <li>
-                      <code>{"{{applicationId}}"}</code> - The ID of the application the sync
-                      belongs to
-                    </li>
-                    <li>
-                      <code>{"{{applicationName}}"}</code> - The name of the application the sync
-                      belongs to
-                    </li>
-                  </ul>
-                  <span className="mt-1 text-xs text-bunker-300">
-                    The schema must include <code>{"{{certificateId}}"}</code> or{" "}
-                    <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique name.
-                    The template itself can only contain letters, numbers, and the separators
-                    allowed by the destination. When placeholders resolve, any characters the
-                    destination doesn&apos;t support are replaced with hyphens.
-                  </span>
-                </div>
-                {syncOption?.forbiddenCharacters && syncOption.forbiddenCharacters.length > 0 && (
-                  <div className="flex flex-col">
-                    <span className="text-yellow">
-                      Character restrictions for {syncOption.name}:
-                    </span>
-                    <div className="text-xs text-bunker-300">
-                      The following characters are not allowed:{" "}
-                      {syncOption.forbiddenCharacters.split("").join(" ")}
-                    </div>
-                  </div>
+            <Field className="mb-4">
+              <FieldLabel>
+                Certificate name schema
+                {currentDestination === PkiSync.AwsElasticLoadBalancer && (
+                  <span className="text-muted">(optional)</span>
                 )}
-              </div>
-            }
-            isError={Boolean(error)}
-            isOptional={currentDestination === PkiSync.AwsElasticLoadBalancer}
-            errorText={error?.message}
-            label="Certificate Name Schema"
-            helperText={
-              currentDestination === PkiSync.AwsElasticLoadBalancer
-                ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
-                : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."
-            }
-          >
-            <Input
-              value={value || ""}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={
-                syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
-              }
-            />
-          </FormControl>
-        )}
-      />
+                <NameSchemaHoverCard>
+                  <span>
+                    When a certificate is synced, the certificate name schema will be applied before
+                    it reaches the destination.
+                  </span>
+
+                  <div className="flex flex-col">
+                    <span>Available placeholders:</span>
+                    <ul className="list-disc pl-4 text-sm">
+                      <li>
+                        <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
+                      </li>
+                      <li>
+                        <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of
+                        the certificate ID. Use it instead of <code>{"{{certificateId}}"}</code>{" "}
+                        when the destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63
+                        characters).
+                      </li>
+                      <li>
+                        <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
+                      </li>
+                      <li>
+                        <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to
+                        the certificate ID when none is set)
+                      </li>
+                      <li>
+                        <code>{"{{applicationId}}"}</code> - The ID of the application the sync
+                        belongs to
+                      </li>
+                      <li>
+                        <code>{"{{applicationName}}"}</code> - The name of the application the sync
+                        belongs to
+                      </li>
+                    </ul>
+                    {currentDestination === PkiSync.LinuxServer ||
+                    currentDestination === PkiSync.WindowsServer ? (
+                      <span className="mt-1 text-xs text-muted">
+                        A placeholder is optional here. Include one (for example{" "}
+                        <code>{"{{commonName}}"}</code>) so each certificate resolves to a distinct
+                        file name. A schema with no placeholder resolves to a fixed name and can be
+                        linked to only one certificate. When placeholders resolve, any characters
+                        the destination doesn&apos;t support are replaced with hyphens.
+                      </span>
+                    ) : (
+                      <span className="mt-1 text-xs text-muted">
+                        The schema must include <code>{"{{certificateId}}"}</code> or{" "}
+                        <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique
+                        name. The template itself can only contain letters, numbers, and the
+                        separators allowed by the destination. When placeholders resolve, any
+                        characters the destination doesn&apos;t support are replaced with hyphens.
+                      </span>
+                    )}
+                  </div>
+                </NameSchemaHoverCard>
+              </FieldLabel>
+              <Input
+                value={value || ""}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={
+                  syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
+                }
+                isError={Boolean(error)}
+              />
+              <FieldDescription>
+                {currentDestination === PkiSync.AwsElasticLoadBalancer
+                  ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+                  : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."}
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
     </>
   );
 };

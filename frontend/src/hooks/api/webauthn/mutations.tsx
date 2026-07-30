@@ -4,12 +4,12 @@ import { apiRequest } from "@app/config/request";
 
 import { webAuthnKeys } from "./queries";
 import {
-  TDeleteWebAuthnCredentialDTO,
   TGenerateAuthenticationOptionsResponse,
   TGenerateRegistrationOptionsResponse,
   TUpdateWebAuthnCredentialDTO,
   TVerifyAuthenticationDTO,
-  TVerifyRegistrationDTO
+  TVerifyRegistrationDTO,
+  TVerifyRegistrationResponse
 } from "./types";
 
 export const useGenerateRegistrationOptions = () =>
@@ -27,7 +27,7 @@ export const useVerifyRegistration = () => {
 
   return useMutation({
     mutationFn: async (dto: TVerifyRegistrationDTO) => {
-      const { data } = await apiRequest.post<{ credentialId: string; name?: string | null }>(
+      const { data } = await apiRequest.post<TVerifyRegistrationResponse>(
         "/api/v1/user/me/webauthn/register/verify",
         dto
       );
@@ -60,22 +60,6 @@ export const useVerifyAuthentication = () =>
       return data;
     }
   });
-
-export const useDeleteWebAuthnCredential = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id }: TDeleteWebAuthnCredentialDTO) => {
-      const { data } = await apiRequest.delete<{ success: boolean }>(
-        `/api/v1/user/me/webauthn/${id}`
-      );
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: webAuthnKeys.credentials });
-    }
-  });
-};
 
 export const useUpdateWebAuthnCredential = () => {
   const queryClient = useQueryClient();

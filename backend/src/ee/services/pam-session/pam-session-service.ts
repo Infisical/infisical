@@ -1,4 +1,3 @@
-import { Impersonated, JWT } from "google-auth-library";
 import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -7,10 +6,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { createSshCert, createSshKeyPair } from "@app/ee/services/ssh/ssh-certificate-authority-fns";
 import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { buildGcpSourceCredential } from "@app/services/app-connection/gcp/gcp-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -18,13 +15,14 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
-  GcpServiceAccountAuthMethod,
   PamAccessMethod,
   PamAccessStatus,
   PamAccountType,
+  PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
 import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
@@ -51,6 +49,7 @@ import {
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
   parseInternalMetadata,
+  qualifyUsernameWithDomain,
   resolveGatewayAccountType,
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
@@ -65,10 +64,16 @@ import {
   extractAwsAccountIdFromArn,
   generateAwsIamSessionCredentials
 } from "./aws-iam/aws-iam-federation";
+import { getAzureAccessTokens } from "./azure/azure-federation";
+import { mintGcpAccessToken } from "./gcp/gcp-federation";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
-import { sendPamSessionCancellationSignal } from "./pam-session-fns";
+import {
+  reportPamSessionEnded,
+  resolvePamSessionDistinctId,
+  sendPamSessionCancellationSignal
+} from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: Pick<
@@ -101,6 +106,7 @@ type TPamSessionServiceFactoryDep = {
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
   >;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPamSessionServiceFactory = ReturnType<typeof pamSessionServiceFactory>;
@@ -119,7 +125,8 @@ export const pamSessionServiceFactory = ({
   pamSessionExpirationService,
   mfaSessionService,
   orgDAL,
-  pamAccessRequestService
+  pamAccessRequestService,
+  telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -230,88 +237,31 @@ export const pamSessionServiceFactory = ({
     }
 
     if (account.accountType === PamAccountType.GcpServiceAccount) {
-      const serviceAccountEmail = connectionDetails.serviceAccountEmail as string;
       const remainingSeconds = Math.max(1, Math.floor((new Date(session.expiresAt).getTime() - Date.now()) / 1000));
-      const sessionTtlSeconds = Math.min(remainingSeconds, 3600);
-
-      let tokenResponse;
-
-      if (credentials.authMethod === GcpServiceAccountAuthMethod.StaticKey) {
-        const keyJson = JSON.parse(credentials.serviceAccountKeyJson as string) as {
-          client_email: string;
-          private_key: string;
-        };
-        const jwtClient = new JWT({
-          email: keyJson.client_email,
-          key: keyJson.private_key,
-          scopes: ["https://www.googleapis.com/auth/cloud-platform"]
-        });
-
-        if (keyJson.client_email === serviceAccountEmail) {
-          try {
-            tokenResponse = await jwtClient.getAccessToken();
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            throw new BadRequestError({
-              message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
-            });
-          }
-        } else {
-          const impersonated = new Impersonated({
-            sourceClient: jwtClient,
-            targetPrincipal: serviceAccountEmail,
-            lifetime: sessionTtlSeconds,
-            delegates: [],
-            targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
-          });
-          try {
-            tokenResponse = await impersonated.getAccessToken();
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            throw new BadRequestError({
-              message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
-            });
-          }
-        }
-      } else {
-        const appCfg = getConfig();
-        if (!appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL) {
-          throw new InternalServerError({
-            message: "Environment variable has not been configured: INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL"
-          });
-        }
-        const sourceClient = buildGcpSourceCredential(appCfg.INF_APP_CONNECTION_GCP_SERVICE_ACCOUNT_CREDENTIAL);
-        const impersonated = new Impersonated({
-          sourceClient,
-          targetPrincipal: serviceAccountEmail,
-          lifetime: sessionTtlSeconds,
-          delegates: [],
-          targetScopes: ["https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam"]
-        });
-        try {
-          tokenResponse = await impersonated.getAccessToken();
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          throw new BadRequestError({
-            message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]: ${msg}`
-          });
-        }
-      }
-
-      if (!tokenResponse?.token) {
-        throw new BadRequestError({
-          message: `Failed to obtain GCP access token for [serviceAccountEmail=${serviceAccountEmail}]`
-        });
-      }
-
-      credentials.token = tokenResponse.token;
+      credentials.token = await mintGcpAccessToken({
+        serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
+        authMethod: credentials.authMethod as string,
+        serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
+        ttlSeconds: Math.min(remainingSeconds, 3600)
+      });
       delete credentials.serviceAccountKeyJson;
+    }
+
+    if (account.accountType === PamAccountType.AzureCli) {
+      credentials.tokens = await getAzureAccessTokens({
+        tenantId: connectionDetails.tenantId as string,
+        clientId: credentials.clientId as string,
+        clientSecret: credentials.clientSecret as string
+      });
+      delete credentials.clientSecret;
     }
 
     const sessionStarted = session.status === PamSessionStatus.Starting;
 
+    let actorDistinctId: string | undefined;
     if (sessionStarted) {
       await pamSessionDAL.activateSession(sessionId);
+      actorDistinctId = await resolvePamSessionDistinctId({ session, userDAL });
     }
 
     const templateSettingsParsed = account.templateSettings
@@ -396,6 +346,13 @@ export const pamSessionServiceFactory = ({
       session.selectedHost
     );
 
+    if (account.accountType === PamAccountType.WindowsAd) {
+      credentials.username = qualifyUsernameWithDomain(
+        credentials.username as string,
+        (connectionDetails as { domain: string }).domain
+      );
+    }
+
     return {
       credentials: { ...normalizedConnectionDetails, ...credentials },
       recording,
@@ -404,19 +361,29 @@ export const pamSessionServiceFactory = ({
       accountId: session.accountId,
       accountName: session.accountName,
       accountType: session.accountType,
-      actorEmail: session.actorEmail,
+      actorDistinctId,
       sessionStarted
     };
   };
 
   // Called by the gateway
-  const endSessionFromGateway = async (sessionId: string, gatewayId: string) => {
+  const endSessionFromGateway = async (sessionId: string, gatewayId: string, orgId: string) => {
     const session = await pamSessionDAL.findOne({ id: sessionId, gatewayId });
     if (!session) {
       throw new NotFoundError({ message: "Session not found" });
     }
 
     const updatedSession = await pamSessionDAL.endSessionById(sessionId);
+
+    if (updatedSession) {
+      void reportPamSessionEnded({
+        session: updatedSession,
+        orgId,
+        endReason: PamSessionEndReason.Completed,
+        telemetryService,
+        userDAL
+      });
+    }
 
     return {
       projectId: session.projectId,
@@ -552,13 +519,14 @@ export const pamSessionServiceFactory = ({
       }
 
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
-      const rawCredentials = await decrypt(projectId, account.encryptedCredentials);
+      const roleArn = rawConnectionDetails.roleArn as string;
 
       const stsCredentials = await generateAwsIamSessionCredentials({
-        connectionDetails: { roleArn: rawConnectionDetails.roleArn as string },
-        targetRoleArn: rawCredentials.targetRoleArn as string,
+        roleArn,
+        // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
+        // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
+        externalId: actor.actorOrgId,
         roleSessionName: actorEmail.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64),
-        projectId,
         sessionDuration: stsDurationSeconds
       });
 
@@ -578,10 +546,10 @@ export const pamSessionServiceFactory = ({
         metadata.secretAccessKey = stsCredentials.secretAccessKey;
         metadata.sessionToken = stsCredentials.sessionToken;
         metadata.expiresAt = expiresAt.toISOString();
-        metadata.targetRoleArn = rawCredentials.targetRoleArn as string;
+        metadata.roleArn = roleArn;
         metadata.federatedUsername = actorEmail;
 
-        const awsAccountId = extractAwsAccountIdFromArn(rawConnectionDetails.roleArn as string);
+        const awsAccountId = extractAwsAccountIdFromArn(roleArn);
         if (awsAccountId) {
           metadata.awsAccountId = awsAccountId;
         }
@@ -613,7 +581,8 @@ export const pamSessionServiceFactory = ({
         accountType: account.accountType as PamAccountType,
         accountName: account.name,
         metadata,
-        sessionDurationMs
+        sessionDurationMs,
+        accessMethod
       };
     }
 
@@ -683,6 +652,12 @@ export const pamSessionServiceFactory = ({
     if (account.accountType === PamAccountType.GcpServiceAccount) {
       metadata.serviceAccountEmail = rawConnectionDetails.serviceAccountEmail as string;
       metadata.authMethod = rawCredentials.authMethod as string;
+    } else if (account.accountType === PamAccountType.AzureCli) {
+      metadata.tenantId = rawConnectionDetails.tenantId as string;
+      metadata.clientId = rawCredentials.clientId as string;
+      if (rawConnectionDetails.subscriptionId) {
+        metadata.subscriptionId = rawConnectionDetails.subscriptionId as string;
+      }
     } else if (account.accountType === PamAccountType.Kubernetes) {
       metadata.authMethod = rawCredentials.authMethod as string;
       if (rawCredentials.namespace) {
@@ -711,6 +686,7 @@ export const pamSessionServiceFactory = ({
       accountName: account.name,
       metadata,
       sessionDurationMs,
+      accessMethod: PamAccessMethod.Cli,
       relayHost: certs.relayHost,
       relayClientCertificate: certs.relay.clientCertificate,
       relayClientPrivateKey: certs.relay.clientPrivateKey,

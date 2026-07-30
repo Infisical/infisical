@@ -2,10 +2,8 @@ import { useState } from "react";
 import { faEllipsisV, faPen, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
-  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -41,15 +39,15 @@ export const GatewayPoolsContent = ({ search }: Props) => {
   const isEnterprise = subscription?.gatewayPool;
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
   const [resourcesPool, setResourcesPool] = useState<{ id: string; name: string } | null>(null);
-  const { data: pools, isPending: isPoolsLoading } = useListGatewayPools({
-    refetchInterval: 15_000
+  const { data: pools, isLoading: isPoolsLoading } = useListGatewayPools({
+    refetchInterval: 15_000,
+    enabled: Boolean(isEnterprise)
   });
   const deletePool = useDeleteGatewayPool();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "editPool",
-    "deletePool",
-    "upgradePlan"
+    "deletePool"
   ] as const);
 
   const filteredPools = pools?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
@@ -69,29 +67,6 @@ export const GatewayPoolsContent = ({ search }: Props) => {
       createNotification({ type: "error", text: message });
     }
   };
-
-  if (!isEnterprise) {
-    return (
-      <div>
-        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-8 text-center">
-          <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
-          <h4 className="mb-2 text-lg font-medium text-mineshaft-100">Enterprise Feature</h4>
-          <p className="mx-auto mb-4 max-w-md text-sm text-mineshaft-300">
-            Gateway Pools provide high availability and automatic failover. When a gateway goes
-            down, the platform automatically routes through a healthy member of the pool.
-          </p>
-          <Button colorSchema="primary" onClick={() => handlePopUpOpen("upgradePlan")}>
-            Upgrade to Enterprise
-          </Button>
-        </div>
-        <UpgradePlanModal
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="To use gateway pools, upgrade to Infisical's Enterprise plan."
-        />
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -166,7 +141,7 @@ export const GatewayPoolsContent = ({ search }: Props) => {
                 </Td>
               </Tr>
             ))}
-            {!isPoolsLoading && filteredPools?.length === 0 && (
+            {!isPoolsLoading && !filteredPools?.length && (
               <Tr>
                 <Td colSpan={4}>
                   <EmptyState title="No gateway pools found" />

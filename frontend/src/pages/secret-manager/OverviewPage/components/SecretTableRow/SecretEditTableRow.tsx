@@ -881,6 +881,12 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
+  // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
+  const canCreatePersonalOverride = hasSecretReadValueOrDescribePermission(
+    permission,
+    ProjectPermissionSecretActions.DescribeSecret,
+    { environment, secretPath, secretName, secretTags: ["*"] }
+  );
 
   const isReadOnly =
     isPendingDelete ||
@@ -1673,60 +1679,48 @@ export const SecretEditTableRow = ({
                         : ""}
                 </TooltipContent>
               </Tooltip>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Create}
-                a={subject(ProjectPermissionSub.Secrets, {
-                  environment,
-                  secretPath,
-                  secretName,
-                  secretTags: ["*"]
-                })}
+              <Tooltip
+                open={
+                  isPendingBatchChange ||
+                  isCreatable ||
+                  isImportedSecret ||
+                  isOverride ||
+                  !canCreatePersonalOverride
+                    ? undefined
+                    : false
+                }
+                disableHoverableContent
               >
-                {(isAllowed) => (
-                  <Tooltip
-                    open={
+                <TooltipTrigger className="block w-full">
+                  <DropdownMenuItem
+                    className="px-2.5 py-1.5 text-xs"
+                    onClick={() => onAddOverride?.()}
+                    isDisabled={
                       isPendingBatchChange ||
                       isCreatable ||
                       isImportedSecret ||
                       isOverride ||
-                      !isAllowed
-                        ? undefined
-                        : false
+                      !canCreatePersonalOverride
                     }
-                    disableHoverableContent
                   >
-                    <TooltipTrigger className="block w-full">
-                      <DropdownMenuItem
-                        className="px-2.5 py-1.5 text-xs"
-                        onClick={() => onAddOverride?.()}
-                        isDisabled={
-                          isPendingBatchChange ||
-                          isCreatable ||
-                          isImportedSecret ||
-                          isOverride ||
-                          !isAllowed
-                        }
-                      >
-                        <GitBranchIcon />
-                        Add Override
-                      </DropdownMenuItem>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                      {isPendingBatchChange
-                        ? "Discard Pending Changes First"
-                        : !isAllowed
-                          ? "Access Denied"
-                          : isOverride
-                            ? "Override Already Exists"
-                            : isImportedSecret
-                              ? "Cannot Override Imported Secret"
-                              : isCreatable
-                                ? "Create Secret First"
-                                : "Add Personal Override"}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </ProjectPermissionCan>
+                    <GitBranchIcon />
+                    Add Override
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {isPendingBatchChange
+                    ? "Discard Pending Changes First"
+                    : !canCreatePersonalOverride
+                      ? "Access Denied"
+                      : isOverride
+                        ? "Override Already Exists"
+                        : isImportedSecret
+                          ? "Cannot Override Imported Secret"
+                          : isCreatable
+                            ? "Create Secret First"
+                            : "Add Personal Override"}
+                </TooltipContent>
+              </Tooltip>
               <Tooltip
                 open={
                   isPendingBatchChange ||
@@ -1882,7 +1876,6 @@ export const SecretEditTableRow = ({
             <SheetTitle>Version History</SheetTitle>
             <SheetDescription>Audit secret history and rollback changes</SheetDescription>
           </SheetHeader>
-          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">
@@ -1914,7 +1907,6 @@ export const SecretEditTableRow = ({
               View and manage user, group, and machine identity access to this secret
             </SheetDescription>
           </SheetHeader>
-          <Separator />
           <div className="bg-container p-4 text-foreground">
             <p className="truncate">{secretName}</p>
             <Badge variant="neutral" className="mt-0.5">

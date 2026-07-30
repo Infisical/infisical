@@ -11,6 +11,7 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
+import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
@@ -305,9 +306,12 @@ type TSafeRequestExtras = {
   servername?: string;
 };
 
-type TSafeRequestConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "url" | "method">;
+type TSafeRequestConfig = Omit<
+  AxiosRequestConfig,
+  "httpAgent" | "httpsAgent" | "maxRedirects" | "proxy" | "url" | "method"
+>;
 
-type TSafeRequestFullConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects"> & {
+type TSafeRequestFullConfig = Omit<AxiosRequestConfig, "httpAgent" | "httpsAgent" | "maxRedirects" | "proxy"> & {
   url: string;
 } & TSafeRequestExtras;
 
@@ -328,7 +332,9 @@ const resolveBaseUrl = (url: string, baseURL?: string): string => {
 
 const logDispatch = (method: string, effectiveUrl: string, validated: TValidatedHost | undefined) => {
   const pinned = validated ? formatEntries(validated.entries) : "none";
-  logger.debug(`safeRequest: dispatching [method=${method}] [url=${effectiveUrl}] [pinned=${pinned}]`);
+  logger.debug(
+    `safeRequest: dispatching [method=${method}] [url=${sanitizeUrlForLog(effectiveUrl)}] [pinned=${pinned}]`
+  );
 };
 
 const dispatch = async <T>(
@@ -338,6 +344,7 @@ const dispatch = async <T>(
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
   const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
+  const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
@@ -350,6 +357,9 @@ const dispatch = async <T>(
     url,
     ...(data !== undefined && { data }),
     maxRedirects: 0,
+    // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
+    // pinned agent (the proxy would re-resolve the target, defeating the pin).
+    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
@@ -357,6 +367,7 @@ const dispatch = async <T>(
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
   const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
+  const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
   const { protocol } = new URL(effectiveUrl);
@@ -367,6 +378,9 @@ const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
     ...axiosOpts,
     url,
     maxRedirects: 0,
+    // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
+    // pinned agent (the proxy would re-resolve the target, defeating the pin).
+    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });

@@ -27,6 +27,7 @@ import { keyUsageDefaultOption, kmsKeyUsageOptions } from "@app/helpers/kms";
 import {
   AllowedEncryptionKeyAlgorithms,
   AsymmetricKeyAlgorithm,
+  HmacAlgorithm,
   KmsKeyUsage,
   SymmetricKeyAlgorithm,
   TCmek,
@@ -38,7 +39,7 @@ import { slugSchema } from "@app/lib/schemas";
 const formSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
   description: z.string().max(500).optional(),
-  encryptionAlgorithm: z.enum(AllowedEncryptionKeyAlgorithms),
+  algorithm: z.enum(AllowedEncryptionKeyAlgorithms),
   keyUsage: z.nativeEnum(KmsKeyUsage),
   isExportable: z.boolean()
 });
@@ -75,14 +76,14 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
     defaultValues: {
       name: cmek?.name,
       description: cmek?.description,
-      encryptionAlgorithm: SymmetricKeyAlgorithm.AES_GCM_256,
+      algorithm: SymmetricKeyAlgorithm.AES_GCM_256,
       keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
       isExportable: cmek?.isExportable ?? true
     }
   });
 
   const handleCreateCmek = async ({
-    encryptionAlgorithm,
+    algorithm,
     name,
     description,
     keyUsage,
@@ -95,9 +96,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           name,
           description,
           keyUsage,
-          encryptionAlgorithm: encryptionAlgorithm as
-            | AsymmetricKeyAlgorithm
-            | SymmetricKeyAlgorithm,
+          algorithm: algorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm | HmacAlgorithm,
           isExportable
         });
 
@@ -148,7 +147,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                     defaultValue={field.value}
                     onValueChange={(e) => {
                       if (keyUsageDefaultOption[e as KmsKeyUsage]) {
-                        setValue("encryptionAlgorithm", keyUsageDefaultOption[e as KmsKeyUsage], {
+                        setValue("algorithm", keyUsageDefaultOption[e as KmsKeyUsage], {
                           shouldDirty: true,
                           shouldValidate: true
                         });
@@ -169,7 +168,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
             />
             <Controller
               control={control}
-              name="encryptionAlgorithm"
+              name="algorithm"
               render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                 <FormControl
                   className="w-full"
@@ -196,6 +195,11 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                             value as unknown as AsymmetricKeyAlgorithm
                           );
                         }
+                        if (selectedKeyUsage === KmsKeyUsage.GENERATE_VERIFY_MAC) {
+                          return Object.values(HmacAlgorithm).includes(
+                            value as unknown as HmacAlgorithm
+                          );
+                        }
 
                         return false;
                       })
@@ -203,6 +207,9 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                       .map(([_, value]) => {
                         const isPqc = value.startsWith("ML_DSA");
                         const isDisabled = isPqc && !subscription?.kmsPqc;
+                        const isLegacyHmac =
+                          value === HmacAlgorithm.HMAC_SHA_1 ||
+                          value === HmacAlgorithm.HMAC_SHA_224;
                         return (
                           <SelectItem
                             value={value}
@@ -212,6 +219,7 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
                             <div className="flex items-center gap-2">
                               <span className="uppercase">{value.replaceAll("-", " ")}</span>
                               {isDisabled && <Badge variant="info">Enterprise</Badge>}
+                              {isLegacyHmac && <Badge variant="warning">Legacy</Badge>}
                             </div>
                           </SelectItem>
                         );

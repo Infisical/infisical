@@ -1,68 +1,107 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { faKeyboard } from "@fortawesome/free-regular-svg-icons";
 import { faComputer } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Search } from "lucide-react";
 
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput
+} from "@app/components/v3";
+
+import { IntegrationDocsCard } from "../IntegrationDocsCard";
 import frameworks from "../json/frameworkIntegrations.json";
+
+const TOOLING_INTEGRATIONS = [
+  {
+    name: "CLI",
+    slug: "cli",
+    category: "Tooling",
+    description: "Inject secrets into any process or script with the Infisical CLI.",
+    icon: faKeyboard,
+    href: "https://infisical.com/docs/cli/commands/run"
+  },
+  {
+    name: "SDKs",
+    slug: "sdks",
+    category: "Tooling",
+    description: "Fetch and manage secrets programmatically with Infisical's language SDKs.",
+    icon: faComputer,
+    href: "https://infisical.com/docs/sdks/overview"
+  }
+];
 
 export const FrameworkIntegrationTab = () => {
   const { t } = useTranslation();
+  const [search, setSearch] = useState("");
 
-  const sortedFrameworks = frameworks.sort((a, b) => a.name.localeCompare(b.name));
+  const query = search.trim().toLowerCase();
+
+  const matchesQuery = (item: { name: string; slug: string; category: string }) =>
+    !query ||
+    item.name.toLowerCase().includes(query) ||
+    item.slug.toLowerCase().includes(query) ||
+    item.category.toLowerCase().includes(query);
+
+  const filteredFrameworks = [...frameworks]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .filter(matchesQuery);
+
+  const filteredTooling = TOOLING_INTEGRATIONS.filter(matchesQuery);
 
   return (
-    <>
-      <div className="mb-4 flex flex-col items-start justify-between px-2 text-xl">
-        <p className="text-base text-gray-400">{t("integrations.click-to-setup")}</p>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
-        {sortedFrameworks.map((framework) => (
-          <a
-            key={`framework-integration-${framework.slug}`}
-            href={framework.docsLink}
-            rel="noopener noreferrer"
-            target="_blank"
-            className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
-          >
-            {framework?.image && (
-              <img
-                src={`/images/integrations/${framework.image}.png`}
-                height={60}
-                width={60}
-                className="mt-auto"
-                alt="integration logo"
-              />
-            )}
-            {framework?.name && (
-              <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-                {framework.name}
-              </div>
-            )}
-          </a>
-        ))}
-        <a
-          href="https://infisical.com/docs/cli/commands/run"
-          rel="noopener noreferrer"
-          target="_blank"
-          className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
-        >
-          <FontAwesomeIcon className="mt-auto text-5xl text-white/90" icon={faKeyboard} />
-          <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-            CLI
-          </div>
-        </a>
-        <a
-          href="https://infisical.com/docs/sdks/overview"
-          rel="noopener noreferrer"
-          target="_blank"
-          className="relative flex h-32 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4 duration-200 hover:bg-mineshaft-700"
-        >
-          <FontAwesomeIcon className="mt-auto text-5xl text-white/90" icon={faComputer} />
-          <div className="mt-auto max-w-xs text-center text-sm font-medium text-gray-300 duration-200 group-hover:text-gray-200">
-            SDKs
-          </div>
-        </a>
-      </div>
-    </>
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted">{t("integrations.click-to-setup")}</p>
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search frameworks (e.g. Next.js, Django, Rails)"
+        />
+      </InputGroup>
+      {filteredFrameworks.length || filteredTooling.length ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {filteredFrameworks.map((framework) => (
+            <IntegrationDocsCard
+              key={`framework-integration-${framework.slug}`}
+              name={framework.name}
+              category={framework.category}
+              description={framework.description}
+              image={framework.image}
+              href={framework.docsLink}
+            />
+          ))}
+          {filteredTooling.map((tool) => (
+            <IntegrationDocsCard
+              key={`framework-integration-${tool.slug}`}
+              name={tool.name}
+              category={tool.category}
+              description={tool.description}
+              icon={tool.icon}
+              href={tool.href}
+            />
+          ))}
+        </div>
+      ) : (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Search />
+            </EmptyMedia>
+            <EmptyTitle>No matching frameworks</EmptyTitle>
+            <EmptyDescription>Try a different search term.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+    </div>
   );
 };

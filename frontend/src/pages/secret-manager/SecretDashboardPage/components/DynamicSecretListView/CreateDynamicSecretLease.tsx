@@ -431,6 +431,35 @@ const renderOutputForm = (
     );
   }
 
+  if (provider === DynamicSecretProviders.Tailscale) {
+    const { KEY_ID, AUTH_KEY, CLIENT_ID, CLIENT_SECRET, FEDERATED_CREDENTIAL_ID, AUDIENCE } =
+      data as {
+        KEY_ID?: string;
+        AUTH_KEY?: string;
+        CLIENT_ID?: string;
+        CLIENT_SECRET?: string;
+        FEDERATED_CREDENTIAL_ID?: string;
+        AUDIENCE?: string;
+      };
+
+    return (
+      <div>
+        {KEY_ID && <OutputDisplay label="Key ID" value={KEY_ID} />}
+        {AUTH_KEY && <OutputDisplay label="Auth Key" value={AUTH_KEY} />}
+        {CLIENT_ID && <OutputDisplay label="Client ID" value={CLIENT_ID} />}
+        {CLIENT_SECRET && <OutputDisplay label="Client Secret" value={CLIENT_SECRET} />}
+        {FEDERATED_CREDENTIAL_ID && (
+          <OutputDisplay label="Federated Credential ID" value={FEDERATED_CREDENTIAL_ID} />
+        )}
+        {AUDIENCE && <OutputDisplay label="Audience" value={AUDIENCE} />}
+        <div className="mt-2 text-xs text-mineshaft-300">
+          Important: Copy these credentials now. You will not be able to see them again after you
+          close the modal.
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };
 

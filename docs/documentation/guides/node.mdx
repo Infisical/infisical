@@ -1,5 +1,7 @@
 ---
-title: "Node"
+title: "Node.js"
+sidebarTitle: "Node.js"
+description: "Manage secrets for your Node.js application from local development to production."
 ---
 
 This guide demonstrates how to use Infisical to manage secrets for your Node stack from local development to production. It uses:
@@ -15,7 +17,7 @@ To begin, we need to set up a project in Infisical and add secrets to an environ
 
 1. Create a new project in [Infisical](https://app.infisical.com/).
 
-2. Add a secret to the development environment of this project so we can pull it back for local development. In the **Secrets Overview** page, press **Explore Development** and add a secret with the key `NAME` and value `YOUR_NAME`.
+2. Add a secret to the development environment of this project so we can pull it back for local development. Select the **Development** environment from the environment selector, then click **Add Secret** and add a secret with the key `NAME` and value `YOUR_NAME`.
 
 ### Create a Machine Identity
 
@@ -77,22 +79,20 @@ const setupClient = () => {
 
 
 app.get("/", async (req, res) => {
+  const name = await client.secrets().getSecret({
+    environment: "dev", // dev, staging, prod, etc.
+    projectId: "<project-id>",
+    secretPath: "/",
+    secretName: "NAME"
+  });
     
-
-    const name = await client.secrets().getSecret({
-      environment: "dev", // dev, staging, prod, etc.
-      projectId: "<project-id>",
-      secretPath: "/",
-      secretName: "NAME"
-    });
-    
-    res.send(`Hello! My name is: ${name.secretValue}`);
+  res.send(`Hello! My name is: ${name.secretValue}`);
 });
 
 app.listen(PORT, async () => {
   // initialize http server and Infisical
-    await setupClient();
-    console.log(`Server listening on port ${PORT}`);
+  await setupClient();
+  console.log(`Server listening on port ${PORT}`);
 });
 ```
 

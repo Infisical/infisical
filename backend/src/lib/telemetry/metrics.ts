@@ -328,8 +328,14 @@ export enum SecretCacheAccessResult {
   MISS = "miss"
 }
 
+// What the server observed when an If-None-Match request did not 304 (cause is inferred downstream).
+export enum SecretEtagMissReason {
+  FIELD_ABSENT = "field_absent", // no stored ETag for this (actor, fingerprint, params) key
+  VALUE_DIFFERS = "value_differs" // a stored ETag exists but differs from the client's If-None-Match
+}
+
 export const secretCacheAccessCounter = infisicalCoreMeter.createCounter("infisical.secret.cache.access.count", {
-  description: "Secret service-layer cache accesses by outcome (304 not-modified / hit / miss)",
+  description: "Secret cache accesses, labeled by result, whether If-None-Match was sent, and why it missed the 304.",
   unit: "{access}"
 });
 
@@ -346,9 +352,15 @@ export const secretCacheOversizeSkipCounter = infisicalCoreMeter.createCounter(
   }
 );
 
-export const recordSecretCacheAccessMetric = (result: SecretCacheAccessResult) => {
+export const recordSecretCacheAccessMetric = (
+  result: SecretCacheAccessResult,
+  opts?: { hasIfNoneMatch?: boolean; etagMissReason?: SecretEtagMissReason }
+) => {
   if (!isTelemetryEnabled()) return;
-  secretCacheAccessCounter.add(1, { "cache.result": result });
+  const attributes: Record<string, string> = { "cache.result": result };
+  if (opts?.hasIfNoneMatch !== undefined) attributes["cache.if_none_match"] = opts.hasIfNoneMatch ? "true" : "false";
+  if (opts?.etagMissReason) attributes["cache.etag_miss_reason"] = opts.etagMissReason;
+  secretCacheAccessCounter.add(1, attributes);
 };
 
 export const recordSecretCacheWriteMetric = (params: { bytes: number; stored: boolean }) => {
@@ -499,6 +511,135 @@ export const recordSsoConfigChangeMetric = (params: {
     "sso.action": params.action
   };
   ssoConfigChangeCounter.add(1, attributes);
+};
+
+// -- Secret operation metrics (InfisicalCore meter) ------------------------------------------------
+export const secretOperationDurationHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.secret.operation.duration",
+  {
+    description: "Secret operation latency by operation type, outcome, and environment.",
+    unit: "ms"
+  }
+);
+
+export const secretWriteCounter = infisicalCoreMeter.createCounter("infisical.secret.write.count", {
+  description: "Secret write operations (create/update/delete).",
+  unit: "{operation}"
+});
+
+export const recordSecretOperationDuration = (params: {
+  startTime: number;
+  operation: "read" | "write" | "delete";
+  outcome: "success" | "failure";
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretOperationDurationHistogram.record(performance.now() - params.startTime, {
+    operation: params.operation,
+    outcome: params.outcome
+  });
+};
+
+export const recordSecretWriteMetric = (params: { operation: "create" | "update" | "delete" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretWriteCounter.add(1, {
+    operation: params.operation
+  });
+};
+
+// -- Secret sync outcome (InfisicalCore meter) ----------------------------------------------------
+export const secretSyncOutcomeCounter = infisicalCoreMeter.createCounter("infisical.secret_sync.outcome.count", {
+  description:
+    "Secret sync attempts by destination, operation, and outcome. Alert on failure ratio > 50% over 15m with >= 10 attempts, grouped by destination.",
+  unit: "{attempt}"
+});
+
+export const recordSecretSyncOutcomeMetric = (params: {
+  destination: string;
+  operation: "sync" | "import" | "remove";
+  outcome: "success" | "failure";
+  attemptsExhausted: boolean;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretSyncOutcomeCounter.add(1, {
+    destination: params.destination,
+    operation: params.operation,
+    outcome: params.outcome,
+    "attempts.exhausted": String(params.attemptsExhausted)
+  });
+};
+
+// -- Secret rotation outcome (InfisicalCore meter) --------------------------------------------------
+export const secretRotationOutcomeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_rotation.outcome.count",
+  {
+    description:
+      "Secret rotation attempts by type and outcome. Alert on failure ratio > 50% per type with >= 5 total rotations.",
+    unit: "{attempt}"
+  }
+);
+
+export const recordSecretRotationOutcomeMetric = (params: { type: string; outcome: "success" | "failure" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretRotationOutcomeCounter.add(1, {
+    type: params.type,
+    outcome: params.outcome
+  });
+};
+
+// -- Dynamic secret orphaned lease (InfisicalCore meter) ---------------------------------------------
+export const dynamicSecretOrphanedLeaseCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.orphaned_lease.count",
+  {
+    description: "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
+    unit: "{failure}"
+  }
+);
+
+export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string }) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretOrphanedLeaseCounter.add(1, {
+    provider: params.provider
+  });
+};
+
+export enum AlertDispatchOutcome {
+  // Every channel the run touched delivered.
+  DeliverySuccess = "delivery_success",
+  // Some channels delivered and at least one did not, so a notification was dropped on the failed
+  // channels only. Dedup is per (channel, target), so the next run retries just those channels.
+  DeliveryPartial = "delivery_partial",
+  // No channel delivered: the whole run dropped.
+  DeliveryFailed = "delivery_failed",
+  // The alert row is gone by the time the job runs: deleted, or its project soft-deleted.
+  AlertNotFound = "alert_not_found",
+  // The alert still exists but was disabled between being enqueued and the job running.
+  AlertDisabled = "alert_disabled",
+  // No provider registered for the alert's resource type (misconfiguration).
+  NoProvider = "no_provider",
+  // Nothing matched the alert condition in this run.
+  NoDueTargets = "no_due_targets",
+  // The alert has no enabled channels, so the run is skipped before scanning for targets.
+  NoChannels = "no_channels",
+  // Every channel in the run was directed (email) with no resolvable recipient — the recipients left
+  // the org, or the recipient group emptied out. Customer config drift, not a delivery fault, so it
+  // is kept out of delivery_failed and must not alarm.
+  NoRecipients = "no_recipients",
+  // Targets matched, but every one had already been alerted inside the dedup window.
+  AllDeduped = "all_deduped"
+}
+
+export const alertDispatchOutcomeCounter = infisicalCoreMeter.createCounter("infisical.alert.dispatch.outcome.count", {
+  description:
+    "Alert dispatch jobs by alert resource type and outcome. Alarm on delivery_failed + delivery_partial: both mean a channel could not be reached, so a notification was dropped. Watch the delivery_* share of total separately: a persistently low ratio means the cron is enqueueing mostly no-op jobs and should pre-filter instead.",
+  unit: "{job}"
+});
+
+export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string; outcome: AlertDispatchOutcome }) => {
+  if (!isTelemetryEnabled()) return;
+  alertDispatchOutcomeCounter.add(1, {
+    type: params.resourceType,
+    outcome: params.outcome
+  });
 };
 
 // -- Boot-time observable gauges (InfisicalCore meter) ----------------------------------------------

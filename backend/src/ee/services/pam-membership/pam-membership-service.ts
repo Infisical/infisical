@@ -13,8 +13,11 @@ import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "@app/services/approval-policy/approval-policy-enums";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { PamIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamMemberKind, PamProductRole, PamResourceRole } from "../pam/pam-enums";
@@ -44,12 +47,14 @@ type TPamMembershipServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteStepApproversBySubject">;
+  projectAccessRequestDAL: Pick<TProjectAccessRequestDALFactory, "delete">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
 };
 
 export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServiceFactory>;
@@ -81,12 +86,14 @@ export const pamMembershipServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   approvalPolicyDAL,
+  projectAccessRequestDAL,
   pamFolderDAL,
   pamAccountDAL,
   userDAL,
   groupDAL,
   identityDAL,
-  permissionService
+  permissionService,
+  usageMeteringService
 }: TPamMembershipServiceFactoryDep) => {
   // Shared helpers
 
@@ -275,7 +282,7 @@ export const pamMembershipServiceFactory = ({
 
     const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId);
 
-    return membershipDAL.transaction(async (tx) => {
+    const result = await membershipDAL.transaction(async (tx) => {
       const existing = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
         { tx }
@@ -299,6 +306,11 @@ export const pamMembershipServiceFactory = ({
 
       const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
 
+      // For direct API callers; the UI's Add Member flow uses the generic endpoint, which already clears this.
+      if (kind === PamMemberKind.User) {
+        await projectAccessRequestDAL.delete({ projectId, requesterUserId: id }, tx);
+      }
+
       return {
         membershipId: membership.id,
         userId: kind === PamMemberKind.User ? id : undefined,
@@ -308,6 +320,10 @@ export const pamMembershipServiceFactory = ({
         createdAt: membership.createdAt
       };
     });
+
+    // A new PAM project member (user/identity/group) changes the pam_identities meter.
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    return result;
   };
 
   const addProductUserMembers = async ({
@@ -390,6 +406,8 @@ export const pamMembershipServiceFactory = ({
         );
         // eslint-disable-next-line no-await-in-loop
         const membershipRole = await membershipRoleDAL.create({ membershipId: membership.id, role }, tx);
+        // eslint-disable-next-line no-await-in-loop
+        await projectAccessRequestDAL.delete({ projectId, requesterUserId: userId }, tx);
         results.push({
           membershipId: membership.id,
           userId,
@@ -399,6 +417,11 @@ export const pamMembershipServiceFactory = ({
       }
       return results;
     });
+
+    // Only re-meter when project members were actually added.
+    if (memberships.length > 0) {
+      usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    }
 
     return { memberships, skipped, unresolved };
   };
@@ -480,7 +503,7 @@ export const pamMembershipServiceFactory = ({
 
     const { column, id, kind } = resolveActorColumn(dto);
 
-    return membershipDAL.transaction(async (tx) => {
+    const result = await membershipDAL.transaction(async (tx) => {
       const [membership] = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
         { tx }
@@ -531,6 +554,9 @@ export const pamMembershipServiceFactory = ({
         identityId: kind === PamMemberKind.Identity ? id : undefined
       };
     });
+
+    usageMeteringService.emitForProject(projectId, PamIdentities.key);
+    return result;
   };
 
   // Resource (folder/account) members

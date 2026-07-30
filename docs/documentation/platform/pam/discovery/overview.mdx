@@ -1,0 +1,106 @@
+---
+title: "Discovery"
+sidebarTitle: "Overview"
+description: "Scan external systems for privileged accounts and import them into PAM."
+---
+
+Discovery scans external systems to find privileged accounts you may not know exist, stages them for review, and lets you import the ones you want into PAM as managed [accounts](/documentation/platform/pam/accounts/overview). This gives you visibility into the accounts spread across your environment and a fast path to bringing them under management.
+
+<Note>
+Discovery is available to **Product Admins**. See [Access Control](/documentation/platform/pam/concepts/access-control) for how roles work.
+</Note>
+
+## How It Works
+
+<Steps>
+  <Step title="Configure a discovery source">
+    A **discovery source** is a connection to an external system that Infisical scans. You give it a credential to authenticate with and a [Gateway](/documentation/platform/gateways/overview) to reach the system through.
+  </Step>
+  <Step title="Run a scan">
+    Scanning a source enumerates the privileged accounts it can find. Scans run asynchronously and can be triggered manually or on a schedule.
+  </Step>
+  <Step title="Review staged accounts">
+    Accounts found by a scan are held as **staged accounts**. They are not yet managed by PAM. You review them before deciding which to bring in.
+  </Step>
+  <Step title="Import into a folder">
+    Select the staged accounts you want and import them into a [folder](/documentation/platform/pam/folders/overview) using an [account template](/documentation/platform/pam/templates/overview). Imported accounts become regular PAM accounts.
+  </Step>
+</Steps>
+
+## Discovery Sources
+
+<CardGroup cols={2}>
+  <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
+    Scan an Active Directory environment for domain accounts and local Windows accounts.
+  </Card>
+  <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
+    Scan Linux and Unix hosts over SSH for local accounts.
+  </Card>
+</CardGroup>
+
+<Note>
+  Additional discovery sources will be added in future releases.
+</Note>
+
+## Staged Accounts
+
+A staged account is an account that a scan found but that has not been imported yet. Each staged account records its name and type but does not become usable until you import it.
+
+Discovery deduplicates accounts by a stable fingerprint per source. Re-running a scan updates existing staged accounts rather than creating duplicates, and accounts you have already imported are left untouched so they cannot be imported twice.
+
+## Importing Accounts
+
+When you import staged accounts, you choose:
+
+- A **destination [folder](/documentation/platform/pam/folders/overview)** for the imported accounts.
+- An **[account template](/documentation/platform/pam/templates/overview)** for each account type in your selection. The template determines the rules the imported accounts inherit.
+
+<Warning>
+Discovered accounts are found with a username but no password. Imported accounts arrive without a credential and stay unusable until you add one on the account.
+</Warning>
+
+## Scans and Schedules
+
+Each source can scan on demand or automatically:
+
+| Schedule | Behavior |
+|----------|----------|
+| **Manual** | The source is only scanned when you trigger it with **Scan Now**. |
+| **Daily** | Infisical scans the source about once per day. |
+| **Weekly** | Infisical scans the source about once per week. |
+
+Scheduled scans are evaluated once a day, so a source runs on its next scheduled check after its interval has elapsed. Every run is recorded in the source's **scan history** with its status, timestamps, and the number of accounts found.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Do I need a Gateway to use Discovery?">
+    Yes. Discovery reaches external systems through an Infisical [Gateway](/documentation/platform/gateways/overview) (or Gateway pool). All scan traffic is tunneled through it, so a Gateway with network access to the target system is required.
+  </Accordion>
+  <Accordion title="Why is my imported account unusable?">
+    Discovery finds accounts with a username but no password. After importing, open the account and add a credential before connecting.
+  </Accordion>
+  <Accordion title="What happens if I scan the same source again?">
+    Existing staged accounts are updated in place, and accounts you have already imported are skipped. Discovery deduplicates by a per-source fingerprint, so scanning repeatedly is safe.
+  </Accordion>
+</AccordionGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Active Directory" icon="windows" href="/documentation/platform/pam/discovery/active-directory">
+    Configure an Active Directory discovery source.
+  </Card>
+  <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
+    Configure a Linux/Unix discovery source.
+  </Card>
+  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
+    Manage the accounts you import.
+  </Card>
+  <Card title="Account Templates" icon="layer-group" href="/documentation/platform/pam/templates/overview">
+    Define the rules imported accounts inherit.
+  </Card>
+  <Card title="Folders" icon="folder" href="/documentation/platform/pam/folders/overview">
+    Organize imported accounts and control access.
+  </Card>
+</CardGroup>

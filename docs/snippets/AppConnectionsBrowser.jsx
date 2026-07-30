@@ -411,6 +411,14 @@ export const AppConnectionsBrowser = () => {
       category: "Hosting",
     },
     {
+      name: "Nutanix Prism Central",
+      slug: "nutanix-prism-central",
+      path: "/integrations/app-connections/nutanix-prism-central",
+      description:
+        "Learn how to connect your Nutanix Prism Central to push certificates from Infisical.",
+      category: "Cloud Providers",
+    },
+    {
       name: "Ona",
       slug: "ona",
       path: "/integrations/app-connections/ona",
@@ -626,6 +634,14 @@ export const AppConnectionsBrowser = () => {
       path: "/integrations/app-connections/openai",
       description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
       category: "AI & LLM",
+    },
+    {
+      name: "Spacelift",
+      slug: "spacelift",
+      path: "/integrations/app-connections/spacelift",
+      description:
+        "Learn how to connect Spacelift to pull secrets from Infisical.",
+      category: "DevOps Tools",
     },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

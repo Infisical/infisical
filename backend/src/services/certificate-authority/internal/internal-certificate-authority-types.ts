@@ -238,6 +238,7 @@ type TIssueCertFromCaBaseDTO = {
   state?: string;
   locality?: string;
   ou?: string;
+  domainComponents?: string[];
   tx?: Knex;
 };
 
@@ -312,6 +313,7 @@ export type TDNParts = {
   country?: string;
   province?: string;
   locality?: string;
+  domainComponents?: string[];
 };
 
 export type TGetCaCredentialsDTO = {

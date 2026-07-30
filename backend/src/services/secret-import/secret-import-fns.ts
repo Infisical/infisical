@@ -301,6 +301,7 @@ export const fnSecretsV2FromImports = async ({
       secretValueHidden: boolean;
       secretTags: { slug: string; name: string; id: string; color?: string | null }[];
     })[];
+    inheritedSecretPath?: string;
   }[] = [{ secretImports: rootSecretImports, depth: 0, parentImportedSecrets: [] }];
 
   const processedImports: TSecretImportSecretsV2[] = [];
@@ -311,7 +312,7 @@ export const fnSecretsV2FromImports = async ({
   type TImportedSecret = Omit<Awaited<ReturnType<typeof secretDAL.find>>[number], "projectId">;
 
   while (stack.length) {
-    const { secretImports, depth, parentImportedSecrets } = stack.pop()!;
+    const { secretImports, depth, parentImportedSecrets, inheritedSecretPath } = stack.pop()!;
 
     if (depth > LEVEL_BREAK) continue;
     const sanitizedImports = secretImports.filter(
@@ -476,6 +477,7 @@ export const fnSecretsV2FromImports = async ({
           secretTags: item.tags,
           secretComment: activeDecryptor(item.encryptedComment),
           environment: importEnv.slug,
+          secretPath: importAccessScopeByFolderId?.get(folderId)?.secretPath ?? inheritedSecretPath ?? "",
           workspace: "", // This field should not be used, it's only here to keep the older Python SDK versions backwards compatible with the new Postgres backend.
           _id: item.id // The old Python SDK depends on the _id field being returned. We return this to keep the older Python SDK versions backwards compatible with the new Postgres backend.
         }));
@@ -484,10 +486,12 @@ export const fnSecretsV2FromImports = async ({
         const deeperImportsForFolder = deeperImportsGroupByFolderId[sourceImportFolder?.id || ""];
 
         if (deeperImportsForFolder.length > 0) {
+          const resolvedSecretPath = importAccessScopeByFolderId?.get(folderId)?.secretPath ?? inheritedSecretPath;
           stack.push({
             secretImports: deeperImportsForFolder,
             depth: depth + 1,
-            parentImportedSecrets: secretsWithDuplicate
+            parentImportedSecrets: secretsWithDuplicate,
+            inheritedSecretPath: resolvedSecretPath
           });
         }
       }

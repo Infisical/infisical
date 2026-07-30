@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import { conditionsMatcher } from "@app/lib/casl";
 
-import { expandLegacyForbidActions } from "./permission-fns";
+import { expandLegacyForbidActions, throwIfMissingSecretReadValueOrDescribePermission } from "./permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
@@ -181,5 +181,73 @@ describe("expandLegacyForbidActions", () => {
     // In prod: allow rules still apply
     expect(ability.can(ProjectPermissionSecretActions.ReadValue, prodSecret)).toBe(true);
     expect(ability.can(ProjectPermissionSecretActions.DescribeAndReadValue, prodSecret)).toBe(true);
+  });
+});
+
+describe("throwIfMissingSecretReadValueOrDescribePermission", () => {
+  const buildAbility = (rules: Rule[]) => createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+
+  test("passes when the actor has the requested action", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.DescribeSecret],
+        subject: ProjectPermissionSub.Secrets
+      })
+    ]);
+    expect(() =>
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.DescribeSecret)
+    ).not.toThrow();
+  });
+
+  test("passes when the actor only has the legacy DescribeAndReadValue action", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.DescribeAndReadValue],
+        subject: ProjectPermissionSub.Secrets
+      })
+    ]);
+    expect(() =>
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.DescribeSecret)
+    ).not.toThrow();
+  });
+
+  test("throws when the actor only has write actions on shared secrets", () => {
+    const ability = buildAbility([
+      allow({
+        action: [
+          ProjectPermissionSecretActions.Create,
+          ProjectPermissionSecretActions.Edit,
+          ProjectPermissionSecretActions.Delete
+        ],
+        subject: ProjectPermissionSub.Secrets
+      })
+    ]);
+    expect(() =>
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.DescribeSecret)
+    ).toThrow();
+  });
+
+  test("respects conditions on the DescribeSecret rule", () => {
+    const ability = buildAbility([
+      allow({
+        action: [ProjectPermissionSecretActions.DescribeSecret],
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { environment: "dev" }
+      })
+    ]);
+
+    expect(() =>
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: "dev",
+        secretPath: "/"
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      throwIfMissingSecretReadValueOrDescribePermission(ability, ProjectPermissionSecretActions.DescribeSecret, {
+        environment: "prod",
+        secretPath: "/"
+      })
+    ).toThrow();
   });
 });

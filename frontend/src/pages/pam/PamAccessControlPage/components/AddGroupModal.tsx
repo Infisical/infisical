@@ -16,11 +16,8 @@ import {
   FilterableSelect
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import {
-  useAddGroupToWorkspace,
-  useGetOrganizationGroups,
-  useListWorkspaceGroups
-} from "@app/hooks/api";
+import { useGetOrganizationGroups, useListWorkspaceGroups } from "@app/hooks/api";
+import { useAddPamProductGroupMember } from "@app/hooks/api/pam";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleOptionList } from "./ProductRoleOptionList";
@@ -34,7 +31,7 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
-  const { mutate: addGroup, isPending } = useAddGroupToWorkspace();
+  const { mutate: addGroup, isPending } = useAddPamProductGroupMember();
 
   const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>(ProjectMembershipRole.Member);
@@ -59,7 +56,6 @@ export const AddGroupModal = ({ isOpen, onOpenChange }: Props) => {
     addGroup(
       {
         projectId: currentProject.id,
-        projectType: currentProject.type,
         groupId: selectedGroup.id,
         role: selectedRole
       },

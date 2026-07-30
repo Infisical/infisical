@@ -436,6 +436,10 @@ export const ROUTE_PATHS = Object.freeze({
     TemplatesPage: setRoute(
       "/organizations/$orgId/pam/templates",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates"
+    ),
+    DiscoveryPage: setRoute(
+      "/organizations/$orgId/pam/discovery",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/discovery"
     )
   },
   Public: {

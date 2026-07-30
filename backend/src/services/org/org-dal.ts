@@ -255,10 +255,31 @@ export const orgDALFactory = (db: TDbClient) => {
             .andOn(`${TableName.Membership}.actorUserId`, db.raw("?", [dto.actorId]));
         })
         .whereNull(`${TableName.Organization}.rootOrgId`)
+        .leftJoin(TableName.SamlConfig, (qb) => {
+          qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.SamlConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
+        .leftJoin(TableName.OidcConfig, (qb) => {
+          qb.on(`${TableName.OidcConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
+            `${TableName.OidcConfig}.isActive`,
+            "=",
+            db.raw("true")
+          );
+        })
         .select(
           selectAllTableCols(TableName.Organization),
-          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt")
-        )) as (TOrganizations & { userJoinedAt: Date | null })[];
+          db.ref("createdAt").withSchema(TableName.Membership).as("userJoinedAt"),
+          db.raw(`
+            CASE
+              WHEN ${TableName.SamlConfig}."orgId" IS NOT NULL THEN 'saml'
+              WHEN ${TableName.OidcConfig}."orgId" IS NOT NULL THEN 'oidc'
+              ELSE ''
+            END as "orgAuthMethod"
+        `)
+        )) as (TOrganizations & { orgAuthMethod: string; userJoinedAt: Date | null })[];
 
       if (rootOrgs.length === 0) return [];
 
@@ -816,14 +837,39 @@ export const orgDALFactory = (db: TDbClient) => {
     acceptAnyStatus?: boolean;
     tx?: Knex;
   }): Promise<TMemberships | null> => {
-    const list = await findEffectiveOrgMemberships(dto);
-    const directMembership = list.find((membership) =>
-      dto.actorType === ActorType.USER
-        ? membership.actorUserId === dto.actorId
-        : membership.actorIdentityId === dto.actorId
-    );
+    try {
+      const conn = dto.tx ?? db.replicaNode();
+      const status = dto.status ?? OrgMembershipStatus.Accepted;
+      const anyStatus = dto.acceptAnyStatus === true;
+      const actorColumn =
+        dto.actorType === ActorType.USER
+          ? (`${TableName.Membership}.actorUserId` as const)
+          : (`${TableName.Membership}.actorIdentityId` as const);
 
-    return directMembership ?? list[0] ?? null;
+      const directQuery = conn(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.scopeOrgId`, dto.orgId)
+        .where(actorColumn, dto.actorId)
+        .select(selectAllTableCols(TableName.Membership))
+        .first();
+
+      if (!anyStatus) {
+        void directQuery.where((qb) => {
+          void qb.where(`${TableName.Membership}.status`, status).orWhereNull(`${TableName.Membership}.status`);
+        });
+      }
+
+      const direct = (await directQuery) as TMemberships | undefined;
+      if (direct) {
+        return direct;
+      }
+
+      // Direct miss: fall back to group membership.
+      const list = await findEffectiveOrgMemberships(dto);
+      return list[0] ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find effective org membership" });
+    }
   };
 
   const findMembershipWithScimFilter = async (

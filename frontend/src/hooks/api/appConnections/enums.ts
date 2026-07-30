@@ -6,6 +6,7 @@ export enum AppConnection {
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
   AzureClientSecrets = "azure-client-secrets",
+  MicrosoftIntune = "microsoft-intune",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
   ADCS = "adcs",
@@ -49,6 +50,7 @@ export enum AppConnection {
   SSH = "ssh",
   Dbt = "dbt",
   SMB = "smb",
+  WinRM = "winrm",
   OpenRouter = "open-router",
   OpenAI = "openai",
   CircleCI = "circleci",
@@ -58,6 +60,7 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   Doppler = "doppler",
   NetScaler = "netscaler",
+  KempLoadMaster = "kemp-loadmaster",
   Anthropic = "anthropic",
   OVH = "ovh",
   Devin = "devin",
@@ -76,5 +79,7 @@ export enum AppConnection {
   Qovery = "qovery",
   Cloud66 = "cloud-66",
   LiteLLM = "litellm",
-  Fireworks = "fireworks"
+  Fireworks = "fireworks",
+  NutanixPrismCentral = "nutanix-prism-central",
+  Spacelift = "spacelift"
 }

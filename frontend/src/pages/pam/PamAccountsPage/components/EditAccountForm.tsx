@@ -19,7 +19,7 @@ import {
   useGetPamAccountById,
   useListPamAccountTemplates,
   useListPamAccountTypes,
-  useListPamFoldersAdmin,
+  useListPamFolders,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
@@ -64,7 +64,7 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
   const { data: account, isLoading: isLoadingAccount } = useGetPamAccountById(accountId);
   const updateAccount = useUpdatePamAccount({ skipValidationToast: true });
   const { data: accountTypes = [] } = useListPamAccountTypes();
-  const { data: folders = [] } = useListPamFoldersAdmin();
+  const { data: folders = [] } = useListPamFolders();
   const { data: templates = [] } = useListPamAccountTemplates(
     account ? { type: account.accountType } : undefined
   );
@@ -294,15 +294,17 @@ export const EditAccountForm = ({ accountId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="text-base">Credentials</CardTitle>
-          <CardDescription>Authentication used to connect to this account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CredentialsForm control={control} />
-        </CardContent>
-      </Card>
+      {(metadata?.credentialFields.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Credentials</CardTitle>
+            <CardDescription>Authentication used to connect to this account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CredentialsForm control={control} />
+          </CardContent>
+        </Card>
+      )}
 
       <div aria-hidden className="h-8 shrink-0" />
       {isDirty && <SheetSaveBar isPending={updateAccount.isPending} onDiscard={() => reset()} />}

@@ -1,5 +1,6 @@
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 
+import { PamNotificationEvent } from "../pam/pam-enums";
 import { TActorContext } from "../pam/pam-permission";
 
 export type TGetApprovalConfigurationDTO = {
@@ -7,12 +8,20 @@ export type TGetApprovalConfigurationDTO = {
   projectId: string;
 } & TActorContext;
 
+export type TPamNotificationConfigInput = {
+  workflowIntegrationId: string;
+  channels: { id: string; name: string }[];
+  events: PamNotificationEvent[];
+};
+
 export type TSetApprovalConfigurationDTO = {
   folderId: string;
   projectId: string;
   steps: {
     approvers: { type: ApproverType; id: string }[];
   }[];
+  // undefined leaves existing configs unchanged so older clients that only manage steps can't wipe them
+  notificationConfigs?: TPamNotificationConfigInput[];
 } & TActorContext;
 
 export type TCreateAccessRequestDTO = {

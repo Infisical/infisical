@@ -32,7 +32,7 @@ Approval workflows add a human review step before certificates are issued. Use t
 An approval policy defines the workflow that must be completed before certificates are issued. Policies are configured per Application and can be scoped to specific profiles attached to that Application. When a certificate request is made through an enrollment method:
 
 1. Request enters **pending** state
-2. Approvers are notified (if configured)
+2. Approvers receive an in-app notification and an email with a link to the request (if configured)
 3. Each approval step must be completed in sequence
 4. Once all steps are approved, the certificate is issued
 
@@ -57,7 +57,7 @@ In your Application, go to the **Settings** tab and find the **Approval Policies
     | **Step Name** | Optional name like `Security Team Review` |
     | **Approvers** | Users or groups eligible to approve |
     | **Required Approvals** | How many must approve (e.g., 2 of 5) |
-    | **Notify Approvers** | Send notification when approval is needed |
+    | **Notify Approvers** | Send an in-app notification and email when approval is needed |
     
     **Example multi-step workflow:**
     1. **Team Lead Review** — Requires 1 approval from team leads

@@ -9,6 +9,7 @@ export enum PamAccountType {
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
+  AzureCli = "azure-cli",
   Windows = "windows",
   WindowsAd = "windows-ad"
 }
@@ -31,6 +32,11 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
+export enum PamSessionEndReason {
+  Completed = "completed",
+  Expired = "expired"
+}
+
 export enum GcpServiceAccountAuthMethod {
   Impersonation = "impersonation",
   StaticKey = "static-key"
@@ -39,6 +45,12 @@ export enum GcpServiceAccountAuthMethod {
 export enum PamAccessMethod {
   Web = "web",
   Cli = "cli"
+}
+
+export enum PamSshAuthMethod {
+  Password = "password",
+  PublicKey = "public-key",
+  Certificate = "certificate"
 }
 
 // The caller's just-in-time approval state for an account gated behind an access request flow
@@ -52,4 +64,11 @@ export enum PamMemberKind {
   User = "user",
   Group = "group",
   Identity = "identity"
+}
+
+// Events a folder's chat notification config can subscribe to
+export enum PamNotificationEvent {
+  AccessRequested = "access-requested",
+  AccessRequestApproved = "access-request-approved",
+  AccessRequestDenied = "access-request-denied"
 }

@@ -1,16 +1,14 @@
 import { useCallback, useMemo } from "react";
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-  UseQueryOptions
-} from "@tanstack/react-query";
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import {
   createResourcePermissionQueryHook,
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
   PamAccessStatus,
@@ -22,16 +20,20 @@ import {
 import {
   PamAccountAccessibilityIssue,
   PamFolderPermissionSet,
-  TAccessiblePamAccount,
   TListAccessiblePamAccountsDTO,
   TListPamAccountTemplatesDTO,
   TPamAccessRequest,
   TPamAccount,
+  TPamAccountDependency,
   TPamAccountRotation,
   TPamAccountTemplateDetail,
   TPamAccountTemplateWithCount,
   TPamAccountTypeMetadata,
   TPamApprovalConfig,
+  TPamDiscoveredAccount,
+  TPamDiscoveryRun,
+  TPamDiscoverySource,
+  TPamDiscoveryTypeOption,
   TPamFolderWithCount,
   TPamMember,
   TPamMembersData,
@@ -45,6 +47,10 @@ export const fetchPamProjectId = async () => {
   const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/pam/project");
   return data.projectId;
 };
+
+// For imperative (non-hook) callers; skips the fetch when the id is already cached.
+export const resolvePamProjectId = async (cachedPamProjectId?: string | null) =>
+  cachedPamProjectId ?? fetchPamProjectId();
 
 export const pamKeys = {
   all: ["pam"] as const,
@@ -68,9 +74,10 @@ export const pamKeys = {
     [...pamKeys.template(), "list", params] as const,
   getTemplate: (templateId: string) => [...pamKeys.template(), "get", templateId] as const,
   folder: () => [...pamKeys.all, "folder"] as const,
-  listFolders: (params?: { search?: string }) => [...pamKeys.folder(), "list", params] as const,
-  adminListAccounts: (params?: { folderId?: string; templateId?: string; search?: string }) =>
-    [...pamKeys.account(), "admin-list", params] as const,
+  listFolders: (params?: { search?: string; filterByAction?: string }) =>
+    [...pamKeys.folder(), "list", params] as const,
+  listAccounts: (params?: { folderId?: string; templateId?: string; search?: string }) =>
+    [...pamKeys.account(), "list", params] as const,
   accountMembers: (accountId: string) => [...pamKeys.all, "account-members", accountId] as const,
   folderMembers: (folderId: string) => [...pamKeys.all, "folder-members", folderId] as const,
   productMembers: () => [...pamKeys.all, "product-members"] as const,
@@ -79,7 +86,18 @@ export const pamKeys = {
   resourceRoles: () => [...pamKeys.all, "resource-roles"] as const,
   accessCapabilities: () => [...pamKeys.all, "access-capabilities"] as const,
   accountTypes: () => [...pamKeys.all, "account-types"] as const,
+  discovery: () => [...pamKeys.all, "discovery"] as const,
+  discoveryTypes: () => [...pamKeys.discovery(), "types"] as const,
+  listDiscoverySources: (params?: { search?: string }) =>
+    [...pamKeys.discovery(), "sources", params] as const,
+  listDiscoveryRuns: (sourceId: string) => [...pamKeys.discovery(), "runs", sourceId] as const,
+  listDiscoveredAccounts: (
+    sourceId: string,
+    params?: { search?: string; offset?: number; limit?: number }
+  ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
+  accountDependencies: (accountId: string) =>
+    [...pamKeys.account(), "dependencies", accountId] as const,
   rotationCandidates: (accountId: string) =>
     [...pamKeys.account(), "rotation-candidates", accountId] as const,
   accessRequest: () => [...pamKeys.all, "access-request"] as const,
@@ -141,46 +159,18 @@ export const usePamAccountActions = (accountId: string, enabled = true) => {
   return { can, isLoading };
 };
 
-// Accessible Accounts (user-facing)
-type TListAccessiblePamAccountsResponse = {
-  accounts: TAccessiblePamAccount[];
-  totalCount: number;
-};
-
-const ACCESSIBLE_ACCOUNTS_PAGE_SIZE = 50;
-
-export const useListAccessiblePamAccounts = (
-  filters?: Omit<TListAccessiblePamAccountsDTO, "offset" | "limit">,
-  options?: { enabled?: boolean }
+// Builds a `can` checker from packed permission rules already embedded in a list item, so list rows
+// don't each fire a per-account /permissions request (see useListPamAccounts).
+export const usePamAccountActionsFromPermissions = (
+  permissions?: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"]
 ) => {
-  return useInfiniteQuery({
-    queryKey: pamKeys.listAccessibleAccounts(filters),
-    queryFn: async ({ pageParam = 0 }) => {
-      const { data } = await apiRequest.get<TListAccessiblePamAccountsResponse>(
-        "/api/v1/pam/accounts/accessible",
-        { params: { ...filters, offset: pageParam, limit: ACCESSIBLE_ACCOUNTS_PAGE_SIZE } }
-      );
-      return data;
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const fetched = allPages.reduce((sum, p) => sum + p.accounts.length, 0);
-      return fetched < lastPage.totalCount ? fetched : undefined;
-    },
-    enabled: options?.enabled ?? true,
-    placeholderData: keepPreviousData,
-    // Grants and pending requests change state on their own (expiry, approval), so poll while any
-    // are on screen; a fully static list costs nothing.
-    refetchInterval: (query) => {
-      const hasLiveAccessState = query.state.data?.pages.some((page) =>
-        page.accounts.some(
-          (a) =>
-            a.accessStatus === PamAccessStatus.Granted || a.accessStatus === PamAccessStatus.Pending
-        )
-      );
-      return hasLiveAccessState ? 60_000 : false;
-    }
-  });
+  const can = useMemo(() => {
+    const rules = unpackRules<RawRuleOf<MongoAbility<PamFolderPermissionSet>>>(permissions ?? []);
+    const permission = createMongoAbility<PamFolderPermissionSet>(rules, { conditionsMatcher });
+    return (action: PamResourcePermissionActions) =>
+      permission.can(action, PamResourcePermissionSub.PamResource);
+  }, [permissions]);
+  return { can };
 };
 
 // Accessible Folders (user-facing)
@@ -190,26 +180,14 @@ export type TAccessiblePamFolder = {
   accountCount: number;
 };
 
-export const useListAccessiblePamFolders = () => {
-  return useQuery({
-    queryKey: pamKeys.accessibleFolders(),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ folders: TAccessiblePamFolder[] }>(
-        "/api/v1/pam/folders",
-        { params: { onlyAccessible: "true" } }
-      );
-      return data.folders;
-    }
-  });
-};
-
-type TAdminListAccountsParams = {
+type TListPamAccountsParams = {
   folderId?: string;
   templateId?: string;
+  accountType?: string;
   search?: string;
 };
 
-type TAdminAccountListItem = {
+export type TPamAccountListItem = {
   id: string;
   name: string;
   description: string | null;
@@ -223,29 +201,47 @@ type TAdminAccountListItem = {
   recordingConnectionId: string | null;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  requiresApproval: boolean;
+  requireReason: boolean;
+  accessStatus: PamAccessStatus;
+  grantExpiresAt: string | null;
+  permissions: ResourcePermissionResponse<PamFolderPermissionSet>["permissions"];
   createdAt: string;
   updatedAt: string;
 };
 
-export const useListPamAccountsAdmin = (
-  params?: TAdminListAccountsParams,
+export const useListPamAccounts = (
+  params?: TListPamAccountsParams,
   options?: { enabled?: boolean }
 ) => {
   return useQuery({
-    queryKey: pamKeys.adminListAccounts(params),
+    queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ accounts: TAdminAccountListItem[] }>(
+      const { data } = await apiRequest.get<{ accounts: TPamAccountListItem[] }>(
         "/api/v1/pam/accounts",
         { params }
       );
       return data.accounts;
     },
     enabled: options?.enabled ?? true,
-    placeholderData: (prev) => prev
+    placeholderData: (prev) => prev,
+    // Grants and pending requests change state on their own (expiry, approval by another user), so
+    // poll while any are on screen so rows don't stay stuck as pending or still show Launch until a
+    // manual refresh; a fully static list costs nothing. Mirrors useListAccessiblePamAccounts.
+    refetchInterval: (query) => {
+      const hasLiveAccessState = query.state.data?.some(
+        (a) =>
+          a.accessStatus === PamAccessStatus.Granted || a.accessStatus === PamAccessStatus.Pending
+      );
+      return hasLiveAccessState ? 60_000 : false;
+    }
   });
 };
 
-export const useListPamFoldersAdmin = (params?: { search?: string }) => {
+export const useListPamFolders = (
+  params?: { search?: string; filterByAction?: string },
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: pamKeys.listFolders(params),
     queryFn: async () => {
@@ -254,7 +250,8 @@ export const useListPamFoldersAdmin = (params?: { search?: string }) => {
         { params }
       );
       return data.folders;
-    }
+    },
+    enabled: options?.enabled ?? true
   });
 };
 
@@ -500,6 +497,81 @@ export const useGetPamAccessCapabilities = () => {
       }>("/api/v1/pam/memberships/capabilities");
       return data;
     }
+  });
+};
+
+export const useListPamDiscoveryTypes = () => {
+  return useQuery({
+    queryKey: pamKeys.discoveryTypes(),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ discoveryTypes: TPamDiscoveryTypeOption[] }>(
+        "/api/v1/pam/discovery-sources/types"
+      );
+      return data.discoveryTypes;
+    },
+    staleTime: Infinity
+  });
+};
+
+export const useListPamDiscoverySources = (params?: { search?: string }) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoverySources(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ sources: TPamDiscoverySource[] }>(
+        "/api/v1/pam/discovery-sources",
+        { params }
+      );
+      return data.sources;
+    },
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamDiscoveryRuns = (
+  sourceId: string,
+  options?: { refetchInterval?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoveryRuns(sourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ runs: TPamDiscoveryRun[] }>(
+        `/api/v1/pam/discovery-sources/${sourceId}/runs`
+      );
+      return data.runs;
+    },
+    enabled: Boolean(sourceId),
+    refetchInterval: options?.refetchInterval
+  });
+};
+
+export const useListPamDiscoveredAccounts = (
+  sourceId: string,
+  params?: { search?: string; offset?: number; limit?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listDiscoveredAccounts(sourceId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        discoveredAccounts: TPamDiscoveredAccount[];
+        totalCount: number;
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered-accounts`, { params });
+      return data;
+    },
+    enabled: Boolean(sourceId),
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamAccountDependencies = (accountId: string) => {
+  return useQuery({
+    queryKey: pamKeys.accountDependencies(accountId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ dependencies: TPamAccountDependency[] }>(
+        `/api/v1/pam/accounts/${accountId}/dependencies`
+      );
+      return data.dependencies;
+    },
+    enabled: Boolean(accountId)
   });
 };
 

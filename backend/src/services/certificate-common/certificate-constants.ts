@@ -1,3 +1,12 @@
+import { z } from "zod";
+
+export const domainComponentSchema = z
+  .string()
+  .trim()
+  .min(1, "Domain component cannot be empty")
+  .max(255)
+  .refine((value) => !value.includes(","), { message: "Domain component cannot contain a comma" });
+
 export enum CertificateRequestStatus {
   PENDING_APPROVAL = "pending_approval",
   PENDING = "pending",
@@ -11,8 +20,51 @@ export enum CertSubjectAlternativeNameType {
   DNS_NAME = "dns_name",
   IP_ADDRESS = "ip_address",
   EMAIL = "email",
-  URI = "uri"
+  URI = "uri",
+  UPN = "upn"
 }
+
+export enum TAltNameType {
+  EMAIL = "email",
+  DNS = "dns",
+  IP = "ip",
+  URL = "url",
+  UPN = "upn"
+}
+
+/**
+ * Single source of truth for subject alternative name types.
+ *
+ * To support a new one: add a member to CertSubjectAlternativeNameType and to TAltNameType
+ * (certificate-types.ts), then add one row here.
+ *
+ * `generalNameType` is the value @peculiar/x509 uses for the GeneralName, both when parsing a CSR
+ * and when building the extension. `otherNameOid` is set only for types carried as an otherName
+ * rather than a native GeneralName choice.
+ */
+export const CERT_SUBJECT_ALTERNATIVE_NAMES: Record<
+  CertSubjectAlternativeNameType,
+  { generalNameType: TAltNameType; otherNameOid?: string }
+> = {
+  [CertSubjectAlternativeNameType.DNS_NAME]: { generalNameType: TAltNameType.DNS },
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: { generalNameType: TAltNameType.IP },
+  [CertSubjectAlternativeNameType.EMAIL]: { generalNameType: TAltNameType.EMAIL },
+  [CertSubjectAlternativeNameType.URI]: { generalNameType: TAltNameType.URL },
+  [CertSubjectAlternativeNameType.UPN]: {
+    generalNameType: TAltNameType.UPN,
+    otherNameOid: "1.3.6.1.4.1.311.20.2.3"
+  }
+};
+
+export const SUPPORTED_GENERAL_NAME_TYPES: ReadonlySet<string> = new Set<string>(
+  Object.values(CERT_SUBJECT_ALTERNATIVE_NAMES).map(({ generalNameType }) => generalNameType)
+);
+
+export const GENERAL_NAME_TYPES_WITH_OTHER_NAME: ReadonlySet<string> = new Set<string>(
+  Object.values(CERT_SUBJECT_ALTERNATIVE_NAMES)
+    .filter(({ otherNameOid }) => otherNameOid)
+    .map(({ generalNameType }) => generalNameType)
+);
 
 export enum CertKeyUsageType {
   DIGITAL_SIGNATURE = "digital_signature",
@@ -32,7 +84,18 @@ export enum CertExtendedKeyUsageType {
   CODE_SIGNING = "code_signing",
   EMAIL_PROTECTION = "email_protection",
   OCSP_SIGNING = "ocsp_signing",
-  TIME_STAMPING = "time_stamping"
+  TIME_STAMPING = "time_stamping",
+  ANY_PURPOSE = "any_purpose"
+}
+
+export enum CertExtendedKeyUsage {
+  CLIENT_AUTH = "clientAuth",
+  SERVER_AUTH = "serverAuth",
+  CODE_SIGNING = "codeSigning",
+  EMAIL_PROTECTION = "emailProtection",
+  TIMESTAMPING = "timeStamping",
+  OCSP_SIGNING = "ocspSigning",
+  ANY_PURPOSE = "anyExtendedKeyUsage"
 }
 
 export enum CertIncludeType {
@@ -70,7 +133,8 @@ export enum CertSubjectAttributeType {
   COUNTRY = "country",
   STATE = "state",
   LOCALITY = "locality",
-  ORGANIZATIONAL_UNIT = "organizational_unit"
+  ORGANIZATIONAL_UNIT = "organizational_unit",
+  DOMAIN_COMPONENT = "domain_component"
 }
 
 export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {
@@ -132,48 +196,45 @@ export const mapLegacyKeyUsageToStandard = (usage: string): CertKeyUsageType => 
   }
 };
 
-export const mapExtendedKeyUsageToLegacy = (usage: CertExtendedKeyUsageType): string => {
-  switch (usage) {
-    case CertExtendedKeyUsageType.CLIENT_AUTH:
-      return "clientAuth";
-    case CertExtendedKeyUsageType.SERVER_AUTH:
-      return "serverAuth";
-    case CertExtendedKeyUsageType.CODE_SIGNING:
-      return "codeSigning";
-    case CertExtendedKeyUsageType.EMAIL_PROTECTION:
-      return "emailProtection";
-    case CertExtendedKeyUsageType.OCSP_SIGNING:
-      return "ocspSigning";
-    case CertExtendedKeyUsageType.TIME_STAMPING:
-      return "timeStamping";
-    default:
-      return usage;
-  }
+/**
+ * Single source of truth for extended key usages.
+ *
+ * To support a new one: add a member to CertExtendedKeyUsageType and to CertExtendedKeyUsage
+ * (certificate-types.ts), then add one row here.
+ */
+export const CERT_EXTENDED_KEY_USAGES: Record<
+  CertExtendedKeyUsageType,
+  { oid: string; legacyName: CertExtendedKeyUsage }
+> = {
+  [CertExtendedKeyUsageType.CLIENT_AUTH]: { oid: "1.3.6.1.5.5.7.3.2", legacyName: CertExtendedKeyUsage.CLIENT_AUTH },
+  [CertExtendedKeyUsageType.SERVER_AUTH]: { oid: "1.3.6.1.5.5.7.3.1", legacyName: CertExtendedKeyUsage.SERVER_AUTH },
+  [CertExtendedKeyUsageType.CODE_SIGNING]: { oid: "1.3.6.1.5.5.7.3.3", legacyName: CertExtendedKeyUsage.CODE_SIGNING },
+  [CertExtendedKeyUsageType.EMAIL_PROTECTION]: {
+    oid: "1.3.6.1.5.5.7.3.4",
+    legacyName: CertExtendedKeyUsage.EMAIL_PROTECTION
+  },
+  [CertExtendedKeyUsageType.OCSP_SIGNING]: { oid: "1.3.6.1.5.5.7.3.9", legacyName: CertExtendedKeyUsage.OCSP_SIGNING },
+  [CertExtendedKeyUsageType.TIME_STAMPING]: { oid: "1.3.6.1.5.5.7.3.8", legacyName: CertExtendedKeyUsage.TIMESTAMPING },
+  [CertExtendedKeyUsageType.ANY_PURPOSE]: { oid: "2.5.29.37.0", legacyName: CertExtendedKeyUsage.ANY_PURPOSE }
 };
 
+const EXTENDED_KEY_USAGE_BY_ALIAS = new Map<string, CertExtendedKeyUsageType>(
+  Object.entries(CERT_EXTENDED_KEY_USAGES).flatMap(([standard, { legacyName }]) => [
+    // accepted in both the legacy camelCase form and the current snake_case form
+    [legacyName, standard as CertExtendedKeyUsageType],
+    [standard, standard as CertExtendedKeyUsageType]
+  ])
+);
+
+export const mapExtendedKeyUsageToLegacy = (usage: CertExtendedKeyUsageType): string =>
+  CERT_EXTENDED_KEY_USAGES[usage]?.legacyName ?? usage;
+
 export const mapLegacyExtendedKeyUsageToStandard = (usage: string): CertExtendedKeyUsageType => {
-  switch (usage) {
-    case "clientAuth":
-    case "client_auth":
-      return CertExtendedKeyUsageType.CLIENT_AUTH;
-    case "serverAuth":
-    case "server_auth":
-      return CertExtendedKeyUsageType.SERVER_AUTH;
-    case "codeSigning":
-    case "code_signing":
-      return CertExtendedKeyUsageType.CODE_SIGNING;
-    case "emailProtection":
-    case "email_protection":
-      return CertExtendedKeyUsageType.EMAIL_PROTECTION;
-    case "ocspSigning":
-    case "ocsp_signing":
-      return CertExtendedKeyUsageType.OCSP_SIGNING;
-    case "timeStamping":
-    case "time_stamping":
-      return CertExtendedKeyUsageType.TIME_STAMPING;
-    default:
-      throw new Error(`Unknown extended key usage: ${usage}`);
+  const standard = EXTENDED_KEY_USAGE_BY_ALIAS.get(usage);
+  if (!standard) {
+    throw new Error(`Unknown extended key usage: ${usage}`);
   }
+  return standard;
 };
 
 export enum CertKeyAlgorithm {

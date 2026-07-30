@@ -128,16 +128,13 @@ The NetScaler Certificate Sync provides:
 
 ## How It Works
 
-When syncing certificates, Infisical performs the following steps on the NetScaler appliance via the NITRO REST API:
+Infisical automatically keeps your NetScaler certificates in sync:
 
-1. Logs in to the NetScaler NITRO API using the configured credentials.
-2. For each certificate:
-    - Uploads the certificate file (`.cer`) to `/nsconfig/ssl/`.
-    - Uploads the private key file (`.key`) to `/nsconfig/ssl/`.
-    - Creates or updates an `sslcertkey` object linking the cert and key.
-    - If a vServer is configured, binds the certkey to the SSL virtual server.
-3. Saves the running configuration to persist changes across reboots.
-4. Logs out of the session.
+- Uploads certificates, with their private keys, to the NetScaler appliance.
+- Optionally binds them to an SSL virtual server for HTTPS termination.
+- Optionally removes certificates that are no longer active in Infisical.
+
+Changes are saved to the running configuration so they persist across reboots.
 
 ## Certificate Renewal Behavior
 

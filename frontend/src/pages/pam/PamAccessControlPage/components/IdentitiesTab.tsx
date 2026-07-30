@@ -112,7 +112,7 @@ export const IdentitiesTab = () => {
 
         {!isPending && filteredIdentities.length === 0 ? (
           <CardContent>
-            <Empty>
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {search ? "No identities match your search" : "No identities found"}

@@ -7,6 +7,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -70,6 +71,10 @@ export const CreateFolderModal = ({ isOpen, onOpenChange, onCreated }: Props) =>
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Add Folder</DialogTitle>
+          <DialogDescription>
+            Group accounts by who needs access to them. Organize by team, department, application,
+            or environment.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <Field>
@@ -77,7 +82,7 @@ export const CreateFolderModal = ({ isOpen, onOpenChange, onCreated }: Props) =>
             <FieldContent>
               <Input
                 id="folder-name"
-                placeholder="e.g. production-databases"
+                placeholder="e.g. backend-team, checkout-service"
                 isError={!!errors.name}
                 {...register("name")}
               />
@@ -90,7 +95,7 @@ export const CreateFolderModal = ({ isOpen, onOpenChange, onCreated }: Props) =>
             <FieldContent>
               <TextArea
                 id="folder-description"
-                placeholder="What lives in this folder?"
+                placeholder="Who needs access and what accounts will this contain?"
                 rows={3}
                 isError={!!errors.description}
                 {...register("description")}

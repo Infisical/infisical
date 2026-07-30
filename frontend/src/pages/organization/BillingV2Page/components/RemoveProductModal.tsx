@@ -15,13 +15,19 @@ import {
 } from "@app/components/v3";
 import {
   BillingV2CatalogProduct,
-  useCancelBillingV2Subscription,
   useGetBillingV2Overview,
   usePreviewBillingV2Change,
   useRemoveBillingV2Product
 } from "@app/hooks/api";
 
-import { fmtMoney } from "../billing-v2-data";
+import { dimCommitted, fmtMoney } from "../billing-v2-format";
+
+// Removing the last product cancels the whole subscription (handled by the remove endpoint). The
+// unused-time wording depends on whether the plan carries a minimum (annual) commitment.
+const COMMITMENT_MESSAGE =
+  "This plan includes a minimum commitment, so any unused time isn't credited or refunded. Access ends when your commitment period closes.";
+const CREDIT_MESSAGE =
+  "Any remaining credits will be retained on your account and applied to future charges.";
 
 type Props = {
   orgId: string;
@@ -31,9 +37,6 @@ type Props = {
   // Removal (or cancel) succeeded; close the confirm and the management sheet it was opened from.
   onRemoved: () => void;
 };
-
-const getServerMessage = (err: unknown): string | undefined =>
-  (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
 
 export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props) => {
   // Overview is already cached by the page (same orgId key), so this reuses it without refetching.
@@ -46,11 +49,11 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
     (entitlement) => entitlement.entitled
   ).length;
   const isOnlyProduct = overviewReady && entitledProductCount === 1;
-  const periodEndDate = overview?.nextBillingDate ?? null;
+  // A minimum (annual) commitment means unused time is not credited/refunded on removal.
+  const hasCommitment = (overview?.entitlements[product.id]?.dimensions ?? []).some(dimCommitted);
 
   const preview = usePreviewBillingV2Change();
   const removeProduct = useRemoveBillingV2Product();
-  const cancelSubscription = useCancelBillingV2Subscription();
 
   // Preview the prorated credit once when the dialog opens, so the user confirms against real numbers.
   // The last-product case can't be removed (it cancels instead), and previewing it would also 409, so
@@ -69,39 +72,17 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
       await removeProduct.mutateAsync({ orgId, productId: product.id });
       createNotification({
         type: "success",
-        text: `${product.name} will be removed. It may take a moment to update here.`
+        text: isOnlyProduct
+          ? "Your subscription will be canceled. It may take a moment to update here."
+          : `${product.name} will be removed. It may take a moment to update here.`
       });
       onRemoved();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: getServerMessage(err) ?? `Failed to remove ${product.name}.`
-      });
-    }
-  };
-
-  const handleCancel = async () => {
-    try {
-      await cancelSubscription.mutateAsync({ orgId });
-      createNotification({
-        type: "success",
-        text: "Your subscription will be canceled at the end of the current billing period."
-      });
-      onRemoved();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: getServerMessage(err) ?? "Failed to cancel your subscription."
-      });
+    } catch {
+      // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
     }
   };
 
   if (isOnlyProduct) {
-    let periodClause = "at the end of your current billing period";
-    if (periodEndDate) {
-      periodClause = `on ${periodEndDate}`;
-    }
-
     return (
       <AlertDialog
         open
@@ -118,17 +99,17 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
             </AlertDialogMedia>
             <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              {product.name} is the only product on your subscription, so it cannot be removed on
-              its own. Canceling ends your whole subscription {periodClause}. You keep access until
-              then.
+              {product.name} is the only product on your subscription, so removing it ends your
+              subscription. {hasCommitment ? COMMITMENT_MESSAGE : CREDIT_MESSAGE}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep subscription</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isDisabled={cancelSubscription.isPending}
-              onClick={handleCancel}
+              isDisabled={removeProduct.isPending}
+              onClick={handleRemove}
+              isPending={removeProduct.isPending}
             >
               Cancel subscription
             </AlertDialogAction>
@@ -184,7 +165,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
               <div className="flex items-center justify-between">
                 <span className="text-mineshaft-300">New recurring total</span>
                 <span className="font-semibold text-foreground tabular-nums">
-                  {fmtMoney(preview.data.estimatedTotal, 2)}
+                  {fmtMoney(preview.data.nextRecurringTotal, 2)}
                 </span>
               </div>
             </div>

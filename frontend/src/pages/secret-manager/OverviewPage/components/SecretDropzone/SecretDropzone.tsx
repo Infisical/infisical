@@ -5,13 +5,6 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  CsvDelimiter,
-  parseCsvToMatrix,
-  parseDotEnv,
-  parseJson,
-  parseYaml
-} from "@app/components/utilities/parseSecrets";
-import {
   Button,
   Empty,
   EmptyContent,
@@ -27,6 +20,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useToggle } from "@app/hooks";
 
 import { CsvColumnMapDialog } from "./CsvColumnMapDialog";
+import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PasteSecretsDialog } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
 
@@ -38,11 +32,7 @@ type Props = {
 export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
   const [isDragActive, setDragActive] = useToggle();
   const [isPasteOpen, setIsPasteOpen] = useState(false);
-  const [csvData, setCsvData] = useState<{
-    headers: string[];
-    matrix: string[][];
-    delimiter: CsvDelimiter;
-  } | null>(null);
+  const [csvData, setCsvData] = useState<CsvData | null>(null);
 
   const handleParsedSecrets = (env: TParsedEnv) => {
     if (!Object.keys(env).length) {
@@ -55,56 +45,8 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
     onParsedSecrets(env);
   };
 
-  const parseFile = (file?: File) => {
-    if (!file) {
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (!event?.target?.result) {
-        createNotification({
-          type: "error",
-          text: "Invalid file contents."
-        });
-        return;
-      }
-
-      const src = event.target.result as ArrayBuffer;
-
-      switch (file.type) {
-        case "application/json":
-          handleParsedSecrets(parseJson(src));
-          break;
-        case "text/yaml":
-        case "application/x-yaml":
-        case "application/yaml":
-          handleParsedSecrets(parseYaml(src));
-          break;
-        case "text/csv": {
-          const { matrix: fullMatrix, delimiter } = parseCsvToMatrix(src);
-          if (!fullMatrix.length) {
-            createNotification({
-              type: "error",
-              text: "Failed to find secrets in CSV file. File might be empty."
-            });
-            return;
-          }
-          setCsvData({ headers: fullMatrix[0], matrix: fullMatrix.slice(1), delimiter });
-          return;
-        }
-        default:
-          handleParsedSecrets(parseDotEnv(src));
-          break;
-      }
-    };
-
-    try {
-      reader.readAsText(file);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  const parseFile = (file?: File) =>
+    parseSecretFile(file, { onParsedSecrets: handleParsedSecrets, onCsvData: setCsvData });
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -153,7 +95,8 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
                 {isDragActive ? "Drop your file here" : "Upload your secrets"}
               </EmptyTitle>
               <EmptyDescription>
-                Drag and drop your .env, .json, .yml, or .csv files here or click to browse
+                Drag and drop your .env, .json, .yml, .csv, .pfx, .pem, or .crt files here or click
+                to browse
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
@@ -162,7 +105,7 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
                   type="file"
                   disabled={!isAllowed}
                   className="absolute top-0 left-0 z-10 h-full w-full cursor-pointer opacity-0"
-                  accept=".txt,.env,.yml,.yaml,.json,.csv"
+                  accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
                   onChange={handleFileUpload}
                 />
               )}

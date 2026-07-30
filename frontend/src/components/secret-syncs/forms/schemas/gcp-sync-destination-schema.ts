@@ -10,7 +10,12 @@ export const GcpSyncDestinationSchema = BaseSecretSyncSchema().merge(
     destinationConfig: z.discriminatedUnion("scope", [
       z.object({
         scope: z.literal(GcpSyncScope.Global),
-        projectId: z.string().min(1, "Project ID required")
+        projectId: z.string().min(1, "Project ID required"),
+        locationId: z
+          .string()
+          .optional()
+          .transform((val) => val || undefined),
+        userReplicaLocationIds: z.string().array().optional().default([])
       }),
       z.object({
         scope: z.literal(GcpSyncScope.Region),

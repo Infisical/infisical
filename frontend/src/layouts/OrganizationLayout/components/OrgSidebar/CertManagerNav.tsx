@@ -174,14 +174,14 @@ export const CertManagerNav = ({
       label: "Approval Policies",
       icon: ShieldCheck,
       pathSuffix: "approvals",
-      search: { legacy: "true", selectedTab: "policies" },
+      search: { selectedTab: "policies" },
       hidden: !hasLegacyPolicies
     },
     {
       label: "Certificate Syncs",
       icon: GitCompare,
       pathSuffix: "integrations",
-      search: { legacy: "true", selectedTab: "pki-syncs" },
+      search: { selectedTab: "pki-syncs" },
       hidden: !hasLegacySyncs
     }
   ];

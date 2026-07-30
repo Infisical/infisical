@@ -30,6 +30,10 @@ const SECRET_VERSION_DELETE_BATCH = 5000;
 const BATCH_STATEMENT_TIMEOUT_MS = 30 * 1000;
 const INTER_BATCH_SLEEP_MS = 10;
 
+// Env count above which env deletion is delegated to the paced env hard-delete worker (one untimed
+// cascade per env, per-env retries). At or below it, deleteById cascades the envs inline as today.
+const ENV_DELEGATION_THRESHOLD = 100;
+
 // Generous so a large project's chunked delete won't see the lock expire mid-flight and let a
 // second worker start; crash recovery happens on the next cron tick after expiry.
 const PROJECT_DELETE_LOCK_TTL_MS = 30 * 60 * 1000;
@@ -39,11 +43,12 @@ type TProjectCleanupQueueFactoryDep = {
   projectDAL: Pick<
     TProjectDALFactory,
     | "findExpiredForHardDelete"
-    | "countPendingHardDelete"
     | "findByIdIncludingExpired"
     | "findIncludingExpired"
     | "findProjectGhostUser"
     | "hardDeleteProjectSecretVersionsInBatches"
+    | "softDeleteProjectEnvironments"
+    | "countProjectEnvironments"
     | "deleteById"
     | "transaction"
   >;
@@ -75,47 +80,25 @@ export const projectCleanupQueueFactory = ({
   }
 
   // ── observability ─────────────────────────────────────────────────────────────
-  // Generic per-queue metrics (job count/duration/wait/depth, tagged queue.name=project-hard-delete)
-  // come for free from queue-service. These are the domain-specific signals that tell us whether the
-  // drain is healthy or the knobs (RATE_LIMIT_MAX / WORKER_CONCURRENCY / SECRET_VERSION_DELETE_BATCH)
-  // need tuning — and surface a mass-delete event early.
   const meter = opentelemetry.metrics.getMeter("InfisicalCore");
-  const processedCounter = meter.createCounter("infisical.project_cleanup.processed", {
-    description: "Projects processed by the hard-delete worker, by outcome (deleted/skipped/failed)",
-    unit: "{project}"
-  });
-  const durationHistogram = meter.createHistogram("infisical.project_cleanup.duration", {
-    description: "Per-project hard-delete wall-clock seconds. Rising p95 → raise concurrency/limiter or lower batch.",
-    unit: "s"
-  });
-  const versionsPrunedHistogram = meter.createHistogram("infisical.project_cleanup.secret_versions_pruned", {
-    description: "secret_versions_v2 rows pruned per project — reveals project-size distribution for batch tuning",
-    unit: "{row}"
-  });
-  // Queue depth caps at ~DISCOVERY_BATCH, so it can't reveal the true
-  // backlog. This counts projects with deleteAfter set directly in the DB. Sustained growth = the
-  // drain rate can't keep up  or a mass-delete is in progress.
-  const pendingGauge = meter.createObservableGauge("infisical.project_cleanup.pending", {
+  // Per-pod, last-tick value: only the pod that won the cron redlock updates this; other pods report 0.
+  // Alarms must aggregate with max() across pods, else a "stuck at cap" backlog gets diluted to ~0.
+  let lastDiscoveryCount = 0;
+  const discoveryGauge = meter.createObservableGauge("infisical.project_cleanup.discovered", {
     description:
-      "Projects awaiting hard delete (deleteAfter set). Sustained growth = drain can't keep up / mass-delete.",
+      "Expired projects found on last discovery tick (capped at discovery batch). Sustained value at the cap = backlog remains.",
     unit: "{project}"
   });
-  pendingGauge.addCallback(async (observableResult) => {
+  discoveryGauge.addCallback((observableResult) => {
     if (!getConfig().OTEL_TELEMETRY_COLLECTION_ENABLED) return;
-    try {
-      observableResult.observe(await projectDAL.countPendingHardDelete());
-    } catch (err) {
-      logger.warn({ err }, "project_cleanup.pending gauge: count failed");
-    }
+    observableResult.observe(lastDiscoveryCount);
   });
 
   const processProjectHardDelete = async (projectId: string) => {
-    const startedAt = Date.now();
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectDeleteLock(projectId)], PROJECT_DELETE_LOCK_TTL_MS)
       .catch(() => null);
     if (!lock) {
-      processedCounter.add(1, { outcome: "skipped", reason: "locked" });
       logger.info(`project-hard-delete: lock held, will retry next firing [projectId=${projectId}]`);
       return;
     }
@@ -125,14 +108,13 @@ export const projectCleanupQueueFactory = ({
       // worker that already finished.
       const project = await projectDAL.transaction((tx) => projectDAL.findByIdIncludingExpired(projectId, tx));
       if (!project || !project.deleteAfter || new Date(project.deleteAfter).getTime() > Date.now()) {
-        processedCounter.add(1, { outcome: "skipped", reason: "gone_or_restored" });
         logger.info(`project-hard-delete: skipping (gone/already-removed/not-yet-expired) [projectId=${projectId}]`);
         return;
       }
 
       // 1) Chunk-delete the largest project-scoped table ahead of the final cascade. secret_versions_v2
-      // has no folderId/secretId FK (only a mostly-NULL envId cascade), so the project-delete cascade
-      // would otherwise orphan ~all of these rows. Deleting by folderId is FK-safe and bounds the
+      // has no folderId/secretId FK and no other FK back to the project tree, so the project-delete
+      // cascade would otherwise orphan all of these rows. Deleting by folderId is FK-safe and bounds the
       // final cascade's transaction size.
       const deletedVersions = await projectDAL.hardDeleteProjectSecretVersionsInBatches(
         projectId,
@@ -141,7 +123,18 @@ export const projectCleanupQueueFactory = ({
         INTER_BATCH_SLEEP_MS
       );
 
-      // 2) Final cascade in one transaction — handles the remaining (smaller) child tables, including
+      // 2) For big projects: mark envs for the env worker; the cron re-fires this job until drained.
+      const envCount = await projectDAL.countProjectEnvironments(projectId);
+      if (envCount > ENV_DELEGATION_THRESHOLD) {
+        const marked = await projectDAL.softDeleteProjectEnvironments(projectId);
+        logger.info(
+          { projectId, envCount, marked },
+          `project-hard-delete: waiting on env drain [projectId=${projectId}] [envsRemaining=${envCount}] [newlyMarked=${marked}]`
+        );
+        return;
+      }
+
+      // 3) Final cascade in one transaction — handles the remaining (smaller) child tables, including
       // deferred / NO ACTION FKs (e.g. secret_rotation_v2_secret_mappings) that PG resolves correctly
       // as a single cascade tree (the same proven path the synchronous delete used).
       const deleted = await projectDAL.transaction(async (tx) => {
@@ -179,7 +172,6 @@ export const projectCleanupQueueFactory = ({
       });
 
       if (!deleted) {
-        processedCounter.add(1, { outcome: "skipped", reason: "already_removed" });
         logger.info(`project-hard-delete: already removed by a concurrent worker [projectId=${projectId}]`);
         return;
       }
@@ -195,16 +187,11 @@ export const projectCleanupQueueFactory = ({
         }
       });
 
-      const durationSec = (Date.now() - startedAt) / 1000;
-      processedCounter.add(1, { outcome: "deleted" });
-      durationHistogram.record(durationSec);
-      versionsPrunedHistogram.record(deletedVersions);
       logger.info(
-        { projectId, deletedVersions, durationSec },
-        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}] [durationSec=${durationSec.toFixed(1)}]`
+        { projectId, deletedVersions },
+        `project-hard-delete: hard-deleted project [projectId=${projectId}] [versionsPruned=${deletedVersions}]`
       );
     } catch (err) {
-      processedCounter.add(1, { outcome: "failed" });
       logger.error({ err, projectId }, `project-hard-delete: failed [projectId=${projectId}]`);
       throw err; // surface to BullMQ so it retries (attempts: 3) and the generic failure metric fires
     } finally {
@@ -234,6 +221,7 @@ export const projectCleanupQueueFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         const expiredProjects = await projectDAL.findExpiredForHardDelete(DISCOVERY_BATCH);
+        lastDiscoveryCount = expiredProjects.length;
         if (expiredProjects.length === 0) return;
 
         logger.info(`cron[${CronJobName.ProjectHardDelete}]: enqueuing ${expiredProjects.length} expired project(s)`);

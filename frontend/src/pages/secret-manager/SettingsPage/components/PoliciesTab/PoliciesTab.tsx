@@ -12,8 +12,8 @@ export const PoliciesTab = () => {
 
   return (
     <div>
-      <SecretValidationRulesSection />
       <PreferencesSection />
+      <SecretValidationRulesSection />
       {config.isCrossProjectSecretSharingEnabled && currentOrg.allowCrossProjectSecretSharing && (
         <CrossProjectSharingSection />
       )}

@@ -8,6 +8,10 @@ Organizations adopt different approaches to secrets management governance based 
 
 This guide covers how to configure Infisical for different governance approaches and what tradeoffs to consider.
 
+<Note>
+Infisical spans several products—[Secrets Management](/documentation/platform/secrets-mgmt/overview), [Certificate Manager](/documentation/platform/pki/overview), [KMS](/documentation/platform/kms/overview), [Secret Scanning](/documentation/platform/secret-scanning/overview), and [Privileged Access Manager](/documentation/platform/pam/overview). This guide focuses on Secrets Management, but the same governance foundations—organization structure, authentication and identity, access control, approval workflows, and audit—apply across all of them.
+</Note>
+
 ## Understanding the Spectrum
 
 Most organizations don't operate at the extremes. Instead, they land somewhere on a spectrum between two models:
@@ -23,6 +27,30 @@ The right model depends on your regulatory environment, team maturity, organizat
 ## Organizational Structure
 
 Project and environment structure is where governance decisions start to take shape.
+
+### Sub-Organizations
+
+<Info>
+Sub-organizations are an Enterprise feature. On Infisical Cloud they're available on the **Enterprise Tier**; for self-hosted deployments, contact sales@infisical.com for an enterprise license.
+</Info>
+
+[Sub-organizations](/documentation/platform/sub-organizations) let you create child organizations within a root organization. Each sub-organization behaves like a regular organization—with its own projects, members, groups, and settings—while sharing authentication and billing with the root. Only one level of nesting is supported, and authentication (SSO, SCIM, LDAP) is always configured at the root level.
+
+Sub-organizations are a key lever for governance because they create hard boundaries between teams or business units without requiring separate accounts:
+
+- **Segment by business unit**: give departments (e.g., Engineering, Sales, Marketing) independent project spaces that are isolated from one another
+- **Delegate administration**: let team leads act as admins of their own sub-organization without granting root-level access to the whole company
+- **Maintain a single identity source**: users, groups, and machine identities defined at the root can be explicitly shared downward into sub-organizations, while projects and other resources stay isolated to the organization where they're created
+
+| Approach | Centralized | Self-Service |
+|----------|-------------|--------------|
+| **Sub-org creation** | Root admins provision sub-organizations per business unit | Rarely needed; a single organization with project-level boundaries usually suffices |
+| **Administration** | Root team retains oversight; delegates scoped admin to sub-org leads | Sub-org admins operate autonomously within their unit |
+| **Resource sharing** | Root team curates which users, groups, and identities flow into each sub-org | Sub-orgs create and manage their own resources as needed |
+
+<Note>
+Sub-organizations provide stronger isolation than project-level boundaries alone, since resources in one sub-organization are never visible to the root or to sibling sub-organizations. If you only need to separate teams within a shared user directory, [groups](/documentation/platform/groups) and [project-level roles](/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls) may be sufficient without introducing sub-organizations.
+</Note>
 
 ### Project Ownership
 
@@ -230,17 +258,19 @@ Who creates, rotates, and retires secrets—and how—depends on your governance
 | **Lease duration** | Standardized TTLs based on use case | Teams determine appropriate durations |
 | **Access control** | Restricted to specific roles | Available to authorized team members |
 
-### Secret Referencing Within Projects
+### Secret Referencing and Imports
 
-[Secret referencing](/documentation/platform/secret-reference) and [imports](/documentation/platform/secret-reference) allow secrets to be shared across environments and folders within the same project. This helps reduce duplication when the same secret is needed in multiple environments.
+[Secret referencing](/documentation/platform/secret-reference) and [imports](/documentation/platform/secret-reference) allow secrets to be shared across environments and folders. This helps reduce duplication when the same secret is needed in multiple places.
 
 | Approach | Centralized | Self-Service |
 |----------|-------------|--------------|
 | **Reference patterns** | Standardized import structures across projects | Teams define their own reference hierarchies |
 | **Base environment** | Platform team designates source environments for imports | Teams choose which environments to reference from |
 
+By default, references and imports operate within a single project. [Cross-project secret sharing](/documentation/platform/secret-reference#cross-project-secret-sharing) extends this to let one project reference or import secrets from another project in the same organization—useful for shared infrastructure secrets like database hosts or common API keys.
+
 <Note>
-Projects in Infisical are isolated from one another. Secret referencing and imports work within a single project—you cannot reference secrets across different projects.
+Cross-project secret sharing is currently in private preview and available by invitation only. It's governed centrally: an organization admin must enable an org-level toggle, and access between projects is granted explicitly through project grants, so users in the target project don't need permissions in the source project.
 </Note>
 
 ## Integrations and Secret Delivery
@@ -261,17 +291,17 @@ Infisical offers multiple methods for delivering secrets to applications and inf
 
 For Kubernetes environments, two primary integration patterns are available:
 
-- [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/infisical-operator) — Syncs secrets to Kubernetes Secrets resources
+- [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview) — Syncs secrets to Kubernetes Secrets resources
 - [Infisical Secrets Injector](/integrations/platforms/kubernetes-injector) — Injects secrets directly into pods at runtime
 
 | Approach | Centralized | Self-Service |
 |----------|-------------|--------------|
 | **Operator deployment** | Single cluster-wide instance managed by platform team | Teams may deploy namespace-scoped instances |
-| **Secret sync patterns** | Standardized CRD configurations | Teams define their own InfisicalSecret resources |
+| **Secret sync patterns** | Standardized CRD configurations | Teams define their own InfisicalStaticSecret resources |
 
 ### Agent and CLI
 
-The [Infisical Agent](/infisical-agent/overview) and [CLI](/cli/overview) provide flexible secret consumption patterns:
+The [Infisical Agent](/integrations/platforms/infisical-agent) and [CLI](/cli/overview) provide flexible secret consumption patterns:
 
 | Approach | Centralized | Self-Service |
 |----------|-------------|--------------|
@@ -466,6 +496,7 @@ Here's a quick reference for how key Infisical features map to each governance m
 
 | Feature | Centralized Use | Self-Service Use |
 |---------|-----------------|------------------|
+| [Sub-Organizations](/documentation/platform/sub-organizations) | Segment business units with delegated admins | Rarely needed; use project boundaries |
 | [Project Templates](/documentation/platform/project-templates) | Enforce standards | Provide starting points |
 | [SCIM](/documentation/platform/scim/overview) | Automate user lifecycle | Supplement direct invitations |
 | [Groups](/documentation/platform/groups) | IdP-synced membership | Local team management |

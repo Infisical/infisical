@@ -2,6 +2,7 @@ import { registerPamAccessRequestRouter } from "./pam-access-request-router";
 import { registerPamAccountRouter } from "./pam-account-router";
 import { registerPamAccountTemplateRouter } from "./pam-account-template-router";
 import { registerPamApprovalConfigurationRouter } from "./pam-approval-configuration-router";
+import { registerPamDiscoveryRouter } from "./pam-discovery-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import {
   registerPamAccountMembershipRouter,
@@ -32,6 +33,7 @@ export const registerPamRouters = async (server: FastifyZodProvider) => {
     },
     { prefix: "/accounts" }
   );
+  await server.register(registerPamDiscoveryRouter, { prefix: "/discovery-sources" });
   await server.register(registerPamProductMembershipRouter, { prefix: "/memberships" });
   await server.register(registerPamResourceRoleRouter, { prefix: "/roles" });
   await server.register(

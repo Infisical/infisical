@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
 import { addSeconds, format, formatISO } from "date-fns";
-import { jwtDecode } from "jwt-decode";
 import { ChevronRight, LogIn, Search } from "lucide-react";
 
+import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { Button, ContentLoader, Input, Spinner } from "@app/components/v2";
+import { ContentLoader, Input, Spinner } from "@app/components/v2";
+import { VerificationCodeHeader } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useToggle } from "@app/hooks";
@@ -21,10 +23,10 @@ import {
   useSelectOrganization
 } from "@app/hooks/api";
 import { MfaMethod, UserAgentType } from "@app/hooks/api/auth/types";
-import { getAuthToken, setAuthToken } from "@app/hooks/api/reactQuery";
-import { AuthMethod, SAML_AUTH_METHODS } from "@app/hooks/api/users/types";
+import { setAuthToken } from "@app/hooks/api/reactQuery";
 
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
+import { getSsoEnforcementError } from "./SelectOrg.utils";
 
 const OrgRow = ({
   name,
@@ -52,12 +54,12 @@ const OrgRow = ({
       className={`group flex h-14 w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-600 px-4 shadow-md transition-colors ${bgClass}`}
     >
       <div className="flex flex-col items-start">
-        <p className="truncate">{name}</p>
+        <p className="truncate font-alliance">{name}</p>
         {(label || joinedAt) && (
           <p className="text-xs text-mineshaft-400">
             {label}
             {label && joinedAt && " · "}
-            {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d yyyy")}</>}
+            {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d, yyyy")}</>}
           </p>
         )}
       </div>
@@ -71,6 +73,7 @@ export const SelectOrgPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
+  const { autoSelectErrorMessage } = useRouteContext({ from: ROUTE_PATHS.Auth.SelectOrgPage.id });
 
   const {
     org_id: orgId,
@@ -145,34 +148,10 @@ export const SelectOrgPage = () => {
       return;
     }
 
-    if ((org.authEnforced || org.googleSsoAuthEnforced) && !canBypassOrgAuth) {
-      const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
-
-      let ssoRequired = false;
-      let ssoType = "";
-
-      if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
-        ssoRequired = true;
-        ssoType = "Google SSO";
-      } else if (
-        org.orgAuthMethod === AuthMethod.OIDC &&
-        authToken.authMethod !== AuthMethod.OIDC
-      ) {
-        ssoRequired = true;
-        ssoType = "OIDC SSO";
-      } else if (
-        org.orgAuthMethod === AuthMethod.SAML &&
-        !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
-      ) {
-        ssoRequired = true;
-        ssoType = "SAML SSO";
-      }
-
-      if (ssoRequired) {
-        createNotification({
-          text: `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`,
-          type: "error"
-        });
+    if (!canBypassOrgAuth) {
+      const ssoEnforcementError = getSsoEnforcementError(org);
+      if (ssoEnforcementError) {
+        createNotification({ text: ssoEnforcementError, type: "error" });
         return;
       }
     }
@@ -245,16 +224,30 @@ export const SelectOrgPage = () => {
     }
   };
 
-  // MFA pending from IdP redirect
+  // beforeLoad can't toast on cold loads (Toaster not yet mounted) so it hands failures here;
+  // the ref dedupes StrictMode's double effect run
+  const autoSelectErrorToasted = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoSelectErrorMessage && autoSelectErrorToasted.current !== autoSelectErrorMessage) {
+      autoSelectErrorToasted.current = autoSelectErrorMessage;
+      createNotification({ text: autoSelectErrorMessage, type: "error" });
+    }
+  }, [autoSelectErrorMessage]);
+
+  // MFA challenge handed off by beforeLoad's auto-select
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const defaultOrg = orgs?.find((o) => o.id === orgId);
+    const rootOrg = orgs?.find((o) => o.id === orgId);
+    const subOrgParent = rootOrg
+      ? undefined
+      : orgs?.find((o) => o.subOrganizations.some((sub) => sub.id === orgId));
+    const mfaOrg = rootOrg ?? subOrgParent;
     const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
-    if (mfaMethodFromSearch && storedMfaToken && defaultOrg) {
+    if (mfaMethodFromSearch && storedMfaToken && mfaOrg) {
       sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
       SecurityClient.setMfaToken(storedMfaToken);
       toggleShowMfa.on();
-      mfaOrgInfo.current = { rootOrg: defaultOrg };
+      mfaOrgInfo.current = { rootOrg: mfaOrg, subOrgId: rootOrg ? undefined : orgId };
     }
   }, [mfaMethodFromSearch, orgs?.length, orgId]);
 
@@ -377,16 +370,16 @@ export const SelectOrgPage = () => {
     );
   }
 
-  return (
-    <div className="flex max-h-screen min-h-screen flex-col justify-center overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("login.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("login.og-title") ?? ""} />
-        <meta name="og:description" content={t("login.og-description") ?? ""} />
-      </Helmet>
-      {shouldShowMfa ? (
+  if (shouldShowMfa) {
+    return (
+      <>
+        <Helmet>
+          <title>{t("common.head-title", { title: t("login.title") })}</title>
+          <link rel="icon" href="/infisical.ico" />
+          <meta property="og:image" content="/images/message.png" />
+          <meta property="og:title" content={t("login.og-title") ?? ""} />
+          <meta name="og:description" content={t("login.og-description") ?? ""} />
+        </Helmet>
         <Mfa
           email={user.email as string}
           successCallback={() => {
@@ -395,73 +388,74 @@ export const SelectOrgPage = () => {
             }
           }}
           method={requiredMfaMethod as MfaMethod}
+          onChangeAccount={handleLogout}
         />
-      ) : (
-        <div className="mx-auto mt-20 w-full max-w-md pb-28">
-          <Link to="/">
-            <div className="mb-4 flex justify-center">
-              <img
-                src="/images/gradientLogo.svg"
-                style={{ height: "90px", width: "120px" }}
-                alt="Infisical logo"
+      </>
+    );
+  }
+
+  return (
+    <AuthPageLayout variant="focused" showFooter={false}>
+      <Helmet>
+        <title>{t("common.head-title", { title: t("login.title") })}</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <meta property="og:title" content={t("login.og-title") ?? ""} />
+        <meta name="og:description" content={t("login.og-description") ?? ""} />
+      </Helmet>
+      <AuthPagePanel>
+        <VerificationCodeHeader
+          title="Choose your organization as"
+          recipient={user.username}
+          action={
+            <button
+              aria-label={`Sign out ${user.username}`}
+              className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+              onClick={handleLogout}
+              type="button"
+            >
+              Sign out
+            </button>
+          }
+        />
+
+        <div className="rounded-xl border-2 border-mineshaft-500 shadow-lg">
+          {totalOrgCount >= 5 && (
+            <div className="border-b border-mineshaft-600 px-4 py-3">
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={
+                  selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
+                }
+                leftIcon={<Search className="size-4" />}
+                className="h-10"
               />
             </div>
-          </Link>
-          <div className="mb-8 space-y-2">
-            <h1 className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-center text-2xl font-medium text-transparent">
-              Choose your organization
-            </h1>
-            <div className="space-y-1">
-              <p className="text-md text-center text-gray-500">
-                You&apos;re currently logged in as <strong>{user.username}</strong>
-              </p>
-              <p className="text-md text-center text-gray-500">
-                Not you?{" "}
-                <Button variant="link" onClick={handleLogout} className="font-medium">
-                  Change account
-                </Button>
-              </p>
+          )}
+
+          {selectedRootOrg && (
+            <div className="border-b border-mineshaft-600 px-4 py-2">
+              <nav className="flex items-center gap-1.5 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRootOrg(null);
+                    setSearchTerm("");
+                  }}
+                  className="text-mineshaft-400 transition-colors hover:text-gray-200"
+                >
+                  All organizations
+                </button>
+                <span className="text-white">›</span>
+                <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
+              </nav>
             </div>
-          </div>
+          )}
 
-          <div className="rounded-lg border-2 border-mineshaft-500 shadow-lg">
-            {totalOrgCount >= 5 && (
-              <div className="border-b border-mineshaft-600 px-4 py-3">
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={
-                    selectedRootOrg ? "Search sub-organizations..." : "Search organizations..."
-                  }
-                  leftIcon={<Search className="size-4" />}
-                  className="h-10"
-                />
-              </div>
-            )}
-
-            {selectedRootOrg && (
-              <div className="border-b border-mineshaft-600 px-4 py-2">
-                <nav className="flex items-center gap-1.5 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRootOrg(null);
-                      setSearchTerm("");
-                    }}
-                    className="text-mineshaft-400 transition-colors hover:text-gray-200"
-                  >
-                    All organizations
-                  </button>
-                  <span className="text-white">›</span>
-                  <span className="font-medium text-gray-300">{selectedRootOrg.name}</span>
-                </nav>
-              </div>
-            )}
-
-            <div className="max-h-96 thin-scrollbar overflow-y-auto p-2">{renderListContent()}</div>
-          </div>
+          <div className="max-h-96 thin-scrollbar overflow-y-auto p-2">{renderListContent()}</div>
         </div>
-      )}
-    </div>
+      </AuthPagePanel>
+    </AuthPageLayout>
   );
 };

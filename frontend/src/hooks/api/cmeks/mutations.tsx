@@ -12,9 +12,13 @@ import {
   TCmekDecryptResponse,
   TCmekEncrypt,
   TCmekEncryptResponse,
+  TCmekGenerateMac,
+  TCmekGenerateMacResponse,
   TCmekSign,
   TCmekSignResponse,
   TCmekVerify,
+  TCmekVerifyMac,
+  TCmekVerifyMacResponse,
   TCmekVerifyResponse,
   TCreateCmek,
   TDeleteCmek,
@@ -129,6 +133,46 @@ export const useCmekVerify = () => {
         signature,
         signingAlgorithm
       });
+
+      return res.data;
+    }
+  });
+};
+
+export const useCmekGenerateMac = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+      isBase64Encoded
+    }: TCmekGenerateMac & { isBase64Encoded: boolean }) => {
+      const res = await apiRequest.post<TCmekGenerateMacResponse>(
+        `/api/v1/kms/keys/${keyId}/generate-mac`,
+        {
+          data: isBase64Encoded ? data : encodeBase64(Buffer.from(data))
+        }
+      );
+
+      return res.data;
+    }
+  });
+};
+
+export const useCmekVerifyMac = () => {
+  return useMutation({
+    mutationFn: async ({
+      keyId,
+      data,
+      mac,
+      isBase64Encoded
+    }: TCmekVerifyMac & { isBase64Encoded: boolean }) => {
+      const res = await apiRequest.post<TCmekVerifyMacResponse>(
+        `/api/v1/kms/keys/${keyId}/verify-mac`,
+        {
+          data: isBase64Encoded ? data : encodeBase64(Buffer.from(data)),
+          mac
+        }
+      );
 
       return res.data;
     }

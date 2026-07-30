@@ -26,7 +26,13 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "sso.action",
   "db.pool.state",
   "cache.result",
+  "cache.if_none_match",
+  "cache.etag_miss_reason",
   "rate_limit.bucket",
+  "provider",
+  "destination",
+  "type",
+  "operation",
   // License Server v2 dual-read comparison (bounded: feature key set + a small set of diff kinds)
   "license.feature",
   "license.dual_read.kind",

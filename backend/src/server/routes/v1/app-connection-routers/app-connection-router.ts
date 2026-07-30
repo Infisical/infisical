@@ -142,6 +142,10 @@ import {
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
 import {
+  KempLoadMasterConnectionListItemSchema,
+  SanitizedKempLoadMasterConnectionSchema
+} from "@app/services/app-connection/kemp-loadmaster";
+import {
   LaravelForgeConnectionListItemSchema,
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
@@ -150,6 +154,10 @@ import {
   LiteLLMConnectionListItemSchema,
   SanitizedLiteLLMConnectionSchema
 } from "@app/services/app-connection/litellm";
+import {
+  MicrosoftIntuneConnectionListItemSchema,
+  SanitizedMicrosoftIntuneConnectionSchema
+} from "@app/services/app-connection/microsoft-intune";
 import {
   MongoDBConnectionListItemSchema,
   SanitizedMongoDBConnectionSchema
@@ -168,6 +176,10 @@ import {
   NorthflankConnectionListItemSchema,
   SanitizedNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
+import {
+  NutanixPrismCentralConnectionListItemSchema,
+  SanitizedNutanixPrismCentralConnectionSchema
+} from "@app/services/app-connection/nutanix-prism-central";
 import {
   OctopusDeployConnectionListItemSchema,
   SanitizedOctopusDeployConnectionSchema
@@ -207,6 +219,10 @@ import {
   SanitizedSnowflakeConnectionSchema,
   SnowflakeConnectionListItemSchema
 } from "@app/services/app-connection/snowflake";
+import {
+  SanitizedSpaceliftConnectionSchema,
+  SpaceliftConnectionListItemSchema
+} from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
@@ -238,6 +254,10 @@ import {
   SanitizedWindmillConnectionSchema,
   WindmillConnectionListItemSchema
 } from "@app/services/app-connection/windmill";
+import {
+  SanitizedWinRMConnectionSchema,
+  WinRMConnectionListItemSchema
+} from "@app/services/app-connection/winrm/winrm-connection-schemas";
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -287,6 +307,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedADCSConnectionSchema.options,
+  ...SanitizedWinRMConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
@@ -302,10 +323,12 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAnthropicConnectionSchema.options,
   ...SanitizedDevinConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedMicrosoftIntuneConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedKempLoadMasterConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
   ...SanitizedOnaConnectionSchema.options,
@@ -320,7 +343,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedRundeckConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
-  ...SanitizedFireworksConnectionSchema.options
+  ...SanitizedFireworksConnectionSchema.options,
+  ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedSpaceliftConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -368,6 +393,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   ADCSConnectionListItemSchema,
+  WinRMConnectionListItemSchema,
   RedisConnectionListItemSchema,
   MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
@@ -381,11 +407,13 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   OpenAIConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
+  MicrosoftIntuneConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   VenafiTppConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
+  KempLoadMasterConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
   DevinConnectionListItemSchema,
@@ -401,7 +429,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   RundeckConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
-  FireworksConnectionListItemSchema
+  FireworksConnectionListItemSchema,
+  NutanixPrismCentralConnectionListItemSchema,
+  SpaceliftConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

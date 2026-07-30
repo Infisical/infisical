@@ -172,7 +172,16 @@ export const projectFolderGrantServiceFactory = ({
       ProjectPermissionSub.ProjectFolderGrant
     );
 
-    return projectFolderGrantDAL.listBySourceProject(sourceProjectId);
+    const grants = await projectFolderGrantDAL.listBySourceProject(sourceProjectId);
+
+    const folderIds = grants.map((g) => g.sourceFolderId);
+    const folderPaths =
+      folderIds.length > 0 ? await folderDAL.findSecretPathByFolderIds(sourceProjectId, folderIds) : [];
+
+    return grants.map((g, i) => ({
+      ...g,
+      secretPath: folderPaths[i]?.path ?? "/"
+    }));
   };
 
   const listGrantsForTargetProject = async ({
@@ -195,7 +204,30 @@ export const projectFolderGrantServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    return projectFolderGrantDAL.listByTargetProject(targetProjectId);
+    const grants = await projectFolderGrantDAL.listByTargetProject(targetProjectId);
+
+    const grantsBySourceProject = new Map<string, typeof grants>();
+    for (const g of grants) {
+      const list = grantsBySourceProject.get(g.sourceProjectId) ?? [];
+      list.push(g);
+      grantsBySourceProject.set(g.sourceProjectId, list);
+    }
+
+    const pathsByGrantId = new Map<string, string>();
+    await Promise.all(
+      Array.from(grantsBySourceProject.entries()).map(async ([srcProjectId, projectGrants]) => {
+        const folderIds = projectGrants.map((g) => g.sourceFolderId);
+        const folderPaths = await folderDAL.findSecretPathByFolderIds(srcProjectId, folderIds);
+        projectGrants.forEach((g, i) => {
+          pathsByGrantId.set(g.id, folderPaths[i]?.path ?? "/");
+        });
+      })
+    );
+
+    return grants.map((g) => ({
+      ...g,
+      secretPath: pathsByGrantId.get(g.id) ?? "/"
+    }));
   };
 
   const getGrantUsage = async ({

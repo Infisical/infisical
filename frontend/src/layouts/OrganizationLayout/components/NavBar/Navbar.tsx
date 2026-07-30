@@ -66,6 +66,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
+  useServerConfig,
   useSubscription,
   useUser
 } from "@app/context";
@@ -142,6 +143,7 @@ export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { config: serverConfig } = useServerConfig();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
@@ -175,6 +177,8 @@ export const Navbar = () => {
   const rootOrg = isSubOrganization
     ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
     : currentOrg;
+
+  const otherOrgs = orgs?.filter((org) => org.id !== rootOrg.id) ?? [];
 
   useEffect(() => {
     if (isModalIntrusive) {
@@ -292,14 +296,12 @@ export const Navbar = () => {
 
   if (shouldShowMfa) {
     return (
-      <div className="flex max-h-screen min-h-screen flex-col items-center justify-center gap-2 overflow-y-auto bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
-        <Mfa
-          email={user.email as string}
-          method={requiredMfaMethod}
-          successCallback={mfaSuccessCallback}
-          closeMfa={() => toggleShowMfa.off()}
-        />
-      </div>
+      <Mfa
+        email={user.email as string}
+        method={requiredMfaMethod}
+        successCallback={mfaSuccessCallback}
+        closeMfa={() => toggleShowMfa.off()}
+      />
     );
   }
 
@@ -320,7 +322,8 @@ export const Navbar = () => {
 
       await logout.mutateAsync();
       if (org.orgAuthMethod === AuthMethod.OIDC) {
-        window.open(`/api/v1/sso/oidc/login?domain=${org.slug}`);
+        // orgSlug, not domain: the domain param is a verified email-domain lookup and 403s on a slug
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
       } else {
         window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
       }
@@ -451,7 +454,8 @@ export const Navbar = () => {
                       {/* Current Organization */}
                       <CommandGroup heading="Current Organization">
                         <CommandItem
-                          value={rootOrg.name}
+                          value={rootOrg.id}
+                          keywords={[rootOrg.name]}
                           onSelect={() => {
                             setIsOrgSelectOpen(false);
                             if (isSubOrganization) {
@@ -512,7 +516,8 @@ export const Navbar = () => {
                             {subOrganizations.map((subOrg) => (
                               <CommandItem
                                 key={subOrg.id}
-                                value={subOrg.name}
+                                value={subOrg.id}
+                                keywords={[subOrg.name]}
                                 onSelect={() => {
                                   setIsOrgSelectOpen(false);
                                   handleOrgSelection({ organizationId: subOrg.id });
@@ -546,29 +551,29 @@ export const Navbar = () => {
                               }
                             </OrgPermissionCan>
                           </CommandGroup>
-                          <CommandSeparator />
+                          {otherOrgs.length > 0 && <CommandSeparator />}
                         </>
                       )}
                       {/* Other Organizations */}
-                      {orgs && orgs.filter((o) => o.id !== rootOrg.id).length > 0 && (
+                      {otherOrgs.length > 0 && (
                         <CommandGroup heading="Other Organizations">
-                          {orgs
-                            .filter((o) => o.id !== rootOrg.id)
-                            .map((org) => (
-                              <CommandItem
-                                key={org.id}
-                                value={org.name}
-                                onSelect={() => {
-                                  setIsOrgSelectOpen(false);
-                                  handleOrgNav(org);
-                                }}
-                              >
-                                <span className="truncate">{org.name}</span>
-                              </CommandItem>
-                            ))}
+                          {otherOrgs.map((org) => (
+                            <CommandItem
+                              key={org.id}
+                              value={org.id}
+                              keywords={[org.name]}
+                              onSelect={() => {
+                                setIsOrgSelectOpen(false);
+                                handleOrgNav(org);
+                              }}
+                            >
+                              <span className="truncate">{org.name}</span>
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       )}
                     </CommandList>
+                    <CommandSeparator />
                     <div className="p-1">
                       <button
                         type="button"
@@ -594,6 +599,7 @@ export const Navbar = () => {
         )}
       </div>
 
+      <VersionBadge />
       {subscription &&
       subscription.slug === SubscriptionPlanTypes.Starter &&
       !subscription.has_used_trial ? (
@@ -623,7 +629,6 @@ export const Navbar = () => {
           {getSubscriptionPlanLabel(subscription)}
         </Badge>
       )}
-      <VersionBadge />
       {!location.pathname.startsWith("/admin") && user.superAdmin && (
         <Button variant="outline" size="xs" className="mt-px mr-2" asChild>
           <Link to="/admin" onClick={handleNavigateToAdminConsole}>
@@ -698,6 +703,16 @@ export const Navbar = () => {
                 <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted">
                   <Info className="size-3.5" />
                   Version: {envConfig.PLATFORM_VERSION}
+                  {serverConfig.latestAvailableVersion && (
+                    <a
+                      href="https://upgrade.infisical.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-info hover:underline"
+                    >
+                      (v{serverConfig.latestAvailableVersion} available)
+                    </a>
+                  )}
                 </div>
               </>
             )}

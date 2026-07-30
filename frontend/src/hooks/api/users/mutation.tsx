@@ -65,49 +65,6 @@ export const useUpdateUserProjectFavorites = () => {
   });
 };
 
-export const useVerifyUserTotpRegistration = () => {
-  return useMutation<{ recoveryCodes: string[] }, unknown, { totp: string }>({
-    mutationFn: async ({ totp }: { totp: string }) => {
-      const { data } = await apiRequest.post<{ recoveryCodes: string[] }>(
-        "/api/v1/user/me/totp/verify",
-        {
-          totp
-        }
-      );
-
-      return data;
-    }
-  });
-};
-
-export const useDeleteUserTotpConfiguration = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      await apiRequest.delete("/api/v1/user/me/totp");
-
-      return {};
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
-    }
-  });
-};
-
-export const useCreateNewTotpRecoveryCodes = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      await apiRequest.post("/api/v1/user/me/totp/recovery-codes");
-
-      return {};
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
-    }
-  });
-};
-
 export const useResendOrgMemberInvitation = () => {
   return useMutation({
     mutationFn: async (dto: { membershipId: string }) => {

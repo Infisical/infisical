@@ -29,6 +29,7 @@ import {
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionProjectFolderGrantActions,
+  ProjectPermissionProxiedServiceActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSecretEventActions,
@@ -278,6 +279,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
       ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.GenerateMac,
+      ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate,
       ProjectPermissionCmekActions.ExportPrivateKey
     ],
@@ -467,6 +470,18 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Insights
   );
 
+  can(
+    [
+      ProjectPermissionProxiedServiceActions.Read,
+      ProjectPermissionProxiedServiceActions.Create,
+      ProjectPermissionProxiedServiceActions.Edit,
+      ProjectPermissionProxiedServiceActions.Delete,
+      ProjectPermissionProxiedServiceActions.Proxy,
+      ProjectPermissionProxiedServiceActions.ReportUsage
+    ],
+    ProjectPermissionSub.ProxiedServices
+  );
+
   return rules;
 };
 
@@ -570,6 +585,11 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
   can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
+
+  can(
     [
       ProjectPermissionActions.Read,
       ProjectPermissionActions.Edit,
@@ -629,6 +649,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
       ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.GenerateMac,
+      ProjectPermissionCmekActions.VerifyMac,
       ProjectPermissionCmekActions.Rotate
     ],
     ProjectPermissionSub.Cmek
@@ -711,6 +733,10 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -790,7 +816,9 @@ const buildCryptographicOperatorPermissionRules = () => {
       ProjectPermissionCmekActions.Encrypt,
       ProjectPermissionCmekActions.Decrypt,
       ProjectPermissionCmekActions.Sign,
-      ProjectPermissionCmekActions.Verify
+      ProjectPermissionCmekActions.Verify,
+      ProjectPermissionCmekActions.GenerateMac,
+      ProjectPermissionCmekActions.VerifyMac
     ],
     ProjectPermissionSub.Cmek
   );
@@ -1142,7 +1170,12 @@ const buildPamResourceConnectorPermissionRules = () => {
 const buildPamResourceAuditorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
-    [ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionPamResourceActions.ViewAuditLogs],
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ResourcePermissionPamResourceActions.ViewAuditLogs
+    ],
     ResourcePermissionSub.PamResource
   );
   return rules;

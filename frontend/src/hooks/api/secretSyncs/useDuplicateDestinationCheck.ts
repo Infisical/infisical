@@ -6,6 +6,7 @@ type UseDuplicateDestinationCheckProps = {
   destination: SecretSync;
   projectId: string;
   excludeSyncId?: string;
+  connectionId?: string;
   enabled?: boolean;
   destinationConfig?: unknown;
 };
@@ -14,6 +15,7 @@ export const useDuplicateDestinationCheck = ({
   destination,
   projectId,
   excludeSyncId,
+  connectionId,
   enabled = true,
   destinationConfig
 }: UseDuplicateDestinationCheckProps) => {
@@ -34,11 +36,18 @@ export const useDuplicateDestinationCheck = ({
     isLoading,
     error,
     refetch
-  } = useCheckDuplicateDestination(destination, destinationConfig, projectId, excludeSyncId, {
-    enabled: shouldCheck,
-    staleTime: 0,
-    gcTime: 0
-  });
+  } = useCheckDuplicateDestination(
+    destination,
+    destinationConfig,
+    projectId,
+    excludeSyncId,
+    connectionId,
+    {
+      enabled: shouldCheck,
+      staleTime: 0,
+      gcTime: 0
+    }
+  );
 
   return {
     hasDuplicate: shouldCheck ? Boolean(duplicateData?.hasDuplicate) : false,

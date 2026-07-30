@@ -45,6 +45,8 @@ type Props = {
   statusChangeByEmail?: string;
   enforcementLevel: EnforcementLevel;
   bypassReason?: string | null;
+  environment: string;
+  secretPath: string;
 };
 
 export const SecretApprovalRequestAction = ({
@@ -58,7 +60,9 @@ export const SecretApprovalRequestAction = ({
   canApprove,
   isCommitter,
   isBypasser,
-  bypassReason
+  bypassReason,
+  environment,
+  secretPath
 }: Props) => {
   const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
@@ -77,6 +81,8 @@ export const SecretApprovalRequestAction = ({
     await performSecretApprovalMerge({
       id: approvalRequestId,
       projectId,
+      environment,
+      secretPath,
       bypassReason: byPassApproval ? bypassReasonInput : undefined
     });
     createNotification({

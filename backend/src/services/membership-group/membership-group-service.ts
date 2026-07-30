@@ -18,8 +18,12 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -53,6 +57,8 @@ type TMembershipGroupServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -70,7 +76,9 @@ export const membershipGroupServiceFactory = ({
   groupDAL,
   licenseService,
   applicationMembershipCleanupService,
-  projectDAL
+  projectDAL,
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -110,6 +118,15 @@ export const membershipGroupServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
 
@@ -195,6 +212,11 @@ export const membershipGroupServiceFactory = ({
       return doc;
     });
 
+    // Assigning a group to a project brings the group's users + identities into it, changing the meters.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+    }
     return { membership, group };
   };
 
@@ -234,6 +256,15 @@ export const membershipGroupServiceFactory = ({
         message: "Temporary role must have access start time and range"
       });
     }
+
+    await assertSecretsTemporaryAccessAllowed({
+      licenseService,
+      projectDAL,
+      scope: scopeData.scope,
+      projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
+      orgId: scopeData.orgId,
+      roles: data.roles
+    });
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipGroupDAL.findOne({
@@ -393,12 +424,21 @@ export const membershipGroupServiceFactory = ({
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [dto.selector.groupId] }, tx);
+
       return doc;
     };
 
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipGroupDAL.transaction(performDelete);
+
+    // Removing a group from a project drops its users + identities from it, changing the meters.
+    if (scopeData.scope === AccessScope.Project) {
+      usageMeteringService.emitForProject(scopeData.projectId, SecretIdentities.key);
+      usageMeteringService.emitForProject(scopeData.projectId, PamIdentities.key);
+    }
     return { membership: membershipDoc, group };
   };
 
