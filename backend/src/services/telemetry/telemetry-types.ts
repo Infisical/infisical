@@ -1775,21 +1775,10 @@ export type TAuditLogsViewedEvent = {
     resultCount: number;
     dateRangeStart?: string;
     dateRangeEnd?: string;
-    actor?:
-      | UserActor
-      | IdentityActor
-      | ServiceActor
-      | ScimClientActor
-      | PlatformActor
-      | UnknownUserActor
-      | AcmeAccountActor
-      | AcmeProfileActor
-      | KmipClientActor
-      | EstAccountActor
-      | ScepAccountActor
-      | GatewayActor
-      | RelayActor
-      | KmipServerActor;
+    // Only the non-sensitive actor type is included; the actor id is already
+    // carried by the event's distinctId. Sending the full actor object would
+    // export identity auth metadata (OIDC claims, AWS ARN/account) to PostHog.
+    actorType?: string;
   };
 };
 
