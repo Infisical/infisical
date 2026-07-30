@@ -75,12 +75,20 @@ describe("execFileBounded", () => {
   });
 
   test("decodes multi-byte output split across chunk boundaries", async () => {
-    // printf writes the two halves of a 3-byte character in separate writes, so a per-chunk
-    // toString would turn one character into replacement characters.
-    const output = await execFileBounded("sh", ["-c", 'printf "\\xe2\\x9c"; sleep 0.2; printf "\\x93"'], {
-      phase: SecretScanningExecPhase.Scan,
-      timeoutMs: 10_000
-    });
+    // The two halves of a 3-byte character are written separately, so a per-chunk toString would
+    // turn one character into replacement characters. Written from node rather than a shell: `\xHH`
+    // is not POSIX printf, so dash emits it literally and the test would assert on nothing.
+    const output = await execFileBounded(
+      "node",
+      [
+        "-e",
+        "process.stdout.write(Buffer.from([0xe2, 0x9c])); setTimeout(() => process.stdout.write(Buffer.from([0x93])), 200);"
+      ],
+      {
+        phase: SecretScanningExecPhase.Scan,
+        timeoutMs: 10_000
+      }
+    );
 
     expect(output).toBe("✓");
   });

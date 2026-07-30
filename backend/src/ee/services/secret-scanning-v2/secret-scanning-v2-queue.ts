@@ -284,7 +284,8 @@ export const secretScanningV2QueueServiceFactory = ({
           {
             status: SecretScanningScanStatus.Completed,
             statusMessage: null
-          }
+          },
+          tx
         );
 
         return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
@@ -555,7 +556,8 @@ export const secretScanningV2QueueServiceFactory = ({
           { id: scanId, status: SecretScanningScanStatus.Scanning },
           {
             status: SecretScanningScanStatus.Completed
-          }
+          },
+          tx
         );
 
         return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
