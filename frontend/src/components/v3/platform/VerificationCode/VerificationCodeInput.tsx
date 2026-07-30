@@ -227,7 +227,7 @@ export const VerificationCodeInput = ({
         className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
         defaultValue={value}
         inputMode={fields === 6 ? "numeric" : "text"}
-        maxLength={fields}
+        maxLength={fields === 6 ? undefined : fields}
         name={name}
         onBlur={() => setIsFocused(false)}
         onChange={(event) => {

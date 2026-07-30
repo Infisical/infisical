@@ -212,7 +212,16 @@ describe("Auth Email Signup V3", () => {
     });
     expect(first.statusCode).toBe(200);
 
-    // Step 3: second request within cooldown — must return 400 for both paths to be indistinguishable
+    // Step 3: wrong-code verification must match the response for a new-account challenge
+    const verifyAttempt = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/verify",
+      body: { email, code: "000000" }
+    });
+    expect(verifyAttempt.statusCode).toBe(400);
+    expect(verifyAttempt.json().details).toEqual({ triesLeft: 2 });
+
+    // Step 4: second request within cooldown — must return 400 for both paths to be indistinguishable
     const second = await testServer.inject({
       method: "POST",
       url: "/api/v3/signup/email/signup",
