@@ -136,15 +136,16 @@ export const SetupPage = () => {
     control,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting }
+    formState: { dirtyFields, errors, isSubmitting }
   } = useForm<TSetupForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       signUpMode: config.allowSignUp ? SignUpMode.Anyone : SignUpMode.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain ?? "",
-      enabledLoginMethods: config.enabledLoginMethods?.filter((method) =>
-        loginMethods.some(({ value }) => value === method)
-      ) ?? [LoginMethod.EMAIL],
+      enabledLoginMethods:
+        config.enabledLoginMethods?.filter((method) =>
+          loginMethods.some(({ value }) => value === method)
+        ) ?? loginMethods.map(({ value }) => value),
       defaultAuthOrgId: config.defaultAuthOrgId ?? ""
     }
   });
@@ -186,7 +187,12 @@ export const SetupPage = () => {
             formData.signUpMode === SignUpMode.Anyone
               ? formData.allowedSignUpDomain.trim() || null
               : null,
-          enabledLoginMethods: [...formData.enabledLoginMethods, ...enabledIdentityProviderMethods]
+          ...((config.enabledLoginMethods !== null || dirtyFields.enabledLoginMethods) && {
+            enabledLoginMethods: [
+              ...formData.enabledLoginMethods,
+              ...enabledIdentityProviderMethods
+            ]
+          })
         });
         next();
         return;

@@ -74,7 +74,7 @@ export type TServerConfig = {
   defaultAuthOrgId: string | null;
   defaultAuthOrgAuthMethod?: string | null;
   defaultAuthOrgAuthEnforced?: boolean | null;
-  enabledLoginMethods: LoginMethod[];
+  enabledLoginMethods: LoginMethod[] | null;
   passwordPolicy: TPasswordPolicy;
   authConsentContent?: string;
   pageFrameContent?: string;
