@@ -14,7 +14,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
   const navigate = useNavigate();
 
   return (
-    <AuthPageLayout contentClassName="max-w-xl">
+    <AuthPageLayout variant="focused" contentClassName="max-w-xl">
       <Helmet>
         <title>Instance ready | Infisical</title>
         <link rel="icon" href="/infisical.ico" />
@@ -45,7 +45,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
                 })
               }
             >
-              <span className="min-w-0">
+              <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <Building2 className="size-5 text-foreground" />
                   <span className="font-alliance text-base font-medium text-foreground">
@@ -64,15 +64,15 @@ export const WelcomePage = ({ organizationId }: Props) => {
               className="group grid min-h-18 grid-cols-[minmax(0,1fr)_auto] items-center rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-foreground/20 hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-wait disabled:opacity-60"
               onClick={() => navigate({ to: "/admin" })}
             >
-              <span className="min-w-0">
+              <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <ServerCog className="size-5 text-foreground" />
                   <span className="font-alliance text-base font-medium text-foreground">
-                    Open Server Console
+                    Access server console
                   </span>
                 </span>
                 <span className="block text-sm leading-relaxed text-label">
-                  Manage authentication, signups, encryption, and instance access policies.
+                  Make fine-grained adjustments to the instance configuration.
                 </span>
               </span>
               <ArrowRight className="size-4 text-label transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -80,8 +80,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
           </div>
 
           <p className="border-t border-border pt-6 text-xs leading-relaxed text-label">
-            You can switch between the Server Console and your organization later from the global
-            navigation.
+            You can always access the Server Console later from the app navigation header.
           </p>
         </CardContent>
       </AuthPagePanel>

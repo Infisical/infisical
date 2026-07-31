@@ -35,7 +35,7 @@ function FieldFeedback({ className, description, error, id }: FieldFeedbackProps
             key="error"
             role="alert"
             data-slot="field-error"
-            className="col-start-1 row-start-1 text-left text-xs leading-snug font-normal text-danger"
+            className="col-start-1 row-start-1 text-left text-2xs leading-snug font-normal text-danger"
             initial={initial}
             animate={{ opacity: 1, y: 0 }}
             exit={exit}
@@ -47,7 +47,7 @@ function FieldFeedback({ className, description, error, id }: FieldFeedbackProps
           <motion.p
             key="description"
             data-slot="field-description"
-            className="col-start-1 row-start-1 text-left text-xs leading-snug font-normal text-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground"
+            className="col-start-1 row-start-1 text-left text-2xs leading-snug font-normal text-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground"
             initial={initial}
             animate={{ opacity: 1, y: 0 }}
             exit={exit}
