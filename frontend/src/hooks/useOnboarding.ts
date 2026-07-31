@@ -4,6 +4,7 @@ type TUseOnboardingOptions<TStep extends string> = {
   id: string;
   progressScope?: string;
   steps: readonly [TStep, ...TStep[]];
+  initialStep?: TStep;
   persistLocally?: boolean;
   completionFlag?: boolean;
   onPersistCompletion?: () => Promise<void>;
@@ -15,13 +16,14 @@ const getStorageKey = (id: string, progressScope?: string) =>
 
 const getStoredStep = <TStep extends string>(
   storageKey: string,
-  steps: readonly [TStep, ...TStep[]]
+  steps: readonly [TStep, ...TStep[]],
+  fallbackStep: TStep
 ) => {
   try {
     const storedStep = localStorage.getItem(storageKey);
-    return storedStep && steps.includes(storedStep as TStep) ? (storedStep as TStep) : steps[0];
+    return storedStep && steps.includes(storedStep as TStep) ? (storedStep as TStep) : fallbackStep;
   } catch {
-    return steps[0];
+    return fallbackStep;
   }
 };
 
@@ -29,6 +31,7 @@ export const useOnboarding = <TStep extends string>({
   id,
   progressScope,
   steps,
+  initialStep = steps[0],
   persistLocally = false,
   completionFlag = false,
   onPersistCompletion,
@@ -36,7 +39,7 @@ export const useOnboarding = <TStep extends string>({
 }: TUseOnboardingOptions<TStep>) => {
   const storageKey = getStorageKey(id, progressScope);
   const [activeStep, setActiveStepState] = useState<TStep>(() =>
-    persistLocally ? getStoredStep(storageKey, steps) : steps[0]
+    persistLocally ? getStoredStep(storageKey, steps, initialStep) : initialStep
   );
   const [isCompleting, setIsCompleting] = useState(false);
 

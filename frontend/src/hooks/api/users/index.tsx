@@ -28,6 +28,7 @@ export {
   useListUserGroupMemberships,
   useLogoutUser,
   useRegisterUserAction,
+  useRenameUser,
   useRevokeMySessions,
   useUpdateOrgMembership,
   useUpdateUserAuthMethods

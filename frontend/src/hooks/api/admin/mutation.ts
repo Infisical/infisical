@@ -37,10 +37,13 @@ export const useCreateAdminUser = () => {
   });
 };
 
-export const useUpdateServerConfig = () => {
+export const useUpdateServerConfig = ({
+  handledErrorMessages
+}: { handledErrorMessages?: string[] } = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<TServerConfig, object, TUpdateServerConfigDTO>({
+    meta: handledErrorMessages?.length ? { handledErrorMessages } : undefined,
     mutationFn: async (opt) => {
       const { data } = await apiRequest.patch<{ config: TServerConfig }>(
         "/api/v1/admin/config",

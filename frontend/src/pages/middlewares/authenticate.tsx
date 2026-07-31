@@ -77,15 +77,10 @@ export const Route = createFileRoute("/_authenticate")({
         });
       });
 
-    const isOnAdminOnboarding =
-      location.pathname === "/admin/welcome" || location.pathname === "/admin/setup";
+    const isOnAdminSetup = location.pathname === "/admin/setup";
 
-    if (
-      user.superAdmin &&
-      context.serverConfig.onboardingCompleted === false &&
-      !isOnAdminOnboarding
-    ) {
-      throw redirect({ to: "/admin/welcome" });
+    if (user.superAdmin && context.serverConfig.onboardingCompleted === false && !isOnAdminSetup) {
+      throw redirect({ to: "/admin/setup" });
     }
 
     const isSubOrganization = !!data.subOrganizationId;

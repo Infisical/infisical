@@ -119,6 +119,7 @@ export type TCreateAdminUserDTO = {
   password: string;
   firstName: string;
   lastName?: string;
+  organizationName?: string;
 };
 
 export type AdminGetOrganizationsFilters = {

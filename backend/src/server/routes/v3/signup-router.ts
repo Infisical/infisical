@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -45,8 +46,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
-        if (!allowedDomains.includes(domain)) {
+        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain)) {
           throw new ForbiddenRequestError({
             message: `Email with a domain (@${domain}) is not supported`
           });

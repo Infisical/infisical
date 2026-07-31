@@ -95,7 +95,7 @@ export const OnboardingPageLayout = ({ children, currentStep, totalSteps, ...pro
       {...props}
       headerAction={<OnboardingProgress currentStep={currentStep} totalSteps={totalSteps} />}
     >
-      <div className="relative w-full overflow-hidden">
+      <div className="relative -m-2 overflow-hidden p-2">
         <AnimatePresence mode="popLayout" initial={false} custom={transitionContext}>
           <motion.div
             key={currentStep}

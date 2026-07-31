@@ -5,6 +5,7 @@ export type TAdminSignUpDTO = {
   password: string;
   lastName?: string;
   firstName: string;
+  organizationName?: string;
   ip: string;
   userAgent: string;
 };
