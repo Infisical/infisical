@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -9,7 +10,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
+  Field,
+  FieldContent,
+  FieldLabel,
   Input
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -24,14 +29,20 @@ type Props = {
 
 export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }: Props) => {
   const deleteSync = useDeletePkiSync();
-  const [confirmation, setConfirmation] = useState("");
+  const [inputData, setInputData] = useState("");
+
+  useEffect(() => {
+    setInputData("");
+  }, [isOpen]);
 
   if (!pkiSync) return null;
 
   const { id: syncId, name, destination, projectId } = pkiSync;
+  const destinationName = PKI_SYNC_MAP[destination].name;
+  const isConfirmed = inputData === name;
 
   const handleDeletePkiSync = async () => {
-    const destinationName = PKI_SYNC_MAP[destination].name;
+    if (!isConfirmed) return;
 
     try {
       await deleteSync.mutateAsync({
@@ -41,53 +52,62 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
       });
 
       createNotification({
-        text: `Successfully deleted ${destinationName} PKI Sync`,
+        text: `Successfully deleted ${destinationName} Certificate Sync`,
         type: "success"
       });
 
-      if (onComplete) onComplete();
+      onComplete?.();
       onOpenChange(false);
     } catch {
       createNotification({
-        text: `Failed to delete ${destinationName} PKI Sync`,
+        text: `Failed to delete ${destinationName} Certificate Sync`,
         type: "error"
       });
     }
   };
 
   return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        onOpenChange(open);
-        if (!open) setConfirmation("");
-      }}
-    >
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {name}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This permanently deletes the PKI sync. Type {name} to confirm.
-          </AlertDialogDescription>
+          <AlertDialogMedia>
+            <Trash2Icon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Are you sure you want to delete {name}?</AlertDialogTitle>
+          <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
         </AlertDialogHeader>
-        <Input
-          aria-label={`Type ${name} to confirm deletion`}
-          value={confirmation}
-          onChange={(event) => setConfirmation(event.target.value)}
-          placeholder={name}
-        />
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await handleDeletePkiSync();
+          }}
+        >
+          <Field>
+            <FieldLabel>
+              Type <span className="font-bold">{name}</span> to confirm
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                value={inputData}
+                onChange={(e) => setInputData(e.target.value)}
+                placeholder={`Type ${name} here`}
+                autoComplete="off"
+              />
+            </FieldContent>
+          </Field>
+        </form>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isDisabled={confirmation !== name}
-            isPending={deleteSync.isPending}
             onClick={async (event) => {
               event.preventDefault();
               await handleDeletePkiSync();
             }}
+            isDisabled={!isConfirmed}
+            isPending={deleteSync.isPending}
           >
-            Delete PKI Sync
+            Delete
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

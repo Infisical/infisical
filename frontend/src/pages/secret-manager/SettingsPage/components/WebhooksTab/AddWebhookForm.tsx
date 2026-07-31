@@ -207,7 +207,7 @@ export const AddWebhookForm = ({
             <SheetHeader>
               <SheetTitle>Create a new webhook</SheetTitle>
             </SheetHeader>
-            <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto px-4">
+            <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
               <Controller
                 control={control}
                 name="type"

@@ -41,10 +41,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import {
-  hasSecretPersonalOverridePermission,
-  hasSecretReadValueOrDescribePermission
-} from "@app/lib/fn/permission";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEyeSlash,
@@ -254,11 +251,11 @@ export const SecretItem = memo(
     const isOverridden =
       overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
     const hasTagsApplied = Boolean(fields.length);
-    // Adding a personal override creates a personal secret, which the backend gates on the
-    // Create/PersonalOverride permission — so mirror that check for the "add" case.
-    const canAddOverride = hasSecretPersonalOverridePermission(
+    // Adding a personal override creates a personal secret, which the backend gates on being able
+    // to describe the secret (DescribeSecret or legacy read), so mirror that check for the "add" case.
+    const canAddOverride = hasSecretReadValueOrDescribePermission(
       permission,
-      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.DescribeSecret,
       { environment, secretPath, secretName, secretTags: selectedTagSlugs }
     );
     // Removing an existing override deletes the user's own personal secret, which the backend allows

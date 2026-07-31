@@ -13,9 +13,20 @@ export type TDiscoveredAccount = {
 
 export type TDiscoveryMachineError = { machine: string; error: string };
 
+export type TDiscoveredDependency = {
+  fingerprint: string; // run-as stable identity (domain:objectGUID / SID); anchors the dependency to an account
+  type: string; // windows-service / scheduled-task / iis-app-pool
+  name: string;
+  machine: string;
+  data: Record<string, unknown>; // type-specific detail (run-as, path, triggers, etc.)
+};
+
 export type TDiscoveryScanResult = {
   accounts: TDiscoveredAccount[];
   machineErrors: TDiscoveryMachineError[];
+  dependencies: TDiscoveredDependency[];
+  // Machines whose dependency sweep completed, so reconciliation only prunes what it actually re-checked.
+  scannedDependencyMachines: string[];
 };
 
 export type TPamDiscoveryProvider = {
@@ -92,4 +103,9 @@ export type TImportDiscoveredDTO = {
   sourceId: string;
   folderId: string;
   accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+} & TActorContext;
+
+export type TListAccountDependenciesDTO = {
+  projectId: string;
+  accountId: string;
 } & TActorContext;

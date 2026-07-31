@@ -476,7 +476,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionProxiedServiceActions.Create,
       ProjectPermissionProxiedServiceActions.Edit,
       ProjectPermissionProxiedServiceActions.Delete,
-      ProjectPermissionProxiedServiceActions.Proxy
+      ProjectPermissionProxiedServiceActions.Proxy,
+      ProjectPermissionProxiedServiceActions.ReportUsage
     ],
     ProjectPermissionSub.ProxiedServices
   );
@@ -583,7 +584,10 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
-  can([ProjectPermissionProxiedServiceActions.Read], ProjectPermissionSub.ProxiedServices);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
 
   can(
     [
@@ -729,7 +733,10 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
-  can(ProjectPermissionProxiedServiceActions.Read, ProjectPermissionSub.ProxiedServices);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -1163,7 +1170,12 @@ const buildPamResourceConnectorPermissionRules = () => {
 const buildPamResourceAuditorPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ResourcePermissionSet>>(createMongoAbility);
   can(
-    [ResourcePermissionPamResourceActions.ViewSessions, ResourcePermissionPamResourceActions.ViewAuditLogs],
+    [
+      ResourcePermissionPamResourceActions.ReadFolder,
+      ResourcePermissionPamResourceActions.ReadAccounts,
+      ResourcePermissionPamResourceActions.ViewSessions,
+      ResourcePermissionPamResourceActions.ViewAuditLogs
+    ],
     ResourcePermissionSub.PamResource
   );
   return rules;

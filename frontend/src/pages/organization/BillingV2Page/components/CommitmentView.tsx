@@ -28,6 +28,7 @@ type Props = {
   prod: BillingV2CatalogProduct;
   entitlement: BillingV2Entitlement;
   renewsOn: string | null;
+  selfServe: boolean;
   onBack: () => void;
   onDone: () => void;
 };
@@ -35,7 +36,15 @@ type Props = {
 // Change the prepaid annual commitment for a product's per_resource dimensions. Steppers set the new
 // committed quantity per dimension; the preview endpoint (commitmentChanges) prices the change and the
 // apply endpoint commits it. Usage above the commitment is billed monthly on-demand.
-export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onDone }: Props) => {
+export const CommitmentView = ({
+  orgId,
+  prod,
+  entitlement,
+  renewsOn,
+  selfServe,
+  onBack,
+  onDone
+}: Props) => {
   // Dimensions this sheet manages: commit-eligible per the subscription read's per-dimension
   // commitAvailable (this customer's pinned plan version, NOT the catalog, so a later catalog price
   // never lights up commit for a grandfathered customer), OR already carrying a commitment even if it
@@ -128,8 +137,6 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
     (sum, dim) => sum + Math.max(0, dim.used - quantities[dim.key]) * (dim.onDemandRate ?? 0),
     0
   );
-  // Applying is invoice-now, so the card is charged totalDueNow (this change + any earlier unbilled
-  // mid-cycle changes), not just this change's proration. Disclose the split when there are extras.
   const chargedToday = hasChanges ? Math.max(preview.data?.totalDueNow ?? 0, 0) : 0;
   const additionalCharges = preview.data?.additionalCharges ?? 0;
   const showChargeBreakdown = hasChanges && previewFresh && additionalCharges !== 0;
@@ -142,14 +149,16 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
   // An increase raises the prepaid annual total; that (and starting a commitment from zero) is what
   // needs the upfront-commitment acknowledgment.
   const isIncreasing = newAnnual > currentAnnual;
-  const canConfirm = hasChanges && previewFresh && (!isIncreasing || acknowledged);
+  // An enterprise-managed org (selfServe false) can never submit; the button stays disabled.
+  const canConfirm = selfServe && hasChanges && previewFresh && (!isIncreasing || acknowledged);
 
   const handleConfirm = async () => {
     try {
-      await applyCommitment.mutateAsync({
-        orgId,
-        changes
-      });
+      const result = await applyCommitment.mutateAsync({ orgId, changes, productId: prod.id });
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
       createNotification({
         type: "success",
         text: `${prod.name} commitment updated. It may take a moment to update here.`
@@ -200,7 +209,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
         </div>
       </SheetHeader>
 
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
+      <div className="flex flex-col gap-4 overflow-y-auto p-5">
         {committable.map((dim) => {
           const onDemandQty = Math.max(0, dim.used - quantities[dim.key]);
           // Increase-only: the stepper cannot go below the current committed quantity unless the
@@ -247,9 +256,7 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
           );
         })}
 
-        {isIncreasing ? (
-          <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
-        ) : (
+        {!isIncreasing && (
           <Alert variant="info">
             <InfoIcon />
             <AlertDescription className="text-foreground">
@@ -261,26 +268,28 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
           </Alert>
         )}
 
-        <CostSummary>
-          <CostSummaryRow
-            label="Charged today"
-            note={chargedNote}
-            value={fmtMoney(chargedToday, chargedToday ? 2 : 0)}
-            isCalculating={isCalculating}
-            valueClassName="text-base"
-          />
-          <CostSummaryRow
-            label="New annual commitment"
-            note={annualDelta ?? annualNote}
-            value={`${fmtMoney(newAnnual)} / year`}
-          />
-          <CostSummaryRow
-            label="On-demand after change"
-            note={onDemandDelta ?? "Billed monthly for usage above your commitment"}
-            value={`${fmtMoney(newOnDemand)} / mo`}
-            valueClassName={newOnDemand > 0 ? "text-warning/90" : "text-muted"}
-          />
-        </CostSummary>
+        <div className="flex-1">
+          <CostSummary>
+            <CostSummaryRow
+              label="Charged today"
+              note={chargedNote}
+              value={fmtMoney(chargedToday, chargedToday ? 2 : 0)}
+              isCalculating={isCalculating}
+              valueClassName="text-base"
+            />
+            <CostSummaryRow
+              label="New annual commitment"
+              note={annualDelta ?? annualNote}
+              value={`${fmtMoney(newAnnual)} / year`}
+            />
+            <CostSummaryRow
+              label="On-demand after change"
+              note={onDemandDelta ?? "Billed monthly for usage above your commitment"}
+              value={`${fmtMoney(newOnDemand)} / mo`}
+              valueClassName={newOnDemand > 0 ? "text-warning/90" : "text-muted"}
+            />
+          </CostSummary>
+        </div>
 
         {showChargeBreakdown && (
           <ChargeBreakdown
@@ -288,6 +297,10 @@ export const CommitmentView = ({ orgId, prod, entitlement, renewsOn, onBack, onD
             additionalCharges={additionalCharges}
             totalDueNow={preview.data?.totalDueNow ?? 0}
           />
+        )}
+
+        {isIncreasing && (
+          <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
         )}
       </div>
 

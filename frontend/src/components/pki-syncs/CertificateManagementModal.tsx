@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SearchIcon, XIcon } from "lucide-react";
+import { ScrollText, Search, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -13,22 +13,24 @@ import {
   DialogTitle,
   Empty,
   EmptyDescription,
-  EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
-  IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
   Table,
-  TableBody as TBody,
-  TableCell as Td,
-  TableHead as Th,
-  TableHeader as THead,
-  TableRow as Tr,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getCertificateDisplayName, truncateCertificateSerialNumber } from "@app/helpers/pkiSyncs";
 import {
   CertStatus,
   useAddCertificatesToPkiSync,
@@ -101,7 +103,9 @@ export const CertificateManagementModal = ({
   const allCertificates = data?.certificates || [];
   const totalCount = data?.totalCount || 0;
 
-  const { data: syncData } = useListPkiSyncCertificates(pkiSync?.id || "");
+  const { data: syncData } = useListPkiSyncCertificates(pkiSync?.id || "", undefined, {
+    enabled: Boolean(pkiSync?.id)
+  });
   const syncCertificates = syncData?.certificates || [];
   const addCertificatesToSync = useAddCertificatesToPkiSync();
   const removeCertificatesFromSync = useRemoveCertificatesFromPkiSync();
@@ -266,12 +270,17 @@ export const CertificateManagementModal = ({
         onClose();
       } else {
         const partialSuccess = successes.length > 0;
-        console.error("Certificate sync operation failures:", failures);
+
+        const firstError = failures.map((f) => (f as { error?: unknown }).error).find(Boolean) as
+          | { response?: { data?: { message?: string } }; message?: string }
+          | undefined;
+        const reason =
+          firstError?.response?.data?.message ?? firstError?.message ?? "Please try again.";
 
         createNotification({
           text: partialSuccess
-            ? "Some certificate changes failed. Check console for details."
-            : "Failed to update certificate selection",
+            ? `Some certificate changes could not be saved: ${reason}`
+            : `Failed to update certificate selection: ${reason}`,
           type: partialSuccess ? "warning" : "error"
         });
 
@@ -297,159 +306,152 @@ export const CertificateManagementModal = ({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{subtitle}</DialogDescription>
         </DialogHeader>
+
         <div className="space-y-4">
-          <div className="space-y-3">
-            <div className="relative">
-              <Input
-                placeholder="Search by common name, serial number, or SAN..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9"
-              />
-              <SearchIcon className="absolute top-1/2 left-3 size-3 -translate-y-1/2 text-muted" />
-              {searchTerm && (
-                <IconButton
-                  aria-label="Clear certificate search"
-                  size="xs"
-                  variant="ghost-muted"
+          <InputGroup>
+            <InputGroupAddon align="inline-start">
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder="Search by common name, serial number, or SAN..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+            {searchTerm && (
+              <InputGroupAddon align="inline-end">
+                <button
+                  type="button"
+                  aria-label="Clear search"
                   onClick={clearSearch}
-                  className="absolute top-1/2 right-1.5 -translate-y-1/2"
+                  className="cursor-pointer text-muted transition-colors hover:text-foreground"
                 >
-                  <XIcon />
-                </IconButton>
-              )}
-            </div>
-          </div>
+                  <X className="size-3.5" />
+                </button>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
 
-          <Table containerClassName={allCertificates.length === 0 ? "hidden" : undefined}>
-            <THead>
-              <Tr>
-                <Th className="w-12">
-                  {!isSingleSelect && (
-                    <Checkbox
-                      id="select-all-certificates"
-                      isChecked={
-                        allCertificates.length > 0 &&
-                        allCertificates.every((cert) => selectedIds.includes(cert.id))
-                      }
-                      onCheckedChange={handleSelectAll}
-                    />
-                  )}
-                </Th>
-                <Th className="w-1/3">SAN / CN</Th>
-                <Th className="w-1/4">Serial Number</Th>
-                <Th className="w-1/6">Issued At</Th>
-                <Th className="w-1/6">Expires At</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {allCertificates.map((cert) => {
-                const isExpired = new Date(cert.notAfter) < new Date();
-                const isRevoked = cert.status === CertStatus.REVOKED;
-                const cannotBeAdded = isExpired || isRevoked;
-                const isAlreadySynced = syncedCertificateIds.includes(cert.id);
-
-                let originalDisplayName = "—";
-                if (cert.altNames && cert.altNames.trim()) {
-                  originalDisplayName = cert.altNames.trim();
-                } else if (cert.commonName && cert.commonName.trim()) {
-                  originalDisplayName = cert.commonName.trim();
-                }
-
-                let displayName = originalDisplayName;
-                let isTruncated = false;
-                if (originalDisplayName.length > 34) {
-                  displayName = `${originalDisplayName.substring(0, 34)}...`;
-                  isTruncated = true;
-                }
-
-                const truncatedSerial =
-                  cert.serialNumber.length > 8
-                    ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
-                    : cert.serialNumber;
-
-                return (
-                  <Tr
-                    key={cert.id}
-                    className={cannotBeAdded && !isAlreadySynced ? "opacity-50" : undefined}
-                    onClick={() => {
-                      if (!cannotBeAdded || isAlreadySynced) {
-                        handleToggleSelection(cert.id);
-                      }
-                    }}
-                  >
-                    <Td className="max-w-0" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        id={cert.id}
-                        isChecked={selectedIds.includes(cert.id)}
-                        onCheckedChange={() => {
-                          if (!cannotBeAdded || isAlreadySynced) {
-                            handleToggleSelection(cert.id);
-                          }
-                        }}
-                        isDisabled={cannotBeAdded && !isAlreadySynced}
-                      />
-                    </Td>
-                    <Td className="max-w-0">
-                      {isTruncated ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="truncate">{displayName}</div>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-lg">
-                            {originalDisplayName}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <div className="truncate">{displayName}</div>
-                      )}
-                    </Td>
-                    <Td className="max-w-0">
-                      <div className="font-mono text-xs text-muted" title={cert.serialNumber}>
-                        {truncatedSerial}
-                      </div>
-                    </Td>
-                    <Td className="max-w-0">
-                      <span className="text-sm text-muted">
-                        {new Date(cert.notBefore).toLocaleDateString()}
-                      </span>
-                    </Td>
-                    <Td className="max-w-0">
-                      <span className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}>
-                        {new Date(cert.notAfter).toLocaleDateString()}
-                      </span>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
-          {allCertificates.length === 0 && (
-            <Empty className="border">
-              <EmptyHeader>
+          <div>
+            {allCertificates.length === 0 ? (
+              <Empty className="border">
+                <EmptyMedia variant="icon">
+                  <ScrollText />
+                </EmptyMedia>
                 <EmptyTitle>No certificates found</EmptyTitle>
                 <EmptyDescription>
                   {searchTerm
                     ? "No certificates match your search criteria."
                     : "No certificates available for sync."}
                 </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
-          {totalPages > 1 && (
-            <div className="mt-4 flex justify-center">
+              </Empty>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      {!isSingleSelect && (
+                        <Checkbox
+                          id="select-all-certificates"
+                          variant="project"
+                          isChecked={
+                            allCertificates.length > 0 &&
+                            allCertificates.every((cert) => selectedIds.includes(cert.id))
+                          }
+                          onCheckedChange={handleSelectAll}
+                        />
+                      )}
+                    </TableHead>
+                    <TableHead className="w-1/3">SAN / CN</TableHead>
+                    <TableHead className="w-1/4">Serial Number</TableHead>
+                    <TableHead className="w-1/6">Issued At</TableHead>
+                    <TableHead className="w-1/6">Expires At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allCertificates.map((cert) => {
+                    const isExpired = new Date(cert.notAfter) < new Date();
+                    const isRevoked = cert.status === CertStatus.REVOKED;
+                    const cannotBeAdded = isExpired || isRevoked;
+                    const isAlreadySynced = syncedCertificateIds.includes(cert.id);
+
+                    const { originalDisplayName, displayName, isTruncated } =
+                      getCertificateDisplayName(cert);
+                    const truncatedSerial = truncateCertificateSerialNumber(cert.serialNumber);
+
+                    return (
+                      <TableRow
+                        key={cert.id}
+                        className={`cursor-pointer ${
+                          cannotBeAdded && !isAlreadySynced ? "opacity-50" : ""
+                        }`}
+                        onClick={() => {
+                          if (!cannotBeAdded || isAlreadySynced) {
+                            handleToggleSelection(cert.id);
+                          }
+                        }}
+                      >
+                        <TableCell className="max-w-0" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            id={cert.id}
+                            variant="project"
+                            isChecked={selectedIds.includes(cert.id)}
+                            onCheckedChange={() => {
+                              if (!cannotBeAdded || isAlreadySynced) {
+                                handleToggleSelection(cert.id);
+                              }
+                            }}
+                            isDisabled={cannotBeAdded && !isAlreadySynced}
+                          />
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          {isTruncated ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="truncate">{displayName}</div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-lg">
+                                {originalDisplayName}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <div className="truncate">{displayName}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <div className="font-mono text-xs text-muted" title={cert.serialNumber}>
+                            {truncatedSerial}
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <span className="text-sm text-muted">
+                            {new Date(cert.notBefore).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-0">
+                          <span className={`text-sm ${isExpired ? "text-danger" : "text-muted"}`}>
+                            {new Date(cert.notAfter).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+            {totalPages > 1 && (
               <Pagination
                 count={totalCount}
                 page={currentPage}
                 perPage={pageSize}
                 onChangePage={(page: number) => setCurrentPage(page)}
                 onChangePerPage={() => {}}
+                perPageList={[pageSize]}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <DialogFooter>

@@ -91,10 +91,12 @@ export const PkiSyncImportStatusBadge = ({ pkiSync, mini }: Props) => {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge isSquare={mini} variant={variant}>
-          <Icon />
-          {!mini && label}
-        </Badge>
+        <span className="inline-block">
+          <Badge isSquare={mini} variant={variant}>
+            <Icon />
+            {!mini && label}
+          </Badge>
+        </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-sm">
         {tooltipContent}

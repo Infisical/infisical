@@ -1,3 +1,5 @@
+import { DownloadIcon } from "lucide-react";
+
 import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
@@ -7,6 +9,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -27,39 +30,48 @@ export const PkiSyncImportCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
   const destinationName = PKI_SYNC_MAP[destination].name;
 
   const handleTriggerImportCertificates = async () => {
-    await triggerImportCertificates.mutateAsync({
-      syncId,
-      destination,
-      projectId
-    });
+    try {
+      await triggerImportCertificates.mutateAsync({
+        syncId,
+        destination,
+        projectId
+      });
 
-    createNotification({
-      text: `Successfully triggered certificate import for ${destinationName} Sync`,
-      type: "success"
-    });
+      createNotification({
+        text: `Successfully triggered certificate import for ${destinationName} Certificate Sync`,
+        type: "success"
+      });
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      createNotification({
+        text: `Failed to import certificates from ${destinationName}`,
+        type: "error"
+      });
+    }
   };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Import Certificates</AlertDialogTitle>
+          <AlertDialogMedia>
+            <DownloadIcon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Import certificates from {destinationName}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Retrieve certificates from this {destinationName} destination and make certificates that
-            have not already been imported available in Infisical.
+            This retrieves certificates from {destinationName} and makes them available in
+            Infisical. Only certificates that are not already imported will be processed.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="project"
-            isPending={triggerImportCertificates.isPending}
             onClick={async (event) => {
               event.preventDefault();
               await handleTriggerImportCertificates();
             }}
+            isPending={triggerImportCertificates.isPending}
           >
             Import Certificates
           </AlertDialogAction>

@@ -43,6 +43,8 @@ const SanitizedSuperAdminSchema = z.object({
   enabledLoginMethods: z.string().array().nullable().optional(),
   authConsentContent: z.string().nullable().optional(),
   pageFrameContent: z.string().nullable().optional(),
+  // Populated on self-hosted instances when a newer release than the running version exists
+  latestAvailableVersion: z.string().nullable().optional(),
   // Super admin-only fields (omitted for non-super-admin callers)
   instanceId: z.string().uuid().optional(),
   createdAt: z.date().optional(),
@@ -91,6 +93,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
       const orgId = req.auth?.orgId ?? "";
 
+      const latestAvailableVersion = await server.services.updateCheck.getAvailableUpdateVersion();
+
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
         return {
@@ -109,7 +113,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
-            isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId)
+            isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId),
+            latestAvailableVersion
           }
         };
       }
@@ -126,7 +131,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
-          isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId)
+          isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId),
+          latestAvailableVersion
         }
       };
     }

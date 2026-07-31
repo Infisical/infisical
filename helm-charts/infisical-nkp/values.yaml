@@ -1,0 +1,88 @@
+# Default values for the Infisical chart (NKP catalog build).
+# These mirror the params helmify extracts from ./manifests, cleaned up so the
+# common knobs are configurable from the NKP UI.
+
+replicaCount: 1
+
+image:
+  repository: infisical/infisical
+  tag: "v0.162.11"
+  pullPolicy: IfNotPresent
+
+# Non-secret application configuration (rendered into a ConfigMap).
+config:
+  siteUrl: "https://infisical.example.com"
+  port: 8080
+  telemetryEnabled: false
+
+# Sensitive configuration (rendered into a Secret).
+# Leave encryptionKey / authSecret empty to have the chart generate random
+# values on first install (persisted across upgrades).
+secrets:
+  encryptionKey: ""            # openssl rand -hex 16
+  authSecret: ""               # openssl rand -base64 32
+  # Only used when redis.enabled=false (external Redis). When redis.enabled=true
+  # the chart wires REDIS_URL to the in-cluster Redis service automatically.
+  redisUrl: ""
+
+# Lightweight in-cluster Redis (Infisical requires REDIS_URL). Set enabled=false
+# to point at an external Redis via secrets.redisUrl instead.
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.4-alpine"
+    pullPolicy: IfNotPresent
+  port: 6379
+  # Restrict Redis ingress to the Infisical pods (enforced where the CNI
+  # supports NetworkPolicy). The bundled Redis is also password-protected with
+  # a generated password stored in the chart Secret (REDIS_PASSWORD).
+  networkPolicy: true
+
+# PostgreSQL is provided by the NKP CloudNativePG (CNPG) operator.
+# REQUIRES the CloudNativePG platform application to be enabled in the
+# workspace/cluster (it ships with NKP).
+postgres:
+  cnpg:
+    # When true, the chart creates a CNPG "Cluster" and wires Infisical to the
+    # auto-generated "<release>-db-app" secret (its "uri" key).
+    enabled: true
+    instances: 1
+    storageSize: 20Gi
+    storageClass: ""           # empty = cluster default StorageClass
+    database: infisical
+    owner: infisical
+    # imageName: ""            # optional image pin; else CNPG operator default
+  # To use an external Postgres instead, set cnpg.enabled=false and provide a
+  # full connection string here (postgres://user:pass@host:5432/db?sslmode=...).
+  externalConnectionUri: ""
+
+# Run "npm run migration:latest" as an initContainer before the app starts.
+migration:
+  enabled: true
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# TLS is handled by the NKP kommander-traefik controller via the router
+# annotations below; there is no separate tls toggle.
+ingress:
+  enabled: true
+  className: kommander-traefik
+  host: infisical.example.com
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

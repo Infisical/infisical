@@ -11,10 +11,12 @@ import {
   AccordionItem,
   AccordionTrigger,
   Button,
-  FormControl,
-  Input
-} from "@app/components/v2";
-import { useToggle } from "@app/hooks";
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  SecretInput
+} from "@app/components/v3";
 import { useUpdateServerConfig } from "@app/hooks/api";
 import { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
@@ -70,9 +72,6 @@ type Props = {
 
 export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
   const { mutateAsync: updateAdminServerConfig } = useUpdateServerConfig();
-  const [isSlackClientIdFocused, setIsSlackClientIdFocused] = useToggle();
-  const [isSlackClientSecretFocused, setIsSlackClientSecretFocused] = useToggle();
-
   const {
     control,
     handleSubmit,
@@ -105,26 +104,26 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="slack-integration" className="data-[state=open]:border-none">
-          <AccordionTrigger className="flex h-fit w-full justify-start rounded-md border border-mineshaft-500 bg-mineshaft-700 px-4 py-6 text-sm transition-colors data-[state=open]:rounded-b-none">
-            <div className="text-md group order-1 ml-3 flex items-center gap-2">
-              <BsSlack className="text-lg group-hover:text-primary-400" />
+          <AccordionTrigger>
+            <div className="flex items-center gap-2">
+              <BsSlack className="text-lg" />
               <div className="text-[15px] font-medium">Slack</div>
             </div>
           </AccordionTrigger>
-          <AccordionContent childrenClassName="px-0 py-0">
-            <div className="flex w-full flex-col justify-start rounded-md rounded-t-none border border-t-0 border-mineshaft-500 bg-mineshaft-700 px-4 py-4">
-              <div className="mb-4 max-w-lg text-sm text-mineshaft-300">
+          <AccordionContent>
+            <div className="flex w-full flex-col gap-4">
+              <div className="max-w-lg text-sm text-label">
                 Step 1: Create your Infisical Slack App
               </div>
-              <div className="mb-6">
+              <div>
                 <Button
-                  colorSchema="secondary"
+                  variant="neutral"
                   onClick={() => window.open(getCustomSlackAppCreationUrl())}
                 >
-                  Create Slack App
+                  Create Slack app
                 </Button>
               </div>
-              <div className="mb-4 max-w-lg text-sm text-mineshaft-300">
+              <div className="max-w-lg text-sm text-label">
                 Step 2: Configure your instance-wide settings to enable integration with Slack. Copy
                 the values from the App Credentials page of your custom Slack App.
               </div>
@@ -132,50 +131,41 @@ export const SlackIntegrationForm = ({ adminIntegrationsConfig }: Props) => {
                 control={control}
                 name="clientId"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Client ID"
-                    className="w-96"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
+                  <Field className="max-w-96">
+                    <FieldLabel htmlFor="slack-client-id">Client ID</FieldLabel>
                     <Input
+                      id="slack-client-id"
                       {...field}
                       value={field.value || ""}
-                      type={isSlackClientIdFocused ? "text" : "password"}
-                      onFocus={() => setIsSlackClientIdFocused.on()}
-                      onBlur={() => setIsSlackClientIdFocused.off()}
+                      isError={Boolean(error)}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
-                  </FormControl>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
               <Controller
                 control={control}
                 name="clientSecret"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Client Secret"
-                    className="w-96"
-                    isError={Boolean(error)}
-                    errorText={error?.message}
-                  >
-                    <Input
+                  <Field className="max-w-96">
+                    <FieldLabel htmlFor="slack-client-secret">Client secret</FieldLabel>
+                    <SecretInput
+                      id="slack-client-secret"
                       {...field}
                       value={field.value || ""}
-                      type={isSlackClientSecretFocused ? "text" : "password"}
-                      onFocus={() => setIsSlackClientSecretFocused.on()}
-                      onBlur={() => setIsSlackClientSecretFocused.off()}
                       onChange={(e) => field.onChange(e.target.value)}
                     />
-                  </FormControl>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
               <div>
                 <Button
-                  className="mt-2"
+                  variant="neutral"
                   type="submit"
-                  isLoading={isSubmitting}
-                  isDisabled={isSubmitting || !isDirty}
+                  isPending={isSubmitting}
+                  isDisabled={!isDirty}
                 >
                   Save
                 </Button>

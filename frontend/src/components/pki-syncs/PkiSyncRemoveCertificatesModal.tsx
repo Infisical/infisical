@@ -1,3 +1,5 @@
+import { EraserIcon } from "lucide-react";
+
 import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
@@ -7,6 +9,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -27,38 +30,49 @@ export const PkiSyncRemoveCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
   const destinationName = PKI_SYNC_MAP[destination].name;
 
   const handleTriggerRemoveCertificates = async () => {
-    await triggerRemoveCertificates.mutateAsync({
-      syncId,
-      destination,
-      projectId
-    });
+    try {
+      await triggerRemoveCertificates.mutateAsync({
+        syncId,
+        destination,
+        projectId
+      });
 
-    createNotification({
-      text: `Successfully triggered certificate removal for ${destinationName} Sync`,
-      type: "success"
-    });
+      createNotification({
+        text: `Successfully triggered certificate removal for ${destinationName} Certificate Sync`,
+        type: "success"
+      });
 
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      createNotification({
+        text: `Failed to remove certificates from ${destinationName}`,
+        type: "error"
+      });
+    }
   };
 
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove Certificates</AlertDialogTitle>
+          <AlertDialogMedia>
+            <EraserIcon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Remove synced certificates from {destinationName}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Remove certificates synced by Infisical from this {destinationName} destination?
+            This removes the certificates synced by Infisical from this {destinationName}{" "}
+            destination. Certificates you manage manually there are not affected.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isPending={triggerRemoveCertificates.isPending}
             onClick={async (event) => {
               event.preventDefault();
               await handleTriggerRemoveCertificates();
             }}
+            isPending={triggerRemoveCertificates.isPending}
           >
             Remove Certificates
           </AlertDialogAction>

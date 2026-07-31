@@ -16,6 +16,7 @@ import jwt from "jsonwebtoken";
 
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
 // ---------------------------------------------------------------------------
@@ -126,6 +127,19 @@ const deleteOrgIdentityMembership = async (identityId: string) => {
 
   await testDb(TableName.MembershipRole).where({ membershipId: membership.id }).delete();
   await testDb(TableName.Membership).where({ id: membership.id }).delete();
+
+  // The real removal paths (membershipIdentityService.deleteMembership,
+  // identityV1.deleteIdentity sub-org branch) bump the identity's revocation
+  // version so cached "allow" verdicts are rechecked once against Postgres. This
+  // helper mutates the row directly, so mirror that bump here.
+  await testRedis.incr(KeyStorePrefixes.IdentityRevocationVersion(identityId));
+};
+
+// Clears this identity's cached revocation verdicts, forcing the next request
+// to re-resolve against Postgres.
+const dropRevocationVerdicts = async (identityId: string) => {
+  const keys = await testRedis.keys(`${KeyStorePrefixes.IdentityRevocationVerdict(identityId, "")}*`);
+  if (keys.length) await testRedis.del(...keys);
 };
 
 const waitForRevocationRow = async (tokenId: string) => {
@@ -448,7 +462,7 @@ describe("Identity Access Token — redesigned JWT flow", () => {
       expect(revocation.expiresAt.getTime()).toBeGreaterThanOrEqual(expectedExpiresAtMs - 2_000);
       expect(revocation.expiresAt.getTime()).toBeLessThanOrEqual(expectedExpiresAtMs + markerSkewMs + 2_000);
 
-      await testRedis.flushdb("SYNC");
+      await dropRevocationVerdicts(identityId);
 
       expect((await callDetailsEndpoint(accessToken)).statusCode).toBe(401);
     } finally {

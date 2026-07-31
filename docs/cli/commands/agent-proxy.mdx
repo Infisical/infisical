@@ -4,39 +4,235 @@ description: "Run the Infisical Agent Proxy and connect agents to it"
 ---
 
 <Tabs>
-  <Tab title="Start the agent proxy">
+  <Tab title="Local proxy (run)">
     ```bash
-    infisical secrets agent-proxy start [options]
+    infisical secrets agent-proxy run [options] -- [agent start command]
 
     # Example
-    infisical secrets agent-proxy start --port 17322
+    infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
     ```
+
+    `run` on its own is the whole setup.
 
   </Tab>
 
-  <Tab title="Connect an agent">
+  <Tab title="Standalone proxy (start + connect)">
     ```bash
+    # On the proxy host
+    infisical secrets agent-proxy start [options]
+
+    # On each agent host
     infisical secrets agent-proxy connect [options] -- [agent start command]
 
-    # Example (flags)
+    # Examples
+    infisical secrets agent-proxy start --port 17322
     infisical secrets agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
-
-    # Example (configuration from environment variables)
-    infisical secrets agent-proxy connect -- claude
     ```
+
+    `start` and `connect` work as a pair, on different hosts.
 
   </Tab>
 </Tabs>
 
 ## Description
 
-Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview): `start` launches the proxy that brokers real credentials onto agent traffic on the wire, and `connect` launches an agent behind it with the proxy routing, CA trust, and dummy placeholder credentials already set up.
+These subcommands run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), which brokers real credentials onto your agents' traffic on the wire. Which you use depends on where the agent runs:
 
-Both subcommands authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth). Use separate identities for the proxy and for each agent; see the [Quickstart](/documentation/platform/agent-proxy/quickstart) for the recommended permissions.
+- `run` is for an agent on your own computer. It does the proxy's work and the agent's launch in one process, authenticating as your logged-in user, and sandboxes the agent. It always starts its own proxy, so `--proxy` is rejected rather than ignored. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
+- `start` runs the proxy as a long-running service on a host of its own, serving agents across your network.
+- `connect` launches an agent behind a proxy **already running elsewhere**, setting up proxy routing, CA trust, and placeholder credentials. It needs a proxy address, which is why it goes with `start`. Both authenticate with a [machine identity](/documentation/platform/identities/machine-identities) via [Universal Auth](/documentation/platform/identities/universal-auth), and the proxy's is always separate from your agents'; see [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
+
+Each arrangement stands on its own: `run` is complete by itself, and a deployed proxy pairs only with `connect`. All three read the same [proxied services](/documentation/platform/agent-proxy/proxied-services) and secrets from Infisical.
 
 ## Subcommands & flags
 
-<Accordion title="infisical secrets agent-proxy start" defaultOpen="true">
+### Local proxy, on your own computer
+
+<Accordion title="infisical secrets agent-proxy run" defaultOpen="true">
+  Launch an agent on your own computer, sandboxed, with credentials brokered on the wire. Everything after `--` is the agent's own start command. `run` starts a proxy alongside the agent, authenticating as your logged-in user, and stops it when the agent exits. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy) for the full picture.
+
+  Because the proxy and the agent share a machine, the sandbox is the boundary: the agent cannot read your keyring, your credential files, or the proxy's CA key, and its only route to the network is the proxy. Real secret values are never placed in the agent's environment, and it gets no Infisical token, only proxy routing, CA trust, and the placeholders for [secret-substitution](/documentation/platform/agent-proxy/proxied-services#secret-substitution) services.
+
+  Requires macOS, or Linux with `bubblewrap` installed; see [Requirements](/documentation/platform/agent-proxy/local-agent-proxy#requirements) for the per-distribution command. Where no OS sandbox is available, `run` refuses to start unless you pass `--no-sandbox`.
+
+  <Note>
+    `--proxy` is rejected: `run` always starts its own proxy. To route through a proxy on another host, use `agent-proxy connect --proxy=<host>:<port>`.
+  </Note>
+
+```bash
+$ infisical secrets agent-proxy run --projectId=<project-id> --env=<env-slug> --path=<secret-path> -- [agent start command]
+
+# Example
+$ infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
+
+# Example (project, environment, and path from .infisical.json)
+$ infisical secrets agent-proxy run -- claude
+```
+
+### Environment variables
+
+  <Accordion title="INFISICAL_PROJECT_ID / INFISICAL_ENVIRONMENT / INFISICAL_SECRET_PATH">
+    The project, environment slug, and secret path to fetch proxied services from. Alternatives to `--projectId`, `--env`, and `--path`, and to the `workspaceId`, `defaultEnvironment`, and `defaultSecretPath` fields in `.infisical.json`.
+
+    ```bash
+      # Example
+      export INFISICAL_PROJECT_ID=<project-id>
+      export INFISICAL_ENVIRONMENT=dev
+      export INFISICAL_SECRET_PATH=/coding-agent
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_AGENT_PROXY_SANDBOX">
+    Set to `0`, `false`, or `off` to disable the OS sandbox, the same as `--no-sandbox`. Deliberately cannot be set from `.infisical.json`, so a committed file cannot silently disable the boundary.
+
+    ```bash
+      # Example
+      export INFISICAL_AGENT_PROXY_SANDBOX=0
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_DOMAIN">
+    Point the CLI to your Infisical instance. Alternative to the `--domain` flag.
+
+    ```bash
+      # Example
+      export INFISICAL_DOMAIN=https://eu.infisical.com
+    ```
+  </Accordion>
+
+### Flags
+
+  <Accordion title="--env">
+    The environment slug to fetch proxied services from (for example `dev`, `staging`, `prod`). Falls back to `INFISICAL_ENVIRONMENT`, then to `defaultEnvironment` in `.infisical.json`; required otherwise.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--path">
+    The secret path (folder) to scope to. Proxied services are fetched from this folder. Falls back to `INFISICAL_SECRET_PATH`, then to `defaultSecretPath` in `.infisical.json`.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --path=/coding-agent -- claude
+    ```
+
+    Default value: `/`
+  </Accordion>
+
+  <Accordion title="--projectId">
+    The project to fetch proxied services from. Falls back to `INFISICAL_PROJECT_ID`, then to `.infisical.json`.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --projectId=<project-id> -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--token">
+    Broker using this token instead of your logged-in session. Also picked up from `INFISICAL_TOKEN` or `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` in your own environment (these are read by the CLI and scrubbed from the agent's environment). Activity records attribute requests to `token` rather than your email.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --token=<token> -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--sandbox / --no-sandbox">
+    Toggle the OS sandbox around the agent. With `--no-sandbox` credentials are still brokered and the environment is still scrubbed, but the agent runs uncontained: it can read your keyring and credential files and reach the network directly, bypassing the proxy. `run` warns when it starts this way. Can also be set via `INFISICAL_AGENT_PROXY_SANDBOX`.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --no-sandbox -- claude
+    ```
+
+    Default value: `--sandbox` (the sandbox is on)
+  </Accordion>
+
+  <Accordion title="--allow-read">
+    Allow the agent to read a path the sandbox denies by default, read-only. The exception is exact: naming a file inside a denied directory leaves everything else in that directory denied. Repeatable. Prefer this to `--no-sandbox` when an agent needs one config file. `run` prints what was re-opened.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --allow-read ~/.aws/config -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--allow-write">
+    Allow the agent to write a path, in addition to the working directory, `/tmp`, and the supported agents' own state directories. Repeatable.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --allow-write ~/scratch -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--allow-host">
+    Let the agent reach a host that has no proxied service, without a credential, even under `--unmatched-host=block`. Repeatable. Has no effect under the default `allow` policy, where unmatched hosts already pass through.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --unmatched-host=block --allow-host=registry.npmjs.org -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--pass-env">
+    Pass one of your own environment variables through to the agent. The child environment is scrubbed of credential-shaped names (anything containing `TOKEN`, `SECRET`, `PASSWORD`, `API_KEY`, and similar), Infisical's own variables, and agent-socket addresses such as `SSH_AUTH_SOCK`; this re-admits a specific one. Repeatable.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --pass-env ANTHROPIC_API_KEY -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--set-env">
+    Set an environment variable in the agent as `KEY=VALUE`. Applied last, so it overrides anything else `run` sets. Repeatable.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --set-env GH_CONFIG_DIR=/tmp/gh-cfg -- claude
+    ```
+  </Accordion>
+
+  <Accordion title="--unmatched-host">
+    Policy for requests to hosts with no matching proxied service: `allow` forwards them untouched with no credentials applied; `block` rejects them with `403`, restricting the agent to the services you have defined plus any `--allow-host` entries.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --unmatched-host=block -- claude
+    ```
+
+    Default value: `allow`
+  </Accordion>
+
+  <Accordion title="--poll-interval">
+    Seconds between permission and credential refreshes. Changes to proxied services, permissions, and secret values take effect within one interval; if your authorization lapses, cached credentials are dropped on the same cycle.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --poll-interval 30 -- claude
+    ```
+
+    Default value: `60`
+  </Accordion>
+
+  <Accordion title="--log-file">
+    Write the proxy's [per-request activity](/documentation/platform/agent-proxy/activity-logs) to this path. Without it nothing is logged, since the agent owns the terminal: warnings and errors still print there, but the per-request trail is dropped. The path is appended to on every run and never rotated for you, so use `logrotate` (`copytruncate`) if you keep one. `--log-level` filters which decisions are recorded, the same as on `start`.
+
+    ```bash
+    # Example
+    infisical secrets agent-proxy run --env=dev --log-file=/tmp/broker.log -- claude
+    ```
+  </Accordion>
+</Accordion>
+
+### Standalone proxy, on a host of its own
+
+These two are used together, on different hosts: `start` on the proxy host, `connect` on each agent host.
+
+<Accordion title="infisical secrets agent-proxy start">
   Start the agent proxy, an HTTP(S) forward proxy that brokers credentials for the agents that connect to it. Requires machine identity credentials with read access to the secrets your proxied services reference.
 
   Agents reach HTTPS services through standard `CONNECT` tunnels and plain-HTTP services through regular forward-proxy requests; credentials are brokered on both. Requests for `https://` URLs sent as plain forward-proxy requests (rather than `CONNECT`) are rejected so the proxy can never be used to downgrade TLS.
@@ -161,7 +357,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   The client ID and client secret used to authenticate are stripped from the child environment. The wrapper forwards signals to the agent process and exits with its exit code.
 
   <Note>
-    Every input below resolves from the same sources, in order: **the flag → an environment variable → `.infisical.json` → the built-in default.** An explicitly-passed flag always wins. This is why, in a container or CI where the environment variables are already set, the command collapses to `infisical secrets agent-proxy connect -- claude`.
+    Every input below resolves from the same sources, in order: **the flag → an environment variable → `.infisical.json` → the built-in default.** An explicitly-passed flag always wins. This is why, where the environment variables are already set on the host, the command collapses to `infisical secrets agent-proxy connect -- claude`.
   </Note>
 
 ```bash
@@ -310,7 +506,9 @@ $ infisical secrets agent-proxy connect -- claude
   </Accordion>
 </Accordion>
 
-<Accordion title="Shared flags">
+### Shared
+
+<Accordion title="Flags accepted by every subcommand">
 
   <Accordion title="--domain">
     Point the CLI to your Infisical instance (for example `https://eu.infisical.com` for EU Cloud, or your self-hosted URL). Can also be set via the `INFISICAL_DOMAIN` environment variable or the `domain` field in `.infisical.json`. Required for non-US Cloud users.

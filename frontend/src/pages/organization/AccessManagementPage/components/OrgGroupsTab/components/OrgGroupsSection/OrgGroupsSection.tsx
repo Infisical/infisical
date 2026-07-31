@@ -100,9 +100,7 @@ export const OrgGroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {isSubOrganization
-                    ? "Add Group to Sub-Organization"
-                    : "Create Organization Group"}
+                  {isSubOrganization ? "Add" : "Create"}
                 </Button>
               )}
             </OrgPermissionCan>

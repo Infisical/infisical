@@ -1,57 +1,71 @@
-import { PencilIcon } from "lucide-react";
-
-import { Badge, IconButton } from "@app/components/v3";
-import { TPkiSync, usePkiSyncPermissions } from "@app/hooks/api/pkiSyncs";
-
-const GenericFieldLabel = ({
-  label,
-  children,
-  labelClassName
-}: {
-  label: string;
-  children: React.ReactNode;
-  labelClassName?: string;
-}) => (
-  <div className="mb-4">
-    <p className={`text-sm font-medium text-mineshaft-300 ${labelClassName || ""}`}>{label}</p>
-    <div className="text-sm text-mineshaft-300">{children}</div>
-  </div>
-);
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Detail,
+  DetailGroup,
+  DetailLabel,
+  DetailValue,
+  Separator
+} from "@app/components/v3";
+import { BOOLEAN_SYNC_OPTION_FIELDS, VALUE_SYNC_OPTION_FIELDS } from "@app/helpers/pkiSyncs";
+import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
-  onEditOptions: VoidFunction;
 };
 
-export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
-  const {
-    syncOptions: { canRemoveCertificates: removeCertificatesEnabled }
-  } = pkiSync;
-  const { canEdit } = usePkiSyncPermissions(pkiSync);
+const DESTINATION_OWNED_OPTIONS = new Set<string>(["exportFormat"]);
+
+export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
+  const syncOptions = pkiSync.syncOptions as Record<string, unknown> | undefined;
 
   return (
-    <div>
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
-        <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="text-lg font-medium text-mineshaft-100">Sync Options</h3>
-          <IconButton
-            variant="ghost-muted"
-            size="xs"
-            isDisabled={!canEdit}
-            aria-label="Edit sync options"
-            onClick={onEditOptions}
-          >
-            <PencilIcon />
-          </IconButton>
-        </div>
-        <div className="pt-1">
-          <GenericFieldLabel label="Inactive Certificate Removal" labelClassName="mb-1">
-            <Badge variant={removeCertificatesEnabled ? "success" : "danger"}>
-              {removeCertificatesEnabled ? "Enabled" : "Disabled"}
-            </Badge>
-          </GenericFieldLabel>
-        </div>
-      </div>
-    </div>
+    <>
+      <Separator className="mt-4" />
+      <Accordion type="multiple" variant="ghost">
+        <AccordionItem value="sync-options">
+          <AccordionTrigger>Sync Options</AccordionTrigger>
+          <AccordionContent>
+            <DetailGroup>
+              {BOOLEAN_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+                const value = syncOptions?.[key];
+                if (typeof value !== "boolean") return null;
+
+                return (
+                  <Detail key={key}>
+                    <DetailLabel>{label}</DetailLabel>
+                    <DetailValue>
+                      <Badge variant={value ? "success" : "neutral"}>
+                        {value ? "Enabled" : "Disabled"}
+                      </Badge>
+                    </DetailValue>
+                  </Detail>
+                );
+              })}
+              {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
+                if (DESTINATION_OWNED_OPTIONS.has(key)) return null;
+
+                const value = syncOptions?.[key];
+                if (value === undefined || value === null || value === "") return null;
+
+                return (
+                  <Detail key={key}>
+                    <DetailLabel>{label}</DetailLabel>
+                    <DetailValue>
+                      <Badge variant="neutral" className="max-w-full truncate">
+                        {String(value)}
+                      </Badge>
+                    </DetailValue>
+                  </Detail>
+                );
+              })}
+            </DetailGroup>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </>
   );
 };

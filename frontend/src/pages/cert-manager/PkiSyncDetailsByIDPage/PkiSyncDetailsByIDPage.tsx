@@ -1,14 +1,22 @@
 import { Helmet } from "react-helmet";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { BanIcon, ChevronLeftIcon, TriangleAlertIcon } from "lucide-react";
 
-import { EditPkiSyncModal } from "@app/components/pki-syncs";
-import { PkiSyncEditFields } from "@app/components/pki-syncs/types";
+import {
+  EditPkiSyncModal,
+  PkiSyncImportStatusBadge,
+  PkiSyncRemoveStatusBadge
+} from "@app/components/pki-syncs";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  DetailGroup,
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -42,6 +50,7 @@ const formatSyncErrorMessage = (message?: string | null) => {
 };
 
 const PageContent = () => {
+  const navigate = useNavigate();
   const { syncId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
   });
@@ -79,36 +88,36 @@ const PageContent = () => {
 
   const destinationDetails = PKI_SYNC_MAP[pkiSync.destination];
 
-  const handleEditDetails = () => handlePopUpOpen("editSync", PkiSyncEditFields.Details);
-  const handleEditOptions = () => handlePopUpOpen("editSync", PkiSyncEditFields.Options);
-  const handleEditMappings = () => handlePopUpOpen("editSync", PkiSyncEditFields.Mappings);
-  const handleEditDestination = () => handlePopUpOpen("editSync", PkiSyncEditFields.Destination);
+  const handleBack = () => {
+    if (applicationName) {
+      navigate({
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        params: { orgId, projectId, applicationName },
+        search: { selectedTab: "syncs" }
+      });
+      return;
+    }
+    navigate({
+      to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
+      params: { projectId, orgId },
+      search: { selectedTab: IntegrationsListPageTabs.PkiSyncs }
+    });
+  };
+
+  const handleEdit = () => handlePopUpOpen("editSync");
 
   return (
     <>
-      <div className="mx-auto flex min-w-0 flex-col justify-between bg-bunker-800 px-4 font-inter text-white sm:px-6">
+      <div className="container mx-auto flex min-w-0 flex-col justify-between bg-bunker-800 px-4 font-inter text-white sm:px-6">
         <div className="mx-auto mb-6 w-full max-w-8xl">
-          {applicationName ? (
-            <Link
-              to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-              params={{ orgId, projectId, applicationName }}
-              search={{ selectedTab: "syncs" }}
-              className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-project transition-colors hover:text-project/80 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <ChevronLeftIcon className="size-4" />
-              Back to Application
-            </Link>
-          ) : (
-            <Link
-              to={ROUTE_PATHS.CertManager.IntegrationsListPage.path}
-              params={{ projectId, orgId }}
-              search={{ selectedTab: IntegrationsListPageTabs.PkiSyncs }}
-              className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-project transition-colors hover:text-project/80 focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <ChevronLeftIcon className="size-4" />
-              PKI Syncs
-            </Link>
-          )}
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+          >
+            <ChevronLeftIcon className="size-4" />
+            {applicationName ? "Back to Application" : "Certificate Syncs"}
+          </button>
           <div className="mb-6 flex w-full min-w-0 flex-col gap-4 lg:flex-row lg:items-center">
             <div className="flex min-w-0 items-center gap-3">
               <img
@@ -121,11 +130,15 @@ const PageContent = () => {
                   {pkiSync.name}
                 </h1>
                 <p className="mt-1 text-sm leading-snug text-muted sm:text-base">
-                  {destinationDetails.name} PKI Sync
+                  {pkiSync.description || `${destinationDetails.name} PKI Sync`}
                 </p>
               </div>
             </div>
-            <PkiSyncActionTriggers pkiSync={pkiSync} />
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:justify-end">
+              <PkiSyncImportStatusBadge pkiSync={pkiSync} />
+              <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
+              <PkiSyncActionTriggers pkiSync={pkiSync} onEdit={handleEdit} />
+            </div>
           </div>
           {pkiSync.syncStatus === PkiSyncStatus.Failed && (
             <Alert variant="danger" className="mb-6">
@@ -135,23 +148,29 @@ const PageContent = () => {
                 {pkiSync.lastSyncedAt && (
                   <p>{format(new Date(pkiSync.lastSyncedAt), "MMM d, yyyy 'at' h:mm aaa")}</p>
                 )}
-                <p className="whitespace-pre-wrap break-words">
+                <p className="break-words whitespace-pre-wrap">
                   {formatSyncErrorMessage(pkiSync.lastSyncMessage)}
                 </p>
               </AlertDescription>
             </Alert>
           )}
-          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
-            <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:flex xl:w-72 xl:flex-col">
-              <PkiSyncDetailsSection pkiSync={pkiSync} onEditDetails={handleEditDetails} />
-              <PkiSyncOptionsSection pkiSync={pkiSync} onEditOptions={handleEditOptions} />
-              <PkiSyncFieldMappingsSection pkiSync={pkiSync} onEditMappings={handleEditMappings} />
+          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
+            <div className="min-w-0">
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DetailGroup>
+                    <PkiSyncDetailsSection pkiSync={pkiSync} />
+                    <PkiSyncDestinationSection pkiSync={pkiSync} />
+                    <PkiSyncFieldMappingsSection pkiSync={pkiSync} />
+                  </DetailGroup>
+                  <PkiSyncOptionsSection pkiSync={pkiSync} />
+                </CardContent>
+              </Card>
             </div>
             <div className="flex min-w-0 flex-col gap-4">
-              <PkiSyncDestinationSection
-                pkiSync={pkiSync}
-                onEditDestination={handleEditDestination}
-              />
               <PkiSyncCertificatesSection pkiSync={pkiSync} />
               <PkiSyncAuditLogsSection pkiSync={pkiSync} />
             </div>
@@ -161,7 +180,6 @@ const PageContent = () => {
       <EditPkiSyncModal
         isOpen={popUp.editSync.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSync", isOpen)}
-        fields={popUp.editSync.data}
         pkiSync={pkiSync}
       />
     </>

@@ -10,7 +10,6 @@ import {
   ProjectUpgradeStatus,
   ProjectVersion,
   SecretType,
-  TSecretSnapshotSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -18,8 +17,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
-import { TSnapshotSecretV2DALFactory } from "@app/ee/services/secret-snapshot/snapshot-secret-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -120,8 +117,6 @@ type TSecretQueueFactoryDep = {
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
-  snapshotDAL: Pick<TSnapshotDALFactory, "findNSecretV1SnapshotByFolderId" | "deleteSnapshotsAboveLimit">;
-  snapshotSecretV2BridgeDAL: Pick<TSnapshotSecretV2DALFactory, "insertMany" | "batchInsert">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -185,9 +180,7 @@ export const secretQueueFactory = ({
   secretVersionV2BridgeDAL,
   kmsService,
   secretVersionTagV2BridgeDAL,
-  snapshotDAL,
 
-  snapshotSecretV2BridgeDAL,
   secretApprovalRequestDAL,
   keyStore,
   auditLogService,
@@ -1303,7 +1296,7 @@ export const secretQueueFactory = ({
     });
 
     const folders = await folderDAL.findByProjectId(projectId);
-    // except secret version and snapshot migrate rest of everything first in a transaction
+    // except secret version, migrate rest of everything first in a transaction
     await secretDAL.transaction(async (tx) => {
       // if project v1 create the project ghost user
       if (project.version === ProjectVersion.V1) {
@@ -1427,78 +1420,10 @@ export const secretQueueFactory = ({
           await secretV2BridgeDAL.upsertSecretReferences(secretReferences, tx);
         }
 
-        const SNAPSHOT_BATCH_SIZE = 10;
-        const snapshots = await snapshotDAL.findNSecretV1SnapshotByFolderId(folderId, SNAPSHOT_BATCH_SIZE, tx);
         const projectV3SecretVersionsGroupById: Record<string, TSecretVersionsV2> = {};
-        const projectV3SecretVersionTags: { secret_versions_v2Id: string; secret_tagsId: string }[] = [];
-        const projectV3SnapshotSecrets: Omit<TSecretSnapshotSecretsV2, "id">[] = [];
 
-        snapshots.forEach(({ secretVersions = [], ...snapshot }) => {
-          secretVersions.forEach((el) => {
-            projectV3SnapshotSecrets.push({
-              secretVersionId: el.id,
-              snapshotId: snapshot.id,
-              createdAt: snapshot.createdAt,
-              updatedAt: snapshot.updatedAt,
-              envId: el.snapshotEnvId
-            });
-            if (projectV3SecretVersionsGroupById[el.id]) return;
-
-            const key = crypto.encryption().symmetric().decrypt({
-              ciphertext: el.secretKeyCiphertext,
-              iv: el.secretKeyIV,
-              tag: el.secretKeyTag,
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-            const value = crypto.encryption().symmetric().decrypt({
-              ciphertext: el.secretValueCiphertext,
-              iv: el.secretValueIV,
-              tag: el.secretValueTag,
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-            const comment =
-              el.secretCommentCiphertext && el.secretCommentTag && el.secretCommentIV
-                ? crypto.encryption().symmetric().decrypt({
-                    ciphertext: el.secretCommentCiphertext,
-                    iv: el.secretCommentIV,
-                    tag: el.secretCommentTag,
-                    key: botKey,
-                    keySize: SymmetricKeySize.Bits128
-                  })
-                : "";
-            const encryptedValue = secretManagerEncryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
-
-            const encryptedComment = comment
-              ? secretManagerEncryptor({ plainText: Buffer.from(comment) }).cipherTextBlob
-              : null;
-            projectV3SecretVersionsGroupById[el.id] = {
-              id: el.id,
-              createdAt: el.createdAt,
-              updatedAt: el.updatedAt,
-              skipMultilineEncoding: el.skipMultilineEncoding,
-              encryptedComment,
-              encryptedValue,
-              key,
-              version: el.version,
-              type: el.type,
-              userId: el.userId,
-              folderId: el.folderId,
-              metadata: el.metadata,
-              reminderNote: el.secretReminderNote,
-              reminderRepeatDays: el.secretReminderRepeatDays,
-              secretId: el.secretId,
-              isRedacted: false
-            };
-            el.tags.forEach(({ secretTagId }) => {
-              projectV3SecretVersionTags.push({ secret_tagsId: secretTagId, secret_versions_v2Id: el.id });
-            });
-          });
-        });
-        // this is corner case in which some times the snapshot may not have the secret version of an existing secret
-        // example: on some integration it will pull values from 3rd party on integration but snapshot is not taken
-        // Thus it won't have secret version
+        // migrate the latest version of every current secret so V3 has a baseline version history
+        // (some secrets may not have a version, e.g. values pulled from a 3rd party integration)
         const latestSecretVersionByFolder = await secretVersionDAL.findLatestVersionMany(
           folderId,
           projectV1Secrets.map((el) => el.id),
@@ -1559,14 +1484,6 @@ export const secretQueueFactory = ({
         if (projectV3SecretVersions.length) {
           await secretVersionV2BridgeDAL.batchInsert(projectV3SecretVersions, tx);
         }
-        if (projectV3SecretVersionTags.length) {
-          await secretVersionTagV2BridgeDAL.batchInsert(projectV3SecretVersionTags, tx);
-        }
-
-        if (projectV3SnapshotSecrets.length) {
-          await snapshotSecretV2BridgeDAL.batchInsert(projectV3SnapshotSecrets, tx);
-        }
-        await snapshotDAL.deleteSnapshotsAboveLimit(folderId, SNAPSHOT_BATCH_SIZE, tx);
       }
       /*
        * Secret Tag Migration

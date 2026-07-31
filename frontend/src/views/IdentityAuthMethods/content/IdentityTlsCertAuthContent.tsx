@@ -2,6 +2,7 @@ import { BanIcon, EyeIcon } from "lucide-react";
 
 import {
   Badge,
+  DetailGroup,
   Empty,
   EmptyHeader,
   EmptyMedia,
@@ -39,7 +40,7 @@ export const IdentityTlsCertAuthContent = ({ identityId }: ViewAuthMethodProps) 
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <DetailGroup className="grid grid-cols-2 gap-x-6 gap-y-5">
       <IdentityAuthAccessTokenFields
         accessTokenTTL={data.accessTokenTTL}
         accessTokenMaxTTL={data.accessTokenMaxTTL}
@@ -71,6 +72,6 @@ export const IdentityTlsCertAuthContent = ({ identityId }: ViewAuthMethodProps) 
       <IdentityAuthFieldDisplay className="col-span-2" label="Verify Client Certificate Chain">
         {data.verifyClientCertificateChain ? "Enabled" : "Disabled"}
       </IdentityAuthFieldDisplay>
-    </div>
+    </DetailGroup>
   );
 };

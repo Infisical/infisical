@@ -60,7 +60,7 @@ const Pagination = ({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <IconButton aria-label="Select rows per page" variant="ghost" size="xs">
+            <IconButton variant="ghost" size="xs" aria-label="Select rows per page">
               <ChevronDownIcon />
             </IconButton>
           </DropdownMenuTrigger>
@@ -87,36 +87,36 @@ const Pagination = ({
       </div>
       <div className="flex items-center space-x-2">
         <IconButton
-          aria-label="Go to first page"
           variant="ghost"
           size="xs"
+          aria-label="Go to first page"
           onClick={() => onChangePage(1)}
           isDisabled={!canGoFirst}
         >
           <ChevronFirstIcon />
         </IconButton>
         <IconButton
-          aria-label="Go to previous page"
           variant="ghost"
           size="xs"
+          aria-label="Go to previous page"
           onClick={() => onChangePage(prevPageNumber)}
           isDisabled={!canGoPrev}
         >
           <ChevronLeftIcon />
         </IconButton>
         <IconButton
-          aria-label="Go to next page"
           variant="ghost"
           size="xs"
+          aria-label="Go to next page"
           onClick={() => onChangePage(nextPageNumber)}
           isDisabled={!canGoNext}
         >
           <ChevronRightIcon />
         </IconButton>
         <IconButton
-          aria-label="Go to last page"
           variant="ghost"
           size="xs"
+          aria-label="Go to last page"
           onClick={() => onChangePage(upperLimit)}
           isDisabled={!canGoLast}
         >

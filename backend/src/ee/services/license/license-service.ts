@@ -13,12 +13,12 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
+import { applyJitter } from "@app/lib/dates";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { UserIdentities } from "@app/services/license-client";
-import { TDualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
 import { projectV2ToFeatureSet } from "@app/services/license-client/dual-read/entitlement-projection";
 import { TLicenseClientFactory } from "@app/services/license-client/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -69,12 +69,10 @@ type TLicenseServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItems" | "deleteItem">;
   projectDAL: TProjectDALFactory;
   licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription" | "refreshEntitlements">;
-  licenseDualRead?: Pick<TDualReadServiceFactory, "compareInBackground">;
-  // Fire-and-forget v2 usage meter for org user seats; no-ops when the v2 license server is disabled.
-  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit" | "reconcile">;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -86,6 +84,8 @@ const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 // reads carry no real org id. This fixed id only keys the local entitlement cache for the instance.
 const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
 
+const jitteredLicenseCloudPlanTtl = () => applyJitter(KeyStoreTtls.LicenseCloudPlanInSeconds, 90);
+
 export const licenseServiceFactory = ({
   orgDAL,
   permissionService,
@@ -94,7 +94,6 @@ export const licenseServiceFactory = ({
   projectDAL,
   envConfig,
   licenseClient,
-  licenseDualRead,
   usageMeteringService
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
@@ -119,6 +118,9 @@ export const licenseServiceFactory = ({
     onlineLicenseKey,
     envConfig.INTERNAL_REGION
   );
+
+  const isV1CloudKey = () =>
+    instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY && envConfig.LICENSE_SERVER_V2_MODE !== "on";
 
   const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
     logger.info("Start syncing license key features");
@@ -289,96 +291,128 @@ export const licenseServiceFactory = ({
     }
   };
 
+  // Fetches the org's cloud plan fresh (v2 entitlements projected into the v1 shape, or the v1 plan),
+  // enriches it with live usage counts, writes it to the plan cache, and returns it. Throws on any
+  // failure — it never persists the free-tier fallback itself, so callers control that decision.
+  const fetchAndCacheCloudPlan = async (orgId: string): Promise<TFeatureSet> => {
+    const org = await requestMemoize(requestMemoKeys.orgFindRootOrgDetails(orgId), () =>
+      orgDAL.findRootOrgDetails(orgId)
+    );
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    const rootOrgId = org.id;
+
+    let currentPlan: TFeatureSet;
+    if (envConfig.LICENSE_SERVER_V2_MODE === "on") {
+      // Serve from License Server v2, projected into the v1 plan shape so getPlan callers are unchanged.
+      if (!licenseClient) {
+        throw new BadRequestError({ message: "License Server v2 client is not configured" });
+      }
+      const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
+      if (!entitlements) {
+        throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
+      }
+      currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
+    } else {
+      const {
+        data: { currentPlan: v1Plan }
+      } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
+        `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
+      );
+      currentPlan = v1Plan;
+    }
+
+    currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
+
+    const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
+    currentPlan.membersUsed = membersUsed;
+    const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
+
+    // Seat sync targets the v1 license server only; v2 derives usage from registered counters.
+    if (
+      envConfig.LICENSE_SERVER_V2_MODE !== "on" &&
+      currentPlan?.identitiesUsed &&
+      currentPlan.identitiesUsed !== identityUsed
+    ) {
+      try {
+        await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
+          quantity: membersUsed,
+          quantityIdentities: identityUsed
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
+        );
+      }
+    }
+    currentPlan.identitiesUsed = identityUsed;
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.LicenseCloudPlan(org.id),
+      jitteredLicenseCloudPlanTtl(),
+      JSON.stringify(currentPlan)
+    );
+
+    return currentPlan;
+  };
+
+  // Stale-while-revalidate refresh fired (fire-and-forget) when a cache hit carries the passThrough
+  // marker a billing mutation set. Single-flight via a self-expiring NX lock, which doubles as a
+  // throttle (at most one refresh per org per lock window). Recomputes and overwrites the plan cache
+  // only on success — it never deletes the existing valid plan first, so a transient License Server / DB
+  // failure can't downgrade a paid org to the free-tier fallback mid-refresh. Never throws.
+  const revalidatePlanInBackground = async (orgId: string) => {
+    try {
+      const acquired = await keyStore.setItemWithExpiryNX(
+        KeyStorePrefixes.LicenseCacheRevalidateLock(orgId),
+        KeyStoreTtls.LicenseCacheRevalidateLockInSeconds,
+        "1"
+      );
+      if (acquired !== "OK") {
+        return;
+      }
+
+      await fetchAndCacheCloudPlan(orgId);
+    } catch (error) {
+      logger.error(error, `getPlan: background revalidation failed [orgId=${orgId}]`);
+    }
+  };
+
   const getPlan = async (orgId: string, projectId?: string) => {
     logger.info(`getPlan: attempting to fetch plan for [orgId=${orgId}] [projectId=${projectId}]`);
     try {
       if (instanceType === InstanceType.Cloud) {
-        const cachedPlan = await keyStore.getItem(KeyStorePrefixes.LicenseCloudPlan(orgId));
+        // One MGET for the plan cache + the two markers instead of three separate round-trips.
+        const [cachedPlan, passThrough, reconcileMarker] = await keyStore.getItems([
+          KeyStorePrefixes.LicenseCloudPlan(orgId),
+          KeyStorePrefixes.LicenseCachePassThrough(orgId),
+          KeyStorePrefixes.LicenseUsageReconcileMarker(orgId)
+        ]);
+
+        // Demand-driven usage reconciliation: for a billable org (a paid plan → non-null slug) that
+        // hasn't been reconciled this interval, re-emit its meters in the background. reconcile()
+        // self-throttles on the same marker, so this is a no-op on the vast majority of calls and never
+        // blocks the request. Free orgs (null slug) never enter the reconcile path.
+        const maybeReconcile = (plan: TFeatureSet) => {
+          if (!reconcileMarker && plan.slug) {
+            usageMeteringService?.reconcile(orgId);
+          }
+        };
+
         if (cachedPlan) {
+          // A billing mutation flagged this org: serve the cached plan now but kick a background refresh
+          // so the cache converges as the license server reconciles, instead of waiting out the TTL.
+          if (passThrough) {
+            void revalidatePlanInBackground(orgId);
+          }
+          const plan = JSON.parse(cachedPlan) as TFeatureSet;
+          maybeReconcile(plan);
           logger.info(`getPlan: plan fetched from cache [orgId=${orgId}] [projectId=${projectId}]`);
-          return JSON.parse(cachedPlan) as TFeatureSet;
+          return plan;
         }
 
-        const org = await orgDAL.findRootOrgDetails(orgId);
-        if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-        const rootOrgId = org.id;
-
-        let currentPlan: TFeatureSet;
-        if (envConfig.LICENSE_SERVER_V2_MODE === "on") {
-          // Serve from License Server v2, projected into the v1 plan shape so getPlan callers are unchanged.
-          if (!licenseClient) {
-            throw new BadRequestError({ message: "License Server v2 client is not configured" });
-          }
-          const entitlements = await licenseClient.getEntitlements({ id: rootOrgId, name: org.name, slug: org.slug });
-          if (!entitlements) {
-            throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
-          }
-          currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
-
-          // The entitlement projection only carries feature flags, so set the plan slug from the
-          // subscription tier; otherwise the org-level plan label can't reflect the real tier. Keep
-          // it non-fatal so a subscription read failure doesn't drop the org to the free fallback.
-          try {
-            const subscription = await licenseClient.getSubscription(rootOrgId);
-            const paidTiers = (subscription?.items ?? [])
-              .map((item) => item.plan.toLowerCase())
-              .filter((tier) => tier !== "free");
-            if (paidTiers.some((tier) => tier.includes("enterprise"))) {
-              currentPlan.slug = "enterprise";
-            } else if (paidTiers.some((tier) => tier.includes("advanced"))) {
-              currentPlan.slug = "advanced";
-            } else if (paidTiers.length > 0) {
-              currentPlan.slug = "pro";
-            }
-          } catch (error) {
-            logger.error(error, `getPlan: failed to resolve plan tier from subscription [orgId=${rootOrgId}]`);
-          }
-        } else {
-          const {
-            data: { currentPlan: v1Plan }
-          } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
-            `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
-          );
-          currentPlan = v1Plan;
-        }
-
-        currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(rootOrgId);
-
-        const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
-        currentPlan.membersUsed = membersUsed;
-        const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
-
-        // Seat sync targets the v1 license server only; v2 derives usage from registered counters.
-        if (
-          envConfig.LICENSE_SERVER_V2_MODE !== "on" &&
-          currentPlan?.identitiesUsed &&
-          currentPlan.identitiesUsed !== identityUsed
-        ) {
-          try {
-            await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-              quantity: membersUsed,
-              quantityIdentities: identityUsed
-            });
-          } catch (error) {
-            logger.error(
-              error,
-              `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
-            );
-          }
-        }
-        currentPlan.identitiesUsed = identityUsed;
-
-        await keyStore.setItemWithExpiry(
-          KeyStorePrefixes.LicenseCloudPlan(org.id),
-          KeyStoreTtls.LicenseCloudPlanInSeconds,
-          JSON.stringify(currentPlan)
-        );
-
-        // read-compare bake: serve v1 but shadow-compare against v2 in the background ahead of the cutover.
-        if (envConfig.LICENSE_SERVER_V2_MODE === "read-compare") {
-          licenseDualRead?.compareInBackground(rootOrgId, currentPlan);
-        }
-
+        const currentPlan = await fetchAndCacheCloudPlan(orgId);
+        maybeReconcile(currentPlan);
         return currentPlan;
       }
     } catch (error) {
@@ -388,7 +422,7 @@ export const licenseServiceFactory = ({
       );
       await keyStore.setItemWithExpiry(
         KeyStorePrefixes.LicenseCloudPlan(orgId),
-        KeyStoreTtls.LicenseCloudPlanInSeconds,
+        jitteredLicenseCloudPlanTtl(),
         JSON.stringify(onPremFeatures)
       );
       return onPremFeatures;
@@ -414,7 +448,7 @@ export const licenseServiceFactory = ({
   };
 
   const generateOrgCustomerId = async (orgName: string, email?: string | null) => {
-    if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
+    if (isV1CloudKey()) {
       const {
         data: { customerId }
       } = await licenseServerCloudApi.request.post<{ customerId: string }>(
@@ -445,7 +479,7 @@ export const licenseServiceFactory = ({
     // report-only-if-changed, so they're harmless.
     usageMeteringService?.emit(rootOrgId, UserIdentities.key);
 
-    if (instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY) {
+    if (isV1CloudKey()) {
       const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
       if (org?.customerId) {

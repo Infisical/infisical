@@ -48,12 +48,12 @@ export const RelayDeployCommandDialog = ({
 
   const systemdInstallCommand = useMemo(() => {
     if (authMethod === "aws") {
-      return `sudo infisical relay systemd install --name=${relayName} --enroll-method=aws --relay-id=${relayId} --domain=${siteURL}`;
+      return `sudo infisical relay systemd install ${relayName} --enroll-method=aws --relay-id=${relayId} --domain=${siteURL}`;
     }
-    return `sudo infisical relay systemd install --name=${relayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
+    return `sudo infisical relay systemd install ${relayName} --enroll-method=token --token=${enrollmentToken} --domain=${siteURL}`;
   }, [relayName, relayId, enrollmentToken, authMethod, siteURL]);
 
-  const startServiceCommand = "sudo systemctl start infisical-relay";
+  const startServiceCommand = `sudo systemctl start ${relayName}`;
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

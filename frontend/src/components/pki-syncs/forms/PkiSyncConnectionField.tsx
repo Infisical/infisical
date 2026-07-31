@@ -1,12 +1,12 @@
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { useRouterState } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { Info } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
 import {
   Field,
-  FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FilterableSelect,
@@ -70,64 +70,58 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Specify the {appName} Connection to use to connect to {connectionName} and configure
-        destination parameters.
-      </p>
       <Controller
+        control={control}
+        name="connection"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field data-invalid={Boolean(error)}>
+          <Field className="mb-4">
             <FieldLabel>
               {connectionName} Connection
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <InfoIcon />
+                  <Info />
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="max-w-sm">
                   App Connections can be created from the Project Settings page.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
-            <FieldContent>
-              <FilterableSelect
-                value={value}
-                onChange={(newValue) => {
-                  if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
-                    handlePopUpOpen("addConnection");
-                    onChange(null);
-                    const formData = { ...watch(), returnUrl: getPkiSyncReturnUrl() };
-                    localStorage.setItem("pkiSyncFormData", JSON.stringify(formData));
-                    if (callback) callback();
-                    return;
-                  }
-
-                  onChange(newValue);
+            <FilterableSelect
+              value={value}
+              onChange={(newValue) => {
+                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                  handlePopUpOpen("addConnection");
+                  onChange(null);
+                  const formData = { ...watch(), returnUrl: getPkiSyncReturnUrl() };
+                  localStorage.setItem("pkiSyncFormData", JSON.stringify(formData));
                   if (callback) callback();
-                }}
-                isLoading={isPending}
-                isError={Boolean(error)}
-                options={[
-                  ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                  ...(availableConnections ?? [])
-                ]}
-                placeholder="Select connection..."
-                getOptionLabel={(option) => option.name}
-                getOptionValue={(option) => option.id}
-                components={{ Option: AppConnectionOption }}
-              />
+                  return;
+                }
+
+                onChange(newValue);
+                if (callback) callback();
+              }}
+              isLoading={isPending}
+              options={[
+                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+                ...(availableConnections ?? [])
+              ]}
+              placeholder="Select connection..."
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.id}
+              components={{ Option: AppConnectionOption }}
+              isError={Boolean(error)}
+            />
+            {!isPending && !availableConnections?.length && !canCreateConnection ? (
+              <FieldDescription className="text-warning">
+                You do not have access to any {appName} Connections. Contact an admin to create one.
+              </FieldDescription>
+            ) : (
               <FieldError errors={[error]} />
-            </FieldContent>
+            )}
           </Field>
         )}
-        control={control}
-        name="connection"
       />
-      {!isPending && !availableConnections?.length && !canCreateConnection && (
-        <p className="-mt-2.5 mb-2.5 flex items-center gap-1 text-xs text-warning">
-          <InfoIcon className="size-3.5" />
-          You do not have access to any {appName} Connections. Contact an admin to create one.
-        </p>
-      )}
       <AddAppConnectionModal
         isOpen={popUp.addConnection.isOpen}
         onOpenChange={(isOpen) => {

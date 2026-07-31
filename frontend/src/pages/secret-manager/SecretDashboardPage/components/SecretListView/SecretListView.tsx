@@ -14,7 +14,6 @@ import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
@@ -412,20 +411,6 @@ export const SecretListView = ({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
       queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
         queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
       });
       queryClient.invalidateQueries({
@@ -527,20 +512,6 @@ export const SecretListView = ({
     });
     queryClient.invalidateQueries({
       queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-    });
-    queryClient.invalidateQueries({
-      queryKey: secretSnapshotKeys.list({
-        projectId,
-        environment,
-        directory: secretPath
-      })
-    });
-    queryClient.invalidateQueries({
-      queryKey: secretSnapshotKeys.count({
-        projectId,
-        environment,
-        directory: secretPath
-      })
     });
     queryClient.invalidateQueries({
       queryKey: commitKeys.count({ projectId, environment, directory: secretPath })

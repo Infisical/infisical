@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { MoreHorizontal, Rocket, Trash2 } from "lucide-react";
+import { Clock, KeyRound, MoreHorizontal, Rocket, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -7,72 +6,150 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  IconButton
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { PamResourcePermissionActions, usePamAccountActions } from "@app/hooks/api/pam";
+import {
+  isRotatablePamAccountType,
+  PamAccessStatus,
+  PamAccountType,
+  PamResourcePermissionActions
+} from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
-import { PAM_ACCOUNT_TABS, visiblePamTabs } from "../../components/pamResourceTabs";
+import { PAM_ACCOUNT_TABS } from "../../components/pamResourceTabs";
 
 type Props = {
-  accountId: string;
+  can: (action: PamResourcePermissionActions) => boolean;
+  accountType: PamAccountType;
+  isAccessible: boolean;
+  requiresApproval: boolean;
+  accessStatus: PamAccessStatus;
+  onLaunch: () => void;
+  onRequestAccess: () => void;
   onOpenTab: (tab: PamSheetTab) => void;
   onDelete: () => void;
-  onLaunch?: () => void;
 };
 
-export const AccountActionsMenu = ({ accountId, onOpenTab, onDelete, onLaunch }: Props) => {
-  // Defer the permission fetch until the menu is first opened to avoid a request per row
-  const [hasOpened, setHasOpened] = useState(false);
-  const { can, isLoading } = usePamAccountActions(accountId, hasOpened);
-
-  const tabs = visiblePamTabs(PAM_ACCOUNT_TABS, can);
-  const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
+export const AccountActionsMenu = ({
+  can,
+  accountType,
+  isAccessible,
+  requiresApproval,
+  accessStatus,
+  onLaunch,
+  onRequestAccess,
+  onOpenTab,
+  onDelete
+}: Props) => {
   const canLaunch = can(PamResourcePermissionActions.LaunchSessions);
-  const hasAnyAction = tabs.length > 0 || canDelete || canLaunch;
+  const canDelete = can(PamResourcePermissionActions.DeleteAccounts);
+  const isRotatable = isRotatablePamAccountType(accountType);
+
+  const isGranted = accessStatus === PamAccessStatus.Granted;
+  const isPending = accessStatus === PamAccessStatus.Pending;
+  // Only offer request access for accounts that can actually launch once granted; an account that
+  // isn't ready (missing credentials/gateway/recording/approval config) should surface the disabled
+  // launch state instead, matching the accessible-account flow.
+  const needsApproval = requiresApproval && !isGranted && canLaunch && isAccessible;
+
+  // Launch requires: account is provisioned AND user has permission AND (no approval needed OR already granted)
+  const canLaunchNow = isAccessible && canLaunch && (!requiresApproval || isGranted);
+
+  let launchDisabledReason = "";
+  if (!canLaunch) {
+    launchDisabledReason = "You don't have permission to launch sessions";
+  } else if (!isAccessible) {
+    launchDisabledReason = "This account is not ready to launch";
+  } else {
+    launchDisabledReason = "Approval required";
+  }
 
   return (
-    <DropdownMenu onOpenChange={(open) => open && setHasOpened(true)}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <IconButton
           variant="ghost"
           size="xs"
           aria-label="Account actions"
-          className="text-muted"
+          className="text-muted hover:text-foreground"
           onClick={(e) => e.stopPropagation()}
         >
           <MoreHorizontal className="size-4" />
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        {isLoading && <DropdownMenuItem isDisabled>Checking access&hellip;</DropdownMenuItem>}
-        {!isLoading && !hasAnyAction && (
-          <DropdownMenuItem isDisabled>No actions available</DropdownMenuItem>
+        {needsApproval ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropdownMenuItem isDisabled={isPending} onClick={onRequestAccess}>
+                  {isPending ? <Clock className="size-4" /> : <KeyRound className="size-4" />}
+                  {isPending ? "Request Pending" : "Request Access"}
+                </DropdownMenuItem>
+              </div>
+            </TooltipTrigger>
+            {isPending && (
+              <TooltipContent side="left">Your request is awaiting approval</TooltipContent>
+            )}
+          </Tooltip>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <DropdownMenuItem isDisabled={!canLaunchNow} onClick={onLaunch}>
+                  <Rocket className="size-4" />
+                  Launch Session
+                </DropdownMenuItem>
+              </div>
+            </TooltipTrigger>
+            {!canLaunchNow && <TooltipContent side="left">{launchDisabledReason}</TooltipContent>}
+          </Tooltip>
         )}
-        {canLaunch && onLaunch && (
-          <>
-            <DropdownMenuItem onClick={onLaunch}>
-              <Rocket />
-              Launch Session
-            </DropdownMenuItem>
-            {tabs.length > 0 && <DropdownMenuSeparator />}
-          </>
+        <DropdownMenuSeparator />
+        {PAM_ACCOUNT_TABS.filter((tab) => tab.value !== PamSheetTab.Rotation || isRotatable).map(
+          (tab) => {
+            const hasPermission = !tab.action || can(tab.action);
+            return (
+              <Tooltip key={tab.value}>
+                <TooltipTrigger asChild>
+                  <div>
+                    <DropdownMenuItem
+                      isDisabled={!hasPermission}
+                      onClick={() => onOpenTab(tab.value)}
+                    >
+                      <tab.icon className="size-4" />
+                      {tab.label}
+                    </DropdownMenuItem>
+                  </div>
+                </TooltipTrigger>
+                {!hasPermission && (
+                  <TooltipContent side="left">
+                    You don&apos;t have permission to access {tab.label.toLowerCase()}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            );
+          }
         )}
-        {tabs.map((tab) => (
-          <DropdownMenuItem key={tab.value} onClick={() => onOpenTab(tab.value)}>
-            <tab.icon />
-            {tab.label}
-          </DropdownMenuItem>
-        ))}
-        {canDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="danger" onClick={onDelete}>
-              <Trash2 />
-              Delete Account
-            </DropdownMenuItem>
-          </>
-        )}
+        <DropdownMenuSeparator />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div>
+              <DropdownMenuItem variant="danger" isDisabled={!canDelete} onClick={onDelete}>
+                <Trash2 className="size-4" />
+                Delete Account
+              </DropdownMenuItem>
+            </div>
+          </TooltipTrigger>
+          {!canDelete && (
+            <TooltipContent side="left">
+              You don&apos;t have permission to delete this account
+            </TooltipContent>
+          )}
+        </Tooltip>
       </DropdownMenuContent>
     </DropdownMenu>
   );

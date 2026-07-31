@@ -106,10 +106,10 @@ export const usePreviewBillingV2Change = () => {
 export const useChangeBillingV2Commitment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ orgId, changes }: TChangeBillingV2CommitmentDTO) => {
+    mutationFn: async ({ orgId, changes, productId }: TChangeBillingV2CommitmentDTO) => {
       const { data } = await apiRequest.put<BillingV2MutationResult>(
         `/api/v1/organizations/${orgId}/billing/v2/subscription/commitments`,
-        { changes }
+        { changes, productId }
       );
 
       return data;

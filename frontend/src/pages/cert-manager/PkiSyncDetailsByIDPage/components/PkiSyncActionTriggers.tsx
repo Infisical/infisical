@@ -7,6 +7,7 @@ import {
   EllipsisIcon,
   EraserIcon,
   InfoIcon,
+  PencilIcon,
   RefreshCwIcon,
   Trash2Icon
 } from "lucide-react";
@@ -15,9 +16,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   DeletePkiSyncModal,
   PkiSyncImportCertificatesModal,
-  PkiSyncImportStatusBadge,
-  PkiSyncRemoveCertificatesModal,
-  PkiSyncRemoveStatusBadge
+  PkiSyncRemoveCertificatesModal
 } from "@app/components/pki-syncs";
 import {
   Button,
@@ -25,6 +24,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Label,
@@ -48,9 +48,10 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
   pkiSync: TPkiSync;
+  onEdit: () => void;
 };
 
-export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
+export const PkiSyncActionTriggers = ({ pkiSync, onEdit }: Props) => {
   const { destination, projectId, id } = pkiSync;
 
   const navigate = useNavigate();
@@ -69,7 +70,6 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
-  // API mutations
   const triggerSyncMutation = useTriggerPkiSyncSyncCertificates();
   const updatePkiSyncMutation = useUpdatePkiSync();
 
@@ -130,9 +130,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
 
   return (
     <>
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:justify-end">
-        {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge pkiSync={pkiSync} />}
-        <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto">
         <div className="flex items-center gap-2 sm:mr-2">
           <Switch
             id="pki-auto-sync"
@@ -163,6 +161,11 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit} isDisabled={!canEditSync}>
+                <PencilIcon />
+                Edit Sync
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
@@ -172,7 +175,6 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
                 {isIdCopied ? <CheckIcon /> : <CopyIcon />}
                 Copy Sync ID
               </DropdownMenuItem>
-
               {syncOption?.canImportCertificates && (
                 <DropdownMenuItem
                   onClick={() => handlePopUpOpen("importCertificates")}
@@ -192,7 +194,6 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
                   </Tooltip>
                 </DropdownMenuItem>
               )}
-
               {syncOption?.canRemoveCertificates && (
                 <DropdownMenuItem
                   onClick={() => handlePopUpOpen("removeCertificates")}
@@ -213,7 +214,7 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
                   </Tooltip>
                 </DropdownMenuItem>
               )}
-
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 isDisabled={!canDeleteSync}
                 onClick={() => handlePopUpOpen("deleteSync")}

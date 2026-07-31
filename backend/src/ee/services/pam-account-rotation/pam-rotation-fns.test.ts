@@ -15,10 +15,15 @@ describe("isRotatableAccountType", () => {
     expect(isRotatableAccountType(PamAccountType.MsSQL)).toBe(true);
   });
 
-  test("rejects non-SQL types", () => {
+  test("accepts Windows local and domain accounts", () => {
+    expect(isRotatableAccountType(PamAccountType.Windows)).toBe(true);
+    expect(isRotatableAccountType(PamAccountType.WindowsAd)).toBe(true);
+  });
+
+  test("rejects non-rotatable types", () => {
     expect(isRotatableAccountType(PamAccountType.SSH)).toBe(false);
-    expect(isRotatableAccountType(PamAccountType.Windows)).toBe(false);
     expect(isRotatableAccountType(PamAccountType.AwsIam)).toBe(false);
+    expect(isRotatableAccountType(PamAccountType.Redis)).toBe(false);
   });
 });
 

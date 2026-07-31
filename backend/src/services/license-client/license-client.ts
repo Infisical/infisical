@@ -95,21 +95,30 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     await resolver.invalidateEntitlements(orgId);
   };
 
-  // Ask the license server to recompute its cached entitlements (used after a license change), then
-  // drop the local cache so the next read reflects them. No-op when the backend is dormant.
+  // Flag the org's license caches for stale-while-revalidate after a billing mutation instead of a hard
+  // bust, so reads keep serving cached data while a background refresh converges once Stripe reconciles.
+  const markEntitlementsStale = async (orgId: string, opts?: { checkout?: boolean }) => {
+    if (!resolver) {
+      return;
+    }
+    await resolver.markPassThrough(orgId, opts);
+  };
+
+  // Drop the local plan cache so the next read reflects a change immediately. The license server no
+  // longer caches entitlements (reads are always live), so there's nothing to ask it to recompute.
+  // No-op when the backend is dormant.
   const refreshEntitlements = async (org: TEntitlementOrg) => {
     if (!backend) {
       return;
     }
-    await backend.refreshEntitlements(org);
     await invalidateEntitlements(org.id);
   };
 
-  const getCatalog = async () => {
+  const getCatalog = async (orgId: string) => {
     if (!backend) {
       return null;
     }
-    return backend.fetchCatalog();
+    return backend.fetchCatalog(orgId);
   };
 
   const getSubscription = async (orgId: string) => {
@@ -208,6 +217,7 @@ export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFact
     ...featureReaderFactory({ getEntitlements }),
     getEntitlements,
     invalidateEntitlements,
+    markEntitlementsStale,
     refreshEntitlements,
     getCatalog,
     getSubscription,

@@ -84,6 +84,7 @@ import { RENDER_SYNC_LIST_OPTION, RenderSyncFns } from "./render";
 import { RUNDECK_SYNC_LIST_OPTION, RundeckSyncFns } from "./rundeck";
 import { SECRET_SYNC_PLAN_MAP } from "./secret-sync-maps";
 import { SNOWFLAKE_SYNC_LIST_OPTION, SnowflakeSyncFns } from "./snowflake";
+import { SPACELIFT_SYNC_LIST_OPTION, SpaceliftSyncFns } from "./spacelift";
 import { SUPABASE_SYNC_LIST_OPTION, SupabaseSyncFns } from "./supabase";
 import { TEAMCITY_SYNC_LIST_OPTION, TeamCitySyncFns } from "./teamcity";
 import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terraform-cloud";
@@ -140,7 +141,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Snowflake]: SNOWFLAKE_SYNC_LIST_OPTION,
   [SecretSync.HasuraCloud]: HASURA_CLOUD_SYNC_LIST_OPTION,
   [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION,
-  [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION
+  [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
+  [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -447,6 +449,8 @@ export const SecretSyncFns = {
         return QoverySyncFns.syncSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
         return Cloud66SyncFns.syncSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Spacelift:
+        return SpaceliftSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -620,6 +624,9 @@ export const SecretSyncFns = {
       case SecretSync.Cloud66:
         secretMap = await Cloud66SyncFns.getSecrets(secretSync);
         break;
+      case SecretSync.Spacelift:
+        secretMap = await SpaceliftSyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -772,6 +779,8 @@ export const SecretSyncFns = {
         return QoverySyncFns.removeSecrets(secretSync, schemaSecretMap);
       case SecretSync.Cloud66:
         return Cloud66SyncFns.removeSecrets(secretSync, schemaSecretMap);
+      case SecretSync.Spacelift:
+        return SpaceliftSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`

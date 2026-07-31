@@ -497,5 +497,5 @@ export const POPULAR_PROXIED_SERVICE_TEMPLATES: string[] = [
   "anthropic",
   "github",
   "slack",
-  "stripe"
+  "google-workspace"
 ];
