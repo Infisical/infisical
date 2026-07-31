@@ -13,7 +13,8 @@ import {
 
 export const integrationQueryKeys = {
   getIntegrations: () => ["integrations"] as const,
-  getIntegration: (id: string) => ["integration", id] as const
+  getIntegration: (id: string) => ["integration", id] as const,
+  getDeprecationStatus: (orgId: string) => ["integration-deprecation-status", orgId] as const
 };
 
 const fetchIntegrations = async () => {
@@ -32,10 +33,31 @@ const fetchIntegration = async (id: string) => {
   return data.integration;
 };
 
+const fetchDeprecationStatus = async () => {
+  const { data } = await apiRequest.get<{ hasNativeIntegrations: boolean }>(
+    "/api/v1/integration/deprecation-status"
+  );
+
+  return data;
+};
+
 export const useGetCloudIntegrations = () =>
   useQuery({
     queryKey: integrationQueryKeys.getIntegrations(),
     queryFn: () => fetchIntegrations()
+  });
+
+// Whether the org still has native integrations, which are deprecated. Org admins only — the endpoint
+// rejects everyone else, so callers must gate this on the caller's role. The response is scoped to the
+// org of the caller's token, hence orgId in the query key.
+export const useGetNativeIntegrationDeprecationStatus = (
+  orgId: string,
+  options?: { enabled?: boolean }
+) =>
+  useQuery({
+    queryKey: integrationQueryKeys.getDeprecationStatus(orgId),
+    queryFn: () => fetchDeprecationStatus(),
+    enabled: options?.enabled ?? true
   });
 
 export const useCreateIntegration = () => {
