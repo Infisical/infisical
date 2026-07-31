@@ -372,6 +372,14 @@ const envSchema = z
       .describe(
         "Soft memory ceiling (GOMEMLIMIT) handed to the Go scanner process. The runtime GCs harder as it approaches the limit rather than growing. Set to 0 to disable."
       ),
+    SECRET_SCANNING_CPU_THREADS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(1)
+      .describe(
+        "CPU thread ceiling for scanning child processes, applied as GOMAXPROCS to the Go scanner and pack.threads to git clone. Both otherwise use every core on the host, so one full scan can saturate the instance. Set to 0 to remove the cap."
+      ),
     SECRET_SCANNING_MAX_REPO_SIZE_MB: z.coerce
       .number()
       .int()
