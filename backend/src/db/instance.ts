@@ -24,11 +24,24 @@ const parseSslConfig = (dbConnectionUri: string, dbRootCert?: string) => {
   return { modifiedDbConnectionUri, sslConfig };
 };
 
+export type TDbPoolConfig = { min: number; max: number };
+
+export const DbApplicationName = {
+  Primary: "infisical-core",
+  Replica: "infisical-core-replica",
+  AuditLog: "infisical-core-audit",
+  Migrator: "infisical-core-migrator"
+} as const;
+
+const DEFAULT_POOL: TDbPoolConfig = { min: 0, max: 10 };
+
 export type TDbClient = Knex;
 export const initDbConnection = ({
   dbConnectionUri,
   dbRootCert,
-  readReplicas = []
+  readReplicas = [],
+  pool = DEFAULT_POOL,
+  replicaPool = DEFAULT_POOL
 }: {
   dbConnectionUri: string;
   dbRootCert?: string;
@@ -36,6 +49,8 @@ export const initDbConnection = ({
     dbConnectionUri: string;
     dbRootCert?: string;
   }[];
+  pool?: TDbPoolConfig;
+  replicaPool?: TDbPoolConfig;
 }) => {
   // akhilmhdh: the default Knex is knex.Knex<any, any[]>. but when assigned with knex({<config>}) the value is knex.Knex<any, unknown[]>
   // this was causing issue with files like `snapshot-dal` `findRecursivelySnapshots` this i am explicitly putting the any and unknown[]
@@ -67,10 +82,11 @@ export const initDbConnection = ({
       user: process.env.DB_USER,
       database: process.env.DB_NAME,
       password: process.env.DB_PASSWORD,
-      ssl: sslConfig
+      ssl: sslConfig,
+      application_name: DbApplicationName.Primary
     },
     // https://knexjs.org/guide/#pool
-    pool: { min: 0, max: 10 },
+    pool,
     migrations: {
       tableName: "infisical_migrations"
     }
@@ -87,12 +103,13 @@ export const initDbConnection = ({
       client: "pg",
       connection: {
         connectionString: replicaUri,
-        ssl: replicaSslConfig
+        ssl: replicaSslConfig,
+        application_name: DbApplicationName.Replica
       },
       migrations: {
         tableName: "infisical_migrations"
       },
-      pool: { min: 0, max: 10 }
+      pool: replicaPool
     });
   });
 
@@ -101,10 +118,12 @@ export const initDbConnection = ({
 
 export const initAuditLogDbConnection = ({
   dbConnectionUri,
-  dbRootCert
+  dbRootCert,
+  pool = DEFAULT_POOL
 }: {
   dbConnectionUri: string;
   dbRootCert?: string;
+  pool?: TDbPoolConfig;
 }) => {
   const { modifiedDbConnectionUri, sslConfig } = parseSslConfig(dbConnectionUri, dbRootCert);
 
@@ -120,12 +139,13 @@ export const initAuditLogDbConnection = ({
       user: process.env.AUDIT_LOGS_DB_USER,
       database: process.env.AUDIT_LOGS_DB_NAME,
       password: process.env.AUDIT_LOGS_DB_PASSWORD,
-      ssl: sslConfig
+      ssl: sslConfig,
+      application_name: DbApplicationName.AuditLog
     },
     migrations: {
       tableName: "infisical_migrations"
     },
-    pool: { min: 0, max: 10 }
+    pool
   });
 
   // we add these overrides so that auditLogDb and the primary DB are interchangeable

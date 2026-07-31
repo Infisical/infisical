@@ -213,7 +213,8 @@ export const ADCSCertificateAuthorityFns = ({
     const resolvedCaName = await resolveAdcsCaName(
       caName,
       () => getAdcsConnectionCredentials(appConnectionId, appConnectionDAL, kmsService),
-      { gatewayV2Service, gatewayPoolService }
+      { gatewayV2Service, gatewayPoolService },
+      { ensureReachable: true }
     );
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
@@ -297,14 +298,25 @@ export const ADCSCertificateAuthorityFns = ({
       );
     }
 
-    // Resolve the CA name outside the transaction (discovery is a gateway call).
-    const resolvedUpdateCaName = configuration
-      ? await resolveAdcsCaName(
+    let resolvedUpdateCaName: string | undefined;
+    if (configuration) {
+      const existingConfig = ca.externalCa.configuration as { caName?: string } | null;
+      const existingCaName = existingConfig?.caName;
+      const normalizedNewCaName = configuration.caName?.trim() || undefined;
+      const configChanged =
+        configuration.appConnectionId !== ca.externalCa.appConnectionId || normalizedNewCaName !== existingCaName;
+
+      if (!configChanged && existingCaName) {
+        resolvedUpdateCaName = existingCaName;
+      } else {
+        resolvedUpdateCaName = await resolveAdcsCaName(
           configuration.caName,
           () => getAdcsConnectionCredentials(configuration.appConnectionId, appConnectionDAL, kmsService),
-          { gatewayV2Service, gatewayPoolService }
-        )
-      : undefined;
+          { gatewayV2Service, gatewayPoolService },
+          { ensureReachable: true }
+        );
+      }
+    }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {

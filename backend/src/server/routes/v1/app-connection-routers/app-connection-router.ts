@@ -155,6 +155,10 @@ import {
   SanitizedLiteLLMConnectionSchema
 } from "@app/services/app-connection/litellm";
 import {
+  MicrosoftIntuneConnectionListItemSchema,
+  SanitizedMicrosoftIntuneConnectionSchema
+} from "@app/services/app-connection/microsoft-intune";
+import {
   MongoDBConnectionListItemSchema,
   SanitizedMongoDBConnectionSchema
 } from "@app/services/app-connection/mongodb";
@@ -215,6 +219,10 @@ import {
   SanitizedSnowflakeConnectionSchema,
   SnowflakeConnectionListItemSchema
 } from "@app/services/app-connection/snowflake";
+import {
+  SanitizedSpaceliftConnectionSchema,
+  SpaceliftConnectionListItemSchema
+} from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
@@ -315,6 +323,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAnthropicConnectionSchema.options,
   ...SanitizedDevinConnectionSchema.options,
   ...SanitizedAzureEntraIdConnectionSchema.options,
+  ...SanitizedMicrosoftIntuneConnectionSchema.options,
   ...SanitizedVenafiConnectionSchema.options,
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
@@ -335,7 +344,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
-  ...SanitizedNutanixPrismCentralConnectionSchema.options
+  ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedSpaceliftConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -397,6 +407,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OpenRouterConnectionListItemSchema,
   OpenAIConnectionListItemSchema,
   AzureEntraIdConnectionListItemSchema,
+  MicrosoftIntuneConnectionListItemSchema,
   VenafiConnectionListItemSchema,
   VenafiTppConnectionListItemSchema,
   ExternalInfisicalConnectionListItemSchema,
@@ -419,7 +430,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
-  NutanixPrismCentralConnectionListItemSchema
+  NutanixPrismCentralConnectionListItemSchema,
+  SpaceliftConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

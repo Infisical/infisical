@@ -31,6 +31,8 @@ import { Route as publicViewSharedSecretByIDPageRouteImport } from './pages/publ
 import { Route as publicViewSecretRequestByIDPageRouteImport } from './pages/public/ViewSecretRequestByIDPage/route'
 import { Route as authSignUpSsoPageRouteImport } from './pages/auth/SignUpSsoPage/route'
 import { Route as authSelectOrgPageRouteImport } from './pages/auth/SelectOrgPage/route'
+import { Route as authLoginSamlPageRouteImport } from './pages/auth/LoginSamlPage/route'
+import { Route as authLoginOidcPageRouteImport } from './pages/auth/LoginOidcPage/route'
 import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPage/route'
 import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
@@ -102,6 +104,7 @@ import { Route as projectRoleDetailsBySlugPageRoutePamImport } from './pages/pro
 import { Route as projectMemberDetailsByIDPageRoutePamImport } from './pages/project/MemberDetailsByIDPage/route-pam'
 import { Route as projectIdentityDetailsByIDPageRoutePamImport } from './pages/project/IdentityDetailsByIDPage/route-pam'
 import { Route as projectGroupDetailsByIDPageRoutePamImport } from './pages/project/GroupDetailsByIDPage/route-pam'
+import { Route as redirectsPamOrgAccessRedirectImport } from './pages/redirects/pam-org-access-redirect'
 import { Route as pamPamAccountAccessPageRouteImport } from './pages/pam/PamAccountAccessPage/route'
 import { Route as organizationKmipServersPageKmipServerDetailsByIDPageRouteImport } from './pages/organization/KmipServersPage/KmipServerDetailsByIDPage/route'
 import { Route as organizationAppConnectionsGitHubManifestCallbackPageRouteImport } from './pages/organization/AppConnections/GitHubManifestCallbackPage/route'
@@ -110,7 +113,6 @@ import { Route as organizationSecretSharingPageRouteImport } from './pages/organ
 import { Route as organizationProductSettingsPageSecretsManagementRouteImport } from './pages/organization/ProductSettingsPage/SecretsManagement/route'
 import { Route as organizationProductSettingsPageProjectTemplatesRouteImport } from './pages/organization/ProductSettingsPage/ProjectTemplates/route'
 import { Route as organizationKmipServersPageRouteImport } from './pages/organization/KmipServersPage/route'
-import { Route as pamPamAccessPageRouteImport } from './pages/pam/PamAccessPage/route'
 import { Route as projectAuditLogsPageRouteSshImport } from './pages/project/AuditLogsPage/route-ssh'
 import { Route as projectAccessControlPageRouteSshImport } from './pages/project/AccessControlPage/route-ssh'
 import { Route as projectAuditLogsPageRouteSecretScanningImport } from './pages/project/AuditLogsPage/route-secret-scanning'
@@ -565,6 +567,18 @@ const authSignUpSsoPageRouteRoute = authSignUpSsoPageRouteImport.update({
 const authSelectOrgPageRouteRoute = authSelectOrgPageRouteImport.update({
   id: '/select-organization',
   path: '/select-organization',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authLoginSamlPageRouteRoute = authLoginSamlPageRouteImport.update({
+  id: '/saml',
+  path: '/saml',
+  getParentRoute: () => RestrictLoginSignupLoginRoute,
+} as any)
+
+const authLoginOidcPageRouteRoute = authLoginOidcPageRouteImport.update({
+  id: '/oidc',
+  path: '/oidc',
   getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
 
@@ -1234,6 +1248,14 @@ const projectGroupDetailsByIDPageRoutePamRoute =
     getParentRoute: () => pamLayoutRoute,
   } as any)
 
+const redirectsPamOrgAccessRedirectRoute =
+  redirectsPamOrgAccessRedirectImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRoute,
+  } as any)
+
 const pamPamAccountAccessPageRouteRoute =
   pamPamAccountAccessPageRouteImport.update({
     id: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access',
@@ -1296,13 +1318,6 @@ const organizationKmipServersPageRouteRoute =
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute,
   } as any)
-
-const pamPamAccessPageRouteRoute = pamPamAccessPageRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () =>
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRoute,
-} as any)
 
 const projectAuditLogsPageRouteSshRoute =
   projectAuditLogsPageRouteSshImport.update({
@@ -2925,6 +2940,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authLoginLdapPageRouteImport
       parentRoute: typeof RestrictLoginSignupLoginImport
     }
+    '/_restrict-login-signup/login/oidc': {
+      id: '/_restrict-login-signup/login/oidc'
+      path: '/oidc'
+      fullPath: '/login/oidc'
+      preLoaderRoute: typeof authLoginOidcPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
+    '/_restrict-login-signup/login/saml': {
+      id: '/_restrict-login-signup/login/saml'
+      path: '/saml'
+      fullPath: '/login/saml'
+      preLoaderRoute: typeof authLoginSamlPageRouteImport
+      parentRoute: typeof RestrictLoginSignupLoginImport
+    }
     '/_restrict-login-signup/login/select-organization': {
       id: '/_restrict-login-signup/login/select-organization'
       path: '/select-organization'
@@ -3464,13 +3493,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof secretManagerRedirectsRedirectApprovalPageImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
-      path: '/'
-      fullPath: '/organizations/$orgId/pam/access/'
-      preLoaderRoute: typeof pamPamAccessPageRouteImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/'
       path: '/'
@@ -3526,6 +3548,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
       preLoaderRoute: typeof pamPamAccountAccessPageRouteImport
       parentRoute: typeof middlewaresInjectOrgDetailsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
+      path: '/'
+      fullPath: '/organizations/$orgId/pam/access/'
+      preLoaderRoute: typeof redirectsPamOrgAccessRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId'
@@ -5936,12 +5965,12 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdNetworkingRouteWith
   )
 
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteChildren {
-  pamPamAccessPageRouteRoute: typeof pamPamAccessPageRouteRoute
+  redirectsPamOrgAccessRedirectRoute: typeof redirectsPamOrgAccessRedirectRoute
 }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteChildren =
   {
-    pamPamAccessPageRouteRoute: pamPamAccessPageRouteRoute,
+    redirectsPamOrgAccessRedirectRoute: redirectsPamOrgAccessRedirectRoute,
   }
 
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdPamPamLayoutAccessRouteWithChildren =
@@ -6237,6 +6266,8 @@ interface RestrictLoginSignupLoginRouteChildren {
   authLoginPageRouteRoute: typeof authLoginPageRouteRoute
   authAdminLoginPageRouteRoute: typeof authAdminLoginPageRouteRoute
   authLoginLdapPageRouteRoute: typeof authLoginLdapPageRouteRoute
+  authLoginOidcPageRouteRoute: typeof authLoginOidcPageRouteRoute
+  authLoginSamlPageRouteRoute: typeof authLoginSamlPageRouteRoute
   authSelectOrgPageRouteRoute: typeof authSelectOrgPageRouteRoute
   authProviderErrorPageRouteRoute: typeof authProviderErrorPageRouteRoute
 }
@@ -6246,6 +6277,8 @@ const RestrictLoginSignupLoginRouteChildren: RestrictLoginSignupLoginRouteChildr
     authLoginPageRouteRoute: authLoginPageRouteRoute,
     authAdminLoginPageRouteRoute: authAdminLoginPageRouteRoute,
     authLoginLdapPageRouteRoute: authLoginLdapPageRouteRoute,
+    authLoginOidcPageRouteRoute: authLoginOidcPageRouteRoute,
+    authLoginSamlPageRouteRoute: authLoginSamlPageRouteRoute,
     authSelectOrgPageRouteRoute: authSelectOrgPageRouteRoute,
     authProviderErrorPageRouteRoute: authProviderErrorPageRouteRoute,
   }
@@ -6324,6 +6357,8 @@ export interface FileRoutesByFullPath {
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/login/oidc': typeof authLoginOidcPageRouteRoute
+  '/login/saml': typeof authLoginSamlPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
@@ -6397,7 +6432,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
-  '/organizations/$orgId/pam/access/': typeof pamPamAccessPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
   '/organizations/$orgId/projects/product-settings/$type/': typeof organizationProductSettingsPageProjectTemplatesRouteRoute
   '/organizations/$orgId/projects/secret-management/product-settings/': typeof organizationProductSettingsPageSecretsManagementRouteRoute
@@ -6406,6 +6440,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
+  '/organizations/$orgId/pam/access/': typeof redirectsPamOrgAccessRedirectRoute
   '/organizations/$orgId/pam/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6621,6 +6656,8 @@ export interface FileRoutesByTo {
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/login/oidc': typeof authLoginOidcPageRouteRoute
+  '/login/saml': typeof authLoginSamlPageRouteRoute
   '/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
@@ -6684,7 +6721,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/secret-scanning/$projectId': typeof secretScanningLayoutRouteWithChildren
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
-  '/organizations/$orgId/pam/access': typeof pamPamAccessPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers': typeof organizationKmipServersPageRouteRoute
   '/organizations/$orgId/projects/product-settings/$type': typeof organizationProductSettingsPageProjectTemplatesRouteRoute
   '/organizations/$orgId/projects/secret-management/product-settings': typeof organizationProductSettingsPageSecretsManagementRouteRoute
@@ -6693,6 +6729,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
   '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
+  '/organizations/$orgId/pam/access': typeof redirectsPamOrgAccessRedirectRoute
   '/organizations/$orgId/pam/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/organizations/$orgId/pam/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -6899,6 +6936,8 @@ export interface FileRoutesById {
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
+  '/_restrict-login-signup/login/oidc': typeof authLoginOidcPageRouteRoute
+  '/_restrict-login-signup/login/saml': typeof authLoginSamlPageRouteRoute
   '/_restrict-login-signup/login/select-organization': typeof authSelectOrgPageRouteRoute
   '/_restrict-login-signup/signup/sso': typeof authSignUpSsoPageRouteRoute
   '/secret-request/secret/$secretRequestId': typeof publicViewSecretRequestByIDPageRouteRoute
@@ -6976,7 +7015,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretScanningProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': typeof pamPamAccessPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/': typeof organizationKmipServersPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/product-settings/$type/': typeof organizationProductSettingsPageProjectTemplatesRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/': typeof organizationProductSettingsPageSecretsManagementRouteRoute
@@ -6985,6 +7023,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback': typeof organizationAppConnectionsGitHubManifestCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof organizationKmipServersPageKmipServerDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access': typeof pamPamAccountAccessPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/': typeof redirectsPamOrgAccessRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId': typeof projectGroupDetailsByIDPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRoutePamRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRoutePamRoute
@@ -7210,6 +7249,8 @@ export interface FileRouteTypes {
     | '/admin/signup'
     | '/login/admin'
     | '/login/ldap'
+    | '/login/oidc'
+    | '/login/saml'
     | '/login/select-organization'
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
@@ -7283,7 +7324,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
-    | '/organizations/$orgId/pam/access/'
     | '/organizations/$orgId/projects/kms/kmip-servers/'
     | '/organizations/$orgId/projects/product-settings/$type/'
     | '/organizations/$orgId/projects/secret-management/product-settings/'
@@ -7292,6 +7332,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/app-connections/github/manifest/callback'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+    | '/organizations/$orgId/pam/access/'
     | '/organizations/$orgId/pam/groups/$groupId'
     | '/organizations/$orgId/pam/identities/$identityId'
     | '/organizations/$orgId/pam/members/$membershipId'
@@ -7506,6 +7547,8 @@ export interface FileRouteTypes {
     | '/admin/signup'
     | '/login/admin'
     | '/login/ldap'
+    | '/login/oidc'
+    | '/login/saml'
     | '/login/select-organization'
     | '/signup/sso'
     | '/secret-request/secret/$secretRequestId'
@@ -7569,7 +7612,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
-    | '/organizations/$orgId/pam/access'
     | '/organizations/$orgId/projects/kms/kmip-servers'
     | '/organizations/$orgId/projects/product-settings/$type'
     | '/organizations/$orgId/projects/secret-management/product-settings'
@@ -7578,6 +7620,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/app-connections/github/manifest/callback'
     | '/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+    | '/organizations/$orgId/pam/access'
     | '/organizations/$orgId/pam/groups/$groupId'
     | '/organizations/$orgId/pam/identities/$identityId'
     | '/organizations/$orgId/pam/members/$membershipId'
@@ -7782,6 +7825,8 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/admin'
     | '/_restrict-login-signup/login/ldap'
+    | '/_restrict-login-signup/login/oidc'
+    | '/_restrict-login-signup/login/saml'
     | '/_restrict-login-signup/login/select-organization'
     | '/_restrict-login-signup/signup/sso'
     | '/secret-request/secret/$secretRequestId'
@@ -7859,7 +7904,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/product-settings/$type/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/product-settings/'
@@ -7868,6 +7912,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/github/manifest/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/members/$membershipId'
@@ -8196,6 +8241,8 @@ export const routeTree = rootRoute
         "/_restrict-login-signup/login/",
         "/_restrict-login-signup/login/admin",
         "/_restrict-login-signup/login/ldap",
+        "/_restrict-login-signup/login/oidc",
+        "/_restrict-login-signup/login/saml",
         "/_restrict-login-signup/login/select-organization",
         "/_restrict-login-signup/login/provider/error"
       ]
@@ -8242,6 +8289,14 @@ export const routeTree = rootRoute
     },
     "/_restrict-login-signup/login/ldap": {
       "filePath": "auth/LoginLdapPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/login/oidc": {
+      "filePath": "auth/LoginOidcPage/route.tsx",
+      "parent": "/_restrict-login-signup/login"
+    },
+    "/_restrict-login-signup/login/saml": {
+      "filePath": "auth/LoginSamlPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
     },
     "/_restrict-login-signup/login/select-organization": {
@@ -8683,10 +8738,6 @@ export const routeTree = rootRoute
       "filePath": "secret-manager/redirects/redirect-approval-page.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId"
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/": {
-      "filePath": "pam/PamAccessPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access"
-    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers/": {
       "filePath": "organization/KmipServersPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers"
@@ -8718,6 +8769,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/organizations/$orgId/pam/accounts/$accountType/$accountId/access": {
       "filePath": "pam/PamAccountAccessPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access/": {
+      "filePath": "redirects/pam-org-access-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/access"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/groups/$groupId": {
       "filePath": "project/GroupDetailsByIDPage/route-pam.tsx",

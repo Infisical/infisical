@@ -20,7 +20,7 @@ export const Route = createFileRoute(
       breadcrumbs: [
         ...context.breadcrumbs,
         {
-          label: "Integrations",
+          label: "Certificate Syncs",
           link: linkOptions({
             to: "/organizations/$orgId/projects/cert-manager/$projectId/integrations",
             params,
@@ -30,7 +30,7 @@ export const Route = createFileRoute(
           })
         },
         {
-          label: "PKI Sync"
+          label: "Certificate Sync"
         }
       ]
     };

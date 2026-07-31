@@ -555,6 +555,21 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getRequestEnrollmentTypeByCertId = async (certId: string, tx?: Knex): Promise<string | null> => {
+    try {
+      // Primary, not replica: eligibility checks must not miss a recently-issued request row.
+      const row = (await (tx || db)(TableName.CertificateRequests)
+        .where(`${TableName.CertificateRequests}.certificateId`, certId)
+        .orderBy(`${TableName.CertificateRequests}.createdAt`, "asc")
+        .select(`${TableName.CertificateRequests}.enrollmentType`)
+        .first()) as { enrollmentType?: string | null } | undefined;
+
+      return row?.enrollmentType ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get request enrollment type by cert id" });
+    }
+  };
+
   type TCertificateWithInventoryFields = TCertificates & {
     hasPrivateKey: boolean;
     caName?: string | null;
@@ -1164,6 +1179,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findActiveCertificatesByIds,
     findActiveCertificatesForSync,
     findCertificatesEligibleForRenewal,
+    getRequestEnrollmentTypeByCertId,
     findWithPrivateKeyInfo,
     findWithFullDetails,
     getDashboardStats,

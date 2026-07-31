@@ -3,7 +3,53 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import { AuthModeAccountRecoveryTokenPayload, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "./auth-type";
+import { LoginMethod } from "../super-admin/super-admin-types";
+import {
+  AuthMethod,
+  AuthModeAccountRecoveryTokenPayload,
+  AuthModeSignUpTokenPayload,
+  AuthTokenType,
+  MfaMethod
+} from "./auth-type";
+
+const oauthLoginMethods = {
+  [AuthMethod.GITHUB]: {
+    loginMethod: LoginMethod.GITHUB,
+    disabledMessage: "Login with Github is disabled by administrator."
+  },
+  [AuthMethod.GOOGLE]: {
+    loginMethod: LoginMethod.GOOGLE,
+    disabledMessage: "Login with Google is disabled by administrator."
+  },
+  [AuthMethod.GITLAB]: {
+    loginMethod: LoginMethod.GITLAB,
+    disabledMessage: "Login with Gitlab is disabled by administrator."
+  }
+} as const;
+
+export type OAuthAuthMethod = keyof typeof oauthLoginMethods;
+
+export const isOAuthLoginMethodDisabled = (
+  authMethod: OAuthAuthMethod,
+  enabledLoginMethods?: readonly string[] | null
+) => Boolean(enabledLoginMethods && !enabledLoginMethods.includes(oauthLoginMethods[authMethod].loginMethod));
+
+export const assertOAuthLoginMethodEnabled = ({
+  authMethod,
+  enabledLoginMethods,
+  canBypass = false
+}: {
+  authMethod: OAuthAuthMethod;
+  enabledLoginMethods?: readonly string[] | null;
+  canBypass?: boolean;
+}) => {
+  if (!isOAuthLoginMethodDisabled(authMethod, enabledLoginMethods) || canBypass) return;
+
+  throw new BadRequestError({
+    message: oauthLoginMethods[authMethod].disabledMessage,
+    name: "Oauth 2 login"
+  });
+};
 
 /*
  * Determines whether MFA is required and which method applies, based on org enforcement vs user

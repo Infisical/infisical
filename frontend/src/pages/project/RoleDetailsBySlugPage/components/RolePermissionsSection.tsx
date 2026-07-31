@@ -23,7 +23,11 @@ import { CertificatePolicyPermissionConditions } from "./CertificatePolicyPermis
 import { CertificateProfilePermissionConditions } from "./CertificateProfilePermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
-import { GeneralPermissionPolicies, TPermissionAction } from "./GeneralPermissionPolicies";
+import {
+  GeneralPermissionPolicies,
+  PermissionScope,
+  TPermissionAction
+} from "./GeneralPermissionPolicies";
 import { GroupPermissionConditions } from "./GroupPermissionConditions";
 import { IdentityManagementPermissionConditions } from "./IdentityManagementPermissionConditions";
 import { McpEndpointPermissionConditions } from "./McpEndpointPermissionConditions";
@@ -288,6 +292,7 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
                     .map((subject) => (
                       <GeneralPermissionPolicies
                         subject={subject}
+                        subjectScope={PermissionScope.Project}
                         actions={PROJECT_PERMISSION_OBJECT[subject].actions as TPermissionAction[]}
                         title={PROJECT_PERMISSION_OBJECT[subject].title}
                         description={PROJECT_PERMISSION_OBJECT[subject].description}

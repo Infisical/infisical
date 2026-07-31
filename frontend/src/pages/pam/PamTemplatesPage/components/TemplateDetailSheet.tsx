@@ -45,11 +45,11 @@ import {
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
+import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { formatDetailDate, PamDetailSheet } from "../../components/PamDetailSheet";
 import { PAM_TEMPLATE_TABS } from "../../components/pamResourceTabs";
 import { POLICY_EDITORS } from "../../components/policyEditors";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
-import { AccountPlatformIcon } from "../../PamAccessPage/components/AccountPlatformIcon";
 
 const configSchema = z.object({
   name: z.string().min(1, "Name is required").max(64),

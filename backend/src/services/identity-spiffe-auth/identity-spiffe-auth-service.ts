@@ -78,7 +78,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
-    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod"
+    "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
 };
 
@@ -625,6 +625,7 @@ export const identitySpiffeAuthServiceFactory = ({
       return doc;
     });
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.SPIFFE_AUTH);
     return {
       ...identitySpiffeAuth,
       orgId: identityMembershipOrg.scopeOrgId,
@@ -769,6 +770,7 @@ export const identitySpiffeAuthServiceFactory = ({
       ? orgDataKeyDecryptor({ cipherTextBlob: updatedSpiffeAuth.encryptedBundleEndpointCaCert }).toString()
       : "";
 
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.SPIFFE_AUTH);
     return {
       ...updatedSpiffeAuth,
       orgId: identityMembershipOrg.scopeOrgId,
@@ -946,6 +948,7 @@ export const identitySpiffeAuthServiceFactory = ({
       identityId,
       authMethod: IdentityAuthMethod.SPIFFE_AUTH
     });
+    await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.SPIFFE_AUTH);
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

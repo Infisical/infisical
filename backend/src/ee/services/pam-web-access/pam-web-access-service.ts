@@ -21,9 +21,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { PamAccessMethod, PamSessionStatus } from "../pam/pam-enums";
+import { PamAccessMethod, PamSessionEndReason, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
@@ -34,6 +35,7 @@ import {
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { reportPamSessionEnded } from "../pam-session/pam-session-fns";
 import { SESSION_HANDLERS } from "./pam-session-handlers";
 import {
   DEFAULT_WEB_SESSION_DURATION_MS,
@@ -69,6 +71,7 @@ type TPamWebAccessServiceFactoryDep = {
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TPamWebAccessServiceFactory = ReturnType<typeof pamWebAccessServiceFactory>;
@@ -104,7 +107,8 @@ export const pamWebAccessServiceFactory = ({
   kmsService,
   userDAL,
   mfaSessionService,
-  orgDAL
+  orgDAL,
+  telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
@@ -360,6 +364,14 @@ export const pamWebAccessServiceFactory = ({
                 type: EventType.PAM_SESSION_END,
                 metadata: { sessionId, accountId: session.accountId ?? undefined, accountName }
               }
+            });
+
+            void reportPamSessionEnded({
+              session: updated,
+              orgId,
+              endReason: PamSessionEndReason.Completed,
+              telemetryService,
+              userDAL
             });
           }
         } catch (err) {

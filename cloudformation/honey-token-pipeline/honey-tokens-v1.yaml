@@ -86,7 +86,7 @@ Resources:
       FunctionName: !Sub '${NamePrefix}-forwarder'
       Role: !GetAtt ForwarderLambdaRole.Arn
       Handler: index.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       Environment:
         Variables:
@@ -146,7 +146,7 @@ Resources:
       FunctionName: !Sub '${NamePrefix}-alert'
       Role: !GetAtt AlertLambdaRole.Arn
       Handler: index.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Timeout: 30
       Environment:
         Variables:

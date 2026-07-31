@@ -1,16 +1,7 @@
 import { useMemo, useState } from "react";
 import { GlobeIcon, PlusIcon, SearchIcon } from "lucide-react";
 
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput
-} from "@app/components/v3";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@app/components/v3";
 import {
   POPULAR_PROXIED_SERVICE_TEMPLATES,
   PROXIED_SERVICE_TEMPLATES,
@@ -69,15 +60,14 @@ const CustomCard = ({ onClick }: { onClick: () => void }) => (
     onClick={onClick}
     className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-mineshaft-500 bg-card p-4 text-left transition-colors hover:border-mineshaft-400 hover:bg-mineshaft-700/50"
   >
-    <div className="flex items-start justify-between gap-2">
+    <div className="flex items-start gap-2">
       <div className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
         <PlusIcon className="h-5 w-5 text-bunker-300" />
       </div>
-      <span className="text-[10px] font-medium tracking-wider text-muted uppercase">Custom</span>
     </div>
     <div className="flex flex-col gap-1">
-      <p className="text-sm font-semibold text-foreground">Start from scratch</p>
-      <p className="text-xs leading-relaxed text-muted">Set up your own service by hand.</p>
+      <p className="text-sm font-semibold text-foreground">Custom</p>
+      <p className="text-xs leading-relaxed text-muted">Set up any service manually.</p>
     </div>
   </button>
 );
@@ -137,35 +127,16 @@ export const ProxiedServiceTemplateSelect = ({ onSelect }: Props) => {
 
       {isSearching ? (
         <section>
-          {filtered.length ? (
-            <Grid>
-              <CustomCard onClick={() => onSelect(null)} />
-              {filtered.map((template) => (
-                <TemplateCard
-                  key={template.key}
-                  template={template}
-                  onClick={() => onSelect(template)}
-                />
-              ))}
-            </Grid>
-          ) : (
-            <Grid>
-              <CustomCard onClick={() => onSelect(null)} />
-            </Grid>
-          )}
-          {!filtered.length && (
-            <Empty className="mt-3 border">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <SearchIcon />
-                </EmptyMedia>
-                <EmptyTitle>No matching services</EmptyTitle>
-                <EmptyDescription>
-                  Try a different search term, or start from a custom service.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          )}
+          <Grid>
+            <CustomCard onClick={() => onSelect(null)} />
+            {filtered.map((template) => (
+              <TemplateCard
+                key={template.key}
+                template={template}
+                onClick={() => onSelect(template)}
+              />
+            ))}
+          </Grid>
         </section>
       ) : (
         <>
@@ -201,6 +172,28 @@ export const ProxiedServiceTemplateSelect = ({ onSelect }: Props) => {
           )}
         </>
       )}
+
+      <p className="text-xs text-muted">
+        Don&apos;t see the service you&apos;re looking for, or using a protocol other than HTTP?{" "}
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://infisical.com/slack"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Let us know on Slack
+        </a>{" "}
+        or{" "}
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://github.com/Infisical/infisical/discussions"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          request it on GitHub
+        </a>
+        .
+      </p>
     </div>
   );
 };

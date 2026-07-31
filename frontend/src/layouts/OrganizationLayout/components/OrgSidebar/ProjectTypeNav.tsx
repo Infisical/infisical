@@ -55,6 +55,7 @@ export const ProjectTypeNav = () => {
             size="lg"
             scope="project"
             asChild
+            closeOnMobile
             isActive={!isOnKmipServers && !isOnSecretSharing && !isOnProductSettings}
             tooltip="Projects"
           >
@@ -73,6 +74,7 @@ export const ProjectTypeNav = () => {
               size="lg"
               scope="project"
               asChild
+              closeOnMobile
               isActive={isOnKmipServers}
               tooltip="KMIP Servers"
             >
@@ -92,6 +94,7 @@ export const ProjectTypeNav = () => {
               size="lg"
               scope="project"
               asChild
+              closeOnMobile
               isActive={isOnSecretSharing}
               tooltip="Secret Sharing"
             >
@@ -111,6 +114,7 @@ export const ProjectTypeNav = () => {
               size="lg"
               scope="project"
               asChild
+              closeOnMobile
               isActive={isOnProductSettings}
               tooltip="Product Settings"
             >

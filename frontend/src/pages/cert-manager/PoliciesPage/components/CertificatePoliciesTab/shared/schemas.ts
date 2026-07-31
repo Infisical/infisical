@@ -36,21 +36,17 @@ export const uiExtendedKeyUsagesSchema = z.object({
 
 export const uiValiditySchema = z.object({
   maxDuration: z.object({
-    value: z.coerce.number().min(1, "Duration must be at least 1"),
+    value: z.number().min(1, "Duration must be at least 1"),
     unit: z.nativeEnum(CertDurationUnit)
   })
 });
 
 export const uiSignatureAlgorithmSchema = z.object({
-  allowedAlgorithms: z
-    .array(z.string().min(1, "Algorithm cannot be empty"))
-    .min(1, "At least one algorithm must be selected")
+  allowedAlgorithms: z.array(z.string().min(1, "Algorithm cannot be empty"))
 });
 
 export const uiKeyAlgorithmSchema = z.object({
-  allowedKeyTypes: z
-    .array(z.string().min(1, "Key type cannot be empty"))
-    .min(1, "At least one key type must be selected")
+  allowedKeyTypes: z.array(z.string().min(1, "Key type cannot be empty"))
 });
 
 export const uiBasicConstraintsSchema = z.object({
@@ -98,8 +94,8 @@ export const policySchema = z.object({
   keyUsages: uiKeyUsagesSchema.optional(),
   extendedKeyUsages: uiExtendedKeyUsagesSchema.optional(),
   validity: uiValiditySchema.optional(),
-  signatureAlgorithm: uiSignatureAlgorithmSchema,
-  keyAlgorithm: uiKeyAlgorithmSchema
+  signatureAlgorithm: uiSignatureAlgorithmSchema.optional(),
+  keyAlgorithm: uiKeyAlgorithmSchema.optional()
 });
 
 export type PolicyFormData = z.infer<typeof policySchema>;

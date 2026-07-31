@@ -22,7 +22,7 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-md p-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-9 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[style=underline]:rounded-none",
+  "group/tabs-list inline-flex w-fit items-center justify-center rounded-md pb-[3px] text-muted-foreground group-data-[orientation=horizontal]/tabs:h-9 group-data-[orientation=vertical]/tabs:h-fit group-data-[orientation=vertical]/tabs:flex-col data-[style=underline]:rounded-none",
   {
     variants: {
       variant: {
@@ -85,7 +85,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
         "[&_svg:not([class*='size-'])]:size-4",
         "data-[state=active]:text-foreground",
         "group-data-[style=filled]/tabs-list:data-[state=active]:border-container-hover group-data-[style=filled]/tabs-list:data-[state=active]:bg-container-hover",
-        "after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0",
+        "after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:-inset-x-px",
         "group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.25",
         "group-data-[orientation=horizontal]/tabs:group-data-[style=underline]/tabs-list:after:bottom-[-5.6px]",
         "group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-left-1",

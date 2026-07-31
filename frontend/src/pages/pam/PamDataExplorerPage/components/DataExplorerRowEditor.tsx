@@ -72,7 +72,7 @@ export const DataExplorerRowEditor = ({
         <SheetHeader>
           <SheetTitle>Edit Row</SheetTitle>
         </SheetHeader>
-        <div className="space-y-3 py-4">
+        <div className="space-y-3 p-4">
           {columns.map((col) => {
             const readOnly = isReadOnly(col);
             const value = formValues[col.name] ?? "";

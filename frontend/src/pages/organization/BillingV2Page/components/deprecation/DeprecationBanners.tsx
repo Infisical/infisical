@@ -12,7 +12,7 @@ import {
 import { BillingV2CatalogProduct, BillingV2Overview } from "@app/hooks/api";
 
 import { tierLabel } from "../../billing-v2-format";
-import { asPlanDeprecation, daysLeftLabel, DeprecatedEntry } from "./deprecation-data";
+import { daysLeftLabel, DeprecatedEntry, Deprecation } from "./deprecation-data";
 import { DeprecationDetailBody } from "./DeprecationDetailBody";
 
 // Attention banners above the summary, one per affected product. A retiring plan reads forward-looking
@@ -38,7 +38,7 @@ export const DeprecationBanners = ({
       productId,
       name: catalog.find((prod) => prod.id === productId)?.name ?? productId,
       planTier: entitlement.planTier,
-      deprecation: asPlanDeprecation(entitlement.deprecation)!
+      deprecation: entitlement.deprecation as Deprecation
     }))
     .sort((a, b) => {
       const rank = (entry: DeprecatedEntry) => (entry.deprecation.kind === "product" ? 0 : 1);

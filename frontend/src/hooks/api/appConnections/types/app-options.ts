@@ -49,6 +49,10 @@ export type TAzureEntraIdConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureEntraId;
 };
 
+export type TMicrosoftIntuneConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.MicrosoftIntune;
+};
+
 export type TAzureDevOpsConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDevOps;
   oauthClientId?: string;
@@ -337,6 +341,10 @@ export type TNutanixPrismCentralConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NutanixPrismCentral;
 };
 
+export type TSpaceliftConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Spacelift;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -394,6 +402,7 @@ export type TAppConnectionOption =
   | TSmbConnectionOption
   | TWinRMConnectionOption
   | TAzureEntraIdConnectionOption
+  | TMicrosoftIntuneConnectionOption
   | TVenafiConnectionOption
   | TVenafiTppConnectionOption
   | TExternalInfisicalConnectionOption
@@ -418,7 +427,8 @@ export type TAppConnectionOption =
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
   | TFireworksConnectionOption
-  | TNutanixPrismCentralConnectionOption;
+  | TNutanixPrismCentralConnectionOption
+  | TSpaceliftConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -477,6 +487,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.CircleCI]: TCircleCISyncConnectionOption;
   [AppConnection.Cloud66]: TCloud66ConnectionOption;
   [AppConnection.AzureEntraId]: TAzureEntraIdConnectionOption;
+  [AppConnection.MicrosoftIntune]: TMicrosoftIntuneConnectionOption;
   [AppConnection.Venafi]: TVenafiConnectionOption;
   [AppConnection.VenafiTpp]: TVenafiTppConnectionOption;
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
@@ -502,4 +513,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
   [AppConnection.Fireworks]: TFireworksConnectionOption;
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
+  [AppConnection.Spacelift]: TSpaceliftConnectionOption;
 };

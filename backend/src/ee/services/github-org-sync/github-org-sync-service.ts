@@ -11,6 +11,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -86,6 +87,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -100,7 +102,8 @@ export const githubOrgSyncServiceFactory = ({
   orgMembershipDAL,
   membershipRoleDAL,
   membershipGroupDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -424,6 +427,8 @@ export const githubOrgSyncServiceFactory = ({
             { userId, $in: { groupId: removeFromTeams.map((el) => el.groupId) } },
             tx
           );
+
+          await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [userId] }, tx);
         });
       }
 
@@ -841,6 +846,12 @@ export const githubOrgSyncServiceFactory = ({
             },
             tx
           );
+
+          const removedUserIds = membershipsToRemove
+            .map((membership) => activeMembers.find((am) => am.id === membership.orgMembershipId)?.user?.id)
+            .filter(Boolean) as string[];
+          await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
+
           updatedTeams.add(teamName);
         }
       }

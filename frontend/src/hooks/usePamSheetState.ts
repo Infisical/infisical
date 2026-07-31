@@ -9,6 +9,7 @@ export enum PamSheetTab {
   Runs = "runs",
   General = "general",
   Rotation = "rotation",
+  Dependencies = "dependencies",
   Approvals = "approvals"
 }
 

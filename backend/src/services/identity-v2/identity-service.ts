@@ -66,7 +66,10 @@ type TScopedIdentityV2ServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
-  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "revokeAllTokensForIdentity">;
+  identityAccessTokenService: Pick<
+    TIdentityAccessTokenServiceFactory,
+    "insertIdentityWideRevocationMarker" | "bumpIdentityRevocationVersion"
+  >;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -377,11 +380,13 @@ export const identityV2ServiceFactory = ({
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }
 
-    // Set the identity-wide PG revocation epoch before removing the row so
-    // any JWT issued for this identity (with iat < now) is rejected.
-    await identityAccessTokenService.revokeAllTokensForIdentity(dto.selector.identityId);
-
-    const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);
+    // Set the identity-wide PG revocation epoch atomically with the row delete
+    // so any JWT issued for this identity (with iat < now) is rejected.
+    const deletedIdentity = await identityDAL.transaction(async (tx) => {
+      await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: dto.selector.identityId, tx });
+      return identityDAL.deleteById(dto.selector.identityId, tx);
+    });
+    await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
 
     await licenseService.updateSubscriptionOrgMemberCount(scopeData.orgId);
 

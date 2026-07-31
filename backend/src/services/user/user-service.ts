@@ -9,6 +9,8 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from "@app/services/license-client";
@@ -72,6 +74,7 @@ type TUserServiceFactoryDep = {
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
 };
 
 export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
@@ -88,7 +91,8 @@ export const userServiceFactory = ({
   totpConfigDAL,
   webAuthnCredentialDAL,
   mfaRecoveryCodeService,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -509,7 +513,15 @@ export const userServiceFactory = ({
     const myAccount = users?.find((el) => el.id === userId);
     if (duplicatedAccounts.length && myAccount) {
       await userDAL.transaction(async (tx) => {
-        await userDAL.delete({ $in: { id: duplicatedAccounts?.map((el) => el.id) } }, tx);
+        const duplicatedAccountIds = duplicatedAccounts.map((el) => el.id);
+        await userDAL.delete({ $in: { id: duplicatedAccountIds } }, tx);
+        await alertChannelRecipientDAL.deleteByPrincipals(
+          {
+            principalType: AlertPrincipalType.USER,
+            principalIds: duplicatedAccountIds
+          },
+          tx
+        );
         await userDAL.updateById(userId, { username: (myAccount.email || myAccount.username).toLowerCase() }, tx);
       });
     }
@@ -564,7 +576,19 @@ export const userServiceFactory = ({
       actorUserId: userId
     });
 
-    const user = await userDAL.deleteById(userId);
+    const user = await userDAL.transaction(async (tx) => {
+      const deletedUser = await userDAL.deleteById(userId, tx);
+
+      await alertChannelRecipientDAL.deleteByPrincipals(
+        {
+          principalType: AlertPrincipalType.USER,
+          principalIds: [userId]
+        },
+        tx
+      );
+
+      return deletedUser;
+    });
 
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];

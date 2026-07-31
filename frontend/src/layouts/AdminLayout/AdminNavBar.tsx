@@ -13,7 +13,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Tab, TabList, Tabs, Tooltip } from "@app/components/v2";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
 const generalTabs = [
@@ -64,7 +71,7 @@ export const AdminNavBar = () => {
   const { currentOrg } = useOrganization();
 
   return (
-    <div className="border-b border-mineshaft-600 bg-mineshaft-900">
+    <div className="border-b border-border bg-card">
       <motion.div
         initial={{ x: -150 }}
         animate={{ x: 0 }}
@@ -74,25 +81,26 @@ export const AdminNavBar = () => {
       >
         <nav className="w-full">
           <Tabs value="selected">
-            <TabList className="border-b-0">
-              <Tooltip position="bottom" content="Back to organization">
-                <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
-                  <Tab value="back">
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                  </Tab>
-                </Link>
+            <TabsList variant="admin">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="back" asChild>
+                    <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
+                      <FontAwesomeIcon icon={faArrowLeft} />
+                    </Link>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Back to organization</TooltipContent>
               </Tooltip>
               {generalTabs.map((tab) => {
                 const isActive = matchRoute({ to: tab.link, fuzzy: false });
                 return (
-                  <Link key={tab.link} to={tab.link}>
-                    <Tab variant="instance" value={isActive ? "selected" : ""}>
-                      {tab.label}
-                    </Tab>
-                  </Link>
+                  <TabsTrigger key={tab.link} value={isActive ? "selected" : ""} asChild>
+                    <Link to={tab.link}>{tab.label}</Link>
+                  </TabsTrigger>
                 );
               })}
-            </TabList>
+            </TabsList>
           </Tabs>
         </nav>
       </motion.div>

@@ -43,6 +43,7 @@ import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
 import { RundeckSyncDestinationSection } from "./RundeckSyncDestinationSection";
 import { SnowflakeSyncDestinationSection } from "./SnowflakeSyncDestinationSection";
+import { SpaceliftSyncDestinationSection } from "./SpaceliftSyncDestinationSection";
 import { SupabaseSyncDestinationSection } from "./SupabaseSyncDestinationSection";
 import { TeamCitySyncDestinationSection } from "./TeamCitySyncDestinationSection";
 import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestinationSection";
@@ -207,6 +208,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Cloud66:
       DestinationComponents = <Cloud66SyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Spacelift:
+      DestinationComponents = <SpaceliftSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

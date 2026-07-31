@@ -55,6 +55,7 @@ const envSchema = z
       .default("false")
       .transform((el) => el === "true"),
     DISABLE_PUBLIC_SECRET_SHARING: zodStrBool.default("false"),
+    DISABLE_UPDATE_CHECK: zodStrBool.default("false"),
     REDIS_URL: zpStr(z.string().optional()),
     REDIS_USERNAME: zpStr(z.string().optional()),
     REDIS_PASSWORD: zpStr(z.string().optional()),
@@ -158,6 +159,32 @@ const envSchema = z
     DB_PASSWORD: zpStr(z.string().describe("Postgres database password").optional()),
     DB_NAME: zpStr(z.string().describe("Postgres database name").optional()),
     DB_READ_REPLICAS: zpStr(z.string().describe("Postgres read replicas").optional()),
+    DB_POOL_MIN: z.coerce.number().int().min(0).default(0).describe("Minimum primary Postgres pool connections"),
+    DB_POOL_MAX: z.coerce.number().int().min(1).default(10).describe("Maximum primary Postgres pool connections"),
+    DB_REPLICA_POOL_MIN: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe("Minimum pool connections per Postgres read replica"),
+    DB_REPLICA_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10)
+      .describe("Maximum pool connections per Postgres read replica"),
+    AUDIT_LOGS_DB_POOL_MIN: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe("Minimum audit log Postgres pool connections"),
+    AUDIT_LOGS_DB_POOL_MAX: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(10)
+      .describe("Maximum audit log Postgres pool connections"),
     BCRYPT_SALT_ROUND: z.number().optional(), // note(daniel): this is deprecated, use SALT_ROUNDS instead. only keeping this for backwards compatibility.
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
@@ -527,6 +554,23 @@ const envSchema = z
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
     "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
+  .superRefine((data, ctx) => {
+    (
+      [
+        ["DB_POOL_MIN", "DB_POOL_MAX"],
+        ["DB_REPLICA_POOL_MIN", "DB_REPLICA_POOL_MAX"],
+        ["AUDIT_LOGS_DB_POOL_MIN", "AUDIT_LOGS_DB_POOL_MAX"]
+      ] as const
+    ).forEach(([minKey, maxKey]) => {
+      if (data[minKey] > data[maxKey]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [minKey],
+          message: `${minKey} (${data[minKey]}) must be less than or equal to ${maxKey} (${data[maxKey]}).`
+        });
+      }
+    });
+  })
   .transform((data) => ({
     ...data,
     SALT_ROUNDS: data.SALT_ROUNDS || data.BCRYPT_SALT_ROUND || 12,
@@ -701,7 +745,9 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
     readReplicas: parsedEnv.data.DB_READ_REPLICAS?.map((el) => ({
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
-    }))
+    })),
+    pool: { min: parsedEnv.data.DB_POOL_MIN, max: parsedEnv.data.DB_POOL_MAX },
+    replicaPool: { min: parsedEnv.data.DB_REPLICA_POOL_MIN, max: parsedEnv.data.DB_REPLICA_POOL_MAX }
   };
 };
 
