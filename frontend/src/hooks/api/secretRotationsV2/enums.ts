@@ -24,7 +24,9 @@ export enum SecretRotation {
   DatadogApiKey = "datadog-api-key",
   ConvexAccessKey = "convex-access-key",
   FireworksApiKey = "fireworks-api-key",
-  SnowflakeUserKeyPair = "snowflake-user-key-pair"
+  SnowflakeUserKeyPair = "snowflake-user-key-pair",
+  CloudflareApiToken = "cloudflare-api-token",
+  CloudflareR2AccessKey = "cloudflare-r2-access-key"
 }
 
 export enum SecretRotationStatus {

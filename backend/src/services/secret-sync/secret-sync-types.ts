@@ -200,6 +200,12 @@ import {
   TSnowflakeSyncWithCredentials
 } from "./snowflake";
 import {
+  TSpaceliftSync,
+  TSpaceliftSyncInput,
+  TSpaceliftSyncListItem,
+  TSpaceliftSyncWithCredentials
+} from "./spacelift";
+import {
   TSupabaseSync,
   TSupabaseSyncInput,
   TSupabaseSyncListItem,
@@ -273,7 +279,8 @@ export type TSecretSync =
   | TTravisCISync
   | TSnowflakeSync
   | THasuraCloudSync
-  | TCloud66Sync;
+  | TCloud66Sync
+  | TSpaceliftSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -322,7 +329,8 @@ export type TSecretSyncWithCredentials =
   | TTravisCISyncWithCredentials
   | TSnowflakeSyncWithCredentials
   | THasuraCloudSyncWithCredentials
-  | TCloud66SyncWithCredentials;
+  | TCloud66SyncWithCredentials
+  | TSpaceliftSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -371,7 +379,8 @@ export type TSecretSyncInput =
   | TTravisCISyncInput
   | TSnowflakeSyncInput
   | THasuraCloudSyncInput
-  | TCloud66SyncInput;
+  | TCloud66SyncInput
+  | TSpaceliftSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -420,7 +429,8 @@ export type TSecretSyncListItem =
   | TTravisCISyncListItem
   | TSnowflakeSyncListItem
   | THasuraCloudSyncListItem
-  | TCloud66SyncListItem;
+  | TCloud66SyncListItem
+  | TSpaceliftSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

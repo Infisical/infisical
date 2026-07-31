@@ -414,6 +414,12 @@ import {
   TValidateSnowflakeConnectionCredentialsSchema
 } from "./snowflake";
 import {
+  TSpaceliftConnection,
+  TSpaceliftConnectionConfig,
+  TSpaceliftConnectionInput,
+  TValidateSpaceliftConnectionCredentialsSchema
+} from "./spacelift";
+import {
   TSshConnection,
   TSshConnectionConfig,
   TSshConnectionInput,
@@ -571,6 +577,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TLiteLLMConnection
   | TFireworksConnection
   | TNutanixPrismCentralConnection
+  | TSpaceliftConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -664,6 +671,7 @@ export type TAppConnectionInput = { id: string } & (
   | TLiteLLMConnectionInput
   | TFireworksConnectionInput
   | TNutanixPrismCentralConnectionInput
+  | TSpaceliftConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -788,7 +796,8 @@ export type TAppConnectionConfig =
   | TQoveryConnectionConfig
   | TLiteLLMConnectionConfig
   | TFireworksConnectionConfig
-  | TNutanixPrismCentralConnectionConfig;
+  | TNutanixPrismCentralConnectionConfig
+  | TSpaceliftConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -872,7 +881,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateQoveryConnectionCredentialsSchema
   | TValidateLiteLLMConnectionCredentialsSchema
   | TValidateFireworksConnectionCredentialsSchema
-  | TValidateNutanixPrismCentralConnectionCredentialsSchema;
+  | TValidateNutanixPrismCentralConnectionCredentialsSchema
+  | TValidateSpaceliftConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

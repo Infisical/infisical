@@ -3047,6 +3047,11 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    SPACELIFT: {
+      apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
+      apiKeyId: "The API Key ID used to authenticate with Spacelift.",
+      apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
   }
 };
@@ -3143,6 +3148,10 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
         "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+    },
+    SPACELIFT: {
+      writeOnly:
+        "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
     }
   },
   DESTINATION_CONFIG: {
@@ -3393,6 +3402,16 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    SPACELIFT: {
+      contextId: "The ID of the Spacelift context to sync secrets to.",
+      contextName: "The name of the Spacelift context to sync secrets to.",
+      configType:
+        "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
+      mountPath:
+        "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
+      fileMountFormat:
+        "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
     }
   }
 };
@@ -3574,6 +3593,22 @@ export const SecretRotations = {
     DATADOG_API_KEY: {
       name: "The name for the generated Datadog API key."
     },
+    CLOUDFLARE_API_TOKEN: {
+      name: "The name for the generated Cloudflare API token.",
+      policies:
+        "The access policies to attach to the generated Cloudflare API token. Each policy scopes a set of permission groups to the entire account, to all zones in the account, or to a specific set of zones.",
+      allowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is denied from."
+    },
+    CLOUDFLARE_R2_ACCESS_KEY: {
+      name: "The name for the generated Cloudflare API token that backs the R2 access key.",
+      buckets:
+        "The R2 buckets the generated access key is scoped to. Each entry is a bucket name plus its jurisdiction (default, eu, or fedramp).",
+      accessLevel:
+        "The level of access the generated key has over the selected buckets (object-read for read and list, object-read-write to also write).",
+      allowedIps: "The IP addresses or CIDR blocks the generated R2 access key is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated R2 access key is denied from."
+    },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
     },
@@ -3665,6 +3700,14 @@ export const SecretRotations = {
     DATADOG_API_KEY: {
       apiKeyId: "The name of the secret that the rotated Datadog API key ID will be mapped to.",
       apiKey: "The name of the secret that the rotated Datadog API key value will be mapped to."
+    },
+    CLOUDFLARE_API_TOKEN: {
+      tokenId: "The name of the secret that the rotated Cloudflare API token ID will be mapped to.",
+      apiToken: "The name of the secret that the rotated Cloudflare API token value will be mapped to."
+    },
+    CLOUDFLARE_R2_ACCESS_KEY: {
+      accessKeyId: "The name of the secret that the rotated R2 access key ID will be mapped to.",
+      secretAccessKey: "The name of the secret that the rotated R2 secret access key will be mapped to."
     },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."

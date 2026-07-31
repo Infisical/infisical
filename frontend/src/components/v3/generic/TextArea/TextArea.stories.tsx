@@ -25,6 +25,10 @@ const meta = {
   },
   tags: ["autodocs"],
   argTypes: {
+    variant: {
+      control: "select",
+      options: ["default", "outlined"]
+    },
     rows: {
       control: "number"
     },
@@ -45,6 +49,7 @@ const meta = {
     }
   },
   args: {
+    variant: "default",
     placeholder: "Tell us a little about your team...",
     isError: false,
     disabled: false,
@@ -71,6 +76,20 @@ export const Default: Story = {
       description: {
         story:
           "Baseline empty textarea with placeholder text. The control auto-grows as the user types — only set `rows` when you specifically want to cap the starting height."
+      }
+    }
+  }
+};
+
+export const Outlined: Story = {
+  args: {
+    variant: "outlined"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms."
       }
     }
   }

@@ -131,6 +131,7 @@ const WebAuthnVerify = ({
         <FieldLabel htmlFor="mfa-passkey-name">Passkey name</FieldLabel>
         <Input
           id="mfa-passkey-name"
+          variant="outlined"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Optional"

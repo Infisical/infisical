@@ -42,6 +42,24 @@ export const RotationsBrowser = () => {
       rotationType: "Dual-Phase",
     },
     {
+      name: "Cloudflare API Token",
+      slug: "cloudflare-api-token",
+      path: "/documentation/platform/secret-rotation/cloudflare-api-token",
+      description:
+        "Learn how to automatically rotate Cloudflare API tokens.",
+      category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
+    {
+      name: "Cloudflare R2 Access Key",
+      slug: "cloudflare-r2-access-key",
+      path: "/documentation/platform/secret-rotation/cloudflare-r2-access-key",
+      description:
+        "Learn how to automatically rotate Cloudflare R2 access keys.",
+      category: "Cloud Providers",
+      rotationType: "Dual-Phase",
+    },
+    {
       name: "Convex Access Key",
       slug: "convex-access-key",
       path: "/documentation/platform/secret-rotation/convex-access-key",

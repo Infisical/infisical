@@ -28,6 +28,10 @@ const meta = {
       control: "select",
       options: ["text", "email", "password", "number", "date", "url", "search", "tel", "file"]
     },
+    variant: {
+      control: "select",
+      options: ["default", "outlined"]
+    },
     isError: {
       control: "boolean"
     },
@@ -46,6 +50,7 @@ const meta = {
   },
   args: {
     type: "text",
+    variant: "default",
     placeholder: "Enter text...",
     isError: false,
     disabled: false,
@@ -72,6 +77,20 @@ export const Default: Story = {
       description: {
         story:
           "Baseline empty input with placeholder text. Use as the starting point for any text input — toggle `type` in the controls panel for specialised browser UX (email, password, number, date, file, etc.)."
+      }
+    }
+  }
+};
+
+export const Outlined: Story = {
+  args: {
+    variant: "outlined"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
       }
     }
   }

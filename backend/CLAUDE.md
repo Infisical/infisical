@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **backend** package of the Infisical monorepo — a Fastify 4 API server with TypeScript, PostgreSQL via Knex, and BullMQ queues.
 
+The backend code quality guide is imported below, so it is always in context for work in this package. **Check every change against it, whatever the change is, before calling the task done.** This file covers *where* code goes and *which* pattern to follow; the quality guide covers the minimum any implementation has to handle. It is a deliberately non-exhaustive floor, so the topics it happens to cover are not a filter for whether it applies.
+
+@CODE_QUALITY.md
+
 ## Essential Commands
 
 All commands run from the `backend/` directory:
@@ -410,4 +414,5 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 2. If adding DB tables: create migration via `npm run migration:new`, run it, then `npm run generate:schema`
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it
-5. Run `make reviewable-api` to verify lint + types
+5. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
+6. Run `make reviewable-api` to verify lint + types

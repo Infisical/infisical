@@ -9,6 +9,8 @@ import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { Auth0ClientSecretRotationReviewFields } from "./Auth0ClientSecretRotationReviewFields";
 import { AwsIamUserSecretRotationReviewFields } from "./AwsIamUserSecretRotationReviewFields";
 import { AzureClientSecretRotationReviewFields } from "./AzureClientSecretRotationReviewFields";
+import { CloudflareApiTokenRotationReviewFields } from "./CloudflareApiTokenRotationReviewFields";
+import { CloudflareR2AccessKeyRotationReviewFields } from "./CloudflareR2AccessKeyRotationReviewFields";
 import { ConvexAccessKeyRotationReviewFields } from "./ConvexAccessKeyRotationReviewFields";
 import { DatabricksServicePrincipalSecretRotationReviewFields } from "./DatabricksServicePrincipalSecretRotationReviewFields";
 import { DatadogApiKeyRotationReviewFields } from "./DatadogApiKeyRotationReviewFields";
@@ -56,7 +58,9 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.DatadogApiKey]: DatadogApiKeyRotationReviewFields,
   [SecretRotation.ConvexAccessKey]: ConvexAccessKeyRotationReviewFields,
   [SecretRotation.FireworksApiKey]: FireworksApiKeyRotationReviewFields,
-  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields
+  [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields,
+  [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationReviewFields,
+  [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {
