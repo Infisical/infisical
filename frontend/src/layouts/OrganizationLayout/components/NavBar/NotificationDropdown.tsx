@@ -17,7 +17,7 @@ import {
   useUpdateNotification
 } from "@app/hooks/api/notifications/mutations";
 import { useGetMyNotifications } from "@app/hooks/api/notifications/queries";
-import { isCriticalNotification } from "@app/hooks/api/notifications/types";
+import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifications/types";
 
 import { Notification } from "./Notification";
 
@@ -28,6 +28,27 @@ export const NotificationDropdown = () => {
   const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead();
   const { mutate: updateNotification } = useUpdateNotification();
   const { mutate: deleteNotification } = useDeleteNotification();
+
+  // Links are stored server-side and may be site-relative or absolute, and may carry a query string. Passing them
+  // straight to `to` would resolve them against the current path and swallow the search params, so normalize to a
+  // path + search + hash and let the router parse it via `href`.
+  const openNotificationLink = (link: string) => {
+    try {
+      const { pathname, search, hash } = new URL(link, window.location.origin);
+      router.navigate({ href: `${pathname}${search}${hash}` });
+    } catch {
+      router.navigate({ to: link });
+    }
+  };
+
+  const handleNotificationOpen = (notification: TUserNotification) => {
+    if (!notification.isRead) {
+      updateNotification({ notificationId: notification.id, isRead: true });
+    }
+    if (notification.link) {
+      openNotificationLink(notification.link);
+    }
+  };
 
   const unreadCount = useMemo(
     () => notifications?.filter((n) => !n.isRead).length || 0,
@@ -103,22 +124,10 @@ export const NotificationDropdown = () => {
                     role="button"
                     tabIndex={0}
                     key={notification.id}
-                    onClick={() => {
-                      if (!notification.isRead) {
-                        updateNotification({ notificationId: notification.id, isRead: true });
-                      }
-                      if (notification.link) {
-                        router.navigate({ to: notification.link });
-                      }
-                    }}
+                    onClick={() => handleNotificationOpen(notification)}
                     onKeyDown={(e) => {
                       if (e.key !== "Enter") return;
-                      if (!notification.isRead) {
-                        updateNotification({ notificationId: notification.id, isRead: true });
-                      }
-                      if (notification.link) {
-                        router.navigate({ to: notification.link });
-                      }
+                      handleNotificationOpen(notification);
                     }}
                   >
                     <Notification notification={notification} onDelete={deleteNotification} />

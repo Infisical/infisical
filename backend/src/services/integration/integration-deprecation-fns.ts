@@ -35,10 +35,19 @@ export const groupIntegrationsByProject = (
   }));
 
 /**
- * Deep link to a project's native integrations tab — same URL the integration sync failure email builds.
+ * Deep link to a project's native integrations tab, relative to the site root. In-app notification links must stay
+ * relative — the frontend router resolves them against the current location, so an absolute URL would be appended
+ * to the path the user is already on.
+ */
+export const buildNativeIntegrationsPath = (orgId: string, projectId: string) =>
+  `/organizations/${orgId}/projects/secret-management/${projectId}/integrations?selectedTab=native-integrations`;
+
+/**
+ * Absolute variant of {@link buildNativeIntegrationsPath} for emails — same URL the integration sync failure email
+ * builds.
  */
 export const buildNativeIntegrationsUrl = (siteUrl: string, orgId: string, projectId: string) =>
-  `${siteUrl}/organizations/${orgId}/projects/secret-management/${projectId}/integrations?selectedTab=native-integrations`;
+  `${siteUrl}${buildNativeIntegrationsPath(orgId, projectId)}`;
 
 /**
  * Turns membership rows into mailable recipients: drops members with no email, anyone already reached by another

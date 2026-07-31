@@ -14,6 +14,7 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TIntegrationDALFactory } from "./integration-dal";
 import {
+  buildNativeIntegrationsPath,
   buildNativeIntegrationsUrl,
   groupIntegrationsByProject,
   TIntegrationProjectSummary,
@@ -70,6 +71,7 @@ export const integrationDeprecationQueueFactory = ({
     projects: TIntegrationProjectSummary[];
     recipients: TNoticeRecipient[];
     siteUrl: string;
+    /** site-relative — see buildNativeIntegrationsPath */
     link?: string;
   }) => {
     if (!recipients.length || !projects.length) return;
@@ -151,7 +153,7 @@ export const integrationDeprecationQueueFactory = ({
 
     const orgAdminRecipients = toRecipients(
       orgAdmins
-        .filter((admin) => admin.status !== OrgMembershipStatus.Invited)
+        .filter((admin) => admin.status !== OrgMembershipStatus.Invited && !admin.isTemporary)
         .map((admin) => ({ userId: admin.user.id, email: admin.user.email }))
     );
     const orgAdminUserIds = new Set(orgAdminRecipients.map((recipient) => recipient.userId));
@@ -168,7 +170,7 @@ export const integrationDeprecationQueueFactory = ({
     await notify(
       orgAdminRecipients,
       projects,
-      projects.length === 1 ? buildNativeIntegrationsUrl(siteUrl, orgId, projects[0].projectId) : undefined
+      projects.length === 1 ? buildNativeIntegrationsPath(orgId, projects[0].projectId) : undefined
     );
 
     // then each project's admins get a notice scoped to their own project, minus anyone already reached above
@@ -176,7 +178,7 @@ export const integrationDeprecationQueueFactory = ({
       await notify(
         toRecipients(projectAdminsByProjectId[project.projectId] ?? [], orgAdminUserIds),
         [project],
-        buildNativeIntegrationsUrl(siteUrl, orgId, project.projectId)
+        buildNativeIntegrationsPath(orgId, project.projectId)
       );
     }
 

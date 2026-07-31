@@ -1,7 +1,7 @@
 import { faArrowUpRightFromSquare, faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton } from "@app/components/v2";
+import { IconButton } from "@app/components/v3";
 import { useOrganization, useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import { useBannerDismissal } from "@app/hooks";
@@ -12,7 +12,7 @@ const SECRET_SYNCS_DOCS_URL = "https://infisical.com/docs/integrations/secret-sy
 
 export const NativeIntegrationsBanner = () => {
   const { currentOrg } = useOrganization();
-  const [isDismissed, dismiss] = useBannerDismissal(DISMISS_STORAGE_KEY);
+  const [isDismissed, dismiss] = useBannerDismissal(`${DISMISS_STORAGE_KEY}-${currentOrg.id}`);
   const { hasOrgRole } = useOrgPermission();
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
@@ -43,9 +43,10 @@ export const NativeIntegrationsBanner = () => {
         />
       </a>
       <IconButton
-        className="ml-auto shrink-0 p-0 text-yellow-200"
-        ariaLabel="Dismiss banner"
-        variant="plain"
+        className="ml-auto shrink-0 text-yellow-200"
+        aria-label="Dismiss banner"
+        variant="ghost"
+        size="xs"
         onClick={dismiss}
       >
         <FontAwesomeIcon icon={faXmark} />
