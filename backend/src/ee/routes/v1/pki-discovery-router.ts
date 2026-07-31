@@ -284,7 +284,10 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           name: slugSchema({ field: "Name", max: 100 }).optional().describe("Name of the discovery configuration"),
-          description: pkiDescriptionSchema.optional().nullable().describe("Description of the discovery configuration"),
+          description: pkiDescriptionSchema
+            .optional()
+            .nullable()
+            .describe("Description of the discovery configuration"),
           targetConfig: NetworkTargetConfigSchema.optional().describe("Target configuration for discovery scans"),
           isAutoScanEnabled: z.boolean().optional().describe("Enable automatic scheduled scans"),
           scanIntervalDays: z

@@ -1,10 +1,9 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
-
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
   BasePkiSyncOptionsSchema,
