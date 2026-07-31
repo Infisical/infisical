@@ -108,7 +108,7 @@ type ResolvedMember = {
 };
 
 // Maps each accessibility issue to the tab where it can be resolved
-const ISSUE_TO_TAB: Record<PamAccountAccessibilityIssue, PamSheetTab> = {
+const ISSUE_TO_TAB: Partial<Record<PamAccountAccessibilityIssue, PamSheetTab>> = {
   [PamAccountAccessibilityIssue.NoCredential]: PamSheetTab.Configuration,
   [PamAccountAccessibilityIssue.NoGateway]: PamSheetTab.Advanced,
   [PamAccountAccessibilityIssue.NoRecordingConfig]: PamSheetTab.Advanced,
@@ -862,7 +862,9 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   );
 
   const tabsWithIssues = new Set(
-    (account?.accessibilityIssues ?? []).map((issue) => ISSUE_TO_TAB[issue])
+    (account?.accessibilityIssues ?? [])
+      .map((issue) => ISSUE_TO_TAB[issue])
+      .filter((t): t is PamSheetTab => Boolean(t))
   );
 
   const conn = (account?.connectionDetails ?? {}) as Record<string, unknown>;

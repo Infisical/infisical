@@ -74,6 +74,17 @@ export type TPamDiscoveredAccount = {
   dependencies: TPamDependency[];
 };
 
+// an imported account a source no longer finds in the environment (rotation + access blocked)
+export type TPamUnavailableAccount = {
+  id: string;
+  accountId: string;
+  name: string;
+  folderId: string | null;
+  folderName: string | null;
+  accountType: PamAccountType;
+  lastDiscoveredAt: string | null;
+};
+
 export type TPamAccountDependency = TPamDependency & {
   data: Record<string, unknown> | null;
   rotationStatus: PamRotationStatus | null;
@@ -173,7 +184,8 @@ export enum PamAccountAccessibilityIssue {
   NoGateway = "no-gateway",
   NoRecordingConfig = "no-recording-config",
   NoCredential = "no-credential",
-  NoApprovalConfig = "no-approval-config"
+  NoApprovalConfig = "no-approval-config",
+  Stale = "stale"
 }
 
 export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>

@@ -8,7 +8,9 @@ const ISSUE_LABELS: Record<PamAccountAccessibilityIssue, string> = {
   [PamAccountAccessibilityIssue.NoRecordingConfig]: "No recording bucket is configured",
   [PamAccountAccessibilityIssue.NoCredential]: "No password is set",
   [PamAccountAccessibilityIssue.NoApprovalConfig]:
-    "No approvers are configured for its folder. Ask a folder admin to add approvers under the folder's Approvals tab."
+    "No approvers are configured for its folder. Ask a folder admin to add approvers under the folder's Approvals tab.",
+  [PamAccountAccessibilityIssue.Stale]:
+    "It is no longer present in the environment. Rotation and access are blocked until it is rediscovered."
 };
 
 type Props = {
@@ -34,10 +36,10 @@ export const AccountAccessibilityBadge = ({ issues }: Props) => {
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
         {issues.length === 1 ? (
-          <p>This account can&apos;t be used yet: {formatSingleIssue(ISSUE_LABELS[issues[0]])}</p>
+          <p>This account can&apos;t be used: {formatSingleIssue(ISSUE_LABELS[issues[0]])}</p>
         ) : (
           <>
-            <p className="mb-1 font-medium">This account can&apos;t be used yet</p>
+            <p className="mb-1 font-medium">This account can&apos;t be used</p>
             <ul className="list-inside list-disc">
               {issues.map((issue) => (
                 <li key={issue}>{ISSUE_LABELS[issue]}</li>

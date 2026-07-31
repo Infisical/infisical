@@ -451,11 +451,8 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       });
 
       const controller = new AbortController();
-      const { accounts, machineErrors, dependencies, scannedDependencyMachines } = await withScanTimeout(
-        provider.scan(controller.signal),
-        controller,
-        MAX_SCAN_DURATION_MS
-      );
+      const { accounts, machineErrors, dependencies, scannedDependencyMachines, scannedAccountMachines } =
+        await withScanTimeout(provider.scan(controller.signal), controller, MAX_SCAN_DURATION_MS);
       const upsertLimit = pLimit(DISCOVERED_UPSERT_CONCURRENCY);
       const results = await Promise.all(
         accounts.map((d) =>
@@ -468,6 +465,24 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           )
         )
       );
+
+      // reconcile accounts a re-checked scope no longer returned
+      const seenFingerprints = new Set(accounts.map((a) => a.fingerprint));
+      const scannedMachines = new Set(scannedAccountMachines);
+      const storedAccounts = await pamDiscoveredAccountDAL.findFingerprintLinks(sourceId);
+      const goneAccounts = storedAccounts.filter((a) => {
+        if (seenFingerprints.has(a.fingerprint)) return false;
+        if (a.accountType === PamAccountType.WindowsAd) return true;
+        if (a.accountType === PamAccountType.Windows) {
+          // local-account fingerprint is `${domain}:${computerObjectGUID}:${username}`; the machine key is the
+          // first two segments, matching what the provider reports as re-checked
+          const machineKey = a.fingerprint.split(":").slice(0, 2).join(":");
+          return scannedMachines.has(machineKey);
+        }
+        return false;
+      });
+      await pamDiscoveredAccountDAL.markStale(goneAccounts.filter((a) => a.importedAccountId).map((a) => a.id));
+      await pamDiscoveredAccountDAL.deleteByIds(goneAccounts.filter((a) => !a.importedAccountId).map((a) => a.id));
 
       // Persist dependencies from the sweep, anchoring each to its run-as account by fingerprint. null =
       // dependency discovery did not run this scan, so the summary omits the dependencies clause.
@@ -639,6 +654,27 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     };
   };
 
+  const listStale = async ({ projectId, sourceId, search, offset, limit, ...ctx }: TListDiscoveredDTO) => {
+    await verifyAdmin(projectId, ctx);
+    const source = await pamDiscoverySourceDAL.findById(sourceId);
+    if (!source || source.projectId !== projectId) {
+      throw new NotFoundError({ message: `Discovery source with ID '${sourceId}' not found` });
+    }
+    const { accounts, totalCount } = await pamDiscoveredAccountDAL.listStale(sourceId, { search, offset, limit });
+    return {
+      accounts: accounts.map((a) => ({
+        id: a.id,
+        accountId: a.importedAccountId as string,
+        name: a.accountName as string,
+        folderId: (a.folderId as string | null) ?? null,
+        folderName: (a.folderName as string | null) ?? null,
+        accountType: a.accountType as PamAccountType,
+        lastDiscoveredAt: (a.lastDiscoveredAt as Date | null) ?? null
+      })),
+      totalCount
+    };
+  };
+
   const listAccountDependencies = async ({ accountId, projectId, ...ctx }: TListAccountDependenciesDTO) => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -778,6 +814,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     runScan,
     listRuns,
     listDiscovered,
+    listStale,
     importAccounts,
     listAccountDependencies
   };

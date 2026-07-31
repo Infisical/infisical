@@ -172,6 +172,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     settingsOverrides?: unknown;
     templateSettings: unknown;
     credentialConfigured: boolean;
+    isStale?: boolean;
   }) => {
     const accessibilityIssues = getAccountAccessibilityIssues(a);
     return { isAccessible: accessibilityIssues.length === 0, accessibilityIssues };

@@ -839,7 +839,8 @@ export enum PamAccountAccessibilityIssue {
   NoGateway = "no-gateway",
   NoRecordingConfig = "no-recording-config",
   NoCredential = "no-credential",
-  NoApprovalConfig = "no-approval-config"
+  NoApprovalConfig = "no-approval-config",
+  Stale = "stale"
 }
 
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
@@ -863,8 +864,11 @@ export const getAccountAccessibilityIssues = (account: {
   settingsOverrides?: unknown;
   templateSettings: unknown;
   credentialConfigured: boolean;
+  isStale?: boolean;
 }): PamAccountAccessibilityIssue[] => {
   const issues: PamAccountAccessibilityIssue[] = [];
+
+  if (account.isStale) issues.push(PamAccountAccessibilityIssue.Stale);
 
   if (
     accountTypeRequiresGateway(account.accountType as PamAccountType) &&

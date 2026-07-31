@@ -56,6 +56,7 @@ import {
   useListPamDiscoveryRuns,
   useListPamDiscoverySources,
   useListPamDiscoveryTypes,
+  useListPamUnavailableAccounts,
   usePamAccountTypeMap,
   useTriggerPamDiscoveryScan,
   useUpdatePamDiscoverySource
@@ -375,9 +376,27 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
     });
   const triggerScan = useTriggerPamDiscoveryScan();
 
+  const [staleSearch, setStaleSearch] = useState("");
+  const [debouncedStaleSearch] = useDebounce(staleSearch);
+  const [stalePage, setStalePage] = useState(1);
+  const [stalePerPage, setStalePerPage] = useState(() =>
+    getUserTablePreference("pamUnavailableAccountsTable", PreferenceKey.PerPage, 20)
+  );
+  const staleOffset = (stalePage - 1) * stalePerPage;
+  const { data: { accounts: unavailable = [], totalCount: unavailableTotal = 0 } = {} } =
+    useListPamUnavailableAccounts(sourceId ?? "", {
+      search: debouncedStaleSearch,
+      offset: staleOffset,
+      limit: stalePerPage
+    });
+
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
+
+  useEffect(() => {
+    setStalePage(1);
+  }, [debouncedStaleSearch]);
 
   const queryClient = useQueryClient();
   const latestRunStatus = runs[0]?.status;
@@ -562,6 +581,120 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
     </div>
   );
 
+  const sq = staleSearch.trim().toLowerCase();
+  const visibleUnavailable = sq
+    ? unavailable.filter((a) => a.name.toLowerCase().includes(sq))
+    : unavailable;
+
+  const unavailableTab: ReactNode = (
+    <div className="flex flex-1 flex-col gap-4 p-4">
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">Unavailable Accounts</CardTitle>
+          <CardDescription>
+            Imported accounts the latest scan no longer finds in the environment. Rotation and
+            access are blocked until they are rediscovered.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <InputGroup>
+            <InputGroupAddon align="inline-start">
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder="Search accounts..."
+              value={staleSearch}
+              onChange={(e) => setStaleSearch(e.target.value)}
+            />
+          </InputGroup>
+
+          {unavailableTotal === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
+                  {debouncedStaleSearch
+                    ? "No accounts match your search."
+                    : "No unavailable accounts. Everything imported is still present in the environment."}
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="w-40">Folder</TableHead>
+                    <TableHead className="w-40">Type</TableHead>
+                    <TableHead className="w-48">Last seen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleUnavailable.map((account) => {
+                    const typeDetails = accountTypeMap[account.accountType as PamAccountType];
+                    return (
+                      <TableRow key={account.id}>
+                        <TableCell className="font-medium text-foreground">
+                          <Link
+                            to="/organizations/$orgId/pam/accounts"
+                            params={{ orgId: currentOrg.id }}
+                            search={{
+                              accountId: account.accountId,
+                              folderId: account.folderId ?? undefined
+                            }}
+                            className="hover:underline"
+                          >
+                            <HighlightText text={account.name} highlight={staleSearch} />
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-muted">{account.folderName ?? "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {typeDetails && (
+                              <img
+                                src={`/images/integrations/${typeDetails.icon}`}
+                                alt={typeDetails.name}
+                                className="size-5 shrink-0 rounded-sm"
+                              />
+                            )}
+                            <span className="text-sm">
+                              {typeDetails?.name ?? account.accountType}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted">
+                          {account.lastDiscoveredAt
+                            ? format(new Date(account.lastDiscoveredAt), "MMM d, yyyy h:mm a")
+                            : "-"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+
+              <Pagination
+                count={unavailableTotal}
+                page={stalePage}
+                perPage={stalePerPage}
+                onChangePage={setStalePage}
+                onChangePerPage={(newPerPage) => {
+                  setStalePerPage(newPerPage);
+                  setStalePage(1);
+                  setUserTablePreference(
+                    "pamUnavailableAccountsTable",
+                    PreferenceKey.PerPage,
+                    newPerPage
+                  );
+                }}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const runsTab: ReactNode = (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <Card>
@@ -661,6 +794,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
 
   const tabContent: Partial<Record<PamSheetTab, ReactNode>> = {
     [PamSheetTab.General]: stagedTab,
+    [PamSheetTab.Unavailable]: unavailableTab,
     [PamSheetTab.Runs]: runsTab,
     [PamSheetTab.Configuration]: source ? (
       <ConfigurationTab source={source} onDirtyChange={setIsFormDirty} />
@@ -683,6 +817,8 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
             setSelected({});
             setSearch("");
             setPage(1);
+            setStaleSearch("");
+            setStalePage(1);
           }
           onOpenChange(open);
         }}

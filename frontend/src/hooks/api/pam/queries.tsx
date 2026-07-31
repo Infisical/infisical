@@ -39,7 +39,8 @@ import {
   TPamMembersData,
   TPamResourceRole,
   TPamRotationCandidateGroup,
-  TPamSession
+  TPamSession,
+  TPamUnavailableAccount
 } from "./types";
 
 // Resolves the org's PAM project, creating it on first access (lazy bootstrap on the backend).
@@ -95,6 +96,10 @@ export const pamKeys = {
     sourceId: string,
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
+  listUnavailableAccounts: (
+    sourceId: string,
+    params?: { search?: string; offset?: number; limit?: number }
+  ) => [...pamKeys.discovery(), "unavailable", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
   accountDependencies: (accountId: string) =>
     [...pamKeys.account(), "dependencies", accountId] as const,
@@ -555,6 +560,24 @@ export const useListPamDiscoveredAccounts = (
         discoveredAccounts: TPamDiscoveredAccount[];
         totalCount: number;
       }>(`/api/v1/pam/discovery-sources/${sourceId}/discovered-accounts`, { params });
+      return data;
+    },
+    enabled: Boolean(sourceId),
+    placeholderData: (prev) => prev
+  });
+};
+
+export const useListPamUnavailableAccounts = (
+  sourceId: string,
+  params?: { search?: string; offset?: number; limit?: number }
+) => {
+  return useQuery({
+    queryKey: pamKeys.listUnavailableAccounts(sourceId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        accounts: TPamUnavailableAccount[];
+        totalCount: number;
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/unavailable-accounts`, { params });
       return data;
     },
     enabled: Boolean(sourceId),

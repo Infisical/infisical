@@ -399,6 +399,54 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    method: "GET",
+    url: "/:sourceId/unavailable-accounts",
+    schema: {
+      operationId: "listPamUnavailableAccounts",
+      description: "List imported accounts a PAM discovery source no longer finds in the environment",
+      tags: [ApiDocsTags.PamDiscovery],
+      params: z.object({ sourceId: z.string().uuid() }),
+      querystring: z.object({
+        search: z.string().optional(),
+        offset: z.coerce.number().min(0).default(0).optional(),
+        limit: z.coerce.number().min(1).max(100).default(20).optional()
+      }),
+      response: {
+        200: z.object({
+          accounts: z.array(
+            z.object({
+              id: z.string(),
+              accountId: z.string(),
+              name: z.string(),
+              folderId: z.string().nullable(),
+              folderName: z.string().nullable(),
+              accountType: z.nativeEnum(PamAccountType),
+              lastDiscoveredAt: z.date().nullable()
+            })
+          ),
+          totalCount: z.number()
+        })
+      }
+    },
+    config: { rateLimit: readLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { accounts, totalCount } = await server.services.pamDiscovery.listStale({
+        sourceId: req.params.sourceId,
+        projectId: req.internalPamProjectId,
+        search: req.query.search,
+        offset: req.query.offset,
+        limit: req.query.limit,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+      return { accounts, totalCount };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:sourceId/discovered-accounts/import",
     schema: {
