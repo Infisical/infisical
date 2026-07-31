@@ -179,10 +179,9 @@ export const VerificationCodeInput = ({
             <div
               aria-hidden
               className={cn(
-                "relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground transition-colors max-sm:aspect-square max-sm:h-auto",
+                "relative flex h-[68px] min-w-0 items-center justify-center rounded-md border border-border bg-container font-jetbrains-mono text-xl text-foreground outline outline-1 outline-offset-4 outline-transparent transition-colors max-sm:aspect-square max-sm:h-auto",
                 "group-hover:border-foreground/20",
-                isActive &&
-                  "border-project/45 outline outline-1 outline-offset-4 outline-project/45",
+                isActive && "border-project/45 outline-project/45",
                 isError && "border-danger/55"
               )}
               key={index}

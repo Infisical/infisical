@@ -71,6 +71,7 @@ export const VerificationCodeForm = ({
   const hasError = Boolean(error);
   const [hasChangedSinceError, setHasChangedSinceError] = useState(false);
   const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
+  const [hasFailedVerification, setHasFailedVerification] = useState(false);
   const onSubmitRef = useRef(onSubmit);
 
   useEffect(() => {
@@ -80,6 +81,7 @@ export const VerificationCodeForm = ({
   useEffect(() => {
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
+      setHasFailedVerification(true);
     }
   }, [hasError, isPending]);
 
@@ -117,7 +119,7 @@ export const VerificationCodeForm = ({
           {error && <FieldError className="mt-0">{error}</FieldError>}
         </div>
       </div>
-      <AnimatedCollapse isOpen={hasAttemptedVerification}>
+      <AnimatedCollapse isOpen={hasFailedVerification}>
         <Button
           type="submit"
           variant="project"
