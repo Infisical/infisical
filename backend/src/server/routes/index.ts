@@ -102,7 +102,9 @@ import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-d
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
+import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { LicenseType } from "@app/ee/services/license/license-types";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -835,7 +837,11 @@ export const registerRoutes = async (
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
-  const usageReporter = buildUsageReporter(envConfig);
+  // An offline (air-gapped) license can't reach the license server, so usage reporting + its daily
+  // true-up cron are inert: skip the reporter entirely and disable the cron below.
+  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
+  const isOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+  const usageReporter = isOfflineLicense ? null : buildUsageReporter(envConfig);
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {
     usageSource = "cloud";
@@ -844,12 +850,12 @@ export const registerRoutes = async (
     queueService,
     cronJob,
     keyStore,
-    orgDAL,
     licenseService,
     usageMeteringService,
     meteredFeatures,
     usageReporter,
     isCloud: envConfig.isCloud,
+    isOffline: isOfflineLicense,
     source: usageSource
   });
 

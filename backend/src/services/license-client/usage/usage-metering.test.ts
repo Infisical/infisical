@@ -295,8 +295,8 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     overrides: {
       usageReporter?: unknown;
       keyStore?: ReturnType<typeof createFakeKeyStore>;
-      orgFind?: unknown;
       isCloud?: boolean;
+      isOffline?: boolean;
       getPlan?: (orgId: string) => Promise<{ slug: string | null }>;
     } = {}
   ) => {
@@ -304,22 +304,22 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const keyStore = overrides.keyStore ?? createFakeKeyStore();
     const usageReporter = overrides.usageReporter === undefined ? { reportSnapshots } : overrides.usageReporter;
     const emit = vi.fn();
-    const find = overrides.orgFind ?? vi.fn(async () => []);
+    const register = vi.fn();
     // Default to a billable plan so the cloud slug gate is a pass-through unless a test overrides it.
     const getPlan = vi.fn(overrides.getPlan ?? (async () => ({ slug: "pro" })));
     const queue = usageEventQueueFactory({
       queueService: { start: vi.fn() },
-      cronJob: { register: vi.fn(), start: vi.fn(), stop: vi.fn() } as never,
+      cronJob: { register, start: vi.fn(), stop: vi.fn() } as never,
       keyStore,
-      orgDAL: { find } as never,
       licenseService: { getPlan } as never,
       usageMeteringService: { emit },
       meteredFeatures,
       usageReporter: usageReporter as never,
       isCloud: overrides.isCloud ?? false,
+      isOffline: overrides.isOffline ?? false,
       source: "test-region"
     });
-    return { queue, reportSnapshots, keyStore, emit, find, getPlan };
+    return { queue, reportSnapshots, keyStore, emit, getPlan, register };
   };
 
   beforeEach(() => {
@@ -332,8 +332,8 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     expect(meteredFeatures[0].count).not.toHaveBeenCalled();
   });
 
-  test("reports a snapshot and records the value on first observation", async () => {
-    const { queue, reportSnapshots, keyStore } = buildQueue();
+  test("reports a snapshot and records the value on first observation (cloud, per org)", async () => {
+    const { queue, reportSnapshots, keyStore } = buildQueue({ isCloud: true });
     await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
 
     expect(reportSnapshots).toHaveBeenCalledTimes(1);
@@ -345,6 +345,18 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       source: "test-region"
     });
     expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`)).toBe("42");
+  });
+
+  test("self-hosted reports at the instance ('self-hosted') identity, not the triggering org", async () => {
+    const { queue, reportSnapshots, keyStore } = buildQueue({ isCloud: false });
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
+
+    expect(reportSnapshots).toHaveBeenCalledTimes(1);
+    const [orgId] = reportSnapshots.mock.calls[0] as unknown as [string, TUsageSnapshot[]];
+    expect(orgId).toBe("self-hosted");
+    // Deduped under the instance identity, not the org that triggered the event.
+    expect(keyStore.store.get(`license-usage-last-reported-self-hosted-${IdentitiesMeter.key}`)).toBe("42");
+    expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`)).toBeUndefined();
   });
 
   test("on cloud, skips a free org (null slug) before counting to avoid a 404", async () => {
@@ -390,7 +402,7 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
   test("skips the report when the count is unchanged", async () => {
     const keyStore = createFakeKeyStore();
     keyStore.store.set(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`, "42");
-    const { queue, reportSnapshots } = buildQueue({ keyStore });
+    const { queue, reportSnapshots } = buildQueue({ keyStore, isCloud: true });
 
     await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
     expect(reportSnapshots).not.toHaveBeenCalled();
@@ -406,7 +418,7 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const reportSnapshots = vi.fn(async () => {
       throw new UsageReportError(422, "dimension X is not priced by any active product on this license");
     });
-    const { queue, keyStore } = buildQueue({ usageReporter: { reportSnapshots } });
+    const { queue, keyStore } = buildQueue({ usageReporter: { reportSnapshots }, isCloud: true });
 
     // Does not throw (so the job is not retried).
     await expect(queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date())).resolves.toBeUndefined();
@@ -425,25 +437,32 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     );
   });
 
-  test("flushAllOrgs pages through orgs and emits per meter", async () => {
-    const fullPage = Array.from({ length: 500 }, (_, i) => ({ id: `org-${i}` }));
-    const lastPage = [{ id: "org-500" }];
-    const orgFind = vi.fn().mockResolvedValueOnce(fullPage).mockResolvedValueOnce(lastPage);
-    const { queue, emit } = buildQueue({ orgFind });
+  test("flushInstanceUsage emits each meter once at the instance identity (no per-org fan-out)", async () => {
+    const { queue, emit } = buildQueue();
 
-    await queue.flushAllOrgs();
+    await queue.flushInstanceUsage();
 
-    expect(orgFind).toHaveBeenCalledTimes(2); // stops after the partial page
-    expect(orgFind).toHaveBeenNthCalledWith(1, {}, { limit: 500, offset: 0 });
-    expect(orgFind).toHaveBeenNthCalledWith(2, {}, { limit: 500, offset: 500 });
-    expect(emit).toHaveBeenCalledTimes(501); // 501 orgs x 1 metered feature
+    expect(emit).toHaveBeenCalledTimes(meteredFeatures.length); // one emit per meter, not per org
+    expect(emit).toHaveBeenCalledWith("self-hosted", IdentitiesMeter.key);
   });
 
-  test("flushAllOrgs no-ops when the reporter is null", async () => {
-    const { queue, emit, find } = buildQueue({ usageReporter: null });
-    await queue.flushAllOrgs();
-    expect(find).not.toHaveBeenCalled();
+  test("flushInstanceUsage no-ops when the reporter is null", async () => {
+    const { queue, emit } = buildQueue({ usageReporter: null });
+    await queue.flushInstanceUsage();
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  test("registers the true-up cron enabled for self-hosted, disabled for cloud/offline", async () => {
+    const enabledFor = (opts: { isCloud?: boolean; isOffline?: boolean }) => {
+      const { queue, register } = buildQueue(opts);
+      queue.init();
+      const [{ enabled }] = register.mock.calls[0] as unknown as [{ enabled: boolean }];
+      return enabled;
+    };
+
+    expect(enabledFor({})).toBe(true); // self-hosted online
+    expect(enabledFor({ isCloud: true })).toBe(false);
+    expect(enabledFor({ isOffline: true })).toBe(false);
   });
 });
 

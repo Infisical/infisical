@@ -349,7 +349,7 @@ const envSchema = z
     LICENSE_SERVER_KEY: zpStr(z.string().optional()),
     LICENSE_KEY: zpStr(z.string().optional()),
     LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
-    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("off"),
+    LICENSE_SERVER_V2_MODE: z.enum(["off", "read-compare", "on"]).default("on"),
     LICENSE_SERVER_V2_URL: zpStr(z.string().optional()),
     LICENSE_SERVER_V2_SERVICE_KEY: zpStr(z.string().optional()),
     // When true, new checkouts (adding a payment method) and trials on License Server v1 cloud are

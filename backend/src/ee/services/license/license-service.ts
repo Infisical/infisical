@@ -166,26 +166,6 @@ export const licenseServiceFactory = ({
       }
       const currentPlan = projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements);
 
-      // The entitlement projection only carries feature flags; derive the plan tier from the
-      // subscription/contract view. Non-fatal so a subscription read failure keeps the features.
-      try {
-        const subscription = await licenseClient.getSubscription(SELF_HOSTED_LICENSE_ORG_ID);
-        const paidTiers = (subscription?.items ?? [])
-          .map((item) => item.plan.toLowerCase())
-          .filter((tier) => tier !== "free");
-        if (paidTiers.some((tier) => tier.includes("enterprise"))) {
-          currentPlan.slug = "enterprise";
-        } else if (paidTiers.some((tier) => tier.includes("advanced"))) {
-          currentPlan.slug = "advanced";
-        } else if (paidTiers.length > 0) {
-          currentPlan.slug = "pro";
-        }
-      } catch (error) {
-        logger.error(error, "syncSelfHostedV2Features: failed to resolve plan tier from subscription");
-      }
-
-      // Usage is instance-wide for self-hosted (null orgId aggregates the whole instance), as in the v1 sync.
-      currentPlan.workspacesUsed = await projectDAL.countOfBillableOrgProjects(null);
       currentPlan.membersUsed = await licenseDAL.countOfOrgMembers(null);
       currentPlan.identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(null);
 
@@ -490,14 +470,14 @@ export const licenseServiceFactory = ({
       }
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(rootOrgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
-      onPremFeatures.membersUsed = usedSeats;
-      onPremFeatures.identitiesUsed = usedIdentitySeats;
-      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-        usedSeats,
-        usedIdentitySeats
-      });
+      // const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
+      // const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
+      // onPremFeatures.membersUsed = usedSeats;
+      // onPremFeatures.identitiesUsed = usedIdentitySeats;
+      // await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
+      //   usedSeats,
+      //   usedIdentitySeats
+      // });
     } else if (instanceType === InstanceType.EnterpriseOnPremV2) {
       // v2 self-hosted reports usage asynchronously via the usage-snapshot queue, not a synchronous seat
       // patch; keep the in-memory counts current so limit checks are accurate until the next sync.

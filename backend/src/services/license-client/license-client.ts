@@ -15,6 +15,7 @@ import {
   TStartTrialPayload,
   TSubscriptionPreviewPayload
 } from "./license-client-types";
+import { createSelfHostedTokenProvider } from "./license-token-provider";
 
 type TLicenseClientFactoryDep = {
   envConfig: Pick<
@@ -22,6 +23,7 @@ type TLicenseClientFactoryDep = {
     | "LICENSE_SERVER_V2_MODE"
     | "LICENSE_SERVER_V2_URL"
     | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_SERVER_URL"
     | "LICENSE_KEY"
     | "INTERNAL_REGION"
   >;
@@ -30,15 +32,19 @@ type TLicenseClientFactoryDep = {
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 
-// Mirrors SELF_HOSTED_V2_LICENSE_KEY_PREFIX in ee/license-fns; inlined to avoid a services -> ee
-// runtime import cycle (license-client <- license-service <- license-fns).
-const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
-
 // Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and either a
-// self-hosted v2 license key or the cloud service key (plus server URL) is configured.
+// self-hosted license key or the cloud service key (plus server URL) is configured.
 const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicenseClientBackend | null => {
-  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
-    return null;
+  const licenseKey = envConfig.LICENSE_KEY;
+  if (licenseKey) {
+    if (!envConfig.LICENSE_SERVER_URL) {
+      logger.warn(
+        "license-client: self-hosted key set but LICENSE_SERVER_URL (token endpoint) is missing; serving feature fallbacks"
+      );
+      return null;
+    }
+    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl: envConfig.LICENSE_SERVER_URL });
+    return licenseServerSelfHostedBackend(envConfig.LICENSE_SERVER_URL, tokenProvider, envConfig.INTERNAL_REGION);
   }
 
   const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
@@ -58,13 +64,6 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     logger.warn("license-client: LICENSE_SERVER_V2_URL must use http(s); serving feature fallbacks");
     return null;
-  }
-
-  // A self-hosted v2 license authenticates with its own key as a bearer token; the cloud path mints an
-  // RS256 service JWT from the service key instead.
-  const licenseKey = envConfig.LICENSE_KEY;
-  if (licenseKey?.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX)) {
-    return licenseServerSelfHostedBackend(serverUrl, licenseKey, envConfig.INTERNAL_REGION);
   }
 
   const signingKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
