@@ -65,7 +65,7 @@ const formSchema = z.object({
   organizationName: GenericResourceNameSchema,
   signUpMode: z.nativeEnum(SignUpMode),
   allowedSignUpDomain: allowedEmailDomainsSchema,
-  enabledLoginMethods: z.nativeEnum(LoginMethod).array()
+  enabledLoginMethods: z.nativeEnum(LoginMethod).array().min(1, "Select at least one login method.")
 });
 
 type TSetupForm = z.infer<typeof formSchema>;
@@ -96,12 +96,6 @@ const loginMethods: Array<{
     label: "GitLab",
     imageSrc: "/images/integrations/GitLab.png"
   }
-];
-
-const identityProviderLoginMethods: LoginMethod[] = [
-  LoginMethod.SAML,
-  LoginMethod.OIDC,
-  LoginMethod.LDAP
 ];
 
 const formatAllowedDomains = (domains: string) =>
@@ -161,9 +155,7 @@ export const SetupPage = () => {
       enabledLoginMethods:
         config.enabledLoginMethods === null
           ? loginMethods.map(({ value }) => value)
-          : config.enabledLoginMethods.filter((method) =>
-              loginMethods.some(({ value }) => value === method)
-            )
+          : config.enabledLoginMethods
     }
   });
 
@@ -204,21 +196,6 @@ export const SetupPage = () => {
     }
 
     if (activeStep === SetupStep.Access) {
-      const enabledIdentityProviderMethods = (config.enabledLoginMethods ?? []).filter((method) =>
-        identityProviderLoginMethods.includes(method)
-      );
-      const enabledLoginMethods = [
-        ...formData.enabledLoginMethods,
-        ...enabledIdentityProviderMethods
-      ];
-
-      if (enabledLoginMethods.length === 0) {
-        setError("enabledLoginMethods", {
-          message: "Select at least one login method."
-        });
-        return;
-      }
-
       try {
         await updateServerConfig({
           allowSignUp: formData.signUpMode === SignUpMode.Anyone,
@@ -227,7 +204,7 @@ export const SetupPage = () => {
               ? formData.allowedSignUpDomain.trim() || null
               : null,
           ...((config.enabledLoginMethods !== null || dirtyFields.enabledLoginMethods) && {
-            enabledLoginMethods
+            enabledLoginMethods: formData.enabledLoginMethods
           })
         });
       } catch (error) {

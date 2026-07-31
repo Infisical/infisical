@@ -54,13 +54,11 @@ const stepTransitionVariants = {
         }
       : {
           transform: `translate3d(${direction * 32}px, 0, 0) scale(1.01)`,
-          opacity: 0.28,
-          filter: "blur(4px)"
+          opacity: 0.28
         },
   center: {
     transform: "translate3d(0, 0, 0) scale(1)",
-    opacity: 1,
-    filter: "blur(0)"
+    opacity: 1
   },
   exit: {
     opacity: 0,
