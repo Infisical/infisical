@@ -153,7 +153,7 @@ export const integrationDeprecationQueueFactory = ({
 
     const orgAdminRecipients = toRecipients(
       orgAdmins
-        .filter((admin) => admin.status !== OrgMembershipStatus.Invited && !admin.isTemporary)
+        .filter((admin) => admin.status !== OrgMembershipStatus.Invited)
         .map((admin) => ({ userId: admin.user.id, email: admin.user.email }))
     );
     const orgAdminUserIds = new Set(orgAdminRecipients.map((recipient) => recipient.userId));

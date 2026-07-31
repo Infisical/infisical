@@ -608,7 +608,6 @@ export const orgDALFactory = (db: TDbClient) => {
           conn.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
           conn.ref("role").withSchema(TableName.MembershipRole),
           conn.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
-          conn.ref("isTemporary").withSchema(TableName.MembershipRole),
           conn.ref("status").withSchema(TableName.Membership),
           conn.ref("username").withSchema(TableName.Users),
           conn.ref("email").withSchema(TableName.Users),
