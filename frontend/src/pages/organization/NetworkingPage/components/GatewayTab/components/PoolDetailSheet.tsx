@@ -173,8 +173,8 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
           </div>
 
           <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h4 className="text-sm font-medium text-foreground">Member Gateways</h4>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h4 className="pt-2 text-sm font-medium text-foreground">Member Gateways</h4>
               <OrgPermissionCan
                 I={OrgGatewayPoolPermissionActions.EditGatewayPools}
                 a={OrgPermissionSubjects.GatewayPool}
@@ -182,7 +182,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 {(isAllowed: boolean) => {
                   const isDisabled = !isAllowed || availableGateways.length === 0;
                   return (
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 items-start gap-2">
                       <FilterableSelect<GatewayOption>
                         isMulti
                         value={selectedGateways}
@@ -198,6 +198,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="mt-0.5"
                         isDisabled={!isAllowed || selectedGateways.length === 0}
                         isPending={addGateway.isPending}
                         onClick={handleAdd}
