@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "../Button";
@@ -36,13 +36,19 @@ export const Default: Story = {
   },
   render: function Render(args) {
     const [isOpen, setIsOpen] = useState(false);
+    const contentId = useId();
 
     return (
       <div className="flex w-80 flex-col gap-2">
-        <Button onClick={() => setIsOpen((current) => !current)}>
-          {isOpen ? "Hide Content" : "Show Content"}
+        <Button
+          className="w-40"
+          aria-controls={contentId}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          {isOpen ? "Hide content" : "Show content"}
         </Button>
-        <AnimatedCollapse {...args} isOpen={isOpen}>
+        <AnimatedCollapse {...args} id={contentId} isOpen={isOpen}>
           <div className="rounded-md border border-border bg-container p-4 text-sm text-foreground">
             Conditionally displayed content expands and collapses without requiring an accordion
             trigger.
@@ -61,13 +67,19 @@ export const Subtle: Story = {
   },
   render: function Render(args) {
     const [isOpen, setIsOpen] = useState(false);
+    const contentId = useId();
 
     return (
       <div className="flex w-80 flex-col gap-2">
-        <Button onClick={() => setIsOpen((current) => !current)}>
+        <Button
+          className="w-40"
+          aria-controls={contentId}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
           {isOpen ? "Hide helper text" : "Show helper text"}
         </Button>
-        <AnimatedCollapse {...args} isOpen={isOpen}>
+        <AnimatedCollapse {...args} id={contentId} isOpen={isOpen}>
           <p className="text-xs text-muted">
             Use subtle motion for helper text, validation feedback, and other compact content.
           </p>
@@ -84,13 +96,19 @@ export const PreservesMountedState: Story = {
   },
   render: function Render(args) {
     const [isOpen, setIsOpen] = useState(true);
+    const contentId = useId();
 
     return (
       <div className="flex w-80 flex-col gap-2">
-        <Button onClick={() => setIsOpen((current) => !current)}>
+        <Button
+          className="w-40"
+          aria-controls={contentId}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
           {isOpen ? "Hide field" : "Show field"}
         </Button>
-        <AnimatedCollapse {...args} isOpen={isOpen}>
+        <AnimatedCollapse {...args} id={contentId} isOpen={isOpen}>
           <Field className="py-2">
             <FieldLabel htmlFor="persistent-value">Persistent value</FieldLabel>
             <Input id="persistent-value" placeholder="Type something" />

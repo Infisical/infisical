@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Checkbox } from "../Checkbox";
@@ -65,22 +65,24 @@ type Story = StoryObj<typeof meta>;
 export const OptionStack: Story = {
   render: function Render(args) {
     const [selected, setSelected] = useState(["Email", "Google SSO", "GitHub SSO"]);
+    const optionIdPrefix = useId();
 
     return (
       <ScrollableContent {...args} className="w-xl">
         <FieldGroup className="gap-1">
-          {options.map(([label, description]) => {
+          {options.map(([label, description], index) => {
             const isChecked = selected.includes(label);
+            const optionId = `${optionIdPrefix}-option-${index}`;
 
             return (
-              <FieldLabel key={label} htmlFor={`scrollable-option-${label}`}>
+              <FieldLabel key={label} htmlFor={optionId}>
                 <Field orientation="horizontal">
                   <FieldContent>
                     <FieldTitle>{label}</FieldTitle>
                     <FieldDescription>{description}</FieldDescription>
                   </FieldContent>
                   <Checkbox
-                    id={`scrollable-option-${label}`}
+                    id={optionId}
                     aria-label={label}
                     isChecked={isChecked}
                     onCheckedChange={(checked) => {
