@@ -122,7 +122,7 @@ export const GatewayDeployModal = ({ isOpen, onOpenChange }: Props) => {
         <DialogHeader>
           <DialogTitle>Create Gateway</DialogTitle>
           <DialogDescription>
-            Create a gateway to access private network resources.
+            Create a gateway to securely proxy Infisical traffic into your infrastructure.
           </DialogDescription>
         </DialogHeader>
         <Content onClose={() => onOpenChange(false)} />

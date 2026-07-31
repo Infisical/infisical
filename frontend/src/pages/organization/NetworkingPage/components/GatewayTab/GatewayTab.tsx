@@ -185,7 +185,7 @@ export const GatewayTab = withPermission(
           <CardDescription>
             {activeSubTab === "gateway-pools"
               ? "Pool gateways for high availability and automatic failover"
-              : "Create and manage network gateways from Infisical"}
+              : "Create and manage gateways that securely proxy Infisical traffic into your infrastructure"}
           </CardDescription>
           <CardAction>
             {activeSubTab === "all-gateways" ? (

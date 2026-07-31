@@ -304,9 +304,6 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Remove Gateway from Gateway Pool?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This removes the gateway from the pool. The gateway itself will not be deleted.
-              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogConfirmationField>
               <Field>
@@ -329,12 +326,14 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 />
               </Field>
             </AlertDialogConfirmationField>
-            <Alert variant="warning" appearance="borderless">
-              <AlertDescription>
-                Removing this gateway may interrupt traffic through this gateway pool. The gateway
-                will not be deleted and can be added back.
-              </AlertDescription>
-            </Alert>
+            <AlertDialogDescription asChild>
+              <Alert variant="warning" appearance="borderless">
+                <AlertDescription>
+                  Removing this gateway from the pool may interrupt traffic. The gateway will not
+                  be deleted and can be added back.
+                </AlertDescription>
+              </Alert>
+            </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel isDisabled={removeGateway.isPending}>Cancel</AlertDialogCancel>
               <AlertDialogAction

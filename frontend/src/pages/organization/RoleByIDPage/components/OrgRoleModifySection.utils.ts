@@ -725,7 +725,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
   },
   [OrgPermissionSubjects.Gateway]: {
     title: "Gateways",
-    description: "Manage gateways used for private network access",
+    description: "Manage gateways that securely connect Infisical to your infrastructure",
     actions: [
       {
         value: OrgGatewayPermissionActions.ListGateways,
@@ -735,7 +735,7 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       {
         value: OrgGatewayPermissionActions.CreateGateways,
         label: "Create Gateways",
-        description: "Register new gateways for private network access"
+        description: "Register new gateways that securely proxy Infisical traffic into your infrastructure"
       },
       {
         value: OrgGatewayPermissionActions.EditGateways,
