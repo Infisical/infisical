@@ -131,7 +131,6 @@ type TCertificateAuthorityServiceFactoryDep = {
     | "findWithAssociatedCa"
     | "findByNameAndProjectIdWithAssociatedCa"
     | "countInternalCasByOrgId"
-    | "countExternalCasByOrgIdAndType"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
@@ -384,21 +383,7 @@ export const certificateAuthorityServiceFactory = ({
       });
     }
 
-    // Azure ADCS (Web Enrollment) is deprecated in favour of the Microsoft ADCS connection. Orgs
-    // already running one can keep adding more so we don't strand them; everyone else is turned away
     if (type === CaType.AZURE_AD_CS) {
-      const existingAzureAdCsCount = await certificateAuthorityDAL.countExternalCasByOrgIdAndType(
-        actor.orgId,
-        CaType.AZURE_AD_CS
-      );
-
-      if (existingAzureAdCsCount === 0) {
-        throw new BadRequestError({
-          message:
-            "Azure ADCS (Web Enrollment) is deprecated and no longer available for new setups. Use the Microsoft ADCS certificate authority instead."
-        });
-      }
-
       return azureAdCsFns.createCertificateAuthority({
         name,
         projectId,
