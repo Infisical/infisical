@@ -17,6 +17,7 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
 - The connection's API token must include:
     - **Account** - **API Tokens** - **Edit**, to create and revoke the generated tokens.
     - **Account** - **Workers R2 Storage** - **Read**, so Infisical can list your buckets for the bucket picker.
+    - **Account** - **Account Settings** - **Read**, so Infisical can validate the connection.
 
   See the **Secret Rotation** tab under [Configure API Token and Account ID for Infisical](/integrations/app-connections/cloudflare#configure-api-token-and-account-id-for-infisical) for the exact configuration.
 
@@ -56,7 +57,7 @@ An R2 access key is a Cloudflare API token viewed through R2's S3-compatible API
         - **Allowed IPs** (optional) - The generated key can only be used from these IP addresses or CIDR blocks, one entry per line. Leave empty to allow any IP.
         - **Disallowed IPs** (optional) - The generated key cannot be used from these IP addresses or CIDR blocks, one entry per line.
 
-        ![Restrictions](/images/secret-rotations-v2/cloudflare-r2-access-key/restrictions-r2-access-key.png.png)
+        ![Restrictions](/images/secret-rotations-v2/cloudflare-r2-access-key/restrictions-r2-access-key.png)
 
         5. Specify the secret names that the rotated credentials will be mapped to. Then click **Next**.
 

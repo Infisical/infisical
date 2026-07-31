@@ -220,10 +220,10 @@ export const listCloudflareR2Buckets = async (appConnection: TCloudflareConnecti
 };
 
 export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {
-  const { apiToken } = config.credentials;
+  const { apiToken, accountId } = config.credentials;
 
   try {
-    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/user/tokens/verify`, {
+    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
       headers: getCloudflareAuthHeaders(apiToken)
     });
 

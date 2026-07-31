@@ -12,7 +12,11 @@ description: "Learn how to automatically rotate Cloudflare API tokens."
 ## Prerequisites
 
 - Create a [Cloudflare Connection](/integrations/app-connections/cloudflare). That connection is used to create and delete API tokens on your behalf during rotation.
-- The connection's API token must include the **Account** - **API Tokens** - **Edit** permission. See the **Secret Rotation** tab under [Configure API Token and Account ID for Infisical](/integrations/app-connections/cloudflare#configure-api-token-and-account-id-for-infisical) for the exact configuration.
+- The connection's API token must include:
+    - **Account** - **API Tokens** - **Edit**, to create and revoke the generated tokens.
+    - **Account** - **Account Settings** - **Read**, so Infisical can validate the connection.
+
+  See the **Secret Rotation** tab under [Configure API Token and Account ID for Infisical](/integrations/app-connections/cloudflare#configure-api-token-and-account-id-for-infisical) for the exact configuration.
 
 ## Create a Cloudflare API Token Rotation in Infisical
 
