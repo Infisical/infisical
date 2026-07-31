@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mock
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
@@ -241,7 +241,7 @@ describe("tokenServiceFactory — email signup OTP", () => {
     test("throws when OTP missing", async () => {
       const { service } = setup().mockNoOtp();
 
-      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), BadRequestError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
     });
 
     test("expires OTP deletes key", async () => {
@@ -249,7 +249,7 @@ describe("tokenServiceFactory — email signup OTP", () => {
         expiresAt: NOW_MS - 1
       });
 
-      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), BadRequestError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
 
       expect(keyStore.deleteItem).toHaveBeenCalledWith(otpKey);
     });
@@ -257,7 +257,7 @@ describe("tokenServiceFactory — email signup OTP", () => {
     test("wrong code decrements tries", async () => {
       const { service, keyStore } = setup().mockOtp({ triesLeft: 3 });
 
-      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "000000"), BadRequestError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "000000"), UnauthorizedError);
 
       const payload = getStoredOtpPayload(keyStore);
       expect(payload?.triesLeft).toBe(2);
@@ -266,7 +266,7 @@ describe("tokenServiceFactory — email signup OTP", () => {
     test("last try deletes OTP", async () => {
       const { service, keyStore } = setup().mockOtp({ triesLeft: 1 });
 
-      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "000000"), BadRequestError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "000000"), UnauthorizedError);
 
       expect(keyStore.deleteItem).toHaveBeenCalledWith(otpKey);
       expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
@@ -279,7 +279,7 @@ describe("tokenServiceFactory — email signup OTP", () => {
       });
       const { service } = createService(keyStore);
 
-      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), BadRequestError);
+      await expectRejected(service.validateEmailSignupToken(TEST_EMAIL, "123456"), UnauthorizedError);
 
       expect(release).toHaveBeenCalledOnce();
     });

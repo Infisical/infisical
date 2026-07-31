@@ -77,9 +77,9 @@ describe("Auth Email Signup V3", () => {
       body: { email: testEmail, code: "000000" }
     });
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(401);
     expect(res.json()).toMatchObject({
-      statusCode: 400,
+      statusCode: 401,
       message: "Invalid token",
       error: "InvalidToken"
     });
@@ -90,9 +90,9 @@ describe("Auth Email Signup V3", () => {
       url: "/api/v3/signup/email/verify",
       body: { email: "signup-missing-challenge@localhost.local", code: "000000" }
     });
-    expect(missingChallenge.statusCode).toBe(400);
+    expect(missingChallenge.statusCode).toBe(401);
     expect(missingChallenge.json()).toMatchObject({
-      statusCode: 400,
+      statusCode: 401,
       message: "Invalid token",
       error: "InvalidToken"
     });
@@ -236,7 +236,7 @@ describe("Auth Email Signup V3", () => {
       url: "/api/v3/signup/email/verify",
       body: { email, code: "000000" }
     });
-    expect(verifyAttempt.statusCode).toBe(400);
+    expect(verifyAttempt.statusCode).toBe(401);
     expect(verifyAttempt.json()).not.toHaveProperty("details");
 
     // Step 4: second request within cooldown — must return 400 for both paths to be indistinguishable
@@ -262,14 +262,14 @@ describe("Auth Email Signup V3", () => {
     expect(correctCode).toBeDefined();
 
     // Exhaust all 3 tries with a wrong code
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 3; i += 1) {
       // eslint-disable-next-line no-await-in-loop
       const attempt = await testServer.inject({
         method: "POST",
         url: "/api/v3/signup/email/verify",
         body: { email, code: "000000" }
       });
-      expect(attempt.statusCode).toBe(400);
+      expect(attempt.statusCode).toBe(401);
       expect(attempt.json()).not.toHaveProperty("details");
     }
 
@@ -280,6 +280,6 @@ describe("Auth Email Signup V3", () => {
       body: { email, code: correctCode }
     });
 
-    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode).toBe(401);
   });
 });
