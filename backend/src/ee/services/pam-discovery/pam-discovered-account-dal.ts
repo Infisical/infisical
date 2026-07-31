@@ -34,7 +34,8 @@ export const pamDiscoveredAccountDALFactory = (db: TDbClient) => {
     const baseQuery = db
       .replicaNode()(TableName.PamDiscoveredAccount)
       .where({ discoverySourceId })
-      .whereNull("importedAccountId");
+      .whereNull("importedAccountId")
+      .where("isStale", false);
     if (search) void baseQuery.andWhere("name", "ilike", `%${sanitizeSqlLikeString(search)}%`);
 
     const countQuery = baseQuery.clone().clearSelect().count("id as count").first<{ count: string }>();

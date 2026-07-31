@@ -425,10 +425,6 @@ export const pamSessionServiceFactory = ({
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
-    if (account.isStale) {
-      throw new ForbiddenRequestError({ message: "This account is no longer available in the environment" });
-    }
-
     const policy = resolveAccessControls(account.templatePolicies);
     const { requiresApproval } = policy;
 
@@ -441,6 +437,10 @@ export const pamSessionServiceFactory = ({
       ResourcePermissionPamResourceActions.LaunchSessions,
       actor
     );
+
+    if (account.isStale) {
+      throw new ForbiddenRequestError({ message: "This account is no longer available in the environment" });
+    }
 
     const trimmedReason = reason?.trim() || null;
 

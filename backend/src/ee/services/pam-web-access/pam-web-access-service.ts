@@ -167,10 +167,6 @@ export const pamWebAccessServiceFactory = ({
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    if (account.isStale) {
-      throw new ForbiddenRequestError({ message: "This account is no longer available in the environment" });
-    }
-
     if (!SESSION_HANDLERS[account.accountType as PamAccountType]) {
       throw new BadRequestError({ message: "Web access is not supported for this account type" });
     }
@@ -193,6 +189,10 @@ export const pamWebAccessServiceFactory = ({
         actorAuthMethod: actor.authMethod
       }
     );
+
+    if (account.isStale) {
+      throw new ForbiddenRequestError({ message: "This account is no longer available in the environment" });
+    }
 
     let grantRemainingMs: number | null = null;
     if (requiresApproval) {

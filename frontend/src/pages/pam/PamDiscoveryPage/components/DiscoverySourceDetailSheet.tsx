@@ -406,6 +406,9 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
       queryClient.invalidateQueries({
         queryKey: [...pamKeys.discovery(), "discovered", sourceId ?? ""]
       });
+      queryClient.invalidateQueries({
+        queryKey: [...pamKeys.discovery(), "unavailable", sourceId ?? ""]
+      });
       // A scan reconciles dependencies onto managed accounts, so refresh account views (their dependency
       // lists are keyed under pamKeys.account()) which the discovery scan otherwise never invalidates.
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
