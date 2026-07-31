@@ -159,7 +159,8 @@ const PkiSyncPolicyActionSchema = z.object({
   [ProjectPermissionPkiSyncActions.Delete]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.SyncCertificates]: z.boolean().optional(),
   [ProjectPermissionPkiSyncActions.ImportCertificates]: z.boolean().optional(),
-  [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional()
+  [ProjectPermissionPkiSyncActions.RemoveCertificates]: z.boolean().optional(),
+  [ProjectPermissionPkiSyncActions.SetPostSyncCommand]: z.boolean().optional()
 });
 
 const CommitPolicyActionSchema = z.object({

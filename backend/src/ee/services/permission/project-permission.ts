@@ -176,7 +176,8 @@ export enum ProjectPermissionPkiSyncActions {
   Delete = "delete",
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
-  RemoveCertificates = "remove-certificates"
+  RemoveCertificates = "remove-certificates",
+  SetPostSyncCommand = "set-post-sync-command"
 }
 
 export enum ProjectPermissionPkiDiscoveryActions {

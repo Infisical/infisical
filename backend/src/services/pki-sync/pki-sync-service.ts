@@ -187,6 +187,24 @@ export const pkiSyncServiceFactory = ({
     return permission;
   };
 
+  const $assertMaySetPostSyncCommand = async (
+    nextCommand: unknown,
+    currentCommand: unknown,
+    pkiSync: { projectId: string; applicationId?: string | null; name: string },
+    subscriberName: string | undefined,
+    actor: OrgServiceActor
+  ) => {
+    if (!nextCommand || nextCommand === currentCommand) return;
+
+    await $assertSyncAction(
+      ProjectPermissionPkiSyncActions.SetPostSyncCommand,
+      ResourcePermissionPkiSyncActions.SetPostSyncCommand,
+      pkiSync,
+      subscriberName,
+      actor
+    );
+  };
+
   const validateCertificatesForSync = async (
     certificateIds: string[],
     expectedProjectId: string,
@@ -327,6 +345,13 @@ export const pkiSyncServiceFactory = ({
       ...syncOptions
     };
 
+    await $assertMaySetPostSyncCommand(
+      syncOptions?.postSyncCommand,
+      undefined,
+      { projectId, applicationId, name },
+      undefined,
+      actor
+    );
     $assertPostSyncCommandIsSupported(destination, resolvedSyncOptions, connection);
 
     if (certificateIds.length > 0) {
@@ -477,6 +502,14 @@ export const pkiSyncServiceFactory = ({
     }
 
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
+
+    await $assertMaySetPostSyncCommand(
+      effectiveSyncOptions?.postSyncCommand,
+      (pkiSync.syncOptions as Record<string, unknown> | undefined)?.postSyncCommand,
+      pkiSync,
+      currentSubscriber?.name,
+      actor
+    );
 
     if (effectiveSyncOptions?.postSyncCommand) {
       $assertPostSyncCommandIsSupported(

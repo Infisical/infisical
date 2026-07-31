@@ -307,7 +307,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.Read,
       ProjectPermissionPkiSyncActions.SyncCertificates,
       ProjectPermissionPkiSyncActions.ImportCertificates,
-      ProjectPermissionPkiSyncActions.RemoveCertificates
+      ProjectPermissionPkiSyncActions.RemoveCertificates,
+      ProjectPermissionPkiSyncActions.SetPostSyncCommand
     ],
     ProjectPermissionSub.PkiSyncs
   );
@@ -897,7 +898,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionPkiSyncActions.Delete,
       ResourcePermissionPkiSyncActions.SyncCertificates,
       ResourcePermissionPkiSyncActions.ImportCertificates,
-      ResourcePermissionPkiSyncActions.RemoveCertificates
+      ResourcePermissionPkiSyncActions.RemoveCertificates,
+      ResourcePermissionPkiSyncActions.SetPostSyncCommand
     ],
     ResourcePermissionSub.PkiSyncs
   );
