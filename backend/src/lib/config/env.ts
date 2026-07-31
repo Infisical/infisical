@@ -40,9 +40,10 @@ const zodStrBool = z
 /**
  * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
  * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
- * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan.
+ * headroom when validating the stuck-scan threshold so the reaper can't reach a healthy scan, and
+ * as the scan lock TTL headroom so the lock outlives any scan the reaper would consider healthy.
  */
-const SECRET_SCANNING_SCAN_OVERHEAD_MS = 5 * 60 * 1000;
+export const SECRET_SCANNING_SCAN_OVERHEAD_MS = 5 * 60 * 1000;
 
 const databaseReadReplicaSchema = z
   .object({

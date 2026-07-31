@@ -13,7 +13,7 @@ import {
   scanGitRepositoryAndGetFindings
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, SECRET_SCANNING_SCAN_OVERHEAD_MS } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -62,17 +62,18 @@ type TSecretRotationV2QueueServiceFactoryDep = {
 
 export type TSecretScanningV2QueueServiceFactory = ReturnType<typeof secretScanningV2QueueServiceFactory>;
 
-// The lock has to outlive the worst case a scan can now take — clone timeout plus scan timeout —
-// or it expires mid-scan and a second scan of the same resource can start alongside the first.
-const SCAN_LOCK_BUFFER_MS = 60 * 1000;
-
 const STUCK_SCAN_REAP_BATCH_SIZE = 100;
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
 
+// The lock has to outlive the worst case a scan can take: clone timeout plus scan timeout plus the
+// same measurement/bookkeeping overhead the stuck-scan boot validation budgets for. Anything
+// shorter can expire mid-scan and let a second scan of the same resource start alongside the first.
 const getFullScanLockTtlMs = () => {
   const appCfg = getConfig();
-  return appCfg.SECRET_SCANNING_CLONE_TIMEOUT_MS + appCfg.SECRET_SCANNING_SCAN_TIMEOUT_MS + SCAN_LOCK_BUFFER_MS;
+  return (
+    appCfg.SECRET_SCANNING_CLONE_TIMEOUT_MS + appCfg.SECRET_SCANNING_SCAN_TIMEOUT_MS + SECRET_SCANNING_SCAN_OVERHEAD_MS
+  );
 };
 
 export const secretScanningV2QueueServiceFactory = ({

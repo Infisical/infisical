@@ -107,11 +107,28 @@ const SizePackRegex = new RE2(/^size-pack:\s*(\d+)/m);
  * each scan.
  */
 export const assertClonedRepositoryWithinSizeLimit = async (resourceName: string, repoPath: string) => {
-  const output = await execFileBounded("git", ["count-objects", "-v"], {
-    phase: SecretScanningExecPhase.Measure,
-    cwd: repoPath,
-    timeoutMs: 30_000
-  });
+  let output: string;
+
+  try {
+    output = await execFileBounded("git", ["count-objects", "-v"], {
+      phase: SecretScanningExecPhase.Measure,
+      cwd: repoPath,
+      timeoutMs: 30_000
+    });
+  } catch (error) {
+    // With the limit disabled the measurement is informational only (it feeds the scan log), so a
+    // measurement failure must not fail a scan the operator explicitly chose not to bound. With the
+    // limit enabled this is the enforcement backstop and stays fail-closed.
+    if (!getConfig().SECRET_SCANNING_MAX_REPO_SIZE_MB) {
+      logger.warn(
+        error,
+        `secretScanningV2: Repository measurement failed with the size limit disabled, continuing [resourceName=${resourceName}]`
+      );
+      return undefined;
+    }
+
+    throw error;
+  }
 
   const match = SizePackRegex.match(output);
 
@@ -258,6 +275,14 @@ const GitAuthFailureRegex = new RE2(
 );
 const GitNotFoundRegex = new RE2(/repository not found|remote: Not Found|does not appear to be a git repository/i);
 
+// "10 minute time limit" for the defaults, "30 second time limit" for sub-minute ceilings, which
+// would otherwise round to a nonsensical "0 minute time limit".
+const formatTimeoutLimit = (timeoutMs: number) => {
+  const minutes = Math.round(timeoutMs / 60_000);
+  if (minutes >= 1) return `${minutes} minute`;
+  return `${Math.max(1, Math.round(timeoutMs / 1_000))} second`;
+};
+
 /**
  * Maps a scan failure onto a message the customer can act on. Command lines and raw scanner/git
  * output never reach this return value — they stay in the logs attached to the original error.
@@ -272,10 +297,10 @@ const parseExecErrorMessage = (err: SecretScanningExecError): string => {
   const isClone = err.phase === SecretScanningExecPhase.Clone;
 
   if (err.failure === SecretScanningExecFailure.Timeout) {
-    const minutes = Math.round((err.timeoutMs ?? 0) / 60_000);
+    const limit = formatTimeoutLimit(err.timeoutMs ?? 0);
     return isClone
-      ? `Cloning the repository exceeded the ${minutes} minute time limit and was cancelled. The repository is likely too large to scan.`
-      : `The scan exceeded the ${minutes} minute time limit and was cancelled. The repository is likely too large to scan in full.`;
+      ? `Cloning the repository exceeded the ${limit} time limit and was cancelled. The repository is likely too large to scan.`
+      : `The scan exceeded the ${limit} time limit and was cancelled. The repository is likely too large to scan in full.`;
   }
 
   if (err.failure === SecretScanningExecFailure.Spawn) {
