@@ -168,7 +168,7 @@ const slugSchema = z
 const descriptionSchema = z
   .string()
   .trim()
-  .max(1000, "Description must be less than 1000 characters")
+  .max(255, "Description must be less than 255 characters")
   .optional();
 
 const baseProfileSchema = z.object({

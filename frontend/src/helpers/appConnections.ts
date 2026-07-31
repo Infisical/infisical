@@ -166,7 +166,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "Azure ADCS (Web Enrollment)",
     image: "Microsoft Azure.png",
     category: "CERTIFICATES",
-    description: "Issue certificates via Active Directory Certificate Services web enrollment."
+    description: "Issue certificates via ADCS Web Enrollment over HTTPS."
   },
   [AppConnection.ADCS]: {
     name: "Microsoft ADCS",

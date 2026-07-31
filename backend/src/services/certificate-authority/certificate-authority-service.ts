@@ -73,7 +73,10 @@ import {
   AzureAdCsCertificateAuthorityFns,
   castDbEntryToAzureAdCsCertificateAuthority
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
-import { TUpdateAzureAdCsCertificateAuthorityDTO } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
+import {
+  TCreateAzureAdCsCertificateAuthorityDTO,
+  TUpdateAzureAdCsCertificateAuthorityDTO
+} from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -381,9 +384,12 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (type === CaType.AZURE_AD_CS) {
-      throw new BadRequestError({
-        message:
-          "Creating new Azure ADCS (Web Enrollment) certificate authorities is no longer supported. Use the Microsoft ADCS connection instead."
+      return azureAdCsFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
+        status,
+        actor
       });
     }
 
