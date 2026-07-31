@@ -158,14 +158,12 @@ export const SetupPage = () => {
       organizationName: currentOrg.name,
       signUpMode: config.allowSignUp ? SignUpMode.Anyone : SignUpMode.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain ?? "",
-      enabledLoginMethods: Array.from(
-        new Set([
-          LoginMethod.EMAIL,
-          ...(config.enabledLoginMethods?.filter((method) =>
-            loginMethods.some(({ value }) => value === method)
-          ) ?? loginMethods.map(({ value }) => value))
-        ])
-      )
+      enabledLoginMethods:
+        config.enabledLoginMethods === null
+          ? loginMethods.map(({ value }) => value)
+          : config.enabledLoginMethods.filter((method) =>
+              loginMethods.some(({ value }) => value === method)
+            )
     }
   });
 
@@ -422,7 +420,6 @@ export const SetupPage = () => {
                             aria-label={method.label}
                             variant="project"
                             isChecked={isChecked}
-                            isDisabled={method.value === LoginMethod.EMAIL}
                             onCheckedChange={(checked) => {
                               clearErrors("enabledLoginMethods");
                               field.onChange(
