@@ -94,10 +94,7 @@ export const AuthMethodSection = () => {
         type: "success"
       });
     } catch {
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} ${authMethodOpt.label} authentication.`,
-        type: "error"
-      });
+      return;
     }
   };
 

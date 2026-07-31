@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,17 +28,10 @@ export const SessionsSection = () => {
   const onRevokeAllSessionsClick = async () => {
     try {
       await mutateAsync();
-      createNotification({
-        text: "Signed out everywhere.",
-        type: "success"
-      });
       setIsRevokeAllOpen(false);
       window.location.href = "/login";
     } catch {
-      createNotification({
-        text: "Failed to sign out everywhere.",
-        type: "error"
-      });
+      return;
     }
   };
 
