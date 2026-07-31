@@ -30,16 +30,16 @@ export const NativeIntegrationsMigrationBanner = () => {
 
   return (
     <div className="flex w-full items-center border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
-      This project has {integrations.length} native integration
-      {integrations.length > 1 ? "s" : ""}. They stop working on{" "}
-      {NATIVE_INTEGRATION_DEPRECATION_DATE}. Recreate them as Secret Syncs.
+      Native integrations are deprecated and will stop syncing on{" "}
+      {NATIVE_INTEGRATION_DEPRECATION_DATE}. Recreate this project&apos;s {integrations.length}{" "}
+      integration{integrations.length > 1 ? "s" : ""} as Secret Syncs.
       <Link
         to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
         params={{ orgId: currentOrg.id, projectId: currentProject.id }}
-        search={{ selectedTab: IntegrationsListPageTabs.SecretSyncs }}
+        search={{ selectedTab: IntegrationsListPageTabs.NativeIntegrations }}
         className="cursor-pointer pl-1 underline underline-offset-2 duration-100 hover:text-mineshaft-100 hover:decoration-mineshaft-100"
       >
-        Go to Secret Syncs
+        Manage Native Integrations
       </Link>
       <IconButton
         className="ml-auto shrink-0 p-0 text-yellow-200"
