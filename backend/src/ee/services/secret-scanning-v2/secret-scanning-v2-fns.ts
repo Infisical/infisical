@@ -5,6 +5,7 @@ import RE2 from "re2";
 
 import {
   execFileBounded,
+  getGitThreadLimitArgs,
   getScannerProcessEnv,
   GIT_PROCESS_ENV,
   SecretScanningExecError,
@@ -147,7 +148,7 @@ export const cloneRepository = async ({ cloneUrl, repoPath }: TCloneRepository):
   // eslint-disable-next-line no-new
   new URL(cloneUrl);
 
-  await execFileBounded("git", ["clone", cloneUrl, repoPath, "--bare"], {
+  await execFileBounded("git", [...getGitThreadLimitArgs(), "clone", cloneUrl, repoPath, "--bare"], {
     phase: SecretScanningExecPhase.Clone,
     timeoutMs: getConfig().SECRET_SCANNING_CLONE_TIMEOUT_MS,
     env: GIT_PROCESS_ENV

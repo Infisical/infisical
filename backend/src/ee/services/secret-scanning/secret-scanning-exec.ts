@@ -240,11 +240,30 @@ export const GIT_PROCESS_ENV = { GIT_TERMINAL_PROMPT: "0" };
  * slightly over budget still completes rather than being killed. Runtimes older than Go 1.19 simply
  * ignore it. RLIMIT_AS (`ulimit -v`) is deliberately not used — Go reserves large virtual address
  * arenas at startup, so hard virtual-memory limits break Go binaries in confusing ways.
+ *
+ * GOMAXPROCS is the CPU counterpart: without it the Go runtime schedules scan workers on every
+ * core, so a single full scan pegs the whole host for its duration and starves the API. Capping it
+ * trades scan speed for host headroom.
  */
 export const getScannerProcessEnv = (): Record<string, string> | undefined => {
-  const { SECRET_SCANNING_MEMORY_LIMIT_MB } = getConfig();
+  const { SECRET_SCANNING_MEMORY_LIMIT_MB, SECRET_SCANNING_CPU_THREADS } = getConfig();
 
-  if (!SECRET_SCANNING_MEMORY_LIMIT_MB) return undefined;
+  const env: Record<string, string> = {
+    ...(SECRET_SCANNING_MEMORY_LIMIT_MB ? { GOMEMLIMIT: `${SECRET_SCANNING_MEMORY_LIMIT_MB}MiB` } : {}),
+    ...(SECRET_SCANNING_CPU_THREADS ? { GOMAXPROCS: String(SECRET_SCANNING_CPU_THREADS) } : {})
+  };
 
-  return { GOMEMLIMIT: `${SECRET_SCANNING_MEMORY_LIMIT_MB}MiB` };
+  return Object.keys(env).length > 0 ? env : undefined;
+};
+
+/**
+ * `git clone` resolves the received pack with one thread per core (`pack.threads` defaults to the
+ * online CPU count), so a large clone can peg the host just like an uncapped scan. The limit is
+ * passed as `-c` argv rather than `GIT_CONFIG_*` environment variables so it applies on every git
+ * version, and it shows up in `ps` output for whoever is debugging a hot instance.
+ */
+export const getGitThreadLimitArgs = (): string[] => {
+  const { SECRET_SCANNING_CPU_THREADS } = getConfig();
+
+  return SECRET_SCANNING_CPU_THREADS ? ["-c", `pack.threads=${SECRET_SCANNING_CPU_THREADS}`] : [];
 };

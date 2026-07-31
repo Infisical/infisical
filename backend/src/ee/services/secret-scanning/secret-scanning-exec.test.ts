@@ -1,13 +1,23 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   execFileBounded,
+  getGitThreadLimitArgs,
+  getScannerProcessEnv,
   SecretScanningExecError,
   SecretScanningExecFailure,
   SecretScanningExecPhase
 } from "./secret-scanning-exec";
+
+// getConfig is read lazily inside the env/argv helpers; only the resource caps matter here.
+const mockConfig = { SECRET_SCANNING_MEMORY_LIMIT_MB: 2048, SECRET_SCANNING_CPU_THREADS: 1 };
+
+vi.mock("@app/lib/config/env", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/config/env")>()),
+  getConfig: () => mockConfig
+}));
 
 const execFileAsync = promisify(execFile);
 
@@ -124,4 +134,57 @@ describe("execFileBounded", () => {
 
     await execFileAsync("rm", ["-f", grandchildPidFile]);
   }, 15_000);
+});
+
+describe("getScannerProcessEnv", () => {
+  test("caps scanner memory and CPU by default", () => {
+    expect(getScannerProcessEnv()).toEqual({ GOMEMLIMIT: "2048MiB", GOMAXPROCS: "1" });
+  });
+
+  test("omits the CPU cap when disabled with 0", () => {
+    mockConfig.SECRET_SCANNING_CPU_THREADS = 0;
+    try {
+      expect(getScannerProcessEnv()).toEqual({ GOMEMLIMIT: "2048MiB" });
+    } finally {
+      mockConfig.SECRET_SCANNING_CPU_THREADS = 1;
+    }
+  });
+
+  test("returns undefined when both caps are disabled", () => {
+    mockConfig.SECRET_SCANNING_MEMORY_LIMIT_MB = 0;
+    mockConfig.SECRET_SCANNING_CPU_THREADS = 0;
+    try {
+      expect(getScannerProcessEnv()).toBeUndefined();
+    } finally {
+      mockConfig.SECRET_SCANNING_MEMORY_LIMIT_MB = 2048;
+      mockConfig.SECRET_SCANNING_CPU_THREADS = 1;
+    }
+  });
+
+  test("the overrides reach the child without replacing its inherited environment", async () => {
+    // Proves the env option merges over process.env rather than replacing it: PATH must survive for
+    // the binary lookup to work at all, and the override must be visible to the child.
+    const output = await execFileBounded("sh", ["-c", "echo $GOMAXPROCS"], {
+      phase: SecretScanningExecPhase.Scan,
+      timeoutMs: 10_000,
+      env: getScannerProcessEnv()
+    });
+
+    expect(output.trim()).toBe("1");
+  });
+});
+
+describe("getGitThreadLimitArgs", () => {
+  test("caps git pack threads via -c argv", () => {
+    expect(getGitThreadLimitArgs()).toEqual(["-c", "pack.threads=1"]);
+  });
+
+  test("adds nothing when the cap is disabled with 0", () => {
+    mockConfig.SECRET_SCANNING_CPU_THREADS = 0;
+    try {
+      expect(getGitThreadLimitArgs()).toEqual([]);
+    } finally {
+      mockConfig.SECRET_SCANNING_CPU_THREADS = 1;
+    }
+  });
 });

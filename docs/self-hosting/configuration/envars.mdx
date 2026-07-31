@@ -1035,6 +1035,20 @@ You can configure third-party app connections for re-use across Infisical Projec
 {" "}
 
 <ParamField
+  query="SECRET_SCANNING_CPU_THREADS"
+  type="number"
+  default="1"
+  optional
+>
+  Maximum CPU threads a scan may use, applied to both the scanner process and
+  the repository clone. Scans share the instance with the API, so raising this
+  makes scans faster at the cost of API responsiveness during a scan. Defaults
+  to `1`. Set to `0` to remove the cap.
+</ParamField>
+
+{" "}
+
+<ParamField
   query="SECRET_SCANNING_MAX_REPO_SIZE_MB"
   type="number"
   default="5120"
