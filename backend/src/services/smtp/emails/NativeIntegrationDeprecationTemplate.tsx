@@ -50,19 +50,17 @@ export const NativeIntegrationDeprecationTemplate = ({
         <Text className="text-[14px] font-semibold mb-[12px]">
           {isSingleProject ? "Integrations to migrate" : "Projects using native integrations"}
         </Text>
-        <div style={{ maxHeight: "280px", overflowY: "auto" }}>
-          {projects.map((project) => (
-            <Section
-              key={project.name}
-              className="mb-[16px] p-[16px] border border-solid border-gray-200 rounded-md bg-gray-50"
-            >
-              <Text className="text-[14px] font-semibold m-0 mb-[4px]">
-                <BaseLink href={project.url}>{project.name}</BaseLink>
-              </Text>
-              <Text className="text-[12px] text-gray-600 m-0">{project.integrations.join(", ")}</Text>
-            </Section>
-          ))}
-        </div>
+        {projects.map((project) => (
+          <Section
+            key={project.name}
+            className="mb-[16px] p-[16px] border border-solid border-gray-200 rounded-md bg-gray-50"
+          >
+            <Text className="text-[14px] font-semibold m-0 mb-[4px]">
+              <BaseLink href={project.url}>{project.name}</BaseLink>
+            </Text>
+            <Text className="text-[12px] text-gray-600 m-0">{project.integrations.join(", ")}</Text>
+          </Section>
+        ))}
       </Section>
       <Section className="text-center">
         <BaseButton href="https://infisical.com/docs/integrations/secret-syncs/overview">
