@@ -207,7 +207,10 @@ export const SecretApprovalRequestChanges = ({
 
   const { mutateAsync: performSecretApprovalMerge } = usePerformSecretApprovalRequestMerge();
 
-  const handleReview = async (status: ApprovalStatus) => {
+  const handleReview = async (
+    status: ApprovalStatus,
+    { notify = true }: { notify?: boolean } = {}
+  ) => {
     if (!secretApprovalRequestDetails) return;
     await updateSecretApprovalRequestStatus({
       id: approvalRequestId,
@@ -215,10 +218,12 @@ export const SecretApprovalRequestChanges = ({
       comment,
       projectId
     });
-    createNotification({
-      type: "success",
-      text: `Successfully ${status} the request`
-    });
+    if (notify) {
+      createNotification({
+        type: "success",
+        text: `Successfully ${status} the request`
+      });
+    }
     setComment("");
     setIsReviewPopoverOpen(false);
   };
@@ -227,12 +232,16 @@ export const SecretApprovalRequestChanges = ({
     if (!secretApprovalRequestDetails) return;
     try {
       setWillMerge(true);
-      await handleReview(ApprovalStatus.APPROVED);
+      await handleReview(ApprovalStatus.APPROVED, { notify: false });
       await performSecretApprovalMerge({
         projectId,
         id: secretApprovalRequestDetails.id,
         environment: secretApprovalRequestDetails.environment,
         secretPath: secretApprovalRequestDetails.secretPath
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully merged the request"
       });
     } catch {
       // Approval or merge failed, error already shown via mutation
@@ -395,35 +404,48 @@ export const SecretApprovalRequestChanges = ({
       </Field>
       <div className="flex gap-2">
         <ButtonGroup>
-          <Button
-            variant="project"
-            size="sm"
-            isPending={isApproving && !willMerge}
-            isDisabled={actionInFlight}
-            onClick={() => handleReview(ApprovalStatus.APPROVED)}
-          >
-            <CheckIcon />
-            Approve
-          </Button>
-          {isMergableUponApprove && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  variant="project"
-                  size="sm"
-                  aria-label="More approval options"
-                  isDisabled={actionInFlight}
-                >
-                  <ChevronDownIcon />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[80]">
-                <DropdownMenuItem onClick={handleApproveAndMerge}>
-                  <GitMergeIcon />
-                  Approve & Merge
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {isMergableUponApprove ? (
+            <>
+              <Button
+                variant="project"
+                size="sm"
+                isPending={willMerge}
+                isDisabled={actionInFlight}
+                onClick={handleApproveAndMerge}
+              >
+                <GitMergeIcon />
+                Approve & Merge
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    variant="project"
+                    size="sm"
+                    aria-label="More approval options"
+                    isDisabled={actionInFlight}
+                  >
+                    <ChevronDownIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="z-[80]">
+                  <DropdownMenuItem onClick={() => handleReview(ApprovalStatus.APPROVED)}>
+                    <CheckIcon />
+                    Approve
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Button
+              variant="project"
+              size="sm"
+              isPending={isApproving && !willMerge}
+              isDisabled={actionInFlight}
+              onClick={() => handleReview(ApprovalStatus.APPROVED)}
+            >
+              <CheckIcon />
+              Approve
+            </Button>
           )}
         </ButtonGroup>
         <Button
