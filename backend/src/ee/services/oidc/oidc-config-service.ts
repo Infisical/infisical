@@ -34,6 +34,7 @@ import {
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -105,6 +106,7 @@ type TOidcConfigServiceFactoryDep = {
     | "filterProjectsByUserMembership"
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -131,6 +133,7 @@ export const oidcConfigServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   projectKeyDAL,
+  alertChannelRecipientDAL,
   projectDAL,
   projectBotDAL,
   auditLogService,
@@ -436,7 +439,8 @@ export const oidcConfigServiceFactory = ({
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
-          usageMeteringService
+          usageMeteringService,
+          alertChannelRecipientDAL
         });
       }
 

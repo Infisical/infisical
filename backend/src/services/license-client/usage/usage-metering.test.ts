@@ -11,7 +11,7 @@ import {
   SecretIdentities,
   UserIdentities
 } from "../features";
-import { buildMeteredFeatures } from "./usage-counters";
+import { buildMeteredFeatures, METERED_DIMENSION_KEYS } from "./usage-counters";
 import { usageEventQueueFactory } from "./usage-event-queue";
 import { usageMeteringServiceFactory } from "./usage-metering-service";
 import { buildUsageReporter, TUsageSnapshot, UsageReportError } from "./usage-reporter";
@@ -45,6 +45,13 @@ const createFakeKeyStore = () => {
       store.set(key, String(value));
       return "OK" as const;
     }),
+    setItemWithExpiryNX: vi.fn(async (key: string, _ttl: number | string, value: string | number | Buffer) => {
+      if (store.has(key)) {
+        return null;
+      }
+      store.set(key, String(value));
+      return "OK" as const;
+    }),
     store
   };
 };
@@ -54,6 +61,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     const queue = makeQueueMock();
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
+      keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
       envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
@@ -68,6 +76,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     const queue = makeQueueMock();
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
+      keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
@@ -90,6 +99,7 @@ describe("usageMeteringService.emit (org-scoped)", () => {
     });
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
+      keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn() },
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
@@ -105,6 +115,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     const findById = vi.fn(async () => ({ id: PROJECT_ID, orgId: ORG_ID }));
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
+      keyStore: createFakeKeyStore(),
       projectDAL: { findById } as never,
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
@@ -123,6 +134,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     const queue = makeQueueMock();
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
+      keyStore: createFakeKeyStore(),
       projectDAL: { findById: vi.fn(async () => undefined) } as never,
       envConfig: { LICENSE_SERVER_V2_MODE: "read-compare" }
     });
@@ -138,6 +150,7 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     const findById = vi.fn();
     const svc = usageMeteringServiceFactory({
       queueService: { queue },
+      keyStore: createFakeKeyStore(),
       projectDAL: { findById },
       envConfig: { LICENSE_SERVER_V2_MODE: "off" }
     });
@@ -146,6 +159,44 @@ describe("usageMeteringService.emitForProject (project-scoped)", () => {
     await flushAsync();
 
     expect(findById).not.toHaveBeenCalled();
+    expect(queue).not.toHaveBeenCalled();
+  });
+});
+
+describe("usageMeteringService.reconcile (demand-driven)", () => {
+  test("does nothing when the v2 license server is disabled", async () => {
+    const queue = makeQueueMock();
+    const svc = usageMeteringServiceFactory({
+      queueService: { queue },
+      keyStore: createFakeKeyStore(),
+      projectDAL: { findById: vi.fn() },
+      envConfig: { LICENSE_SERVER_V2_MODE: "off" }
+    });
+
+    svc.reconcile(ORG_ID);
+    await flushAsync();
+
+    expect(queue).not.toHaveBeenCalled();
+  });
+
+  test("emits every metered dimension once, then throttles repeats via the NX marker", async () => {
+    const queue = makeQueueMock();
+    const keyStore = createFakeKeyStore();
+    const svc = usageMeteringServiceFactory({
+      queueService: { queue },
+      keyStore,
+      projectDAL: { findById: vi.fn() },
+      envConfig: { LICENSE_SERVER_V2_MODE: "on" }
+    });
+
+    svc.reconcile(ORG_ID);
+    await flushAsync();
+    expect(queue).toHaveBeenCalledTimes(METERED_DIMENSION_KEYS.length);
+
+    // A second call within the interval is throttled by the marker set on the first.
+    queue.mockClear();
+    svc.reconcile(ORG_ID);
+    await flushAsync();
     expect(queue).not.toHaveBeenCalled();
   });
 });
@@ -245,6 +296,8 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       usageReporter?: unknown;
       keyStore?: ReturnType<typeof createFakeKeyStore>;
       orgFind?: unknown;
+      isCloud?: boolean;
+      getPlan?: (orgId: string) => Promise<{ slug: string | null }>;
     } = {}
   ) => {
     const reportSnapshots = vi.fn(async () => {});
@@ -252,17 +305,21 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
     const usageReporter = overrides.usageReporter === undefined ? { reportSnapshots } : overrides.usageReporter;
     const emit = vi.fn();
     const find = overrides.orgFind ?? vi.fn(async () => []);
+    // Default to a billable plan so the cloud slug gate is a pass-through unless a test overrides it.
+    const getPlan = vi.fn(overrides.getPlan ?? (async () => ({ slug: "pro" })));
     const queue = usageEventQueueFactory({
       queueService: { start: vi.fn() },
       cronJob: { register: vi.fn(), start: vi.fn(), stop: vi.fn() } as never,
       keyStore,
       orgDAL: { find } as never,
+      licenseService: { getPlan } as never,
       usageMeteringService: { emit },
       meteredFeatures,
       usageReporter: usageReporter as never,
+      isCloud: overrides.isCloud ?? false,
       source: "test-region"
     });
-    return { queue, reportSnapshots, keyStore, emit, find };
+    return { queue, reportSnapshots, keyStore, emit, find, getPlan };
   };
 
   beforeEach(() => {
@@ -288,6 +345,46 @@ describe("usageEventQueue.handleUsageEvent (worker)", () => {
       source: "test-region"
     });
     expect(keyStore.store.get(`license-usage-last-reported-${ORG_ID}-${IdentitiesMeter.key}`)).toBe("42");
+  });
+
+  test("on cloud, skips a free org (null slug) before counting to avoid a 404", async () => {
+    const { queue, reportSnapshots, getPlan } = buildQueue({
+      isCloud: true,
+      getPlan: async () => ({ slug: null })
+    });
+
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
+
+    expect(getPlan).toHaveBeenCalledWith(ORG_ID);
+    expect(meteredFeatures[0].count).not.toHaveBeenCalled();
+    expect(reportSnapshots).not.toHaveBeenCalled();
+  });
+
+  test("on cloud, proceeds for a billable org (non-null slug)", async () => {
+    const { queue, reportSnapshots } = buildQueue({ isCloud: true, getPlan: async () => ({ slug: "pro" }) });
+
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
+
+    expect(reportSnapshots).toHaveBeenCalledTimes(1);
+  });
+
+  test("self-hosted does not consult the plan slug gate", async () => {
+    const { queue, reportSnapshots, getPlan } = buildQueue({ isCloud: false });
+
+    await queue.handleUsageEvent(ORG_ID, IdentitiesMeter.key, new Date());
+
+    expect(getPlan).not.toHaveBeenCalled();
+    expect(reportSnapshots).toHaveBeenCalledTimes(1);
+  });
+
+  test("skips the internal-CA and certificate meters entirely (before any plan lookup)", async () => {
+    const { queue, reportSnapshots, getPlan } = buildQueue({ isCloud: true });
+
+    await queue.handleUsageEvent(ORG_ID, InternalCas.key, new Date());
+    await queue.handleUsageEvent(ORG_ID, ActiveCerts.key, new Date());
+
+    expect(getPlan).not.toHaveBeenCalled();
+    expect(reportSnapshots).not.toHaveBeenCalled();
   });
 
   test("skips the report when the count is unchanged", async () => {

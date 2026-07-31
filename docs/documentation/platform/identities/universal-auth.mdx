@@ -112,7 +112,7 @@ using the Universal Auth authentication method.
     Feel free to input any (optional) details for the **Client Secret** configuration:
 
     - Description: A description for the **Client Secret**.
-    - TTL (default is `0`): The time-to-live for the **Client Secret**. By default, the TTL will be set to 0 which implies that the **Client Secret** will never expire; a value of `0` implies an infinite lifetime.
+    - TTL (default is `0`): The time-to-live for the **Client Secret**. By default, the TTL will be set to 0 which implies that the **Client Secret** will never expire; a value of `0` implies an infinite lifetime. When you set a TTL, configure a [credential expiry alert](/documentation/platform/identities/machine-identities#credential-expiry-alerts) so your team is notified before the **Client Secret** expires.
     - Max Number of Uses (default is `0`): The maximum number of times that the **Client Secret** can be used together with the **Client ID** to get back an access token; a value of `0` implies infinite number of uses.
 
     <Info>

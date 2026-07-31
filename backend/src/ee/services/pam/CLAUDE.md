@@ -63,12 +63,14 @@ frontend components**. Adding a type is mostly a config entry + an icon; the gat
 `extractGatewayTarget` and `buildSessionGatewayConnectionDetails` in the same file.
 
 **Connection test** (`assertConnectionOk`) runs inside account `create`/`update` and **throws to block the write**
-if the target can't be reached/authenticated (verified from the gateway, never the backend). Which types are
-testable and how each builds its request is one registry — `PAM_CONNECTION_TEST_BUILDERS` in
-`pam-account-connection-test.ts` (a type absent from it isn't tested; add a testable type by adding an entry).
-One gateway RPC runs it all — `testConnectionWithGateway` → the gateway's `/v1/test-connection` handler
-(`packages/gateway-v2/test_connection_handler.go`), which dispatches on a `mode`: `postgres` (pgx auth + `SELECT 1`),
-`ssh` (login via the shared exec path), or `tcp` (reachability).
+if the target can't be reached/authenticated. Per-type behaviour lives in `pam-account-connection-test.ts`:
+`buildGatewayConnectionTest` resolves the gateway target + a `mode`-tagged request, and `CLOUD_CONNECTION_VALIDATORS`
+handles the host-less cloud accounts (AWS/GCP/Azure) by minting credentials backend-side via the federation helpers.
+Gateway-routed types run through one RPC — `testConnectionWithGateway` → the gateway's `/v1/test-connection` handler
+(`packages/gateway-v2/test_connection_handler.go`), dispatched on `mode`: `sql` (postgres/mysql/mssql auth), `mongodb`,
+`ldap` (Windows AD, against `dcAddress`), `kubernetes` (token), `ssh`, or `tcp` (reachability — the ceiling for
+Windows RDP, SSH cert auth, MsSQL NTLM/Kerberos, and K8s gateway-auth). A null test result (gateway offline / missing
+the connection-test protocol) skips rather than blocks.
 
 Cloud types use one of two brokering models instead of a plain gateway TCP proxy: **gateway-less** (`AwsIam`,
 `requiresGateway: false`) mints short-lived STS credentials in `access()` and returns them in session
@@ -117,8 +119,10 @@ Old tables/columns/code kept temporarily for rollback safety; target removal ~20
 migration. Tracked items:
 
 - **Legacy tables**: `pam_resources`, `pam_domains`, `pam_account_policies`,
-  `pam_resource_rotation_rules`, `pam_account_dependencies`, `pam_resource_favorites`,
+  `pam_resource_rotation_rules`, `pam_resource_favorites`,
   `pam_project_recording_configs`, `pam_session_event_batches`.
+  (`pam_account_dependencies` was **repurposed**, not dropped: it now backs dependency detection,
+  keyed off `pam_accounts` / `pam_discovered_accounts` instead of the legacy `pam_resources`.)
 - **`pam_accounts` columns**: `resourceId`, `domainId`, `policyId`, `requireMfa`, `internalMetadata`,
   `discoveryFingerprint`. (`lastRotatedAt`, `rotationStatus`, `encryptedLastRotationMessage` are **kept** —
   credential rotation reuses them.)

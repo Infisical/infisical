@@ -104,7 +104,7 @@ export const CaSection = () => {
                 isDisabled={!isAllowed}
               >
                 <PlusIcon />
-                Create CA
+                Create Internal CA
               </Button>
             )}
           </ProjectPermissionCan>

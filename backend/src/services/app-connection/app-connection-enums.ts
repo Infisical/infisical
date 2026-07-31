@@ -79,7 +79,9 @@ export enum AppConnection {
   LiteLLM = "litellm",
   Fireworks = "fireworks",
   KempLoadMaster = "kemp-loadmaster",
-  NutanixPrismCentral = "nutanix-prism-central"
+  MicrosoftIntune = "microsoft-intune",
+  NutanixPrismCentral = "nutanix-prism-central",
+  Spacelift = "spacelift"
 }
 
 export enum AWSRegion {

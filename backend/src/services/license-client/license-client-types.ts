@@ -407,6 +407,9 @@ export type TStartTrialPayload = {
   // A trial starts with no Stripe customer yet, so the server needs an email + org name to create one.
   email?: string;
   name?: string;
+  // Present actual usage per per_resource dimension, so the trial opens with the org's current
+  // quantities on display instead of zero (same shape checkout sends; the server floors omitted ones).
+  declaredUsage?: Record<string, number>;
   returnUrl?: string;
 };
 
@@ -456,8 +459,6 @@ export { trialsResponseSchema };
 
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
-  // Ask the license server to recompute/bust its cached entitlements after a license change.
-  refreshEntitlements: (org: TEntitlementOrg) => Promise<void>;
   // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the
   // arg and hits its single-tenant /v1/products.
   fetchCatalog: (orgId: string) => Promise<TCatalogResponse>;

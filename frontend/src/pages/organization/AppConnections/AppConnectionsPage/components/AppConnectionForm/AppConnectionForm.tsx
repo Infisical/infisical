@@ -60,6 +60,7 @@ import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
 import { LiteLLMConnectionForm } from "./LiteLLMConnectionForm";
+import { MicrosoftIntuneConnectionForm } from "./MicrosoftIntuneConnectionForm";
 import { MongoDBConnectionForm } from "./MongoDBConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
@@ -84,6 +85,7 @@ import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
+import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
 import { SshConnectionForm } from "./SshConnectionForm";
 import { SupabaseConnectionForm } from "./SupabaseConnectionForm";
 import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
@@ -267,6 +269,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Spacelift:
+        return <SpaceliftConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Bitbucket:
@@ -325,6 +329,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureEntraId:
         return <AzureEntraIdConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.MicrosoftIntune:
+        return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} />;
       case AppConnection.ExternalInfisical:
         return <ExternalInfisicalConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Doppler:
@@ -540,6 +546,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Spacelift:
+        return <SpaceliftConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.AzureDNS:
         return <AzureDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Bitbucket:
@@ -632,6 +640,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.MicrosoftIntune:
+        return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:
         throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
     }

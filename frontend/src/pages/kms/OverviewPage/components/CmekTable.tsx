@@ -49,6 +49,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  SelectedActionBar,
   Skeleton,
   Table,
   TableBody,
@@ -277,52 +278,40 @@ export const CmekTable = () => {
       animate={{ opacity: 1, translateX: 0 }}
       exit={{ opacity: 0, translateX: 30 }}
     >
-      <div
-        className={twMerge(
-          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
-          selectedKeyIds.length > 0 && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedKeyIds.length}
+        onClearSelection={() => setSelectedKeyIds([])}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
-          <div className="mr-2 text-sm">{selectedKeyIds.length} Selected</div>
-          <button
-            type="button"
-            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
-            onClick={() => setSelectedKeyIds([])}
-          >
-            Unselect All
-          </button>
-          <ProjectPermissionCan
-            I={ProjectPermissionCmekActions.ExportPrivateKey}
-            a={ProjectPermissionSub.Cmek}
-            renderTooltip
-          >
-            {(isAllowed) => (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="ml-2">
-                    <Button
-                      variant="project"
-                      size="xs"
-                      onClick={handleBulkExport}
-                      isDisabled={!isAllowed}
-                      isPending={bulkExportMutation.isPending}
-                    >
-                      <DownloadIcon className="mr-1 size-4" />
-                      Export
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isAllowed
-                    ? "Export all selected keys as a JSON file"
-                    : "You don't have permission to export keys"}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </ProjectPermissionCan>
-        </div>
-      </div>
+        <ProjectPermissionCan
+          I={ProjectPermissionCmekActions.ExportPrivateKey}
+          a={ProjectPermissionSub.Cmek}
+          renderTooltip
+        >
+          {(isAllowed) => (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="project"
+                    size="xs"
+                    onClick={handleBulkExport}
+                    isDisabled={!isAllowed}
+                    isPending={bulkExportMutation.isPending}
+                  >
+                    <DownloadIcon className="mr-1 size-4" />
+                    Export
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isAllowed
+                  ? "Export all selected keys as a JSON file"
+                  : "You don't have permission to export keys"}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </ProjectPermissionCan>
+      </SelectedActionBar>
 
       <Card>
         <CardHeader>

@@ -119,3 +119,17 @@
 .flex-1 .flex .items-center {
   /* background-color: #f5f5f5; */
 }
+
+@media (min-width: 1024px) {
+  #navbar.is-not-custom.is-not-center + div:has(> #sidebar) {
+    max-width: none !important;
+    margin-inline: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  #content-container {
+    width: 100%;
+    max-width: 70rem;
+    margin-inline: auto;
+  }
+}

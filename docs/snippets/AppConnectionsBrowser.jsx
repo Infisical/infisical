@@ -635,6 +635,14 @@ export const AppConnectionsBrowser = () => {
       description: "Learn how to connect OpenAI to manage and rotate API keys with Infisical.",
       category: "AI & LLM",
     },
+    {
+      name: "Spacelift",
+      slug: "spacelift",
+      path: "/integrations/app-connections/spacelift",
+      description:
+        "Learn how to connect Spacelift to pull secrets from Infisical.",
+      category: "DevOps Tools",
+    },
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

@@ -112,6 +112,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
               First Name
             </FieldLabel>
             <Input
+              variant="outlined"
               {...register("firstName")}
               id="admin-signup-first-name"
               placeholder="First Name"
@@ -127,6 +128,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
               Last Name
             </FieldLabel>
             <Input
+              variant="outlined"
               {...register("lastName")}
               id="admin-signup-last-name"
               placeholder="Last Name"
@@ -143,6 +145,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
             Email
           </FieldLabel>
           <Input
+            variant="outlined"
             {...register("email")}
             id="admin-signup-email"
             type="email"
@@ -153,6 +156,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
           {showDangerState && errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
         </Field>
         <PasswordField
+          variant="outlined"
           id="admin-signup-password"
           value={password}
           policy={config.passwordPolicy}
@@ -168,7 +172,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
         >
           <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
             <FieldLabel htmlFor="admin-signup-confirm-password">Confirm Password</FieldLabel>
-            <InputGroup>
+            <InputGroup variant="outlined">
               <InputGroupInput
                 {...register("confirmPassword")}
                 id="admin-signup-confirm-password"
