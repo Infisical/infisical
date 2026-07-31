@@ -8,7 +8,7 @@ This guide defines how to write user-facing documentation for Infisical.
 2. **Write for users** — No implementation details. Users care about outcomes, not internals.
 3. **Cross-reference** — Link concepts that are essential for understanding.
 4. **Use Mintlify components** — Steps, Tabs, Cards, Accordions, callouts, diagrams.
-5. **Write clearly** — Active voice, specific verbs, concise sentences.
+5. **Write clearly** — Active voice, specific verbs, concise sentences, sparing em dashes.
 6. **Keep pages focused** — One purpose per page. Split if it gets too long.
 7. **Maintain flow** — New content should connect naturally with existing content.
 8. **State prerequisites** — Tell readers what they need before they start.
@@ -41,8 +41,9 @@ If a page is intended for a specific audience (admins vs. end users, product adm
 
 ```mdx
 <Info>
-  This page is for product admins setting up PKI infrastructure. 
-  Teams issuing certificates should see [Applications](/documentation/platform/pki/applications/overview).
+  This page is for product admins setting up PKI infrastructure. Teams issuing
+  certificates should see
+  [Applications](/documentation/platform/pki/applications/overview).
 </Info>
 ```
 
@@ -174,6 +175,7 @@ Mintlify supports [Mermaid diagrams](https://mermaid.js.org/) inline, or you can
 Use `<AccordionGroup>` with `<Accordion>` for FAQ sections. FAQs are valuable — they address common questions, edge cases, and "but what about..." scenarios without cluttering the main content.
 
 **Consider adding FAQs when:**
+
 - A feature has common gotchas or misconceptions
 - Users often ask the same questions
 - There are edge cases that don't fit the main flow
@@ -197,16 +199,19 @@ FAQs make documentation easier to scan — readers can jump straight to their qu
 Include code examples only when they genuinely help understanding — not to make documentation look technical or comprehensive. A well-placed example clarifies; too many examples overwhelm.
 
 **When to include code:**
+
 - The syntax isn't obvious from the description alone
 - Readers need something copy-pasteable to get started
 - Showing expected output helps verify success
 
 **When to skip code:**
+
 - The UI walkthrough is sufficient
 - The concept is better explained in prose
 - Adding code would just repeat what's already clear
 
 **When you do include code:**
+
 - Make it copy-pasteable — no `$` prompts that break pasting
 - Use obvious placeholders: `<your-api-key>`, `<project-id>`, not `abc123` or `foo`
 - Use realistic values where possible (actual domain names, plausible configs)
@@ -236,12 +241,18 @@ Mintlify offers many more components — use whatever best serves the reader's u
 
 ## 5. Write Clearly and Directly
 
-Documentation should read like instructions from a knowledgeable colleague — direct, specific, and easy to follow.
+Documentation should read like instructions from a knowledgeable colleague: direct, specific, and easy to follow.
 
 - Prefer active voice over passive
 - Use specific verbs over vague ones
 - Keep sentences and paragraphs concise
 - Explain jargon on first use
+
+### Don't Overuse Em Dashes
+
+Heavy em dash use is one of the clearest tells of machine-written text, and it slows readers down: each one asks them to hold an unfinished clause in mind until the sentence resolves.
+
+Reach for a comma, colon, parentheses, or a full stop first. An occasional em dash is fine, but several in a paragraph, or one in most sentences, means the punctuation is doing the work that sentence structure should.
 
 ---
 
