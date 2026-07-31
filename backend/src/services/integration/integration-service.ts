@@ -1,7 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { ActionProjectType } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -30,7 +29,6 @@ import { TIntegrationDALFactory } from "./integration-dal";
 import {
   TCreateIntegrationDTO,
   TDeleteIntegrationDTO,
-  TGetIntegrationDeprecationStatusDTO,
   TGetIntegrationDTO,
   TSyncIntegrationDTO,
   TUpdateIntegrationDTO
@@ -41,7 +39,7 @@ type TIntegrationServiceFactoryDep = {
   integrationAuthDAL: TIntegrationAuthDALFactory;
   integrationAuthService: TIntegrationAuthServiceFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findByManySecretPath">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectBotService: TProjectBotServiceFactory;
   secretQueueService: Pick<TSecretQueueFactory, "syncIntegrations">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "findByFolderId">;
@@ -391,32 +389,6 @@ export const integrationServiceFactory = ({
     return { ...integration, envId: integration.environment.id };
   };
 
-  /**
-   * Backs the org-wide deprecation banner. Restricted to org admins — they are the ones who can act on it, and the
-   * same audience the monthly deprecation notice emails. Only a boolean leaves the service.
-   */
-  const getDeprecationStatus = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TGetIntegrationDeprecationStatusDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    // members hold only Read on org settings, so Edit is an effective admin gate that still honours custom roles
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
-
-    const hasNativeIntegrations = await integrationDAL.hasIntegrationsByOrgId(actorOrgId);
-
-    return { hasNativeIntegrations };
-  };
-
   return {
     createIntegration,
     updateIntegration,
@@ -424,7 +396,6 @@ export const integrationServiceFactory = ({
     listIntegrationByProject,
     getIntegration,
     getIntegrationAWSIamRole,
-    syncIntegration,
-    getDeprecationStatus
+    syncIntegration
   };
 };

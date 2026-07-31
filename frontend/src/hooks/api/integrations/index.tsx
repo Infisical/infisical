@@ -2,6 +2,5 @@ export {
   useCreateIntegration,
   useDeleteIntegration,
   useGetCloudIntegrations,
-  useGetIntegration,
-  useGetNativeIntegrationDeprecationStatus
+  useGetIntegration
 } from "./queries";

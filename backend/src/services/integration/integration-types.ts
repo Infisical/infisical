@@ -1,4 +1,4 @@
-import { TOrgPermission, TProjectPermission } from "@app/lib/types";
+import { TProjectPermission } from "@app/lib/types";
 
 export type TCreateIntegrationDTO = {
   secretPath: string;
@@ -79,5 +79,3 @@ export type TDeleteIntegrationDTO = {
 export type TSyncIntegrationDTO = {
   id: string;
 } & Omit<TProjectPermission, "projectId">;
-
-export type TGetIntegrationDeprecationStatusDTO = Omit<TOrgPermission, "orgId">;
