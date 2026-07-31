@@ -100,6 +100,7 @@ const WebAuthnVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => 
         it a name so you can recognize it later.
       </p>
       <Input
+        variant="outlined"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Passkey name (optional)"
