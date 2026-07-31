@@ -39,8 +39,11 @@ type TIntegrationDeprecationQueueFactoryDep = {
 
 export type TIntegrationDeprecationQueueFactory = ReturnType<typeof integrationDeprecationQueueFactory>;
 
-const NOTICE = "Action required: move your native integrations to Secret Syncs";
-const NOTICE_BODY = `Recreate your native integrations as Secret Syncs before ${NATIVE_INTEGRATION_DEPRECATION_DATE} to keep your secrets syncing.`;
+const EMAIL_SUBJECT = "Action required: move your native integrations to Secret Syncs";
+// the notification dropdown renders the title on a single ellipsised line next to a timestamp, so this
+// stays shorter than the subject line and front-loads the part that matters
+const NOTIFICATION_TITLE = `Native integrations stop working ${NATIVE_INTEGRATION_DEPRECATION_DATE}`;
+const NOTIFICATION_BODY = `Recreate your native integrations as Secret Syncs before ${NATIVE_INTEGRATION_DEPRECATION_DATE} to keep your secrets syncing.`;
 
 /**
  * Monthly nudge toward Secret Syncs for every org still holding native integrations.
@@ -86,11 +89,10 @@ export const integrationDeprecationQueueFactory = ({
     try {
       await smtpService.sendMail({
         template: SmtpTemplates.NativeIntegrationDeprecation,
-        subjectLine: NOTICE,
+        subjectLine: EMAIL_SUBJECT,
         recipients: recipients.map((recipient) => recipient.email),
         substitutions: {
           orgName,
-          deprecationDate: NATIVE_INTEGRATION_DEPRECATION_DATE,
           projects: projects.map((project) => ({
             name: project.projectName,
             integrations: project.integrations,
@@ -108,8 +110,8 @@ export const integrationDeprecationQueueFactory = ({
           userId: recipient.userId,
           orgId,
           type: NotificationType.NATIVE_INTEGRATION_DEPRECATED,
-          title: NOTICE,
-          body: NOTICE_BODY,
+          title: NOTIFICATION_TITLE,
+          body: NOTIFICATION_BODY,
           link
         }))
       );

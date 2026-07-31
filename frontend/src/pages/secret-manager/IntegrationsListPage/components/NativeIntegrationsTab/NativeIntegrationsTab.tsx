@@ -151,44 +151,42 @@ export const NativeIntegrationsTab = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-4">
-        <NativeIntegrationsDeprecationAlert />
-        {view === IntegrationView.List ? (
-          <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => setView(IntegrationView.New)}
-              >
-                Add Integration
-              </Button>
-            </div>
-            <IntegrationsTable
-              cloudIntegrations={cloudIntegrations}
-              integrations={integrations}
-              isLoading={isIntegrationLoading}
-              workspaceId={workspaceId}
-              environments={environments}
-              onDeleteIntegration={(integration) => {
-                setShouldDeleteSecrets.off();
-                handlePopUpOpen("deleteConfirmation", integration);
-              }}
-            />
+      <NativeIntegrationsDeprecationAlert />
+      {view === IntegrationView.List ? (
+        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
+            <Button
+              colorSchema="secondary"
+              type="submit"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => setView(IntegrationView.New)}
+            >
+              Add Integration
+            </Button>
           </div>
-        ) : (
-          <CloudIntegrationSection
-            onIntegrationStart={handleProviderIntegrationStart}
-            onIntegrationRevoke={handleIntegrationAuthRevoke}
-            integrationAuths={integrationAuths}
+          <IntegrationsTable
             cloudIntegrations={cloudIntegrations}
-            isLoading={isIntegrationAuthLoading || isCloudIntegrationsLoading}
-            onViewActiveIntegrations={() => setView(IntegrationView.List)}
+            integrations={integrations}
+            isLoading={isIntegrationLoading}
+            workspaceId={workspaceId}
+            environments={environments}
+            onDeleteIntegration={(integration) => {
+              setShouldDeleteSecrets.off();
+              handlePopUpOpen("deleteConfirmation", integration);
+            }}
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <CloudIntegrationSection
+          onIntegrationStart={handleProviderIntegrationStart}
+          onIntegrationRevoke={handleIntegrationAuthRevoke}
+          integrationAuths={integrationAuths}
+          cloudIntegrations={cloudIntegrations}
+          isLoading={isIntegrationAuthLoading || isCloudIntegrationsLoading}
+          onViewActiveIntegrations={() => setView(IntegrationView.List)}
+        />
+      )}
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${
