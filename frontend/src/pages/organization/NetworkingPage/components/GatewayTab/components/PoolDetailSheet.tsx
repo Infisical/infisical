@@ -330,8 +330,8 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
             <AlertDialogDescription asChild>
               <Alert variant="warning" appearance="borderless">
                 <AlertDescription>
-                  Removing this gateway from the pool may interrupt traffic. The gateway will not
-                  be deleted and can be added back.
+                  Removing this gateway from the pool may interrupt traffic. The gateway will not be
+                  deleted and can be added back.
                 </AlertDescription>
               </Alert>
             </AlertDialogDescription>

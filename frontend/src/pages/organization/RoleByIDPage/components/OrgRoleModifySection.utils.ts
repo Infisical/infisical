@@ -735,7 +735,8 @@ export const ORG_PERMISSION_OBJECT: Record<string, TOrgPermissionConfig> = {
       {
         value: OrgGatewayPermissionActions.CreateGateways,
         label: "Create Gateways",
-        description: "Register new gateways that securely proxy Infisical traffic into your infrastructure"
+        description:
+          "Register new gateways that securely proxy Infisical traffic into your infrastructure"
       },
       {
         value: OrgGatewayPermissionActions.EditGateways,
