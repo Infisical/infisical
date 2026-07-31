@@ -664,12 +664,12 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     return {
       accounts: accounts.map((a) => ({
         id: a.id,
-        accountId: a.importedAccountId as string,
-        name: a.accountName as string,
-        folderId: (a.folderId as string | null) ?? null,
-        folderName: (a.folderName as string | null) ?? null,
+        accountId: a.importedAccountId,
+        name: a.accountName,
+        folderId: a.folderId ?? null,
+        folderName: a.folderName ?? null,
         accountType: a.accountType as PamAccountType,
-        lastDiscoveredAt: (a.lastDiscoveredAt as Date | null) ?? null
+        lastDiscoveredAt: a.lastDiscoveredAt ?? null
       })),
       totalCount
     };
@@ -723,6 +723,9 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           const discovered = await pamDiscoveredAccountDAL.findById(item.discoveredAccountId);
           if (!discovered || discovered.discoverySourceId !== sourceId) {
             throw new NotFoundError({ message: "Discovered account not found" });
+          }
+          if (discovered.isStale) {
+            throw new BadRequestError({ message: "This account is no longer available in the environment" });
           }
           if (discovered.importedAccountId) {
             // Already imported. Re-run the idempotent backfill so a retry heals a prior import whose backfill

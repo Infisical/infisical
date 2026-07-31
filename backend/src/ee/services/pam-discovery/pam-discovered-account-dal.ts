@@ -85,7 +85,16 @@ export const pamDiscoveredAccountDALFactory = (db: TDbClient) => {
     if (limit) void dataQuery.limit(limit);
     if (offset) void dataQuery.offset(offset);
 
-    const [countResult, accounts] = await Promise.all([countQuery, dataQuery]);
+    const [countResult, rows] = await Promise.all([countQuery, dataQuery]);
+    const accounts = rows as unknown as {
+      id: string;
+      accountType: string;
+      lastDiscoveredAt: Date | null;
+      importedAccountId: string;
+      accountName: string;
+      folderId: string | null;
+      folderName: string | null;
+    }[];
     return { accounts, totalCount: Number(countResult?.count ?? 0) };
   };
 
