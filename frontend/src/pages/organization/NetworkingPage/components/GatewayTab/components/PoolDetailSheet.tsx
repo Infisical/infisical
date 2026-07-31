@@ -210,10 +210,10 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </OrgPermissionCan>
             </div>
 
-            <Table className="min-w-[32rem] table-fixed">
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-80 min-w-80">
+                  <TableHead>
                     <TableHeadLabel>Name</TableHeadLabel>
                   </TableHead>
                   <TableHead className="w-36">
@@ -235,7 +235,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
                   return (
                     <TableRow key={gw.id}>
-                      <TableCell className="min-w-80">
+                      <TableCell>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="min-w-0 flex-1 truncate">{gw.name}</span>
                           {gw.isV1 && (
