@@ -251,7 +251,6 @@ Each page should have a clear, single purpose. If a page is getting long or cove
 
 **Signs a page should be split:**
 
-- It covers setup _and_ advanced configuration _and_ troubleshooting
 - Readers have to scroll past content that isn't relevant to them
 - The table of contents has more than 5-6 top-level sections
 - Different audiences need different parts (e.g., admins vs. end users)
