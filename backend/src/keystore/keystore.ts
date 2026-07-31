@@ -178,7 +178,7 @@ export const KeyStorePrefixes = {
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
   NativeIntegrationDeprecationNotice: (orgId: string, period: string) =>
-    `native-integration-deprecation-notice:${orgId}:${period}` as const
+    `validation2-native-integration-deprecation-notice:${orgId}:${period}` as const
 };
 
 export const KeyStoreTtls = {

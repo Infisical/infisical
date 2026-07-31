@@ -1,5 +1,7 @@
 import { groupBy, unique } from "@app/lib/fn";
 
+export const NATIVE_INTEGRATION_DEPRECATION_DATE = "February 1, 2027";
+
 export type TIntegrationProjectRow = {
   projectId: string;
   projectName: string;

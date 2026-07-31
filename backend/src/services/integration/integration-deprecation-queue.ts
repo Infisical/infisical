@@ -17,6 +17,7 @@ import {
   buildNativeIntegrationsPath,
   buildNativeIntegrationsUrl,
   groupIntegrationsByProject,
+  NATIVE_INTEGRATION_DEPRECATION_DATE,
   TIntegrationProjectSummary,
   TNoticeRecipient,
   toRecipients
@@ -38,9 +39,8 @@ type TIntegrationDeprecationQueueFactoryDep = {
 
 export type TIntegrationDeprecationQueueFactory = ReturnType<typeof integrationDeprecationQueueFactory>;
 
-const NOTICE_SUBJECT = "Action recommended: move native integrations to Secret Syncs";
-const NOTICE_BODY =
-  "Native integrations are deprecated. Secret Syncs are the maintained replacement and cover the same third-party services.";
+const NOTICE = "Action required: move your native integrations to Secret Syncs";
+const NOTICE_BODY = `Recreate your native integrations as Secret Syncs before ${NATIVE_INTEGRATION_DEPRECATION_DATE} to keep your secrets syncing.`;
 
 /**
  * Monthly nudge toward Secret Syncs for every org still holding native integrations.
@@ -86,10 +86,11 @@ export const integrationDeprecationQueueFactory = ({
     try {
       await smtpService.sendMail({
         template: SmtpTemplates.NativeIntegrationDeprecation,
-        subjectLine: NOTICE_SUBJECT,
+        subjectLine: NOTICE,
         recipients: recipients.map((recipient) => recipient.email),
         substitutions: {
           orgName,
+          deprecationDate: NATIVE_INTEGRATION_DEPRECATION_DATE,
           projects: projects.map((project) => ({
             name: project.projectName,
             integrations: project.integrations,
@@ -107,7 +108,7 @@ export const integrationDeprecationQueueFactory = ({
           userId: recipient.userId,
           orgId,
           type: NotificationType.NATIVE_INTEGRATION_DEPRECATED,
-          title: "Native integrations are moving to Secret Syncs",
+          title: NOTICE,
           body: NOTICE_BODY,
           link
         }))
@@ -192,7 +193,7 @@ export const integrationDeprecationQueueFactory = ({
 
     cronJob.register({
       name: CronJobName.MonthlyNativeIntegrationDeprecationNotice,
-      pattern: "0 0 1 * *",
+      pattern: "* * * * *",
       runHashTtlS: 7 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {

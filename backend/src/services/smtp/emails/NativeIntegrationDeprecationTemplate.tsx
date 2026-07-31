@@ -9,23 +9,26 @@ interface NativeIntegrationDeprecationTemplateProps
   orgName: string;
   // a single entry for the per-project email, every affected project for the org-wide email
   projects: { name: string; integrations: string[]; url: string }[];
+  // the cutoff date, passed in so the subject line and the body can't state different dates
+  deprecationDate: string;
 }
 
 export const NativeIntegrationDeprecationTemplate = ({
   siteUrl,
   orgName,
-  projects
+  projects,
+  deprecationDate
 }: NativeIntegrationDeprecationTemplateProps) => {
   const isSingleProject = projects.length === 1;
 
   return (
     <BaseEmailWrapper
-      title="Native Integrations Are Moving to Secret Syncs"
-      preview="Native integrations are deprecated. Secret Syncs are the maintained replacement."
+      title="Native Integrations are moving to Secret Syncs"
+      preview={`Recreate your native integrations as Secret Syncs before ${deprecationDate}.`}
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        <strong>Native Integrations Are Moving to Secret Syncs</strong>
+        <strong>Native Integrations Stop Working on {deprecationDate}</strong>
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
@@ -39,8 +42,8 @@ export const NativeIntegrationDeprecationTemplate = ({
               <strong>{projects.length}</strong> projects in <strong>{orgName}</strong> still use native integrations.
             </>
           )}{" "}
-          Native integrations are deprecated. Secret Syncs are the maintained replacement and cover the same third-party
-          services, so we recommend migrating.
+          They stop working on <strong>{deprecationDate}</strong>. After that date these integrations stop syncing
+          secrets. Recreate each one as a Secret Sync before then. Secret Syncs cover the same third-party services.
         </Text>
       </Section>
       <Section className="mb-[28px]">
@@ -61,7 +64,7 @@ export const NativeIntegrationDeprecationTemplate = ({
       </Section>
       <Section className="text-center">
         <BaseButton href="https://infisical.com/docs/integrations/secret-syncs/overview">
-          Explore Secret Syncs
+          Migrate to Secret Syncs
         </BaseButton>
       </Section>
     </BaseEmailWrapper>
@@ -73,6 +76,7 @@ export default NativeIntegrationDeprecationTemplate;
 NativeIntegrationDeprecationTemplate.PreviewProps = {
   siteUrl: "https://infisical.com",
   orgName: "Example Organization",
+  deprecationDate: "February 1, 2027",
   projects: [
     {
       name: "backend-api",

@@ -1,8 +1,8 @@
-import { faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
+import { XIcon } from "lucide-react";
 
 import { IconButton } from "@app/components/v2";
+import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/const/nativeIntegrationDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { useBannerDismissal } from "@app/hooks";
@@ -30,10 +30,9 @@ export const NativeIntegrationsMigrationBanner = () => {
 
   return (
     <div className="flex w-full items-center border-b border-yellow/50 bg-yellow/30 px-4 py-2 text-sm text-yellow-200">
-      <FontAwesomeIcon icon={faWarning} className="mr-2.5 text-base text-yellow" />
       This project has {integrations.length} native integration
-      {integrations.length > 1 ? "s" : ""}. Native integrations are deprecated, recreate them as
-      Secret Syncs.
+      {integrations.length > 1 ? "s" : ""}. They stop working on{" "}
+      {NATIVE_INTEGRATION_DEPRECATION_DATE}. Recreate them as Secret Syncs.
       <Link
         to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
         params={{ orgId: currentOrg.id, projectId: currentProject.id }}
@@ -48,7 +47,7 @@ export const NativeIntegrationsMigrationBanner = () => {
         variant="plain"
         onClick={dismiss}
       >
-        <FontAwesomeIcon icon={faXmark} />
+        <XIcon className="size-4" />
       </IconButton>
     </div>
   );

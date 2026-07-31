@@ -20,7 +20,7 @@ import { TIntegration } from "@app/hooks/api/integrations/types";
 import { redirectForProviderAuth } from "../../IntegrationsListPage.utils";
 import { CloudIntegrationSection } from "../CloudIntegrationSection";
 import { IntegrationsTable } from "./IntegrationsTable";
-import { NativeIntegrationsDeprecationModal } from "./NativeIntegrationsDeprecationModal";
+import { NativeIntegrationsDeprecationAlert } from "./NativeIntegrationsDeprecationAlert";
 
 enum IntegrationView {
   List = "list",
@@ -151,41 +151,44 @@ export const NativeIntegrationsTab = () => {
 
   return (
     <>
-      {view === IntegrationView.List ? (
-        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
-            <Button
-              colorSchema="secondary"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => setView(IntegrationView.New)}
-            >
-              Add Integration
-            </Button>
+      <div className="flex flex-col gap-4">
+        <NativeIntegrationsDeprecationAlert />
+        {view === IntegrationView.List ? (
+          <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xl font-medium text-mineshaft-100">Native Integrations</p>
+              <Button
+                colorSchema="secondary"
+                type="submit"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => setView(IntegrationView.New)}
+              >
+                Add Integration
+              </Button>
+            </div>
+            <IntegrationsTable
+              cloudIntegrations={cloudIntegrations}
+              integrations={integrations}
+              isLoading={isIntegrationLoading}
+              workspaceId={workspaceId}
+              environments={environments}
+              onDeleteIntegration={(integration) => {
+                setShouldDeleteSecrets.off();
+                handlePopUpOpen("deleteConfirmation", integration);
+              }}
+            />
           </div>
-          <IntegrationsTable
+        ) : (
+          <CloudIntegrationSection
+            onIntegrationStart={handleProviderIntegrationStart}
+            onIntegrationRevoke={handleIntegrationAuthRevoke}
+            integrationAuths={integrationAuths}
             cloudIntegrations={cloudIntegrations}
-            integrations={integrations}
-            isLoading={isIntegrationLoading}
-            workspaceId={workspaceId}
-            environments={environments}
-            onDeleteIntegration={(integration) => {
-              setShouldDeleteSecrets.off();
-              handlePopUpOpen("deleteConfirmation", integration);
-            }}
+            isLoading={isIntegrationAuthLoading || isCloudIntegrationsLoading}
+            onViewActiveIntegrations={() => setView(IntegrationView.List)}
           />
-        </div>
-      ) : (
-        <CloudIntegrationSection
-          onIntegrationStart={handleProviderIntegrationStart}
-          onIntegrationRevoke={handleIntegrationAuthRevoke}
-          integrationAuths={integrationAuths}
-          cloudIntegrations={cloudIntegrations}
-          isLoading={isIntegrationAuthLoading || isCloudIntegrationsLoading}
-          onViewActiveIntegrations={() => setView(IntegrationView.List)}
-        />
-      )}
+        )}
+      </div>
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${
@@ -250,7 +253,6 @@ export const NativeIntegrationsTab = () => {
           );
         }}
       />
-      <NativeIntegrationsDeprecationModal />
     </>
   );
 };
