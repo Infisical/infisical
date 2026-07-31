@@ -247,7 +247,9 @@ describe("CertificateV3Service", () => {
         updateById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
         findById: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
         create: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
-        transaction: vi.fn()
+        transaction: vi.fn(),
+        transitionFromPending: vi.fn().mockResolvedValue({ id: "cert-req-123" }),
+        attachCertificate: vi.fn().mockResolvedValue({ id: "cert-req-123" })
       },
       userDAL: {
         findById: vi.fn().mockResolvedValue({ id: "user-123" })
@@ -790,6 +792,9 @@ describe("CertificateV3Service", () => {
         certificateChain: "chain",
         issuingCaCertificate: "issuing-ca",
         serialNumber: "789012",
+        // signCertFromCa always returns the id of the certificate it persisted, and the response is
+        // built from that rather than from a follow-up read.
+        certificateId: "cert-456",
         commonName: "test.example.com",
         ca: {
           id: "ca-123",
