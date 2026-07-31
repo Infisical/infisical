@@ -206,8 +206,6 @@ export const integrationDALFactory = (db: TDbClient) => {
 
   // native integrations are deprecated in favour of secret syncs — the three helpers below back the monthly
   // deprecation notice, which enumerates every org still holding one.
-  // filters Environment.deleteAfter AND Project.deleteAfter: an environment soft-delete does not imply a
-  // project soft-delete, so a cross-project enumeration has to exclude both independently.
   const liveOrgIntegrationQuery = (conn: Knex) =>
     conn(TableName.Integration)
       .join(TableName.Environment, `${TableName.Integration}.envId`, `${TableName.Environment}.id`)

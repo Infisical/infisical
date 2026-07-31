@@ -4,12 +4,6 @@ import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 import { BaseLink } from "./BaseLink";
 
-const BENEFITS = [
-  "Continuous, automatic syncing with no manual re-runs",
-  "Reusable App Connections shared across syncs",
-  "Actively maintained and supported"
-];
-
 interface NativeIntegrationDeprecationTemplateProps
   extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   orgName: string;
@@ -48,11 +42,6 @@ export const NativeIntegrationDeprecationTemplate = ({
           Native integrations are deprecated. Secret Syncs are the maintained replacement and cover the same third-party
           services, so we recommend migrating.
         </Text>
-        {BENEFITS.map((benefit) => (
-          <Text key={benefit} className="text-black text-[14px] leading-[20px] my-[4px]">
-            • {benefit}
-          </Text>
-        ))}
       </Section>
       <Section className="mb-[28px]">
         <Text className="text-[14px] font-semibold mb-[12px]">

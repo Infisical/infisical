@@ -37,7 +37,7 @@ type TIntegrationDeprecationQueueFactoryDep = {
 
 export type TIntegrationDeprecationQueueFactory = ReturnType<typeof integrationDeprecationQueueFactory>;
 
-const NOTICE_SUBJECT = "Action recommended: native integrations are moving to Secret Syncs";
+const NOTICE_SUBJECT = "Action recommended: move native integrations to Secret Syncs";
 const NOTICE_BODY =
   "Native integrations are deprecated. Secret Syncs are the maintained replacement and cover the same third-party services.";
 

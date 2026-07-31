@@ -418,4 +418,29 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       return { integration };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/deprecation-status",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      // internal: backs the deprecation banner in the UI, not part of the public API surface
+      hide: true,
+      response: {
+        200: z.object({
+          hasNativeIntegrations: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) =>
+      server.services.integration.getDeprecationStatus({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
 };
