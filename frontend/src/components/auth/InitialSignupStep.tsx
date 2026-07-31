@@ -142,6 +142,7 @@ export default function InitialSignupStep({
           {shouldDisplaySignupMethod(LoginMethod.EMAIL) && (
             <div className="flex w-full flex-col gap-4">
               <Input
+                variant="outlined"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);

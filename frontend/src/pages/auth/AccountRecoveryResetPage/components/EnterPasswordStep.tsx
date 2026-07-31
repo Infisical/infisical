@@ -98,6 +98,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
       </p>
       <div className="mt-8 w-full">
         <PasswordField
+          variant="outlined"
           id="account-recovery-password"
           value={password}
           policy={config.passwordPolicy}
@@ -114,7 +115,7 @@ export const EnterPasswordStep = ({ verificationToken, onComplete, onBack }: Pro
       >
         <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
           <FieldLabel htmlFor="account-recovery-confirm-password">Confirm Password</FieldLabel>
-          <InputGroup>
+          <InputGroup variant="outlined">
             <InputGroupInput
               {...register("confirmPassword")}
               id="account-recovery-confirm-password"

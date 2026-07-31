@@ -115,6 +115,7 @@ export const PasswordSetupPage = () => {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <PasswordField
+              variant="outlined"
               id="password-setup-password"
               value={password}
               policy={config.passwordPolicy}
@@ -129,7 +130,7 @@ export const PasswordSetupPage = () => {
             >
               <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
                 <FieldLabel htmlFor="password-setup-confirm-password">Confirm Password</FieldLabel>
-                <InputGroup>
+                <InputGroup variant="outlined">
                   <InputGroupInput
                     {...register("confirmPassword")}
                     id="password-setup-confirm-password"

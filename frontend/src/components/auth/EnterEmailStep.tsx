@@ -64,6 +64,7 @@ export default function EnterEmailStep({
         <CardContent className="flex flex-col gap-4">
           <div className="flex w-full flex-col gap-2">
             <Input
+              variant="outlined"
               placeholder="Enter your email address..."
               onChange={(e) => setEmail(e.target.value)}
               value={email}
