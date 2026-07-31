@@ -30,6 +30,7 @@ export const PkiManagerLayout = () => {
       <UpgradePlanModal
         isOpen={isUpgradeModalOpen}
         onOpenChange={setIsUpgradeModalOpen}
+        featureKey="cert_manager"
         text="Certificate Manager is not available on your current plan. Upgrade to continue using it."
       />
     </div>

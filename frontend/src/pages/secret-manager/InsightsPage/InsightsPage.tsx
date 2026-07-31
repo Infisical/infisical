@@ -145,6 +145,7 @@ export const InsightsPage = withProjectPermission(
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
           }}
+          featureKey="secret_access_insights"
           text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."
         />
       </>

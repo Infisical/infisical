@@ -95,6 +95,7 @@ export const OrgMembersSection = () => {
   const handleAddMemberModal = () => {
     if (!isMoreIdentitiesAllowed && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
+        featureKey: "max_identity_limit",
         text: "You have reached the maximum number of members allowed on your current plan. Upgrade to Infisical Pro plan to add more members."
       });
       return;
@@ -310,6 +311,7 @@ export const OrgMembersSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey={popUp.upgradePlan?.data?.featureKey}
         text={popUp.upgradePlan?.data?.text}
         isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />

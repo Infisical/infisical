@@ -24,6 +24,7 @@ export const PamLayout = () => {
       <UpgradePlanModal
         isOpen={isUpgradeModalOpen}
         onOpenChange={setIsUpgradeModalOpen}
+        featureKey="pam"
         text="PAM is not available on your current plan. Upgrade to continue using it."
       />
     </>

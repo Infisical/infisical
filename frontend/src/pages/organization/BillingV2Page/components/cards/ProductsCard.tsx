@@ -227,7 +227,7 @@ const AvailableProductTile = ({
           style={{ "--product-color": prod.color } as CSSProperties}
           onClick={() => onManage(prod.id)}
         >
-          {offersTrial ? "Start a free trial" : "Activate"}
+          {offersTrial ? "Start a Free 2-week trial" : "Activate"}
         </Button>
       );
     } else if (salesLed) {

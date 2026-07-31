@@ -176,6 +176,7 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
       <UpgradePlanModal
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
+        featureKey="rbac"
         text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
         isEnterpriseFeature
       />

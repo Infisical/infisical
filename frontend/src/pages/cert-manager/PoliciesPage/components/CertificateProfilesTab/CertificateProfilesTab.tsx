@@ -111,6 +111,7 @@ export const CertificateProfilesTab = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="pki_acme"
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         text="Your current plan does not include access to managing template enrollment options for ACME. To unlock this feature, please upgrade to Infisical Enterprise plan."
       />

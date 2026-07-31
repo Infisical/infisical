@@ -98,6 +98,7 @@ export const SshHostGroupHostsSection = ({ sshHostGroupId }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey="ssh_host_groups"
         text={popUp.upgradePlan?.data?.text}
         isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />

@@ -175,7 +175,7 @@ export const OrgSsoTab = withPermission(
 
     const handleConnectSaml = async () => {
       if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", { featureName: "SAML SSO" });
+        handlePopUpOpen("upgradePlan", { featureKey: "saml_sso", featureName: "SAML SSO" });
         return;
       }
       if (!currentOrg) return;
@@ -195,6 +195,7 @@ export const OrgSsoTab = withPermission(
     const handleConnectOidc = () => {
       if (!subscription?.oidcSSO) {
         handlePopUpOpen("upgradePlan", {
+          featureKey: "oidc_sso",
           featureName: "OIDC SSO",
           isEnterpriseFeature: true
         });
@@ -206,6 +207,7 @@ export const OrgSsoTab = withPermission(
     const handleConnectLdap = () => {
       if (!subscription?.ldap) {
         handlePopUpOpen("upgradePlan", {
+          featureKey: "ldap",
           featureName: "LDAP",
           isEnterpriseFeature: true
         });
@@ -577,6 +579,7 @@ export const OrgSsoTab = withPermission(
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          featureKey={popUp.upgradePlan.data?.featureKey}
           text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />

@@ -198,6 +198,7 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
                     onClick={() => {
                       if (!isMoreIdentitiesAllowed && !isEnterprise) {
                         handlePopUpOpen("upgradePlan", {
+                          featureKey: "max_identity_limit",
                           description:
                             "You can add more machine identities if you upgrade your Infisical Pro plan."
                         });
@@ -242,6 +243,7 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
                     onClick={() => {
                       if (subscription && !subscription.machineIdentityAuthTemplates) {
                         handlePopUpOpen("upgradePlan", {
+                          featureKey: "machine_identity_auth_templates",
                           isEnterpriseFeature: true,
                           text: "Your current plan does not include access to creating Machine Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
                         });
@@ -326,6 +328,7 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        featureKey={popUp.upgradePlan.data?.featureKey}
         text={popUp.upgradePlan.data?.text}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />

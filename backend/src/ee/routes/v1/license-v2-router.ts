@@ -127,6 +127,7 @@ const BillingV2EntitlementSchema = z.object({
 });
 
 const BillingV2OverviewSchema = z.object({
+  canManageBilling: z.boolean(),
   isCloud: z.boolean(),
   mode: z.enum(["self-serve", "managed"]),
   subState: z.enum(["active", "trialing", "past-due", "suspended", "no-subscription"]),
@@ -166,6 +167,7 @@ const BillingV2OverviewSchema = z.object({
     .nullable(),
   invoices: BillingV2InvoiceSchema.array(),
   entitlements: z.record(BillingV2EntitlementSchema),
+  featureProductMap: z.record(z.string(), z.string()),
   trialedProductKeys: z.string().array(),
   onDemandAmount: z.number(),
   checkoutFrozen: z.boolean(),

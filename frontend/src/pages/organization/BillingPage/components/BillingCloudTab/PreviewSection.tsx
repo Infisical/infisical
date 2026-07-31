@@ -104,7 +104,7 @@ export const PreviewSection = () => {
       );
     }
 
-    return !subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan";
+    return !subscription.has_used_trial ? "Start a Free 2-week trial" : "View plans";
   };
 
   return (

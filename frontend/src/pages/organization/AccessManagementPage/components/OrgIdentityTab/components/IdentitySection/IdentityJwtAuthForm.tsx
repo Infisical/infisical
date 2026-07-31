@@ -46,7 +46,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 import { AccessTokenNumUsesLimitField } from "./shared/AccessTokenNumUsesLimitField";
 import { AccessTokenTtlFields } from "./shared/AccessTokenTtlFields";
 import { TrustedIpsField } from "./shared/TrustedIpsField";
-import { IDENTITY_AUTH_FORM_ID, IdentityFormTab } from "./types";
+import { IDENTITY_AUTH_FORM_ID, IdentityFormTab, type UpgradePlanModalData } from "./types";
 
 const buildSchema = (maxAccessTokenTTL: number) => {
   const common = z.object({
@@ -102,7 +102,7 @@ export type FormData = z.infer<ReturnType<typeof buildSchema>>;
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["upgradePlan"]>,
-    data?: { featureName?: string }
+    data?: UpgradePlanModalData
   ) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
@@ -601,7 +601,10 @@ export const IdentityJwtAuthForm = ({
               label="Access Token Trusted IPs"
               isAllowed={Boolean(subscription?.ipAllowlisting)}
               onUpgradeRequired={() =>
-                handlePopUpOpen("upgradePlan", { featureName: "IP allowlisting" })
+                handlePopUpOpen("upgradePlan", {
+                  featureKey: "ip_allowlisting",
+                  featureName: "IP allowlisting"
+                })
               }
             />
           </FieldGroup>
