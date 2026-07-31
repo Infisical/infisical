@@ -10,13 +10,21 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SshConnectionMethod } from "@app/services/app-connection/ssh/ssh-connection-enums";
-import { withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
+import { executeSshCommandViaGateway, withSshConnection } from "@app/services/app-connection/ssh/ssh-connection-fns";
 import { TSshConnectionConfig } from "@app/services/app-connection/ssh/ssh-connection-types";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { PkiSyncError } from "../pki-sync-errors";
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildPostSyncCommandPlan,
+  POST_SYNC_COMMAND_TIMEOUT_MS,
+  renderPostSyncCommand,
+  runPostSyncCommand,
+  toPosixShellLiteral,
+  TPostSyncCommandPlan
+} from "../pki-sync-post-sync-command-fns";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TLinuxServerPkiSyncConfig } from "./linux-server-pki-sync-types";
 
@@ -40,6 +48,7 @@ type TLinuxServerSyncOptions = {
   privateKeyFileMode?: string;
   owner?: string;
   group?: string;
+  postSyncCommand?: string;
 };
 
 const buildSshConfig = (pkiSync: TPkiSyncWithCredentials): TSshConnectionConfig => {
@@ -83,9 +92,6 @@ const parseFileMode = (mode: string | undefined, fallback: number): number => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-// Escapes a value for a POSIX single-quoted shell literal so a path is safe to embed in a command.
-const singleQuote = (value: string): string => `'${value.replace(/'/g, "'\\''")}'`;
-
 const applyOwnership = (
   client: Client,
   owner: string | undefined,
@@ -98,7 +104,7 @@ const applyOwnership = (
       return;
     }
     const spec = `${owner ?? ""}${group ? `:${group}` : ""}`;
-    const target = singleQuote(filePath);
+    const target = toPosixShellLiteral(filePath);
     const command = `chown ${spec} -- ${target} 2>/dev/null || sudo -n chown ${spec} -- ${target}`;
     client.exec(command, (err, stream) => {
       if (err) {
@@ -219,6 +225,27 @@ const reconcileLinuxServerRemovals = async (args: {
   return { removed, failedRemovals };
 };
 
+const runLinuxServerPostSyncCommand = ({
+  syncId,
+  plan,
+  sshConfig,
+  gatewayServices
+}: {
+  syncId: string;
+  plan: TPostSyncCommandPlan;
+  sshConfig: TSshConnectionConfig;
+  gatewayServices: Pick<TLinuxServerPkiSyncFactoryDeps, "gatewayV2Service" | "gatewayPoolService">;
+}) =>
+  runPostSyncCommand({
+    syncId,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: () =>
+      executeSshCommandViaGateway(sshConfig, gatewayServices, {
+        command: renderPostSyncCommand(plan.command, plan.context, toPosixShellLiteral),
+        timeoutMs: POST_SYNC_COMMAND_TIMEOUT_MS
+      })
+  });
+
 export const linuxServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
@@ -240,10 +267,10 @@ export const linuxServerPkiSyncFactory = ({
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
     const skippedCertificates: Array<{ name: string; reason: string }> = [];
-    // Paths written for currently-active certificates this run. A renewed cert reuses the same file
-    // name as the cert it replaced, so removal reconciliation must not delete a path that was just
-    // (re)written here, or a renewal would delete its own freshly delivered file.
+    // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
+    // just rewrote under the same name, and tells the post-sync command what landed.
     const deliveredPaths = new Set<string>();
+    const deliveredCertificates: Array<{ path: string; commonName?: string }> = [];
     let uploaded = 0;
     let removed = 0;
 
@@ -307,8 +334,8 @@ export const linuxServerPkiSyncFactory = ({
             deliveredPaths.add(filePath);
           }
 
-          // Record the delivered paths so removal and re-sync act on exactly what was written.
           const primaryPath = writtenPaths[0];
+          deliveredCertificates.push({ path: primaryPath, commonName: certData.commonName ?? undefined });
           if (typeof certificateId === "string") {
             let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
             if (!record) {
@@ -334,7 +361,7 @@ export const linuxServerPkiSyncFactory = ({
       }
 
       // Delete files for certificates no longer active and drop their tracking rows.
-      if (canRemoveCertificates) {
+      if (canRemoveCertificates && failedUploads.length === 0) {
         const reconciliation = await reconcileLinuxServerRemovals({
           sftp,
           pkiSync,
@@ -344,14 +371,35 @@ export const linuxServerPkiSyncFactory = ({
         });
         removed += reconciliation.removed;
         failedRemovals.push(...reconciliation.failedRemovals);
+      } else if (canRemoveCertificates) {
+        logger.info(
+          `Linux Server PKI sync [syncId=${pkiSync.id}]: skipped certificate removal because ${failedUploads.length} certificate(s) failed to deliver`
+        );
       }
     });
+
+    const postSyncCommandPlan = buildPostSyncCommandPlan({
+      command: options.postSyncCommand,
+      destinationDirectory: config.destinationPath,
+      deliveredPaths,
+      deliveredCertificates,
+      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+    });
+    const postSyncCommand = postSyncCommandPlan
+      ? await runLinuxServerPostSyncCommand({
+          syncId: pkiSync.id,
+          plan: postSyncCommandPlan,
+          sshConfig,
+          gatewayServices: { gatewayV2Service, gatewayPoolService }
+        })
+      : undefined;
 
     return {
       uploaded,
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
+      postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
         failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,

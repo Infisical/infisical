@@ -1,4 +1,5 @@
-import { matchesCertificateNameSchema } from "./pki-sync-fns";
+import { PkiSync } from "./pki-sync-enums";
+import { getPkiSyncProviderCapabilities, matchesCertificateNameSchema } from "./pki-sync-fns";
 
 // A dash-stripped UUID (what {{certificateId}}, {{profileId}}, {{applicationId}} resolve to).
 const HEX = "550e8400e29b41d4a716446655440000";
@@ -88,5 +89,28 @@ describe("matchesCertificateNameSchema (managed-certificate detection for cleanu
     // a value containing characters outside the sanitized set (e.g. a space) must not match
     expect(matchesCertificateNameSchema(`weird name-${HEX}`, schema)).toBe(false);
     expect(matchesCertificateNameSchema(`weird/name-${HEX}`, schema)).toBe(false);
+  });
+});
+
+describe("getPkiSyncProviderCapabilities: canRunPostSyncCommand", () => {
+  // The service rejects a command on this, and the UI reads it from the API to decide whether the
+  // Post-Sync Command step exists, so a destination added without it goes wrong in both places.
+  const SHELL_DESTINATIONS = [PkiSync.LinuxServer, PkiSync.WindowsServer];
+
+  test.each(SHELL_DESTINATIONS)("%s can run one", (destination) => {
+    expect(getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand).toBe(true);
+  });
+
+  test.each(Object.values(PkiSync).filter((destination) => !SHELL_DESTINATIONS.includes(destination)))(
+    "%s cannot run one",
+    (destination) => {
+      expect(getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand).toBe(false);
+    }
+  );
+
+  test("every destination states the capability, so a new one cannot leave it undefined", () => {
+    Object.values(PkiSync).forEach((destination) => {
+      expect(typeof getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand).toBe("boolean");
+    });
   });
 });

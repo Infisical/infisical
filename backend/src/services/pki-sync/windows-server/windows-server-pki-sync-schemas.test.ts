@@ -58,3 +58,27 @@ describe("Windows Server destinationPath validation", () => {
     expect(parsePath("")).toBe(false);
   });
 });
+
+describe("Windows Server postSyncCommand validation", () => {
+  const parseCommand = (postSyncCommand: string) =>
+    WindowsServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server", postSyncCommand });
+
+  test("accepts a single-line and a multi-line PowerShell command", () => {
+    expect(parseCommand('Restart-Service -Name "W3SVC"').success).toBe(true);
+    expect(parseCommand("Import-PfxCertificate -FilePath {{certificatePath}}\niisreset").success).toBe(true);
+  });
+
+  test("treats an empty or whitespace-only command as no command", () => {
+    expect(parseCommand("").data?.postSyncCommand).toBeUndefined();
+    expect(parseCommand("   ").data?.postSyncCommand).toBeUndefined();
+  });
+
+  test("rejects a command beyond the length limit", () => {
+    expect(parseCommand("a".repeat(2048)).success).toBe(true);
+    expect(parseCommand("a".repeat(2049)).success).toBe(false);
+  });
+
+  test("is optional", () => {
+    expect(WindowsServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server" }).success).toBe(true);
+  });
+});

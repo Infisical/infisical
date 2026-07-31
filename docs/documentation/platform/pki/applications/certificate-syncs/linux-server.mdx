@@ -4,6 +4,8 @@ sidebarTitle: "Linux Server"
 description: "Deploy certificates to Linux servers over SSH."
 ---
 
+import PostSyncCommandPlaceholders from "/snippets/documentation/platform/pki/applications/certificate-syncs/post-sync-command-placeholders.mdx";
+
 Deploy certificates from Infisical to a directory on a Linux server over SSH. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
 
 <Info>
@@ -15,6 +17,7 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
 - An [SSH Connection](/integrations/app-connections/ssh) with access to the target server
 - The destination directory must already exist on the server and the connection user must be able to write to it
 - The server must be reachable from Infisical, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
+- A Gateway is required to use a [post-sync command](#post-sync-commands), because the Gateway is what executes it
 
 ## Create a Linux Server Sync
 
@@ -41,13 +44,16 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
             - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
-        5. Configure the **Details**:
+        5. Configure the **Post-Sync Command**, or leave it empty:
+            - **Command**: A command run on the server after the sync delivers a certificate, so the service that uses it picks up the new file, for example `sudo systemctl reload nginx`. [Post-Sync Commands](#post-sync-commands) covers the available placeholders and what happens when the command fails.
+
+        6. Configure the **Details**:
             - **Name**: The name of your sync.
             - **Description**: Optional description.
 
-        6. Select which certificates should be synced.
+        7. Select which certificates should be synced.
 
-        7. Review and click **Create Sync**.
+        8. Review and click **Create Sync**.
     </Tab>
     <Tab title="API">
         To create a **Linux Server Certificate Sync**, make an API request to the [Create Linux Server PKI Sync](/api-reference/endpoints/pki/syncs/linux-server/create) endpoint.
@@ -69,7 +75,8 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
                 "exportFormat": "pem",
                 "includePrivateKey": true,
                 "canRemoveCertificates": true,
-                "certificateNameSchema": "{{commonName}}"
+                "certificateNameSchema": "{{commonName}}",
+                "postSyncCommand": "sudo systemctl reload nginx"
             },
             "destinationConfig": {
                 "destinationPath": "/etc/ssl/certs"
@@ -103,19 +110,118 @@ PKCS#12
 
 When syncing certificates, Infisical opens an SSH session to the server and, for each certificate, packages it in the chosen export format and writes the resulting files to the destination directory. Files are written atomically over SFTP so a reader never sees a partially written certificate or key.
 
+## Post-Sync Commands
+
+Delivering a certificate file does not make the service use it. Nginx keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
+
+Set one command on the sync. It runs on the target server, in that server's own shell, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle.
+
+The field accepts a whole script, so several steps can run in one go: put each on its own line, or chain them with `&&`.
+
+<Note>
+  Your [Infisical Gateway](/documentation/platform/gateways/overview) runs the command, never Infisical. The sync's SSH Connection must therefore use a gateway, otherwise the command is rejected when you save the sync.
+</Note>
+
+The command runs on the target server, not on Infisical, and only after the whole delivery has finished:
+
+```mermaid
+sequenceDiagram
+    participant I as Infisical
+    participant G as Gateway
+    participant S as Target server
+    I->>G: Deliver certificate files
+    G->>S: Write files
+    G->>S: Remove files for certificates no longer synced
+    Note over G,S: Only once the server is in its final state
+    I->>G: Run the post-sync command
+    G->>S: Execute as the connection's account
+    S-->>G: Output and outcome
+    G-->>I: Success, or the reason it failed
+```
+
+### Setting a Command
+
+<Steps>
+  <Step title="Open the sync's Post-Sync Command step">
+    Edit the sync and select **Post-Sync Command**.
+  </Step>
+  <Step title="Write the command">
+    Use a placeholder wherever you need a value from the run:
+
+    ```bash
+    cp {{certificatePath}} /etc/nginx/ssl/live.pem && systemctl reload nginx
+    ```
+  </Step>
+  <Step title="Save and trigger a sync">
+    Save the sync, then trigger it. If the command fails, the reason appears as the sync's last error.
+  </Step>
+</Steps>
+
+### Available Placeholders
+
+<PostSyncCommandPlaceholders />
+
+### Length Limit
+
+A command is limited to 2048 characters, counted after the placeholders are substituted. For anything longer, put the logic in a script on the server and call that script.
+
+### Post-Sync Command FAQ
+
+<AccordionGroup>
+  <Accordion title="When exactly does the command run?">
+    After every file in the run has been delivered and after any removals, so the server is in its final state before the service reloads. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
+  </Accordion>
+  <Accordion title="What happens if the command fails?">
+    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran.
+  </Accordion>
+  <Accordion title="Can I run several commands, and what happens if one of them fails?">
+    Yes. Write one per line, or chain them with `&&`.
+
+    By default the shell only reports the **last** line's exit status, so an earlier line that fails is not noticed and the sync still reports success. Start the script with `set -e` so the first failure stops it and fails the sync:
+
+    ```bash
+    set -e
+    cp {{certificatePath}} /etc/nginx/ssl/live.pem
+    nginx -t
+    systemctl reload nginx
+    ```
+  </Accordion>
+  <Accordion title="Can the command run twice for the same certificate?">
+    Yes. A sync that retries re-delivers the files and runs the command again, so prefer a command that is safe to run more than once. A service reload or restart is.
+  </Accordion>
+  <Accordion title="Is there a time limit?">
+    Yes, 30 seconds, enforced by the gateway. A command that needs longer should start the work in the background or live in a script on the server.
+  </Accordion>
+</AccordionGroup>
+
+### Least Privilege
+
+The command runs as the account the SSH Connection authenticates with, so constraining that account bounds what any command can do. A service reload does not need root. Grant the connection user a `sudoers` rule for that one command instead:
+
+```text
+svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+```
+
+Anyone who can edit the sync can change the command, so treat edit access to these syncs as access to the target server.
+
+<Warning>
+  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{pkcs12Password}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
+</Warning>
+
 ## Removing Certificates
 
 When certificate removal is enabled and a certificate is removed from the sync, revoked, or expired, Infisical deletes exactly the files it delivered for that certificate.
 
 ## FAQ
 
-<Accordion title="Can I import certificates from a Linux server back into Infisical?">
-  No. The Linux Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
-</Accordion>
-
-<Accordion title="What happens if the destination directory does not exist?">
-  The sync fails with a clear error. Create the directory and grant the connection user write access, then run the sync again.
-</Accordion>
+<AccordionGroup>
+  <Accordion title="Can I import certificates from a Linux server back into Infisical?">
+    No. The Linux Server sync only delivers certificates to the server. It does not read certificates back into Infisical.
+  </Accordion>
+  <Accordion title="What happens if the destination directory does not exist?">
+    The sync fails with a clear error. Create the directory and grant the connection user write access, then run the sync again.
+  </Accordion>
+</AccordionGroup>
 
 ## What's Next?
 

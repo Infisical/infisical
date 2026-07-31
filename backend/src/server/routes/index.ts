@@ -3660,6 +3660,7 @@ export const registerRoutes = async (
     certificateDAL,
     certificateSyncDAL,
     pkiSubscriberDAL,
+    appConnectionDAL,
     appConnectionService,
     permissionService,
     licenseService,

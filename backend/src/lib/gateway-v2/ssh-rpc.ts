@@ -1,5 +1,11 @@
 import { postGatewayRpc } from "./gateway-rpc";
 
+export enum SshExecAuthMethod {
+  Password = "password",
+  PublicKey = "public-key",
+  Certificate = "certificate"
+}
+
 export type SshExecCredentials = {
   authMethod: string;
   username: string;

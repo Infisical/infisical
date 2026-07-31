@@ -11,6 +11,7 @@ import {
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -32,6 +33,10 @@ import {
   listPkiSyncOptions
 } from "./pki-sync-fns";
 import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
+import {
+  findSingleCertificatePostSyncCommandVariables,
+  formatPostSyncCommandVariables
+} from "./pki-sync-post-sync-command-fns";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
   TAddCertificatesToPkiSyncDTO,
@@ -81,6 +86,7 @@ type TPkiSyncServiceFactoryDep = {
     | "clearSyncMetadataFlag"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -98,6 +104,7 @@ export const pkiSyncServiceFactory = ({
   certificateDAL,
   certificateSyncDAL,
   pkiSubscriberDAL,
+  appConnectionDAL,
   appConnectionService,
   permissionService,
   licenseService,
@@ -121,6 +128,32 @@ export const pkiSyncServiceFactory = ({
       actorOrgId: actor.orgId
     });
     return permission.can(action, ResourcePermissionSub.PkiSyncs);
+  };
+
+  /**
+   * Rejects a command the sync could never run: a destination with no shell to open, or a connection
+   * with no gateway to run it through. Checked at write time so the operator finds out while
+   * configuring rather than on the next sync.
+   */
+  const $assertPostSyncCommandIsSupported = (
+    destination: PkiSync,
+    syncOptions: Record<string, unknown> | undefined,
+    connection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined
+  ) => {
+    if (!syncOptions?.postSyncCommand) return;
+
+    if (!getPkiSyncProviderCapabilities(destination).canRunPostSyncCommand) {
+      throw new BadRequestError({
+        message: `A post-sync command cannot be set for ${PKI_SYNC_NAME_MAP[destination]} PKI sync destination`
+      });
+    }
+
+    if (connection?.gatewayId || connection?.gatewayPoolId) return;
+
+    throw new BadRequestError({
+      message:
+        "A post-sync command runs through a gateway. Configure the sync's App Connection to use a gateway, or clear the command."
+    });
   };
 
   const $assertSyncAction = async (
@@ -215,15 +248,28 @@ export const pkiSyncServiceFactory = ({
     }
   };
 
-  const assertSchemaAllowsCertificateCount = (
+  const assertSyncOptionsAllowCertificateCount = (
     syncOptions: Record<string, unknown> | undefined,
     resultingCertificateCount: number
   ) => {
+    if (resultingCertificateCount <= 1) return;
+
     const schema = syncOptions?.certificateNameSchema as string | undefined;
-    if (resultingCertificateCount > 1 && !certificateNameSchemaAllowsMultipleCertificates(schema)) {
+    if (!certificateNameSchemaAllowsMultipleCertificates(schema)) {
       throw new BadRequestError({
         message:
           "This sync's certificate name schema has no placeholder, so it can be linked to only one certificate. Add a placeholder such as {{commonName}} or {{certificateId}} to sync multiple certificates."
+      });
+    }
+
+    const singleCertificateVariables = findSingleCertificatePostSyncCommandVariables(
+      syncOptions?.postSyncCommand as string | undefined
+    );
+    if (singleCertificateVariables.length > 0) {
+      throw new BadRequestError({
+        message: `This sync's post-sync command uses ${formatPostSyncCommandVariables(
+          singleCertificateVariables
+        )}. A placeholder that names one certificate can only be used on a sync with a single certificate linked. Use {{certificateFiles}} or {{certificateDirectory}} to write a command that covers every certificate in the run.`
       });
     }
   };
@@ -276,7 +322,7 @@ export const pkiSyncServiceFactory = ({
     const destinationApp = getDestinationAppType(destination);
 
     // Validates permission to connect and app is valid for sync destination
-    await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
+    const connection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
     const resolvedSyncOptions = {
@@ -284,10 +330,12 @@ export const pkiSyncServiceFactory = ({
       ...syncOptions
     };
 
+    $assertPostSyncCommandIsSupported(destination, resolvedSyncOptions, connection);
+
     if (certificateIds.length > 0) {
       assertWithinCertificateLimit(destination, certificateIds.length);
       await validateCertificatesForSync(certificateIds, projectId, applicationId);
-      assertSchemaAllowsCertificateCount(resolvedSyncOptions, certificateIds.length);
+      assertSyncOptionsAllowCertificateCount(resolvedSyncOptions, certificateIds.length);
     }
 
     const encryptedCredentials = credentials?.exportPassword
@@ -403,9 +451,10 @@ export const pkiSyncServiceFactory = ({
       }
     }
 
+    let effectiveConnection: { gatewayId?: string | null; gatewayPoolId?: string | null } | undefined;
     if (connectionId && connectionId !== pkiSync.connectionId) {
       const destinationApp = getDestinationAppType(pkiSync.destination);
-      await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
+      effectiveConnection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
     }
 
     let resolvedSyncOptions = syncOptions;
@@ -432,11 +481,19 @@ export const pkiSyncServiceFactory = ({
 
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;
 
+    if (effectiveSyncOptions?.postSyncCommand) {
+      $assertPostSyncCommandIsSupported(
+        pkiSync.destination,
+        effectiveSyncOptions,
+        effectiveConnection ?? (await appConnectionDAL.findById(pkiSync.connectionId))
+      );
+    }
+
     if (certificateIds !== undefined) {
       if (certificateIds.length > 0) {
         assertWithinCertificateLimit(pkiSync.destination, certificateIds.length);
         await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
-        assertSchemaAllowsCertificateCount(effectiveSyncOptions, certificateIds.length);
+        assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, certificateIds.length);
       }
 
       await certificateSyncDAL.removeAllCertificatesFromSync(id);
@@ -448,7 +505,7 @@ export const pkiSyncServiceFactory = ({
       }
     } else if (syncOptions) {
       const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
-      assertSchemaAllowsCertificateCount(effectiveSyncOptions, existingCount);
+      assertSyncOptionsAllowCertificateCount(effectiveSyncOptions, existingCount);
     }
 
     if (
@@ -774,7 +831,7 @@ export const pkiSyncServiceFactory = ({
     await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
 
     const existingCount = (await certificateSyncDAL.findByPkiSyncId(pkiSyncId)).length;
-    assertSchemaAllowsCertificateCount(
+    assertSyncOptionsAllowCertificateCount(
       pkiSync.syncOptions as Record<string, unknown> | undefined,
       existingCount + certificateIds.length
     );

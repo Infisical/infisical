@@ -3,7 +3,7 @@ import { z } from "zod";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 export const AwsElasticLoadBalancerListenerSchema = z.object({
   listenerArn: z.string().min(1, "Listener ARN is required"),
@@ -25,7 +25,8 @@ const AwsElasticLoadBalancerPkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(false),
   preserveArn: z.boolean().default(true),
   includeRootCa: z.boolean().default(false),
-  certificateNameSchema: z.string().optional()
+  certificateNameSchema: z.string().optional(),
+  postSyncCommand: PostSyncCommandSchema
 });
 
 export const AwsElasticLoadBalancerPkiSyncSchema = PkiSyncSchema.extend({
