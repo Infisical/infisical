@@ -90,7 +90,7 @@ infisical pam access <path> [flags]
 Based on the account's template, the CLI starts the appropriate local proxy or credential helper.
 
 <AccordionGroup>
-  <Accordion title="Databases (PostgreSQL, MySQL, SQL Server, MongoDB, Redis)">
+  <Accordion title="Databases (PostgreSQL, MySQL, SQL Server, MongoDB)">
     Starts a local database proxy on `127.0.0.1`. Connect using standard database clients — no password required as authentication is handled by the proxy.
 
     ```bash
@@ -106,7 +106,23 @@ Based on the account's template, the CLI starts the appropriate local proxy or c
     | MySQL | `mysql://<username>@127.0.0.1:<port>/<database>` |
     | SQL Server | `sqlserver://<username>@127.0.0.1:<port>?database=<database>` |
     | MongoDB | `mongodb://127.0.0.1:<port>/<database>` |
-    | Redis | `redis://127.0.0.1:<port>` |
+  </Accordion>
+
+  <Accordion title="Redis">
+    Starts a local Redis proxy on `127.0.0.1`. Connect using any Redis client with no password, as authentication is handled by the proxy.
+
+    ```bash
+    # Example
+    infisical pam access production/cache-primary --duration 2h
+    ```
+
+    Then connect with `redis-cli` or any Redis client:
+
+    ```bash
+    redis-cli -h 127.0.0.1 -p <port>
+    ```
+
+    Connection string format: `redis://127.0.0.1:<port>`
   </Accordion>
 
   <Accordion title="SSH">
