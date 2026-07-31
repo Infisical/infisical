@@ -11,6 +11,7 @@ export type SshExecCredentials = {
   username: string;
   password?: string;
   privateKey?: string;
+  passphrase?: string;
   certificate?: string;
 };
 

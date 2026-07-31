@@ -254,7 +254,8 @@ const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials 
       return {
         authMethod: SshExecAuthMethod.PublicKey,
         username: config.credentials.username,
-        privateKey: config.credentials.privateKey
+        privateKey: config.credentials.privateKey,
+        passphrase: config.credentials.passphrase
       };
     default:
       throw new InternalServerError({

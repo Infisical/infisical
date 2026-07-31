@@ -186,7 +186,7 @@ export const CreatePkiSyncForm = ({
         canRemoveCertificates: false,
         preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema,
-        ...(syncOption?.canRunPostSyncCommand && {
+        ...((destination === PkiSync.LinuxServer || destination === PkiSync.WindowsServer) && {
           exportFormat:
             destination === PkiSync.WindowsServer
               ? PkiSyncExportFormat.Pkcs12

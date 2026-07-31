@@ -11,7 +11,6 @@ import {
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -86,7 +85,6 @@ type TPkiSyncServiceFactoryDep = {
     | "clearSyncMetadataFlag"
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -104,7 +102,6 @@ export const pkiSyncServiceFactory = ({
   certificateDAL,
   certificateSyncDAL,
   pkiSubscriberDAL,
-  appConnectionDAL,
   appConnectionService,
   permissionService,
   licenseService,
@@ -485,7 +482,12 @@ export const pkiSyncServiceFactory = ({
       $assertPostSyncCommandIsSupported(
         pkiSync.destination,
         effectiveSyncOptions,
-        effectiveConnection ?? (await appConnectionDAL.findById(pkiSync.connectionId))
+        effectiveConnection ??
+          (await appConnectionService.connectAppConnectionById(
+            getDestinationAppType(pkiSync.destination),
+            pkiSync.connectionId,
+            actor
+          ))
       );
     }
 
@@ -830,16 +832,20 @@ export const pkiSyncServiceFactory = ({
 
     await validateCertificatesForSync(certificateIds, pkiSync.projectId, pkiSync.applicationId);
 
-    const existingCount = (await certificateSyncDAL.findByPkiSyncId(pkiSyncId)).length;
     assertSyncOptionsAllowCertificateCount(
       pkiSync.syncOptions as Record<string, unknown> | undefined,
-      existingCount + certificateIds.length
+      prospectiveCount
     );
 
-    const addedCertificates = await certificateSyncDAL.addCertificates(
-      pkiSyncId,
-      certificateIds.map((id) => ({ certificateId: id }))
-    );
+    const alreadyLinked = new Set(existingCertificateIds);
+    const certificateIdsToAdd = certificateIds.filter((id) => !alreadyLinked.has(id));
+
+    const addedCertificates = certificateIdsToAdd.length
+      ? await certificateSyncDAL.addCertificates(
+          pkiSyncId,
+          certificateIdsToAdd.map((id) => ({ certificateId: id }))
+        )
+      : [];
 
     if (pkiSync.isAutoSyncEnabled) {
       await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
