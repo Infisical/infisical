@@ -43,8 +43,8 @@ function SelectedActionBar({
         "pointer-events-none fixed inset-x-4 bottom-16 z-40 flex justify-center",
         "transition-[opacity,translate,filter,scale] ease-out motion-reduce:transition-none",
         isVisible
-          ? "translate-y-0 opacity-100 duration-200 blur-none scale-100"
-          : "translate-y-3 opacity-0 duration-100 blur-[4px] scale-98"
+          ? "translate-y-0 scale-100 opacity-100 blur-none duration-200"
+          : "translate-y-3 scale-98 opacity-0 blur-[4px] duration-100"
       )}
       aria-hidden={!isVisible}
       // React 18 does not type the inert attribute yet.

@@ -48,6 +48,7 @@ export enum EntryType {
 
 type Props = {
   secretPath: string;
+  resetSelectedEntries: () => void;
   selectedEntries: {
     [EntryType.FOLDER]: Record<string, Record<string, TSecretFolder>>;
     [EntryType.SECRET]: Record<string, Record<string, SecretV3RawSanitized>>;
@@ -97,7 +98,6 @@ export const SelectionPanel = ({
   const userAvailableEnvs = currentProject?.environments || [];
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: createCommit } = useCreateCommit();
-
 
   // user should have the ability to delete secrets/folders in at least one of the envs
   const shouldShowDelete = userAvailableEnvs.some((env) =>
@@ -371,74 +371,71 @@ export const SelectionPanel = ({
 
   return (
     <>
-      <SelectedActionBar
-        selectedCount={selectedCount}
-        onClearSelection={resetSelectedEntries}
-      >
-          {selectedKeysCount > 0 && (
-            <Tooltip open={isTagActionDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isTagActionDisabled}
-                  variant="project"
-                  onClick={() => handlePopUpOpen("bulkTagSecrets")}
-                  size="xs"
-                >
-                  <TagsIcon />
-                  Add Tags
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Access denied</TooltipContent>
-            </Tooltip>
-          )}
-          {shouldShowMove && (
-            <Tooltip open={isMoveDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isMoveDisabled}
-                  variant="project"
-                  onClick={() => handlePopUpOpen("bulkMoveSecrets")}
-                  size="xs"
-                >
-                  <FolderInputIcon />
-                  Move
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{moveDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
-          {shouldShowBulkDuplicate && (
-            <Tooltip open={isDuplicateDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isDuplicateDisabled}
-                  variant="project"
-                  onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
-                  size="xs"
-                >
-                  <CopyPlus />
-                  Duplicate
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{duplicateDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
-          {shouldShowDelete && (
-            <Tooltip open={isDeleteDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isDeleteDisabled}
-                  variant="danger"
-                  onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-                  size="xs"
-                >
-                  <TrashIcon />
-                  Delete
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{deleteDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
+      <SelectedActionBar selectedCount={selectedCount} onClearSelection={resetSelectedEntries}>
+        {selectedKeysCount > 0 && (
+          <Tooltip open={isTagActionDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isTagActionDisabled}
+                variant="project"
+                onClick={() => handlePopUpOpen("bulkTagSecrets")}
+                size="xs"
+              >
+                <TagsIcon />
+                Add Tags
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Access denied</TooltipContent>
+          </Tooltip>
+        )}
+        {shouldShowMove && (
+          <Tooltip open={isMoveDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isMoveDisabled}
+                variant="project"
+                onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                size="xs"
+              >
+                <FolderInputIcon />
+                Move
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{moveDisabledReason}</TooltipContent>
+          </Tooltip>
+        )}
+        {shouldShowBulkDuplicate && (
+          <Tooltip open={isDuplicateDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isDuplicateDisabled}
+                variant="project"
+                onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
+                size="xs"
+              >
+                <CopyPlus />
+                Duplicate
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{duplicateDisabledReason}</TooltipContent>
+          </Tooltip>
+        )}
+        {shouldShowDelete && (
+          <Tooltip open={isDeleteDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isDeleteDisabled}
+                variant="danger"
+                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                size="xs"
+              >
+                <TrashIcon />
+                Delete
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{deleteDisabledReason}</TooltipContent>
+          </Tooltip>
+        )}
       </SelectedActionBar>
       <MoveSecretsModal
         isOpen={popUp.bulkMoveSecrets.isOpen}
