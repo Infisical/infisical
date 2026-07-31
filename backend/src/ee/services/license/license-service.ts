@@ -78,7 +78,6 @@ type TLicenseServiceFactoryDep = {
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
 
 const LICENSE_SERVER_CLOUD_LOGIN = "/api/auth/v1/license-server-login";
-const LICENSE_SERVER_ON_PREM_LOGIN = "/api/auth/v1/license-login";
 
 // A self-hosted v2 license is single-tenant: the license key identifies the tenant, so entitlement
 // reads carry no real org id. This fixed id only keys the local entitlement cache for the instance.
@@ -109,51 +108,12 @@ export const licenseServiceFactory = ({
     envConfig.INTERNAL_REGION
   );
 
-  const onlineLicenseKey =
-    licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online ? licenseKeyConfig.licenseKey : "";
-
-  const licenseServerOnPremApi = setupLicenseRequestWithStore(
-    envConfig.LICENSE_SERVER_URL || "",
-    LICENSE_SERVER_ON_PREM_LOGIN,
-    onlineLicenseKey,
-    envConfig.INTERNAL_REGION
-  );
-
   const isV1CloudKey = () =>
     instanceType === InstanceType.Cloud && envConfig.LICENSE_SERVER_KEY && envConfig.LICENSE_SERVER_V2_MODE !== "on";
 
-  const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
-    logger.info("Start syncing license key features");
-    try {
-      const {
-        data: { currentPlan }
-      } = await licenseServerOnPremApi.request.get<{ currentPlan: TFeatureSet }>("/api/license/v1/plan");
-
-      const workspacesUsed = await projectDAL.countOfBillableOrgProjects(null);
-      currentPlan.workspacesUsed = workspacesUsed;
-
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null);
-      if (usedIdentitySeats !== currentPlan.identitiesUsed) {
-        const usedSeats = await licenseDAL.countOfOrgMembers(null);
-        await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-          usedSeats,
-          usedIdentitySeats
-        });
-        currentPlan.identitiesUsed = usedIdentitySeats;
-        currentPlan.membersUsed = usedSeats;
-      }
-
-      onPremFeatures = currentPlan;
-      logger.info("Successfully synchronized license key features");
-    } catch (error) {
-      logger.error(error, "Failed to synchronize license key features");
-      if (shouldThrow) throw error;
-    }
-  };
-
-  // Self-hosted equivalent of syncLicenseKeyOnPremFeatures, but sourced from License Server v2: project
-  // the license's entitlements into the v1 feature shape and refresh the instance-wide onPremFeatures.
-  const syncSelfHostedV2Features = async (shouldThrow: boolean = false) => {
+  // Self-hosted online license: project the license's entitlements (from License Server v2) into the v1
+  // feature shape and refresh the instance-wide onPremFeatures.
+  const syncSelfHostedFeatures = async (shouldThrow: boolean = false) => {
     logger.info("Start syncing self-hosted license features from License Server v2");
     try {
       if (!licenseClient) {
@@ -194,24 +154,13 @@ export const licenseServiceFactory = ({
         return;
       }
 
-      // New self-hosted key (prefix "infisical_lk_") resolves features from License Server v2. The key
-      // authenticates directly (no on-prem login handshake); a successful entitlements sync validates it.
-      if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.OnlineV2) {
-        await syncSelfHostedV2Features(true);
-        instanceType = InstanceType.EnterpriseOnPremV2;
-        logger.info(`Instance type: ${InstanceType.EnterpriseOnPremV2}`);
-        isValidLicense = true;
-        return;
-      }
-
+      // Self-hosted online license: features resolve from License Server v2. The key authenticates via
+      // the token endpoint (handled inside the license client); a successful entitlements sync validates it.
       if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online) {
-        const token = await licenseServerOnPremApi.refreshLicense();
-        if (token) {
-          await syncLicenseKeyOnPremFeatures(true);
-          instanceType = InstanceType.EnterpriseOnPrem;
-          logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
-          isValidLicense = true;
-        }
+        await syncSelfHostedFeatures(true);
+        instanceType = InstanceType.EnterpriseOnPrem;
+        logger.info(`Instance type: ${InstanceType.EnterpriseOnPrem}`);
+        isValidLicense = true;
         return;
       }
 
@@ -236,9 +185,17 @@ export const licenseServiceFactory = ({
         }
 
         if (isValidOfflineLicense) {
+          // v2 offline licenses carry License Server v2 entitlements; project them into the feature
+          // shape. v1 (or version-less) licenses carry the legacy feature set directly.
+          const features =
+            contents.license.version === 2 && contents.license.entitlements
+              ? projectV2ToFeatureSet(getDefaultOnPremFeatures(), contents.license.entitlements)
+              : contents.license.features;
+
           onPremFeatures = {
-            ...contents.license.features,
-            slug: "enterprise"
+            ...features,
+            slug: "enterprise",
+            isOffline: true
           };
           instanceType = InstanceType.EnterpriseOnPremOffline;
           logger.info(`Instance type: ${InstanceType.EnterpriseOnPremOffline}`);
@@ -258,14 +215,8 @@ export const licenseServiceFactory = ({
 
   const initializeBackgroundSync = async () => {
     if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.Online) {
-      logger.info("Setting up background sync process for refresh onPremFeatures");
-      const job = new CronJob("*/10 * * * *", syncLicenseKeyOnPremFeatures);
-      job.start();
-      return job;
-    }
-    if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.OnlineV2) {
-      logger.info("Setting up background sync process for refresh onPremFeatures from License Server v2");
-      const job = new CronJob("*/10 * * * *", () => syncSelfHostedV2Features());
+      logger.info("Setting up background sync process to refresh onPremFeatures from License Server v2");
+      const job = new CronJob("*/10 * * * *", () => syncSelfHostedFeatures());
       job.start();
       return job;
     }
@@ -418,12 +369,9 @@ export const licenseServiceFactory = ({
       await getPlan(orgId);
     }
     if (instanceType === InstanceType.EnterpriseOnPrem) {
-      await syncLicenseKeyOnPremFeatures(true);
-    }
-    if (instanceType === InstanceType.EnterpriseOnPremV2) {
       // Bust the license server's cached entitlements (e.g. after a license change), then re-sync.
       await licenseClient?.refreshEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
-      await syncSelfHostedV2Features(true);
+      await syncSelfHostedFeatures(true);
     }
   };
 
@@ -470,16 +418,7 @@ export const licenseServiceFactory = ({
       }
       await keyStore.deleteItem(KeyStorePrefixes.LicenseCloudPlan(rootOrgId));
     } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      // const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
-      // const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
-      // onPremFeatures.membersUsed = usedSeats;
-      // onPremFeatures.identitiesUsed = usedIdentitySeats;
-      // await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-      //   usedSeats,
-      //   usedIdentitySeats
-      // });
-    } else if (instanceType === InstanceType.EnterpriseOnPremV2) {
-      // v2 self-hosted reports usage asynchronously via the usage-snapshot queue, not a synchronous seat
+      // Self-hosted reports usage asynchronously via the usage-snapshot queue, not a synchronous seat
       // patch; keep the in-memory counts current so limit checks are accurate until the next sync.
       onPremFeatures.membersUsed = await licenseDAL.countOfOrgMembers(null, tx);
       onPremFeatures.identitiesUsed = await licenseDAL.countOrgUsersAndIdentities(null, tx);
@@ -736,14 +675,6 @@ export const licenseServiceFactory = ({
       return data;
     }
 
-    if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const { data } = await licenseServerOnPremApi.request.get<{
-        head: { name: string }[];
-        rows: { name: string; allowed: boolean }[];
-      }>(`${baseUrl}/on-prem-plan/table`);
-      return data;
-    }
-
     throw new Error(`Unsupported instance type for server-based plan table: ${instanceType}`);
   };
 
@@ -768,7 +699,7 @@ export const licenseServiceFactory = ({
 
     const { projectCount, totalIdentities } = await getUsageMetrics(orgId);
 
-    if (instanceType === InstanceType.Cloud || instanceType === InstanceType.EnterpriseOnPrem) {
+    if (instanceType === InstanceType.Cloud) {
       const tableResponse = await fetchPlanTableFromServer(organization.customerId);
 
       return {

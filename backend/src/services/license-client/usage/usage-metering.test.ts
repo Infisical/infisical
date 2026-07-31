@@ -203,18 +203,23 @@ describe("usageMeteringService.reconcile (demand-driven)", () => {
 
 describe("buildUsageReporter", () => {
   test("is null when disabled", () => {
-    expect(buildUsageReporter({ LICENSE_SERVER_V2_MODE: "off" })).toBeNull();
+    expect(
+      buildUsageReporter({ LICENSE_SERVER_V2_MODE: "off", LICENSE_SERVER_URL: "https://license.example.com" })
+    ).toBeNull();
   });
 
   test("is null when enabled but unconfigured", () => {
-    expect(buildUsageReporter({ LICENSE_SERVER_V2_MODE: "read-compare" })).toBeNull();
+    expect(
+      buildUsageReporter({ LICENSE_SERVER_V2_MODE: "read-compare", LICENSE_SERVER_URL: "https://license.example.com" })
+    ).toBeNull();
   });
 
   test("is a reporter when enabled and configured", () => {
     const reporter = buildUsageReporter({
       LICENSE_SERVER_V2_MODE: "read-compare",
       LICENSE_SERVER_V2_URL: "https://license.example.com",
-      LICENSE_SERVER_V2_SERVICE_KEY: "svc-key"
+      LICENSE_SERVER_V2_SERVICE_KEY: "svc-key",
+      LICENSE_SERVER_URL: "https://license.example.com"
     });
     expect(reporter).not.toBeNull();
     expect(typeof reporter?.reportSnapshots).toBe("function");

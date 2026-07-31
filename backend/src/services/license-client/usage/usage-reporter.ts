@@ -79,9 +79,13 @@ export const buildUsageReporter = (
     return null;
   }
 
-  const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
+  // Self-hosted sets only LICENSE_SERVER_URL (that one host now serves both the token endpoint and the
+  // v2 API after the DNS switch); cloud sets LICENSE_SERVER_V2_URL. Accept either as the v2 API base.
+  const serverUrl = envConfig.LICENSE_SERVER_V2_URL || envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("usage-reporter: enabled but LICENSE_SERVER_V2_URL is missing; usage reporting disabled");
+    logger.warn(
+      "usage-reporter: enabled but neither LICENSE_SERVER_V2_URL nor LICENSE_SERVER_URL is set; usage reporting disabled"
+    );
     return null;
   }
 
@@ -90,11 +94,11 @@ export const buildUsageReporter = (
   try {
     parsedUrl = new URL(serverUrl);
   } catch {
-    logger.warn("usage-reporter: LICENSE_SERVER_V2_URL is not a valid URL; usage reporting disabled");
+    logger.warn("usage-reporter: license server URL is not a valid URL; usage reporting disabled");
     return null;
   }
   if (parsedUrl.protocol !== "https:" && process.env.NODE_ENV !== "development") {
-    logger.warn("usage-reporter: LICENSE_SERVER_V2_URL must use https; usage reporting disabled");
+    logger.warn("usage-reporter: license server URL must use https; usage reporting disabled");
     return null;
   }
 

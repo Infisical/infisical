@@ -7,9 +7,6 @@ export type TLicenseTokenProvider = {
   invalidate: () => void;
 };
 
-// Both self-hosted license key formats (legacy and infisical_lk_) authenticate the same way: POST the
-// key to the license server's token endpoint and use the returned short-lived JWT as a bearer. The
-// endpoint lives on LICENSE_SERVER_URL (the same base the v1 on-prem login uses), not the v2 API base.
 const LICENSE_LOGIN_PATH = "/api/auth/v1/license-login";
 
 // Refresh this many seconds before the JWT's exp so an in-flight request never carries an expired token.

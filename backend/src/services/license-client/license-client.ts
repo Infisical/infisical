@@ -47,9 +47,13 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
     return licenseServerSelfHostedBackend(envConfig.LICENSE_SERVER_URL, tokenProvider, envConfig.INTERNAL_REGION);
   }
 
-  const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
+  // Self-hosted sets only LICENSE_SERVER_URL (that one host now serves both the token endpoint and the
+  // v2 API after the DNS switch); cloud sets LICENSE_SERVER_V2_URL. Accept either as the v2 API base.
+  const serverUrl = envConfig.LICENSE_SERVER_V2_URL || envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("license-client: enabled but LICENSE_SERVER_V2_URL is missing; serving feature fallbacks");
+    logger.warn(
+      "license-client: enabled but neither LICENSE_SERVER_V2_URL nor LICENSE_SERVER_URL is set; serving feature fallbacks"
+    );
     return null;
   }
 

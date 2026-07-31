@@ -161,13 +161,13 @@ export const usageEventQueueFactory = ({
   const init = () => {
     startWorker();
 
-    // cronJob.register({
-    //   name: CronJobName.LicenseUsageFlush,
-    //   pattern: "0 0 * * *", // daily at midnight UTC
-    //   runHashTtlS: 60 * 60,
-    //   enabled: !isCloud && !isOffline,
-    //   handler: flushInstanceUsage
-    // });
+    cronJob.register({
+      name: CronJobName.LicenseUsageFlush,
+      pattern: "0 0 * * *", // daily at midnight UTC
+      runHashTtlS: 60 * 60,
+      enabled: !isCloud && !isOffline,
+      handler: flushInstanceUsage
+    });
   };
 
   return { init, handleUsageEvent, flushInstanceUsage };

@@ -30,6 +30,7 @@ export type SubscriptionPlan = {
   rbac: boolean;
   secretVersioning: boolean;
   slug: SubscriptionPlanTypes;
+  isOffline?: boolean;
   secretApproval: boolean;
   secretRotation: boolean;
   tier: number;
