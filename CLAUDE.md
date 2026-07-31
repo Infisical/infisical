@@ -105,5 +105,8 @@ When making significant changes to the codebase (new services, architectural shi
 3. Check the backend work against [`backend/CODE_QUALITY.md`](backend/CODE_QUALITY.md)
 4. Run `make reviewable-api` and `make reviewable-ui` before submitting
 
-## Helpful files 
-Read AGENTS.md for additional context.
+## Helpful files
+
+Claude Code reads CLAUDE.md, not AGENTS.md, so the shared agent instructions are imported here rather than linked:
+
+@AGENTS.md

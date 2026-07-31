@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **backend** package of the Infisical monorepo — a Fastify 4 API server with TypeScript, PostgreSQL via Knex, and BullMQ queues.
 
-**Read [`CODE_QUALITY.md`](CODE_QUALITY.md) for every change in this package, whatever the change is, and check your work against it before calling the task done.** This file covers *where* code goes and *which* pattern to follow; that one covers the minimum any implementation has to handle. It is a short, non-exhaustive floor (user-understandable errors and no pointless 500s, API input validation, pagination when calling third-party APIs, deadlock conditions on a small connection pool, REST-aligned API design), and that summary is not a filter for whether it applies.
+The backend code quality guide is imported below, so it is always in context for work in this package. **Check every change against it, whatever the change is, before calling the task done.** This file covers *where* code goes and *which* pattern to follow; the quality guide covers the minimum any implementation has to handle. It is a deliberately non-exhaustive floor, so the topics it happens to cover are not a filter for whether it applies.
+
+@CODE_QUALITY.md
 
 ## Essential Commands
 
