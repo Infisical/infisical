@@ -10,7 +10,11 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { parseProjectSlugFromPath, urlSlugToProjectType } from "@app/helpers/project";
+import {
+  hasProjectTemplates,
+  parseProjectSlugFromPath,
+  urlSlugToProjectType
+} from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const ProjectTypeNav = () => {
@@ -32,7 +36,7 @@ export const ProjectTypeNav = () => {
     ? urlSlugToProjectType(typeSlug) === ProjectType.SecretManager
     : false;
   const projectType = typeSlug ? urlSlugToProjectType(typeSlug) : null;
-  const hasProductSettings = projectType !== null && projectType !== ProjectType.SSH;
+  const hasProductSettings = projectType !== null && hasProjectTemplates(projectType);
   const isOnKmipServers = pathname.includes("/kmip-servers");
   const isOnSecretSharing = pathname.includes("/secret-sharing");
   const isOnProductSettings = pathname.includes("/product-settings");

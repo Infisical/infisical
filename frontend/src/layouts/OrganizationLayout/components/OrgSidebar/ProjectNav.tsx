@@ -11,7 +11,11 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { hasIntermediateProjectsView, projectTypeToUrlSlug } from "@app/helpers/project";
+import {
+  hasIntermediateProjectsView,
+  hasProjectTemplates,
+  projectTypeToUrlSlug
+} from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AINav } from "./AINav";
@@ -66,7 +70,7 @@ export const ProjectNav = () => {
   else if (isSubOrganization) projectLabel = "Sub-Organization";
   else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
-  const hasProductSettings = currentProject.type !== ProjectType.SSH;
+  const hasProductSettings = hasProjectTemplates(currentProject.type);
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
   // been consistent in using a route structure that reflects nested pages; once we refactor we can switch

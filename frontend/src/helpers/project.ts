@@ -104,6 +104,16 @@ const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
 
+const PROJECT_TYPES_WITH_PROJECT_TEMPLATES = new Set<ProjectType>([
+  ProjectType.SecretManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
+export const hasProjectTemplates = (type: ProjectType) =>
+  PROJECT_TYPES_WITH_PROJECT_TEMPLATES.has(type);
+
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:
