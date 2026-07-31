@@ -1,15 +1,12 @@
 import { useMemo, useState } from "react";
 import {
-  faArrowDown,
-  faArrowUp,
-  faCheck,
-  faCheckCircle,
-  faFilter,
-  faRotate,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { SearchIcon } from "lucide-react";
+  CheckCircle2Icon,
+  ChevronDownIcon,
+  FilterIcon,
+  RotateCwIcon,
+  SearchIcon,
+  TriangleAlertIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -20,12 +17,10 @@ import {
 } from "@app/components/pki-syncs";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuTrigger
-} from "@app/components/v2";
-import {
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -91,10 +86,10 @@ type Props = {
 };
 
 const STATUS_ICON_MAP = {
-  [PkiSyncStatus.Succeeded]: { icon: faCheck, className: "text-green", name: "Synced" },
-  [PkiSyncStatus.Failed]: { icon: faWarning, className: "text-red", name: "Not Synced" },
-  [PkiSyncStatus.Pending]: { icon: faRotate, className: "text-yellow", name: "Syncing" },
-  [PkiSyncStatus.Running]: { icon: faRotate, className: "text-yellow", name: "Syncing" }
+  [PkiSyncStatus.Succeeded]: { Icon: CheckCircle2Icon, className: "text-success", name: "Synced" },
+  [PkiSyncStatus.Failed]: { Icon: TriangleAlertIcon, className: "text-danger", name: "Not Synced" },
+  [PkiSyncStatus.Pending]: { Icon: RotateCwIcon, className: "text-warning", name: "Syncing" },
+  [PkiSyncStatus.Running]: { Icon: RotateCwIcon, className: "text-warning", name: "Syncing" }
 };
 
 export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
@@ -202,11 +197,15 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: PkiSyncsOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
-
-  const getColSortIcon = (col: PkiSyncsOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const renderSortIcon = (col: PkiSyncsOrderBy) => (
+    <ChevronDownIcon
+      className={twMerge(
+        orderDirection === OrderByDirection.DESC && orderBy === col && "rotate-180",
+        orderBy !== col && "opacity-30",
+        "transition-transform"
+      )}
+    />
+  );
 
   const isTableFiltered = Boolean(filters.destinations.length || filters.status.length);
 
@@ -253,7 +252,7 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex gap-2">
         <InputGroup className="flex-1">
           <InputGroupAddon>
             <SearchIcon />
@@ -261,25 +260,24 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search PKI syncs..."
+            placeholder="Search certificate syncs..."
           />
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              aria-label="Filter PKI syncs"
+              aria-label="Filter certificate syncs"
               variant={isTableFiltered ? "project" : "outline"}
-              size="md"
-              className={twMerge(isTableFiltered && "text-primary")}
             >
-              <FontAwesomeIcon icon={faFilter} />
+              <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
             {[PkiSyncStatus.Running, PkiSyncStatus.Succeeded, PkiSyncStatus.Failed].map(
               (status) => (
-                <DropdownMenuItem
+                <DropdownMenuCheckboxItem
+                  checked={filters.status.includes(status)}
                   onClick={(e) => {
                     e.preventDefault();
                     setFilters((prev) => ({
@@ -290,21 +288,15 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                     }));
                   }}
                   key={status}
-                  icon={
-                    filters.status.includes(status) && (
-                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
                 >
                   <div className="flex items-center gap-2">
-                    <FontAwesomeIcon
-                      icon={STATUS_ICON_MAP[status].icon}
-                      className={STATUS_ICON_MAP[status].className}
-                    />
+                    {(() => {
+                      const { Icon, className } = STATUS_ICON_MAP[status];
+                      return <Icon className={`size-3.5 ${className}`} />;
+                    })()}
                     <span className="capitalize">{STATUS_ICON_MAP[status].name}</span>
                   </div>
-                </DropdownMenuItem>
+                </DropdownMenuCheckboxItem>
               )
             )}
             <DropdownMenuLabel>Service</DropdownMenuLabel>
@@ -313,7 +305,8 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                 const { name, image } = PKI_SYNC_MAP[destination];
 
                 return (
-                  <DropdownMenuItem
+                  <DropdownMenuCheckboxItem
+                    checked={filters.destinations.includes(destination)}
                     onClick={(e) => {
                       e.preventDefault();
                       setFilters((prev) => ({
@@ -324,12 +317,6 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                       }));
                     }}
                     key={destination}
-                    icon={
-                      filters.destinations.includes(destination) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
                   >
                     <div className="flex items-center gap-2">
                       <img
@@ -339,97 +326,75 @@ export const PkiSyncsTable = ({ pkiSyncs, applicationName }: Props) => {
                       />
                       <span>{name}</span>
                     </div>
-                  </DropdownMenuItem>
+                  </DropdownMenuCheckboxItem>
                 );
               })
             ) : (
-              <DropdownMenuItem isDisabled>No PKI Syncs Configured</DropdownMenuItem>
+              <DropdownMenuLabel className="font-normal text-mineshaft-400">
+                No Certificate Syncs Configured
+              </DropdownMenuLabel>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-2" />
-            <TableHead className="w-1/2">
-              <div className="flex items-center">
-                Name
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className={getClassName(PkiSyncsOrderBy.Name)}
-                  aria-label="sort"
-                  onClick={() => handleSort(PkiSyncsOrderBy.Name)}
-                >
-                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Name)} />
-                </IconButton>
-              </div>
-            </TableHead>
-            <TableHead className="w-1/4">
-              <div className="flex items-center">
-                Destination
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className={getClassName(PkiSyncsOrderBy.Destination)}
-                  aria-label="sort"
-                  onClick={() => handleSort(PkiSyncsOrderBy.Destination)}
-                >
-                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Destination)} />
-                </IconButton>
-              </div>
-            </TableHead>
-            <TableHead className="w-1/4 min-w-42">
-              <div className="flex items-center">
-                Status
-                <IconButton
-                  variant="ghost"
-                  size="xs"
-                  className={getClassName(PkiSyncsOrderBy.Status)}
-                  aria-label="sort"
-                  onClick={() => handleSort(PkiSyncsOrderBy.Status)}
-                >
-                  <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Status)} />
-                </IconButton>
-              </div>
-            </TableHead>
-            <TableHead className="w-5" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredPkiSyncs.slice(offset, perPage * page).map((pkiSync) => (
-            <PkiSyncRow
-              key={pkiSync.id}
-              pkiSync={pkiSync}
-              onDelete={handleDelete}
-              onTriggerSyncCertificates={handleTriggerSync}
-              onTriggerImportCertificates={handleTriggerImportCertificates}
-              onTriggerRemoveCertificates={handleTriggerRemoveCertificates}
-              onToggleEnable={handleToggleEnableSync}
-              applicationName={applicationName}
-            />
-          ))}
-          {!filteredPkiSyncs?.length && (
+      {filteredPkiSyncs.length ? (
+        <Table>
+          <TableHeader>
             <TableRow>
-              <td colSpan={5} className="p-0">
-                <Empty className="border-none">
-                  <EmptyHeader>
-                    <EmptyTitle>
-                      {pkiSyncs.length ? "No syncs match search..." : "No syncs configured yet"}
-                    </EmptyTitle>
-                    <EmptyDescription>
-                      {pkiSyncs.length
-                        ? "Try adjusting your search or filters"
-                        : "Create a sync to get started"}
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              </td>
+              <TableHead className="w-2" />
+              <TableHead
+                className="w-1/2 cursor-pointer"
+                onClick={() => handleSort(PkiSyncsOrderBy.Name)}
+              >
+                Name
+                {renderSortIcon(PkiSyncsOrderBy.Name)}
+              </TableHead>
+              <TableHead
+                className="w-1/4 cursor-pointer"
+                onClick={() => handleSort(PkiSyncsOrderBy.Destination)}
+              >
+                Destination
+                {renderSortIcon(PkiSyncsOrderBy.Destination)}
+              </TableHead>
+              <TableHead
+                className="w-1/4 min-w-42 cursor-pointer"
+                onClick={() => handleSort(PkiSyncsOrderBy.Status)}
+              >
+                Status
+                {renderSortIcon(PkiSyncsOrderBy.Status)}
+              </TableHead>
+              <TableHead className="w-5" />
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {filteredPkiSyncs.slice(offset, perPage * page).map((pkiSync) => (
+              <PkiSyncRow
+                key={pkiSync.id}
+                pkiSync={pkiSync}
+                onDelete={handleDelete}
+                onTriggerSyncCertificates={handleTriggerSync}
+                onTriggerImportCertificates={handleTriggerImportCertificates}
+                onTriggerRemoveCertificates={handleTriggerRemoveCertificates}
+                onToggleEnable={handleToggleEnableSync}
+                applicationName={applicationName}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>
+              {pkiSyncs.length ? "No syncs match search..." : "No syncs configured yet"}
+            </EmptyTitle>
+            <EmptyDescription>
+              {pkiSyncs.length
+                ? "Try adjusting your search or filters"
+                : "Create a sync to get started"}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
       {Boolean(filteredPkiSyncs.length) && (
         <Pagination
           count={filteredPkiSyncs.length}

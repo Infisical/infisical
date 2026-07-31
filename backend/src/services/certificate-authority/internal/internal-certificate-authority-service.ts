@@ -47,13 +47,19 @@ import { extractCertificateFields } from "../../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../../certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
+  CertExtendedKeyUsageNameToOID,
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
-  TAltNameMapping
+  TAltNameMapping,
+  TAltNameType
 } from "../../certificate/certificate-types";
-import { DEFAULT_CRL_VALIDITY_DAYS } from "../../certificate-common/certificate-constants";
+import {
+  DEFAULT_CRL_VALIDITY_DAYS,
+  GENERAL_NAME_TYPES_WITH_OTHER_NAME,
+  SUPPORTED_GENERAL_NAME_TYPES
+} from "../../certificate-common/certificate-constants";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
@@ -2072,7 +2078,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );
@@ -2526,7 +2532,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (selectedExtendedKeyUsages.length) {
       extensions.push(
         new x509.ExtendedKeyUsageExtension(
-          selectedExtendedKeyUsages.map((eku) => x509.ExtendedKeyUsage[eku]),
+          selectedExtendedKeyUsages.map((eku) => CertExtendedKeyUsageNameToOID[eku]),
           true
         )
       );
@@ -2553,10 +2559,12 @@ export const internalCertificateAuthorityServiceFactory = ({
         const sanNames = new x509.GeneralNames(sanExtension.value);
 
         altNamesArray = sanNames.items
-          .filter(
-            (value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip"
-          )
+          .filter((value) => SUPPORTED_GENERAL_NAME_TYPES.has(value.type))
           .map((name): TAltNameMapping => {
+            if (GENERAL_NAME_TYPES_WITH_OTHER_NAME.has(name.type)) {
+              return { type: name.type as TAltNameType, value: name.value };
+            }
+
             const altNameType = validateAndMapAltNameType(name.value);
             if (!altNameType) {
               throw new Error(`Invalid altName from CSR: ${name.value}`);
@@ -2672,11 +2680,22 @@ export const internalCertificateAuthorityServiceFactory = ({
       return newCert;
     };
 
+    // Everything above this point is reads, CA key access and signing, and deliberately runs with no
+    // transaction open. Only the writes below take a connection, so a caller can get atomic issuance
+    // without pinning one across the KMS/HSM round trips.
+    const persist = async (transaction: Knex) => {
+      const newCert = await createSignedCert(transaction);
+      if (dto.onPersisted) {
+        await dto.onPersisted(newCert, transaction);
+      }
+      return newCert;
+    };
+
     let cert;
     if (tx) {
-      cert = await createSignedCert(tx);
+      cert = await persist(tx);
     } else {
-      cert = await certificateDAL.transaction(createSignedCert);
+      cert = await certificateDAL.transaction(persist);
     }
 
     usageMeteringService.emitForProject(ca.projectId, ActiveCerts.key);

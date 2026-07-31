@@ -155,6 +155,7 @@ export default function UserInfoStep({
                 First Name
               </FieldLabel>
               <Input
+                variant="outlined"
                 {...register("firstName")}
                 id="signup-first-name"
                 placeholder="First Name"
@@ -170,6 +171,7 @@ export default function UserInfoStep({
                 Last Name
               </FieldLabel>
               <Input
+                variant="outlined"
                 {...register("lastName")}
                 id="signup-last-name"
                 placeholder="Last Name"
@@ -187,6 +189,7 @@ export default function UserInfoStep({
                 Organization Name
               </FieldLabel>
               <Input
+                variant="outlined"
                 {...register("organizationName")}
                 id="signup-organization-name"
                 placeholder="Organization Name"
@@ -200,6 +203,7 @@ export default function UserInfoStep({
             </Field>
           )}
           <PasswordField
+            variant="outlined"
             id="new-password"
             value={passwordValue}
             policy={config.passwordPolicy}
@@ -215,7 +219,7 @@ export default function UserInfoStep({
           >
             <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
               <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
-              <InputGroup>
+              <InputGroup variant="outlined">
                 <InputGroupInput
                   {...register("confirmPassword")}
                   id="confirm-password"

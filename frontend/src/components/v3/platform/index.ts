@@ -1,4 +1,5 @@
 export * from "./DateRangeFilter";
+export * from "./DeleteConfirmDialog";
 export * from "./DocumentationLinkBadge";
 export * from "./GatewayPicker";
 export * from "./IdentityRoleBadges";

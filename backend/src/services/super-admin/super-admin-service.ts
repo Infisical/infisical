@@ -35,6 +35,8 @@ import { IdentitiesMeter, PamIdentities, SecretIdentities, UserIdentities } from
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
+import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorType, AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
@@ -82,6 +84,7 @@ type TSuperAdminServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -157,7 +160,8 @@ export const superAdminServiceFactory = ({
   membershipIdentityDAL,
   membershipUserDAL,
   membershipRoleDAL,
-  usageMeteringService
+  usageMeteringService,
+  alertChannelRecipientDAL
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -735,7 +739,16 @@ export const superAdminServiceFactory = ({
       actorUserId: userId
     });
 
-    const user = await userDAL.deleteById(userId);
+    const user = await userDAL.transaction(async (tx) => {
+      const deletedUser = await userDAL.deleteById(userId, tx);
+      // principalId carries no FK, so the user row going away leaves recipient rows behind.
+      await alertChannelRecipientDAL.deleteByPrincipals(
+        { principalType: AlertPrincipalType.USER, principalIds: [userId] },
+        tx
+      );
+      return deletedUser;
+    });
+
     emitUserDeletionMeterEvents(orgMemberships);
     return user;
   };
@@ -756,11 +769,22 @@ export const superAdminServiceFactory = ({
       $in: { actorUserId: userIds }
     });
 
-    const users = await userDAL.delete({
-      $in: {
-        id: userIds
-      }
+    const users = await userDAL.transaction(async (tx) => {
+      const deletedUsers = await userDAL.delete(
+        {
+          $in: {
+            id: userIds
+          }
+        },
+        tx
+      );
+      await alertChannelRecipientDAL.deleteByPrincipals(
+        { principalType: AlertPrincipalType.USER, principalIds: userIds },
+        tx
+      );
+      return deletedUsers;
     });
+
     emitUserDeletionMeterEvents(orgMemberships);
     return users;
   };
@@ -1011,11 +1035,23 @@ export const superAdminServiceFactory = ({
     if (!membershipRole) {
       throw new NotFoundError({ name: "Membership Role", message: "Membership role not found" });
     }
-    const [organizationMembership] = await membershipUserDAL.delete({
-      scopeOrgId: organizationId,
-      scope: AccessScope.Organization,
-      id: membershipId
+    const organizationMembership = await membershipUserDAL.transaction(async (tx) => {
+      const [deletedMembership] = await membershipUserDAL.delete(
+        {
+          scopeOrgId: organizationId,
+          scope: AccessScope.Organization,
+          id: membershipId
+        },
+        tx
+      );
+
+      if (deletedMembership?.actorUserId) {
+        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [deletedMembership.actorUserId] }, tx);
+      }
+
+      return deletedMembership;
     });
+
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 

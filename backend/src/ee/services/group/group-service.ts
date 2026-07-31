@@ -23,6 +23,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TGenericPermission } from "@app/lib/types";
+import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -102,6 +104,7 @@ type TGroupServiceFactoryDep = {
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
+  alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -123,7 +126,8 @@ export const groupServiceFactory = ({
   membershipGroupDAL,
   membershipRoleDAL,
   usageMeteringService,
-  identityAccessTokenService
+  identityAccessTokenService,
+  alertChannelRecipientDAL
 }: TGroupServiceFactoryDep) => {
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
@@ -434,6 +438,8 @@ export const groupServiceFactory = ({
 
       const idsPerSubOrg = await Promise.all(referencingSubOrgs.map((subOrg) => collectIdsForSubOrg(subOrg.orgId)));
       await deleteMembershipsInBatch(idsPerSubOrg.flat(), tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds }, tx);
     });
   };
 
@@ -554,6 +560,8 @@ export const groupServiceFactory = ({
       membershipIdsToDelete.push(...userProjectIdsToDelete, ...identityProjectIdsToDelete);
 
       await deleteMembershipsInBatch(membershipIdsToDelete, tx);
+
+      await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
     });
 
     return group;
@@ -572,12 +580,25 @@ export const groupServiceFactory = ({
       });
     }
 
-    const [deletedGroup] = await groupDAL.delete({
-      id: groupId,
-      orgId: actorOrgId
-    });
+    return groupDAL.transaction(async (tx) => {
+      const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
+        { userGroupMembershipDAL, alertChannelRecipientDAL },
+        groupId,
+        tx
+      );
 
-    return deletedGroup;
+      const [deletedGroup] = await groupDAL.delete(
+        {
+          id: groupId,
+          orgId: actorOrgId
+        },
+        tx
+      );
+
+      await finalizeAlertRecipients();
+
+      return deletedGroup;
+    });
   };
 
   const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
@@ -1169,7 +1190,8 @@ export const groupServiceFactory = ({
       userDAL,
       userGroupMembershipDAL,
       membershipGroupDAL,
-      projectKeyDAL
+      projectKeyDAL,
+      alertChannelRecipientDAL
     });
 
     await cleanUpSubOrgProjectMemberships({

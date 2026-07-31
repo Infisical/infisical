@@ -17,7 +17,7 @@ import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Badge, Button as V3Button, Pagination } from "@app/components/v3";
+import { Badge, Button as V3Button, Pagination, SelectedActionBar } from "@app/components/v3";
 import { useSubscription, useUser } from "@app/context";
 import {
   getUserTablePreference,
@@ -422,37 +422,24 @@ export const UserIdentitiesTable = () => {
 
   return (
     <>
-      <div
-        className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
-          selectedUsers.length > 0 && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedUsers.length}
+        onClearSelection={() => setSelectedUsers([])}
       >
-        <div className="flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <div className="mr-2 text-sm">{selectedUsers.length} Selected</div>
-          <button
-            type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
-            onClick={() => setSelectedUsers([])}
-          >
-            Unselect All
-          </button>
-          <Button
-            variant="outline_bg"
-            colorSchema="danger"
-            leftIcon={<FontAwesomeIcon icon={faTrash} />}
-            className="ml-2"
-            onClick={() => {
-              if (!selectedUsers?.length) return;
+        <Button
+          variant="outline_bg"
+          colorSchema="danger"
+          leftIcon={<FontAwesomeIcon icon={faTrash} />}
+          onClick={() => {
+            if (!selectedUsers?.length) return;
 
-              handlePopUpOpen("removeUsers");
-            }}
-            size="xs"
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
+            handlePopUpOpen("removeUsers");
+          }}
+          size="xs"
+        >
+          Delete
+        </Button>
+      </SelectedActionBar>
       <div className="mb-6 rounded-lg border border-border bg-card p-5 text-foreground">
         <div className="mb-4 flex items-center justify-between">
           <div>

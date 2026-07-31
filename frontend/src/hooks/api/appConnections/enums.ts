@@ -6,6 +6,7 @@ export enum AppConnection {
   AzureKeyVault = "azure-key-vault",
   AzureAppConfiguration = "azure-app-configuration",
   AzureClientSecrets = "azure-client-secrets",
+  MicrosoftIntune = "microsoft-intune",
   AzureDevOps = "azure-devops",
   AzureADCS = "azure-adcs",
   ADCS = "adcs",
@@ -79,5 +80,6 @@ export enum AppConnection {
   Cloud66 = "cloud-66",
   LiteLLM = "litellm",
   Fireworks = "fireworks",
-  NutanixPrismCentral = "nutanix-prism-central"
+  NutanixPrismCentral = "nutanix-prism-central",
+  Spacelift = "spacelift"
 }

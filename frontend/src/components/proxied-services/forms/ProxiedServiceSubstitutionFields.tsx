@@ -133,7 +133,11 @@ export const ProxiedServiceSubstitutionFields = ({
                   control={control}
                   name={`substitutions.${i}.surfaces`}
                   render={({ field }) => (
-                    <SurfaceSelect value={field.value} onChange={field.onChange} />
+                    <SurfaceSelect
+                      value={field.value}
+                      onChange={field.onChange}
+                      isError={Boolean(errors.substitutions?.[i]?.surfaces)}
+                    />
                   )}
                 />
                 <FieldError errors={[errors.substitutions?.[i]?.surfaces]} />
@@ -152,6 +156,7 @@ export const ProxiedServiceSubstitutionFields = ({
                     dynamicSecretName: watchedSubstitutions?.[i]?.dynamicSecretName,
                     dynamicSecretField: watchedSubstitutions?.[i]?.dynamicSecretField
                   }}
+                  suggestedSecretKey={watchedSubstitutions?.[i]?.placeholderKey}
                   onChange={(v) => setSubstitutionSource(i, v)}
                   isSecretError={Boolean(errors.substitutions?.[i]?.secretKey)}
                   isFieldError={Boolean(errors.substitutions?.[i]?.dynamicSecretField)}

@@ -10,6 +10,8 @@ export const getSanPlaceholder = (sanType: CertSubjectAlternativeNameType): stri
       return "admin@example.com";
     case CertSubjectAlternativeNameType.URI:
       return "https://example.com";
+    case CertSubjectAlternativeNameType.UPN:
+      return "jsmith@example.com";
     default:
       return "Enter value";
   }
@@ -19,7 +21,8 @@ export const getSanTypeLabels = () => ({
   [CertSubjectAlternativeNameType.DNS_NAME]: "DNS",
   [CertSubjectAlternativeNameType.IP_ADDRESS]: "IP",
   [CertSubjectAlternativeNameType.EMAIL]: "Email",
-  [CertSubjectAlternativeNameType.URI]: "URI"
+  [CertSubjectAlternativeNameType.URI]: "URI",
+  [CertSubjectAlternativeNameType.UPN]: "UPN"
 });
 
 export type SubjectAltName = {

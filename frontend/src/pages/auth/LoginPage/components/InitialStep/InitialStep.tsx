@@ -440,6 +440,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
           {shouldDisplayLoginMethod(LoginMethod.EMAIL) && (
             <div className="flex w-full flex-col gap-4">
               <Input
+                variant="outlined"
                 {...register("email", { onChange: () => setLoginError(false) })}
                 type="email"
                 id="email"
@@ -448,7 +449,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
                 className="h-10"
                 isError={(showDangerState && Boolean(errors.email)) || loginError}
               />
-              <InputGroup className="h-10">
+              <InputGroup variant="outlined" className="h-10">
                 <InputGroupInput
                   {...register("password", { onChange: () => setLoginError(false) })}
                   type={showPassword ? "text" : "password"}

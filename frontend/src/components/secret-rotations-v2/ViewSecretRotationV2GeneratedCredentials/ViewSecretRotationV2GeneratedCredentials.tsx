@@ -24,6 +24,8 @@ import {
 
 import { ViewSqlCredentialsRotationGeneratedCredentials } from "./shared";
 import { ViewAwsIamUserSecretRotationGeneratedCredentials } from "./ViewAwsIamUserSecretRotationGeneratedCredentials";
+import { ViewCloudflareApiTokenRotationGeneratedCredentials } from "./ViewCloudflareApiTokenRotationGeneratedCredentials";
+import { ViewCloudflareR2AccessKeyRotationGeneratedCredentials } from "./ViewCloudflareR2AccessKeyRotationGeneratedCredentials";
 import { ViewDatadogApiKeyRotationGeneratedCredentials } from "./ViewDatadogApiKeyRotationGeneratedCredentials";
 import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./ViewDatadogApplicationKeySecretRotationGeneratedCredentials";
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
@@ -232,6 +234,20 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.SnowflakeUserKeyPair:
       Component = (
         <ViewSnowflakeUserKeyPairRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.CloudflareApiToken:
+      Component = (
+        <ViewCloudflareApiTokenRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
+    case SecretRotation.CloudflareR2AccessKey:
+      Component = (
+        <ViewCloudflareR2AccessKeyRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}
         />
       );

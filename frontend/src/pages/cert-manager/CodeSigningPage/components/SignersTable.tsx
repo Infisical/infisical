@@ -109,91 +109,98 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
             />
           </InputGroup>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Certificate CN</TableHead>
-              <TableHead>Certificate Expiry</TableHead>
-              <TableHead>Last Signed</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {!isLoading &&
-              signers.map((signer) => (
-                <TableRow
-                  key={signer.id}
-                  className="cursor-pointer hover:bg-mineshaft-700"
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
-                      params: {
-                        orgId: currentOrg.id,
-                        projectId,
-                        signerId: signer.id
-                      }
-                    })
-                  }
-                >
-                  <TableCell>{signer.name}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
-                    {signer.certificateFailureReason &&
-                    (signer.status === SignerStatus.Failed ||
-                      signer.status === SignerStatus.Pending) ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex cursor-help items-center gap-1.5">
-                            <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                              {signerStatusLabels[signer.status] ?? signer.status}
-                            </Badge>
-                            {signer.status === SignerStatus.Pending && (
-                              <AlertTriangleIcon
-                                className="size-3.5 shrink-0 text-warning"
-                                aria-hidden
-                              />
-                            )}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="top"
-                          align="start"
-                          className="max-w-[320px] text-pretty break-words"
-                        >
-                          {signer.status === SignerStatus.Pending && (
-                            <span className="mb-0.5 block text-[10px] tracking-wide text-muted uppercase">
-                              Last attempt failed, retrying
+        {isLoading || signers.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Certificate CN</TableHead>
+                <TableHead>Certificate Expiry</TableHead>
+                <TableHead>Last Signed</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!isLoading &&
+                signers.map((signer) => (
+                  <TableRow
+                    key={signer.id}
+                    className="cursor-pointer hover:bg-mineshaft-700"
+                    onClick={() =>
+                      navigate({
+                        to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId,
+                          signerId: signer.id
+                        }
+                      })
+                    }
+                  >
+                    <TableCell>{signer.name}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                      {signer.certificateFailureReason &&
+                      (signer.status === SignerStatus.Failed ||
+                        signer.status === SignerStatus.Pending) ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex cursor-help items-center gap-1.5">
+                              <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
+                                {signerStatusLabels[signer.status] ?? signer.status}
+                              </Badge>
+                              {signer.status === SignerStatus.Pending && (
+                                <AlertTriangleIcon
+                                  className="size-3.5 shrink-0 text-warning"
+                                  aria-hidden
+                                />
+                              )}
                             </span>
-                          )}
-                          {signer.certificateFailureReason}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
-                        {signerStatusLabels[signer.status] ?? signer.status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>
-                  <TableCell>
-                    {signer.certificateNotAfter
-                      ? format(new Date(signer.certificateNotAfter), "MMM d, yyyy")
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {signer.lastSignedAt
-                      ? format(new Date(signer.lastSignedAt), "MMM d, yyyy HH:mm")
-                      : "Never"}
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-        {!isLoading && signers.length === 0 && (
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            align="start"
+                            className="max-w-[320px] text-pretty break-words"
+                          >
+                            {signer.status === SignerStatus.Pending && (
+                              <span className="mb-0.5 block text-[10px] tracking-wide text-muted uppercase">
+                                Last attempt failed, retrying
+                              </span>
+                            )}
+                            {signer.certificateFailureReason}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Badge variant={getSignerStatusBadgeVariant(signer.status)}>
+                          {signerStatusLabels[signer.status] ?? signer.status}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>
+                    <TableCell>
+                      {signer.certificateNotAfter
+                        ? format(new Date(signer.certificateNotAfter), "MMM d, yyyy")
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {signer.lastSignedAt
+                        ? format(new Date(signer.lastSignedAt), "MMM d, yyyy HH:mm")
+                        : "Never"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        ) : (
           <Empty className="border border-solid">
             <EmptyHeader>
-              <EmptyTitle>No signers yet</EmptyTitle>
-              <EmptyDescription>Create a signer to start signing artifacts</EmptyDescription>
+              <EmptyTitle>
+                {debouncedSearch ? "No signers match search" : "No signers yet"}
+              </EmptyTitle>
+              <EmptyDescription>
+                {debouncedSearch
+                  ? "Try adjusting your search"
+                  : "Create a signer to start signing artifacts"}
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

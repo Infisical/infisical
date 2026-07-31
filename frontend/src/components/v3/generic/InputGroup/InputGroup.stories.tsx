@@ -73,6 +73,22 @@ export const Default: Story = {
   )
 };
 
+export const Outlined: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
+      }
+    }
+  },
+  render: () => (
+    <InputGroup variant="outlined">
+      <InputGroupInput placeholder="Acme Corporation" />
+    </InputGroup>
+  )
+};
+
 export const AddonInlineStart: Story = {
   name: "Anatomy: Addon Inline Start",
   parameters: {

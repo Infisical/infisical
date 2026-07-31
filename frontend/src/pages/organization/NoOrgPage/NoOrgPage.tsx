@@ -7,12 +7,30 @@ import { useNavigate } from "@tanstack/react-router";
 import { createNotification } from "@app/components/notifications";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { ContentLoader } from "@app/components/v2";
-import { organizationKeys, useCreateOrg, useSelectOrganization } from "@app/hooks/api";
+import {
+  fetchOrganizations,
+  organizationKeys,
+  useCreateOrg,
+  useSelectOrganization
+} from "@app/hooks/api";
 
 const PERSONAL_ORG_NAME = "Personal Org";
 // A useRef gate resets on a full unmount/remount; this sessionStorage flag survives it, so an
 // interrupted-then-remounted page can't fire a second createOrg and leave a duplicate org behind.
 const CREATION_STARTED_KEY = "personalOrgCreationStarted";
+
+const generatePersonalOrgName = (existingNames: string[]) => {
+  const taken = new Set(existingNames.map((name) => name.trim().toLowerCase()));
+  const isTaken = (candidate: string) => taken.has(candidate.trim().toLowerCase());
+
+  if (!isTaken(PERSONAL_ORG_NAME)) return PERSONAL_ORG_NAME;
+
+  let suffix = 1;
+  while (isTaken(`${PERSONAL_ORG_NAME} ${suffix}`)) {
+    suffix += 1;
+  }
+  return `${PERSONAL_ORG_NAME} ${suffix}`;
+};
 
 export const NoOrgPage = () => {
   const { t } = useTranslation();
@@ -28,15 +46,19 @@ export const NoOrgPage = () => {
 
   useEffect(() => {
     if (hasRun.current) return;
+
     hasRun.current = true;
 
     if (sessionStorage.getItem(CREATION_STARTED_KEY)) return;
     sessionStorage.setItem(CREATION_STARTED_KEY, "true");
 
     const createPersonalOrg = async () => {
+      const existingOrgs = await fetchOrganizations().catch(() => []);
+      const orgName = generatePersonalOrgName(existingOrgs.map((org) => org.name));
+
       let organization;
       try {
-        organization = await createOrg({ name: PERSONAL_ORG_NAME });
+        organization = await createOrg({ name: orgName });
       } catch {
         // Nothing was created, so reset both guards and let the user create an org manually.
         createNotification({

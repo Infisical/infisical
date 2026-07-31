@@ -1,7 +1,7 @@
 import { ProxiedServiceStep } from "./schema";
 
 export const PROXIED_SERVICE_QUICKSTART_URL =
-  "https://infisical.com/docs/documentation/platform/agent-proxy/quickstart";
+  "https://infisical.com/docs/documentation/platform/agent-proxy/quickstart/credentials";
 
 type StepMeta = {
   step: ProxiedServiceStep;

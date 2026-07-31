@@ -232,6 +232,20 @@ import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { additionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
+import { alertChannelDALFactory } from "@app/services/alert/alert-channel-dal";
+import { alertChannelMembershipDALFactory } from "@app/services/alert/alert-channel-membership-dal";
+import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { alertChannelServiceFactory } from "@app/services/alert/alert-channel-service";
+import { alertChannelTestServiceFactory } from "@app/services/alert/alert-channel-test-service";
+import { alertDALFactory } from "@app/services/alert/alert-dal";
+import { alertEngineFactory } from "@app/services/alert/alert-engine";
+import { alertHistoryDALFactory } from "@app/services/alert/alert-history-dal";
+import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider-registry";
+import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
+import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
+import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
+import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -381,7 +395,6 @@ import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal"
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { licenseClientFactory } from "@app/services/license-client";
-import { dualReadServiceFactory } from "@app/services/license-client/dual-read/dual-read-service";
 import {
   buildMeteredFeatures,
   buildUsageReporter,
@@ -804,12 +817,9 @@ export const registerRoutes = async (
   // is the single read primitive; falls back to feature defaults until the server is configured.
   const licenseClient = licenseClientFactory({ envConfig, keyStore });
 
-  // Shadow-compares v1 getPlan against v2 entitlements in read-compare mode; reads v2 via the real SDK.
-  const licenseDualRead = dualReadServiceFactory({ licenseClient, envConfig });
-
   // Created before licenseService so the latter can emit the v2 user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
-  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, envConfig });
+  const usageMeteringService = usageMeteringServiceFactory({ queueService, projectDAL, keyStore, envConfig });
 
   const licenseService = licenseServiceFactory({
     permissionService,
@@ -819,7 +829,6 @@ export const registerRoutes = async (
     projectDAL,
     envConfig,
     licenseClient,
-    licenseDualRead,
     usageMeteringService
   });
 
@@ -838,9 +847,11 @@ export const registerRoutes = async (
     cronJob,
     keyStore,
     orgDAL,
+    licenseService,
     usageMeteringService,
     meteredFeatures,
     usageReporter,
+    isCloud: envConfig.isCloud,
     source: usageSource
   });
 
@@ -880,9 +891,12 @@ export const registerRoutes = async (
     userDAL
   });
 
+  const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
+
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
     membershipRoleDAL,
+    alertChannelRecipientDAL,
     membershipUserDAL,
     orgDAL,
     permissionService,
@@ -942,7 +956,8 @@ export const registerRoutes = async (
     licenseService,
     applicationMembershipCleanupService,
     projectDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const roleService = roleServiceFactory({
@@ -1003,6 +1018,65 @@ export const registerRoutes = async (
   });
 
   const notificationService = notificationServiceFactory({ notificationQueue, userNotificationDAL });
+
+  const alertDAL = alertDALFactory(db);
+  const alertChannelDAL = alertChannelDALFactory(db);
+  const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
+  const alertHistoryDAL = alertHistoryDALFactory(db);
+  const alertProviderRegistry = alertProviderRegistryFactory();
+  alertProviderRegistry.register(
+    identityCredentialAlertProviderFactory({
+      identityCredentialAlertDAL: identityCredentialAlertDALFactory(db),
+      permissionService
+    })
+  );
+  const alertRecipientResolver = alertRecipientResolverFactory({
+    userDAL,
+    userGroupMembershipDAL,
+    orgDAL,
+    projectDAL
+  });
+  const alertEngine = alertEngineFactory({
+    alertChannelDAL,
+    alertChannelRecipientDAL,
+    alertHistoryDAL,
+    alertProviderRegistry,
+    alertRecipientResolver,
+    kmsService,
+    smtpService
+  });
+  const alertQueue = alertQueueServiceFactory({
+    cronJob,
+    queueService,
+    alertDAL,
+    alertHistoryDAL,
+    alertProviderRegistry,
+    alertEngine
+  });
+  const alertChannelService = alertChannelServiceFactory({
+    alertChannelDAL,
+    alertChannelRecipientDAL,
+    orgDAL,
+    projectDAL,
+    groupDAL
+  });
+  const alertService = alertServiceFactory({
+    alertDAL,
+    alertChannelDAL,
+    alertChannelMembershipDAL,
+    alertChannelService,
+    kmsService,
+    alertProviderRegistry
+  });
+  const alertChannelTestService = alertChannelTestServiceFactory({
+    alertChannelDAL,
+    alertDAL,
+    alertRecipientResolver,
+    alertProviderRegistry,
+    kmsService,
+    smtpService,
+    keyStore
+  });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
     licenseService,
@@ -1091,7 +1165,8 @@ export const registerRoutes = async (
     membershipGroupDAL,
     membershipRoleDAL,
     usageMeteringService,
-    identityAccessTokenService
+    identityAccessTokenService,
+    alertChannelRecipientDAL
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1171,6 +1246,7 @@ export const registerRoutes = async (
     membershipUserDAL,
     additionalPrivilegeDAL,
     approvalPolicyDAL,
+    alertChannelRecipientDAL,
     emailDomainDAL,
     telemetryService,
     usageMeteringService
@@ -1186,7 +1262,8 @@ export const registerRoutes = async (
     orgMembershipDAL,
     membershipRoleDAL,
     membershipGroupDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1216,7 +1293,8 @@ export const registerRoutes = async (
     totpConfigDAL,
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const totpService = totpServiceFactory({
@@ -1285,7 +1363,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1309,7 +1388,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1373,7 +1453,8 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     approvalPolicyDAL,
     certificatePolicyDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1430,7 +1511,8 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL,
     membershipUserDAL,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -1492,7 +1574,8 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     membershipRoleDAL,
     applicationMembershipCleanupService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const projectKeyService = projectKeyServiceFactory({
@@ -1664,26 +1747,6 @@ export const registerRoutes = async (
     permissionService
   });
 
-  const certificateProfileService = certificateProfileServiceFactory({
-    certificateProfileDAL,
-    certificatePolicyDAL,
-    certificatePolicyService,
-    apiEnrollmentConfigDAL,
-    estEnrollmentConfigDAL,
-    acmeEnrollmentConfigDAL,
-    scepEnrollmentConfigDAL,
-    scepDynamicChallengeDAL,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    certificateAuthorityDAL,
-    externalCertificateAuthorityDAL,
-    permissionService,
-    kmsService,
-    projectDAL,
-    resourceMetadataDAL,
-    pkiApplicationProfileDAL
-  });
-
   const pkiApplicationService = pkiApplicationServiceFactory({
     pkiApplicationDAL,
     pkiApplicationProfileDAL,
@@ -1755,18 +1818,6 @@ export const registerRoutes = async (
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     db,
     orgDAL,
-    projectDAL,
-    permissionService
-  });
-
-  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
-    pkiApplicationDAL,
-    pkiApplicationProfileDAL,
-    apiEnrollmentConfigDAL,
-    estEnrollmentConfigDAL,
-    acmeEnrollmentConfigDAL,
-    scepEnrollmentConfigDAL,
-    kmsService,
     projectDAL,
     permissionService
   });
@@ -2469,6 +2520,7 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL,
     usageMeteringService,
+    alertService,
     identityAccessTokenService
   });
 
@@ -2839,7 +2891,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     telemetryService,
-    usageMeteringService
+    usageMeteringService,
+    alertChannelRecipientDAL
   });
 
   const userActivationService = userActivationServiceFactory({
@@ -2935,6 +2988,48 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolDAL,
     licenseService
+  });
+
+  const certificateProfileService = certificateProfileServiceFactory({
+    certificateProfileDAL,
+    certificatePolicyDAL,
+    certificatePolicyService,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
+    scepDynamicChallengeDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCertDAL,
+    hsmConnectorService,
+    externalCertificateAuthorityDAL,
+    permissionService,
+    kmsService,
+    projectDAL,
+    resourceMetadataDAL,
+    pkiApplicationProfileDAL
+  });
+
+  const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
+    pkiApplicationDAL,
+    pkiApplicationProfileDAL,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    scepEnrollmentConfigDAL,
+    appConnectionService,
+    approvalPolicyDAL,
+    certificateProfileDAL,
+    certificateAuthorityDAL,
+    certificateAuthoritySecretDAL,
+    certificateAuthorityCertDAL,
+    hsmConnectorService,
+    kmsService,
+    projectDAL,
+    permissionService
   });
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
@@ -3484,6 +3579,7 @@ export const registerRoutes = async (
   });
 
   const pkiScepService = pkiScepServiceFactory({
+    keyStore,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -3496,6 +3592,7 @@ export const registerRoutes = async (
     certificateBodyDAL,
     projectDAL,
     kmsService,
+    appConnectionDAL,
     licenseService,
     certificatePolicyDAL,
     certificatePolicyService,
@@ -3836,6 +3933,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
+  alertQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pamDiscoveryService.init();
@@ -4023,6 +4121,8 @@ export const registerRoutes = async (
     projectEvents: projectEventsService,
     projectEventsSSE: projectEventsSSEService,
     notification: notificationService,
+    alert: alertService,
+    alertChannelTest: alertChannelTestService,
     announcement: announcementService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,

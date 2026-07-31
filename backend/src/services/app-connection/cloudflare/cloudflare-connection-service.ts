@@ -4,6 +4,8 @@ import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "../app-connection-enums";
 import {
   listCloudflarePagesProjects,
+  listCloudflarePermissionGroups,
+  listCloudflareR2Buckets,
   listCloudflareWorkersScripts,
   listCloudflareZones
 } from "./cloudflare-connection-fns";
@@ -55,9 +57,39 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
+  const listPermissionGroups = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
+    try {
+      const permissionGroups = await listCloudflarePermissionGroups(appConnection);
+      return permissionGroups;
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to list Cloudflare permission groups for Cloudflare connection [connectionId=${connectionId}]`
+      );
+      return [];
+    }
+  };
+
+  const listR2Buckets = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Cloudflare, connectionId, actor);
+    try {
+      const buckets = await listCloudflareR2Buckets(appConnection);
+      return buckets;
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to list Cloudflare R2 buckets for Cloudflare connection [connectionId=${connectionId}]`
+      );
+      return [];
+    }
+  };
+
   return {
     listPagesProjects,
     listWorkersScripts,
-    listZones
+    listZones,
+    listPermissionGroups,
+    listR2Buckets
   };
 };

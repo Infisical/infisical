@@ -74,6 +74,7 @@ import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/hero
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
+import { MicrosoftIntuneConnectionMethod } from "@app/hooks/api/appConnections/types/microsoft-intune-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NetScalerConnectionMethod } from "@app/hooks/api/appConnections/types/netscaler-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
@@ -89,6 +90,7 @@ import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/run
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
+import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
 import { SshConnectionMethod } from "@app/hooks/api/appConnections/types/ssh-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
@@ -457,6 +459,13 @@ export const APP_CONNECTION_MAP: Record<
     category: "IDENTITY",
     description: "Manage users and groups in Entra ID."
   },
+  [AppConnection.MicrosoftIntune]: {
+    name: "Microsoft Intune",
+    image: "Microsoft Intune.svg",
+    category: "CERTIFICATES",
+    enterprise: true,
+    description: "Validate SCEP certificate requests with Microsoft Intune."
+  },
   [AppConnection.Venafi]: {
     name: "Venafi TLS Protect Cloud",
     image: "Venafi.png",
@@ -608,6 +617,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "Nutanix.png",
     category: "INFRASTRUCTURE",
     description: "Manage a Nutanix Prism Central instance."
+  },
+  [AppConnection.Spacelift]: {
+    name: "Spacelift",
+    image: "Spacelift.png",
+    category: "INFRASTRUCTURE",
+    description: "Sync and manage resources with Spacelift."
   }
 };
 
@@ -729,9 +744,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
+    case SpaceliftConnectionMethod.ApiKeySecret:
       return { name: "API Key & Secret", icon: faKey };
     case AzureDNSConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
+    case MicrosoftIntuneConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
     case OctopusDeployConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
