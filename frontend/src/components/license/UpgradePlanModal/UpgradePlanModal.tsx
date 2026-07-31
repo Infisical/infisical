@@ -79,10 +79,7 @@ export const UpgradePlanModalContent = ({
   }
 
   return (
-    <DialogContent
-      className="z-[70] w-lg max-w-[calc(100%-2rem)]"
-      overlayClassName="z-[70]"
-    >
+    <DialogContent className="z-[70] w-lg max-w-[calc(100%-2rem)]" overlayClassName="z-[70]">
       <DialogHeader className="pr-8">
         <DialogTitle className="font-alliance text-lg leading-6 font-normal">{title}</DialogTitle>
       </DialogHeader>
@@ -206,7 +203,7 @@ export const UpgradePlanModal = ({
       {/* z-[70] keeps this above legacy v2 modals (z-[60]) that open it, e.g. RoleModal */}
       <UpgradePlanModalContent
         benefits={benefits}
-        description={feature?.description ?? text}
+        description={text ?? feature?.description}
         featureName={feature?.name}
         media={media}
         offer={offer}

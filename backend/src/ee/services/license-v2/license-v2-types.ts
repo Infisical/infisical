@@ -168,6 +168,7 @@ export type BillingV2Billing = {
 };
 
 export type BillingV2Overview = {
+  canManageBilling: boolean;
   isCloud: boolean;
   mode: BillingV2Mode;
   subState: BillingV2SubState;

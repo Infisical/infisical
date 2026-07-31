@@ -127,6 +127,7 @@ const BillingV2EntitlementSchema = z.object({
 });
 
 const BillingV2OverviewSchema = z.object({
+  canManageBilling: z.boolean(),
   isCloud: z.boolean(),
   mode: z.enum(["self-serve", "managed"]),
   subState: z.enum(["active", "trialing", "past-due", "suspended", "no-subscription"]),

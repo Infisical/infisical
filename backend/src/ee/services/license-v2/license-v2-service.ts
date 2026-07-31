@@ -404,6 +404,7 @@ export const licenseV2ServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
+    return permission;
   };
 
   const ensureManageBilling = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
@@ -654,7 +655,7 @@ export const licenseV2ServiceFactory = ({
   };
 
   const getOverview = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
-    await ensureBillingRead(orgId, actor);
+    const permission = await ensureBillingRead(orgId, actor);
 
     const organization = await orgDAL.findById(orgId);
     if (!organization) {
@@ -766,6 +767,7 @@ export const licenseV2ServiceFactory = ({
     };
 
     const overview: BillingV2Overview = {
+      canManageBilling: permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing),
       // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
       // "managed by your account team" banner off these two fields.
       isCloud: !isSelfHostedLicense,

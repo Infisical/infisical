@@ -148,6 +148,7 @@ export type BillingV2Entitlement = {
 };
 
 export type BillingV2Overview = {
+  canManageBilling: boolean;
   isCloud: boolean;
   mode: "self-serve" | "managed";
   subState: BillingV2SubState;

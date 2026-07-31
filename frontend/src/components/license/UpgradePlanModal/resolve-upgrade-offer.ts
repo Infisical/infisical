@@ -78,7 +78,7 @@ export const resolveUpgradeOffer = ({
     : undefined;
   const product = catalog.find((candidate) => candidate.id === productId);
 
-  if (!product) {
+  if (!product || !productId) {
     return isEnterpriseFeature || !overview.selfServe
       ? { kind: "contact-sales", primaryLabel: "Contact sales" }
       : { kind: "view-plans", primaryLabel: "View plans" };
