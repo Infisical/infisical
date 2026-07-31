@@ -250,8 +250,6 @@ Documentation should read like instructions from a knowledgeable colleague: dire
 
 ### Don't Overuse Em Dashes
 
-Heavy em dash use is one of the clearest tells of machine-written text, and it slows readers down: each one asks them to hold an unfinished clause in mind until the sentence resolves.
-
 Reach for a comma, colon, parentheses, or a full stop first. An occasional em dash is fine, but several in a paragraph, or one in most sentences, means the punctuation is doing the work that sentence structure should.
 
 ---
