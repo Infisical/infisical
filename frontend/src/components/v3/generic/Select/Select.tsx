@@ -218,6 +218,6 @@ export {
   SelectSeparator,
   SelectTrigger,
   type SelectTriggerProps,
-  SelectValue,
-  selectTriggerVariants
+  selectTriggerVariants,
+  SelectValue
 };
