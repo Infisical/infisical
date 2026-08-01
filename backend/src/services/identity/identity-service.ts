@@ -407,6 +407,14 @@ export const identityServiceFactory = ({
     }
 
     await membershipIdentityDAL.transaction(async (tx) => {
+      await alertService.deleteAlertsForResource(
+        {
+          orgId: actorOrgId,
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: id
+        },
+        tx
+      );
       await identityMetadataDAL.delete(
         {
           identityId: id,

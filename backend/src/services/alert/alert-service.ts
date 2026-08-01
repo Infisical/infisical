@@ -407,11 +407,19 @@ export const alertServiceFactory = ({
   };
 
   const deleteAlertsForResource = async (
-    { orgId, resourceType, resourceId }: { orgId: string; resourceType: string; resourceId: string },
+    {
+      orgId,
+      projectId,
+      resourceType,
+      resourceId
+    }: { orgId: string; projectId?: string; resourceType: string; resourceId: string },
     tx?: Knex
   ): Promise<number> => {
     const run = async (trx: Knex) => {
-      const alerts = await alertDAL.find({ orgId, resourceType, resourceId }, { tx: trx });
+      const alerts = await alertDAL.find(
+        { orgId, resourceType, resourceId, ...(projectId ? { projectId } : {}) },
+        { tx: trx }
+      );
       return $deleteAlerts(
         alerts.map((alert) => alert.id),
         trx

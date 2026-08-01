@@ -8,6 +8,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
+import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 import { PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -52,6 +54,7 @@ type TMembershipIdentityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
     "insertOrgMembershipRevocationMarker" | "removeOrgMembershipRevocationMarkers" | "bumpIdentityRevocationVersion"
@@ -73,6 +76,7 @@ export const membershipIdentityServiceFactory = ({
   projectDAL,
   keyStore,
   usageMeteringService,
+  alertService,
   identityAccessTokenService
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
@@ -411,6 +415,15 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const performDelete = async (tx: Knex) => {
+      await alertService.deleteAlertsForResource(
+        {
+          orgId: scopeData.orgId,
+          ...(scopeData.scope === AccessScope.Project ? { projectId: scopeData.projectId } : {}),
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: dto.selector.identityId
+        },
+        tx
+      );
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,

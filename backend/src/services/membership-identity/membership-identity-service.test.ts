@@ -45,6 +45,7 @@ const createService = ({
   const bumpIdentityRevocationVersion = vi.fn().mockResolvedValue(undefined);
   const insertOrgMembershipRevocationMarker = vi.fn().mockResolvedValue(undefined);
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
+  const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -66,6 +67,9 @@ const createService = ({
       getOrgPermission: vi
         .fn()
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+      getProjectPermission: vi
+        .fn()
+        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       // Role name "no-access" skips the privilege-boundary comparison in the guards.
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ role: { name: "no-access" }, permission: null }])
     } as never,
@@ -79,6 +83,7 @@ const createService = ({
     projectDAL: { findById: vi.fn() } as never,
     keyStore: { getKeysByPattern: vi.fn(), getItem: vi.fn() } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
+    alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
       insertOrgMembershipRevocationMarker,
       removeOrgMembershipRevocationMarkers,
@@ -91,7 +96,8 @@ const createService = ({
     membershipIdentityDAL,
     bumpIdentityRevocationVersion,
     insertOrgMembershipRevocationMarker,
-    removeOrgMembershipRevocationMarkers
+    removeOrgMembershipRevocationMarkers,
+    deleteAlertsForResource
   };
 };
 
@@ -123,6 +129,49 @@ describe("deleteMembership org revocation bump ordering", () => {
     expect(insertOrgMembershipRevocationMarker).toHaveBeenCalledTimes(1);
     expect(bumpIdentityRevocationVersion).not.toHaveBeenCalled();
     expect(result).toMatchObject({ revocationBumpPending: { identityId: IDENTITY_ID } });
+  });
+});
+
+const PROJECT_ID = "project-1";
+
+describe("deleteMembership alert cleanup", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an org membership reaps the identity's alerts across the whole org", async () => {
+    const { service, deleteAlertsForResource } = createService();
+
+    await service.deleteMembership(buildDto());
+
+    // No projectId: the identity leaves the org entirely, so its project-scoped alerts here go too.
+    expect(deleteAlertsForResource).toHaveBeenCalledTimes(1);
+    expect(deleteAlertsForResource).toHaveBeenCalledWith(
+      {
+        orgId: SUB_ORG_ID,
+        resourceType: "identity.authentication",
+        resourceId: IDENTITY_ID
+      },
+      expect.anything()
+    );
+  });
+
+  test("removing a project membership reaps only that project's alerts", async () => {
+    const { service, deleteAlertsForResource } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID }
+    });
+
+    // The identity still exists in the org, so its org-scoped alert must survive.
+    expect(deleteAlertsForResource).toHaveBeenCalledWith(
+      {
+        orgId: SUB_ORG_ID,
+        projectId: PROJECT_ID,
+        resourceType: "identity.authentication",
+        resourceId: IDENTITY_ID
+      },
+      expect.anything()
+    );
   });
 });
 

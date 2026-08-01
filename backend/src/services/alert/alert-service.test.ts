@@ -401,6 +401,32 @@ describe("alert service", () => {
     expect(memberships.get("alert-1") ?? []).toHaveLength(0);
   });
 
+  test("deleteAlertsForResource narrowed to a project spares the resource's org-scoped alerts", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    // A second alert on the same identity, this one bound to a project. Inserted directly because
+    // the fake create() always mints "alert-1".
+    alerts.set("alert-2", {
+      id: "alert-2",
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+
+    // The identity only left proj-1, so its org-scoped alert must survive.
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()]).toEqual(["alert-1"]);
+  });
+
   test("deleteAlertsForResource is a no-op when nothing matches", async () => {
     const { service, alerts } = buildService();
     await service.createAlert({ ...validCreate, resourceId: "ident-1" });
