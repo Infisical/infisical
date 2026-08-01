@@ -102,7 +102,9 @@ import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-d
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
+import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { LicenseType } from "@app/ee/services/license/license-types";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -813,9 +815,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  // Offline (air-gapped) licenses are stored in LICENSE_KEY too, but must never reach the license
+  // server. The v2 client is left dormant for them so no billing/entitlement read can transmit the
+  // signed license credential; usage reporting + its cron are disabled below for the same reason.
+  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
+  const isOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+
   // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
   // is the single read primitive; falls back to feature defaults until the server is configured.
-  const licenseClient = licenseClientFactory({ envConfig, keyStore });
+  const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
 
   // Created before licenseService so the latter can emit the v2 user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
@@ -837,7 +845,7 @@ export const registerRoutes = async (
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
-  const usageReporter = buildUsageReporter(envConfig);
+  const usageReporter = isOfflineLicense ? null : buildUsageReporter(envConfig);
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {
     usageSource = "cloud";
@@ -846,12 +854,12 @@ export const registerRoutes = async (
     queueService,
     cronJob,
     keyStore,
-    orgDAL,
     licenseService,
     usageMeteringService,
     meteredFeatures,
     usageReporter,
     isCloud: envConfig.isCloud,
+    isOffline: isOfflineLicense,
     source: usageSource
   });
 

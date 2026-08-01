@@ -142,6 +142,7 @@ describe("licenseClientFactory (usage example)", () => {
       LICENSE_SERVER_V2_MODE: "off",
       LICENSE_SERVER_V2_URL: undefined,
       LICENSE_SERVER_V2_SERVICE_KEY: undefined,
+      LICENSE_SERVER_URL: "https://license.example.com",
       INTERNAL_REGION: undefined
     },
     keyStore: createFakeKeyStore()
