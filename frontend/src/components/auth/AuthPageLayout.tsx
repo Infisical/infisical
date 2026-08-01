@@ -10,6 +10,11 @@ import { AuthPageHeader } from "./AuthPageHeader";
 
 type Props = {
   anchorBottomContent?: boolean;
+  /** Per-step overrides for the marketing panel copy; the headline stays fixed. */
+  aside?: {
+    eyebrow?: ReactNode;
+    description?: ReactNode;
+  };
   bottomContent?: ReactNode;
   children: ReactNode;
   contentClassName?: string;
@@ -20,6 +25,7 @@ type Props = {
 
 export const AuthPageLayout = ({
   anchorBottomContent = false,
+  aside,
   bottomContent,
   children,
   contentClassName,
@@ -86,7 +92,7 @@ export const AuthPageLayout = ({
           <div className="relative z-10 flex flex-1 items-center justify-center px-10 pb-16 xl:px-20">
             <div className="max-w-xl">
               <p className="mb-4 font-jetbrains-mono text-xs tracking-[0.02em] text-project uppercase">
-                Trusted by 400,000+ developers
+                {aside?.eyebrow ?? "Trusted by 400,000+ developers"}
               </p>
               <h2 className="font-alliance text-3xl leading-tight font-normal text-foreground xl:text-4xl">
                 <span className="block">
@@ -95,7 +101,8 @@ export const AuthPageLayout = ({
                 <span className="block">for developers and agents</span>
               </h2>
               <p className="mt-4 max-w-lg font-alliance text-sm leading-relaxed text-label xl:text-base">
-                One place to audit every credential your apps and agents use.
+                {aside?.description ??
+                  "One place to audit every credential your apps and agents use."}
               </p>
             </div>
           </div>

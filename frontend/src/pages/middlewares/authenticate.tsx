@@ -48,7 +48,8 @@ export const Route = createFileRoute("/_authenticate")({
     if (
       !data.organizationId &&
       location.pathname !== ROUTE_PATHS.Auth.PasswordSetupPage.path &&
-      location.pathname !== "/organizations/none"
+      location.pathname !== "/organizations/none" &&
+      location.pathname !== "/organizations/onboarding"
     ) {
       throw redirect({ to: "/login/select-organization" });
     }

@@ -21,6 +21,7 @@ import { isInfisicalCloud } from "@app/helpers/platform";
 import { getHubSpotUtk } from "@app/helpers/utmTracking";
 import { useSendEmailVerificationCode } from "@app/hooks/api";
 import { useCompleteAccountSignup } from "@app/hooks/api/auth/queries";
+import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 
 const CLIENT_RESEND_DELAY_SECONDS = 20;
 
@@ -70,14 +71,23 @@ export const SignupSsoPage = () => {
       text: "Successfully verified",
       type: "success"
     });
-    if (organizationId) {
-      navigate({
-        to: "/organizations/$orgId/projects",
-        params: { orgId: organizationId }
-      });
-    } else {
-      navigate({ to: "/login/select-organization" });
+
+    // People who already belong to an org (SAML/OIDC/LDAP, invites) are joining an existing
+    // workspace, so org setup doesn't apply; keep sending them straight in.
+    const userOrgs = await fetchOrganizations();
+    if (userOrgs.length > 0) {
+      if (organizationId) {
+        navigate({
+          to: "/organizations/$orgId/projects",
+          params: { orgId: organizationId }
+        });
+      } else {
+        navigate({ to: "/login/select-organization" });
+      }
+      return;
     }
+
+    navigate({ to: "/organizations/onboarding" });
   };
 
   const handleResendCode = async () => {
@@ -98,7 +108,6 @@ export const SignupSsoPage = () => {
 
   return (
     <AuthPageLayout
-      variant="focused"
       headerAction={
         <Button asChild variant="outline" size="sm">
           <Link to="/login">Log In</Link>

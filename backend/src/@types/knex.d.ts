@@ -659,6 +659,9 @@ import {
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
+  TSignupOnboardingResponses,
+  TSignupOnboardingResponsesInsert,
+  TSignupOnboardingResponsesUpdate,
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
@@ -1166,6 +1169,11 @@ declare module "knex/types/tables" {
       TIncidentContactsUpdate
     >;
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
+    [TableName.SignupOnboardingResponse]: KnexOriginal.CompositeTableType<
+      TSignupOnboardingResponses,
+      TSignupOnboardingResponsesInsert,
+      TSignupOnboardingResponsesUpdate
+    >;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
     [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<

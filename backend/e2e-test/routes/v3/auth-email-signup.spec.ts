@@ -77,7 +77,26 @@ describe("Auth Email Signup V3", () => {
       body: { email: testEmail, code: "000000" }
     });
 
-    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({
+      statusCode: 401,
+      message: "Invalid token",
+      error: "InvalidToken"
+    });
+    expect(res.json()).not.toHaveProperty("details");
+
+    const missingChallenge = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/verify",
+      body: { email: "signup-missing-challenge@localhost.local", code: "000000" }
+    });
+    expect(missingChallenge.statusCode).toBe(401);
+    expect(missingChallenge.json()).toMatchObject({
+      statusCode: 401,
+      message: "Invalid token",
+      error: "InvalidToken"
+    });
+    expect(missingChallenge.json()).not.toHaveProperty("details");
   });
 
   test("Complete account with valid signup token creates user", async () => {
@@ -211,7 +230,16 @@ describe("Auth Email Signup V3", () => {
     });
     expect(first.statusCode).toBe(200);
 
-    // Step 3: second request within cooldown — must return 400 for both paths to be indistinguishable
+    // Step 3: wrong-code verification must match the response for a new-account challenge
+    const verifyAttempt = await testServer.inject({
+      method: "POST",
+      url: "/api/v3/signup/email/verify",
+      body: { email, code: "000000" }
+    });
+    expect(verifyAttempt.statusCode).toBe(401);
+    expect(verifyAttempt.json()).not.toHaveProperty("details");
+
+    // Step 4: second request within cooldown — must return 400 for both paths to be indistinguishable
     const second = await testServer.inject({
       method: "POST",
       url: "/api/v3/signup/email/signup",
@@ -236,11 +264,13 @@ describe("Auth Email Signup V3", () => {
     // Exhaust all 3 tries with a wrong code
     for (let i = 0; i < 3; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      await testServer.inject({
+      const attempt = await testServer.inject({
         method: "POST",
         url: "/api/v3/signup/email/verify",
         body: { email, code: "000000" }
       });
+      expect(attempt.statusCode).toBe(401);
+      expect(attempt.json()).not.toHaveProperty("details");
     }
 
     // Correct code should now also fail because the record was deleted
@@ -250,6 +280,6 @@ describe("Auth Email Signup V3", () => {
       body: { email, code: correctCode }
     });
 
-    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode).toBe(401);
   });
 });

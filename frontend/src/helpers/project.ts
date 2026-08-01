@@ -11,6 +11,7 @@ import {
 import { apiRequest } from "@app/config/request";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
+import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
 const secretsToBeAdded = [
   {
@@ -38,6 +39,33 @@ const secretsToBeAdded = [
   }
 ];
 
+const seedExampleSecrets = async (projectId: string) => {
+  await apiRequest.post("/api/v4/secrets/batch", {
+    projectId,
+    environment: "dev",
+    secretPath: "/",
+    secrets: secretsToBeAdded
+  });
+};
+
+/**
+ * Seed the example secrets into a project that may already have them: a prior attempt can
+ * have created the project but failed before seeding finished. Seeding is all-or-nothing
+ * server-side, so any existing secret means the project is already seeded.
+ */
+export const ensureExampleSecrets = async (projectId: string) => {
+  const { secrets } = await fetchProjectSecrets({
+    projectId,
+    environment: "dev",
+    secretPath: "/",
+    viewSecretValue: false
+  });
+
+  if (secrets.length === 0) {
+    await seedExampleSecrets(projectId);
+  }
+};
+
 /**
  * Create and initialize a new project in organization with id [organizationId]
  * Note: current user should be a member of the organization
@@ -51,17 +79,9 @@ export const initProjectHelper = async ({ projectName }: { projectName: string }
     type: ProjectType.SecretManager
   });
 
-  try {
-    const { data } = await apiRequest.post("/api/v4/secrets/batch", {
-      projectId: project.id,
-      environment: "dev",
-      secretPath: "/",
-      secrets: secretsToBeAdded
-    });
-    return data;
-  } catch (err) {
-    console.error("Failed to upload secrets", err);
-  }
+  // A seeding failure must propagate; swallowing it here would report the project as
+  // fully initialized and the example secrets would never be retried.
+  await seedExampleSecrets(project.id);
 
   return project;
 };

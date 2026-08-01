@@ -68,6 +68,7 @@ export enum TableName {
   IncidentContact = "incident_contacts",
   UserAction = "user_actions",
   UserSecretActivation = "user_secret_activation",
+  SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
   ProjectSshConfig = "project_ssh_configs",

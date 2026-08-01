@@ -98,7 +98,7 @@ export const useGetUpgradeProjectStatus = ({
   });
 };
 
-const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
+export const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
   const { data } = await apiRequest.get<{ projects: Project[] }>("/api/v1/projects", {
     params: {
       includeRoles,
