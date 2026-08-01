@@ -102,8 +102,9 @@ export default function UserInfoStep({
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
   const canSubmit = isPasswordValidated && !isLoading;
-  const stepTitle = isInvite ? "Set up your account" : t("signup.step3-message");
   const normalizedInviteOrganizationName = inviteOrganizationName?.trim();
+  const inviteOrganizationLabel = normalizedInviteOrganizationName || "an organization";
+  const stepTitle = t("signup.step3-message");
   const submitLabel = isInvite ? String(t("signup.signup")) : "Continue";
 
   const onSubmit = async (formData: UserInfoFormData) => {
@@ -147,25 +148,30 @@ export default function UserInfoStep({
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
-        <CardHeader className="mb-4 gap-2">
+        <CardHeader className={isInvite ? "mb-6 gap-2" : "mb-4 gap-2"}>
           <CardTitle
             role="heading"
             aria-level={1}
-            className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent"
+            className="ml-0.5 font-alliance text-2xl font-normal break-words"
           >
-            {stepTitle}
+            {isInvite ? (
+              <>
+                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                  Join
+                </span>
+                <span className="ml-1 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                  {inviteOrganizationLabel}
+                </span>
+              </>
+            ) : (
+              <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                {stepTitle}
+              </span>
+            )}
           </CardTitle>
           {isInvite ? (
-            <CardDescription className="break-words text-label">
-              You’ve been invited to join{" "}
-              {normalizedInviteOrganizationName ? (
-                <span className="font-medium text-foreground">
-                  {normalizedInviteOrganizationName}
-                </span>
-              ) : (
-                "an organization"
-              )}
-              .
+            <CardDescription className="ml-0.5 font-alliance text-base break-words text-accent">
+              Set up your Infisical account
             </CardDescription>
           ) : null}
         </CardHeader>
