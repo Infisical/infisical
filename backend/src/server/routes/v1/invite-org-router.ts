@@ -137,7 +137,9 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           // The org invite above creates user records for every email, so leftovers mean
           // some invitees silently missed the grant (the service skips them without throwing).
           if (unresolved.length) {
-            logger.error(`Failed to resolve invitees for PAM access [emails=${unresolved.join(",")}]`);
+            logger.error(
+              `Failed to resolve invitees for PAM access [unresolvedCount=${unresolved.length}] [orgId=${req.permission.orgId}]`
+            );
             pamAccessFailed = true;
           }
 

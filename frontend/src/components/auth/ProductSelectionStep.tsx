@@ -6,7 +6,7 @@ import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@ap
 import { cn } from "@app/components/v3/utils";
 import { EXAMPLE_PROJECT_NAME } from "@app/const";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { initProjectHelper } from "@app/helpers/project";
+import { ensureExampleSecrets, initProjectHelper } from "@app/helpers/project";
 import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
 import { createWorkspace, fetchUserWorkspaces } from "@app/hooks/api/projects/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -35,7 +35,14 @@ const setUpProduct = async (product: SignupProductType): Promise<Project | undef
   // with the project already created (cert-manager is even bootstrapped server-side), and the
   // org is brand new, so any existing project of the type belongs to this flow.
   const [existingProject] = await fetchUserWorkspaces(false, product);
-  if (existingProject) return existingProject;
+  if (existingProject) {
+    // A prior attempt can have died between creating this project and seeding its
+    // example secrets; finish the seeding before treating the product as set up.
+    if (product === ProjectType.SecretManager) {
+      await ensureExampleSecrets(existingProject.id);
+    }
+    return existingProject;
+  }
 
   switch (product) {
     case ProjectType.SecretManager:
@@ -108,7 +115,15 @@ export default function ProductSelectionStep({
         }
       });
 
-      onComplete(orderedSelection, { ...projects });
+      // The ref keeps every project created across attempts so retries stay idempotent, but a
+      // product deselected after a failed attempt must not reach the invite/completion steps.
+      const selectedProjects: Partial<Record<SignupProductType, Project>> = {};
+      orderedSelection.forEach((type) => {
+        const project = projects[type];
+        if (project) selectedProjects[type] = project;
+      });
+
+      onComplete(orderedSelection, selectedProjects);
     } catch {
       createNotification({
         type: "error",
