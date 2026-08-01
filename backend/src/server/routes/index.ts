@@ -813,9 +813,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  // Offline (air-gapped) licenses are stored in LICENSE_KEY too, but must never reach the license
+  // server. The v2 client is left dormant for them so no billing/entitlement read can transmit the
+  // signed license credential; usage reporting + its cron are disabled below for the same reason.
+  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
+  const isOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+
   // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
   // is the single read primitive; falls back to feature defaults until the server is configured.
-  const licenseClient = licenseClientFactory({ envConfig, keyStore });
+  const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
 
   // Created before licenseService so the latter can emit the v2 user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
@@ -837,10 +843,6 @@ export const registerRoutes = async (
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
-  // An offline (air-gapped) license can't reach the license server, so usage reporting + its daily
-  // true-up cron are inert: skip the reporter entirely and disable the cron below.
-  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
-  const isOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
   const usageReporter = isOfflineLicense ? null : buildUsageReporter(envConfig);
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {

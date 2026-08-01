@@ -28,13 +28,24 @@ type TLicenseClientFactoryDep = {
     | "INTERNAL_REGION"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  // Offline (air-gapped) licenses must never contact the license server; the SDK stays dormant for them.
+  isOffline?: boolean;
 };
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 
 // Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and either a
 // self-hosted license key or the cloud service key (plus server URL) is configured.
-const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicenseClientBackend | null => {
+const buildBackend = (
+  envConfig: TLicenseClientFactoryDep["envConfig"],
+  isOffline: boolean
+): TLicenseClientBackend | null => {
+  // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the
+  // air-gap and leak the signed credential — keep the SDK dormant so no read can POST it to the server.
+  if (isOffline) {
+    return null;
+  }
+
   const licenseKey = envConfig.LICENSE_KEY;
   if (licenseKey) {
     if (!envConfig.LICENSE_SERVER_URL) {
@@ -80,8 +91,8 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
-export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {
-  const backend = buildBackend(envConfig);
+export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }: TLicenseClientFactoryDep) => {
+  const backend = buildBackend(envConfig, isOffline);
   const resolver = backend ? entitlementResolverFactory({ keyStore, backend }) : null;
 
   const getEntitlements = async (org: TEntitlementOrg) => {
