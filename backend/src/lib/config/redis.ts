@@ -21,24 +21,56 @@ export type TRedisConfigKeys = Partial<{
 
 const REDIS_ERROR_LOG_THROTTLE_MS = 10_000;
 
-const attachConnectionLogging = (client: Redis | Cluster, name: string) => {
-  let lastLoggedAt = 0;
+// The error channel carries more than socket failures: auth failures (NOAUTH/WRONGPASS) reach it via
+// recoverFromFatalError, as do cluster slot-refresh failures. So the throttle is keyed per normalized error code.
+// Keying on err.message instead would grow unbounded, since cluster messages embed host:port.
+const getRedisErrorKey = (err: Error) => {
+  const { code } = err as Error & { code?: string };
+  if (code) return code; // ECONNREFUSED, ETIMEDOUT, ...
+
+  const replyPrefix = /^([A-Z]{4,})/.exec(err.message)?.[1];
+  if (replyPrefix) return replyPrefix; // NOAUTH, WRONGPASS, CLUSTERDOWN, ...
+
+  return err.name;
+};
+
+/**
+ * Attaches throttled, named connection logging to a client. Call this on any client not built by
+ * `buildRedisFromConfig`. Specifically `duplicate()`d clients, since `duplicate()` copies options but not listeners.
+ */
+export const attachConnectionLogging = (client: Redis | Cluster, name: string) => {
+  const throttleByErrorKey = new Map<string, { lastLoggedAt: number; suppressedCount: number }>();
   let isDown = false;
 
   client.on("error", (err: Error) => {
+    const errorKey = getRedisErrorKey(err);
     const now = Date.now();
-    if (now - lastLoggedAt < REDIS_ERROR_LOG_THROTTLE_MS) return;
+    const throttle = throttleByErrorKey.get(errorKey);
 
-    lastLoggedAt = now;
+    if (throttle && now - throttle.lastLoggedAt < REDIS_ERROR_LOG_THROTTLE_MS) {
+      throttle.suppressedCount += 1;
+      return;
+    }
+
+    const suppressedCount = throttle?.suppressedCount ?? 0;
+    throttleByErrorKey.set(errorKey, { lastLoggedAt: now, suppressedCount: 0 });
+    logger.error(
+      { err, redisClient: name, redisErrorKey: errorKey, suppressedCount },
+      `Redis connection error [client=${name}] [error=${errorKey}] [suppressedCount=${suppressedCount}] [message=${err.message}]`
+    );
+  });
+
+  client.on("close", () => {
     isDown = true;
-    logger.error({ err, redisClient: name }, `Redis connection error [client=${name}] [error=${err.message}]`);
   });
 
   client.on("ready", () => {
+    // Must clear, otherwise stale timestamps would throttle the first error of the next outage.
+    throttleByErrorKey.clear();
+
     // Skip the initial connect; only a recovery is worth a line.
     if (!isDown) return;
     isDown = false;
-    lastLoggedAt = 0;
     logger.info({ redisClient: name }, `Redis connection restored [client=${name}]`);
   });
 

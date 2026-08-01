@@ -1,5 +1,6 @@
 import { Cluster, Redis } from "ioredis";
 
+import { attachConnectionLogging } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
 
 import { EventBusSchema, EventBusTopicName, TEventBusEvent } from "./event-bus-types";
@@ -9,8 +10,9 @@ export type TRedisBusOnMessage = (event: TEventBusEvent) => void;
 export const createRedisBus = (redis: Redis | Cluster, topic: EventBusTopicName) => {
   // Duplicate the redis connection for pub/sub
   // Redis doesn't allow a single connection to both publish and subscribe
-  const publisher = redis.duplicate();
-  const subscriber = publisher.duplicate();
+  // Logging is attached here rather than in init() because duplicate() connects eagerly, long before init() runs
+  const publisher = attachConnectionLogging(redis.duplicate(), "event-bus-publisher");
+  const subscriber = attachConnectionLogging(publisher.duplicate(), "event-bus-subscriber");
 
   let messageHandler: TRedisBusOnMessage | null = null;
 
@@ -18,14 +20,6 @@ export const createRedisBus = (redis: Redis | Cluster, topic: EventBusTopicName)
    * Initialize the Redis bus by subscribing to the topic
    */
   const init = async (): Promise<void> => {
-    subscriber.on("error", (error) => {
-      logger.error(error, "Event bus Redis subscriber error");
-    });
-
-    publisher.on("error", (error) => {
-      logger.error(error, "Event bus Redis publisher error");
-    });
-
     subscriber.on("message", (channel: string, message: string) => {
       if (channel !== topic || !messageHandler) {
         logger.info("Received emtpy channel or message in event bus");
