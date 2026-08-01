@@ -85,6 +85,7 @@ export default function TeamInviteStep(): JSX.Element {
         <CardContent className="flex flex-col gap-4">
           <Field data-invalid={Boolean(validationError)}>
             <TextArea
+              variant="outlined"
               className="min-h-20"
               value={emails}
               onChange={(e) => {

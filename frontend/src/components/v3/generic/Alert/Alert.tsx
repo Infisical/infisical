@@ -4,22 +4,33 @@ import { cva, type VariantProps } from "cva";
 import { cn } from "../../utils";
 
 const alertVariants = cva(
-  "relative w-full rounded-md border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  "relative grid min-h-9 w-full grid-cols-[0_1fr] items-center gap-y-1 rounded-md border px-3 py-2.5 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:text-current",
   {
     variants: {
       variant: {
-        default: "bg-container text-foreground/75 border-border",
-        info: "bg-info/5 text-info border-info/20",
-        success: "bg-success/5 text-success border-success/20",
-        warning: "bg-warning/5 text-warning border-warning/20",
-        danger: "bg-danger/5 text-danger border-danger/20",
-        project: "bg-project/5 text-project border-project/20",
-        org: "bg-org/5 text-org border-org/20",
-        "sub-org": "bg-sub-org/5 text-sub-org border-sub-org/20"
+        default:
+          "border-border bg-container text-foreground [&_[data-slot=alert-description]]:text-foreground/80",
+        info: "border-info/20 bg-info/5 text-info [&_[data-slot=alert-description]]:text-info/80",
+        success:
+          "border-success/20 bg-success/5 text-success [&_[data-slot=alert-description]]:text-success/80",
+        warning:
+          "border-warning/20 bg-warning/5 text-warning [&_[data-slot=alert-description]]:text-warning/80",
+        danger:
+          "border-danger/20 bg-danger/5 text-danger [&_[data-slot=alert-description]]:text-danger/80",
+        project:
+          "border-project/20 bg-project/5 text-project [&_[data-slot=alert-description]]:text-project/80",
+        org: "border-org/20 bg-org/5 text-org [&_[data-slot=alert-description]]:text-org/80",
+        "sub-org":
+          "border-sub-org/20 bg-sub-org/5 text-sub-org [&_[data-slot=alert-description]]:text-sub-org/80"
+      },
+      appearance: {
+        default: "",
+        borderless: "border-0"
       }
     },
     defaultVariants: {
-      variant: "default"
+      variant: "default",
+      appearance: "default"
     }
   }
 );
@@ -27,13 +38,14 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  appearance,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
       role="alert"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant, appearance }), className)}
       {...props}
     />
   );
@@ -43,7 +55,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-title"
-      className={cn("col-start-2 line-clamp-1 min-h-4 tracking-tight text-foreground", className)}
+      className={cn("col-start-2 line-clamp-1 min-h-4 text-sm font-medium", className)}
       {...props}
     />
   );
@@ -53,10 +65,7 @@ function AlertDescription({ className, ...props }: React.ComponentProps<"div">) 
   return (
     <div
       data-slot="alert-description"
-      className={cn(
-        "col-start-2 grid justify-items-start gap-1 text-xs text-foreground/75 [&_p]:leading-relaxed",
-        className
-      )}
+      className={cn("col-start-2 grid justify-items-start gap-1 text-sm", className)}
       {...props}
     />
   );

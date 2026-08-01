@@ -105,6 +105,7 @@ export const LoginSsoPage = ({ type }: Props) => {
               <Field>
                 <FieldLabel htmlFor={`${type.toLowerCase()}-work-email`}>Work Email</FieldLabel>
                 <Input
+                  variant="outlined"
                   id={`${type.toLowerCase()}-work-email`}
                   value={workEmail}
                   onChange={(event) => setWorkEmail(event.target.value)}

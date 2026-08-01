@@ -13,7 +13,8 @@ export const SecretScanningScansSchema = z.object({
   statusMessage: z.string().nullable().optional(),
   type: z.string(),
   resourceId: z.string().uuid(),
-  createdAt: z.date().nullable().optional()
+  createdAt: z.date().nullable().optional(),
+  scanningStartedAt: z.date().nullable().optional()
 });
 
 export type TSecretScanningScans = z.infer<typeof SecretScanningScansSchema>;

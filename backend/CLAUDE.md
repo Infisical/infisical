@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the **backend** package of the Infisical monorepo — a Fastify 4 API server with TypeScript, PostgreSQL via Knex, and BullMQ queues.
 
+The backend code quality guide is imported below, so it is always in context for work in this package. **Check every change against it, whatever the change is, before calling the task done.** This file covers *where* code goes and *which* pattern to follow; the quality guide covers the minimum any implementation has to handle. It is a deliberately non-exhaustive floor, so the topics it happens to cover are not a filter for whether it applies.
+
+@CODE_QUALITY.md
+
 ## Essential Commands
 
 All commands run from the `backend/` directory:
@@ -248,6 +252,8 @@ Queue handler factories (e.g., `src/services/secret/secret-queue.ts`) follow the
 
 `queueService.start(name, handler, opts)` accepts `concurrency` (per-worker parallelism ceiling) and BullMQ's `limiter: { max, duration }` (fleet-wide throughput cap, coordinated via Redis). Use both to **rate-shape DB-heavy background work** so a large backlog drains as an even plateau instead of a burst — see `src/services/project/project-cleanup-queue.ts`. The cron cadence must not be the pacer; load is bounded by `concurrency × per-job cost`, and the limiter caps steady throughput.
 
+**`QUEUE_WORKER_PROFILE` gates the consumer, never the producer.** Whenever workers are enabled, `start()` creates the BullMQ `Queue` for every queue and only skips creating the `Worker` when the queue isn't in this pod's profile. This invariant is what makes splitting the fleet by profile safe: a pod that doesn't consume a queue must still be able to enqueue onto it, since `queue()` silently no-ops on an uninitialized queue (`await q?.add(...)`) and would otherwise drop every job destined for another profile's worker. `QUEUE_WORKERS_ENABLED=false` is the one exception and is deliberately absolute — it returns before the `Queue` is created (`src/queue/queue-service.ts:786`), so such a pod neither consumes *nor* produces, and both `queue()` and `upsertJobScheduler` are no-ops or throw. Code that schedules work at boot must branch on that flag rather than swallowing the failure, so a genuine Redis/BullMQ error still surfaces (see `src/ee/services/audit-log/audit-log-queue.ts`).
+
 ### Scheduled Jobs (Cron Manager)
 
 Recurring work runs through the cron manager in `src/lib/cron/cron-job.ts` (`cronJobFactory`). A single instance is constructed in `src/server/routes/index.ts` (~line 541) and injected as `cronJob` into any service that needs to schedule periodic work. The factory exposes `register`, `start`, and `stop`; `start` is called once after construction, and `stop` is invoked during graceful shutdown to drain in-flight handlers.
@@ -410,4 +416,5 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 2. If adding DB tables: create migration via `npm run migration:new`, run it, then `npm run generate:schema`
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it
-5. Run `make reviewable-api` to verify lint + types
+5. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
+6. Run `make reviewable-api` to verify lint + types

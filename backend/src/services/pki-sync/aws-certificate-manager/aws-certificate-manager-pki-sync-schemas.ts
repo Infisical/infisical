@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
@@ -56,7 +57,7 @@ export const AwsCertificateManagerPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema,
   syncOptions: AwsCertificateManagerPkiSyncOptionsSchema,
@@ -69,7 +70,7 @@ export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
 
 export const UpdateAwsCertificateManagerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema.optional(),
   syncOptions: AwsCertificateManagerPkiSyncOptionsSchema.optional(),

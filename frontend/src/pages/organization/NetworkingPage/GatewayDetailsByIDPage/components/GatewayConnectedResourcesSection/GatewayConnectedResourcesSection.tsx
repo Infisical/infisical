@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +20,8 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
-  ItemTitle
+  ItemTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
@@ -69,15 +69,19 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const total = totalCountOf(resources);
 
   return (
-    <Card>
+    <Card className="min-w-0" aria-labelledby="gateway-connected-resources-title">
       <CardHeader>
-        <CardTitle>Connected Resources</CardTitle>
+        <CardTitle>
+          <h2 id="gateway-connected-resources-title">Connected Resources</h2>
+        </CardTitle>
         <CardDescription>Resources currently routing through this gateway</CardDescription>
       </CardHeader>
       <CardContent>
         {isPending && (
-          <div className="flex h-32 items-center justify-center">
-            <Spinner size="lg" />
+          <div className="space-y-2" aria-label="Loading connected resources">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         )}
         {!isPending && total === 0 && (
@@ -98,7 +102,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">App Connections</span>
                   <Badge variant="neutral">{resources?.appConnections.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.appConnections.map((c) => (
                       <ResourceRow
@@ -122,7 +126,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Dynamic Secrets</span>
                   <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.dynamicSecrets.map((d) => (
                       <ResourceRow
@@ -148,7 +152,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">Kubernetes Auth</span>
                   <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.kubernetesAuths.map((a) => (
                       <ResourceRow
@@ -170,7 +174,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">MCP Servers</span>
                   <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.mcpServers.map((s) => (
                       <ResourceRow
@@ -192,7 +196,7 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                   <span className="flex-1">PKI Discovery</span>
                   <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 py-3">
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
                   <ItemGroup>
                     {resources?.pkiDiscoveryConfigs.map((c) => (
                       <ResourceRow

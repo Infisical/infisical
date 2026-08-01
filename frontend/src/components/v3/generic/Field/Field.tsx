@@ -114,7 +114,7 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
 
 const fieldLabelVariants = cva(
   cn(
-    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border text-xs leading-snug text-label transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50",
+    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50",
     "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
     "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-transparent has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
     "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
@@ -132,10 +132,15 @@ const fieldLabelVariants = cva(
         "sub-org":
           "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!",
         pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5!"
+      },
+      size: {
+        default: "text-xs",
+        sm: "text-sm font-normal text-label"
       }
     },
     defaultVariants: {
-      variant: "default"
+      variant: "default",
+      size: "default"
     }
   }
 );
@@ -143,12 +148,13 @@ const fieldLabelVariants = cva(
 function FieldLabel({
   className,
   variant,
+  size,
   ...props
 }: React.ComponentProps<typeof Label> & VariantProps<typeof fieldLabelVariants>) {
   return (
     <Label
       data-slot="field-label"
-      className={cn(fieldLabelVariants({ variant }), className)}
+      className={cn(fieldLabelVariants({ variant, size }), className)}
       {...props}
     />
   );
@@ -179,7 +185,7 @@ function FieldDescription({ children, className, isOpen, ...props }: FieldDescri
       <p
         data-slot="field-description"
         className={cn(
-          "text-left text-2xs leading-snug font-normal text-muted group-has-[[data-orientation=horizontal]]/field:text-balance",
+          "text-left text-2xs leading-snug font-normal text-muted",
           "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground",
           className
         )}

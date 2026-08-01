@@ -3815,6 +3815,7 @@ export const registerRoutes = async (
     auditLogService,
     secretScanningV2DAL,
     queueService,
+    cronJob,
     projectDAL,
     projectMembershipDAL,
     smtpService,

@@ -56,7 +56,8 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  SelectedActionBar
 } from "@app/components/v3";
 import {
   ProjectPermissionActions,
@@ -202,7 +203,6 @@ export const ActionBar = ({
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
-  const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
   const isManagedSecretSelected = Object.values(selectedSecrets).some(
     (secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret
   );
@@ -1160,72 +1160,58 @@ export const ActionBar = ({
           </DropdownMenu>
         </div>
       </div>
-      <div
-        className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
-          isMultiSelectActive && "h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={Object.keys(selectedSecrets).length}
+        onClearSelection={resetSelectedSecret}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 px-4 py-2 text-bunker-300">
-          <div className="mr-2 text-sm">{Object.keys(selectedSecrets).length} Selected</div>
-          <button
-            type="button"
-            className="mr-auto text-xs text-mineshaft-400 underline-offset-2 hover:text-mineshaft-200 hover:underline"
-            onClick={resetSelectedSecret}
-          >
-            Unselect All
-          </button>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath,
-              secretName: "*",
-              secretTags: ["*"]
-            })}
-            renderTooltip
-            allowedLabel="Move"
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline_bg"
-                leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
-                className="ml-4"
-                onClick={() => handlePopUpOpen("moveSecrets")}
-                isDisabled={!isAllowed || isHoneyTokenSelected}
-                size="xs"
-              >
-                Move
-              </Button>
-            )}
-          </ProjectPermissionCan>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Delete}
-            a={subject(ProjectPermissionSub.Secrets, {
-              environment,
-              secretPath,
-              secretName: "*",
-              secretTags: ["*"]
-            })}
-            renderTooltip
-            allowedLabel="Delete"
-          >
-            {(isAllowed) => (
-              <Button
-                variant="outline_bg"
-                colorSchema="danger"
-                leftIcon={<FontAwesomeIcon icon={faTrash} />}
-                className="ml-2"
-                onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
-                isDisabled={!isAllowed || isManagedSecretSelected}
-                size="xs"
-              >
-                Delete
-              </Button>
-            )}
-          </ProjectPermissionCan>
-        </div>
-      </div>
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Delete}
+          a={subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName: "*",
+            secretTags: ["*"]
+          })}
+          renderTooltip
+          allowedLabel="Move"
+        >
+          {(isAllowed) => (
+            <Button
+              variant="outline_bg"
+              leftIcon={<FontAwesomeIcon icon={faAnglesRight} />}
+              onClick={() => handlePopUpOpen("moveSecrets")}
+              isDisabled={!isAllowed || isHoneyTokenSelected}
+              size="xs"
+            >
+              Move
+            </Button>
+          )}
+        </ProjectPermissionCan>
+        <ProjectPermissionCan
+          I={ProjectPermissionActions.Delete}
+          a={subject(ProjectPermissionSub.Secrets, {
+            environment,
+            secretPath,
+            secretName: "*",
+            secretTags: ["*"]
+          })}
+          renderTooltip
+          allowedLabel="Delete"
+        >
+          {(isAllowed) => (
+            <Button
+              variant="outline_bg"
+              colorSchema="danger"
+              leftIcon={<FontAwesomeIcon icon={faTrash} />}
+              onClick={() => handlePopUpOpen("bulkDeleteSecrets")}
+              isDisabled={!isAllowed || isManagedSecretSelected}
+              size="xs"
+            >
+              Delete
+            </Button>
+          )}
+        </ProjectPermissionCan>
+      </SelectedActionBar>
       {/* all the side triggers from actions like modals etc */}
       <CreateSecretImportForm
         environment={environment}
