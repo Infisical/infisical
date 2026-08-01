@@ -19,7 +19,7 @@ export const NetworkingPage = () => {
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             title="Networking"
-            description="Manage gateways and relays to securely access private network resources from Infisical"
+            description="Manage gateways and relays that securely connect Infisical to your infrastructure"
           />
           <NetworkingTabGroup />
         </div>
