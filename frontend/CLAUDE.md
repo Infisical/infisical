@@ -55,6 +55,8 @@ The `QueryClient` sets these global defaults for all queries:
 - **`refetchOnWindowFocus: false`** — queries do not refetch when the browser tab regains focus.
 - **`retry: 1`** — failed queries retry once.
 
+Mutation failures are reported globally by `MutationCache.onError` using the server error message. Do not add another error `createNotification` in a mutation `catch` or `onError`, because it produces duplicate toasts. Local error handling may still restore optimistic state, keep a dialog open, or perform other control flow without displaying a second notification.
+
 When adding new queries, consider whether the default 60s staleTime is appropriate:
 - For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.

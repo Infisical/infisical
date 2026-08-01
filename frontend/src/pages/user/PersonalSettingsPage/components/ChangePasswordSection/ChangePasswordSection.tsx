@@ -7,7 +7,20 @@ import { PasswordField } from "@app/components/auth/PasswordField";
 import { createNotification } from "@app/components/notifications";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
-import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useServerConfig, useUser } from "@app/context";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 import { useResetUserPasswordV2, useSendPasswordSetupEmail } from "@app/hooks/api/auth/queries";
@@ -78,83 +91,100 @@ export const ChangePasswordSection = () => {
       clearSession();
 
       createNotification({
-        text: "Successfully changed password",
+        text: "Password changed.",
         type: "success"
       });
 
       reset();
       navigate({ to: "/login" });
-    } catch (err) {
-      console.error(err);
+    } catch {
       createNotification({
-        text: "Failed to change password",
+        text: "Failed to change password.",
         type: "error"
       });
     }
   };
 
   const onSetupPassword = async () => {
-    await sendSetupPasswordEmail.mutateAsync();
-
-    createNotification({
-      title: "Password setup verification email sent",
-      text: "Check your email to confirm password setup",
-      type: "info"
-    });
+    try {
+      await sendSetupPasswordEmail.mutateAsync();
+      createNotification({
+        title: "Password setup email sent",
+        text: "Check your email to continue setting up a password.",
+        type: "info"
+      });
+    } catch {
+      createNotification({
+        text: "Failed to send password setup email.",
+        type: "error"
+      });
+    }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onFormSubmit)}
-      className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
-    >
-      <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Change password</h2>
-      <div className="max-w-md">
-        <Controller
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} errorText={error?.message}>
-              <Input
-                placeholder="Old password"
-                type="password"
-                {...field}
-                className="bg-mineshaft-800"
-              />
-            </FormControl>
-          )}
-          control={control}
-          name="oldPassword"
-        />
-      </div>
-      <div className="max-w-md">
-        <PasswordField
-          id="change-password-new-password"
-          value={newPassword}
-          policy={config.passwordPolicy}
-          breachStatus={breachStatus}
-          registration={register("newPassword")}
-          error={errors.newPassword}
-          submitCount={submitCount}
-        />
-      </div>
-      <Button
-        type="submit"
-        colorSchema="secondary"
-        isLoading={isSubmitting}
-        isDisabled={isSubmitting || breachStatus === "checking" || breachStatus === "breached"}
-      >
-        Save
-      </Button>
-      <p className="mt-2 font-inter text-sm text-mineshaft-400">
-        Need to setup a password?{" "}
-        <button
-          onClick={onSetupPassword}
-          type="button"
-          className="underline underline-offset-2 hover:text-mineshaft-200"
-        >
-          Click here
-        </button>
-      </p>
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <Card className="gap-0 overflow-hidden p-0">
+        <CardHeader className="p-6">
+          <CardTitle className="font-alliance">Change Password</CardTitle>
+          <CardDescription>
+            Changing your password signs this session out after the update succeeds.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="max-w-md px-6 pb-6">
+          <FieldGroup>
+            <Controller
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="change-password-current-password">
+                    Current password
+                  </FieldLabel>
+                  <Input
+                    id="change-password-current-password"
+                    type="password"
+                    autoComplete="current-password"
+                    aria-invalid={Boolean(error)}
+                    {...field}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+              control={control}
+              name="oldPassword"
+            />
+            <PasswordField
+              id="change-password-new-password"
+              label="New password"
+              value={newPassword}
+              policy={config.passwordPolicy}
+              breachStatus={breachStatus}
+              registration={register("newPassword")}
+              error={errors.newPassword}
+              submitCount={submitCount}
+            />
+          </FieldGroup>
+        </CardContent>
+        <CardFooter className="min-h-8 flex-wrap justify-end gap-2 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
+          <Button
+            type="submit"
+            variant="neutral"
+            size="sm"
+            isPending={isSubmitting}
+            isDisabled={breachStatus === "checking" || breachStatus === "breached"}
+          >
+            Change password
+          </Button>
+          <Button
+            onClick={onSetupPassword}
+            type="button"
+            variant="outline"
+            size="sm"
+            isPending={sendSetupPasswordEmail.isPending}
+          >
+            Email setup link
+          </Button>
+        </CardFooter>
+      </Card>
     </form>
   );
 };
