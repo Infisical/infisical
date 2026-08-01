@@ -12,6 +12,7 @@ import {
   AnimatedCollapse,
   Button,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Field,
@@ -54,12 +55,14 @@ interface UserInfoStepProps {
   onComplete: (orgId?: string) => void;
   email: string;
   isInvite?: boolean;
+  inviteOrganizationName?: string;
 }
 
 export default function UserInfoStep({
   onComplete,
   email,
-  isInvite = false
+  isInvite = false,
+  inviteOrganizationName
 }: UserInfoStepProps): JSX.Element {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -100,6 +103,7 @@ export default function UserInfoStep({
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
   const canSubmit = isPasswordValidated && !isLoading;
   const stepTitle = isInvite ? "Set up your account" : t("signup.step3-message");
+  const normalizedInviteOrganizationName = inviteOrganizationName?.trim();
   const submitLabel = isInvite ? String(t("signup.signup")) : "Continue";
 
   const onSubmit = async (formData: UserInfoFormData) => {
@@ -144,9 +148,26 @@ export default function UserInfoStep({
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
         <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
+          <CardTitle
+            role="heading"
+            aria-level={1}
+            className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent"
+          >
             {stepTitle}
           </CardTitle>
+          {isInvite ? (
+            <CardDescription className="break-words text-label">
+              You’ve been invited to join{" "}
+              {normalizedInviteOrganizationName ? (
+                <span className="font-medium text-foreground">
+                  {normalizedInviteOrganizationName}
+                </span>
+              ) : (
+                "an organization"
+              )}
+              .
+            </CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

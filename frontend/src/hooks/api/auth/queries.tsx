@@ -32,7 +32,8 @@ import {
   UserAgentType,
   VerifyMfaTokenDTO,
   VerifyMfaTokenRes,
-  VerifySignupInviteDTO
+  VerifySignupInviteDTO,
+  VerifySignupInviteRes
 } from "./types";
 
 export const authKeys = {
@@ -200,7 +201,10 @@ export const verifyRecoveryCode = async (recoveryCode: string) => {
 };
 
 export const verifySignupInvite = async (details: VerifySignupInviteDTO) => {
-  const { data } = await apiRequest.post("/api/v1/invite-org/verify", details);
+  const { data } = await apiRequest.post<VerifySignupInviteRes>(
+    "/api/v1/invite-org/verify",
+    details
+  );
   return data;
 };
 
