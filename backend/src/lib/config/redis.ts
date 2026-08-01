@@ -42,10 +42,13 @@ export const attachConnectionLogging = (client: Redis | Cluster, name: string) =
   const throttleByErrorKey = new Map<string, { lastLoggedAt: number; suppressedCount: number }>();
   let isDown = false;
 
-  client.on("error", (err: Error) => {
+  const logConnectionError = (err: Error, nodeAddress?: string) => {
     const errorKey = getRedisErrorKey(err);
+    // Nodes are bucketed separately so one failing node can't absorb another's line. Still bounded,
+    // unlike keying on err.message, since a cluster has a fixed node count.
+    const throttleKey = nodeAddress ? `${errorKey}:${nodeAddress}` : errorKey;
     const now = Date.now();
-    const throttle = throttleByErrorKey.get(errorKey);
+    const throttle = throttleByErrorKey.get(throttleKey);
 
     if (throttle && now - throttle.lastLoggedAt < REDIS_ERROR_LOG_THROTTLE_MS) {
       throttle.suppressedCount += 1;
@@ -53,12 +56,18 @@ export const attachConnectionLogging = (client: Redis | Cluster, name: string) =
     }
 
     const suppressedCount = throttle?.suppressedCount ?? 0;
-    throttleByErrorKey.set(errorKey, { lastLoggedAt: now, suppressedCount: 0 });
+    throttleByErrorKey.set(throttleKey, { lastLoggedAt: now, suppressedCount: 0 });
     logger.error(
-      { err, redisClient: name, redisErrorKey: errorKey, suppressedCount },
-      `Redis connection error [client=${name}] [error=${errorKey}] [suppressedCount=${suppressedCount}] [message=${err.message}]`
+      { err, redisClient: name, redisErrorKey: errorKey, redisNode: nodeAddress, suppressedCount },
+      `Redis connection error [client=${name}] [error=${errorKey}]${nodeAddress ? ` [node=${nodeAddress}]` : ""} [suppressedCount=${suppressedCount}] [message=${err.message}]`
     );
-  });
+  };
+
+  client.on("error", (err: Error) => logConnectionError(err));
+
+  if (client instanceof Cluster) {
+    client.on("node error", (err: Error, nodeAddress: string) => logConnectionError(err, nodeAddress));
+  }
 
   client.on("close", () => {
     isDown = true;
