@@ -123,6 +123,13 @@ const EXTERNAL_CA_OPTIONS: ExternalCaOption[] = [
     image: "Windows.png"
   },
   {
+    type: CaType.AZURE_AD_CS,
+    name: "Azure ADCS (Web Enrollment)",
+    category: "Certificates",
+    description: "Issue certificates via ADCS Web Enrollment over HTTPS.",
+    image: "Microsoft Azure.png"
+  },
+  {
     type: CaType.AWS_PCA,
     name: "AWS Private CA",
     category: "AWS",
@@ -159,17 +166,14 @@ const EXTERNAL_CA_OPTIONS: ExternalCaOption[] = [
   }
 ];
 
-const CA_TYPE_NAME: Partial<Record<CaType, string>> = {
-  ...Object.fromEntries(EXTERNAL_CA_OPTIONS.map((option) => [option.type, option.name])),
-  [CaType.AZURE_AD_CS]: "Azure ADCS (Web Enrollment)"
-};
+const CA_TYPE_NAME: Partial<Record<CaType, string>> = Object.fromEntries(
+  EXTERNAL_CA_OPTIONS.map((option) => [option.type, option.name])
+);
 
-const CA_TYPE_MEDIA: Partial<Record<CaType, Pick<ExternalCaOption, "image" | "icon">>> = {
-  ...Object.fromEntries(
+const CA_TYPE_MEDIA: Partial<Record<CaType, Pick<ExternalCaOption, "image" | "icon">>> =
+  Object.fromEntries(
     EXTERNAL_CA_OPTIONS.map((option) => [option.type, { image: option.image, icon: option.icon }])
-  ),
-  [CaType.AZURE_AD_CS]: { image: "Microsoft Azure.png" }
-};
+  );
 
 const CaTypeCard = ({ option, onClick }: { option: ExternalCaOption; onClick: () => void }) => {
   const Icon = option.icon;

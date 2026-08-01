@@ -9,7 +9,7 @@ type TDocumentationLinkBadgeProps = {
 
 export function DocumentationLinkBadge({ href, className }: TDocumentationLinkBadgeProps) {
   return (
-    <Badge variant="info" className={className} asChild>
+    <Badge variant="info" iconPosition="right" className={className} asChild>
       <a href={href} target="_blank" rel="noopener noreferrer">
         Documentation
         <ExternalLinkIcon />

@@ -785,16 +785,11 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
 
     if (!appCfg.QUEUE_WORKERS_ENABLED) return;
 
-    if (appCfg.QUEUE_WORKER_PROFILE === QueueWorkerProfile.Standard && NON_STANDARD_QUEUES.includes(name)) {
-      return;
-    }
-
-    if (appCfg.QUEUE_WORKER_PROFILE === QueueWorkerProfile.SecretScanning && !SECRET_SCANNING_QUEUES.includes(name)) {
-      return;
-    }
-
     const fipsSettings = crypto.isFipsModeEnabled() ? { settings: { repeatKeyHashAlgorithm: "sha256" as const } } : {};
 
+    // The Queue (producer) is created regardless of worker profile — only the Worker (consumer) is
+    // gated below. A pod that doesn't consume a queue must still be able to enqueue onto it, or
+    // splitting the fleet by profile silently drops every job destined for another profile's worker.
     queueContainer[name] = new Queue(name as string, {
       prefix: isClusterMode ? `{${name}}` : undefined,
       ...queueSettings,
@@ -802,7 +797,7 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
       connection
     });
 
-    if (!appCfg.QUEUE_WORKERS_ENABLED || !isQueueEnabled(name)) {
+    if (!isQueueEnabled(name)) {
       return;
     }
 

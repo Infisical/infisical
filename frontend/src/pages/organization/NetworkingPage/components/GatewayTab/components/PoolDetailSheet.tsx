@@ -1,26 +1,33 @@
 import { useMemo, useState } from "react";
-import { faEllipsisV, faHeartPulse, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisV, faHeartPulse, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, IconButton } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+  Field,
+  FieldLabel,
+  FilterableSelect,
+  IconButton,
+  Input,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -30,7 +37,11 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableHeadLabel,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   OrgGatewayPoolPermissionActions,
@@ -51,6 +62,11 @@ type Props = {
   pool: TGatewayPool | null;
 };
 
+type GatewayOption = {
+  label: string;
+  value: string;
+};
+
 export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   const { data: allGateways } = useQuery({
     ...gatewaysQueryKeys.list(),
@@ -59,7 +75,8 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   const addGateway = useAddGatewayToPool();
   const removeGateway = useRemoveGatewayFromPool();
   const triggerHealthCheck = useTriggerGatewayV2Heartbeat();
-  const [isAddGatewayOpen, setIsAddGatewayOpen] = useState(false);
+  const [selectedGateways, setSelectedGateways] = useState<GatewayOption[]>([]);
+  const [removeConfirmation, setRemoveConfirmation] = useState("");
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["removeGateway"] as const);
 
@@ -73,13 +90,26 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
     [allGateways, pool?.memberGatewayIds]
   );
 
-  const handleAdd = async (gatewayId: string) => {
-    if (!pool) return;
+  const gatewayOptions = useMemo(
+    () => availableGateways.map((gateway) => ({ label: gateway.name, value: gateway.id })),
+    [availableGateways]
+  );
+
+  const handleAdd = async () => {
+    if (!pool || selectedGateways.length === 0) return;
     try {
-      await addGateway.mutateAsync({ poolId: pool.id, gatewayId });
-      createNotification({ type: "success", text: "Gateway added to pool" });
+      await Promise.all(
+        selectedGateways.map(({ value: gatewayId }) =>
+          addGateway.mutateAsync({ poolId: pool.id, gatewayId })
+        )
+      );
+      createNotification({
+        type: "success",
+        text: `${selectedGateways.length} gateway${selectedGateways.length === 1 ? "" : "s"} added to pool`
+      });
+      setSelectedGateways([]);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to add gateway";
+      const message = err instanceof Error ? err.message : "Failed to add gateways";
       createNotification({ type: "error", text: message });
     }
   };
@@ -143,8 +173,8 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
           </div>
 
           <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-sm font-medium text-foreground">Member Gateways</h4>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <h4 className="pt-2 text-sm font-medium text-foreground">Member Gateways</h4>
               <OrgPermissionCan
                 I={OrgGatewayPoolPermissionActions.EditGatewayPools}
                 a={OrgPermissionSubjects.GatewayPool}
@@ -152,52 +182,45 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                 {(isAllowed: boolean) => {
                   const isDisabled = !isAllowed || availableGateways.length === 0;
                   return (
-                    <Popover open={isAddGatewayOpen} onOpenChange={setIsAddGatewayOpen} modal>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline_bg"
-                          size="xs"
-                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                          isDisabled={isDisabled}
-                        >
-                          Add Gateway
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="z-[60] w-56 p-0">
-                        <Command>
-                          <CommandInput placeholder="Search gateways..." />
-                          <CommandList>
-                            <CommandEmpty>No gateways available.</CommandEmpty>
-                            <CommandGroup>
-                              {availableGateways.map((gw) => (
-                                <CommandItem
-                                  key={gw.id}
-                                  value={gw.id}
-                                  keywords={[gw.name]}
-                                  onSelect={() => {
-                                    setIsAddGatewayOpen(false);
-                                    handleAdd(gw.id);
-                                  }}
-                                >
-                                  {gw.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <FilterableSelect<GatewayOption>
+                        isMulti
+                        value={selectedGateways}
+                        onChange={(value) =>
+                          setSelectedGateways(Array.isArray(value) ? [...value] : [])
+                        }
+                        options={gatewayOptions}
+                        placeholder="Select gateways..."
+                        isDisabled={isDisabled || addGateway.isPending}
+                        menuPosition="fixed"
+                        className="w-64"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-0.5"
+                        isDisabled={!isAllowed || selectedGateways.length === 0}
+                        isPending={addGateway.isPending}
+                        onClick={handleAdd}
+                      >
+                        Add
+                      </Button>
+                    </div>
                   );
                 }}
               </OrgPermissionCan>
             </div>
 
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-5" />
+                  <TableHead>
+                    <TableHeadLabel>Name</TableHeadLabel>
+                  </TableHead>
+                  <TableHead className="w-36">
+                    <TableHeadLabel>Status</TableHeadLabel>
+                  </TableHead>
+                  <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -214,9 +237,18 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   return (
                     <TableRow key={gw.id}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{gw.name}</span>
-                          <Badge variant="neutral">Gateway v{gw.isV1 ? "1" : "2"}</Badge>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate">{gw.name}</span>
+                          {gw.isV1 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="neutral" className="shrink-0">
+                                  V1
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>Legacy</TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -228,8 +260,8 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
-                              ariaLabel="Options"
-                              variant="plain"
+                              aria-label="Gateway options"
+                              variant="ghost"
                               size="sm"
                               className="p-1.5"
                             >
@@ -263,14 +295,65 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
           </div>
         </div>
 
-        <DeleteActionModal
-          isOpen={popUp.removeGateway.isOpen}
-          title={`Remove "${(popUp.removeGateway.data as { name: string } | undefined)?.name ?? ""}" from pool?`}
-          onChange={(open) => handlePopUpToggle("removeGateway", open)}
-          deleteKey="confirm"
-          buttonText="Remove"
-          onDeleteApproved={handleRemove}
-        />
+        <AlertDialog
+          open={popUp.removeGateway.isOpen}
+          onOpenChange={(open) => {
+            if (!open) setRemoveConfirmation("");
+            handlePopUpToggle("removeGateway", open);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Gateway from Gateway Pool?</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogConfirmationField>
+              <Field>
+                <FieldLabel htmlFor="remove-gateway-confirmation" size="sm">
+                  <span>
+                    Type &quot;
+                    <span className="text-foreground">
+                      {(popUp.removeGateway.data as { name: string } | undefined)?.name}
+                    </span>
+                    &quot; to confirm.
+                  </span>
+                </FieldLabel>
+                <Input
+                  id="remove-gateway-confirmation"
+                  value={removeConfirmation}
+                  onChange={(event) => setRemoveConfirmation(event.target.value)}
+                  placeholder={(popUp.removeGateway.data as { name: string } | undefined)?.name}
+                  autoComplete="off"
+                  autoFocus
+                />
+              </Field>
+            </AlertDialogConfirmationField>
+            <AlertDialogDescription asChild>
+              <Alert variant="warning" appearance="borderless">
+                <AlertDescription>
+                  Removing this gateway from the pool may interrupt traffic. The gateway will not be
+                  deleted and can be added back.
+                </AlertDescription>
+              </Alert>
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={removeGateway.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                isPending={removeGateway.isPending}
+                isDisabled={
+                  removeConfirmation !==
+                  (popUp.removeGateway.data as { name: string } | undefined)?.name
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleRemove();
+                }}
+              >
+                Remove Gateway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

@@ -21,7 +21,8 @@ import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  domainComponentSchema
+  domainComponentsSchema,
+  subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
@@ -37,8 +38,9 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 
 // Subject attributes are the requester's own certificate fields and flow into a structured
 // distinguished name (no string concatenation), so there's no injection risk. We don't constrain
-// their format here (wildcards like *.example.com are valid); only bound the length.
-const subjectAttributeField = z.string().trim().max(255);
+// their format here (wildcards like *.example.com are valid); only bound the length, which
+// subjectAttributeSchema does against the varchar(255) columns they are persisted in.
+const subjectAttributeField = subjectAttributeSchema;
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -148,7 +150,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               country: subjectAttributeField.nullish(),
               state: subjectAttributeField.nullish(),
               locality: subjectAttributeField.nullish(),
-              domainComponents: z.array(domainComponentSchema).nullish(),
+              domainComponents: domainComponentsSchema.nullish(),
               keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
               extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
               altNames: z
@@ -1590,7 +1592,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         privateKeyPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.chainPem),
 
-        friendlyName: z.string().trim().optional().describe(CERTIFICATES.IMPORT.friendlyName),
+        friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId),
         applicationId: z.string().trim().uuid().optional()
       }),

@@ -36,6 +36,10 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
         )
         .forUpdate(TableName.PkiAcmeOrder)
         .where(`${TableName.PkiAcmeOrder}.id`, id)
+        // acmeOrderId is not unique, so an order can end up with more than one certificate request
+        // (e.g. a finalization that was retried after an abandoned attempt). Take the newest so the
+        // order's terminal status is driven by the current attempt rather than an arbitrary row.
+        .orderBy(`${TableName.CertificateRequests}.createdAt`, "desc")
         .first();
       if (!order) {
         return null;

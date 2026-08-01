@@ -20,6 +20,20 @@ type ProjectAccessErrorProps = {
 const getPamOrgIdFromPath = () =>
   window.location.pathname.match(/\/organizations\/([^/]+)\/pam(\/|$)/)?.[1];
 
+// Products users experience as a single app rather than something they pick a project for
+// (ProjectSelect hides itself for both), so the copy names the product instead of "this project".
+// Cert Manager still carries a $projectId in its route for legacy multi-instance orgs.
+const PRODUCTS = [
+  { pattern: /\/organizations\/[^/]+\/pam(\/|$)/, name: "Privileged Access Manager" },
+  {
+    pattern: /\/organizations\/[^/]+\/projects\/cert-manager(\/|$)/,
+    name: "Certificate Manager"
+  }
+];
+
+const getProductNameFromPath = () =>
+  PRODUCTS.find(({ pattern }) => pattern.test(window.location.pathname))?.name;
+
 export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessErrorProps = {}) => {
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
@@ -33,7 +47,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     strict: false
   });
 
-  const isPamRoute = Boolean(getPamOrgIdFromPath());
+  const productName = getProductNameFromPath();
   const needsPamFallback = !projectIdProp && !routeProjectId;
   const pamOrgId = needsPamFallback ? getPamOrgIdFromPath() : undefined;
   const { data: pamOrg } = useGetOrganizationById(pamOrgId ?? "", {
@@ -61,19 +75,15 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     });
   };
 
-  const accessTargetName = isPamRoute ? "Privileged Access Manager" : "this project";
-  const joinButtonText = isPamRoute ? "Join as Admin" : "Join Project as Admin";
-  const requestButtonText = isPamRoute ? "Request Access" : "Request Access to Project";
-  const modalSubTitle = isPamRoute
-    ? "Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
+  const accessTargetName = productName ?? "this project";
+  const joinButtonText = productName ? "Join as Admin" : "Join Project as Admin";
+  const requestButtonText = productName ? "Request Access" : "Request Access to Project";
+  const modalSubTitle = productName
+    ? `Requesting access to ${productName}. You may include an optional note for admins to review your request.`
     : undefined;
 
   return (
-    <div
-      className={`flex h-full w-full items-center justify-center ${
-        needsPamFallback ? "min-h-screen bg-background" : ""
-      }`}
-    >
+    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
       <AccessRestrictedBanner
         body={
           <>

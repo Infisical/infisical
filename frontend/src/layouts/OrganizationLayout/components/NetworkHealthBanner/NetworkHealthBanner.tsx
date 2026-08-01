@@ -1,15 +1,9 @@
 import { useMemo, useState } from "react";
-import {
-  faChevronDown,
-  faChevronUp,
-  faExclamationTriangle,
-  faXmark
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { ChevronDownIcon, ChevronUpIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 
-import { IconButton } from "@app/components/v2";
+import { IconButton } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { useOrganization, useOrgPermission } from "@app/context";
 import {
@@ -53,27 +47,26 @@ type SingleAlertRowProps = {
 
 const SingleAlertRow = ({ alert, isChild }: SingleAlertRowProps) => (
   <div
-    className={`flex w-full items-center py-2 pr-4 text-sm text-red-200 ${isChild ? "pl-10" : "px-4"}`}
+    className={`flex w-full items-center py-2 pr-4 text-sm text-danger ${isChild ? "pl-10" : "px-4"}`}
   >
-    {!isChild && (
-      <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2.5 text-base text-red-400" />
-    )}
+    {!isChild && <TriangleAlertIcon className="mr-2.5 size-4 shrink-0" />}
     {alert.message}
     {alert.linkLabel && alert.linkTo && (
       <Link
         to={alert.linkTo}
-        className="ml-1 cursor-pointer underline underline-offset-2 duration-100 hover:text-red-100"
+        className="ml-1 cursor-pointer underline underline-offset-2 duration-100 hover:text-danger/80"
       >
         {alert.linkLabel}
       </Link>
     )}
     <IconButton
-      className="ml-auto p-0 text-red-200 hover:text-red-100"
-      ariaLabel="Dismiss alert"
-      variant="plain"
+      className="ml-auto text-danger hover:text-danger/80"
+      aria-label="Dismiss alert"
+      variant="ghost"
+      size="xs"
       onClick={alert.onDismiss}
     >
-      <FontAwesomeIcon icon={faXmark} />
+      <XIcon />
     </IconButton>
   </div>
 );
@@ -155,40 +148,42 @@ export const NetworkHealthBanner = () => {
 
   if (alerts.length === 1) {
     return (
-      <div className="w-full border-b border-red-500/50 bg-red-500/20">
+      <div className="w-full border-b border-danger/25 bg-danger/10">
         <SingleAlertRow alert={alerts[0]} />
       </div>
     );
   }
 
   return (
-    <div className="w-full border-b border-red-500/50 bg-red-500/20">
-      <div className="flex w-full items-center px-4 py-2 text-sm text-red-200">
-        <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2.5 text-base text-red-400" />
+    <div className="w-full border-b border-danger/25 bg-danger/10">
+      <div className="flex w-full items-center px-4 py-2 text-sm text-danger">
+        <TriangleAlertIcon className="mr-2.5 size-4 shrink-0" />
         <span className="font-medium">
           {alerts.length} alerts in your organization require attention.
         </span>
         <IconButton
-          className="ml-2 p-0 text-red-200 hover:text-red-100"
-          ariaLabel={isExpanded ? "Collapse alerts" : "Expand alerts"}
-          variant="plain"
+          className="ml-2 text-danger hover:text-danger/80"
+          aria-label={isExpanded ? "Collapse alerts" : "Expand alerts"}
+          variant="ghost"
+          size="xs"
           onClick={() => setIsExpanded((prev) => !prev)}
         >
-          <FontAwesomeIcon icon={isExpanded ? faChevronUp : faChevronDown} className="text-xs" />
+          {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
         </IconButton>
         <IconButton
-          className="ml-auto shrink-0 p-0 text-red-200 hover:text-red-100"
-          ariaLabel="Dismiss all alerts"
-          variant="plain"
+          className="ml-auto shrink-0 text-danger hover:text-danger/80"
+          aria-label="Dismiss all alerts"
+          variant="ghost"
+          size="xs"
           onClick={() => alerts.forEach((alert) => alert.onDismiss())}
         >
-          <FontAwesomeIcon icon={faXmark} />
+          <XIcon />
         </IconButton>
       </div>
       {isExpanded && (
         <div>
           {alerts.map((alert) => (
-            <div key={alert.id} className="border-t border-red-500/30">
+            <div key={alert.id} className="border-t border-danger/20">
               <SingleAlertRow alert={alert} isChild />
             </div>
           ))}

@@ -57,6 +57,11 @@ export type TSignCertificateFromProfileDTO = {
     pathLength?: number;
   };
   applicationId?: string;
+  /**
+   * Links the certificate request this issuance creates back to its ACME order, so a crash between
+   * signing and persistence can be reconciled by `checkAndSyncAcmeOrderStatus`.
+   */
+  acmeOrderId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
