@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { TableName } from "@app/db/schemas";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
+import { SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 
 const updateServerConfig = (body: Record<string, unknown>) =>
   testServer.inject({
@@ -119,6 +120,17 @@ describe("Admin V1 Router", () => {
       });
 
       expect(response.statusCode).toBe(422);
+    });
+  });
+
+  describe("server config lockout protection", () => {
+    test("returns a stable error code when login methods would lock out the super admin", async () => {
+      const response = await updateServerConfig({ enabledLoginMethods: [] });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        error: SuperAdminErrorCode.AuthMethodLockout
+      });
     });
   });
 });

@@ -34,8 +34,8 @@ import { useOrganization, useServerConfig, useUser } from "@app/context";
 import { allowedEmailDomainsSchema, normalizeAllowedEmailDomains } from "@app/helpers/email";
 import { useOnboarding } from "@app/hooks";
 import { useRenameUser, useUpdateOrg, useUpdateServerConfig } from "@app/hooks/api";
-import { LoginMethod } from "@app/hooks/api/admin/types";
-import { GenericResourceNameSchema } from "@app/lib/schemas";
+import { LoginMethod, SuperAdminErrorCode } from "@app/hooks/api/admin/types";
+import { GenericResourceNameSchema, normalizeSlugInput, slugSchema } from "@app/lib/schemas";
 
 enum SetupStep {
   Account = "account",
@@ -56,13 +56,12 @@ const steps = [
   SetupStep.Review
 ] as const;
 const setupFormId = "self-hosted-server-setup-form";
-const authLockoutErrorMessage =
-  "You must configure at least one auth method to prevent account lockout";
 
 const formSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().optional(),
   organizationName: GenericResourceNameSchema,
+  organizationSlug: slugSchema({ field: "Organization slug" }),
   signUpMode: z.nativeEnum(SignUpMode),
   allowedSignUpDomain: allowedEmailDomainsSchema,
   enabledLoginMethods: z.nativeEnum(LoginMethod).array().min(1, "Select at least one login method.")
@@ -133,7 +132,7 @@ export const SetupPage = () => {
   const { mutateAsync: renameUser } = useRenameUser();
   const { mutateAsync: updateOrg } = useUpdateOrg();
   const { mutateAsync: updateServerConfig } = useUpdateServerConfig({
-    handledErrorMessages: [authLockoutErrorMessage]
+    handledErrorCodes: [SuperAdminErrorCode.AuthMethodLockout]
   });
 
   const {
@@ -150,6 +149,7 @@ export const SetupPage = () => {
       firstName: user.firstName ?? "",
       lastName: user.lastName ?? "",
       organizationName: currentOrg.name,
+      organizationSlug: currentOrg.slug,
       signUpMode: config.allowSignUp ? SignUpMode.Anyone : SignUpMode.Disabled,
       allowedSignUpDomain: config.allowedSignUpDomain ?? "",
       enabledLoginMethods:
@@ -189,7 +189,8 @@ export const SetupPage = () => {
     if (activeStep === SetupStep.Organization) {
       await updateOrg({
         orgId: currentOrg.id,
-        name: formData.organizationName
+        name: formData.organizationName,
+        slug: formData.organizationSlug
       });
       next();
       return;
@@ -209,8 +210,8 @@ export const SetupPage = () => {
         });
       } catch (error) {
         if (
-          axios.isAxiosError<{ message?: string }>(error) &&
-          error.response?.data?.message === authLockoutErrorMessage
+          axios.isAxiosError<{ error?: string }>(error) &&
+          error.response?.data?.error === SuperAdminErrorCode.AuthMethodLockout
         ) {
           setError("enabledLoginMethods", {
             message: "Select at least one login method."
@@ -242,6 +243,7 @@ export const SetupPage = () => {
                 id="setup-first-name"
                 placeholder="First Name"
                 autoComplete="given-name"
+                autoFocus
                 isError={Boolean(errors.firstName)}
               />
               <FieldError>{errors.firstName?.message}</FieldError>
@@ -297,13 +299,29 @@ export const SetupPage = () => {
             />
             <FieldError>{errors.organizationName?.message}</FieldError>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="setup-organization-slug">Organization slug</FieldLabel>
-            <Input id="setup-organization-slug" value={currentOrg.slug} disabled />
-            <FieldDescription>
-              The organization slug was generated during instance creation.
-            </FieldDescription>
-          </Field>
+          <Controller
+            control={control}
+            name="organizationSlug"
+            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="setup-organization-slug">Organization slug</FieldLabel>
+                <Input
+                  {...field}
+                  id="setup-organization-slug"
+                  aria-describedby="setup-organization-slug-feedback"
+                  placeholder="acme"
+                  autoComplete="off"
+                  isError={Boolean(error)}
+                  onChange={(event) => onChange(normalizeSlugInput(event.target.value))}
+                />
+                <FieldFeedback
+                  id="setup-organization-slug-feedback"
+                  description="Lowercase letters, numbers, and hyphens only. Spaces become hyphens."
+                  error={error?.message}
+                />
+              </Field>
+            )}
+          />
         </FieldGroup>
       );
     }
@@ -484,7 +502,7 @@ export const SetupPage = () => {
       {
         step: SetupStep.Organization,
         title: "Initial organization",
-        description: values.organizationName
+        description: `${values.organizationName} · ${values.organizationSlug}`
       },
       {
         step: SetupStep.Access,

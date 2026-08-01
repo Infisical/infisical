@@ -61,6 +61,7 @@ import {
   CacheType,
   EnvOverrides,
   LoginMethod,
+  SuperAdminErrorCode,
   TAdminBootstrapInstanceDTO,
   TAdminCreateEmailDomainDTO,
   TAdminDeleteEmailDomainDTO,
@@ -376,6 +377,7 @@ export const superAdminServiceFactory = ({
 
       if (!canServerAdminAccessAfterApply) {
         throw new BadRequestError({
+          name: SuperAdminErrorCode.AuthMethodLockout,
           message: "You must configure at least one auth method to prevent account lockout"
         });
       }

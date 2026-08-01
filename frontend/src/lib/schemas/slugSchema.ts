@@ -7,6 +7,8 @@ interface SlugSchemaInputs {
   field?: string;
 }
 
+export const normalizeSlugInput = (value: string) => value.toLowerCase().replace(/\s+/g, "-");
+
 export const slugSchema = ({ min = 1, max = 64, field = "Slug" }: SlugSchemaInputs = {}) => {
   return z
     .string()

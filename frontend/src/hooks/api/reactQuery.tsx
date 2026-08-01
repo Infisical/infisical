@@ -95,12 +95,12 @@ export const onRequestError = (
 ) => {
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
-    const handledErrorMessages = mutation?.meta?.handledErrorMessages;
+    const handledErrorCodes = mutation?.meta?.handledErrorCodes;
 
     if (
-      typeof serverResponse?.message === "string" &&
-      Array.isArray(handledErrorMessages) &&
-      handledErrorMessages.includes(serverResponse.message)
+      typeof serverResponse?.error === "string" &&
+      Array.isArray(handledErrorCodes) &&
+      handledErrorCodes.includes(serverResponse.error)
     ) {
       return;
     }

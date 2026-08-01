@@ -70,6 +70,10 @@ export enum LoginMethod {
   OIDC = "oidc"
 }
 
+export enum SuperAdminErrorCode {
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+}
+
 export enum CacheType {
   ALL = "all",
   SECRETS = "secrets"

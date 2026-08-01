@@ -13,6 +13,10 @@ export enum LoginMethod {
   OIDC = "oidc"
 }
 
+export enum SuperAdminErrorCode {
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+}
+
 export type TPasswordPolicyRequirement = {
   code: string;
   message: string;
