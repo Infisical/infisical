@@ -415,15 +415,6 @@ export const membershipIdentityServiceFactory = ({
       });
 
     const performDelete = async (tx: Knex) => {
-      await alertService.deleteAlertsForResource(
-        {
-          orgId: scopeData.orgId,
-          ...(scopeData.scope === AccessScope.Project ? { projectId: scopeData.projectId } : {}),
-          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
-          resourceId: dto.selector.identityId
-        },
-        tx
-      );
       await additionalPrivilegeDAL.delete(
         {
           actorIdentityId: dto.selector.identityId,
@@ -456,6 +447,16 @@ export const membershipIdentityServiceFactory = ({
           tx
         });
       }
+
+      await alertService.deleteAlertsForResource(
+        {
+          orgId: scopeData.orgId,
+          ...(scopeData.scope === AccessScope.Project ? { projectId: scopeData.projectId } : {}),
+          resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
+          resourceId: dto.selector.identityId
+        },
+        tx
+      );
 
       return doc;
     };

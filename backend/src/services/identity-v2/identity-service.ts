@@ -77,7 +77,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
-  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -387,15 +387,15 @@ export const identityV2ServiceFactory = ({
     // Set the identity-wide PG revocation epoch atomically with the row delete
     // so any JWT issued for this identity (with iat < now) is rejected.
     const deletedIdentity = await identityDAL.transaction(async (tx) => {
-      await alertService.deleteAlertsForResource(
+      await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: dto.selector.identityId, tx });
+
+      await alertService.deleteAlertsForDeletedResource(
         {
-          orgId: dto.permission.orgId,
           resourceType: IDENTITY_AUTHENTICATION_RESOURCE_TYPE,
           resourceId: dto.selector.identityId
         },
         tx
       );
-      await identityAccessTokenService.insertIdentityWideRevocationMarker({ identityId: dto.selector.identityId, tx });
       return identityDAL.deleteById(dto.selector.identityId, tx);
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });

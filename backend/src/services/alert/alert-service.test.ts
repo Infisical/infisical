@@ -440,4 +440,90 @@ describe("alert service", () => {
     expect(deleted).toBe(0);
     expect(alerts.size).toBe(1);
   });
+
+  test("deleteAlertsForResource leaves the resource's alerts in other orgs alone", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    // The same identity watched from a second org it was invited into. Inserted directly because
+    // the fake create() always mints "alert-1".
+    alerts.set("alert-2", {
+      id: "alert-2",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()]).toEqual(["alert-2"]);
+  });
+
+  test("deleteAlertsForDeletedResource reaps the resource's alerts in every org and project", async () => {
+    const { service, alerts, channels } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    expect(channels.size).toBe(2);
+    // A root-org identity can be invited into a child org and watched from there, so a hard delete
+    // has to reach alerts outside the org that owns the identity.
+    alerts.set("alert-2", {
+      id: "alert-2",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+    alerts.set("alert-3", {
+      id: "alert-3",
+      orgId: "org-2",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1",
+      eventType: "test.resource.expiration"
+    });
+
+    const deleted = await service.deleteAlertsForDeletedResource({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(3);
+    expect(alerts.size).toBe(0);
+    expect(channels.size).toBe(0);
+  });
+
+  test("deleteAlertsForDeletedResource spares other resources and other resource types", async () => {
+    const { service, alerts } = buildService();
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+    alerts.set("other-resource", {
+      id: "other-resource",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-2",
+      eventType: "test.resource.expiration"
+    });
+    alerts.set("other-type", {
+      id: "other-type",
+      orgId: "org-2",
+      projectId: null,
+      resourceType: "other.resource",
+      resourceId: "ident-1",
+      eventType: "other.resource.expiration"
+    });
+
+    const deleted = await service.deleteAlertsForDeletedResource({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()]).toEqual(["other-resource", "other-type"]);
+  });
 });

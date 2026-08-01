@@ -138,7 +138,7 @@ describe("deleteMembership alert cleanup", () => {
   beforeEach(() => vi.clearAllMocks());
 
   test("removing an org membership reaps the identity's alerts across the whole org", async () => {
-    const { service, deleteAlertsForResource } = createService();
+    const { service, membershipIdentityDAL, deleteAlertsForResource } = createService();
 
     await service.deleteMembership(buildDto());
 
@@ -152,6 +152,11 @@ describe("deleteMembership alert cleanup", () => {
       },
       expect.anything()
     );
+    // Reaped at the end of the transaction: the write locks it takes on the org-wide alerts table
+    // must not be held across the membership work that precedes it.
+    expect(deleteAlertsForResource.mock.invocationCallOrder[0]).toBeGreaterThan(
+      membershipIdentityDAL.deleteById.mock.invocationCallOrder[0]
+    );
   });
 
   test("removing a project membership reaps only that project's alerts", async () => {
@@ -163,6 +168,7 @@ describe("deleteMembership alert cleanup", () => {
     });
 
     // The identity still exists in the org, so its org-scoped alert must survive.
+    expect(deleteAlertsForResource).toHaveBeenCalledTimes(1);
     expect(deleteAlertsForResource).toHaveBeenCalledWith(
       {
         orgId: SUB_ORG_ID,
