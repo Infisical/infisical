@@ -31,7 +31,7 @@ export const SessionsSection = () => {
       setIsRevokeAllOpen(false);
       window.location.href = "/login";
     } catch {
-      return;
+      // MutationCache.onError handles the error notification.
     }
   };
 

@@ -94,7 +94,7 @@ export const AuthMethodSection = () => {
         type: "success"
       });
     } catch {
-      return;
+      // MutationCache.onError handles the error notification.
     }
   };
 
