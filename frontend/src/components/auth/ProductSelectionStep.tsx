@@ -60,34 +60,26 @@ const setUpProduct = async (product: SignupProductType): Promise<Project | undef
 export default function ProductSelectionStep({
   onComplete
 }: ProductSelectionStepProps): JSX.Element {
-  const [selectedTypes, setSelectedTypes] = useState<SignupProductType[]>([
-    ProjectType.SecretManager
-  ]);
-  const [isExploring, setIsExploring] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<SignupProductType[]>([]);
   const [isSettingUp, setIsSettingUp] = useState(false);
   // Survives failed attempts so a retry only sets up the products still missing.
   const createdProjectsRef = useRef<Partial<Record<SignupProductType, Project>>>({});
 
   const toggleProduct = (product: SignupProductType) => {
-    setIsExploring(false);
     setSelectedTypes((current) =>
       current.includes(product) ? current.filter((type) => type !== product) : [...current, product]
     );
-  };
-
-  const selectExploring = () => {
-    setIsExploring(true);
-    setSelectedTypes([]);
   };
 
   // Keep the platform's canonical product order regardless of click order.
   const orderedSelection = SIGNUP_PRODUCTS.filter((product) =>
     selectedTypes.includes(product.type)
   ).map((product) => product.type);
-  const canContinue = isExploring || orderedSelection.length > 0;
+  // An empty selection means "just exploring".
+  const isExploring = orderedSelection.length === 0;
 
   const handleContinue = async () => {
-    if (!canContinue || isSettingUp) return;
+    if (isSettingUp) return;
 
     setIsSettingUp(true);
     let failedProduct: string | undefined;
@@ -128,10 +120,9 @@ export default function ProductSelectionStep({
     }
   };
 
-  const continueLabel =
-    !isExploring && orderedSelection.length > 0
-      ? `Continue with ${orderedSelection.length} product${orderedSelection.length > 1 ? "s" : ""}`
-      : "Continue";
+  const continueLabel = isExploring
+    ? "I'm Just Exploring, Show Me Everything"
+    : `Continue with ${orderedSelection.length} product${orderedSelection.length > 1 ? "s" : ""}`;
 
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
@@ -186,35 +177,11 @@ export default function ProductSelectionStep({
                 </button>
               );
             })}
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={isExploring}
-              onClick={selectExploring}
-              className={cn(
-                "flex w-full cursor-pointer items-center gap-3.5 rounded-md border border-dashed px-4 py-3.5 text-left text-sm transition-colors duration-200",
-                isExploring
-                  ? "border-project/50 bg-project/[0.04] text-foreground"
-                  : "border-border text-label hover:bg-container-hover/50 hover:text-foreground"
-              )}
-            >
-              <span className="min-w-0 flex-1">I&apos;m just exploring, show me everything</span>
-              <span
-                aria-hidden
-                className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-200",
-                  isExploring ? "border-project" : "border-muted/60"
-                )}
-              >
-                {isExploring && <span className="size-2.5 rounded-full bg-project" />}
-              </span>
-            </button>
           </div>
           <Button
             variant="project"
             size="lg"
             isFullWidth
-            isDisabled={!canContinue}
             isPending={isSettingUp}
             onClick={handleContinue}
           >

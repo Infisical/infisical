@@ -180,11 +180,7 @@ export const SignupOnboardingPage = () => {
       showFooter={false}
       headerAction={stepIndicator}
       aside={asideContent}
-      bottomContent={
-        section !== OnboardingSection.Loading && section !== OnboardingSection.OrgName ? (
-          <AuthTermsNotice />
-        ) : undefined
-      }
+      bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
     >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>

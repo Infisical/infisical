@@ -215,12 +215,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   const renderBottomContent = () => {
-    if (
-      section === SignupSection.Email ||
-      section === SignupSection.ProductSelect ||
-      section === SignupSection.InviteTeam ||
-      section === SignupSection.Complete
-    ) {
+    if (section === SignupSection.Email) {
       return <AuthTermsNotice />;
     }
 
