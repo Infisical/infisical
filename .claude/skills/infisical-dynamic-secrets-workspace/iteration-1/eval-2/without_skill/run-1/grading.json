@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Explains CA-based architecture (Infisical generates CA key pair, signs certificates)",
+      "passed": true,
+      "evidence": "\"Infisical Server...SSH CA (Certificate Authority)...Private Key (secured)...Public Key (distributed to servers)\""
+    },
+    {
+      "text": "Shows correct config fields (allowed principals, key algorithm)",
+      "passed": true,
+      "evidence": "Lists 'User principals' (e.g., ubuntu, ec2-user, appuser) and 'Key type: RSA 4096 or ED25519'"
+    },
+    {
+      "text": "Recommends ED25519 as the key algorithm",
+      "passed": true,
+      "evidence": "\"ED25519 is recommended for modern setups\""
+    },
+    {
+      "text": "Shows target host setup with TrustedUserCAKeys in sshd_config",
+      "passed": true,
+      "evidence": "\"Update SSH daemon config (/etc/ssh/sshd_config): TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pub\""
+    },
+    {
+      "text": "Correctly states certificates CANNOT be renewed (must create new lease)",
+      "passed": false,
+      "evidence": "Does not explicitly state that certificates cannot be renewed. Section 5 mentions 'Certificate Expired: Generate a new lease' but doesn't clearly state the non-renewable nature of certificates"
+    },
+    {
+      "text": "Shows correct SSH usage command with -i key.pem and -o CertificateFile=cert.pub",
+      "passed": true,
+      "evidence": "\"ssh -i ~/.ssh/id_ed25519 -i ~/.ssh/prod-cert.pub ubuntu@prod-1.example.com\""
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "total": 6,
+    "pass_rate": 0.83
+  },
+  "timing": {
+    "total_duration_seconds": 44.3
+  }
+}

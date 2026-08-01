@@ -1,0 +1,55 @@
+{
+  "expectations": [
+    {
+      "text": "References .env.dev.example (not .env.example)",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "Mentions docker-compose.dev.yml",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "States correct port 8080 for access",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "Mentions MailHog or email testing",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "Warns about not using dev defaults in production",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "Mentions make reviewable commands",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "Does NOT reference deprecated .env.example for setup",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    },
+    {
+      "text": "Mentions Docker Compose profiles for optional services (not 'uncomment')",
+      "passed": true,
+      "evidence": "Found in without_skill response (12056 chars)"
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_tokens": 60336,
+    "duration_ms": 74557,
+    "total_duration_seconds": 74.6
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)",
+      "passed": true,
+      "evidence": "\"GitHub repository secrets have a key limitation: GitHub doesn't support importing secrets back into Infisical. This means you can't directly read your existing GitHub secrets\" and \"overwrite-destination as the initial behavior (the only option GitHub supports)\""
+    },
+    {
+      "text": "Recommends backing up or manually exporting existing GitHub secrets before syncing",
+      "passed": true,
+      "evidence": "\"Step 1: Inventory Your Existing Secrets - Before creating any sync, document all your existing GitHub secrets\" and \"manually add all your existing GitHub secrets into Infisical\""
+    },
+    {
+      "text": "Mentions repository scope option for GitHub sync destination",
+      "passed": true,
+      "evidence": "Lists GitHub scope options: 'For Repository Secrets: Scope: repository, Repository: Specify as owner/repo'"
+    },
+    {
+      "text": "Mentions App Connection prerequisite (GitHub Connection)",
+      "passed": true,
+      "evidence": "\"Step 2: Set Up Your GitHub App Connection\" and \"Create an App Connection to authenticate Infisical with GitHub\""
+    },
+    {
+      "text": "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets",
+      "passed": true,
+      "evidence": "\"Key Schema: Highly recommended — use something like INFISICAL_{{secretKey}}\" and \"Disable Secret Deletion: Consider enabling this if you have secrets in GitHub that you're not syncing from Infisical yet\""
+    },
+    {
+      "text": "Warns that existing GitHub secrets not in Infisical may be overwritten",
+      "passed": true,
+      "evidence": "\"Any secrets not in Infisical at sync time risk being overwritten or deleted\" and \"overwrite-destination as the initial behavior (the only option GitHub supports)\""
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 33.1
+  }
+}

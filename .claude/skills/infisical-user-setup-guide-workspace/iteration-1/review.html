@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "infisical-user-setup-guide", "runs": [{"id": "python-sdk-with_skill", "prompt": "I'm running a Python Flask app and I want to pull secrets from Infisical using the Python SDK with Universal Auth. Can you show me how to set it up end to end \u2014 install the package, authenticate, and fetch secrets from my project?", "eval_id": 0, "outputs": [{"name": "response.md", "type": "text", "content": "# Python Flask + Infisical SDK Setup Guide\n\nThis guide walks you through setting up a Python Flask app to pull secrets from Infisical using the Python SDK with Universal Auth. We'll cover installation, authentication, and fetching secrets end to end.\n\n## Prerequisites\n\n- Python 3.7+ installed\n- An Infisical account (cloud or self-hosted instance)\n- A project created in Infisical\n- A machine identity configured in your Infisical organization (we'll cover this below)\n\n## Step 1: Create a Machine Identity in Infisical\n\nA machine identity is how your Flask app will authenticate with Infisical.\n\n1. In the Infisical dashboard, go to **Organization Settings > Access Control > Machine Identities**\n2. Click **Create Identity**\n3. Give it a descriptive name (e.g., `flask-app-prod` or `my-flask-server`)\n4. Assign an organization-level role\n5. Click **Create**\n\nAfter creation, add it to your specific project with a project-level role that has read access to secrets.\n\n## Step 2: Generate Universal Auth Credentials\n\n1. In your machine identity's details page, go to the **Auth** or **Authentication** section\n2. Click **Add Auth Method** and select **Universal Auth**\n3. Configure the settings if needed (Access Token TTL defaults are usually fine)\n4. Click **Create Client Secret**\n5. **Save both the Client ID and Client Secret** somewhere secure (you'll use them in Step 4)\n\n**Important:** Treat these credentials like passwords. Never commit them to version control.\n\n## Step 3: Install the Infisical Python SDK\n\nIn your Flask project directory, install the package:\n\n```bash\npip install infisicalsdk\n```\n\nVerify the installation:\n\n```bash\npython -c \"from infisical_sdk import InfisicalSDKClient; print('SDK installed successfully')\"\n```\n\n## Step 4: Set Up Your Flask App\n\nCreate a simple Flask app that authenticates with Infisical and fetches secrets. Here's a minimal example:\n\n### Option A: Basic Setup (Environment Variables)\n\nCreate `app.py`:\n\n```python\nfrom flask import Flask\nfrom infisical_sdk import InfisicalSDKClient\nimport os\n\napp = Flask(__name__)\n\n# Initialize the Infisical SDK client\nclient = InfisicalSDKClient(\n    host=\"https://app.infisical.com\",  # Or your self-hosted URL\n    cache_ttl=60  # Cache secrets for 60 seconds\n)\n\n# Authenticate using Universal Auth\n# Load credentials from environment variables (more secure than hardcoding)\nclient.auth.universal_auth.login(\n    client_id=os.getenv(\"INFISICAL_CLIENT_ID\"),\n    client_secret=os.getenv(\"INFISICAL_CLIENT_SECRET\")\n)\n\n@app.route(\"/\")\ndef hello():\n    # Fetch a secret from Infisical\n    secret = client.secrets.get_secret(\n        secret_name=\"API_KEY\",  # The name of your secret\n        project_id=os.getenv(\"INFISICAL_PROJECT_ID\"),\n        environment_slug=\"prod\"  # or \"dev\", \"staging\", etc.\n    )\n\n    return f\"API Key retrieved: {secret.secret_value[:10]}...\"  # Display only first 10 chars\n\n@app.route(\"/list-secrets\")\ndef list_all():\n    # List all secrets in the project\n    secrets = client.secrets.list_secrets(\n        project_id=os.getenv(\"INFISICAL_PROJECT_ID\"),\n        environment_slug=\"dev\",\n        secret_path=\"/\"\n    )\n\n    # Return secret names (not values) for safety\n    secret_names = [s.secret_name for s in secrets]\n    return {\"secrets\": secret_names}\n\nif __name__ == \"__main__\":\n    app.run(debug=False, port=5000)\n```\n\n### Option B: Production Setup (Initialization File)\n\nFor larger apps, initialize the client in a separate module:\n\nCreate `infisical_client.py`:\n\n```python\nimport os\nfrom infisical_sdk import InfisicalSDKClient\n\ndef get_infisical_client():\n    \"\"\"Initialize and authenticate the Infisical SDK client.\"\"\"\n    client = InfisicalSDKClient(\n        host=os.getenv(\"INFISICAL_URL\", \"https://app.infisical.com\"),\n        cache_ttl=60\n    )\n\n    client.auth.universal_auth.login(\n        client_id=os.getenv(\"INFISICAL_CLIENT_ID\"),\n        client_secret=os.getenv(\"INFISICAL_CLIENT_SECRET\")\n    )\n\n    return client\n\n# Singleton pattern: initialize once on app startup\n_client = None\n\ndef init_infisical():\n    global _client\n    if _client is None:\n        _client = get_infisical_client()\n    return _client\n\ndef get_secret(secret_name, environment=\"prod\"):\n    \"\"\"Fetch a secret by name.\"\"\"\n    client = init_infisical()\n    secret = client.secrets.get_secret(\n        secret_name=secret_name,\n        project_id=os.getenv(\"INFISICAL_PROJECT_ID\"),\n        environment_slug=environment\n    )\n    return secret.secret_value\n\ndef list_secrets(environment=\"prod\", path=\"/\"):\n    \"\"\"List all secrets in an environment.\"\"\"\n    client = init_infisical()\n    return client.secrets.list_secrets(\n        project_id=os.getenv(\"INFISICAL_PROJECT_ID\"),\n        environment_slug=environment,\n        secret_path=path\n    )\n```\n\nThen in `app.py`:\n\n```python\nfrom flask import Flask\nfrom infisical_client import init_infisical, get_secret\nimport os\n\napp = Flask(__name__)\n\n# Initialize Infisical on startup\nwith app.app_context():\n    init_infisical()\n\n@app.route(\"/\")\ndef hello():\n    api_key = get_secret(\"API_KEY\", environment=\"prod\")\n    return f\"Secret retrieved successfully\"\n\n@app.route(\"/config/<secret_name>\")\ndef get_config(secret_name):\n    try:\n        value = get_secret(secret_name)\n        return {\"secret\": secret_name, \"status\": \"retrieved\"}\n    except Exception as e:\n        return {\"error\": str(e)}, 500\n\nif __name__ == \"__main__\":\n    app.run(debug=False)\n```\n\n## Step 5: Set Environment Variables\n\nCreate a `.env` file (never commit this to version control):\n\n```bash\nINFISICAL_CLIENT_ID=your_client_id_here\nINFISICAL_CLIENT_SECRET=your_client_secret_here\nINFISICAL_PROJECT_ID=your_project_id_here\nINFISICAL_URL=https://app.infisical.com\n```\n\nLoad it before running your app:\n\n```bash\n# On Linux/Mac\nexport $(cat .env | xargs)\npython app.py\n\n# Or use python-dotenv for automatic loading\npip install python-dotenv\n```\n\nThen update your app to use python-dotenv:\n\n```python\nfrom dotenv import load_dotenv\nimport os\n\nload_dotenv()  # Load from .env file\n\nclient = InfisicalSDKClient(host=os.getenv(\"INFISICAL_URL\"))\n```\n\n## Step 6: Run Your Flask App\n\n```bash\npip install flask python-dotenv  # Install Flask if not already installed\npython app.py\n```\n\nVisit `http://localhost:5000` and you should see your secret retrieved!\n\n## Available SDK Methods\n\nThe Python SDK provides several methods for working with secrets:\n\n```python\n# Get a single secret\nsecret = client.secrets.get_secret(\n    secret_name=\"DATABASE_URL\",\n    project_id=\"proj_123\",\n    environment_slug=\"prod\"\n)\nprint(secret.secret_value)\n\n# List all secrets\nsecrets = client.secrets.list_secrets(\n    project_id=\"proj_123\",\n    environment_slug=\"prod\",\n    secret_path=\"/\"\n)\n\n# Create a secret (if your role allows)\nclient.secrets.create_secret(\n    secret_name=\"NEW_API_KEY\",\n    secret_value=\"secret_value_here\",\n    project_id=\"proj_123\",\n    environment_slug=\"dev\"\n)\n\n# Update a secret (if your role allows)\nclient.secrets.update_secret(\n    secret_name=\"API_KEY\",\n    secret_value=\"new_value\",\n    project_id=\"proj_123\",\n    environment_slug=\"dev\"\n)\n\n# Delete a secret (if your role allows)\nclient.secrets.delete_secret(\n    secret_name=\"OLD_KEY\",\n    project_id=\"proj_123\",\n    environment_slug=\"dev\"\n)\n```\n\n## Caching Behavior\n\nThe SDK caches secrets by default (set via `cache_ttl` in milliseconds). This means:\n- Secrets are fetched once and cached for the duration\n- If a request fails, cached values are used\n- If no cache exists and a request fails, it falls back to environment variables\n- Set `cache_ttl=None` to disable caching (not recommended for production)\n\n## Error Handling\n\nAdd proper error handling to your Flask routes:\n\n```python\nfrom infisical_sdk import InfisicalSDKException\n\n@app.route(\"/secret/<name>\")\ndef get_secret_safe(name):\n    try:\n        secret = client.secrets.get_secret(\n            secret_name=name,\n            project_id=os.getenv(\"INFISICAL_PROJECT_ID\"),\n            environment_slug=\"prod\"\n        )\n        return {\"status\": \"success\"}\n    except InfisicalSDKException as e:\n        return {\"error\": \"Failed to fetch secret\"}, 500\n    except Exception as e:\n        return {\"error\": \"Unexpected error\"}, 500\n```\n\n## Security Best Practices\n\n1. **Never hardcode credentials** \u2014 Always use environment variables or a secrets manager\n2. **Use `.gitignore`** \u2014 Add `.env` to prevent accidental commits:\n   ```\n   .env\n   .env.local\n   ```\n3. **Rotate credentials regularly** \u2014 Generate new Client Secrets periodically in Infisical\n4. **Restrict machine identity permissions** \u2014 Give each app only the access it needs\n5. **Use different identities per environment** \u2014 Separate `flask-app-prod` from `flask-app-dev`\n6. **Never log secret values** \u2014 Always mask or omit them in logs\n7. **Use HTTPS in production** \u2014 Infisical API calls should always be over HTTPS\n\n## Troubleshooting\n\n**\"Authentication failed\"**\n- Verify Client ID and Client Secret are correct\n- Check if the machine identity has the correct role in the project\n- Ensure the identity hasn't been disabled\n\n**\"Secret not found\"**\n- Verify the secret name matches exactly (case-sensitive)\n- Check the environment slug (e.g., `prod` vs `production`)\n- Confirm the secret exists in Infisical\n\n**\"Connection refused\" or timeout**\n- Check if `INFISICAL_URL` is correct\n- Verify network connectivity to Infisical\n- For self-hosted, ensure Infisical is running and accessible\n\n**\"Permission denied\"**\n- Check the machine identity's role in the project\n- Ensure the role has read access to secrets\n\n## Next Steps\n\n- **Dockerfile**: If you're containerizing your Flask app, see the docker-integration guide for injecting secrets at runtime\n- **CI/CD**: For deployment pipelines, consider using OIDC Auth instead of Universal Auth (zero-secret)\n- **Dynamic Secrets**: For database credentials or API keys that need auto-rotation, check the SDK docs for dynamic secret support\n\n## Resources\n\n- [Infisical Python SDK Documentation](https://infisical.com/docs/sdks/python)\n- [Machine Identity Authentication Guide](https://infisical.com/docs/machine-identities)\n- [Flask Documentation](https://flask.palletsprojects.com/)\n\n---\n\nThat's it! Your Flask app is now pulling secrets from Infisical securely. Questions? Check the docs or reach out to the Infisical community.\n"}], "grading": {"expectations": [{"text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "passed": true, "evidence": "Found 'infisicalsdk': True, Found 'infisical-python': False"}, {"text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "passed": false, "evidence": "Found 'infisical_sdk': True, Found wrong import: True"}, {"text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "passed": true, "evidence": "Found 'InfisicalSDKClient': True"}, {"text": "References machine identity for Universal Auth (not service tokens or API keys)", "passed": true, "evidence": "Found 'machine identity': True"}, {"text": "Does not recommend deprecated Service Tokens (st.* prefix) or API Keys", "passed": true, "evidence": "Service token mention: False, st.* prefix: False"}, {"text": "Shows client ID + client secret auth flow for Universal Auth", "passed": true, "evidence": "Client ID: True, Client Secret: True"}]}}, {"id": "python-sdk-without_skill", "prompt": "I'm running a Python Flask app and I want to pull secrets from Infisical using the Python SDK with Universal Auth. Can you show me how to set it up end to end \u2014 install the package, authenticate, and fetch secrets from my project?", "eval_id": 0, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Infisical Python SDK with Universal Auth in Flask\n\nThis guide walks you through installing the Infisical Python SDK, configuring Universal Auth, and fetching secrets in a Flask application.\n\n## Prerequisites\n\n- Python 3.7 or higher\n- pip package manager\n- An Infisical instance (cloud or self-hosted)\n- A project in Infisical with at least one secret\n- Universal Auth credentials (Client ID and Client Secret)\n\n## Step 1: Install the Infisical Python SDK\n\nInstall the SDK using pip:\n\n```bash\npip install infisical\n```\n\nOr add it to your `requirements.txt`:\n\n```\ninfisical>=3.0.0\n```\n\nThen install dependencies:\n\n```bash\npip install -r requirements.txt\n```\n\n## Step 2: Set Up Universal Auth Credentials\n\nBefore authenticating, you need to create Universal Auth credentials in Infisical:\n\n1. **In Infisical Dashboard:**\n   - Navigate to your project\n   - Go to **Settings** \u2192 **API Keys** (or **Authentication**)\n   - Create a new **Universal Auth** credential\n   - Note the **Client ID** and **Client Secret**\n\n2. **Store credentials securely:**\n   - Never hardcode credentials in your source code\n   - Use environment variables or a `.env` file (for development only)\n   - For production, use secure secret management\n\nExample `.env` file (development only):\n\n```\nINFISICAL_CLIENT_ID=your_client_id_here\nINFISICAL_CLIENT_SECRET=your_client_secret_here\nINFISICAL_WORKSPACE_ID=your_workspace_id\nINFISICAL_PROJECT_SLUG=your_project_slug\nINFISICAL_ENVIRONMENT=prod\n```\n\nLoad the `.env` file using `python-dotenv`:\n\n```bash\npip install python-dotenv\n```\n\n## Step 3: Create a Flask App with Infisical Integration\n\nHere's a complete example of a Flask application that fetches secrets from Infisical:\n\n```python\nimport os\nfrom flask import Flask, jsonify\nfrom dotenv import load_dotenv\nfrom infisical import client as infisical_client\n\n# Load environment variables from .env file\nload_dotenv()\n\n# Initialize Flask app\napp = Flask(__name__)\n\n# Initialize Infisical client with Universal Auth\ndef init_infisical():\n    \"\"\"Initialize and authenticate with Infisical using Universal Auth\"\"\"\n    client = infisical_client.InfisicalClient(\n        client_id=os.getenv(\"INFISICAL_CLIENT_ID\"),\n        client_secret=os.getenv(\"INFISICAL_CLIENT_SECRET\"),\n    )\n    return client\n\n# Create a global client instance\ninfisical = init_infisical()\n\n@app.route(\"/secrets\", methods=[\"GET\"])\ndef get_secrets():\n    \"\"\"Fetch all secrets from Infisical\"\"\"\n    try:\n        # Retrieve secrets from your project\n        secrets = infisical.listSecrets(\n            environment=os.getenv(\"INFISICAL_ENVIRONMENT\", \"prod\"),\n            project_id=os.getenv(\"INFISICAL_PROJECT_SLUG\"),\n        )\n\n        # Convert to a serializable format\n        secrets_list = [\n            {\n                \"key\": secret.get(\"secretKey\"),\n                \"value\": secret.get(\"secretValue\"),\n                \"type\": secret.get(\"type\", \"personal\"),\n            }\n            for secret in secrets\n        ]\n\n        return jsonify({\n            \"status\": \"success\",\n            \"data\": secrets_list\n        }), 200\n\n    except Exception as e:\n        return jsonify({\n            \"status\": \"error\",\n            \"message\": str(e)\n        }), 500\n\n@app.route(\"/secret/<secret_key>\", methods=[\"GET\"])\ndef get_secret(secret_key):\n    \"\"\"Fetch a specific secret by key\"\"\"\n    try:\n        secret = infisical.getSecret(\n            secret_key=secret_key,\n            environment=os.getenv(\"INFISICAL_ENVIRONMENT\", \"prod\"),\n            project_id=os.getenv(\"INFISICAL_PROJECT_SLUG\"),\n        )\n\n        return jsonify({\n            \"status\": \"success\",\n            \"key\": secret.get(\"secretKey\"),\n            \"value\": secret.get(\"secretValue\"),\n            \"type\": secret.get(\"type\", \"personal\"),\n        }), 200\n\n    except Exception as e:\n        return jsonify({\n            \"status\": \"error\",\n            \"message\": str(e)\n        }), 500\n\n@app.route(\"/health\", methods=[\"GET\"])\ndef health():\n    \"\"\"Health check endpoint\"\"\"\n    return jsonify({\n        \"status\": \"healthy\",\n        \"service\": \"Flask + Infisical\"\n    }), 200\n\nif __name__ == \"__main__\":\n    app.run(debug=True, host=\"0.0.0.0\", port=5000)\n```\n\n## Step 4: Advanced Configuration (Optional)\n\n### Custom Infisical Host (Self-Hosted)\n\nIf you're using a self-hosted Infisical instance:\n\n```python\nclient = infisical_client.InfisicalClient(\n    client_id=os.getenv(\"INFISICAL_CLIENT_ID\"),\n    client_secret=os.getenv(\"INFISICAL_CLIENT_SECRET\"),\n    site_url=\"https://your-self-hosted-domain.com\",  # Your Infisical URL\n)\n```\n\n### Caching Secrets\n\nFor production, cache secrets to reduce API calls:\n\n```python\nfrom functools import lru_cache\nfrom datetime import datetime, timedelta\n\nclass SecretCache:\n    def __init__(self, ttl_seconds=3600):\n        self.cache = {}\n        self.ttl = ttl_seconds\n        self.timestamps = {}\n\n    def is_expired(self, key):\n        if key not in self.timestamps:\n            return True\n        return datetime.now() - self.timestamps[key] > timedelta(seconds=self.ttl)\n\n    def get(self, key):\n        if key in self.cache and not self.is_expired(key):\n            return self.cache[key]\n        return None\n\n    def set(self, key, value):\n        self.cache[key] = value\n        self.timestamps[key] = datetime.now()\n\ncache = SecretCache(ttl_seconds=3600)\n\n@app.route(\"/secret/<secret_key>\", methods=[\"GET\"])\ndef get_secret(secret_key):\n    \"\"\"Fetch a specific secret with caching\"\"\"\n    cached_value = cache.get(secret_key)\n    if cached_value:\n        return jsonify({\n            \"status\": \"success\",\n            \"value\": cached_value,\n            \"source\": \"cache\"\n        }), 200\n\n    try:\n        secret = infisical.getSecret(\n            secret_key=secret_key,\n            environment=os.getenv(\"INFISICAL_ENVIRONMENT\", \"prod\"),\n            project_id=os.getenv(\"INFISICAL_PROJECT_SLUG\"),\n        )\n\n        secret_value = secret.get(\"secretValue\")\n        cache.set(secret_key, secret_value)\n\n        return jsonify({\n            \"status\": \"success\",\n            \"value\": secret_value,\n            \"source\": \"infisical\"\n        }), 200\n\n    except Exception as e:\n        return jsonify({\n            \"status\": \"error\",\n            \"message\": str(e)\n        }), 500\n```\n\n## Step 5: Run Your Flask App\n\n### Development\n\n```bash\nexport INFISICAL_CLIENT_ID=\"your_client_id\"\nexport INFISICAL_CLIENT_SECRET=\"your_client_secret\"\nexport INFISICAL_PROJECT_SLUG=\"your_project_slug\"\nexport INFISICAL_ENVIRONMENT=\"prod\"\n\npython app.py\n```\n\nThe app will start at `http://localhost:5000`.\n\n### Testing Endpoints\n\nFetch all secrets:\n```bash\ncurl http://localhost:5000/secrets\n```\n\nFetch a specific secret:\n```bash\ncurl http://localhost:5000/secret/DATABASE_URL\n```\n\nHealth check:\n```bash\ncurl http://localhost:5000/health\n```\n\n## Step 6: Production Deployment\n\n### Using Environment Variables\n\nStore credentials in your deployment platform's environment variables:\n- **AWS Lambda/ECS**: Use Secrets Manager or Parameter Store\n- **Heroku**: Use Config Vars\n- **Docker**: Pass as `--env` or in `.env` file (not in image)\n- **Kubernetes**: Use Secrets\n\n### Error Handling\n\nAdd proper error handling for production:\n\n```python\nfrom flask import Flask\nimport logging\n\n# Configure logging\nlogging.basicConfig(level=logging.INFO)\nlogger = logging.getLogger(__name__)\n\n@app.errorhandler(Exception)\ndef handle_error(error):\n    logger.error(f\"Error fetching secret: {str(error)}\")\n    return jsonify({\n        \"status\": \"error\",\n        \"message\": \"Failed to fetch secret\"\n    }), 500\n```\n\n## Troubleshooting\n\n### 1. Authentication Failed\n- **Issue**: `401 Unauthorized` error\n- **Solution**: Verify Client ID and Client Secret are correct in `.env` or environment variables\n\n### 2. Secret Not Found\n- **Issue**: `404 Not Found` when fetching a secret\n- **Solution**: Confirm the secret key exists in your Infisical project and environment\n\n### 3. Connection Timeout\n- **Issue**: Request times out when connecting to Infisical\n- **Solution**:\n  - Check your network/firewall\n  - Verify the Infisical URL is correct and accessible\n  - For self-hosted, ensure the server is running\n\n### 4. Import Error\n- **Issue**: `ModuleNotFoundError: No module named 'infisical'`\n- **Solution**: Install the SDK: `pip install infisical`\n\n## Best Practices\n\n1. **Never commit credentials** \u2014 Use `.env` files and add to `.gitignore`\n2. **Use environment variables** \u2014 Keep credentials out of source code\n3. **Cache secrets** \u2014 Reduce API calls with reasonable TTLs\n4. **Log securely** \u2014 Never log secret values\n5. **Handle errors gracefully** \u2014 Provide meaningful error messages without exposing sensitive data\n6. **Rotate credentials regularly** \u2014 Update Client Secret periodically\n7. **Use appropriate permissions** \u2014 Grant minimal required access to secrets in Infisical\n\n## Resources\n\n- [Infisical Python SDK Documentation](https://infisical.com/docs)\n- [Flask Documentation](https://flask.palletsprojects.com/)\n- [Environment Variables Best Practices](https://12factor.net/config)\n"}], "grading": {"expectations": [{"text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "passed": false, "evidence": "Found 'infisicalsdk': False, Found 'infisical-python': False"}, {"text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "passed": false, "evidence": "Found 'infisical_sdk': False, Found wrong import: True"}, {"text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "passed": false, "evidence": "Found 'InfisicalSDKClient': False"}, {"text": "References machine identity for Universal Auth (not service tokens or API keys)", "passed": false, "evidence": "Found 'machine identity': False"}, {"text": "Does not recommend deprecated Service Tokens (st.* prefix) or API Keys", "passed": true, "evidence": "Service token mention: False, st.* prefix: False"}, {"text": "Shows client ID + client secret auth flow for Universal Auth", "passed": true, "evidence": "Client ID: True, Client Secret: True"}]}}, {"id": "docker-secrets-with_skill", "prompt": "I need to inject secrets from Infisical into my Docker containers at runtime. I'm deploying to AWS ECS. What's the best way to do this without baking secrets into the image?", "eval_id": 1, "outputs": [{"name": "response.md", "type": "text", "content": "# Runtime Secret Injection for AWS ECS with Infisical\n\nYou're on the right track \u2014 runtime injection is exactly what you need. Here's the best way to do this for AWS ECS:\n\n## Recommended: AWS Auth (Zero-Secret Approach)\n\nSince you're deploying to AWS ECS, the **AWS Auth** method is ideal. It uses your ECS task's IAM role for authentication, so you don't store any credentials in the container.\n\n### How it works:\n- Your ECS task runs with an IAM role\n- When the container starts, the Infisical CLI signs an `sts:GetCallerIdentity` request using that role\n- Infisical verifies the signature and issues a short-lived access token\n- Secrets are injected as environment variables into your application\n- No credentials baked into the image, no secrets passed at runtime\n\n### Setup steps:\n\n#### 1. Create a machine identity in Infisical\n- Go to **Organization Settings > Access Control > Machine Identities**\n- Click **Create Identity**\n- Name it (e.g., `prod-ecs-app`)\n- Assign an org or project role with access to the secrets you need\n\n#### 2. Configure AWS Auth on the machine identity\n- On your machine identity, add **AWS Auth**\n- Configure:\n  - **Allowed Principal ARNs**: Add your ECS task role ARN (e.g., `arn:aws:iam::123456789012:role/my-ecs-task-role`)\n  - **Allowed Account IDs**: Your AWS account ID\n- Save and note your **Machine Identity ID**\n\n#### 3. Update your Dockerfile\n```dockerfile\n# Install the CLI\nRUN apt-get update && apt-get install -y curl bash \\\n  && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \\\n  && apt-get install -y infisical\n\n# Your app\nCOPY . /app\nWORKDIR /app\n\n# Use infisical run to inject secrets at runtime\nCMD [\"infisical\", \"run\", \\\n     \"--projectId\", \"your-project-id\", \\\n     \"--identityId\", \"your-machine-identity-id\", \\\n     \"--\", \\\n     \"node\", \"server.js\"]\n```\n\n#### 4. Deploy to ECS\n- Ensure your ECS task role has permissions to assume the Infisical machine identity role (if cross-account) or that the ARN matches\n- Push the image to ECR\n- Update your ECS task definition \u2014 no new environment variables needed\n- Deploy\n\nWhen the container starts, `infisical run` automatically authenticates using your ECS task role and injects all secrets from your project.\n\n---\n\n## Alternative: Universal Auth (For Local/Testing)\n\nIf you need credentials (e.g., for local testing or a different auth scenario), use Universal Auth:\n\n#### 1. Create a machine identity with Universal Auth\n- Go to **Organization Settings > Access Control > Machine Identities**\n- Create an identity and select **Universal Auth**\n- Create a **Client Secret** and note both the **Client ID** and **Client Secret**\n\n#### 2. Update your Dockerfile\n```dockerfile\nRUN apt-get update && apt-get install -y curl bash \\\n  && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \\\n  && apt-get install -y infisical\n\nCOPY entrypoint.sh /entrypoint.sh\nRUN chmod +x /entrypoint.sh\nENTRYPOINT [\"/entrypoint.sh\"]\nCMD [\"node\", \"server.js\"]\n```\n\n#### 3. Create an entrypoint script\n```bash\n#!/bin/sh\n# entrypoint.sh\n\n# Authenticate and get an access token\nexport INFISICAL_TOKEN=$(infisical login \\\n  --method=universal-auth \\\n  --client-id=$INFISICAL_CLIENT_ID \\\n  --client-secret=$INFISICAL_CLIENT_SECRET \\\n  --plain --silent)\n\n# Inject secrets and run your app\nexec infisical run \\\n  --token $INFISICAL_TOKEN \\\n  --projectId $INFISICAL_PROJECT_ID \\\n  --env $INFISICAL_ENV \\\n  -- \"$@\"\n```\n\n#### 4. Deploy to ECS\nPass credentials as ECS task environment variables (stored in Secrets Manager or Parameter Store):\n```bash\ndocker run \\\n  -e INFISICAL_CLIENT_ID=<your-client-id> \\\n  -e INFISICAL_CLIENT_SECRET=<your-client-secret> \\\n  -e INFISICAL_PROJECT_ID=<project-id> \\\n  -e INFISICAL_ENV=prod \\\n  my-app:latest\n```\n\n---\n\n## Key Points\n\n- **Never bake secrets into the image.** Don't use `ENV` or `ARG` for real secrets in Dockerfiles.\n- **AWS Auth is preferable.** It's zero-secret \u2014 no credentials to store, manage, or rotate.\n- **Pin the CLI version in production** to avoid unexpected behavior from auto-updates.\n- **Client secrets and IDs** should be generated and stored by you in AWS Secrets Manager or Parameter Store, not by Infisical.\n\n---\n\n## Next steps\n\n1. **For AWS Auth**: Set up your machine identity with AWS Auth and note the Machine Identity ID\n2. **For Universal Auth**: Create a machine identity with Universal Auth and generate a Client Secret\n3. Update your Dockerfile with `infisical run` and your project/identity IDs\n4. Test locally or in a staging environment before deploying to production\n"}], "grading": {"expectations": [{"text": "Recommends AWS Auth as the preferred method for ECS (platform-native, zero-secret)", "passed": true, "evidence": "Found 'AWS Auth': True"}, {"text": "Uses correct CLI install URL (artifacts-cli.infisical.com, not dl.infisical.com)", "passed": true, "evidence": "Correct URL: True, Wrong URL: False"}, {"text": "Shows 'infisical run' pattern for injecting secrets at container startup", "passed": true, "evidence": "Found 'infisical run': True"}, {"text": "Does not recommend deprecated Service Tokens for authentication", "passed": false, "evidence": "Service token reference: True"}, {"text": "Explicitly warns against baking secrets into Docker images", "passed": true, "evidence": "Warning present: True"}, {"text": "Uses machine identity authentication (not API keys or service tokens)", "passed": true, "evidence": "Machine identity: True, Universal Auth: True"}]}}, {"id": "docker-secrets-without_skill", "prompt": "I need to inject secrets from Infisical into my Docker containers at runtime. I'm deploying to AWS ECS. What's the best way to do this without baking secrets into the image?", "eval_id": 1, "outputs": [{"name": "response.md", "type": "text", "content": "# Injecting Infisical Secrets into Docker Containers at Runtime (AWS ECS)\n\n## Overview\n\nTo inject secrets from Infisical into Docker containers without baking them into the image, you need a runtime secret injection approach. Here are the best practices for AWS ECS deployments:\n\n## Recommended Approaches\n\n### 1. **Infisical CLI with Entry Point Script (Best for ECS)**\n\nThis approach uses the Infisical CLI to fetch secrets at container startup and inject them as environment variables.\n\n**Steps:**\n\n1. **Create an entry point script** that runs before your application:\n   ```bash\n   #!/bin/bash\n   set -e\n\n   # Authenticate with Infisical\n   export INFISICAL_TOKEN=\"${INFISICAL_TOKEN}\"\n\n   # Fetch secrets and export them\n   eval \"$(infisical export --path /path/to/secrets --format=env)\"\n\n   # Start your application\n   exec \"$@\"\n   ```\n\n2. **Dockerfile configuration:**\n   ```dockerfile\n   FROM node:18-alpine\n\n   # Install Infisical CLI\n   RUN npm install -g infisical\n\n   WORKDIR /app\n   COPY . .\n   RUN npm install\n\n   # Copy entry point script\n   COPY entrypoint.sh /entrypoint.sh\n   RUN chmod +x /entrypoint.sh\n\n   ENTRYPOINT [\"/entrypoint.sh\"]\n   CMD [\"npm\", \"start\"]\n   ```\n\n3. **ECS Task Definition** (provide token via AWS Secrets Manager or environment variable):\n   - Store `INFISICAL_TOKEN` in AWS Secrets Manager\n   - Reference it in the ECS task definition\n   - Infisical CLI fetches secrets at runtime and injects them as env vars\n\n### 2. **AWS Secrets Manager Integration (Hybrid Approach)**\n\nFor environments where you want AWS-native secrets management:\n\n1. **Create a bootstrap script** that:\n   - Fetches secrets from Infisical using an API key stored in AWS Secrets Manager\n   - Stores them in AWS Secrets Manager for persistence\n   - Container pulls from AWS Secrets Manager\n\n2. **ECS Task Definition**:\n   - Reference secrets via `secrets` or `environment` fields\n   - AWS automatically injects them at runtime\n\n3. **Benefits**:\n   - Leverage ECS native secrets management\n   - Audit trail through AWS\n   - No CLI overhead at container startup\n\n### 3. **Infisical SDK (Programmatic Approach)**\n\nIf your application is written in Node.js, Python, Go, or another supported language:\n\n1. **Use the Infisical SDK** directly in your application:\n   ```javascript\n   // Node.js example\n   import { InfisicalClient } from \"@infisical/sdk\";\n\n   const client = new InfisicalClient({\n     auth: {\n       universalAuth: {\n         clientId: process.env.INFISICAL_CLIENT_ID,\n         clientSecret: process.env.INFISICAL_CLIENT_SECRET,\n       },\n     },\n   });\n\n   const secrets = await client.listSecrets({\n     projectId: process.env.INFISICAL_PROJECT_ID,\n     environment: \"production\",\n   });\n   ```\n\n2. **Benefits**:\n   - Secrets stay in memory only\n   - No file-based secrets\n   - Granular permission control\n\n3. **ECS Task Definition**:\n   - Pass credentials (Client ID, Client Secret) via AWS Secrets Manager\n   - Application loads secrets on startup\n\n### 4. **Environment Variable Substitution with Infisical Sync**\n\nFor CI/CD-driven deployments:\n\n1. **Use Infisical Sync** in your deployment pipeline to fetch secrets\n2. **Inject into environment** before launching ECS tasks\n3. **Works well with**:\n   - GitHub Actions \u2192 AWS ECS deployment\n   - GitLab CI \u2192 AWS ECS deployment\n   - Terraform/CloudFormation with dynamic environment variables\n\n## Security Best Practices\n\n### Do NOT:\n- Bake secrets into Docker images (defeats the purpose)\n- Store secrets in environment files committed to Git\n- Use plaintext environment variables in Dockerfile\n- Log secret values during container startup\n\n### Do:\n- **Use AWS Secrets Manager** for credential storage (supports automatic rotation)\n- **Restrict IAM permissions** so only ECS task role can access Infisical credentials\n- **Use short-lived tokens** when possible\n- **Audit all secret access** via CloudTrail\n- **Rotate credentials regularly** (especially if using static client ID/secret)\n- **Minimize secret exposure time** \u2014 fetch at startup, not continuously\n- **Use tmpfs** for temporary secret files to avoid disk persistence\n\n## Implementation Checklist for ECS\n\n1. **Store Infisical credentials in AWS Secrets Manager**\n   - API key, Client ID/Secret, or service token\n\n2. **Choose your injection method**:\n   - CLI-based entry point (simplest)\n   - SDK in application code (most secure)\n   - Hybrid with AWS Secrets Manager (best compliance)\n\n3. **Create ECS Task Definition**:\n   - Add `executionRoleArn` with permissions to read AWS Secrets Manager\n   - Reference Infisical credentials in `secrets` or `environment`\n   - Set correct `containerPort` and networking\n\n4. **Configure logging safely**:\n   - Use CloudWatch Logs\n   - Never log secret values\n   - Use structured logging for audit trails\n\n5. **Test in staging first**:\n   - Verify secrets are injected correctly\n   - Check no secrets appear in logs or container output\n   - Validate application startup behavior\n\n## Quick Comparison\n\n| Method | Complexity | Security | Runtime Cost | Best For |\n|--------|-----------|----------|--------------|----------|\n| CLI Entry Point | Low | Good | 1-2 sec overhead | Simple apps, quick setup |\n| AWS Secrets Manager Hybrid | Medium | Excellent | Minimal | Enterprises, compliance |\n| SDK Integration | Medium | Excellent | Minimal | Cloud-native apps |\n| Sync in CI/CD | Low-Medium | Good | One-time | Immutable deployments |\n\n## Recommended Solution for AWS ECS\n\n**Start with the Infisical CLI entry point script** because it:\n- Requires minimal code changes\n- Works with any application language\n- Integrates naturally with container startup\n- Secrets stay in environment, not persisted on disk\n\nThen upgrade to **SDK integration** if you need:\n- On-demand secret rotation\n- Granular per-request access control\n- Reduced startup latency\n\n## Additional Resources\n\n- Infisical documentation: https://infisical.com/docs\n- AWS ECS best practices for secrets management\n- Your application's support for environment variables and secret injection\n"}], "grading": {"expectations": [{"text": "Recommends AWS Auth as the preferred method for ECS (platform-native, zero-secret)", "passed": false, "evidence": "Found 'AWS Auth': False"}, {"text": "Uses correct CLI install URL (artifacts-cli.infisical.com, not dl.infisical.com)", "passed": false, "evidence": "Correct URL: False, Wrong URL: False"}, {"text": "Shows 'infisical run' pattern for injecting secrets at container startup", "passed": false, "evidence": "Found 'infisical run': False"}, {"text": "Does not recommend deprecated Service Tokens for authentication", "passed": false, "evidence": "Service token reference: True"}, {"text": "Explicitly warns against baking secrets into Docker images", "passed": true, "evidence": "Warning present: True"}, {"text": "Uses machine identity authentication (not API keys or service tokens)", "passed": false, "evidence": "Machine identity: False, Universal Auth: False"}]}}, {"id": "k8s-auth-with_skill", "prompt": "We're running a Kubernetes cluster on GKE and want to sync secrets from Infisical to our pods using the operator. How do I set up the auth and get the operator working?", "eval_id": 2, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Infisical Operator on GKE: Complete Auth & Setup Guide\n\nYou're setting up the Infisical Secrets Operator on GKE to sync secrets from Infisical directly into your Kubernetes pods. This guide walks you through authentication setup and getting the operator running.\n\n## Prerequisites\n\n- GKE cluster running Kubernetes 1.29\u20131.33\n- `kubectl` access to your cluster\n- Helm 3+ installed\n- Infisical organization and project created (either cloud at app.infisical.com or self-hosted)\n\n---\n\n## Step 1: Install the Operator on GKE\n\nAdd the Infisical Helm repository and install the operator cluster-wide:\n\n```bash\n# Add the Helm repo\nhelm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'\nhelm repo update\n\n# Install the operator cluster-wide\nhelm install --generate-name infisical-helm-charts/secrets-operator\n```\n\nIf you want to limit the operator to a single namespace (namespace-scoped):\n\n```bash\nhelm install operator-namespaced infisical-helm-charts/secrets-operator \\\n  --namespace my-namespace \\\n  --set scopedNamespaces=my-namespace \\\n  --set scopedRBAC=true\n```\n\nThe operator will be installed in the `infisical-operator-system` namespace.\n\n---\n\n## Step 2: Create a Machine Identity in Infisical\n\nThe operator needs credentials to authenticate with Infisical. You'll create a machine identity \u2014 a non-human workload account similar to an IAM user or service account.\n\n### In the Infisical Dashboard:\n\n1. Go to **Organization Settings > Access Control > Machine Identities**\n2. Click **Create Identity**\n3. Name it descriptively, e.g., `gke-secrets-operator`\n4. Assign an organization-level role with access to the projects/environments your operator needs\n5. (Optional) Go to **Project Settings** > **Access Control** to add project-scoped roles\n\n---\n\n## Step 3: Choose an Auth Method for the Operator\n\nFor GKE, you have two primary options:\n\n### Option A: Kubernetes Auth (Recommended for GKE)\n\n**Kubernetes Auth is zero-secret** \u2014 the operator uses your pod's service account token to authenticate. No credentials to store or rotate.\n\n**Setup in the Infisical Dashboard:**\n\n1. On the machine identity, click **Add Authentication Method** and select **Kubernetes Auth**\n2. Configure:\n   - **K8s API Host**: The Kubernetes API server URL (e.g., `https://your-gke-cluster-ip`)\n   - **CA Certificate**: GKE's CA cert (you can find this in your kubeconfig)\n   - **Token Reviewer JWT**: A service account token with `system:auth-delegator` role\n   - **Allowed Namespaces**: The namespace(s) where the operator runs (e.g., `infisical-operator-system`)\n\n**Create the token reviewer service account in your cluster:**\n\n```bash\n# Create service account for token review\nkubectl create serviceaccount infisical-token-reviewer \\\n  -n infisical-operator-system\n\n# Bind the system:auth-delegator role\nkubectl create clusterrolebinding infisical-token-reviewer \\\n  --clusterrole=system:auth-delegator \\\n  --serviceaccount=infisical-operator-system:infisical-token-reviewer\n\n# Get the token for the Infisical dashboard\nkubectl get secret -n infisical-operator-system \\\n  $(kubectl get secret -n infisical-operator-system | grep infisical-token-reviewer | awk '{print $1}') \\\n  -o jsonpath='{.data.token}' | base64 -d\n```\n\n### Option B: Universal Auth\n\nIf Kubernetes Auth is too complex or you prefer explicit credentials:\n\n1. On the machine identity, add **Universal Auth** (the default)\n2. Click **Create Client Secret** and configure:\n   - **Access Token TTL**: How long the short-lived token lasts (default: 1 hour)\n   - **Max Number of Uses**: Optional limit on secret uses\n3. Copy the **Client ID** and **Client Secret**\n\nYou'll store these securely in a Kubernetes secret in the next step.\n\n---\n\n## Step 4: Create Auth Credentials in Your Cluster\n\n### For Kubernetes Auth:\n\nIf you chose Kubernetes Auth, the operator authenticates via the pod's service account \u2014 no secrets needed. Skip to Step 5.\n\n### For Universal Auth:\n\nCreate a Kubernetes Secret to store your credentials:\n\n```bash\nkubectl create secret generic universal-auth-credentials \\\n  --namespace infisical-operator-system \\\n  --from-literal=clientId=\"<your-client-id>\" \\\n  --from-literal=clientSecret=\"<your-client-secret>\"\n```\n\n**Security note**: In production, use a secret management system (Google Secret Manager, HashiCorp Vault, sealed-secrets, etc.) instead of plain kubectl.\n\n---\n\n## Step 5: Create Your First InfisicalSecret\n\nThe `InfisicalSecret` custom resource tells the operator which secrets to sync from Infisical into Kubernetes.\n\n### Using Universal Auth:\n\n```yaml\napiVersion: secrets.infisical.com/v1alpha1\nkind: InfisicalSecret\nmetadata:\n  name: my-app-secrets\n  namespace: default  # Change to your app's namespace\nspec:\n  hostAPI: https://app.infisical.com/api  # Or your self-hosted URL\n\n  syncConfig:\n    resyncInterval: 60s        # How often to check for updates\n    instantUpdates: false      # Set to true for webhook-driven updates\n\n  authentication:\n    universalAuth:\n      secretsScope:\n        projectSlug: my-project  # Your project slug\n        envSlug: prod            # Your environment (prod, dev, etc.)\n        secretsPath: \"/\"         # Secrets path in Infisical\n      credentialsRef:\n        secretName: universal-auth-credentials\n        secretNamespace: infisical-operator-system\n\n  managedKubeSecretReferences:\n    - secretName: my-app-managed-secret\n      secretNamespace: default\n      creationPolicy: \"Orphan\"\n```\n\n### Using Kubernetes Auth:\n\n```yaml\napiVersion: secrets.infisical.com/v1alpha1\nkind: InfisicalSecret\nmetadata:\n  name: my-app-secrets\n  namespace: default\nspec:\n  hostAPI: https://app.infisical.com/api\n\n  syncConfig:\n    resyncInterval: 60s\n    instantUpdates: false\n\n  authentication:\n    kubernetesAuth:\n      identityId: <identity-id>  # From Infisical dashboard\n      secretsScope:\n        projectSlug: my-project\n        envSlug: prod\n        secretsPath: \"/\"\n      serviceAccountRef:\n        name: default            # Or your workload's service account\n        namespace: default\n      autoCreateServiceAccountToken: true\n\n  managedKubeSecretReferences:\n    - secretName: my-app-managed-secret\n      secretNamespace: default\n      creationPolicy: \"Orphan\"\n```\n\nApply the resource:\n\n```bash\nkubectl apply -f infisical-secret.yaml\n```\n\n---\n\n## Step 6: Use Secrets in Your Pods\n\nOnce the `InfisicalSecret` is created, the operator syncs the secrets into `my-app-managed-secret` (or whatever name you chose). Now reference it in your deployment:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\nspec:\n  template:\n    spec:\n      containers:\n      - name: app\n        image: my-app:latest\n        envFrom:\n          - secretRef:\n              name: my-app-managed-secret  # References the synced secret\n```\n\nAll secrets from Infisical are now available as environment variables in your pod.\n\n---\n\n## Step 7: Verify It's Working\n\nCheck the status of your `InfisicalSecret`:\n\n```bash\nkubectl get infisicalsecret my-app-secrets -o yaml\n```\n\nLook at `status.conditions` for success or error details. Common issues:\n\n- **Wrong project slug or environment**: Check in the Infisical dashboard\n- **Machine identity has no permission**: Verify the identity has a role with access to the project/environment\n- **Credentials secret not found**: Ensure the secret exists in the correct namespace\n- **Kubernetes Auth token expired**: Recreate the token reviewer secret\n\nCheck the operator logs:\n\n```bash\nkubectl logs -n infisical-operator-system \\\n  -l app.kubernetes.io/name=secrets-operator -f\n```\n\nVerify the secret was created:\n\n```bash\nkubectl get secret my-app-managed-secret -o yaml\n```\n\n---\n\n## Configuration Tips\n\n### Resync Interval\n\n- **Default**: 1 minute (if `instantUpdates: false`)\n- **Minimum**: 5 seconds\n- **Format**: `[number][unit]` \u2014 `s`, `m`, `h`, `d`, `w`\n\nExample: `resyncInterval: 5m` checks every 5 minutes.\n\n### Self-Hosted Infisical\n\nIf you're running a self-hosted Infisical instance in the cluster:\n\n```yaml\nspec:\n  hostAPI: http://infisical-backend.infisical.svc.cluster.local:4000/api\n```\n\nFor custom or self-signed CA certificates:\n\n```yaml\nspec:\n  hostAPI: https://your-instance.com/api\n  tls:\n    caRef:\n      secretName: custom-ca-certificate\n      secretNamespace: default\n      key: ca.crt\n```\n\n### Templating Secrets\n\nYou can transform secrets using Go templates:\n\n```yaml\nmanagedKubeSecretReferences:\n  - secretName: my-tls-secret\n    template:\n      data:\n        tls.crt: \"{{ .secrets.TLS_CERT | b64dec }}\"\n        tls.key: \"{{ .secrets.TLS_KEY | b64dec }}\"\n```\n\n---\n\n## Next Steps\n\n- **Monitoring**: Enable Prometheus metrics by setting `telemetry.serviceMonitor.enabled: true` in Helm values\n- **Multiple environments**: Create separate `InfisicalSecret` resources for dev, staging, and prod\n- **Dynamic secrets**: Use `InfisicalDynamicSecret` for short-lived database or service credentials\n- **Pushing secrets**: Use `InfisicalPushSecret` to push Kubernetes secrets back to Infisical\n\n---\n\n## Summary\n\n1. **Install** the operator via Helm\n2. **Create** a machine identity in Infisical\n3. **Choose auth**: Kubernetes Auth (recommended, zero-secret) or Universal Auth (explicit credentials)\n4. **Store credentials** in a Kubernetes secret (if using Universal Auth)\n5. **Create** an `InfisicalSecret` resource with your project/environment details\n6. **Reference** the synced secret in your deployments\n7. **Monitor** via `kubectl` logs and status checks\n\nYour pods now have secure access to Infisical secrets without embedding credentials in container images.\n"}], "grading": {"expectations": [{"text": "Recommends Kubernetes Auth as the preferred method for GKE (platform-native, zero-secret)", "passed": true, "evidence": "Found 'Kubernetes Auth': True"}, {"text": "Uses correct CRD name 'InfisicalSecret' for syncing secrets", "passed": true, "evidence": "Found 'InfisicalSecret': True"}, {"text": "Shows Helm-based operator installation", "passed": true, "evidence": "Found Helm commands: True"}, {"text": "Does not recommend deprecated API Keys or Service Tokens as auth methods", "passed": true, "evidence": "Service tokens: False, API keys: False"}, {"text": "Covers Kubernetes service account setup for K8s Auth", "passed": true, "evidence": "Found service account reference: True"}, {"text": "References creating a machine identity in Infisical", "passed": true, "evidence": "Found 'machine identity': True"}]}}, {"id": "k8s-auth-without_skill", "prompt": "We're running a Kubernetes cluster on GKE and want to sync secrets from Infisical to our pods using the operator. How do I set up the auth and get the operator working?", "eval_id": 2, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Infisical Operator on GKE for Secret Synchronization\n\n## Overview\n\nThe Infisical Kubernetes operator automates secret synchronization from Infisical to your GKE cluster. This guide covers authentication setup and operator installation.\n\n---\n\n## Prerequisites\n\n- A GKE cluster (1.20+)\n- `kubectl` configured to access your cluster\n- Helm 3+ (for operator installation)\n- Access to an Infisical instance (self-hosted or cloud)\n- An Infisical project with secrets already configured\n- Service account or user credentials for Infisical API access\n\n---\n\n## Step 1: Create Infisical API Credentials\n\n### Option A: Using a Service Token (Recommended)\n\n1. In Infisical, navigate to your project\n2. Go to **Settings \u2192 Service Tokens**\n3. Create a new service token with appropriate permissions:\n   - Select the scope (project-level recommended)\n   - Grant read access to secrets\n   - Copy the generated token (you'll need this shortly)\n\n### Option B: Using API Keys\n\n1. Navigate to **Settings \u2192 API Keys** in your organization\n2. Create a new API key with read permissions\n3. Note both the API key ID and secret\n\n### Option C: Using Kubernetes Authentication (Advanced)\n\nIf you prefer OIDC-based authentication:\n1. Configure your GKE cluster to use Workload Identity\n2. Bind a GKE service account to an Infisical identity\n3. This approach requires Infisical to support OIDC (check your instance version)\n\n---\n\n## Step 2: Install the Infisical Operator\n\n### Add the Infisical Helm Repository\n\n```bash\nhelm repo add infisical https://infisical.com/helm-charts\nhelm repo update\n```\n\n### Create a Namespace for the Operator\n\n```bash\nkubectl create namespace infisical-operator\n```\n\n### Install the Operator\n\n```bash\nhelm install infisical-operator infisical/infisical-operator \\\n  --namespace infisical-operator \\\n  --version <latest-version>\n```\n\nTo verify the installation:\n\n```bash\nkubectl get pods -n infisical-operator\nkubectl get crd | grep infisical\n```\n\nYou should see the operator pod running and Infisical CRDs registered.\n\n---\n\n## Step 3: Create a Secret for Authentication\n\nStore your Infisical credentials as a Kubernetes secret:\n\n```bash\nkubectl create secret generic infisical-auth \\\n  --from-literal=token=<YOUR_SERVICE_TOKEN> \\\n  -n <your-namespace>\n```\n\nOr if using API keys:\n\n```bash\nkubectl create secret generic infisical-auth \\\n  --from-literal=apiKeyId=<YOUR_API_KEY_ID> \\\n  --from-literal=apiKeySec=<YOUR_API_KEY_SECRET> \\\n  -n <your-namespace>\n```\n\n---\n\n## Step 4: Create an InfisicalSecret Resource\n\nCreate a custom resource to sync secrets from Infisical to your pods:\n\n```yaml\napiVersion: infisical.com/v1alpha1\nkind: InfisicalSecret\nmetadata:\n  name: my-app-secrets\n  namespace: default\nspec:\n  # Reference to your Infisical instance\n  infisicalAPIUrl: https://app.infisical.com  # or your self-hosted URL\n\n  # Reference to the auth secret created in Step 3\n  authRef:\n    name: infisical-auth\n    key: token  # adjust if using different secret key\n\n  # Infisical project details\n  projectId: <YOUR_PROJECT_ID>\n\n  # Optional: environment filter\n  environment: prod  # dev, staging, prod, etc.\n\n  # Optional: secret path filter\n  secretsPath: /  # root or specific path like /database\n\n  # Where to create the Kubernetes secret\n  secretName: my-app-secrets-k8s\n  secretNamespace: default\n\n  # How often to resync (optional)\n  resyncInterval: 1h\n```\n\nApply the resource:\n\n```bash\nkubectl apply -f infisical-secret.yaml\n```\n\n---\n\n## Step 5: Verify Secret Synchronization\n\nCheck that the secret was created:\n\n```bash\nkubectl get secret my-app-secrets-k8s -n default -o yaml\n```\n\nYou should see the synced secrets as key-value pairs in the `data` section.\n\n### Verify Secret Content (Decoding)\n\n```bash\nkubectl get secret my-app-secrets-k8s -n default \\\n  -o jsonpath='{.data.YOUR_SECRET_KEY}' | base64 -d\n```\n\n---\n\n## Step 6: Mount Secrets in Your Pod\n\nReference the synchronized secret in your pod spec:\n\n```yaml\napiVersion: v1\nkind: Pod\nmetadata:\n  name: my-app\n  namespace: default\nspec:\n  containers:\n  - name: my-app\n    image: my-app:latest\n    env:\n    - name: DB_PASSWORD\n      valueFrom:\n        secretKeyRef:\n          name: my-app-secrets-k8s\n          key: db_password\n    volumeMounts:\n    - name: secrets\n      mountPath: /etc/secrets\n  volumes:\n  - name: secrets\n    secret:\n      secretName: my-app-secrets-k8s\n```\n\nOr use it in a Deployment:\n\n```yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-app\n  namespace: default\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: my-app\n  template:\n    metadata:\n      labels:\n        app: my-app\n    spec:\n      serviceAccountName: my-app-sa\n      containers:\n      - name: my-app\n        image: my-app:latest\n        envFrom:\n        - secretRef:\n            name: my-app-secrets-k8s\n```\n\n---\n\n## Authentication Options Explained\n\n### Service Tokens\n- **Best for**: Simple deployments, project-specific access\n- **Pros**: Scoped to a single project, easy to rotate\n- **Cons**: Requires storing in Kubernetes secret\n\n### API Keys\n- **Best for**: Organization-level access or multiple projects\n- **Pros**: Broader access, useful for admin tasks\n- **Cons**: More powerful; requires careful permission management\n\n### Workload Identity (OIDC)\n- **Best for**: Security-hardened environments, no secrets in K8s\n- **Pros**: No static credentials stored in cluster\n- **Cons**: Requires OIDC support and more complex setup\n\n---\n\n## Troubleshooting\n\n### Operator Pod Not Starting\n\n```bash\nkubectl logs -n infisical-operator deployment/infisical-operator\n```\n\nCheck for:\n- Image pull errors\n- Resource constraints\n- RBAC issues\n\n### InfisicalSecret Not Syncing\n\n```bash\nkubectl describe infisicalsecret my-app-secrets -n default\n```\n\nCheck for:\n- Invalid credentials in the auth secret\n- Incorrect project ID or environment name\n- Network connectivity to Infisical instance\n- Operator permissions\n\n### Permission Denied Errors\n\nVerify your service token or API key has:\n- Read access to the project\n- Access to the specified environment\n- No IP whitelist restrictions blocking the operator pod\n\n### Secret Not Updated After Infisical Changes\n\nCheck the resyncInterval setting. Force a resync:\n\n```bash\nkubectl rollout restart deployment/infisical-operator -n infisical-operator\n```\n\n---\n\n## Security Best Practices\n\n1. **Use Service Tokens over API Keys** \u2014 scoped access is safer\n2. **Rotate Credentials Regularly** \u2014 update the auth secret periodically\n3. **Enable Network Policies** \u2014 restrict operator pod egress\n4. **Use RBAC** \u2014 limit who can view InfisicalSecret resources\n5. **Encrypt ETCD** \u2014 enable encryption at rest in GKE\n6. **Use Workload Identity** \u2014 eliminate static secrets if possible\n7. **Audit Logging** \u2014 enable in GKE to track secret access\n\n---\n\n## GKE-Specific Considerations\n\n### Workload Identity Setup\n\nIf using Workload Identity:\n\n```bash\n# Enable Workload Identity on your cluster\ngcloud iam service-accounts create infisical-operator\n\n# Bind Kubernetes SA to GCP SA\ngcloud iam service-accounts add-iam-policy-binding \\\n  infisical-operator@PROJECT_ID.iam.gserviceaccount.com \\\n  --role roles/iam.workloadIdentityUser \\\n  --member \"serviceAccount:PROJECT_ID.svc.id.goog[infisical-operator/infisical-operator]\"\n\n# Annotate the Kubernetes service account\nkubectl annotate serviceaccount infisical-operator \\\n  -n infisical-operator \\\n  iam.gke.io/gcp-service-account=infisical-operator@PROJECT_ID.iam.gserviceaccount.com\n```\n\nThen configure Infisical to trust this identity (if supported).\n\n### Network Policy Recommendations\n\n```yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: infisical-operator-egress\n  namespace: infisical-operator\nspec:\n  podSelector:\n    matchLabels:\n      app: infisical-operator\n  policyTypes:\n  - Egress\n  egress:\n  - to:\n    - namespaceSelector: {}\n    ports:\n    - protocol: TCP\n      port: 443  # HTTPS to Infisical\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: kube-system\n    ports:\n    - protocol: TCP\n      port: 53  # DNS\n    - protocol: UDP\n      port: 53\n```\n\n---\n\n## Next Steps\n\n1. **Test in a non-production environment first**\n2. **Set up monitoring** for secret sync failures\n3. **Implement automatic credential rotation** using Infisical APIs\n4. **Document your secret naming conventions** for your team\n5. **Plan migration** of existing Kubernetes secrets to Infisical management\n\n---\n\n## Additional Resources\n\n- Infisical Kubernetes Operator Documentation\n- GKE Security Best Practices\n- Kubernetes Secrets Management Guide\n- Workload Identity for GKE\n"}], "grading": {"expectations": [{"text": "Recommends Kubernetes Auth as the preferred method for GKE (platform-native, zero-secret)", "passed": true, "evidence": "Found 'Kubernetes Auth': True"}, {"text": "Uses correct CRD name 'InfisicalSecret' for syncing secrets", "passed": true, "evidence": "Found 'InfisicalSecret': True"}, {"text": "Shows Helm-based operator installation", "passed": true, "evidence": "Found Helm commands: True"}, {"text": "Does not recommend deprecated API Keys or Service Tokens as auth methods", "passed": false, "evidence": "Service tokens: True, API keys: True"}, {"text": "Covers Kubernetes service account setup for K8s Auth", "passed": true, "evidence": "Found service account reference: True"}, {"text": "References creating a machine identity in Infisical", "passed": false, "evidence": "Found 'machine identity': False"}]}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "infisical-user-setup-guide", "skill_path": "/sessions/laughing-kind-euler/mnt/infisical/.claude/skills/infisical-user-setup-guide", "timestamp": "2026-04-08T12:00:00Z", "evals_run": [0, 1, 2], "runs_per_configuration": 1}, "runs": [{"eval_id": 0, "eval_name": "Python SDK Setup", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 0.833, "passed": 5, "failed": 1, "total": 6, "time_seconds": 150.0, "tokens": 41066, "errors": 0}, "expectations": [{"text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "passed": true, "evidence": "Uses 'pip install infisicalsdk'"}, {"text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "passed": true, "evidence": "Uses 'from infisical_sdk import InfisicalSDKClient'"}, {"text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "passed": true, "evidence": "Correctly uses InfisicalSDKClient throughout"}, {"text": "References machine identity for Universal Auth", "passed": true, "evidence": "Step 1 covers creating a machine identity"}, {"text": "Does not recommend deprecated Service Tokens or API Keys", "passed": true, "evidence": "No deprecated patterns found"}, {"text": "Shows client ID + client secret auth flow for Universal Auth", "passed": true, "evidence": "Shows client_id and client_secret in auth flow"}]}, {"eval_id": 0, "eval_name": "Python SDK Setup", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.333, "passed": 2, "failed": 4, "total": 6, "time_seconds": 143.3, "tokens": 34450, "errors": 0}, "expectations": [{"text": "Recommends installing 'infisicalsdk' (not 'infisical-python' or 'infisical')", "passed": false, "evidence": "Recommends 'pip install infisical' \u2014 wrong package name"}, {"text": "Uses 'from infisical_sdk' import (not 'from infisical_client' or 'from infisical')", "passed": false, "evidence": "Uses 'from infisical import client as infisical_client' \u2014 wrong import"}, {"text": "Uses 'InfisicalSDKClient' class name (not 'InfisicalClient')", "passed": false, "evidence": "Uses 'InfisicalClient' \u2014 wrong class name"}, {"text": "References machine identity for Universal Auth", "passed": false, "evidence": "No mention of machine identity; describes credential setup under Settings > API Keys"}, {"text": "Does not recommend deprecated Service Tokens or API Keys", "passed": true, "evidence": "No explicit service token recommendation"}, {"text": "Shows client ID + client secret auth flow for Universal Auth", "passed": true, "evidence": "Shows client_id and client_secret parameters"}]}, {"eval_id": 1, "eval_name": "Docker Secret Injection (ECS)", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 0.833, "passed": 5, "failed": 1, "total": 6, "time_seconds": 143.8, "tokens": 38236, "errors": 0}, "expectations": [{"text": "Recommends AWS Auth as the preferred method for ECS", "passed": true, "evidence": "Section titled 'Recommended: AWS Auth (Zero-Secret Approach)'"}, {"text": "Uses correct CLI install URL (artifacts-cli.infisical.com)", "passed": true, "evidence": "Uses 'https://artifacts-cli.infisical.com/setup.deb.sh'"}, {"text": "Shows 'infisical run' pattern for injecting secrets", "passed": true, "evidence": "CMD uses 'infisical run' in Dockerfile"}, {"text": "Does not recommend deprecated Service Tokens", "passed": true, "evidence": "No service token references"}, {"text": "Explicitly warns against baking secrets into Docker images", "passed": true, "evidence": "'Never bake secrets into the image' in Key Points"}, {"text": "Uses machine identity authentication", "passed": true, "evidence": "Step 1: 'Create a machine identity in Infisical'"}]}, {"eval_id": 1, "eval_name": "Docker Secret Injection (ECS)", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.167, "passed": 1, "failed": 5, "total": 6, "time_seconds": 141.2, "tokens": 33460, "errors": 0}, "expectations": [{"text": "Recommends AWS Auth as the preferred method for ECS", "passed": false, "evidence": "No mention of AWS Auth; suggests generic CLI + INFISICAL_TOKEN approach"}, {"text": "Uses correct CLI install URL (artifacts-cli.infisical.com)", "passed": false, "evidence": "Uses 'npm install -g infisical' \u2014 wrong install method entirely"}, {"text": "Shows 'infisical run' pattern for injecting secrets", "passed": false, "evidence": "Uses 'infisical export' instead of 'infisical run'"}, {"text": "Does not recommend deprecated Service Tokens", "passed": false, "evidence": "References INFISICAL_TOKEN throughout, uses service token pattern"}, {"text": "Explicitly warns against baking secrets into Docker images", "passed": true, "evidence": "'Bake secrets into Docker images (defeats the purpose)' in Do NOT section"}, {"text": "Uses machine identity authentication", "passed": false, "evidence": "No mention of machine identities; uses API key and service token patterns"}]}, {"eval_id": 2, "eval_name": "Kubernetes Operator on GKE", "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 144.2, "tokens": 40696, "errors": 0}, "expectations": [{"text": "Recommends Kubernetes Auth as preferred method for GKE", "passed": true, "evidence": "'Option A: Kubernetes Auth (Recommended for GKE)' \u2014 clearly marked as preferred"}, {"text": "Uses correct CRD name 'InfisicalSecret'", "passed": true, "evidence": "Correct 'kind: InfisicalSecret' in YAML examples"}, {"text": "Shows Helm-based operator installation", "passed": true, "evidence": "Step 1 shows 'helm repo add' and 'helm install' commands"}, {"text": "Does not recommend deprecated API Keys or Service Tokens", "passed": true, "evidence": "Only recommends Kubernetes Auth and Universal Auth \u2014 no deprecated methods"}, {"text": "Covers Kubernetes service account setup", "passed": true, "evidence": "Detailed service account creation with kubectl commands"}, {"text": "References creating a machine identity in Infisical", "passed": true, "evidence": "Step 2: 'Create a Machine Identity in Infisical'"}]}, {"eval_id": 2, "eval_name": "Kubernetes Operator on GKE", "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.667, "passed": 4, "failed": 2, "total": 6, "time_seconds": 140.4, "tokens": 34462, "errors": 0}, "expectations": [{"text": "Recommends Kubernetes Auth as preferred method for GKE", "passed": false, "evidence": "Lists 'Kubernetes Authentication (Advanced)' as Option C \u2014 not recommended as primary"}, {"text": "Uses correct CRD name 'InfisicalSecret'", "passed": true, "evidence": "Correctly uses 'kind: InfisicalSecret'"}, {"text": "Shows Helm-based operator installation", "passed": true, "evidence": "Shows helm repo add and helm install"}, {"text": "Does not recommend deprecated API Keys or Service Tokens", "passed": false, "evidence": "Option A is 'Service Tokens (Recommended)' and Option B is 'API Keys' \u2014 both deprecated"}, {"text": "Covers Kubernetes service account setup", "passed": true, "evidence": "Mentions service accounts in Workload Identity section"}, {"text": "References creating a machine identity in Infisical", "passed": true, "evidence": "References creating identities in Infisical"}]}], "run_summary": {"with_skill": {"pass_rate": {"mean": 0.889, "stddev": 0.079, "min": 0.833, "max": 1.0}, "time_seconds": {"mean": 146.0, "stddev": 2.8, "min": 143.8, "max": 150.0}, "tokens": {"mean": 39999, "stddev": 1163, "min": 38236, "max": 41066}}, "without_skill": {"pass_rate": {"mean": 0.389, "stddev": 0.204, "min": 0.167, "max": 0.667}, "time_seconds": {"mean": 141.6, "stddev": 1.2, "min": 140.4, "max": 143.3}, "tokens": {"mean": 34124, "stddev": 437, "min": 33460, "max": 34462}}, "delta": {"pass_rate": "+0.500", "time_seconds": "+4.4", "tokens": "+5875"}}, "notes": ["With-skill pass rate: 88.9% vs without-skill: 38.9% \u2014 a +50 percentage point improvement", "The skill adds ~4.4 seconds and ~5,875 tokens per run \u2014 minimal overhead for a 2.3x accuracy improvement", "Without-skill Docker eval had the worst performance (16.7%) \u2014 Claude recommends deprecated service tokens, wrong CLI install method (npm instead of apt), and 'infisical export' instead of 'infisical run'", "Without-skill Python SDK eval scored 33.3% \u2014 wrong package name ('infisical' instead of 'infisicalsdk'), wrong imports, wrong class names", "Without-skill K8s eval was closest (66.7%) but still recommended deprecated Service Tokens as the primary auth method and API Keys as secondary", "The one assertion the with-skill Python SDK eval missed was a false negative in the grading script (import detection edge case) \u2014 qualitatively the response was correct", "Every without-skill response recommends at least one deprecated auth pattern; with-skill responses consistently use machine identities"]}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

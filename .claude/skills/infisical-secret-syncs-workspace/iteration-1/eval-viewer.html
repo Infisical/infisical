@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "infisical-secret-syncs", "runs": [{"id": "eval-0-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Infisical Secret Syncs to AWS Secrets Manager\n\nGreat! You're going to automatically push secrets from Infisical to AWS Secrets Manager in **us-east-1**. Your app will read those secrets using the AWS SDK. Here's a complete walkthrough of what you need to configure.\n\n## Overview\n\nSecret Syncs in Infisical automatically push secrets from your Infisical projects to third-party services. Once configured, **Infisical becomes your single source of truth** \u2014 any changes to secrets in Infisical automatically propagate to AWS Secrets Manager.\n\n---\n\n## Step 1: Create an AWS App Connection\n\nBefore you can sync secrets, you need to create an authenticated connection to AWS. This is a one-time setup that you can reuse for multiple syncs.\n\n### Prerequisites\n- AWS account with IAM permissions to create access keys\n- Infisical admin/owner access to your organization\n\n### What Permissions AWS Needs\n\nYour AWS IAM user or role needs **Secret Sync** permissions. At minimum:\n- `secretsmanager:CreateSecret`\n- `secretsmanager:UpdateSecret`\n- `secretsmanager:DeleteSecret`\n- `secretsmanager:DescribeSecret`\n- `secretsmanager:GetSecretValue`\n- `secretsmanager:ListSecrets`\n- `secretsmanager:TagResource`\n\nOptionally, if using KMS encryption:\n- `kms:Decrypt`\n- `kms:Encrypt`\n- `kms:GenerateDataKey`\n\n### Steps to Create the Connection\n\n1. In Infisical, go to **Organization Settings** \u2192 **App Connections** (or **Integrations**)\n2. Click **Add Connection**\n3. Select **AWS Secrets Manager**\n4. Enter your AWS credentials:\n   - **Access Key ID** (from your IAM user)\n   - **Secret Access Key** (from your IAM user)\n5. Name the connection (e.g., `AWS Prod` or `AWS Staging`)\n6. Click **Save**\n\nYour connection is now ready to use for multiple syncs.\n\n---\n\n## Step 2: Create the Secret Sync\n\nNow you'll create the actual sync from Infisical to AWS Secrets Manager.\n\n### Navigate to Secret Syncs\n\n1. Open your Infisical **Project**\n2. Go to **Integrations** \u2192 **Secret Syncs** tab\n3. Click **Add Sync** (or **+ Create Sync**)\n\n### Configure the Source (Infisical)\n\nThis tells Infisical which secrets to sync.\n\n| Setting | What to Enter |\n|---------|---------------|\n| **Environment** | The environment slug you want to sync from (e.g., `prod`, `staging`, `dev`) |\n| **Secret Path** | The folder path containing your secrets (e.g., `/` for all secrets, or `/api-keys` for a specific folder) |\n\n**Example:** If you want to sync all production secrets, select `Environment: prod` and `Secret Path: /`.\n\n### Configure the Destination (AWS)\n\nThis tells Infisical where and how to store secrets in AWS.\n\n| Setting | What to Enter |\n|---------|---------------|\n| **AWS Connection** | Select the App Connection you just created |\n| **Region** | `us-east-1` (as you specified) |\n| **Mapping Behavior** | Choose one: <br> **one-to-one** (recommended): Each Infisical secret becomes a separate secret in AWS. Example: secret `DATABASE_URL` in Infisical \u2192 secret `DATABASE_URL` in AWS Secrets Manager. <br> **many-to-one**: All secrets are packed into a single AWS secret as a JSON object. Example: `{\"DATABASE_URL\": \"...\", \"API_KEY\": \"...\"}` in one secret. Use this if your app reads one large JSON secret. |\n| **Secret Name** | Only needed for many-to-one. Give the AWS secret a name like `infisical/app-secrets` |\n\n**Most common:** Use **one-to-one** mapping, which is simpler and lets your app read individual secrets via the AWS SDK.\n\n---\n\n## Step 3: Configure Sync Options\n\nThese settings control initial behavior and ongoing sync management.\n\n### Initial Sync Behavior\n\nWhat happens on the very first sync:\n\n| Option | Use Case |\n|--------|----------|\n| **Overwrite Destination** | You're starting fresh. Any secrets currently in AWS that aren't in Infisical will be deleted. \u2705 **Recommended for new projects.** |\n| **Import (Prioritize Infisical)** | You have existing secrets in AWS. Import them into Infisical, but Infisical values win if there's a conflict. |\n| **Import (Prioritize AWS)** | You have existing secrets in AWS. Import them into Infisical, but AWS values win if there's a conflict. Use this if you're migrating and want to preserve existing AWS values. |\n\n### Key Schema (Strongly Recommended)\n\nA template that transforms secret names to prevent accidental overwrites.\n\n**Template:** `INFISICAL_{{secretKey}}`\n\n**Example:** Your Infisical secret `DATABASE_URL` becomes `INFISICAL_DATABASE_URL` in AWS.\n\n**Why:** Prevents Infisical from managing secrets it didn't create. If you have other secrets in AWS managed by other tools, this keeps them safe from accidental deletion.\n\n**How Your App Uses It:** When reading from AWS, use the transformed name:\n```python\nimport boto3\n\nclient = boto3.client('secretsmanager', region_name='us-east-1')\nsecret = client.get_secret_value(SecretId='INFISICAL_DATABASE_URL')\nvalue = secret['SecretString']\n```\n\nOr with the AWS SDK in Node.js:\n```javascript\nconst { SecretsManagerClient, GetSecretValueCommand } = require(\"@aws-sdk/client-secrets-manager\");\n\nconst client = new SecretsManagerClient({ region: \"us-east-1\" });\nconst command = new GetSecretValueCommand({ SecretId: \"INFISICAL_DATABASE_URL\" });\nconst response = await client.send(command);\nconsole.log(response.SecretString);\n```\n\n### Optional: KMS Encryption\n\nIf you want AWS to encrypt secrets with a KMS key:\n\n1. Have your KMS key ID or alias ready (e.g., `arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012` or alias `alias/my-key`)\n2. Ensure your AWS IAM user has `kms:Encrypt` and `kms:GenerateDataKey` permissions\n3. Enter the key in the **KMS Key** field\n\n### Optional: Tags\n\nAdd AWS tags to help organize and manage secrets:\n- **Tags:** Key-value pairs that appear on all synced secrets (e.g., `Environment: prod`, `Owner: team-name`)\n- **Sync Secret Metadata as Tags:** If enabled, Infisical-specific metadata becomes tags too\n\n### Auto-Sync (Default: Enabled)\n\n- **Enabled** \u2705: Any change to secrets in Infisical automatically syncs to AWS within seconds\n- **Disabled**: Syncs only happen when you manually trigger them. Use for tightly controlled environments.\n\n### Disable Secret Deletion\n\n- **Disabled** (default): If you delete a secret in Infisical, it's also deleted from AWS\n- **Enabled**: Deleting secrets in Infisical won't delete them in AWS. Use if you manage some secrets outside Infisical\n\n---\n\n## Step 4: Review & Create\n\n1. **Sync Name:** Give your sync a meaningful name (e.g., `Prod to AWS us-east-1`)\n2. Review all settings\n3. Click **Create Sync**\n\nThe first sync will run immediately. Check the sync logs to confirm all secrets were pushed to AWS.\n\n---\n\n## Verifying Your Setup\n\n### In AWS Console\n\n1. Go to **AWS Secrets Manager** \u2192 **us-east-1**\n2. You should see secrets with names matching your key schema (e.g., `INFISICAL_DATABASE_URL`, `INFISICAL_API_KEY`)\n3. Click on a secret to verify the value matches Infisical\n\n### From Your Application\n\nTest with your AWS SDK code:\n\n**Python (boto3):**\n```python\nimport boto3\n\nclient = boto3.client('secretsmanager', region_name='us-east-1')\nresponse = client.get_secret_value(SecretId='INFISICAL_DATABASE_URL')\nprint(response['SecretString'])  # Should print your database URL\n```\n\n**Node.js (AWS SDK v3):**\n```javascript\nconst { SecretsManagerClient, GetSecretValueCommand } = require(\"@aws-sdk/client-secrets-manager\");\n\nconst client = new SecretsManagerClient({ region: \"us-east-1\" });\nconst command = new GetSecretValueCommand({ SecretId: \"INFISICAL_DATABASE_URL\" });\nconst response = await client.send(command);\nconsole.log(JSON.parse(response.SecretString));\n```\n\n---\n\n## Common Gotchas & Best Practices\n\n### 1. **Mapping Behavior is AWS-Specific**\n   - AWS Secrets Manager is unique in offering **one-to-one** and **many-to-one** mapping\n   - Most other services use one-to-one mapping\n   - Choose carefully \u2014 you can't change it after sync creation without recreating\n\n### 2. **Network Access**\n   - Infisical's servers need network access to reach AWS Secrets Manager\n   - If you're behind a firewall, whitelist Infisical's IP ranges\n\n### 3. **Infisical Is the Source of Truth**\n   - Once sync is active, manual changes to secrets in AWS may get overwritten on the next sync\n   - Always make changes in Infisical, not AWS\n\n### 4. **Key Schema Prevents Conflicts**\n   - Strongly recommend using `INFISICAL_{{secretKey}}` to namespace your secrets\n   - Prevents accidental deletion of unrelated secrets in AWS\n\n### 5. **Test Before Going to Production**\n   - Create a sync to a dev or staging environment first\n   - Verify that secrets sync correctly and your app can read them\n   - Then configure the production sync\n\n### 6. **Monitor Sync Status**\n   - Check the sync logs in Infisical regularly for errors\n   - AWS can rate-limit Secrets Manager API calls \u2014 if you see throttling, contact AWS Support\n\n### 7. **Deletion Protection**\n   - Enable **Disable Secret Deletion** if you have other services managing secrets in AWS\n   - This prevents Infisical from accidentally deleting unrelated secrets\n\n---\n\n## Example: Complete Setup Walkthrough\n\nLet's say you're syncing production secrets to AWS:\n\n1. **App Connection Created:** `AWS Production`\n   - Access Key: `AKIAIOSFODNN7EXAMPLE`\n   - Secret: `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`\n\n2. **Secret Sync Created:** `Prod to AWS us-east-1`\n   - **Source:** Environment: `prod`, Path: `/`\n   - **Destination:** Region: `us-east-1`, Mapping: `one-to-one`\n   - **Sync Options:**\n     - Initial Behavior: `Overwrite Destination`\n     - Key Schema: `INFISICAL_{{secretKey}}`\n     - Auto-Sync: Enabled\n     - Disable Deletion: Enabled (optional, for safety)\n\n3. **Infisical Secrets:**\n   - `DATABASE_URL` \u2192 AWS: `INFISICAL_DATABASE_URL`\n   - `API_KEY` \u2192 AWS: `INFISICAL_API_KEY`\n   - `JWT_SECRET` \u2192 AWS: `INFISICAL_JWT_SECRET`\n\n4. **Your App Reads Secrets:**\n   ```python\n   import boto3\n   \n   client = boto3.client('secretsmanager', region_name='us-east-1')\n   \n   db_url = client.get_secret_value(SecretId='INFISICAL_DATABASE_URL')['SecretString']\n   api_key = client.get_secret_value(SecretId='INFISICAL_API_KEY')['SecretString']\n   ```\n\n---\n\n## What's Next?\n\n- **Monitor syncs:** Set up alerts in AWS CloudWatch to notify you of secret access\n- **Rotate credentials:** Periodically rotate AWS IAM credentials used for the App Connection\n- **Scale:** If you need syncs to multiple regions or environments, create additional syncs (one per environment/region combination)\n- **Automate deployments:** Use Infisical's API to update secrets in CI/CD pipelines\n\nYou're all set! Infisical will now automatically keep your AWS Secrets Manager in sync with your source of truth.\n"}], "grading": {"expectations": [{"text": "Mentions App Connection as a prerequisite for the sync", "passed": true, "evidence": "\"Before you can sync secrets, you need to create an authenticated connection to AWS. This is a one-time setup\" and \"Step 1: Create an AWS App Connection\""}, {"text": "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM", "passed": true, "evidence": "Explicitly states 'Mapping Behavior' with options: one-to-one (Each Infisical secret becomes a separate secret in AWS) and many-to-one (All secrets packed into a single AWS secret as a JSON object)"}, {"text": "Recommends or mentions Key Schema for scoping managed secrets", "passed": true, "evidence": "\"Key Schema (Strongly Recommended)\" section with template \"INFISICAL_{{secretKey}}\" and explanation 'Prevents Infisical from managing secrets it didn't create'"}, {"text": "Explains initial sync behavior options (overwrite vs import)", "passed": true, "evidence": "\"Initial Sync Behavior\" table with Overwrite Destination, Import (Prioritize Infisical), and Import (Prioritize AWS) options clearly explained"}, {"text": "Mentions region configuration for the AWS destination", "passed": true, "evidence": "\"Region\" field mentioned: 'us-east-1 (as you specified)' in the configuration table"}, {"text": "References auto-sync capability (secrets propagate on change)", "passed": true, "evidence": "\"Auto-Sync (Default: Enabled)\" section states 'Any change to secrets in Infisical automatically syncs to AWS within seconds'"}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}, "timing": {"total_duration_seconds": 36.8}}}, {"id": "eval-0-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up AWS Secrets Manager Syncing in Infisical\n\nThis guide walks you through configuring Infisical to automatically sync your secrets to AWS Secrets Manager in the us-east-1 region.\n\n## Overview\n\nInfisical provides a **Secret Syncing** feature that allows you to push secrets from your Infisical project to external secret management systems, including AWS Secrets Manager. Once configured, changes to secrets in Infisical can be automatically synced to AWS SM, where your application can retrieve them using the AWS SDK.\n\n## Prerequisites\n\nBefore you begin, ensure you have:\n\n1. **An active Infisical organization and project** where your secrets are stored\n2. **AWS Account** with permissions to create and manage secrets in Secrets Manager\n3. **AWS Credentials** with appropriate permissions (we'll discuss the required IAM policy below)\n4. **Admin or sufficient permissions** in your Infisical organization to configure secret syncing\n\n## Step 1: Prepare AWS IAM Credentials\n\nInfisical needs AWS credentials to authenticate and sync secrets to AWS Secrets Manager. You have two options:\n\n### Option A: Create a Dedicated IAM User (Recommended)\n\n1. Go to AWS IAM Console \u2192 **Users** \u2192 **Create user**\n2. Give it a descriptive name (e.g., `infisical-secret-sync`)\n3. Create an **Access Key** (store the Access Key ID and Secret Access Key securely)\n4. Attach an inline policy with the following permissions:\n\n```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"secretsmanager:CreateSecret\",\n        \"secretsmanager:UpdateSecret\",\n        \"secretsmanager:PutSecretValue\",\n        \"secretsmanager:GetSecretValue\",\n        \"secretsmanager:DescribeSecret\",\n        \"secretsmanager:ListSecrets\"\n      ],\n      \"Resource\": \"arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:*\"\n    }\n  ]\n}\n```\n\nReplace `ACCOUNT_ID` with your AWS account ID. This policy allows Infisical to create, read, and update secrets in us-east-1.\n\n### Option B: Use an IAM Role with STS Assume Role\n\nIf you prefer not to store long-lived credentials, you can use AWS STS with an assume role. Infisical will assume the role and use temporary credentials. This requires additional setup in AWS but is more secure for production deployments.\n\n## Step 2: Configure the Secret Sync in Infisical\n\n### Access Secret Syncing\n\n1. Log in to **Infisical**\n2. Navigate to your **Project**\n3. Go to **Project Settings** \u2192 **Secret Syncing** (or **Integrations**)\n4. Look for **AWS Secrets Manager** and click **Add Integration** or **Connect**\n\n### Configure AWS Connection\n\nYou'll see a form to configure the AWS connection. Fill in:\n\n- **AWS Region**: `us-east-1`\n- **AWS Access Key ID**: Paste the access key from Step 1\n- **AWS Secret Access Key**: Paste the secret key from Step 1\n\nAlternatively, if using assume role:\n- **AWS Region**: `us-east-1`\n- **Role ARN**: ARN of the role you created for Infisical to assume\n- **External ID** (optional): If your role requires an external ID for assume role\n\nClick **Test Connection** to verify credentials are correct.\n\n## Step 3: Create a Secret Sync Destination\n\nOnce the AWS integration is connected, you need to specify what gets synced:\n\n1. In the Secret Syncing section, click **Create New Sync** or **Add Destination**\n2. Select **AWS Secrets Manager** as the destination type\n3. Configure:\n   - **Source Environment**: Select the Infisical environment containing your secrets (e.g., Production)\n   - **Destination Secret Name**: Specify how secrets should be named in AWS SM. For example:\n     - Use a path like `infisical/my-app/` as a prefix\n     - Infisical will create secrets named `infisical/my-app/SECRET_NAME` in AWS SM\n   - **Sync Behavior**: \n     - **Automatic**: Sync immediately whenever a secret changes in Infisical\n     - **Manual**: Sync only when you explicitly trigger it\n\n## Step 4: Map Secrets\n\nDepending on your Infisical version, you may need to specify which secrets to sync:\n\n1. **Sync all secrets**: Select this option to sync every secret in the environment to AWS SM\n2. **Selective sync**: Choose specific secrets to sync (useful if you only want certain secrets in AWS SM)\n\nEach secret in Infisical will create a corresponding secret in AWS Secrets Manager with:\n- **Name**: The secret path you configured (e.g., `infisical/my-app/DB_PASSWORD`)\n- **Value**: The encrypted secret value from Infisical\n- **Type**: SecureString (for JSON) or String (for key-value pairs)\n\n## Step 5: Configure Secret Format (If Needed)\n\nInfisical allows you to control how secrets are formatted when synced:\n\n- **Key-Value Pairs**: Individual environment variables are synced as separate AWS secrets\n- **JSON Format**: All secrets are synced as a single JSON object in one AWS secret\n\nChoose based on how your app reads them from AWS SM.\n\n## Step 6: Test the Sync\n\n1. After configuring, click **Sync Now** or **Test Sync** to trigger an initial sync\n2. Check the **Sync Logs** in Infisical to verify success\n3. Go to AWS Secrets Manager console in us-east-1 and verify your secrets appear there\n\nYou should see secrets like:\n- `infisical/my-app/API_KEY`\n- `infisical/my-app/DB_PASSWORD`\n- etc.\n\n## Step 7: Configure Your Application\n\nOnce secrets are synced to AWS Secrets Manager, your application can retrieve them:\n\n### Using the AWS SDK (Node.js Example)\n\n```javascript\nconst { SecretsManagerClient, GetSecretValueCommand } = require(\"@aws-sdk/client-secrets-manager\");\n\nconst client = new SecretsManagerClient({ region: \"us-east-1\" });\n\nasync function getSecret(secretName) {\n  const command = new GetSecretValueCommand({\n    SecretId: secretName\n  });\n  \n  const response = await client.send(command);\n  return response.SecretString;\n}\n\n// Usage\nconst apiKey = await getSecret(\"infisical/my-app/API_KEY\");\n```\n\n### Using AWS CLI for Testing\n\n```bash\naws secretsmanager get-secret-value \\\n  --secret-id infisical/my-app/API_KEY \\\n  --region us-east-1\n```\n\n## Step 8: Monitor and Update\n\n- **Automatic Syncing**: If you enabled automatic sync, any changes to secrets in Infisical will push to AWS SM\n- **Audit Logs**: Check both Infisical and AWS CloudTrail for sync operations\n- **Versioning**: AWS Secrets Manager automatically versions secrets, so you can rollback if needed\n\n## Important Considerations\n\n### Security Best Practices\n\n1. **Rotate Credentials**: Periodically rotate the AWS IAM user's access keys\n2. **Use Least Privilege**: The IAM policy above is minimal. Restrict resources further if possible (e.g., specific secret name patterns)\n3. **Enable AWS Secrets Manager Encryption**: Ensure secrets are encrypted with AWS KMS (you can specify a KMS key in the sync config if Infisical supports it)\n4. **Enable MFA Delete**: Consider enabling MFA Delete on your secrets for extra protection\n\n### Naming Conventions\n\n- Use consistent naming conventions for secrets in Infisical (e.g., `API_KEY`, `DB_PASSWORD`)\n- AWS SM doesn't support special characters in names \u2014 Infisical will sanitize these\n- Avoid secrets that are extremely large (AWS SM has limits on secret size)\n\n### Sync Frequency and Timing\n\n- If using automatic sync, be aware that syncing happens within seconds to minutes of a change\n- For high-volume applications, consider using manual sync to batch updates\n- Check Infisical's sync logs if secrets don't appear in AWS SM within expected time\n\n### Handling Existing AWS Secrets\n\n- If a secret already exists in AWS SM with the same name, Infisical will update it\n- Secrets deleted from Infisical are **not automatically deleted** from AWS SM (for safety)\n- You'll need to manually manage cleanup of old secrets in AWS SM\n\n## Troubleshooting\n\n### Connection Fails\n- Verify AWS credentials are correct\n- Check that the IAM user has the required permissions\n- Ensure the us-east-1 region is specified correctly\n- Verify the credentials haven't been rotated/revoked\n\n### Secrets Don't Appear in AWS SM\n- Check Infisical's sync logs for error messages\n- Verify the destination naming scheme is correct\n- Confirm the IAM policy allows `secretsmanager:CreateSecret` and `secretsmanager:PutSecretValue`\n- Check AWS CloudTrail for any permission denials\n\n### Secrets Are Out of Sync\n- Manually trigger a sync in Infisical\n- Check if automatic sync is enabled\n- Review logs to see if any secrets failed to sync\n\n## Next Steps\n\n- **Rotation Policies**: Consider setting up secret rotation in AWS SM for sensitive credentials\n- **Multi-Region**: If you need secrets in multiple AWS regions, you can configure additional syncs\n- **Other Integrations**: Infisical supports syncing to other platforms (HashiCorp Vault, GitHub, etc.)\n- **Infrastructure as Code**: Use Terraform/CloudFormation to manage secret sync configurations programmatically\n\n## Summary\n\nTo sync secrets from Infisical to AWS Secrets Manager in us-east-1:\n\n1. Create AWS IAM credentials with Secrets Manager permissions\n2. Connect your AWS account to Infisical via the Secret Syncing interface\n3. Create a sync destination pointing to AWS Secrets Manager in us-east-1\n4. Configure secret naming and sync behavior\n5. Test the sync and verify secrets appear in AWS SM\n6. Update your application to read from AWS Secrets Manager using the AWS SDK\n\nYour secrets are now automatically synced and available to your application through AWS SDK calls.\n"}], "grading": {"expectations": [{"text": "Mentions App Connection as a prerequisite for the sync", "passed": false, "evidence": "Never explicitly mentions 'App Connection'. Instead discusses 'AWS Integration' and 'AWS connection' but not the Infisical-specific 'App Connection' concept"}, {"text": "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM", "passed": false, "evidence": "The response discusses 'Destination Secret Name' as a path prefix (e.g., 'infisical/my-app/') but does not mention one-to-one vs many-to-one mapping behavior as AWS SM-specific options"}, {"text": "Recommends or mentions Key Schema for scoping managed secrets", "passed": false, "evidence": "Uses 'Destination Secret Name' with path prefix approach, but does not mention 'Key Schema' template or the INFISICAL_{{secretKey}} pattern"}, {"text": "Explains initial sync behavior options (overwrite vs import)", "passed": false, "evidence": "Mentions 'Sync Behavior' (Automatic/Manual) but does not discuss initial sync behavior options like 'overwrite vs import'"}, {"text": "Mentions region configuration for the AWS destination", "passed": true, "evidence": "\"AWS Region: us-east-1\" is mentioned in the configuration section"}, {"text": "References auto-sync capability (secrets propagate on change)", "passed": true, "evidence": "\"Automatic Syncing: If you enabled automatic sync, any changes to secrets in Infisical will push to AWS SM\""}], "summary": {"passed": 2, "failed": 4, "total": 6, "pass_rate": 0.33}, "timing": {"total_duration_seconds": 34.7}}}, {"id": "eval-1-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Infisical Secret Syncs to GitHub Actions\n\nYou're taking exactly the right approach by thinking about protecting your existing GitHub secrets during migration. Here's how to set this up properly while preserving your current secrets.\n\n## The Challenge\n\nGitHub repository secrets have a key limitation: **GitHub doesn't support importing secrets back into Infisical**. This means you can't directly read your existing GitHub secrets to merge them with Infisical. However, we can work around this with careful planning.\n\n## Recommended Migration Strategy\n\n### Step 1: Inventory Your Existing Secrets\n\nBefore creating any sync, document all your existing GitHub secrets (organization, repository, and environment level). You'll need these in Infisical before syncing.\n\n**Why this matters:** When you create a sync with \"Overwrite Destination\" as the initial behavior (the only option GitHub supports), Infisical becomes the source of truth. Any secrets not in Infisical at sync time risk being overwritten or deleted.\n\n### Step 2: Set Up Your GitHub App Connection\n\nCreate an **App Connection** to authenticate Infisical with GitHub:\n\n1. Go to **Project Settings \u2192 App Connections** (or navigate through your organization settings)\n2. Create a new GitHub App connection by authenticating with your GitHub account\n3. Grant Infisical permissions to manage repository secrets at your desired scope (organization, repository, or environment)\n\nThis connection is one-time setup and can be reused across multiple syncs.\n\n### Step 3: Add Your Existing Secrets to Infisical\n\nBefore creating any sync, manually add all your existing GitHub secrets into Infisical in the appropriate environment and folder path. This ensures they won't be lost during the initial sync.\n\n**Key point:** Since GitHub doesn't allow importing, you need to populate Infisical proactively. Consider this a data migration step:\n- List all existing GitHub secrets\n- Add them to Infisical in the same environment where you'll sync from\n- Verify they match exactly\n\n### Step 4: Create the Secret Sync\n\nNavigate to **Project \u2192 Integrations \u2192 Secret Syncs** and add a new sync:\n\n#### Source Configuration\n- **Environment:** Select the Infisical environment containing your secrets (e.g., `prod`, `staging`)\n- **Secret Path:** Choose the folder path to sync from (e.g., `/` for all secrets, or `/github` for a subset)\n\n#### Destination Configuration\n\nChoose your GitHub scope:\n\n**For Organization Secrets:**\n- GitHub Connection: Select your App Connection\n- Scope: `organization`\n- Organization Name: Your GitHub org name\n- Visibility: `all-repositories`, `private-repositories` (requires GitHub Pro/Team), or `selected-repositories`\n- Selected Repositories: If you chose `selected-repositories`, specify which repos get access\n\n**For Repository Secrets:**\n- GitHub Connection: Select your App Connection\n- Scope: `repository`\n- Repository: Specify as `owner/repo` (e.g., `myorg/my-repo`)\n\n**For Environment Secrets (Recommended for CI/CD):**\n- GitHub Connection: Select your App Connection\n- Scope: `environment`\n- Repository: `owner/repo`\n- Environment: The GitHub environment name (e.g., `production`, `staging`, `development`)\n\n#### Sync Options\n\n- **Initial Sync Behavior:** Select `overwrite-destination` (this is the only option GitHub supports)\n- **Key Schema:** Highly recommended \u2014 use something like `INFISICAL_{{secretKey}}` to prefix your synced secrets. This clearly marks which secrets are managed by Infisical and prevents accidental overwrites of manually-managed secrets.\n  - Example: Infisical key `DATABASE_URL` becomes `INFISICAL_DATABASE_URL` in GitHub\n  - **Benefit:** You can keep manual secrets in GitHub alongside Infisical-managed ones\n- **Auto-Sync Enabled:** Leave on (default) so changes in Infisical automatically propagate to GitHub\n- **Disable Secret Deletion:** Consider enabling this if you have secrets in GitHub that you're not syncing from Infisical yet. This prevents Infisical from deleting them.\n\n### Step 5: Test and Verify\n\nAfter creating the sync:\n\n1. Verify the initial sync completed successfully in the sync logs\n2. Check GitHub to confirm your secrets are present with the correct key names\n3. Modify a secret in Infisical and watch it update in GitHub (if auto-sync is enabled)\n4. Test your CI/CD workflow with the new secrets\n\n## Best Practices for Your Scenario\n\n### 1. Use Key Schemas to Coexist\nSince you already have GitHub secrets and don't want to lose them, a key schema is essential:\n- Mark Infisical-managed secrets with a consistent prefix (e.g., `INFISICAL_`)\n- Keep your existing secrets as-is in GitHub\n- Both coexist without conflict\n\n### 2. Choose the Right Scope\n- **Organization secrets** \u2014 for shared secrets across many repos\n- **Repository secrets** \u2014 for repo-specific CI/CD secrets\n- **Environment secrets** \u2014 recommended for GitHub Actions CI/CD (allows different secrets for production vs. staging deployments)\n\nEnvironment secrets are ideal if your workflows are structured around GitHub environments (e.g., `production`, `staging`, `development`).\n\n### 3. Handle Manual Secrets\nIf you have secrets in GitHub that you'll never add to Infisical:\n- Enable **Disable Secret Deletion** on the sync\n- This prevents Infisical from deleting manually-managed secrets\n- You'll need to manage those outside Infisical\n\n### 4: Plan Your Migration\n- Start with one sync (e.g., to `production` environment) as a pilot\n- Verify it works with your GitHub Actions workflows\n- Then expand to other environments or scopes\n- This reduces risk and lets you iterate\n\n## Common Gotchas for GitHub Syncs\n\n| Issue | Solution |\n|-------|----------|\n| \"Initial sync deleted my secrets!\" | Pre-populate Infisical with all existing secrets before syncing |\n| Secrets don't appear in GitHub Actions | Verify the environment exists in GitHub and the repo has access. Check sync logs for errors. |\n| Can't import secrets to Infisical | GitHub blocks reading secrets via API. You must manually add them to Infisical or use a data migration tool. |\n| Environment secrets require a repo secret too | Not always \u2014 but if your workflows reference both, keep them in sync manually or use a consistent schema. |\n| Synced secrets show as `***` in GitHub UI | Expected behavior \u2014 GitHub hides secret values in the UI for security. The workflow can still access them. |\n\n## Putting It All Together: Step-by-Step Checklist\n\n- [ ] Document all existing GitHub secrets (org, repo, environment level)\n- [ ] Create an App Connection to GitHub in Infisical (one-time)\n- [ ] Add all existing GitHub secrets to Infisical in the target environment/path\n- [ ] Create a Secret Sync with:\n  - Source: Your Infisical environment + path\n  - Destination: GitHub scope (org/repo/environment) + your App Connection\n  - Initial Sync Behavior: `overwrite-destination`\n  - Key Schema: `INFISICAL_{{secretKey}}` (or similar prefix)\n  - Auto-Sync: Enabled\n  - Disable Secret Deletion: Consider enabling if you have non-Infisical secrets\n- [ ] Verify sync completed successfully\n- [ ] Check GitHub secrets are present with correct names\n- [ ] Test your CI/CD workflow\n- [ ] Monitor the sync logs for any issues\n\nOnce the first sync is working, you can create additional syncs for other repositories or GitHub environments as needed.\n\n## Next Steps\n\nIf you have questions about:\n- Setting up the GitHub App Connection\n- Organizing your secrets in Infisical (folder structure, environment names)\n- Using Infisical's Secret Imports feature to consolidate secrets from multiple paths\n- Handling sensitive values during migration\n\nFeel free to ask, and we can walk through those setup details. Good luck with your migration!\n"}], "grading": {"expectations": [{"text": "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)", "passed": true, "evidence": "\"GitHub repository secrets have a key limitation: GitHub doesn't support importing secrets back into Infisical. This means you can't directly read your existing GitHub secrets\" and \"overwrite-destination as the initial behavior (the only option GitHub supports)\""}, {"text": "Recommends backing up or manually exporting existing GitHub secrets before syncing", "passed": true, "evidence": "\"Step 1: Inventory Your Existing Secrets - Before creating any sync, document all your existing GitHub secrets\" and \"manually add all your existing GitHub secrets into Infisical\""}, {"text": "Mentions repository scope option for GitHub sync destination", "passed": true, "evidence": "Lists GitHub scope options: 'For Repository Secrets: Scope: repository, Repository: Specify as owner/repo'"}, {"text": "Mentions App Connection prerequisite (GitHub Connection)", "passed": true, "evidence": "\"Step 2: Set Up Your GitHub App Connection\" and \"Create an App Connection to authenticate Infisical with GitHub\""}, {"text": "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets", "passed": true, "evidence": "\"Key Schema: Highly recommended \u2014 use something like INFISICAL_{{secretKey}}\" and \"Disable Secret Deletion: Consider enabling this if you have secrets in GitHub that you're not syncing from Infisical yet\""}, {"text": "Warns that existing GitHub secrets not in Infisical may be overwritten", "passed": true, "evidence": "\"Any secrets not in Infisical at sync time risk being overwritten or deleted\" and \"overwrite-destination as the initial behavior (the only option GitHub supports)\""}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}, "timing": {"total_duration_seconds": 33.1}}}, {"id": "eval-1-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Setting Up Infisical Secret Syncing to GitHub Actions\n\n## Overview\n\nInfisical provides first-class integration with GitHub to automatically sync secrets from your Infisical workspace to GitHub Actions secrets. This guide covers the setup process while preserving your existing GitHub secrets.\n\n## Prerequisites\n\n- An Infisical workspace with secrets configured\n- A GitHub repository with existing secrets you want to keep\n- Repository administrator permissions\n- An Infisical service token or personal API token with sufficient permissions\n\n## Architecture & How It Works\n\nInfisical's GitHub integration syncs secrets in one direction: **Infisical \u2192 GitHub**. Here's how it works:\n\n1. **Native GitHub Integration**: Infisical connects to GitHub via OAuth or personal access token authentication\n2. **Selective Syncing**: You configure which Infisical secrets sync to which GitHub repository\n3. **Sync Management**: The integration continuously keeps GitHub secrets in sync with Infisical, though you configure which secrets to include\n4. **Secret Naming**: Secrets maintain their names during sync (customizable if needed)\n\n## Step-by-Step Setup\n\n### 1. Prepare Your Infisical Workspace\n\nFirst, organize your secrets in Infisical:\n\n- Navigate to your Infisical workspace and select the environment you want to sync (e.g., `production`, `staging`)\n- Identify which secrets should be synced to GitHub Actions\n- Consider using labels or folders to organize secrets that belong to specific projects\n\n### 2. Create an Integration in Infisical\n\nIn your Infisical workspace:\n\n1. Go to **Project Settings** \u2192 **Integrations** (or similar, depending on your version)\n2. Look for the **GitHub** integration option\n3. Click **Create Integration**\n4. Select **GitHub Actions** as the target platform\n\n### 3. Authenticate with GitHub\n\nInfisical will prompt you to authenticate:\n\n**Option A: OAuth (Recommended)**\n- Click \"Authorize with GitHub\"\n- You'll be redirected to GitHub to approve the Infisical application\n- Grant permissions for repository secrets management\n- Return to Infisical to complete the connection\n\n**Option B: Personal Access Token**\n- Generate a GitHub Personal Access Token with these scopes:\n  - `repo` (full control of private repositories)\n  - `admin:repo_hook` (for webhook management, if applicable)\n- Paste the token into Infisical's integration setup\n- This approach gives you more control and is easier to audit\n\n### 4. Configure Which Secrets to Sync\n\nAfter authentication:\n\n1. **Select Your Repository**: Choose the GitHub repository where you want secrets synced\n2. **Choose Secrets**: Select which Infisical secrets to include in the sync\n   - You can sync specific secrets by name\n   - Or sync all secrets from a particular environment\n3. **Name Mapping** (optional): Infisical typically preserves secret names, but some integrations allow renaming\n4. **Sync Trigger**: Configure whether this happens:\n   - Automatically on every Infisical secret change\n   - On demand via webhook or API\n   - On a scheduled interval\n\n### 5. Preserve Existing GitHub Secrets\n\n**Critical**: Infisical's GitHub integration typically **only manages secrets it creates**. Here's how to protect existing secrets:\n\n1. **Before syncing**: Document your existing GitHub secrets\n   - Go to your GitHub repo \u2192 **Settings** \u2192 **Secrets and variables** \u2192 **Actions**\n   - Take screenshots or export a list of all current secrets\n2. **Sync Only New Secrets**: When configuring the Infisical integration, only include secrets that are either:\n   - New secrets created in Infisical specifically for this sync\n   - Non-conflicting names with your existing GitHub secrets\n3. **Verify No Overwrites**: Confirm with Infisical's documentation or support that the sync will not delete/overwrite unmanaged secrets\n   - Most modern versions are safe \u2014 they only touch secrets they manage\n4. **Test in a Safe Environment**: First, test the integration on a test repository before syncing to production\n\n### 6. Verify the Sync\n\nOnce configured:\n\n1. Create or update a secret in Infisical\n2. Wait for the sync to trigger (or trigger manually if required)\n3. Go to your GitHub repo's **Settings** \u2192 **Secrets and variables** \u2192 **Actions**\n4. Verify the secret appears in GitHub with the correct value\n5. Check that your pre-existing secrets are still present and unchanged\n\n## Best Practices\n\n### Security\n\n- **Use service tokens**: If integrating Infisical with CI/CD systems, use a dedicated Infisical service token rather than a personal API token\n- **Limit secret scope**: Only sync secrets that GitHub Actions actually needs\n- **Audit regularly**: Periodically review which secrets are being synced\n- **Rotate tokens**: GitHub Personal Access Tokens used for authentication should be rotated periodically\n\n### Maintenance\n\n- **Naming conventions**: Use consistent naming across Infisical and GitHub to keep things organized\n  - Example: `DB_PASSWORD`, `API_KEY_PRODUCTION`, `SLACK_TOKEN`\n- **Environment separation**: Keep separate Infisical environments for dev/staging/production, and sync each to the appropriate GitHub branch/environment\n- **Documentation**: Document which Infisical secrets map to which GitHub secrets in your team's wiki or README\n\n### GitHub Actions Usage\n\nOnce synced, use the secrets in your GitHub Actions workflows:\n\n```yaml\nname: Deploy\n\non:\n  push:\n    branches:\n      - main\n\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      \n      - name: Run deploy script\n        env:\n          DATABASE_URL: ${{ secrets.DATABASE_URL }}\n          API_KEY: ${{ secrets.API_KEY }}\n        run: |\n          npm run deploy\n```\n\nGitHub Actions automatically injects synced secrets as environment variables without logging them.\n\n## Troubleshooting\n\n### Secrets Not Appearing in GitHub\n\n1. **Check sync configuration**: Verify the integration is enabled and the correct secrets are selected\n2. **Verify authentication**: Confirm the GitHub Personal Access Token or OAuth connection is still valid\n3. **Check permissions**: Ensure your GitHub account has admin rights on the repository\n4. **Review logs**: Check Infisical's integration logs (usually in **Project Settings** \u2192 **Integrations** \u2192 view integration details)\n5. **Manual trigger**: If async syncing is configured, manually trigger a sync to test\n\n### Conflict with Existing Secrets\n\n- If a secret with the same name exists in both Infisical and GitHub:\n  - Most integrations will **update the GitHub secret** with the Infisical value\n  - Some integrations may fail or skip the sync\n  - Check Infisical's documentation for conflict resolution behavior\n  - To be safe, use unique naming schemes if you're keeping secrets separate\n\n### GitHub Personal Access Token Expired\n\n- Regenerate a new token with the same scopes\n- Update the token in your Infisical integration settings\n- Re-test the sync\n\n### Integration Disconnected\n\n- If Infisical loses connection to GitHub:\n  - Secrets stop syncing until reconnected\n  - Existing GitHub secrets are **not deleted** \u2014 they persist\n  - Re-authenticate by updating the integration settings\n  - Resume syncing\n\n## Advanced Setup: Multiple Environments\n\nFor a production workflow with multiple environments:\n\n```\nInfisical Workspace:\n\u251c\u2500\u2500 development\n\u2502   \u251c\u2500\u2500 DB_HOST: dev.example.com\n\u2502   \u251c\u2500\u2500 API_KEY: dev-key-123\n\u2502   \u2514\u2500\u2500 (other dev secrets)\n\u251c\u2500\u2500 staging\n\u2502   \u251c\u2500\u2500 DB_HOST: staging.example.com\n\u2502   \u251c\u2500\u2500 API_KEY: staging-key-456\n\u2502   \u2514\u2500\u2500 (other staging secrets)\n\u2514\u2500\u2500 production\n    \u251c\u2500\u2500 DB_HOST: prod.example.com\n    \u251c\u2500\u2500 API_KEY: prod-key-789\n    \u2514\u2500\u2500 (other prod secrets)\n\nGitHub Integrations:\n\u251c\u2500\u2500 my-repo (develop branch) \u2192 syncs from Infisical/development\n\u251c\u2500\u2500 my-repo (staging branch) \u2192 syncs from Infisical/staging\n\u2514\u2500\u2500 my-repo (main branch) \u2192 syncs from Infisical/production\n```\n\nConfigure separate Infisical integrations for each environment to maintain environment isolation.\n\n## Rollback & Disaster Recovery\n\nIf something goes wrong:\n\n1. **Secrets are preserved in Infisical**: Your Infisical secrets are the source of truth \u2014 nothing is deleted when you disconnect\n2. **GitHub secrets persist**: Disconnecting the integration does not delete secrets already synced to GitHub\n3. **Manual recovery**: If needed, you can manually re-add secrets to GitHub from Infisical using the UI or GitHub CLI\n4. **Audit trail**: Infisical maintains audit logs of which secrets were synced and when\n\n## Conclusion\n\nSetting up Infisical-to-GitHub secret syncing is straightforward and safe for your existing secrets. The key is to:\n\n1. Authenticate Infisical with GitHub\n2. Configure which secrets to sync\n3. Verify that existing GitHub secrets are preserved\n4. Test in a non-production environment first\n\nOnce running, you'll have a centralized secret management system where changes in Infisical automatically propagate to your CI/CD pipeline in GitHub Actions.\n"}], "grading": {"expectations": [{"text": "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)", "passed": false, "evidence": "Does not explicitly state that GitHub doesn't support importing secrets. Says 'Infisical's GitHub integration typically only manages secrets it creates' but doesn't clearly indicate GitHub API limitations"}, {"text": "Recommends backing up or manually exporting existing GitHub secrets before syncing", "passed": true, "evidence": "\"Before syncing: Document your existing GitHub secrets. Go to your GitHub repo \u2192 Settings \u2192 Secrets and variables \u2192 Actions. Take screenshots or export a list of all current secrets\""}, {"text": "Mentions repository scope option for GitHub sync destination", "passed": true, "evidence": "\"Select Your Repository: Choose the GitHub repository where you want secrets synced\""}, {"text": "Mentions App Connection prerequisite (GitHub Connection)", "passed": false, "evidence": "References 'GitHub integration' and 'Create Integration' but does not use the Infisical-specific term 'App Connection'"}, {"text": "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets", "passed": false, "evidence": "Mentions naming conventions and non-conflicting names, but does not recommend Key Schema template or 'Disable Secret Deletion' feature"}, {"text": "Warns that existing GitHub secrets not in Infisical may be overwritten", "passed": true, "evidence": "\"Before syncing: Document your existing GitHub secrets...Sync Only New Secrets...Verify No Overwrites: Confirm with Infisical's documentation\""}], "summary": {"passed": 3, "failed": 3, "total": 6, "pass_rate": 0.5}, "timing": {"total_duration_seconds": 28.1}}}, {"id": "eval-2-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Azure Key Vault Secret Sync: Underscores and Permissions\n\n## Underscores in Secret Names\n\nYes, this **will cause a change** in your secret names, but it's handled automatically and transparently.\n\n### The Issue\nAzure Key Vault **does not allow underscores in secret names**. When you sync secrets from Infisical to Azure Key Vault, all underscores are automatically converted to hyphens.\n\n**Example mappings:**\n- `DATABASE_URL` \u2192 `DATABASE-URL`\n- `API_KEY` \u2192 `API-KEY`\n- `AWS_SECRET_ACCESS_KEY` \u2192 `AWS-SECRET-ACCESS-KEY`\n\n### Impact\nThis conversion happens automatically during sync, so you don't need to do anything special \u2014 just be aware that:\n1. Your application code that reads secrets from Azure Key Vault should reference the hyphenated names\n2. If you're migrating existing secrets and already have them stored with underscores elsewhere, they'll appear with hyphens in Azure\n3. The conversion is consistent and idempotent \u2014 syncing multiple times produces the same result\n\n### Best Practice\nIf you want to maintain exact control over secret naming or avoid any character transformation, you can use a **key schema** template. For example, setting the key schema to `INFISICAL_{{secretKey}}` would transform names like:\n- `DATABASE_URL` \u2192 `INFISICAL_DATABASE-URL` (underscore still converted to hyphen)\n\nHowever, the underscore-to-hyphen conversion still happens since it's a requirement of Azure Key Vault itself.\n\n---\n\n## Service Principal Permissions\n\nYour service principal (or Azure user account) needs the following **secrets permissions** on the Key Vault:\n\n### Required Permissions\n| Permission | Purpose |\n|-----------|---------|\n| `secrets/list` | List all secrets in the vault (needed to check what exists) |\n| `secrets/get` | Read secret values (for import operations) |\n| `secrets/set` | Create and update secrets (primary operation) |\n| `secrets/recover` | Recover soft-deleted secrets (Azure soft-deletes secrets, so Infisical may need to recover before updating) |\n\n### Recommended Role\n**Key Vault Secrets Officer** \u2014 This built-in Azure role includes all the permissions above and is specifically designed for secret management operations.\n\n### How to Set This Up\n\n1. **If using a service principal:**\n   - Go to your Key Vault in Azure Portal\n   - Access Control (IAM) \u2192 Add role assignment\n   - Select \"Key Vault Secrets Officer\"\n   - Assign to your service principal\n\n2. **If using a user account:**\n   - Same process, but assign to your user identity\n\n3. **Verify permissions:** After assignment, wait 1-2 minutes for permissions to propagate, then test in Infisical when creating the App Connection.\n\n### Why `secrets/recover` Matters\nAzure Key Vault uses soft-delete by default, meaning deleted secrets remain recoverable for a retention period. If Infisical attempts to update a secret that was recently deleted, it needs the `secrets/recover` permission to restore it first before updating. This is a common gotcha \u2014 even if you have `secrets/set`, the sync can fail on a deleted secret without `secrets/recover`.\n\n---\n\n## Setting Up the Sync\n\nOnce your service principal has the correct permissions, here's the workflow:\n\n1. **Create an Azure App Connection** in Infisical with your service principal credentials (client ID, tenant ID, client secret)\n2. **Create a Secret Sync** with:\n   - **Source:** Your Infisical environment and folder path\n   - **Destination:** Select your Key Vault's base URL (e.g., `https://my-vault.vault.azure.net`)\n   - **Key Schema (optional):** Add a prefix if you want to scope which secrets Infisical manages\n   - **Initial Sync Behavior:** Choose `overwrite-destination` if this is a fresh vault, or `import-prioritize-infisical` if you have existing secrets and want Infisical to be the source of truth\n   - **Auto-Sync:** Enabled by default (secrets sync automatically when changed in Infisical)\n\n3. **Test:** Infisical will validate the connection and sync your secrets. Check Azure Key Vault to confirm `DATABASE-URL`, `API-KEY`, etc. appear with hyphens.\n\n---\n\n## Summary\n\n- **Underscores**: Will be converted to hyphens in Azure Key Vault. This is automatic and intentional.\n- **Permissions**: Your service principal needs `secrets/list`, `secrets/get`, `secrets/set`, and `secrets/recover` \u2014 assign the **Key Vault Secrets Officer** role to get all of these at once.\n- **No additional setup needed** beyond standard Azure RBAC configuration.\n\nIf you encounter any permission errors during sync, double-check that the service principal has been assigned the role (roles can take a minute or two to propagate), and verify the Key Vault's access policy doesn't conflict with the role assignment.\n"}], "grading": {"expectations": [{"text": "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)", "passed": true, "evidence": "\"Azure Key Vault does not allow underscores in secret names. When you sync secrets from Infisical to Azure Key Vault, all underscores are automatically converted to hyphens. Example mappings: DATABASE_URL \u2192 DATABASE-URL, API_KEY \u2192 API-KEY\""}, {"text": "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover", "passed": true, "evidence": "Table clearly lists all four permissions: 'secrets/list' (check what exists), 'secrets/get' (read values), 'secrets/set' (create/update), 'secrets/recover' (recover soft-deleted)'"}, {"text": "Recommends Key Vault Secrets Officer role as the appropriate built-in role", "passed": true, "evidence": "\"Recommended Role: Key Vault Secrets Officer \u2014 This built-in Azure role includes all the permissions above and is specifically designed for secret management operations.\""}, {"text": "Explains why secrets/recover is needed (Azure soft-delete behavior)", "passed": true, "evidence": "\"Why secrets/recover Matters: Azure Key Vault uses soft-delete by default, meaning deleted secrets remain recoverable for a retention period. If Infisical attempts to update a secret that was recently deleted, it needs the secrets/recover permission to restore it first before updating.\""}, {"text": "Mentions App Connection prerequisite", "passed": true, "evidence": "\"Create an Azure App Connection in Infisical with your service principal credentials\""}, {"text": "Mentions the vault base URL as a required destination config field", "passed": true, "evidence": "\"Destination: Select your Key Vault's base URL (e.g., https://my-vault.vault.azure.net)\""}], "summary": {"passed": 6, "failed": 0, "total": 6, "pass_rate": 1.0}, "timing": {"total_duration_seconds": 22.7}}}, {"id": "eval-2-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "response.md", "type": "text", "content": "# Syncing Secrets from Infisical to Azure Key Vault\n\n## Secret Naming with Underscores\n\n### The Issue\nYes, you will encounter issues with underscore naming when syncing to Azure Key Vault. Azure Key Vault has strict naming requirements that differ from most secret management systems.\n\n**Azure Key Vault naming constraints:**\n- Only alphanumeric characters (a-z, A-Z, 0-9) and hyphens (-) are permitted\n- Must start with a letter or number\n- Underscores are **not allowed**\n\n### Impact on Your Secrets\nSecret names like `DATABASE_URL` and `API_KEY` will fail validation when attempting to sync to Azure Key Vault. The sync operation will either:\n1. Reject the secrets outright with a validation error\n2. Automatically transform the names (if your sync tool supports this)\n\n### Solutions\n\n**Option 1: Transform During Sync (Recommended)**\nConfigure your Infisical-to-Azure sync to automatically replace underscores with hyphens:\n- `DATABASE_URL` \u2192 `DATABASE-URL`\n- `API_KEY` \u2192 `API-KEY`\n\nMost sync tools provide this transformation option. This keeps your source naming intact while ensuring Azure compliance.\n\n**Option 2: Rename in Infisical**\nUpdate your secret names in Infisical to use hyphens from the start:\n- Rename `DATABASE_URL` to `DATABASE-URL`\n- Rename `API_KEY` to `API-KEY`\n\nThis ensures consistency across all integrations but requires migration effort.\n\n**Option 3: Custom Mapping**\nIf your sync tool supports it, maintain a mapping file that specifies transformation rules for specific secrets. This is useful if you want different naming conventions in different target systems.\n\n### Case Sensitivity Note\nAzure Key Vault treats secret names as case-insensitive for access, but preserves the case you specify. The transformation should maintain readability\u2014using hyphens instead of underscores is the standard practice.\n\n---\n\n## Azure Service Principal Permissions\n\n### Required Roles and Permissions\n\nFor your service principal to successfully sync secrets to Azure Key Vault, it needs the following permissions:\n\n#### 1. **Minimum Built-in Role**\nAssign your service principal the **Key Vault Secrets Officer** role at the Key Vault scope:\n```\nMicrosoft.KeyVault/vaults/secrets/createOrUpdate/action\nMicrosoft.KeyVault/vaults/secrets/delete/action\nMicrosoft.KeyVault/vaults/secrets/backup/action\nMicrosoft.KeyVault/vaults/secrets/restore/action\nMicrosoft.KeyVault/vaults/secrets/purge/action\n```\n\n**Note:** This is the modern preferred role (introduced in 2021). The older \"Contributor\" role also works but grants excessive permissions\u2014avoid it for principle of least privilege.\n\n#### 2. **Detailed Permission Matrix**\n\n| Action | Purpose | Required |\n|--------|---------|----------|\n| `secrets/set` or `secrets/createOrUpdate` | Create or update secrets | **Yes** |\n| `secrets/get` | Read secret values (for verification) | **Optional** but recommended |\n| `secrets/delete` | Remove secrets during sync cleanup | **If sync supports deletion** |\n| `secrets/list` | Enumerate existing secrets | **Optional** (useful for sync validation) |\n| `secrets/backup` | Backup secrets before updates | Optional |\n| `vaults/read` | Access Key Vault metadata | Typically included in role |\n\n#### 3. **Assignment Steps**\n\n1. **Navigate to your Key Vault** in the Azure Portal\n2. **Access Control (IAM)** \u2192 **Add role assignment**\n3. **Role:** Select \"Key Vault Secrets Officer\"\n4. **Members:** Search for and select your service principal (by app ID or name)\n5. **Scope:** Ensure it's set to your specific Key Vault (not subscription-level)\n\n#### 4. **Using Azure CLI**\nIf you prefer automation:\n```bash\naz role assignment create \\\n  --role \"Key Vault Secrets Officer\" \\\n  --assignee <service-principal-object-id> \\\n  --scope /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.KeyVault/vaults/<vault-name>\n```\n\n### Authentication Methods\n\nYour sync process will need to authenticate using one of these methods:\n\n**Option A: Service Principal with Secret**\n```\nTenant ID: <your-azure-tenant-id>\nClient ID: <service-principal-app-id>\nClient Secret: <generated-secret-value>\n```\n\n**Option B: Service Principal with Certificate** (more secure)\nUpload a certificate to your service principal and use it for authentication instead of a secret.\n\n**Option C: Managed Identity** (if running on Azure infrastructure)\nIf your sync process runs on an Azure VM, App Service, or Functions, use a managed identity instead of service principal credentials\u2014it's more secure and requires no secret management.\n\n### Security Best Practices\n\n1. **Principle of Least Privilege:** Use \"Key Vault Secrets Officer\" rather than broader roles like Contributor or Owner\n\n2. **Secret Rotation:** If using a client secret for authentication, rotate it regularly (every 90 days recommended)\n\n3. **Audit & Monitoring:** Enable Azure Key Vault logging and monitoring to track all secret modifications\n\n4. **Network Security:** If possible, restrict Key Vault access to specific IP ranges or use Private Endpoints\n\n5. **Secret Delivery:** Store the service principal credentials securely in your sync environment (e.g., GitHub Secrets, environment variables, or a secrets manager)\u2014never commit them to version control\n\n### Troubleshooting Common Issues\n\n**\"Access Denied\" errors:**\n- Verify the service principal has the \"Key Vault Secrets Officer\" role assigned\n- Confirm the role is scoped to the correct Key Vault (not just the subscription)\n- Check that the service principal's credentials (Client ID, secret) are correct\n\n**\"Invalid secret name\" errors:**\n- This indicates the underscore naming issue described above\u2014transform underscores to hyphens\n- Verify the secret name doesn't start with a number (Azure allows this, but it's uncommon)\n\n**\"Vault access denied\" (even with correct permissions):**\n- Check if the Key Vault has network restrictions (firewall rules) that block your sync source\n- Verify the subscription and tenant IDs are correct\n\n---\n\n## Summary\n\n| Aspect | Recommendation |\n|--------|-----------------|\n| **Underscore handling** | Transform to hyphens during sync (`DATABASE_URL` \u2192 `DATABASE-URL`) |\n| **Service principal role** | \"Key Vault Secrets Officer\" (least privilege) |\n| **Required permission** | `secrets/createOrUpdate` at minimum |\n| **Authentication** | Service principal with secret or certificate |\n| **Best practice** | Use managed identity if running on Azure infrastructure |\n"}], "grading": {"expectations": [{"text": "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)", "passed": true, "evidence": "\"Azure Key Vault naming constraints: Only alphanumeric characters (a-z, A-Z, 0-9) and hyphens (-) are permitted...Underscores are not allowed\""}, {"text": "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover", "passed": false, "evidence": "Lists permissions table but does NOT include secrets/recover. Shows: 'secrets/set or secrets/createOrUpdate', 'secrets/get', 'secrets/delete', 'secrets/list', 'secrets/backup', 'secrets/restore' - missing secrets/recover specifically"}, {"text": "Recommends Key Vault Secrets Officer role as the appropriate built-in role", "passed": true, "evidence": "\"Minimum Built-in Role: Assign your service principal the Key Vault Secrets Officer role\""}, {"text": "Explains why secrets/recover is needed (Azure soft-delete behavior)", "passed": false, "evidence": "Does not mention secrets/recover or explain Azure soft-delete behavior and why recovery permissions are needed"}, {"text": "Mentions App Connection prerequisite", "passed": false, "evidence": "Does not use the term 'App Connection'. Discusses setting up service principal with credentials but not within Infisical's App Connection context"}, {"text": "Mentions the vault base URL as a required destination config field", "passed": false, "evidence": "Does not mention vault base URL as a required field in the destination configuration"}], "summary": {"passed": 2, "failed": 4, "total": 6, "pass_rate": 0.33}, "timing": {"total_duration_seconds": 20.2}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "infisical-secret-syncs", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-04-14T14:22:25Z", "evals_run": [0, 1, 2], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 36.8, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Mentions App Connection as a prerequisite for the sync", "passed": true, "evidence": "\"Before you can sync secrets, you need to create an authenticated connection to AWS. This is a one-time setup\" and \"Step 1: Create an AWS App Connection\""}, {"text": "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM", "passed": true, "evidence": "Explicitly states 'Mapping Behavior' with options: one-to-one (Each Infisical secret becomes a separate secret in AWS) and many-to-one (All secrets packed into a single AWS secret as a JSON object)"}, {"text": "Recommends or mentions Key Schema for scoping managed secrets", "passed": true, "evidence": "\"Key Schema (Strongly Recommended)\" section with template \"INFISICAL_{{secretKey}}\" and explanation 'Prevents Infisical from managing secrets it didn't create'"}, {"text": "Explains initial sync behavior options (overwrite vs import)", "passed": true, "evidence": "\"Initial Sync Behavior\" table with Overwrite Destination, Import (Prioritize Infisical), and Import (Prioritize AWS) options clearly explained"}, {"text": "Mentions region configuration for the AWS destination", "passed": true, "evidence": "\"Region\" field mentioned: 'us-east-1 (as you specified)' in the configuration table"}, {"text": "References auto-sync capability (secrets propagate on change)", "passed": true, "evidence": "\"Auto-Sync (Default: Enabled)\" section states 'Any change to secrets in Infisical automatically syncs to AWS within seconds'"}], "notes": []}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 33.1, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)", "passed": true, "evidence": "\"GitHub repository secrets have a key limitation: GitHub doesn't support importing secrets back into Infisical. This means you can't directly read your existing GitHub secrets\" and \"overwrite-destination as the initial behavior (the only option GitHub supports)\""}, {"text": "Recommends backing up or manually exporting existing GitHub secrets before syncing", "passed": true, "evidence": "\"Step 1: Inventory Your Existing Secrets - Before creating any sync, document all your existing GitHub secrets\" and \"manually add all your existing GitHub secrets into Infisical\""}, {"text": "Mentions repository scope option for GitHub sync destination", "passed": true, "evidence": "Lists GitHub scope options: 'For Repository Secrets: Scope: repository, Repository: Specify as owner/repo'"}, {"text": "Mentions App Connection prerequisite (GitHub Connection)", "passed": true, "evidence": "\"Step 2: Set Up Your GitHub App Connection\" and \"Create an App Connection to authenticate Infisical with GitHub\""}, {"text": "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets", "passed": true, "evidence": "\"Key Schema: Highly recommended \u2014 use something like INFISICAL_{{secretKey}}\" and \"Disable Secret Deletion: Consider enabling this if you have secrets in GitHub that you're not syncing from Infisical yet\""}, {"text": "Warns that existing GitHub secrets not in Infisical may be overwritten", "passed": true, "evidence": "\"Any secrets not in Infisical at sync time risk being overwritten or deleted\" and \"overwrite-destination as the initial behavior (the only option GitHub supports)\""}], "notes": []}, {"eval_id": 2, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 22.7, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)", "passed": true, "evidence": "\"Azure Key Vault does not allow underscores in secret names. When you sync secrets from Infisical to Azure Key Vault, all underscores are automatically converted to hyphens. Example mappings: DATABASE_URL \u2192 DATABASE-URL, API_KEY \u2192 API-KEY\""}, {"text": "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover", "passed": true, "evidence": "Table clearly lists all four permissions: 'secrets/list' (check what exists), 'secrets/get' (read values), 'secrets/set' (create/update), 'secrets/recover' (recover soft-deleted)'"}, {"text": "Recommends Key Vault Secrets Officer role as the appropriate built-in role", "passed": true, "evidence": "\"Recommended Role: Key Vault Secrets Officer \u2014 This built-in Azure role includes all the permissions above and is specifically designed for secret management operations.\""}, {"text": "Explains why secrets/recover is needed (Azure soft-delete behavior)", "passed": true, "evidence": "\"Why secrets/recover Matters: Azure Key Vault uses soft-delete by default, meaning deleted secrets remain recoverable for a retention period. If Infisical attempts to update a secret that was recently deleted, it needs the secrets/recover permission to restore it first before updating.\""}, {"text": "Mentions App Connection prerequisite", "passed": true, "evidence": "\"Create an Azure App Connection in Infisical with your service principal credentials\""}, {"text": "Mentions the vault base URL as a required destination config field", "passed": true, "evidence": "\"Destination: Select your Key Vault's base URL (e.g., https://my-vault.vault.azure.net)\""}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.33, "passed": 2, "failed": 4, "total": 6, "time_seconds": 34.7, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Mentions App Connection as a prerequisite for the sync", "passed": false, "evidence": "Never explicitly mentions 'App Connection'. Instead discusses 'AWS Integration' and 'AWS connection' but not the Infisical-specific 'App Connection' concept"}, {"text": "Correctly identifies mapping behavior options (one-to-one vs many-to-one) which is specific to AWS SM", "passed": false, "evidence": "The response discusses 'Destination Secret Name' as a path prefix (e.g., 'infisical/my-app/') but does not mention one-to-one vs many-to-one mapping behavior as AWS SM-specific options"}, {"text": "Recommends or mentions Key Schema for scoping managed secrets", "passed": false, "evidence": "Uses 'Destination Secret Name' with path prefix approach, but does not mention 'Key Schema' template or the INFISICAL_{{secretKey}} pattern"}, {"text": "Explains initial sync behavior options (overwrite vs import)", "passed": false, "evidence": "Mentions 'Sync Behavior' (Automatic/Manual) but does not discuss initial sync behavior options like 'overwrite vs import'"}, {"text": "Mentions region configuration for the AWS destination", "passed": true, "evidence": "\"AWS Region: us-east-1\" is mentioned in the configuration section"}, {"text": "References auto-sync capability (secrets propagate on change)", "passed": true, "evidence": "\"Automatic Syncing: If you enabled automatic sync, any changes to secrets in Infisical will push to AWS SM\""}], "notes": []}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.5, "passed": 3, "failed": 3, "total": 6, "time_seconds": 28.1, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Correctly states that GitHub does NOT support importing secrets (only overwrite-destination is available)", "passed": false, "evidence": "Does not explicitly state that GitHub doesn't support importing secrets. Says 'Infisical's GitHub integration typically only manages secrets it creates' but doesn't clearly indicate GitHub API limitations"}, {"text": "Recommends backing up or manually exporting existing GitHub secrets before syncing", "passed": true, "evidence": "\"Before syncing: Document your existing GitHub secrets. Go to your GitHub repo \u2192 Settings \u2192 Secrets and variables \u2192 Actions. Take screenshots or export a list of all current secrets\""}, {"text": "Mentions repository scope option for GitHub sync destination", "passed": true, "evidence": "\"Select Your Repository: Choose the GitHub repository where you want secrets synced\""}, {"text": "Mentions App Connection prerequisite (GitHub Connection)", "passed": false, "evidence": "References 'GitHub integration' and 'Create Integration' but does not use the Infisical-specific term 'App Connection'"}, {"text": "Recommends Key Schema or Disable Secret Deletion to protect manually-managed secrets", "passed": false, "evidence": "Mentions naming conventions and non-conflicting names, but does not recommend Key Schema template or 'Disable Secret Deletion' feature"}, {"text": "Warns that existing GitHub secrets not in Infisical may be overwritten", "passed": true, "evidence": "\"Before syncing: Document your existing GitHub secrets...Sync Only New Secrets...Verify No Overwrites: Confirm with Infisical's documentation\""}], "notes": []}, {"eval_id": 2, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.33, "passed": 2, "failed": 4, "total": 6, "time_seconds": 20.2, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Correctly warns that Azure Key Vault converts underscores to hyphens (DATABASE_URL becomes DATABASE-URL)", "passed": true, "evidence": "\"Azure Key Vault naming constraints: Only alphanumeric characters (a-z, A-Z, 0-9) and hyphens (-) are permitted...Underscores are not allowed\""}, {"text": "Lists required permissions: secrets/list, secrets/get, secrets/set, and secrets/recover", "passed": false, "evidence": "Lists permissions table but does NOT include secrets/recover. Shows: 'secrets/set or secrets/createOrUpdate', 'secrets/get', 'secrets/delete', 'secrets/list', 'secrets/backup', 'secrets/restore' - missing secrets/recover specifically"}, {"text": "Recommends Key Vault Secrets Officer role as the appropriate built-in role", "passed": true, "evidence": "\"Minimum Built-in Role: Assign your service principal the Key Vault Secrets Officer role\""}, {"text": "Explains why secrets/recover is needed (Azure soft-delete behavior)", "passed": false, "evidence": "Does not mention secrets/recover or explain Azure soft-delete behavior and why recovery permissions are needed"}, {"text": "Mentions App Connection prerequisite", "passed": false, "evidence": "Does not use the term 'App Connection'. Discusses setting up service principal with credentials but not within Infisical's App Connection context"}, {"text": "Mentions the vault base URL as a required destination config field", "passed": false, "evidence": "Does not mention vault base URL as a required field in the destination configuration"}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 30.8667, "stddev": 7.3105, "min": 22.7, "max": 36.8}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "without_skill": {"pass_rate": {"mean": 0.3867, "stddev": 0.0981, "min": 0.33, "max": 0.5}, "time_seconds": {"mean": 27.6667, "stddev": 7.2597, "min": 20.2, "max": 34.7}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "delta": {"pass_rate": "+0.61", "time_seconds": "+3.2", "tokens": "+0"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

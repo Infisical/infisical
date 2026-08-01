@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "k8s-auth",
+  "prompt": "We're running a Kubernetes cluster on GKE and want to sync secrets from Infisical to our pods using the operator. How do I set up the auth and get the operator working?",
+  "assertions": [
+    {"id": "recommends-k8s-auth", "text": "Recommends Kubernetes Auth as the preferred method for GKE (platform-native, zero-secret)", "type": "content_check"},
+    {"id": "correct-crd-name", "text": "Uses correct CRD name 'InfisicalSecret' for syncing secrets", "type": "keyword_check"},
+    {"id": "helm-install", "text": "Shows Helm-based operator installation", "type": "content_check"},
+    {"id": "no-deprecated-auth", "text": "Does not recommend deprecated API Keys or Service Tokens as auth methods", "type": "content_check"},
+    {"id": "service-account-setup", "text": "Covers Kubernetes service account setup for K8s Auth", "type": "content_check"},
+    {"id": "machine-identity", "text": "References creating a machine identity in Infisical", "type": "content_check"}
+  ]
+}

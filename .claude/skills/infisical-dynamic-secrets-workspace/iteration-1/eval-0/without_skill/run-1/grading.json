@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Mentions need for pre-existing PostgreSQL admin user with CREATE ROLE/GRANT privileges",
+      "passed": true,
+      "evidence": "\"Create a role template for dynamic users...CREATE ROLE infisical_admin LOGIN SUPERUSER PASSWORD...should have minimal permissions needed to create/revoke users\""
+    },
+    {
+      "text": "Correctly identifies Gateway requirement for private VPC access",
+      "passed": false,
+      "evidence": "Discusses 'Infisical in Same VPC', 'Public endpoint', 'AWS Secrets Manager Integration' but never mentions 'Infisical Gateway' specifically as the requirement for private VPC access"
+    },
+    {
+      "text": "Shows correct config fields (host, port, user, password, database name, TTL settings)",
+      "passed": true,
+      "evidence": "Step 3 shows configuration with Host, Port, Username, Password, Database, and Step 4 mentions TTL settings"
+    },
+    {
+      "text": "Mentions customizable SQL creation statements for least-privilege access",
+      "passed": false,
+      "evidence": "References 'Role Name Template' and 'Username Generation' but does not provide custom SQL creation statements with template variables like {{username}}, {{password}}, {{expiration}}"
+    },
+    {
+      "text": "Recommends short TTLs for security",
+      "passed": true,
+      "evidence": "\"Set to 1h (1 hour) for development...Consider 15m (15 minutes) for higher security\""
+    },
+    {
+      "text": "Explains lease lifecycle (generate, renew, revoke/expire)",
+      "passed": true,
+      "evidence": "\"Via Infisical Dashboard: Generate on PostgreSQL source...Step 7: Monitor and Audit...Manually test role deletion: DROP ROLE\""
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "failed": 2,
+    "total": 6,
+    "pass_rate": 0.67
+  },
+  "timing": {
+    "total_duration_seconds": 30.8
+  }
+}

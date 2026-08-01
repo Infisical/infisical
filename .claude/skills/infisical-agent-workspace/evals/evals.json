@@ -1,0 +1,23 @@
+{
+  "skill_name": "infisical-agent",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I need to render my Infisical secrets as a .env file on disk for my Node.js app running in Docker. I want the file to auto-update when secrets change. Show me the full Infisical Agent config file I'd need.",
+      "expected_output": "Complete YAML config with correct structure (infisical, auth, sinks, templates sections), uses listSecrets or listSecretsByProjectSlug template function with correct signature, sets destination-path to .env file, includes polling-interval, mentions execute.command for app restart",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I'm deploying to AWS ECS and want the Infisical Agent to inject secrets as a sidecar container. We're using ECS task roles so I don't want to manage any credentials manually. How do I configure this?",
+      "expected_output": "Uses aws-iam auth type (not universal-auth), correct auth config with identity-id, recommends exit-after-auth for init-style or sidecar pattern, shows ECS task definition pattern with shared volume, correct template with listSecrets function",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need the Infisical Agent to render both static secrets AND dynamic PostgreSQL credentials into a config file. The dynamic credentials should auto-renew before they expire. Show me how to write the template.",
+      "expected_output": "Template uses both listSecrets (or listSecretsByProjectSlug) for static secrets AND dynamicSecret function for Postgres creds, correct dynamicSecret signature with project-slug, env, path, secret-name, and TTL, shows .DB_USERNAME and .DB_PASSWORD fields, mentions auto-renewal behavior, recommends revoke-credentials-on-shutdown: true",
+      "files": []
+    }
+  ]
+}

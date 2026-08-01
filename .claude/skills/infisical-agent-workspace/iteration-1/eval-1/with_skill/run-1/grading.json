@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Uses aws-iam auth type (not universal-auth with client-id/secret)",
+      "passed": true,
+      "evidence": "Auth config shows 'auth: type: \"aws-iam\"' with 'identity-id' field, not universal-auth"
+    },
+    {
+      "text": "Shows correct auth config with identity-id field",
+      "passed": true,
+      "evidence": "Config shows 'identity-id: \"<your-machine-identity-id>\"' with comment 'Paste the ID from Step 1'"
+    },
+    {
+      "text": "Shows ECS task definition pattern with shared volume between agent and app containers",
+      "passed": true,
+      "evidence": "Complete ECS task definition with two containers (infisical-agent and app) sharing 'secrets' volume with mountPoints specified for both"
+    },
+    {
+      "text": "Uses correct template function (listSecrets or listSecretsByProjectSlug) with proper signature",
+      "passed": true,
+      "evidence": "Template uses 'listSecretsByProjectSlug \"my-project\" \"prod\" \"/\"' with proper 3-arg signature"
+    },
+    {
+      "text": "Mentions exit-after-auth option for init-style sidecar pattern",
+      "passed": true,
+      "evidence": "Config shows 'exit-after-auth: true' with comment 'Render once and exit' and separate section 'Optional: Continuous Secret Updates' that shows setting to false"
+    },
+    {
+      "text": "Does not require manually managing any credentials or access keys",
+      "passed": true,
+      "evidence": "Uses AWS IAM authentication through ECS task role - no explicit credential files or keys needed to be managed"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 41.5
+  }
+}

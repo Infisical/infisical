@@ -1,0 +1,43 @@
+{
+  "expectations": [
+    {
+      "text": "Shows complete YAML config with correct top-level sections (infisical, auth, sinks, templates)",
+      "passed": false,
+      "evidence": "Uses different structure with agentVersion, logLevel, auth.machineIdentity, infisicalApiUrl, secretSyncs - not the standard Infisical Agent format with infisical/auth/sinks/templates sections"
+    },
+    {
+      "text": "Uses listSecrets or listSecretsByProjectSlug template function with correct 4-arg signature",
+      "passed": false,
+      "evidence": "Uses generic placeholder syntax 'DATABASE_URL=postgresql://...' but does not show listSecrets or listSecretsByProjectSlug function calls"
+    },
+    {
+      "text": "Uses correct Go template syntax ({{- with ... }} / {{- range . }} / {{ .Key }}={{ .Value }})",
+      "passed": false,
+      "evidence": "Uses simple placeholder syntax '{{ DB_USER }}', '{{ DB_PASSWORD }}' but not Go template with 'with', 'range' control structures"
+    },
+    {
+      "text": "Includes polling-interval configuration for auto-update",
+      "passed": true,
+      "evidence": "Config shows 'pollIntervalSeconds: 60' for polling interval"
+    },
+    {
+      "text": "Includes destination-path pointing to a .env file",
+      "passed": true,
+      "evidence": "Shows 'destination: path: /app/.env'"
+    },
+    {
+      "text": "Mentions execute.command option for triggering app restart on change",
+      "passed": true,
+      "evidence": "Shows 'onSyncSuccess: command: npm restart' and 'onSyncFailure' with alert command"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 3,
+    "total": 6,
+    "pass_rate": 0.5
+  },
+  "timing": {
+    "total_duration_seconds": 43.0
+  }
+}
