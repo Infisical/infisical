@@ -20,6 +20,7 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   const { mutateAsync: enrollMfa, isPending: isVerifying } = useEnrollMfa();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
   const [totp, setTotp] = useState("");
+  const [verificationError, setVerificationError] = useState<string>();
 
   useEffect(() => {
     if (registration?.otpUrl) {
@@ -31,13 +32,15 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
   const manualSecret = registration?.otpUrl?.split("secret=")[1]?.split("&")[0];
 
   const handleVerify = async () => {
+    setVerificationError(undefined);
     try {
       await enrollMfa({ method: MfaMethod.TOTP, totp: totp.trim() });
       createNotification({ text: "Authenticator app configured", type: "success" });
       await onVerified();
     } catch {
       // The mutation's global error handler already surfaces the (more detailed)
-      // failure toast; just swallow here so onVerified isn't called on failure.
+      // failure toast; keep a local signal so the manual Retry action appears.
+      setVerificationError("Invalid code. Please try again.");
     }
   };
 
@@ -66,10 +69,13 @@ const TotpVerify = ({ onVerified }: { onVerified: Props["onVerified"] }) => {
       <VerificationCodeForm
         name="totp-enrollment-code"
         value={totp}
-        onChange={(value) => setTotp(value.replace(/\D/g, "").slice(0, 6))}
+        onChange={(value) => {
+          setTotp(value.replace(/\D/g, "").slice(0, 6));
+          setVerificationError(undefined);
+        }}
         onSubmit={handleVerify}
-        submitLabel="Verify code"
         isPending={isVerifying}
+        error={verificationError}
       />
     </div>
   );

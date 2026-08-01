@@ -5,8 +5,17 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { VerificationCodeForm } from "@app/components/v3";
+import { Button, FormControl, Input } from "@app/components/v2";
+import {
+  Button as V3Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  VerificationCodeForm
+} from "@app/components/v3";
 import { useUser } from "@app/context";
 import {
   useRequestEmailChangeOTP,
@@ -150,13 +159,12 @@ export const ChangeEmailSection = () => {
 
   const isOtpModalOpen = otpStep !== null;
   const otpRecipient = otpStep === "currentEmail" ? (user?.email ?? "") : pendingEmail;
-  const otpSubTitle =
+  const otpDescription =
     otpStep === "currentEmail"
-      ? `Enter the 6-digit code sent to your current email: ${otpRecipient}`
-      : `Enter the 6-digit code sent to your new email: ${otpRecipient}`;
+      ? "Enter the 6-digit code sent to your current email."
+      : "Enter the 6-digit code sent to your new email.";
   const otpTitle =
     otpStep === "currentEmail" ? "Confirm from current email" : "Confirm from new email";
-  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm Email Change";
   const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
   const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
 
@@ -206,20 +214,25 @@ export const ChangeEmailSection = () => {
         </form>
       </div>
 
-      <Modal
-        isOpen={isOtpModalOpen}
+      <Dialog
+        open={isOtpModalOpen}
         onOpenChange={(isOpen) => {
           if (!isOpen) closeOtpModal();
         }}
       >
-        <ModalContent title={otpTitle} subTitle={otpSubTitle}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{otpTitle}</DialogTitle>
+            <DialogDescription>
+              {otpDescription} <span className="font-medium text-foreground">{otpRecipient}</span>
+            </DialogDescription>
+          </DialogHeader>
           <VerificationCodeForm
             key={otpStep ?? "closed"}
             name="email-change-verification-code"
             value={typedOTP}
             onChange={setTypedOTP}
             onSubmit={onOtpSubmit}
-            submitLabel={otpButtonLabel}
             isPending={isOtpSubmitLoading}
           >
             {otpStep === "newEmail" && (
@@ -229,19 +242,14 @@ export const ChangeEmailSection = () => {
                 completed.
               </p>
             )}
-            <div className="flex justify-center">
-              <Button
-                type="button"
-                colorSchema="secondary"
-                variant="outline"
-                onClick={closeOtpModal}
-              >
+            <DialogFooter>
+              <V3Button type="button" variant="outline" onClick={closeOtpModal}>
                 Cancel
-              </Button>
-            </div>
+              </V3Button>
+            </DialogFooter>
           </VerificationCodeForm>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
