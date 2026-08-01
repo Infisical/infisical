@@ -27,6 +27,7 @@ import {
   ResetUserPasswordV2DTO,
   SendMfaTokenDTO,
   SetupPasswordDTO,
+  SignupOnboardingDTO,
   TOauthTokenExchangeDTO,
   UserAgentType,
   VerifyMfaTokenDTO,
@@ -144,6 +145,12 @@ export const useCompleteAccountSignup = () => {
   return useMutation({
     mutationFn: completeAccountSignup
   });
+};
+
+/** Fire-and-forget onboarding telemetry; callers must never block the signup flow on it. */
+export const submitSignupOnboarding = async (details: SignupOnboardingDTO) => {
+  const { data } = await apiRequest.post("/api/v3/signup/onboarding", details);
+  return data;
 };
 
 export const useSendMfaToken = () => {

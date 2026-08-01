@@ -502,6 +502,7 @@ export const routes = rootRoute("root.tsx", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
+    route("/organizations/onboarding", "organization/SignupOnboardingPage/route.tsx"),
     route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
     route("/organization/oauth-consent", "organization/OauthConsentPage/route.tsx"),
     middleware("inject-org-details.tsx", [

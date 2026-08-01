@@ -26,5 +26,13 @@ type TCompleteAccountAlias = TCompleteAccountBase & {
 
 export type TCompleteAccountDTO = TCompleteAccountEmail | TCompleteAccountAlias;
 
+export type TRecordSignupOnboardingDTO = {
+  userId: string;
+  orgId: string;
+  selectedProducts?: string[];
+  launchDestination?: string;
+  attributionSource?: string;
+};
+
 // Keep old type as alias for any remaining references
 export type TCompleteAccountSignupDTO = TCompleteAccountEmail;

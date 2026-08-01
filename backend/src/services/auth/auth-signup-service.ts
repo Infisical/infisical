@@ -1,4 +1,4 @@
-import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TSignupOnboardingResponsesUpdate } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -17,7 +17,8 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TAuthDALFactory } from "./auth-dal";
 import { extractBearerToken } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
-import { CompleteAccountType, TCompleteAccountDTO } from "./auth-signup-type";
+import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
+import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
 import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
 
 type TAuthSignupDep = {
@@ -30,6 +31,7 @@ type TAuthSignupDep = {
   smtpService: TSmtpService;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+  signupOnboardingResponseDAL: Pick<TSignupOnboardingResponseDALFactory, "upsert">;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -44,7 +46,8 @@ export const authSignupServiceFactory = ({
   orgService,
   orgDAL,
   loginService,
-  emailDomainDAL
+  emailDomainDAL,
+  signupOnboardingResponseDAL
 }: TAuthSignupDep) => {
   // First step of signup to send OTP email
   const beginEmailSignupProcess = async (email: string): Promise<{ cooldownSeconds: number }> => {
@@ -311,9 +314,35 @@ export const authSignupServiceFactory = ({
     };
   };
 
+  const recordOnboardingResponse = async ({
+    userId,
+    orgId,
+    selectedProducts,
+    launchDestination,
+    attributionSource
+  }: TRecordSignupOnboardingDTO) => {
+    const answers: TSignupOnboardingResponsesUpdate = {};
+    if (selectedProducts) {
+      answers.selectedProducts = selectedProducts;
+      answers.isExploring = selectedProducts.length === 0;
+    }
+    if (launchDestination) answers.launchDestination = launchDestination;
+    if (attributionSource) answers.attributionSource = attributionSource;
+    if (!Object.keys(answers).length) return;
+
+    // Answers arrive across separate requests; merge them into one row per signup.
+    await signupOnboardingResponseDAL.upsert(
+      [{ userId, orgId, ...answers }],
+      ["userId", "orgId"],
+      undefined,
+      Object.keys(answers) as (keyof TSignupOnboardingResponsesUpdate)[]
+    );
+  };
+
   return {
     beginEmailSignupProcess,
     verifyEmailSignup,
-    completeAccount
+    completeAccount,
+    recordOnboardingResponse
   };
 };

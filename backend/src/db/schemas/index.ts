@@ -254,6 +254,7 @@ export * from "./secret-versions-v2";
 export * from "./secrets";
 export * from "./secrets-v2";
 export * from "./service-tokens";
+export * from "./signup-onboarding-responses";
 export * from "./slack-integrations";
 export * from "./ssh-certificate-authorities";
 export * from "./ssh-certificate-authority-secrets";
