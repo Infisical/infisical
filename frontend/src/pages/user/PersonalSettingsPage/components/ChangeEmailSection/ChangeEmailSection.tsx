@@ -16,6 +16,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Field,
@@ -106,15 +107,7 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    try {
-      await requestEmailChangeOTP({ newEmail });
-    } catch {
-      createNotification({
-        text: "Failed to send an email-change verification code.",
-        type: "error"
-      });
-      return;
-    }
+    await requestEmailChangeOTP({ newEmail });
 
     setPendingEmail(newEmail);
     setTypedOTP("");
@@ -184,13 +177,12 @@ export const ChangeEmailSection = () => {
 
   const isOtpModalOpen = otpStep !== null;
   const otpRecipient = otpStep === "currentEmail" ? (user?.email ?? "") : pendingEmail;
-  const otpSubTitle =
+  const otpDescription =
     otpStep === "currentEmail"
-      ? `Enter the 6-digit code sent to your current email: ${otpRecipient}`
-      : `Enter the 6-digit code sent to your new email: ${otpRecipient}`;
+      ? "Enter the 6-digit code sent to your current email."
+      : "Enter the 6-digit code sent to your new email.";
   const otpTitle =
     otpStep === "currentEmail" ? "Confirm from current email" : "Confirm from new email";
-  const otpButtonLabel = otpStep === "currentEmail" ? "Confirm" : "Confirm email change";
   const isOtpSubmitLoading = otpStep === "currentEmail" ? isVerifyingCurrent : isUpdatingEmail;
   const onOtpSubmit = otpStep === "currentEmail" ? handleCurrentOtpSubmit : handleNewOtpSubmit;
 
@@ -257,7 +249,9 @@ export const ChangeEmailSection = () => {
         >
           <DialogHeader>
             <DialogTitle>{otpTitle}</DialogTitle>
-            <DialogDescription>{otpSubTitle}</DialogDescription>
+            <DialogDescription>
+              {otpDescription} <span className="font-medium text-foreground">{otpRecipient}</span>
+            </DialogDescription>
           </DialogHeader>
           <VerificationCodeForm
             key={otpStep ?? "closed"}
@@ -265,7 +259,6 @@ export const ChangeEmailSection = () => {
             value={typedOTP}
             onChange={setTypedOTP}
             onSubmit={onOtpSubmit}
-            submitLabel={otpButtonLabel}
             submitVariant="neutral"
             isPending={isOtpSubmitLoading}
           >
@@ -276,7 +269,7 @@ export const ChangeEmailSection = () => {
                 completed.
               </p>
             )}
-            <div className="flex justify-center">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -285,7 +278,7 @@ export const ChangeEmailSection = () => {
               >
                 Cancel
               </Button>
-            </div>
+            </DialogFooter>
           </VerificationCodeForm>
         </DialogContent>
       </Dialog>
