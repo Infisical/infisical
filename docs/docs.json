@@ -4,7 +4,7 @@
   "name": "Infisical",
   "colors": {
     "primary": "#26272b",
-    "light": "#97b31d",
+    "light": "#EFFF33",
     "dark": "#A1B659"
   },
   "styling": {
@@ -703,7 +703,9 @@
                       "integrations/platforms/apache-airflow",
                       {
                         "group": "AWS",
-                        "pages": ["integrations/platforms/aws/lambda"]
+                        "pages": [
+                          "integrations/platforms/aws/lambda"
+                        ]
                       },
                       "integrations/platforms/infisical-proxy",
                       {
@@ -1498,7 +1500,9 @@
               },
               {
                 "group": "Service Tokens",
-                "pages": ["api-reference/endpoints/service-tokens/get"]
+                "pages": [
+                  "api-reference/endpoints/service-tokens/get"
+                ]
               }
             ]
           },
@@ -2328,11 +2332,15 @@
               },
               {
                 "group": "Audit Logs",
-                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+                "pages": [
+                  "api-reference/endpoints/audit-logs/export-audit-log"
+                ]
               },
               {
                 "group": "Events",
-                "pages": ["api-reference/endpoints/events/project-events"]
+                "pages": [
+                  "api-reference/endpoints/events/project-events"
+                ]
               }
             ]
           },
@@ -4145,7 +4153,9 @@
             "pages": [
               {
                 "group": "Admin",
-                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+                "pages": [
+                  "api-reference/endpoints/admin/bootstrap-instance"
+                ]
               }
             ]
           }
@@ -4156,7 +4166,9 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": ["sdks/overview"]
+            "pages": [
+              "sdks/overview"
+            ]
           },
           {
             "group": "SDK's",
@@ -4184,12 +4196,10 @@
   "api": {
     "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
-      "server": ["https://app.infisical.com"]
+      "server": [
+        "https://app.infisical.com"
+      ]
     }
-  },
-  "appearance": {
-    "default": "light",
-    "strict": true
   },
   "background": {
     "color": {
