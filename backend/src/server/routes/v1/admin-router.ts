@@ -93,9 +93,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const orgId = req.auth?.orgId ?? "";
 
       const latestAvailableVersion = await server.services.updateCheck.getAvailableUpdateVersion();
-      const isCrossProjectSecretSharingEnabled = orgId
-        ? await server.services.crossProjectSecretSharingService.canUseCrossProjectSecretSharing(orgId)
-        : false;
+      const plan = await server.services.license.getPlan(orgId);
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -115,7 +113,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
-            isCrossProjectSecretSharingEnabled,
+            isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
             latestAvailableVersion
           }
         };
@@ -133,7 +131,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
-          isCrossProjectSecretSharingEnabled,
+          isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
           latestAvailableVersion
         }
       };

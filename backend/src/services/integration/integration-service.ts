@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
@@ -20,7 +21,6 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -49,7 +49,7 @@ type TIntegrationServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TIntegrationServiceFactory = ReturnType<typeof integrationServiceFactory>;
@@ -68,7 +68,7 @@ export const integrationServiceFactory = ({
   secretDAL,
   projectFolderGrantDAL,
   orgDAL,
-  crossProjectSecretSharingService
+  licenseService
 }: TIntegrationServiceFactoryDep) => {
   const createIntegration = async ({
     app,
@@ -336,7 +336,7 @@ export const integrationServiceFactory = ({
         kmsService,
         projectFolderGrantDAL,
         orgDAL,
-        crossProjectSecretSharingService,
+        licenseService,
         actorOrgId
       });
     }

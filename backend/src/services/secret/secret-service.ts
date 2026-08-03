@@ -54,7 +54,7 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { TCheckRevokedGrantsDTO } from "../project-folder-grant/project-folder-grant-types";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
@@ -151,7 +151,6 @@ type TSecretServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
-  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
 };
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
@@ -181,8 +180,7 @@ export const secretServiceFactory = ({
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
   orgDAL,
-  projectFolderGrantDAL,
-  crossProjectSecretSharingService
+  projectFolderGrantDAL
 }: TSecretServiceFactoryDep) => {
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
@@ -3814,7 +3812,8 @@ export const secretServiceFactory = ({
 
     if (secretRefMap.size === 0) return revokedSecretIds;
 
-    if (!(await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
       return revokedSecretIds;
     }
 

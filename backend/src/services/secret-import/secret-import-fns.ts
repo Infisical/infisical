@@ -7,7 +7,9 @@ import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TCrossProjectSecretSharingServiceFactory } from "../project-folder-grant/project-folder-grant-fns";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+
+import { isCrossProjectEnabled } from "../project-folder-grant/project-folder-grant-fns";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -258,7 +260,7 @@ export const fnSecretsV2FromImports = async ({
   kmsService,
   actorOrgId,
   orgDAL,
-  crossProjectSecretSharingService
+  licenseService
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -284,7 +286,7 @@ export const fnSecretsV2FromImports = async ({
   projectFolderGrantDAL?: Pick<TProjectFolderGrantDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   actorOrgId: string;
-  crossProjectSecretSharingService: Pick<TCrossProjectSecretSharingServiceFactory, "isCrossProjectEnabled">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 }) => {
   const cyclicDetector = new Set();
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
@@ -400,7 +402,8 @@ export const fnSecretsV2FromImports = async ({
     // Reserved (replication) imports are excluded: their secrets are already
     // stored locally and encrypted with the target project's key.
     const grantedFolderIds = new Set<string>();
-    const crossProjectAllowed = await crossProjectSecretSharingService.isCrossProjectEnabled(actorOrgId, orgDAL);
+    const plan = await licenseService.getPlan(actorOrgId);
+    const crossProjectAllowed = await isCrossProjectEnabled(actorOrgId, orgDAL, plan);
     if (projectId && projectFolderGrantDAL && crossProjectAllowed) {
       const crossProjectItems: { sourceFolderId: string; sourceProjectId: string }[] = [];
       for (const { importPath, importEnv, isReserved } of processedBatchImports) {
