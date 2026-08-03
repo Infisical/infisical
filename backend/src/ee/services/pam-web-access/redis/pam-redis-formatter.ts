@@ -9,12 +9,19 @@ export const tokenizeRedisInput = (input: string): string[] => {
   const tokens: string[] = [];
   let current = "";
   let inQuote: "'" | '"' | null = null;
+  let escaped = false;
 
   for (let i = 0; i < input.length; i += 1) {
     const ch = input[i];
 
     if (inQuote) {
-      if (ch === inQuote) {
+      // inside quotes a backslash escapes the next character, matching redis-cli
+      if (escaped) {
+        current += ch;
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === inQuote) {
         tokens.push(current);
         current = "";
         inQuote = null;

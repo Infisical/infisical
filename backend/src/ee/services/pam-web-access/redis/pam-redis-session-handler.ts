@@ -12,6 +12,31 @@ import {
 import { formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
 import { RedisClientMessageSchema, RedisClientMessageType } from "./pam-redis-ws-types";
 
+// commands run one at a time, so a blocking call like `BLPOP key 0` would otherwise
+// stall the session with no feedback. Bound the wait and report it instead.
+const COMMAND_TIMEOUT_MS = 30_000;
+
+// quit() queues behind an in-flight command, so a blocked call would keep the client
+// and its relay tunnel open. Bound the graceful close, then force the socket shut.
+const CLEANUP_QUIT_TIMEOUT_MS = 2_000;
+
+const callWithDeadline = async (redisClient: Redis, command: string, args: string[]): Promise<unknown> => {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      redisClient.call(command, ...args),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`command timed out after ${COMMAND_TIMEOUT_MS / 1000}s`)),
+          COMMAND_TIMEOUT_MS
+        );
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 const executeCommand = async (redisClient: Redis, input: string): Promise<{ output: string; shouldClose: boolean }> => {
   const trimmed = input.trim();
 
@@ -21,7 +46,7 @@ const executeCommand = async (redisClient: Redis, input: string): Promise<{ outp
 
   const lower = trimmed.toLowerCase();
   if (lower === "quit" || lower === "exit") {
-    return { output: "Goodbye!\n", shouldClose: true };
+    return { output: "", shouldClose: true };
   }
 
   const tokens = tokenizeRedisInput(trimmed);
@@ -32,7 +57,7 @@ const executeCommand = async (redisClient: Redis, input: string): Promise<{ outp
   const [command, ...args] = tokens;
 
   try {
-    const result = await redisClient.call(command, ...args);
+    const result = await callWithDeadline(redisClient, command, args);
     return { output: `${formatRedisReply(result)}\n`, shouldClose: false };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -154,10 +179,19 @@ export const handleRedisSession = async (
 
   return {
     cleanup: async () => {
+      let timer: NodeJS.Timeout | undefined;
       try {
-        await redisClient.quit();
+        await Promise.race([
+          redisClient.quit(),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, CLEANUP_QUIT_TIMEOUT_MS);
+          })
+        ]);
       } catch (err) {
         logger.debug(err, "Error closing Redis client");
+      } finally {
+        if (timer) clearTimeout(timer);
+        redisClient.disconnect();
       }
     }
   };

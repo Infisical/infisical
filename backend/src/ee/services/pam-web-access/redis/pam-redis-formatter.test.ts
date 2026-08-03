@@ -55,6 +55,26 @@ describe("tokenizeRedisInput", () => {
       "value2"
     ]);
   });
+
+  it("keeps an escaped double quote inside the argument", () => {
+    expect(tokenizeRedisInput('SET key "hello\\"world"')).toEqual(["SET", "key", 'hello"world']);
+  });
+
+  it("keeps multiple escaped quotes inside one argument", () => {
+    expect(tokenizeRedisInput('LPUSH logs "a \\"quoted\\" value"')).toEqual(["LPUSH", "logs", 'a "quoted" value']);
+  });
+
+  it("keeps an escaped single quote inside a single-quoted argument", () => {
+    expect(tokenizeRedisInput("SET key 'it\\'s here'")).toEqual(["SET", "key", "it's here"]);
+  });
+
+  it("keeps an escaped backslash inside the argument", () => {
+    expect(tokenizeRedisInput('SET path "C:\\\\temp"')).toEqual(["SET", "path", "C:\\temp"]);
+  });
+
+  it("does not treat a backslash outside quotes as an escape", () => {
+    expect(tokenizeRedisInput("SET key back\\slash")).toEqual(["SET", "key", "back\\slash"]);
+  });
 });
 
 describe("formatRedisReply", () => {
