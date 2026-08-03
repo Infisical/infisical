@@ -244,7 +244,7 @@ export const identityTokenAuthServiceFactory = ({
 
     if (
       (accessTokenMaxTTL || identityTokenAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityTokenAuth.accessTokenMaxTTL) >
+      (accessTokenTTL || identityTokenAuth.accessTokenTTL) >
         (accessTokenMaxTTL || identityTokenAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
