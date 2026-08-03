@@ -470,7 +470,7 @@ export const useWebAccessSession = ({
         }
       });
     } else {
-      // Non-SSH (PostgreSQL, Redis): use xterm-readline for full line-editing support
+      // Redis: use xterm-readline for full line-editing support
       const readlineAddon = new Readline();
       terminal.loadAddon(readlineAddon);
       readlineRef.current = readlineAddon;

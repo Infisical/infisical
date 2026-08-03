@@ -14,7 +14,7 @@ import {
 // These assertions exercise the Zod-introspection path (buildPamAccountTypeMetadata reads schema internals to derive field descriptors)
 describe("buildPamAccountTypeMetadata", () => {
   const metadata = buildPamAccountTypeMetadata(
-    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH])
+    new Set([PamAccountType.Postgres, PamAccountType.MySQL, PamAccountType.SSH, PamAccountType.Redis])
   );
   const byType = new Map(metadata.map((m) => [m.type, m]));
 
@@ -119,7 +119,7 @@ describe("buildPamAccountTypeMetadata", () => {
     const redis = byType.get(PamAccountType.Redis);
     expect(redis).toBeDefined();
     expect(redis?.name).toBe("Redis");
-    expect(redis?.supportsWebAccess).toBe(false);
+    expect(redis?.supportsWebAccess).toBe(true);
 
     expect(redis?.connectionFields.map((f) => f.key)).toEqual([
       "host",
