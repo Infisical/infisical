@@ -30,7 +30,7 @@ import {
   useListProjectIdentityMemberships,
   useUpdateProjectIdentityMembership
 } from "@app/hooks/api";
-import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { UNIVERSAL_AUTH_DEFAULTS, useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import {
@@ -45,19 +45,6 @@ import {
   createProjectIdentitySchema,
   TCreateProjectIdentityForm
 } from "./schema";
-
-const UNIVERSAL_AUTH_DEFAULTS = {
-  clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-  accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-  accessTokenTTL: 2592000,
-  accessTokenMaxTTL: 2592000,
-  accessTokenNumUsesLimit: 0,
-  accessTokenPeriod: 0,
-  lockoutEnabled: true,
-  lockoutThreshold: 3,
-  lockoutDurationSeconds: 300,
-  lockoutCounterResetSeconds: 30
-};
 
 const buildTemplatePermissions = (
   projectType: ProjectType,

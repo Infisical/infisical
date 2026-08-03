@@ -47,7 +47,6 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useOrganization, useUser } from "@app/context";
-import { useGetIdentityMembershipOrgs } from "@app/hooks/api";
 import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
@@ -64,6 +63,7 @@ import {
   useGetPamAccountTemplate,
   useListAccountMembers,
   useListFolderMembers,
+  useListPamProductIdentities,
   useListPamResourceRoles,
   usePamAccountActions,
   usePamAccountTypeMap,
@@ -141,13 +141,17 @@ const PermissionsTab = ({
     [orgGroups]
   );
 
-  const { data: orgIdentities } = useGetIdentityMembershipOrgs({ organizationId: currentOrg.id });
+  // Product identity members carry names for both org-level and PAM-scoped identities; the org
+  // identity list excludes project-scoped ones, so it can't resolve PAM-created identities.
+  const { data: productIdentities } = useListPamProductIdentities();
   const identityNameMap = useMemo(
     () =>
       new Map(
-        (orgIdentities?.identityMemberships ?? []).map((im) => [im.identity.id, im.identity.name])
+        (productIdentities ?? []).flatMap((m) =>
+          m.identityId ? [[m.identityId, m.name] as const] : []
+        )
       ),
-    [orgIdentities]
+    [productIdentities]
   );
 
   const removeUser = useRemoveAccountMember();

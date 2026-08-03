@@ -274,7 +274,11 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
         </Badge>
       )
     },
-    { label: "Email", value: session.actorEmail },
+    // identityId is SET NULL on identity deletion; a machine session with a deleted identity
+    // has neither actor FK and an empty actorEmail
+    session.identityId || (!session.userId && !session.actorEmail)
+      ? { label: "Actor", value: "Machine Identity" }
+      : { label: "Email", value: session.actorEmail },
     { label: "Folder", value: session.folderName || emptyValue },
     {
       label: "Started",

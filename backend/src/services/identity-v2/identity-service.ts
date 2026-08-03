@@ -142,12 +142,14 @@ export const identityV2ServiceFactory = ({
       const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
         projectDAL.findById(scopeData.projectId)
       );
-      if (project?.type === ProjectType.CertificateManager) {
+      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
         const invalidRoles = data.roles.filter(
           (r) => r.role !== ProjectMembershipRole.Admin && r.role !== ProjectMembershipRole.Member
         );
         if (invalidRoles.length > 0) {
-          throw new BadRequestError({ message: "Certificate Manager only supports Admin and Member roles." });
+          throw new BadRequestError({
+            message: `${project.type === ProjectType.PAM ? "PAM" : "Certificate Manager"} only supports Admin and Member roles.`
+          });
         }
       }
 
@@ -232,7 +234,8 @@ export const identityV2ServiceFactory = ({
     let projectMemberRole = ProjectMembershipRole.NoAccess as string;
     if (scopeData.scope === AccessScope.Project && !resolvedRoleDocs) {
       const project = await projectDAL.findById(scopeData.projectId);
-      if (project?.type === ProjectType.CertificateManager) {
+      // PAM's project membership IS its product membership, so NoAccess would be meaningless there
+      if (project?.type === ProjectType.CertificateManager || project?.type === ProjectType.PAM) {
         projectMemberRole = ProjectMembershipRole.Member;
       }
     }

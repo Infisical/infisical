@@ -8,6 +8,7 @@ import { SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-type
 import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -425,6 +426,10 @@ export const pamSessionServiceFactory = ({
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
+    // Machine identities launch sessions via identity access tokens; human-only controls
+    // (MFA, access-request approval) cannot be satisfied by them and are rejected explicitly below.
+    const isUserActor = actor.actor === ActorType.USER;
+
     const policy = resolveAccessControls(account.templatePolicies);
     const { requiresApproval } = policy;
 
@@ -441,6 +446,12 @@ export const pamSessionServiceFactory = ({
     const trimmedReason = reason?.trim() || null;
 
     if (policy.requireMfa) {
+      if (!isUserActor) {
+        throw new ForbiddenRequestError({
+          message:
+            "This account requires MFA verification, which machine identities cannot perform. Remove the MFA policy from the account's template to allow machine identity access."
+        });
+      }
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
         { userId: actor.actorId, orgId: actor.actorOrgId, actorEmail, accountId: account.id, mfaSessionId }
@@ -464,6 +475,12 @@ export const pamSessionServiceFactory = ({
     // guided into requesting access (where the request reason is collected) rather than being
     // blocked on a launch reason for a session they cannot start yet.
     if (requiresApproval) {
+      if (!isUserActor) {
+        throw new ForbiddenRequestError({
+          message:
+            "This account is gated behind access-request approval, which machine identities cannot request. Grant the identity access to a non-gated account instead."
+        });
+      }
       const grant = await pamAccessRequestService.checkGrant({
         userId: actor.actorId,
         accountId: account.id,
@@ -521,12 +538,23 @@ export const pamSessionServiceFactory = ({
       const rawConnectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
       const roleArn = rawConnectionDetails.roleArn as string;
 
+      // Machine identities have no email; fall back to the identity name for STS attribution.
+      const federatedUsername = actorEmail || actorName;
+
+      // STS requires roleSessionName to be 2-64 chars; pad short names with random characters
+      // so the actor's name stays recognizable in CloudTrail (1-char identity name, user with
+      // no email and empty names)
+      let roleSessionName = federatedUsername.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64);
+      if (roleSessionName.length < 2) {
+        roleSessionName = `${roleSessionName}${alphaNumericNanoId(8)}`;
+      }
+
       const stsCredentials = await generateAwsIamSessionCredentials({
         roleArn,
         // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
         // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
         externalId: actor.actorOrgId,
-        roleSessionName: actorEmail.replace(new RE2(/[^\w+=,.@-]/g), "_").substring(0, 64),
+        roleSessionName,
         sessionDuration: stsDurationSeconds
       });
 
@@ -547,7 +575,7 @@ export const pamSessionServiceFactory = ({
         metadata.sessionToken = stsCredentials.sessionToken;
         metadata.expiresAt = expiresAt.toISOString();
         metadata.roleArn = roleArn;
-        metadata.federatedUsername = actorEmail;
+        metadata.federatedUsername = federatedUsername;
 
         const awsAccountId = extractAwsAccountIdFromArn(roleArn);
         if (awsAccountId) {
@@ -568,7 +596,9 @@ export const pamSessionServiceFactory = ({
         actorUserAgent,
         projectId,
         accountId: account.id,
-        userId: actor.actorId,
+        // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
+        userId: isUserActor ? actor.actorId : null,
+        identityId: isUserActor ? null : actor.actorId,
         reason: trimmedReason,
         folderName: account.folderName
       });
@@ -604,7 +634,7 @@ export const pamSessionServiceFactory = ({
       resolveSelectedHost(account.accountType as PamAccountType, rawConnectionDetails, targetHost) ??
       gatewayTarget.host;
 
-    const user = await userDAL.findById(actor.actorId);
+    const user = isUserActor ? await userDAL.findById(actor.actorId) : null;
     const expiresAt = new Date(Date.now() + sessionDurationMs);
 
     const session = await pamSessionDAL.create({
@@ -619,7 +649,9 @@ export const pamSessionServiceFactory = ({
       actorUserAgent,
       projectId,
       accountId: account.id,
-      userId: actor.actorId,
+      // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
+      userId: isUserActor ? actor.actorId : null,
+      identityId: isUserActor ? null : actor.actorId,
       gatewayId: effectiveGatewayId,
       reason: trimmedReason,
       folderName: account.folderName,
@@ -638,8 +670,8 @@ export const pamSessionServiceFactory = ({
       duration: sessionDurationMs,
       actorMetadata: {
         id: actor.actorId,
-        type: ActorType.USER,
-        name: user?.email ?? ""
+        type: actor.actor,
+        name: user?.email ?? actorName
       }
     });
 

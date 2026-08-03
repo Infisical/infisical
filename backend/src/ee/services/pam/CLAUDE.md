@@ -44,8 +44,9 @@ Gotchas:
   product-level bucket and is hidden from resource viewers.
 - Gated accounts (`requiresApproval`) require `LaunchSessions` **and** a valid approval grant, enforced in
   both the session and web-access services.
-- PAM endpoints accept JWT + identity tokens; session launch/web-access are JWT-only; gateway-facing
-  endpoints use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+- PAM endpoints accept JWT + identity tokens, including CLI session launch (`POST /pam/sessions/access`);
+  web access stays JWT-only, and MFA/approval-gated accounts reject machine actors. Sessions store
+  `identityId` (not `userId`) for machine actors. Gateway-facing endpoints use `AuthMode.GATEWAY_ACCESS_TOKEN`.
 
 ## PAM Project (consolidated + lazy)
 

@@ -51,6 +51,21 @@ export const ProjectIdentityDetailsSection = ({
 }: Props) => {
   const { currentProject } = useProject();
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const isPam = currentProject?.type === ProjectType.PAM;
+
+  let productLabel = "Project";
+  if (isCertManager) {
+    productLabel = "Certificate Manager";
+  } else if (isPam) {
+    productLabel = "PAM";
+  }
+
+  let joinedLabel = "Joined project";
+  if (isCertManager) {
+    joinedLabel = "Joined certificate manager";
+  } else if (isPam) {
+    joinedLabel = "Joined PAM";
+  }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -125,7 +140,7 @@ export const ProjectIdentityDetailsSection = ({
                 ) : (
                   <Badge variant="project">
                     <ProjectIcon />
-                    {isCertManager ? "Certificate Manager" : "Project"}
+                    {productLabel}
                   </Badge>
                 )}
               </DetailValue>
@@ -150,14 +165,7 @@ export const ProjectIdentityDetailsSection = ({
               </DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>
-                {/* eslint-disable-next-line no-nested-ternary */}
-                {isOrgIdentity
-                  ? isCertManager
-                    ? "Joined certificate manager"
-                    : "Joined project"
-                  : "Created"}
-              </DetailLabel>
+              <DetailLabel>{isOrgIdentity ? joinedLabel : "Created"}</DetailLabel>
               <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
             </Detail>
             {!isOrgIdentity && (
