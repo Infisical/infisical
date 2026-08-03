@@ -1109,12 +1109,23 @@ export const orgServiceFactory = ({
       });
     }
 
-    await tokenService.validateTokenForUser({
-      type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-      userId: user.id,
-      orgId: orgMembership.scopeOrgId,
-      code
-    });
+    // Validation must not consume the token. The invite page verifies on load, so an email
+    // security scanner pre-visiting the link — or the invitee simply reopening it — would
+    // otherwise permanently invalidate a legitimate invitation. The token is revoked once the
+    // membership is accepted (see auth-login-service), and still expires on its own.
+    try {
+      await tokenService.validateTokenForUser({
+        type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+        userId: user.id,
+        orgId: orgMembership.scopeOrgId,
+        code,
+        consumeToken: false
+      });
+    } catch {
+      throw new UnauthorizedError({
+        message: "Invitation link is invalid or has expired. Ask your organization admin for a new invitation."
+      });
+    }
 
     const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 

@@ -20,6 +20,7 @@ import {
   TEmailSignupOtpPayload,
   TIssueAuthTokenDTO,
   TokenType,
+  TRevokeTokensForUserDTO,
   TValidateTokenForUserDTO
 } from "./auth-token-types";
 
@@ -204,7 +205,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     type,
     userId,
     code,
-    orgId
+    orgId,
+    consumeToken = true
   }: TValidateTokenForUserDTO): Promise<TAuthTokens | undefined> => {
     const token = await tokenDAL.findOne({ type, userId, orgId: orgId || null });
 
@@ -232,9 +234,16 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       throw new Error("Invalid token");
     }
 
+    if (!consumeToken) return token;
+
     const deletedToken = await tokenDAL.delete({ type, userId, orgId: orgId || null });
     return deletedToken?.[0];
   };
+
+  // Explicitly invalidates a user's token of the given type, for callers that validate without
+  // consuming and consume later, once the token has actually served its purpose.
+  const revokeTokensForUser = async ({ type, userId, orgId }: TRevokeTokensForUserDTO) =>
+    tokenDAL.delete({ type, userId, orgId: orgId || null });
 
   const getUserTokenSession = async (
     { userId, ip, userAgent }: TIssueAuthTokenDTO,
@@ -551,6 +560,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     createTokenForUser,
     createTokensForUsers,
     validateTokenForUser,
+    revokeTokensForUser,
     getUserTokenSession,
     clearTokenSessionById,
     getTokenSessionByUser,
