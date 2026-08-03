@@ -143,4 +143,20 @@ describe("formatRedisReply", () => {
   it("formats bigint", () => {
     expect(formatRedisReply(BigInt(999))).toBe("(integer) 999");
   });
+
+  it("escapes terminal control bytes so xterm cannot act on them", () => {
+    expect(formatRedisReply("safe\u001b[2J\u001b[Hspoofed")).toBe('"safe\\x1b[2J\\x1b[Hspoofed"');
+  });
+
+  it("escapes carriage return, bell and null", () => {
+    expect(formatRedisReply("a\rb\u0007c\u0000d")).toBe('"a\\x0db\\x07c\\x00d"');
+  });
+
+  it("escapes C1 control bytes", () => {
+    expect(formatRedisReply("a\u009bb")).toBe('"a\\x9bb"');
+  });
+
+  it("leaves normal printable text alone", () => {
+    expect(formatRedisReply("hello world 123")).toBe('"hello world 123"');
+  });
 });

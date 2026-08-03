@@ -9,7 +9,7 @@ import {
   TSessionContext,
   TSessionHandlerResult
 } from "../pam-web-access-types";
-import { formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
+import { escapeTerminalControlBytes, formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
 import { RedisClientMessageSchema, RedisClientMessageType } from "./pam-redis-ws-types";
 
 // commands run one at a time, so a blocking call like `BLPOP key 0` would otherwise
@@ -61,7 +61,7 @@ const executeCommand = async (redisClient: Redis, input: string): Promise<{ outp
     return { output: `${formatRedisReply(result)}\n`, shouldClose: false };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { output: `(error) ${message}\n`, shouldClose: false };
+    return { output: `(error) ${escapeTerminalControlBytes(message)}\n`, shouldClose: false };
   }
 };
 

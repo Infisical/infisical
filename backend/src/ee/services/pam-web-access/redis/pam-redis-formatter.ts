@@ -3,7 +3,17 @@ import RE2 from "re2";
 const escapeBackslash = new RE2(/\\/, "g");
 const escapeQuote = new RE2(/"/, "g");
 
-const escapeRedisString = (str: string): string => str.replace(escapeBackslash, "\\\\").replace(escapeQuote, '\\"');
+// C0 and C1 control bytes. Stored values reach an xterm session that would otherwise
+// act on them, so render them printable the way redis-cli does.
+// eslint-disable-next-line no-control-regex
+const controlBytes = new RE2(/[\u0000-\u001f\u007f-\u009f]/, "g");
+
+const toHexEscape = (ch: string): string => `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
+
+export const escapeTerminalControlBytes = (str: string): string => str.replace(controlBytes, toHexEscape);
+
+const escapeRedisString = (str: string): string =>
+  escapeTerminalControlBytes(str.replace(escapeBackslash, "\\\\").replace(escapeQuote, '\\"'));
 
 export const tokenizeRedisInput = (input: string): string[] => {
   const tokens: string[] = [];
