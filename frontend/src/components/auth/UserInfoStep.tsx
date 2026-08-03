@@ -159,7 +159,7 @@ export default function UserInfoStep({
                 <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
                   Join
                 </span>
-                <span className="ml-1 bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
                   {inviteOrganizationLabel}
                 </span>
               </>
