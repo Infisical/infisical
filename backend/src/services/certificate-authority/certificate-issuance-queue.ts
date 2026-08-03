@@ -19,7 +19,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -31,6 +30,7 @@ import {
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   DigiCertExternalMetadataSchema,
   GoDaddyExternalMetadataSchema
@@ -1207,32 +1207,28 @@ export const certificateIssuanceQueueFactory = ({
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
       }
 
-      // External CAs complete asynchronously, so orderCertificate returns PENDING and this job is
-      // where the certificate actually comes into existence. Reported here so external-CA issuance
-      // is counted alongside the synchronous paths in certificate-v3-service.
-      try {
-        const project = await projectDAL.findById(ca.projectId);
-        if (project?.orgId) {
-          // ACME and SCEP fall back to this async path when the profile is backed by an external CA,
-          // so the enrollment method has to come from the profile rather than being assumed to be API.
-          const telemetryProfile = profileId ? await certificateProfileDAL?.findById(profileId) : undefined;
+      // Not every CA finishes inside this job. DigiCert and GoDaddy can stop at PENDING_VALIDATION
+      // and only produce a certificate later, in their polling processors — which report issuance
+      // themselves. Reporting unconditionally here would count those pending orders as issued, so
+      // this only fires once the request has actually reached ISSUED.
+      const issuedInThisJob = certificateRequestId
+        ? (await certificateRequestDAL?.findById(certificateRequestId))?.status === CertificateRequestStatus.ISSUED
+        : true;
 
-          await telemetryService.sendPostHogEvents({
-            event: PostHogEventTypes.IssueCert,
-            distinctId: `platform/${ca.projectId}`,
-            organizationId: project.orgId,
-            properties: {
-              orgId: project.orgId,
-              projectId: ca.projectId,
-              profileId,
-              applicationId: scopedApplicationId ?? undefined,
-              enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
-              operation: isRenewal ? "renew" : "order"
-            }
-          });
-        }
-      } catch (error) {
-        logger.debug({ error }, "Failed to report async certificate issuance telemetry");
+      if (issuedInThisJob) {
+        // ACME and SCEP fall back to this async path when the profile is backed by an external CA,
+        // so the enrollment method has to come from the profile rather than being assumed to be API.
+        const telemetryProfile = profileId ? await certificateProfileDAL?.findById(profileId) : undefined;
+
+        await reportCertificateIssued({
+          telemetryService,
+          projectDAL,
+          projectId: ca.projectId,
+          profileId,
+          applicationId: scopedApplicationId,
+          enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
+          operation: isRenewal ? "renew" : "order"
+        });
       }
     } catch (error: unknown) {
       if (error instanceof CertificateRequestCancelledError) {

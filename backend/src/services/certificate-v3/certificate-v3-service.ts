@@ -60,7 +60,6 @@ import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -88,6 +87,10 @@ import {
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
+import {
+  reportCertificateIssued,
+  TCertificateIssuanceOperation
+} from "../certificate-common/certificate-telemetry-fns";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -708,9 +711,9 @@ export const certificateV3ServiceFactory = ({
   licenseService,
   telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
-  // Certificates are issued through four entry points here, and every modern enrollment protocol
-  // (API, ACME, EST, SCEP) funnels through one of them, so issuance telemetry is reported here
-  // rather than per-route. Failures are swallowed: analytics must never fail an issuance.
+  // Every modern enrollment protocol (API, ACME, EST, SCEP) funnels through the issuance entry
+  // points in this file, so issuance telemetry is reported here rather than per-route. Only the
+  // actor resolution is local; the event itself is assembled by the shared reporter.
   const $reportCertificateIssued = async ({
     orgId,
     projectId,
@@ -723,33 +726,36 @@ export const certificateV3ServiceFactory = ({
   }: {
     orgId?: string;
     projectId: string;
-    profileId?: string;
-    applicationId?: string;
+    profileId?: string | null;
+    applicationId?: string | null;
     enrollmentType: EnrollmentType;
-    operation: "issue" | "sign" | "order" | "renew";
+    operation: TCertificateIssuanceOperation;
     actor?: ActorType;
     actorId?: string;
   }) => {
-    if (!orgId) return;
-
+    let distinctId: string | undefined;
     try {
-      let distinctId = `platform/${projectId}`;
       if (actor === ActorType.USER && actorId) {
         const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
-        distinctId = user?.username ?? user?.email ?? distinctId;
+        distinctId = user?.username ?? user?.email;
       } else if (actor === ActorType.IDENTITY && actorId) {
         distinctId = `identity-${actorId}`;
       }
-
-      await telemetryService.sendPostHogEvents({
-        event: PostHogEventTypes.IssueCert,
-        distinctId,
-        organizationId: orgId,
-        properties: { orgId, projectId, profileId, applicationId, enrollmentType, operation }
-      });
     } catch (error) {
-      logger.debug({ error }, "Failed to report certificate issuance telemetry");
+      logger.debug({ error }, "Failed to resolve distinctId for certificate issuance telemetry");
     }
+
+    await reportCertificateIssued({
+      telemetryService,
+      projectDAL,
+      orgId,
+      projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation,
+      distinctId
+    });
   };
 
   const $resolveApplicationIdForProfile = async (
@@ -1315,6 +1321,17 @@ export const certificateV3ServiceFactory = ({
       } catch {
         logger.debug("Failed to queue PKI issuance alert event");
       }
+
+      await $reportCertificateIssued({
+        orgId: profile.project?.orgId ?? actorOrgId,
+        projectId: profile.projectId,
+        profileId,
+        applicationId,
+        enrollmentType: EnrollmentType.API,
+        operation: "issue",
+        actor,
+        actorId
+      });
 
       return {
         status: CertificateRequestStatus.ISSUED,

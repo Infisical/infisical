@@ -6,9 +6,13 @@ import { decryptAppConnectionCredentials } from "@app/services/app-connection/ap
 import { buildGoDaddySsoKeyHeader } from "@app/services/app-connection/godaddy/godaddy-connection-constants";
 import { getGoDaddyApiBaseUrl } from "@app/services/app-connection/godaddy/godaddy-connection-fns";
 import { TGoDaddyConnection } from "@app/services/app-connection/godaddy/godaddy-connection-types";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { CertificateRequestStatus } from "../../certificate-common/certificate-constants";
+import { reportCertificateIssued } from "../../certificate-common/certificate-telemetry-fns";
 import { TCertificateRequestDALFactory } from "../../certificate-request/certificate-request-dal";
 import {
   TAttachCertificateToRequestDTO,
@@ -57,6 +61,8 @@ export type TProcessGoDaddyRequestDeps = {
   certificateRequestService: TGoDaddyCertificateRequestServiceDep;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   godaddyFns: Pick<TGoDaddyCertificateAuthorityFns, "fetchAndAttachIssuedCertificate">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TProcessGoDaddyRequestResult =
@@ -175,6 +181,19 @@ export const processGoDaddyPendingValidationRequest = async (
       logger.info(
         `GoDaddy certificate issued, attached certificate [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
       );
+
+      // The issuance queue always stops at PENDING_VALIDATION for GoDaddy, so this is where the
+      // certificate actually comes into existence and therefore where issuance is reported.
+      await reportCertificateIssued({
+        telemetryService: deps.telemetryService,
+        projectDAL: deps.projectDAL,
+        projectId: request.projectId,
+        profileId: request.profileId,
+        applicationId: request.applicationId,
+        enrollmentType: EnrollmentType.API,
+        operation: parsed.godaddy.isRenewal ? "renew" : "order"
+      });
+
       return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };
     } catch (error) {
       // A renewal can report ISSUED/CURRENT while GoDaddy is still serving the previous certificate
