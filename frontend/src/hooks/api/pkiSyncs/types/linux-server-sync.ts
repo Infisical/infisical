@@ -17,6 +17,7 @@ export type TLinuxServerPkiSync = TRootPkiSync & {
     privateKeyFileMode?: string;
     owner?: string;
     group?: string;
+    postSyncCommand?: string | null;
   };
   connection: {
     app: AppConnection.SSH;

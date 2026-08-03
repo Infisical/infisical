@@ -57,3 +57,35 @@ describe("Linux Server destinationPath validation", () => {
     expect(parsePath("")).toBe(false);
   });
 });
+
+describe("Linux Server postSyncCommand validation", () => {
+  const parseCommand = (postSyncCommand: string) =>
+    LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server", postSyncCommand });
+
+  test("accepts a single-line and a multi-line command", () => {
+    expect(parseCommand("sudo systemctl reload nginx").success).toBe(true);
+    expect(parseCommand("sudo systemctl reload nginx\nsudo systemctl reload haproxy").success).toBe(true);
+  });
+
+  test("accepts shell metacharacters, since the command is arbitrary shell by design", () => {
+    expect(parseCommand("test -f {{certificatePath}} && sudo systemctl reload nginx || exit 1").success).toBe(true);
+  });
+
+  test("accepts the values that mean 'no command', leaving normalization to the service", () => {
+    expect(parseCommand("").success).toBe(true);
+    expect(parseCommand("   ").data?.postSyncCommand).toBe("");
+    expect(
+      LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server", postSyncCommand: null }).data
+        ?.postSyncCommand
+    ).toBeNull();
+  });
+
+  test("rejects a command beyond the length limit", () => {
+    expect(parseCommand("a".repeat(2048)).success).toBe(true);
+    expect(parseCommand("a".repeat(2049)).success).toBe(false);
+  });
+
+  test("is optional", () => {
+    expect(LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server" }).success).toBe(true);
+  });
+});

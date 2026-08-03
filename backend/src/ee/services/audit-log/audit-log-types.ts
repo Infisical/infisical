@@ -47,6 +47,7 @@ import {
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TCreateSecretSyncDTO,
@@ -4813,6 +4814,7 @@ interface CreatePkiSyncEvent {
     applicationId?: string;
     connectionId?: string;
     hasCredentials?: boolean;
+    hasPostSyncCommand?: boolean;
   };
 }
 
@@ -4822,6 +4824,7 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    hasPostSyncCommand?: boolean;
   };
 }
 
@@ -4842,6 +4845,7 @@ interface PkiSyncSyncCertificatesEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    postSyncCommand?: { command: string; result?: TPostSyncCommandResult };
   };
 }
 

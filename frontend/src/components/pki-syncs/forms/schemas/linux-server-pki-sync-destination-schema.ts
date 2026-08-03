@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PemCertificateExtension, PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs";
 
-import { BasePkiSyncSchema } from "./base-pki-sync-schema";
+import { BasePkiSyncSchema, PostSyncCommandSchema } from "./base-pki-sync-schema";
 
 const compileNameSchema = (val: string) =>
   val
@@ -54,6 +54,7 @@ const LinuxServerSyncOptionsSchema = z.object({
     })
     .transform((v) => v || undefined)
     .optional(),
+  postSyncCommand: PostSyncCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
