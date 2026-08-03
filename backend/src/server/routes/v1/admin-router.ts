@@ -13,6 +13,7 @@ import { LicenseType } from "@app/ee/services/license/license-types";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { AllowedEmailDomainsSchema } from "@app/lib/validator";
 import { PASSWORD_POLICY, PasswordPolicyConfigSchema, PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -51,6 +52,7 @@ const SanitizedSuperAdminSchema = z.object({
   trustSamlEmails: z.boolean().nullish(),
   trustLdapEmails: z.boolean().nullish(),
   trustOidcEmails: z.boolean().nullish(),
+  onboardingCompleted: z.boolean().optional(),
   adminIdentityIds: z.string().array().nullable().optional(),
   fipsEnabled: z.boolean().optional(),
   isMigrationModeOn: z.boolean().optional(),
@@ -148,10 +150,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "updateAdminConfig",
       body: z.object({
         allowSignUp: z.boolean().optional(),
-        allowedSignUpDomain: z.string().optional().nullable(),
+        allowedSignUpDomain: AllowedEmailDomainsSchema.optional().nullable(),
         trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
         trustOidcEmails: z.boolean().optional(),
+        onboardingCompleted: z.boolean().optional(),
         defaultAuthOrgId: z.string().optional().nullable(),
         enabledLoginMethods: z
           .nativeEnum(LoginMethod)
@@ -640,7 +643,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         email: z.string().email().trim(),
         password: PasswordPolicySchema,
         firstName: z.string().trim().min(1),
-        lastName: z.string().trim().optional()
+        lastName: z.string().trim().optional(),
+        organizationName: GenericResourceNameSchema.optional()
       }),
       response: {
         200: z.object({

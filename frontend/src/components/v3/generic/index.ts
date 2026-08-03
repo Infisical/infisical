@@ -30,6 +30,7 @@ export * from "./Pagination";
 export * from "./Popover";
 export * from "./RadioGroup";
 export * from "./ReactSelect";
+export * from "./ScrollableContent";
 export * from "./Select";
 export * from "./SelectedActionBar";
 export * from "./Separator";

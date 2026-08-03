@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";

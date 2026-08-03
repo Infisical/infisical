@@ -61,6 +61,7 @@ import {
   CacheType,
   EnvOverrides,
   LoginMethod,
+  SuperAdminErrorCode,
   TAdminBootstrapInstanceDTO,
   TAdminCreateEmailDomainDTO,
   TAdminDeleteEmailDomainDTO,
@@ -376,6 +377,7 @@ export const superAdminServiceFactory = ({
 
       if (!canServerAdminAccessAfterApply) {
         throw new BadRequestError({
+          name: SuperAdminErrorCode.AuthMethodLockout,
           message: "You must configure at least one auth method to prevent account lockout"
         });
       }
@@ -512,7 +514,15 @@ export const superAdminServiceFactory = ({
     return updatedServerCfg;
   };
 
-  const adminSignUp = async ({ lastName, firstName, email, password, ip, userAgent }: TAdminSignUpDTO) => {
+  const adminSignUp = async ({
+    lastName,
+    firstName,
+    email,
+    password,
+    organizationName,
+    ip,
+    userAgent
+  }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
 
     const sanitizedEmail = email.trim().toLowerCase();
@@ -541,7 +551,7 @@ export const superAdminServiceFactory = ({
       return { user: { ...newUser, hashedPassword: null } };
     });
 
-    const initialOrganizationName = appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
+    const initialOrganizationName = organizationName ?? appCfg.INITIAL_ORGANIZATION_NAME ?? "Admin Org";
 
     const organization = await orgService.createOrganization({
       userId: userInfo.user.id,

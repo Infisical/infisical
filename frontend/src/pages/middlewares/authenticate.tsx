@@ -78,6 +78,12 @@ export const Route = createFileRoute("/_authenticate")({
         });
       });
 
+    const isOnAdminSetup = location.pathname === "/admin/setup";
+
+    if (user.superAdmin && context.serverConfig.onboardingCompleted === false && !isOnAdminSetup) {
+      throw redirect({ to: "/admin/setup" });
+    }
+
     const isSubOrganization = !!data.subOrganizationId;
     return {
       organizationId: isSubOrganization ? data.subOrganizationId : (data.organizationId as string),
