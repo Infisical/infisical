@@ -71,9 +71,13 @@ describe("Linux Server postSyncCommand validation", () => {
     expect(parseCommand("test -f {{certificatePath}} && sudo systemctl reload nginx || exit 1").success).toBe(true);
   });
 
-  test("treats an empty or whitespace-only command as no command", () => {
-    expect(parseCommand("").data?.postSyncCommand).toBeUndefined();
-    expect(parseCommand("   ").data?.postSyncCommand).toBeUndefined();
+  test("accepts the values that mean 'no command', leaving normalization to the service", () => {
+    expect(parseCommand("").success).toBe(true);
+    expect(parseCommand("   ").data?.postSyncCommand).toBe("");
+    expect(
+      LinuxServerPkiSyncOptionsSchema.safeParse({ certificateNameSchema: "server", postSyncCommand: null }).data
+        ?.postSyncCommand
+    ).toBeNull();
   });
 
   test("rejects a command beyond the length limit", () => {

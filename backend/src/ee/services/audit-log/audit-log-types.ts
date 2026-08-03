@@ -4845,7 +4845,7 @@ interface PkiSyncSyncCertificatesEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
-    postSyncCommand?: TPostSyncCommandResult;
+    postSyncCommand?: { command: string; result?: TPostSyncCommandResult };
   };
 }
 

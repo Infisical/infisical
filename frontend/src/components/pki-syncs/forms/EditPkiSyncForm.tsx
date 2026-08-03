@@ -16,7 +16,13 @@ import {
   Switch
 } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { PkiSync, TPkiSync, usePkiSyncOption, useUpdatePkiSync } from "@app/hooks/api/pkiSyncs";
+import {
+  PkiSync,
+  TPkiSync,
+  useCanSetPostSyncCommand,
+  usePkiSyncOption,
+  useUpdatePkiSync
+} from "@app/hooks/api/pkiSyncs";
 
 import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
@@ -110,6 +116,7 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
   const updatePkiSync = useUpdatePkiSync();
   const { name: destinationName } = PKI_SYNC_MAP[pkiSync.destination];
   const { syncOption } = usePkiSyncOption(pkiSync.destination);
+  const canSetPostSyncCommand = useCanSetPostSyncCommand(pkiSync.applicationId);
   const steps = getFormSteps(pkiSync.destination, Boolean(syncOption?.canRunPostSyncCommand));
 
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
@@ -199,7 +206,12 @@ export const EditPkiSyncForm = ({ pkiSync, onComplete, onDirtyChange, onCancel }
       case "mappings":
         return <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;
       case "postSyncCommand":
-        return <PkiSyncPostSyncCommandFields destination={pkiSync.destination} />;
+        return (
+          <PkiSyncPostSyncCommandFields
+            destination={pkiSync.destination}
+            canEditCommand={canSetPostSyncCommand}
+          />
+        );
       case "details":
         return <PkiSyncDetailsFields />;
       default:

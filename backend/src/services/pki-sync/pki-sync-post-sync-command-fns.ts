@@ -70,6 +70,33 @@ export type TPostSyncCommandExecutionResult = { stdout: string; stderr: string; 
 
 export type TPostSyncCommandPlan = { command: string; context: TPostSyncCommandContext };
 
+const POST_SYNC_COMMAND_KEY = "postSyncCommand";
+
+export const normalizeNewPostSyncCommand = (syncOptions: Record<string, unknown>): Record<string, unknown> => {
+  if (syncOptions[POST_SYNC_COMMAND_KEY]) return syncOptions;
+
+  const normalized = { ...syncOptions };
+  delete normalized[POST_SYNC_COMMAND_KEY];
+  return normalized;
+};
+
+export const applyPostSyncCommandUpdate = (
+  resolvedSyncOptions: Record<string, unknown>,
+  storedCommand: unknown
+): Record<string, unknown> => {
+  const requested = resolvedSyncOptions[POST_SYNC_COMMAND_KEY];
+  const next = { ...resolvedSyncOptions };
+
+  const keep = requested === undefined ? storedCommand : requested;
+  if (typeof keep === "string" && keep) {
+    next[POST_SYNC_COMMAND_KEY] = keep;
+  } else {
+    delete next[POST_SYNC_COMMAND_KEY];
+  }
+
+  return next;
+};
+
 /**
  * Assembles what a post-sync command needs, or undefined when there is no command or the run
  * delivered nothing to activate.

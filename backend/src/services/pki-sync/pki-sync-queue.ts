@@ -438,6 +438,9 @@ export const pkiSyncQueueFactory = ({
     let postSyncCommandResult: TPostSyncCommandResult | undefined;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
 
+    const configuredPostSyncCommand = (pkiSync.syncOptions as { postSyncCommand?: string } | undefined)
+      ?.postSyncCommand;
+
     try {
       const {
         connection: { id: connectionId, orgId, projectId: appConnectionProjectId }
@@ -678,7 +681,9 @@ export const pkiSyncQueueFactory = ({
             syncMessage,
             jobId: job.id!,
             jobRanAt: ranAt,
-            postSyncCommand: postSyncCommandResult
+            postSyncCommand: configuredPostSyncCommand
+              ? { command: configuredPostSyncCommand, result: postSyncCommandResult }
+              : undefined
           }
         }
       });

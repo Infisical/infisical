@@ -114,7 +114,7 @@ When syncing certificates, Infisical opens an SSH session to the server and, for
 
 Delivering a certificate file does not make the service use it. Nginx keeps serving the old certificate until something reloads it. A post-sync command is that last step, run for you right after the files land.
 
-Set one command on the sync. It runs on the target server, in that server's own shell, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle.
+Set one command on the sync. It runs on the target server, in that server's own shell, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
 
 The field accepts a whole script, so several steps can run in one go: put each on its own line, or chain them with `&&`.
 
@@ -172,7 +172,7 @@ A command is limited to 2048 characters, counted after the placeholders are subs
     After every file in the run has been delivered and after any removals, so the server is in its final state before the service reloads. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
   </Accordion>
   <Accordion title="What happens if the command fails?">
-    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran.
+    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran. A command that fails is reported, not repeated.
   </Accordion>
   <Accordion title="Can I run several commands, and what happens if one of them fails?">
     Yes. Write one per line, or chain them with `&&`.
@@ -187,7 +187,7 @@ A command is limited to 2048 characters, counted after the placeholders are subs
     ```
   </Accordion>
   <Accordion title="Can the command run twice for the same certificate?">
-    Yes. A sync that retries re-delivers the files and runs the command again, so prefer a command that is safe to run more than once. A service reload or restart is.
+    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and the command runs as part of that attempt. Prefer a command that is safe to run more than once. A service reload or restart is.
   </Accordion>
   <Accordion title="Is there a time limit?">
     Yes, 30 seconds, enforced by the gateway. A command that needs longer should start the work in the background or live in a script on the server.

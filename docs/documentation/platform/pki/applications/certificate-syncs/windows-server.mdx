@@ -122,7 +122,7 @@ When certificate removal is enabled and a certificate is removed from the sync, 
 
 Delivering a `.pfx` to `C:\certs` does not make IIS or a service use it. A post-sync command is that last step, run for you right after the files land.
 
-Set one command on the sync. The Gateway runs it as PowerShell on the target server, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle.
+Set one command on the sync. The Gateway runs it as PowerShell on the target server, once per sync run that delivers at least one file. Leaving the field empty means nothing runs, so there is no separate toggle. If a sync run does not complete, Infisical may attempt it again and the command runs with it, so prefer a command that is safe to run more than once.
 
 The field accepts a whole script, so several steps can run in one go: put each on its own line.
 
@@ -178,7 +178,7 @@ A command is limited to 2048 characters. Windows caps a command line at 8191 cha
     After every file in the run has been delivered and after any removals, so the server is in its final state before the service restarts. A run that delivers nothing runs nothing. Renewals, adding a certificate, and a manual trigger all deliver files, so all three run the command. Removing a certificate from the sync does not.
   </Accordion>
   <Accordion title="What happens if the command fails?">
-    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran. A silent failure is reported as a failure: the script stops on the first error, and a native command's own non-zero exit code is passed through.
+    The sync is marked failed and the reason appears as the sync's last error. The delivered files stay in place, because they were written before the command ran. A silent failure is reported as a failure: the script stops on the first error, and a native command's own non-zero exit code is passed through. A command that fails is reported, not repeated.
 
     To fail the sync deliberately, use `throw "reason"`. Avoid `exit`: PowerShell stops the script there before it can report its result, so the sync is failed with a message saying the outcome could not be read rather than with your reason.
   </Accordion>
@@ -194,7 +194,7 @@ A command is limited to 2048 characters. Windows caps a command line at 8191 cha
     ```
   </Accordion>
   <Accordion title="Can the command run twice for the same certificate?">
-    Yes. A sync that retries re-delivers the files and runs the command again, so prefer a command that is safe to run more than once. A service restart is.
+    Yes, in some cases. If a sync run does not complete, Infisical may attempt it again, and the command runs as part of that attempt. Prefer a command that is safe to run more than once. A service restart is.
   </Accordion>
   <Accordion title="Is there a time limit?">
     Yes, 30 seconds, enforced by the Gateway. A command that needs longer should start the work in the background or live in a script on the server.

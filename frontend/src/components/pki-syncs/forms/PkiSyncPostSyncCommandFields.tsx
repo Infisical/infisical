@@ -32,9 +32,10 @@ const SINGLE_CERTIFICATE_VARIABLES = [
 
 type Props = {
   destination?: PkiSync;
+  canEditCommand?: boolean;
 };
 
-export const PkiSyncPostSyncCommandFields = ({ destination }: Props) => {
+export const PkiSyncPostSyncCommandFields = ({ destination, canEditCommand = true }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const currentDestination = destination ?? watch("destination");
   const isPkcs12 = watch("syncOptions.exportFormat") === PkiSyncExportFormat.Pkcs12;
@@ -54,7 +55,7 @@ export const PkiSyncPostSyncCommandFields = ({ destination }: Props) => {
         control={control}
         name="syncOptions.postSyncCommand"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field data-invalid={Boolean(error)}>
+          <Field data-invalid={Boolean(error)} data-disabled={!canEditCommand}>
             <FieldLabel htmlFor="post-sync-command">Command</FieldLabel>
             <TextArea
               id="post-sync-command"
@@ -62,12 +63,14 @@ export const PkiSyncPostSyncCommandFields = ({ destination }: Props) => {
               value={value ?? ""}
               onChange={onChange}
               isError={Boolean(error)}
-              placeholder={COMMAND_PLACEHOLDERS[currentDestination]}
+              readOnly={!canEditCommand}
+              disabled={!canEditCommand}
+              placeholder={canEditCommand ? COMMAND_PLACEHOLDERS[currentDestination] : undefined}
             />
             <FieldDescription>
-              Runs once per sync run that delivers a file, as the sync&apos;s account, so keep that
-              account least-privilege. If it fails, the sync is marked failed. The command is
-              executed by the gateway, so the sync&apos;s connection must use one.
+              {canEditCommand
+                ? "Runs once per sync run that delivers a file, as the sync's account, so keep that account least-privilege. If it fails, the sync is marked failed. The command is executed by the gateway, so the sync's connection must use one."
+                : "You do not have permission to set a post-sync command on this sync. Ask an administrator to change it."}
             </FieldDescription>
             <FieldError>{error?.message}</FieldError>
           </Field>

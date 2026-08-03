@@ -9,8 +9,8 @@ export const PostSyncCommandSchema = z
     POST_SYNC_COMMAND_MAX_LENGTH,
     `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`
   )
-  .transform((command) => command || undefined)
-  .optional();
+  .nullish()
+  .transform((command) => command || null);
 
 export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined>(
   additionalSyncOptions?: T

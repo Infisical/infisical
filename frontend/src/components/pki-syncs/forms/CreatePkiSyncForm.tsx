@@ -31,6 +31,7 @@ import {
   PkiSync,
   PkiSyncExportFormat,
   TPkiSync,
+  useCanSetPostSyncCommand,
   useCreatePkiSync,
   usePkiSyncOption
 } from "@app/hooks/api/pkiSyncs";
@@ -173,7 +174,11 @@ export const CreatePkiSyncForm = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { syncOption } = usePkiSyncOption(destination);
-  const FORM_TABS = getFormTabs(destination, Boolean(syncOption?.canRunPostSyncCommand));
+  const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
+  const FORM_TABS = getFormTabs(
+    destination,
+    Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand
+  );
 
   const formMethods = useForm<TPkiSyncForm>({
     resolver: zodResolver(PkiSyncFormSchema),
@@ -370,7 +375,10 @@ export const CreatePkiSyncForm = ({
             )}
             {currentKey === "mappings" && <PkiSyncFieldMappingsFields destination={destination} />}
             {currentKey === "postSyncCommand" && (
-              <PkiSyncPostSyncCommandFields destination={destination} />
+              <PkiSyncPostSyncCommandFields
+                destination={destination}
+                canEditCommand={canSetPostSyncCommand}
+              />
             )}
             {currentKey === "details" && <PkiSyncDetailsFields />}
             {currentKey === "certificates" && (

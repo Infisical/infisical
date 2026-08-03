@@ -33,8 +33,10 @@ import {
 } from "./pki-sync-fns";
 import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import {
+  applyPostSyncCommandUpdate,
   findSingleCertificatePostSyncCommandVariables,
-  formatPostSyncCommandVariables
+  formatPostSyncCommandVariables,
+  normalizeNewPostSyncCommand
 } from "./pki-sync-post-sync-command-fns";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
@@ -194,7 +196,8 @@ export const pkiSyncServiceFactory = ({
     subscriberName: string | undefined,
     actor: OrgServiceActor
   ) => {
-    if (!nextCommand || nextCommand === currentCommand) return;
+    if (nextCommand === currentCommand) return;
+    if (!nextCommand && !currentCommand) return;
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SetPostSyncCommand,
@@ -340,10 +343,10 @@ export const pkiSyncServiceFactory = ({
     const connection = await appConnectionService.connectAppConnectionById(destinationApp, connectionId, actor);
 
     const providerCapabilities = getPkiSyncProviderCapabilities(destination);
-    const resolvedSyncOptions = {
+    const resolvedSyncOptions = normalizeNewPostSyncCommand({
       ...providerCapabilities,
       ...syncOptions
-    };
+    });
 
     await $assertMaySetPostSyncCommand(
       syncOptions?.postSyncCommand,
@@ -495,10 +498,10 @@ export const pkiSyncServiceFactory = ({
         });
       }
 
-      resolvedSyncOptions = {
-        ...providerCapabilities,
-        ...syncOptions
-      };
+      resolvedSyncOptions = applyPostSyncCommandUpdate(
+        { ...providerCapabilities, ...syncOptions },
+        (pkiSync.syncOptions as Record<string, unknown> | undefined)?.postSyncCommand
+      );
     }
 
     const effectiveSyncOptions = (resolvedSyncOptions ?? pkiSync.syncOptions) as Record<string, unknown> | undefined;

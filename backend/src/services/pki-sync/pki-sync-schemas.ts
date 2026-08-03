@@ -9,7 +9,7 @@ export const PostSyncCommandSchema = z
   .string()
   .trim()
   .max(POST_SYNC_COMMAND_MAX_LENGTH, `Command must be at most ${POST_SYNC_COMMAND_MAX_LENGTH} characters`)
-  .transform((command) => command || undefined)
+  .nullable()
   .optional();
 
 // Sync options shared by every destination. Destinations extend this with their own

@@ -2,9 +2,11 @@ import { describe, expect, test, vi } from "vitest";
 
 import { PkiSyncStatus } from "./pki-sync-enums";
 import {
+  applyPostSyncCommandUpdate,
   buildPostSyncCommandFailureMessage,
   buildPostSyncCommandPlan,
   findSingleCertificatePostSyncCommandVariables,
+  normalizeNewPostSyncCommand,
   PostSyncCommandVariable,
   renderPostSyncCommand,
   runPostSyncCommand,
@@ -351,5 +353,67 @@ describe("buildPostSyncCommandFailureMessage", () => {
 
     expect(result.output?.length).toBeLessThan(1100);
     expect(result.failureDetail?.length).toBeLessThanOrEqual(120);
+  });
+});
+
+describe("normalizeNewPostSyncCommand", () => {
+  test("keeps a real command", () => {
+    expect(normalizeNewPostSyncCommand({ exportFormat: "pem", postSyncCommand: "systemctl reload nginx" })).toEqual({
+      exportFormat: "pem",
+      postSyncCommand: "systemctl reload nginx"
+    });
+  });
+
+  test.each([
+    ["null", null],
+    ["empty string", ""],
+    ["absent", undefined]
+  ])("stores no command at all when it is %s", (_label, value) => {
+    const result = normalizeNewPostSyncCommand({ exportFormat: "pem", postSyncCommand: value });
+
+    expect("postSyncCommand" in result).toBe(false);
+    expect(result).toEqual({ exportFormat: "pem" });
+  });
+});
+
+describe("applyPostSyncCommandUpdate", () => {
+  const stored = "systemctl reload nginx";
+
+  test("an omitted key preserves the stored command", () => {
+    const result = applyPostSyncCommandUpdate({ exportFormat: "pem", includeRootCa: true }, stored);
+
+    expect(result.postSyncCommand).toBe(stored);
+    expect(result.includeRootCa).toBe(true);
+  });
+
+  test("an explicit null clears the stored command", () => {
+    const result = applyPostSyncCommandUpdate({ exportFormat: "pem", postSyncCommand: null }, stored);
+
+    expect("postSyncCommand" in result).toBe(false);
+  });
+
+  test("a blank string clears the stored command", () => {
+    const result = applyPostSyncCommandUpdate({ postSyncCommand: "" }, stored);
+
+    expect("postSyncCommand" in result).toBe(false);
+  });
+
+  test("a new command replaces the stored one", () => {
+    const result = applyPostSyncCommandUpdate({ postSyncCommand: "systemctl restart haproxy" }, stored);
+
+    expect(result.postSyncCommand).toBe("systemctl restart haproxy");
+  });
+
+  test("an omitted key on a sync that has no command leaves it absent", () => {
+    const result = applyPostSyncCommandUpdate({ exportFormat: "pem" }, undefined);
+
+    expect("postSyncCommand" in result).toBe(false);
+  });
+
+  test("does not mutate the object it was given", () => {
+    const input = { exportFormat: "pem", postSyncCommand: null };
+    applyPostSyncCommandUpdate(input, stored);
+
+    expect(input.postSyncCommand).toBeNull();
   });
 });
