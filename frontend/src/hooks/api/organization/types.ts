@@ -30,7 +30,6 @@ export type Organization = {
   secretsProductEnabled: boolean;
   pkiProductEnabled: boolean;
   kmsProductEnabled: boolean;
-  sshProductEnabled: boolean;
   scannerProductEnabled: boolean;
   shareSecretsProductEnabled: boolean;
   maxSharedSecretLifetime: number;
@@ -59,7 +58,6 @@ export type UpdateOrgDTO = {
   secretsProductEnabled?: boolean;
   pkiProductEnabled?: boolean;
   kmsProductEnabled?: boolean;
-  sshProductEnabled?: boolean;
   scannerProductEnabled?: boolean;
   shareSecretsProductEnabled?: boolean;
   maxSharedSecretViewLimit?: number | null;

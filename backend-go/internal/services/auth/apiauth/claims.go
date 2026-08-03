@@ -24,7 +24,6 @@ type UnifiedJWTClaims struct {
 	SubOrganizationID uuid.UUID `json:"subOrganizationId,omitempty"`
 	IsMfaVerified     bool      `json:"isMfaVerified,omitempty"`
 	MfaMethod         string    `json:"mfaMethod,omitempty"`
-	MCP               bool      `json:"mcp,omitempty"`
 
 	// Identity JWT fields
 	IdentityID            uuid.UUID     `json:"identityId,omitempty"`
@@ -55,7 +54,6 @@ func (c *UnifiedJWTClaims) ToUserClaims() *UserJWTClaims {
 		SubOrganizationID: c.SubOrganizationID,
 		IsMfaVerified:     c.IsMfaVerified,
 		MfaMethod:         c.MfaMethod,
-		MCP:               c.MCP,
 	}
 }
 
@@ -110,7 +108,6 @@ type UserJWTClaims struct {
 	SubOrganizationID uuid.UUID          `json:"subOrganizationId,omitempty"`
 	IsMfaVerified     bool               `json:"isMfaVerified,omitempty"`
 	MfaMethod         string             `json:"mfaMethod,omitempty"`
-	MCP               bool               `json:"mcp,omitempty"`
 }
 
 // IdentityJWTClaims represents the JWT payload for machine identity access tokens.

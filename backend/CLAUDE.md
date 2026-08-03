@@ -173,7 +173,6 @@ Auth extraction happens in `src/server/plugins/auth/`:
 - **JWT** — user browser sessions (decoded from `Authorization: Bearer` header)
 - **IDENTITY_ACCESS_TOKEN** — machine-to-machine identity tokens
 - **SCIM_TOKEN** — SCIM provisioning tokens
-- **MCP_JWT** — MCP-specific JWTs (has `.mcp` field in payload)
 
 **Deprecated auth modes (do not use in new code):**
 - **API_KEY** — user API keys (from `x-api-key` header). Deprecated — use identity access tokens instead.

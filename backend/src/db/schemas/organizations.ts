@@ -32,7 +32,6 @@ export const OrganizationsSchema = z.object({
   secretsProductEnabled: z.boolean().default(true).nullable().optional(),
   pkiProductEnabled: z.boolean().default(true).nullable().optional(),
   kmsProductEnabled: z.boolean().default(true).nullable().optional(),
-  sshProductEnabled: z.boolean().default(true).nullable().optional(),
   scannerProductEnabled: z.boolean().default(true).nullable().optional(),
   shareSecretsProductEnabled: z.boolean().default(true).nullable().optional(),
   maxSharedSecretLifetime: z.number().default(2592000).nullable().optional(),

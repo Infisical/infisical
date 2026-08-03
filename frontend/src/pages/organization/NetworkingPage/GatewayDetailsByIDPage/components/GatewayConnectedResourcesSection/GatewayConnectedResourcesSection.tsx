@@ -36,7 +36,6 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
     ? r.appConnections.length +
       r.dynamicSecrets.length +
       r.kubernetesAuths.length +
-      r.mcpServers.length +
       r.pkiDiscoveryConfigs.length
     : 0;
 
@@ -161,28 +160,6 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                         subtitle="Kubernetes Auth"
                         to="/organizations/$orgId/identities/$identityId"
                         params={{ orgId: currentOrg.id, identityId: a.identityId }}
-                      />
-                    ))}
-                  </ItemGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {(resources?.mcpServers.length ?? 0) > 0 && (
-              <AccordionItem value="mcp-servers">
-                <AccordionTrigger>
-                  <span className="flex-1">MCP Servers</span>
-                  <Badge variant="neutral">{resources?.mcpServers.length}</Badge>
-                </AccordionTrigger>
-                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
-                  <ItemGroup>
-                    {resources?.mcpServers.map((s) => (
-                      <ResourceRow
-                        key={s.id}
-                        name={s.name}
-                        subtitle={s.projectName}
-                        to="/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId"
-                        params={{ orgId: currentOrg.id, projectId: s.projectId, serverId: s.id }}
                       />
                     ))}
                   </ItemGroup>

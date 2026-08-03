@@ -1,6 +1,4 @@
 import { AppConnection } from "../appConnections/enums";
-import { SshCaStatus } from "../sshCa";
-import { SshCertTemplateStatus } from "../sshCertificateTemplates";
 import { AcmeDnsProvider, CaCapability, CaStatus, CaType, InternalCaType } from "./enums";
 
 export const caTypeToNameMap: { [K in InternalCaType]: string } = {
@@ -87,7 +85,7 @@ export const caSupportsCapability = (caType: CaType, capability: CaCapability): 
   return capabilities.includes(capability);
 };
 
-export const getCaStatusBadgeVariant = (status: CaStatus | SshCaStatus | SshCertTemplateStatus) => {
+export const getCaStatusBadgeVariant = (status: CaStatus) => {
   switch (status) {
     case CaStatus.ACTIVE:
       return "success";

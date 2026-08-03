@@ -32,7 +32,6 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
-  ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -43,12 +42,6 @@ import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
 } from "@app/ee/services/project-template/project-template-types";
-import { TSshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
-import { TSshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
-import { TSshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
-import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
-import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
-import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
@@ -98,9 +91,7 @@ import { TUserDALFactory } from "../user/user-dal";
 import { WorkflowIntegration, WorkflowIntegrationStatus } from "../workflow-integration/workflow-integration-types";
 import { TProjectAccessRequestDALFactory } from "./project-access-request-dal";
 import { TProjectDALFactory } from "./project-dal";
-import { bootstrapSshProject } from "./project-fns";
 import { TProjectQueueFactory } from "./project-queue";
-import { TProjectSshConfigDALFactory } from "./project-ssh-config-dal";
 import {
   ProjectFilterType,
   TCreateProjectDTO,
@@ -111,7 +102,6 @@ import {
   TGetDashboardStatsDTO,
   TGetProjectDTO,
   TGetProjectKmsKey,
-  TGetProjectSshConfig,
   TGetProjectWorkflowIntegrationConfig,
   TListProjectAlertsDTO,
   TListProjectCasDTO,
@@ -119,10 +109,6 @@ import {
   TListProjectCertsDTO,
   TListProjectPkiSubscribersDTO,
   TListProjectsDTO,
-  TListProjectSshCasDTO,
-  TListProjectSshCertificatesDTO,
-  TListProjectSshCertificateTemplatesDTO,
-  TListProjectSshHostsDTO,
   TLoadProjectKmsBackupDTO,
   TProjectAccessRequestDTO,
   TSearchProjectsDTO,
@@ -132,7 +118,6 @@ import {
   TUpdateProjectDTO,
   TUpdateProjectKmsDTO,
   TUpdateProjectNameDTO,
-  TUpdateProjectSshConfig,
   TUpdateProjectVersionLimitDTO,
   TUpdateProjectWorkflowIntegration,
   TUpgradeProjectDTO
@@ -146,7 +131,6 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  projectSshConfigDAL: Pick<TProjectSshConfigDALFactory, "transaction" | "create" | "findOne" | "updateById">;
   projectQueue: TProjectQueueFactory;
   userDAL: TUserDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
@@ -187,12 +171,6 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
-  sshCertificateAuthorityDAL: Pick<TSshCertificateAuthorityDALFactory, "find" | "findOne" | "create" | "transaction">;
-  sshCertificateAuthoritySecretDAL: Pick<TSshCertificateAuthoritySecretDALFactory, "create">;
-  sshCertificateDAL: Pick<TSshCertificateDALFactory, "find" | "countSshCertificatesInProject">;
-  sshCertificateTemplateDAL: Pick<TSshCertificateTemplateDALFactory, "find">;
-  sshHostDAL: Pick<TSshHostDALFactory, "find" | "findSshHostsWithLoginMappings">;
-  sshHostGroupDAL: Pick<TSshHostGroupDALFactory, "find" | "findSshHostGroupsWithLoginMappings">;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "invalidateGetPlan">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -233,7 +211,6 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
-  projectSshConfigDAL,
   projectQueue,
   permissionService,
   orgDAL,
@@ -248,12 +225,6 @@ export const projectServiceFactory = ({
   pkiCollectionDAL,
   pkiAlertDAL,
   pkiSubscriberDAL,
-  sshCertificateAuthorityDAL,
-  sshCertificateAuthoritySecretDAL,
-  sshCertificateDAL,
-  sshCertificateTemplateDAL,
-  sshHostDAL,
-  sshHostGroupDAL,
   keyStore,
   kmsService,
   projectSlackConfigDAL,
@@ -306,10 +277,6 @@ export const projectServiceFactory = ({
       permission.cannot(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project)
     ) {
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
-    }
-
-    if (type === ProjectType.AI) {
-      throw new BadRequestError({ message: "Agent Sentinel projects are not supported" });
     }
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
@@ -385,17 +352,6 @@ export const projectServiceFactory = ({
           }
         }
         throw err;
-      }
-
-      if (type === ProjectType.SSH) {
-        await bootstrapSshProject({
-          projectId: project.id,
-          sshCertificateAuthorityDAL,
-          sshCertificateAuthoritySecretDAL,
-          kmsService,
-          projectSshConfigDAL,
-          tx
-        });
       }
 
       // set default environments and root folder for provided environments
@@ -1707,184 +1663,6 @@ export const projectServiceFactory = ({
     };
   };
 
-  /**
-   * Return list of SSH CAs for project
-   */
-  const listProjectSshCas = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshCasDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SshCertificateAuthorities
-    );
-
-    const cas = await sshCertificateAuthorityDAL.find(
-      {
-        projectId
-      },
-      { sort: [["updatedAt", "desc"]] }
-    );
-
-    return cas;
-  };
-
-  /**
-   * Return list of SSH hosts for project
-   */
-  const listProjectSshHosts = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshHostsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    const allowedHosts = [];
-
-    // (dangtony98): room to optimize
-    const hosts = await sshHostDAL.findSshHostsWithLoginMappings(projectId);
-
-    for (const host of hosts) {
-      const canRead = permission.can(
-        ProjectPermissionSshHostActions.Read,
-        subject(ProjectPermissionSub.SshHosts, {
-          hostname: host.hostname
-        })
-      );
-
-      if (canRead) {
-        allowedHosts.push(host);
-      }
-    }
-
-    return allowedHosts;
-  };
-
-  /**
-   * Return list of SSH host groups for project
-   */
-  const listProjectSshHostGroups = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshHostsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshHostGroups);
-
-    const sshHostGroups = await sshHostGroupDAL.findSshHostGroupsWithLoginMappings(projectId);
-
-    return sshHostGroups;
-  };
-
-  /**
-   * Return list of SSH certificates for project
-   */
-  const listProjectSshCertificates = async ({
-    limit = 25,
-    offset = 0,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshCertificatesDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
-
-    const cas = await sshCertificateAuthorityDAL.find({
-      projectId
-    });
-
-    const certificates = await sshCertificateDAL.find(
-      {
-        $in: {
-          sshCaId: cas.map((ca) => ca.id)
-        }
-      },
-      { offset, limit, sort: [["updatedAt", "desc"]] }
-    );
-
-    const count = await sshCertificateDAL.countSshCertificatesInProject(projectId);
-
-    return { certificates, totalCount: count };
-  };
-
-  /**
-   * Return list of SSH certificate templates for project
-   */
-  const listProjectSshCertificateTemplates = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectSshCertificateTemplatesDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.SshCertificateTemplates
-    );
-
-    const cas = await sshCertificateAuthorityDAL.find({
-      projectId
-    });
-
-    const certificateTemplates = await sshCertificateTemplateDAL.find({
-      $in: {
-        sshCaId: cas.map((ca) => ca.id)
-      }
-    });
-
-    return { certificateTemplates };
-  };
-
   const updateProjectKmsKey = async ({
     projectId,
     kms,
@@ -1987,115 +1765,6 @@ export const projectServiceFactory = ({
     const kmsKey = await kmsService.getKmsById(kmsKeyId);
 
     return { secretManagerKmsKey: kmsKey };
-  };
-
-  const getProjectSshConfig = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TGetProjectSshConfig) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
-
-    const projectSshConfig = await projectSshConfigDAL.findOne({
-      projectId
-    });
-
-    if (!projectSshConfig) {
-      throw new NotFoundError({
-        message: `Project SSH config with ID '${projectId}' not found`
-      });
-    }
-
-    return projectSshConfig;
-  };
-
-  const updateProjectSshConfig = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    defaultUserSshCaId,
-    defaultHostSshCaId
-  }: TUpdateProjectSshConfig) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SSH
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    let projectSshConfig = await projectSshConfigDAL.findOne({
-      projectId
-    });
-
-    if (!projectSshConfig) {
-      throw new NotFoundError({
-        message: `Project SSH config with ID '${projectId}' not found`
-      });
-    }
-
-    projectSshConfig = await projectSshConfigDAL.transaction(async (tx) => {
-      if (defaultUserSshCaId) {
-        const userSshCa = await sshCertificateAuthorityDAL.findOne(
-          {
-            id: defaultUserSshCaId,
-            projectId
-          },
-          tx
-        );
-
-        if (!userSshCa) {
-          throw new NotFoundError({
-            message: "User SSH CA must exist and belong to this project"
-          });
-        }
-      }
-
-      if (defaultHostSshCaId) {
-        const hostSshCa = await sshCertificateAuthorityDAL.findOne(
-          {
-            id: defaultHostSshCaId,
-            projectId
-          },
-          tx
-        );
-
-        if (!hostSshCa) {
-          throw new NotFoundError({
-            message: "Host SSH CA must exist and belong to this project"
-          });
-        }
-      }
-
-      const updatedProjectSshConfig = await projectSshConfigDAL.updateById(
-        projectSshConfig.id,
-        {
-          defaultUserSshCaId,
-          defaultHostSshCaId
-        },
-        tx
-      );
-
-      return updatedProjectSshConfig;
-    });
-
-    return projectSshConfig;
   };
 
   const getProjectWorkflowIntegrationConfig = async ({
@@ -2673,12 +2342,7 @@ export const projectServiceFactory = ({
     listProjectAlerts,
     listProjectPkiCollections,
     listProjectCertificateTemplates,
-    listProjectSshCas,
-    listProjectSshHosts,
-    listProjectSshHostGroups,
     listProjectPkiSubscribers,
-    listProjectSshCertificates,
-    listProjectSshCertificateTemplates,
     updateVersionLimit,
     updateAuditLogsRetention,
     updateProjectKmsKey,
@@ -2688,8 +2352,6 @@ export const projectServiceFactory = ({
     getProjectWorkflowIntegrationConfig,
     updateProjectWorkflowIntegration,
     deleteProjectWorkflowIntegration,
-    getProjectSshConfig,
-    updateProjectSshConfig,
     requestProjectAccess,
     getMyPendingProjectAccessRequests,
     searchProjects,

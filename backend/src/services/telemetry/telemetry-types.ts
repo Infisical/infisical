@@ -61,10 +61,6 @@ export enum PostHogEventTypes {
   TelemetryInstanceStats = "Self Hosted Instance Stats",
   SecretRequestCreated = "Secret Request Created",
   SecretRequestDeleted = "Secret Request Deleted",
-  SignSshKey = "Sign SSH Key",
-  IssueSshCreds = "Issue SSH Credentials",
-  IssueSshHostUserCert = "Issue SSH Host User Certificate",
-  IssueSshHostHostCert = "Issue SSH Host Host Certificate",
   SignCert = "Sign PKI Certificate",
   IssueCert = "Issue PKI Certificate",
   InvalidateCache = "Invalidate Cache",
@@ -573,9 +569,6 @@ export type TTelemetryInstanceStatsEvent = {
     customProjectRoles: number;
     customOrgRoles: number;
     kmipClients: number;
-    sshHosts: number;
-    sshCertificateAuthorities: number;
-    sshCertificates: number;
     pamResources: number;
     pamAccounts: number;
     accessApprovalPolicies: number;
@@ -604,44 +597,6 @@ export type TSecretRequestDeletedEvent = {
   properties: {
     secretRequestId: string;
     organizationId: string;
-  };
-};
-
-export type TSignSshKeyEvent = {
-  event: PostHogEventTypes.SignSshKey;
-  properties: {
-    certificateTemplateId: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshCredsEvent = {
-  event: PostHogEventTypes.IssueSshCreds;
-  properties: {
-    certificateTemplateId: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshHostUserCertEvent = {
-  event: PostHogEventTypes.IssueSshHostUserCert;
-  properties: {
-    sshHostId: string;
-    hostname: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshHostHostCertEvent = {
-  event: PostHogEventTypes.IssueSshHostHostCert;
-  properties: {
-    sshHostId: string;
-    hostname: string;
-    principals: string[];
-    userAgent?: string;
   };
 };
 
@@ -2084,10 +2039,6 @@ export type TPostHogEvent = {
   | TTelemetryInstanceStatsEvent
   | TSecretRequestCreatedEvent
   | TSecretRequestDeletedEvent
-  | TSignSshKeyEvent
-  | TIssueSshCredsEvent
-  | TIssueSshHostUserCertEvent
-  | TIssueSshHostHostCertEvent
   | TSignCertificateEvent
   | TIssueCertificateEvent
   | TInvalidateCacheEvent
