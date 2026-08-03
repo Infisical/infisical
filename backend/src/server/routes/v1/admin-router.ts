@@ -93,8 +93,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const orgId = req.auth?.orgId ?? "";
 
       const latestAvailableVersion = await server.services.updateCheck.getAvailableUpdateVersion();
-      const isCrossProjectSecretSharingEnabled =
-        await server.services.crossProjectSecretSharingService.canUseCrossProjectSecretSharing(orgId);
+      const isCrossProjectSecretSharingEnabled = orgId
+        ? await server.services.crossProjectSecretSharingService.canUseCrossProjectSecretSharing(orgId)
+        : false;
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
