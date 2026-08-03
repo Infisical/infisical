@@ -175,6 +175,7 @@
                       "integrations/app-connections/render",
                       "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
+                      "integrations/app-connections/servicenow",
                       "integrations/app-connections/snowflake",
                       "integrations/app-connections/spacelift",
                       "integrations/app-connections/supabase",
@@ -198,7 +199,8 @@
                 "group": "Workflow Integrations",
                 "pages": [
                   "documentation/platform/workflow-integrations/slack-integration",
-                  "documentation/platform/workflow-integrations/microsoft-teams-integration"
+                  "documentation/platform/workflow-integrations/microsoft-teams-integration",
+                  "documentation/platform/workflow-integrations/servicenow-integration"
                 ]
               },
               {

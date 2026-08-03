@@ -1,0 +1,90 @@
+---
+title: "ServiceNow Connection"
+description: "Learn how to configure a ServiceNow Connection for Infisical."
+---
+
+<Info>
+  The ServiceNow integration is opt-in and only available on Enterprise plans.
+  Contact [sales@infisical.com](mailto:sales@infisical.com) to opt-in and gain access to the ServiceNow Integration.
+</Info>
+
+Infisical connects to ServiceNow using basic authentication. The connection is used to create and read approval records in the Infisical application installed on your ServiceNow instance.
+
+## Prerequisites
+
+- The Infisical application installed on your ServiceNow instance. See the [ServiceNow Integration](/documentation/platform/workflow-integrations/servicenow-integration) guide for installation.
+- Permission to create users and assign roles on the ServiceNow instance.
+
+## Create a ServiceNow Integration User
+
+Use a dedicated ServiceNow user for the connection rather than a personal account. This keeps the audit trail clear and lets you rotate the credential without affecting anyone's access.
+
+<Steps>
+  <Step title="Create the user">
+    In ServiceNow, navigate to **All > User Administration > Users** and click **New**.
+
+    Set the following:
+
+    - **User ID**: an identifier such as `infisical.integration`.
+    - **First name** / **Last name**: a recognizable name such as `Infisical Integration`.
+    - **Password**: a strong password. Save it, you will need it in Infisical.
+    - **Web service access only**: checked. This prevents the account from being used to sign in to the ServiceNow UI.
+    - **Active**: checked.
+
+    Submit the form, then reopen the record.
+
+  </Step>
+  <Step title="Assign the integration role">
+    In the **Roles** related list on the user record, click **Edit** and add:
+
+    ```
+    x_infis_approvals.secret-manager-integration
+    ```
+
+    This role grants exactly what Infisical needs: the ability to create and read Infisical access request records. It does not grant approval rights or access to anything else on the instance.
+
+  </Step>
+  <Step title="Note your instance URL">
+    Your instance URL is the base URL of your ServiceNow instance, for example
+    `https://dev12345.service-now.com`. Do not include a path or trailing slash.
+  </Step>
+</Steps>
+
+## Create a ServiceNow Connection in Infisical
+
+<Steps>
+  <Step title="Navigate to App Connections">
+    In your Infisical organization, go to **Organization Settings > App Connections** and click **Add Connection**.
+  </Step>
+  <Step title="Select ServiceNow">
+    Choose **ServiceNow** from the list of available connections.
+  </Step>
+  <Step title="Fill in the connection details">
+    - **Name**: a descriptive name such as `servicenow-prod`.
+    - **Description** (optional): what this connection is used for.
+    - **Instance URL**: the base URL of your ServiceNow instance, for example `https://dev12345.service-now.com`.
+    - **Username**: the User ID of the integration user.
+    - **Password**: the password for the integration user.
+
+    Optionally select a **Gateway** to route the connection through an Infisical Gateway if your ServiceNow instance is not reachable from the public internet.
+
+    Click **Connect to ServiceNow**. Infisical validates the credentials against the instance before saving.
+
+  </Step>
+  <Step title="Connection created">
+    The connection is now available to select when configuring an access policy with ServiceNow approvals.
+  </Step>
+</Steps>
+
+## Rotating the Credential
+
+Change the password on the ServiceNow integration user, then update the **Password** field on the connection in Infisical. Requests already pending in ServiceNow are unaffected, since the decision callback authenticates with a separate Infisical machine identity rather than this connection.
+
+## Troubleshooting
+
+| Symptom                                       | Cause                                                                                                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `401 Unauthorized` when saving the connection | Wrong username or password, or the user is locked out. Verify the credential by signing in with the ServiceNow REST API Explorer.                  |
+| `403 Forbidden` when saving the connection    | The user is missing the `x_infis_approvals.secret-manager-integration` role.                                                                       |
+| `404 Not Found` when saving the connection    | The Infisical application is not installed on the instance, or the instance URL points at the wrong instance.                                      |
+| Connection times out                          | The instance is not reachable from Infisical. Use an Infisical Gateway, or allow Infisical's egress IPs on your instance's IP access control list. |
