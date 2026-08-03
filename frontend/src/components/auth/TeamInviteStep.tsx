@@ -143,6 +143,7 @@ export default function TeamInviteStep({
               <span className="font-normal text-muted">(optional)</span>
             </FieldLabel>
             <Input
+              variant="outlined"
               id="signup-attribution-source"
               value={attributionSource}
               onChange={(e) => setAttributionSource(e.target.value)}

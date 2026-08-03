@@ -78,6 +78,7 @@ export default function OrgNameStep({ onComplete }: OrgNameStepProps): JSX.Eleme
                 Organization Name
               </FieldLabel>
               <Input
+                variant="outlined"
                 {...register("organizationName")}
                 id="sso-organization-name"
                 placeholder="Organization Name"

@@ -133,6 +133,7 @@ export const SignUpPage = () => {
               )}
               <Field data-invalid={Boolean(errors.organizationName)}>
                 <Input
+                  variant="outlined"
                   {...register("organizationName")}
                   id="admin-signup-organization"
                   aria-label="Organization name"

@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, type Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import axios from "axios";
@@ -69,6 +69,17 @@ const formSchema = z.object({
 
 type TSetupForm = z.infer<typeof formSchema>;
 
+const stepSchemas = {
+  [SetupStep.Account]: formSchema.pick({ firstName: true, lastName: true }).passthrough(),
+  [SetupStep.Organization]: formSchema
+    .pick({ organizationName: true, organizationSlug: true })
+    .passthrough(),
+  [SetupStep.Access]: formSchema
+    .pick({ signUpMode: true, allowedSignUpDomain: true, enabledLoginMethods: true })
+    .passthrough(),
+  [SetupStep.Review]: formSchema
+};
+
 const loginMethods: Array<{
   value: LoginMethod;
   label: string;
@@ -106,12 +117,12 @@ const formatAllowedDomains = (domains: string) =>
 
 const stepContent = {
   [SetupStep.Account]: {
-    title: "Super Admin account",
-    description: "Review the account created for managing this instance."
+    title: "Create a Super Admin account",
+    description: "This account will serve as an instance administrator."
   },
   [SetupStep.Organization]: {
-    title: "Initial organization",
-    description: "Review the first organization created on this instance."
+    title: "Set up first org",
+    description: "Each instance can hold multiple orgs, this one is for you."
   },
   [SetupStep.Access]: {
     title: "Control who can join",
@@ -135,30 +146,6 @@ export const SetupPage = () => {
     handledErrorCodes: [SuperAdminErrorCode.AuthMethodLockout]
   });
 
-  const {
-    clearErrors,
-    control,
-    handleSubmit,
-    register,
-    setError,
-    watch,
-    formState: { dirtyFields, errors, isSubmitting }
-  } = useForm<TSetupForm>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      firstName: user.firstName ?? "",
-      lastName: user.lastName ?? "",
-      organizationName: currentOrg.name,
-      organizationSlug: currentOrg.slug,
-      signUpMode: config.allowSignUp ? SignUpMode.Anyone : SignUpMode.Disabled,
-      allowedSignUpDomain: config.allowedSignUpDomain ?? "",
-      enabledLoginMethods:
-        config.enabledLoginMethods === null
-          ? loginMethods.map(({ value }) => value)
-          : config.enabledLoginMethods
-    }
-  });
-
   const { activeStep, activeStepIndex, back, complete, isCompleting, next, setActiveStep } =
     useOnboarding({
       id: "self-hosted-server-setup",
@@ -175,6 +162,30 @@ export const SetupPage = () => {
         await navigate({ to: "/admin/welcome" });
       }
     });
+
+  const {
+    clearErrors,
+    control,
+    handleSubmit,
+    register,
+    setError,
+    watch,
+    formState: { dirtyFields, errors, isSubmitting }
+  } = useForm<TSetupForm>({
+    resolver: zodResolver(stepSchemas[activeStep]) as Resolver<TSetupForm>,
+    defaultValues: {
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      organizationName: currentOrg.name,
+      organizationSlug: currentOrg.slug,
+      signUpMode: config.allowSignUp ? SignUpMode.Anyone : SignUpMode.Disabled,
+      allowedSignUpDomain: config.allowedSignUpDomain ?? "",
+      enabledLoginMethods:
+        config.enabledLoginMethods === null
+          ? loginMethods.map(({ value }) => value)
+          : config.enabledLoginMethods
+    }
+  });
 
   const values = watch();
   const onSubmit = handleSubmit(async (formData) => {
@@ -239,6 +250,7 @@ export const SetupPage = () => {
                 First Name
               </FieldLabel>
               <Input
+                variant="outlined"
                 {...register("firstName")}
                 id="setup-first-name"
                 placeholder="First Name"
@@ -253,6 +265,7 @@ export const SetupPage = () => {
                 Last Name
               </FieldLabel>
               <Input
+                variant="outlined"
                 {...register("lastName")}
                 id="setup-last-name"
                 placeholder="Last Name"
@@ -267,6 +280,7 @@ export const SetupPage = () => {
               Email
             </FieldLabel>
             <Input
+              variant="outlined"
               id="setup-email"
               type="email"
               value={user.email ?? user.username}
@@ -289,6 +303,7 @@ export const SetupPage = () => {
               Organization name
             </FieldLabel>
             <Input
+              variant="outlined"
               {...register("organizationName")}
               id="setup-organization-name"
               aria-label="Organization name"
@@ -306,6 +321,7 @@ export const SetupPage = () => {
               <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="setup-organization-slug">Organization slug</FieldLabel>
                 <Input
+                  variant="outlined"
                   {...field}
                   id="setup-organization-slug"
                   aria-describedby="setup-organization-slug-feedback"
@@ -458,6 +474,7 @@ export const SetupPage = () => {
                     </span>
                   </FieldLabel>
                   <Input
+                    variant="outlined"
                     {...field}
                     id="allowed-signup-domain"
                     aria-describedby="allowed-signup-domain-feedback"
