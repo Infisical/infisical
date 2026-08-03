@@ -136,8 +136,6 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
         return "Certificate Manager";
       case ProjectType.KMS:
         return "KMS";
-      case ProjectType.SSH:
-        return "SSH";
       default:
         return "Other";
     }

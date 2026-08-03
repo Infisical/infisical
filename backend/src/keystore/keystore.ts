@@ -22,7 +22,6 @@ export const PgSqlLock = {
   SecretRotationV2Creation: (folderId: string) => pgAdvisoryLockHashText(`secret-rotation-v2-creation:${folderId}`),
   CreateProject: (orgId: string) => pgAdvisoryLockHashText(`create-project:${orgId}`),
   CreateFolder: (envId: string, projectId: string) => pgAdvisoryLockHashText(`create-folder:${envId}-${projectId}`),
-  SshInit: (projectId: string) => pgAdvisoryLockHashText(`ssh-bootstrap:${projectId}`),
   InstanceRelayConfigInit: () => pgAdvisoryLockHashText("instance-relay-config-init"),
   OrgGatewayV2Init: (orgId: string) => pgAdvisoryLockHashText(`org-gateway-v2-init:${orgId}`),
   OrgRelayConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-relay-config-init:${orgId}`),
@@ -112,12 +111,6 @@ export const KeyStorePrefixes = {
   UsedGitHubManifestState: (jti: string) => `used-github-manifest-state:${jti}` as const,
   GitHubManifestNameLock: (orgId: string, projectId: string | null, name: string) =>
     `github-manifest-name-lock:${orgId}:${projectId ?? "org"}:${name}` as const,
-
-  AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
-
-  // AI MCP Endpoint OAuth
-  AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
-  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const,
 
   // OAuth 2.0 authorization server (Infisical as an OAuth provider)
   OauthAuthorizationCode: (code: string) => `oauth-authorization-code:${code}` as const,
@@ -220,9 +213,7 @@ export const KeyStoreTtls = {
   // How often a billable org's usage is re-emitted for reconciliation (demand-driven from getPlan).
   LicenseUsageReconcileIntervalInSeconds: 21600, // 6 hours
   LicenseUsageLastReportedInSeconds: 604800, // 7 days
-  AiMcpEndpointOAuthFlowInSeconds: 300, // 5 minutes
   OauthAuthorizationCodeInSeconds: 600, // 10 minutes
-  AiMcpServerOAuthSessionInSeconds: 600, // 10 minutes
   DashboardCacheInSeconds: 600, // 10 minutes
   ProjectEnvironmentOperationMarkerInSeconds: 10,
   UserMfaUnlockEmailSentInSeconds: 300, // 5 minutes

@@ -387,33 +387,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.APPROVAL_REQUEST_GRANT_GET]: "Get Approval Request Grant",
   [EventType.APPROVAL_REQUEST_GRANT_REVOKE]: "Revoke Approval Request Grant",
   [EventType.PAM_ACCESS_POLICY_BYPASSED]: "PAM Access Policy Bypassed",
-
-  // MCP Endpoints
-  [EventType.MCP_ENDPOINT_CREATE]: "Create MCP Endpoint",
-  [EventType.MCP_ENDPOINT_UPDATE]: "Update MCP Endpoint",
-  [EventType.MCP_ENDPOINT_DELETE]: "Delete MCP Endpoint",
-  [EventType.MCP_ENDPOINT_GET]: "Get MCP Endpoint",
-  [EventType.MCP_ENDPOINT_LIST]: "List MCP Endpoints",
-  [EventType.MCP_ENDPOINT_LIST_TOOLS]: "List MCP Endpoint Tools",
-  [EventType.MCP_ENDPOINT_ENABLE_TOOL]: "Enable MCP Endpoint Tool",
-  [EventType.MCP_ENDPOINT_DISABLE_TOOL]: "Disable MCP Endpoint Tool",
-  [EventType.MCP_ENDPOINT_BULK_UPDATE_TOOLS]: "Bulk Update MCP Endpoint Tools",
-  [EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER]: "Register MCP OAuth Client",
-  [EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE]: "Authorize MCP OAuth Client",
-  [EventType.MCP_ENDPOINT_CONNECT]: "Connect to MCP Endpoint",
-  [EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL]: "Save MCP Server User Credential",
-
-  // MCP Servers
-  [EventType.MCP_SERVER_CREATE]: "Create MCP Server",
-  [EventType.MCP_SERVER_UPDATE]: "Update MCP Server",
-  [EventType.MCP_SERVER_DELETE]: "Delete MCP Server",
-  [EventType.MCP_SERVER_GET]: "Get MCP Server",
-  [EventType.MCP_SERVER_LIST]: "List MCP Servers",
-  [EventType.MCP_SERVER_LIST_TOOLS]: "List MCP Server Tools",
-  [EventType.MCP_SERVER_SYNC_TOOLS]: "Sync MCP Server Tools",
-
-  // MCP Activity Logs
-  [EventType.MCP_ACTIVITY_LOG_LIST]: "List MCP Activity Logs",
   [EventType.CREATE_DYNAMIC_SECRET]: "Create Dynamic Secret",
   [EventType.UPDATE_DYNAMIC_SECRET]: "Update Dynamic Secret",
   [EventType.DELETE_DYNAMIC_SECRET]: "Delete Dynamic Secret",
@@ -468,16 +441,6 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
   [UserAgentType.OTHER]: "Other"
 };
 
-const sharedProjectEvents = [
-  EventType.ADD_PROJECT_MEMBER,
-  EventType.REMOVE_PROJECT_MEMBER,
-  EventType.GET_PROJECT_MEMBER_PERMISSION_AUDIT,
-  EventType.GET_PROJECT_IDENTITY_PERMISSION_AUDIT,
-  EventType.CREATE_PROJECT_ROLE,
-  EventType.UPDATE_PROJECT_ROLE,
-  EventType.DELETE_PROJECT_ROLE
-];
-
 export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
   [ProjectType.PAM]: [
     EventType.PAM_SESSION_START,
@@ -517,32 +480,5 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_DISCOVERY_SOURCE_DELETE,
     EventType.PAM_DISCOVERY_SCAN,
     EventType.PAM_DISCOVERED_ACCOUNT_IMPORT
-  ],
-  [ProjectType.AI]: [
-    ...sharedProjectEvents,
-    // MCP Endpoints
-    EventType.MCP_ENDPOINT_CREATE,
-    EventType.MCP_ENDPOINT_UPDATE,
-    EventType.MCP_ENDPOINT_DELETE,
-    EventType.MCP_ENDPOINT_GET,
-    EventType.MCP_ENDPOINT_LIST,
-    EventType.MCP_ENDPOINT_LIST_TOOLS,
-    EventType.MCP_ENDPOINT_ENABLE_TOOL,
-    EventType.MCP_ENDPOINT_DISABLE_TOOL,
-    EventType.MCP_ENDPOINT_BULK_UPDATE_TOOLS,
-    EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER,
-    EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE,
-    EventType.MCP_ENDPOINT_CONNECT,
-    EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL,
-    // MCP Servers
-    EventType.MCP_SERVER_CREATE,
-    EventType.MCP_SERVER_UPDATE,
-    EventType.MCP_SERVER_DELETE,
-    EventType.MCP_SERVER_GET,
-    EventType.MCP_SERVER_LIST,
-    EventType.MCP_SERVER_LIST_TOOLS,
-    EventType.MCP_SERVER_SYNC_TOOLS,
-    // MCP Activity Logs
-    EventType.MCP_ACTIVITY_LOG_LIST
   ]
 };

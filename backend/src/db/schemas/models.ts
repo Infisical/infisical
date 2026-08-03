@@ -3,6 +3,7 @@ import { z } from "zod";
 export enum TableName {
   Users = "users",
   EmailDomains = "email_domains",
+  // ssh_* tables were dropped with the SSH product; members kept for historical migrations
   SshHostGroup = "ssh_host_groups",
   SshHostGroupMembership = "ssh_host_group_memberships",
   SshHost = "ssh_hosts",
@@ -71,6 +72,7 @@ export enum TableName {
   SignupOnboardingResponse = "signup_onboarding_responses",
   SuperAdmin = "super_admin",
   RateLimit = "rate_limit",
+  // dropped with the SSH product; member kept for historical migrations
   ProjectSshConfig = "project_ssh_configs",
   Project = "projects",
   ProjectBot = "project_bots",
@@ -289,7 +291,7 @@ export enum TableName {
   // PKI Inventory Views
   CertificateInventoryView = "certificate_inventory_views",
 
-  // AI
+  // AI (ai_mcp_* tables were dropped with Agent Sentinel; members kept for historical migrations)
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",
   AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
@@ -378,8 +380,6 @@ export enum ProjectMembershipRole {
   Custom = "custom",
   Viewer = "viewer",
   NoAccess = "no-access",
-  // ssh
-  SshHostBootstrapper = "ssh-host-bootstrapper",
   // kms
   KmsCryptographicOperator = "cryptographic-operator"
 }
@@ -445,20 +445,16 @@ export enum ProjectType {
   SecretManager = "secret-manager",
   CertificateManager = "cert-manager",
   KMS = "kms",
-  SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam",
-  AI = "ai"
+  PAM = "pam"
 }
 
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
   CertificateManager = ProjectType.CertificateManager,
   KMS = ProjectType.KMS,
-  SSH = ProjectType.SSH,
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
-  AI = ProjectType.AI,
   // project operations that happen on all types
   Any = "any"
 }

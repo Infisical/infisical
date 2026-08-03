@@ -101,6 +101,13 @@ func (a *ApiAuthenticator) ValidateJWT(ctx context.Context, token string) (*auth
 
 // validateUserTokenClaims validates pre-parsed user JWT claims.
 func (a *ApiAuthenticator) validateUserTokenClaims(ctx context.Context, claims *UserJWTClaims) (*auth.Identity, error) {
+	// Access tokens from the removed Agent Sentinel (MCP) product were signed as
+	// ACCESS_TOKEN with an "mcp" claim and a live token session; without this guard
+	// they would validate as full user sessions despite having been endpoint-scoped.
+	if len(claims.MCP) > 0 {
+		return nil, errutil.Unauthorized("This token was issued for the removed Agent Sentinel (MCP) product and is no longer accepted").WithErrf("validateUserTokenClaims: rejected mcp-scoped token")
+	}
+
 	// 1. Find session by tokenVersionId + userId.
 	session, err := a.findSessionByIDAndUserID(ctx, claims.TokenVersionID, claims.UserID)
 	if err != nil {

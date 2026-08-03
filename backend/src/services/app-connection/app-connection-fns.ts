@@ -439,8 +439,6 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
           return PKI_APP_CONNECTIONS.includes(option.app);
         case ProjectType.KMS:
           return false;
-        case ProjectType.SSH:
-          return false;
         case ProjectType.PAM:
           return false;
         default:

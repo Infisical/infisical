@@ -29,8 +29,6 @@ export const formatProjectRoleName = (role: string, customRoleName?: string) => 
       return "No Access";
     case ProjectMembershipRole.Custom:
       return customRoleName ?? role;
-    case ProjectMembershipRole.SshHostBootstrapper:
-      return "SSH Host Bootstrapper";
     case ProjectMembershipRole.KmsCryptographicOperator:
       return "Cryptographic Operator";
     default:

@@ -218,20 +218,6 @@ func TestNoAccessRole_CannotDoAnything(t *testing.T) {
 // Specialized roles
 // =====================================================
 
-func TestSshHostBootstrapperRole_OnlySshHostActions(t *testing.T) {
-	t.Parallel()
-	ability := loadAbilityFromRules(t, project.SshHostBootstrapPermissions, nil)
-
-	sub := project.SshHostSubject{Hostname: "host1.example.com"}
-	assert.True(t, gocasl.Can(ability, project.SshHostActionCreate, sub))
-	assert.True(t, gocasl.Can(ability, project.SshHostActionIssueHostCert, sub))
-
-	// Must not have any other access
-	assert.True(t, gocasl.Cannot(ability, project.SshHostActionRead, sub))
-	assert.True(t, gocasl.Cannot(ability, project.SshHostActionDelete, sub))
-	assert.True(t, gocasl.Cannot(ability, project.SecretActionDescribeAndReadValue, project.SecretSubject{}))
-}
-
 func TestCryptographicOperatorRole_OnlyCmekCryptoOps(t *testing.T) {
 	t.Parallel()
 	ability := loadAbilityFromRules(t, project.CryptographicOperatorPermissions, nil)

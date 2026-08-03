@@ -98,7 +98,6 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
     roles: CERT_MANAGER_ROLES
   },
   { type: ProjectType.KMS, name: getProjectTitle(ProjectType.KMS), isSingleton: false },
-  { type: ProjectType.SSH, name: getProjectTitle(ProjectType.SSH), isSingleton: false },
   {
     type: ProjectType.SecretScanning,
     name: getProjectTitle(ProjectType.SecretScanning),

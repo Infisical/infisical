@@ -4416,6 +4416,38 @@
       "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
     },
     {
+      "source": "/documentation/platform/ssh",
+      "destination": "/documentation/platform/pam/overview"
+    },
+    {
+      "source": "/documentation/platform/ssh/concepts/ssh-certificates",
+      "destination": "/documentation/platform/pam/guides/ssh-certificate-auth"
+    },
+    {
+      "source": "/documentation/platform/ssh/:slug*",
+      "destination": "/documentation/platform/pam/accounts/ssh"
+    },
+    {
+      "source": "/api-reference/endpoints/ssh/:slug*",
+      "destination": "/documentation/platform/pam/overview"
+    },
+    {
+      "source": "/cli/commands/ssh",
+      "destination": "/cli/commands/pam"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel/activity-logs",
+      "destination": "/documentation/platform/agent-proxy/activity-logs"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel/:slug*",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
       "source": "/documentation/platform/kms/hsm-integration",
       "destination": "/self-hosting/guides/hsm-integration"
     },
