@@ -23,7 +23,7 @@ describe("Auth Org Invite V1", () => {
       .completeInviteLinks?.find(({ email }: { email: string }) => email === inviteeEmail)?.link;
     expect(inviteLink).toBeDefined();
 
-    const inviteToken = new URL(inviteLink as string).searchParams.get("token");
+    const inviteToken = new URL(inviteLink as string, "http://localhost").searchParams.get("token");
     expect(inviteToken).toBeTruthy();
 
     const invalidRes = await testServer.inject({
