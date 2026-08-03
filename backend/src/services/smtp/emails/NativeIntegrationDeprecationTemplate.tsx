@@ -23,12 +23,12 @@ export const NativeIntegrationDeprecationTemplate = ({
 
   return (
     <BaseEmailWrapper
-      title="Native Integrations are moving to Secret Syncs"
-      preview={`Recreate your native integrations as Secret Syncs before ${deprecationDate}.`}
+      title="Native Integrations are being retired"
+      preview={`Native Integrations are being retired on ${deprecationDate}. Your existing integrations keep working until then.`}
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        <strong>Native Integrations Stop Working on {deprecationDate}</strong>
+        <strong>Native Integrations Are Being Retired on {deprecationDate}</strong>
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
@@ -42,8 +42,9 @@ export const NativeIntegrationDeprecationTemplate = ({
               <strong>{projects.length}</strong> projects in <strong>{orgName}</strong> still use native integrations.
             </>
           )}{" "}
-          They stop working on <strong>{deprecationDate}</strong>. After that date these integrations stop syncing
-          secrets. Recreate each one as a Secret Sync before then. Secret Syncs cover the same third-party services.
+          Native Integrations are being retired on <strong>{deprecationDate}</strong>. Secret Syncs are the new,
+          recommended way to sync secrets to third-party services, offering more features and supporting all the same
+          services. Your existing integrations keep working until then.
         </Text>
       </Section>
       <Section className="mb-[28px]">
