@@ -59,6 +59,8 @@ import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-a
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -174,6 +176,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -702,8 +705,53 @@ export const certificateV3ServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
-  licenseService
+  licenseService,
+  telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
+  // Certificates are issued through four entry points here, and every modern enrollment protocol
+  // (API, ACME, EST, SCEP) funnels through one of them, so issuance telemetry is reported here
+  // rather than per-route. Failures are swallowed: analytics must never fail an issuance.
+  const $reportCertificateIssued = async ({
+    orgId,
+    projectId,
+    profileId,
+    applicationId,
+    enrollmentType,
+    operation,
+    actor,
+    actorId
+  }: {
+    orgId?: string;
+    projectId: string;
+    profileId?: string;
+    applicationId?: string;
+    enrollmentType: EnrollmentType;
+    operation: "issue" | "sign" | "order" | "renew";
+    actor?: ActorType;
+    actorId?: string;
+  }) => {
+    if (!orgId) return;
+
+    try {
+      let distinctId = `platform/${projectId}`;
+      if (actor === ActorType.USER && actorId) {
+        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+        distinctId = user?.username ?? user?.email ?? distinctId;
+      } else if (actor === ActorType.IDENTITY && actorId) {
+        distinctId = `identity-${actorId}`;
+      }
+
+      await telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.IssueCert,
+        distinctId,
+        organizationId: orgId,
+        properties: { orgId, projectId, profileId, applicationId, enrollmentType, operation }
+      });
+    } catch (error) {
+      logger.debug({ error }, "Failed to report certificate issuance telemetry");
+    }
+  };
+
   const $resolveApplicationIdForProfile = async (
     profile: {
       id: string;
@@ -1491,6 +1539,17 @@ export const certificateV3ServiceFactory = ({
       logger.debug("Failed to queue PKI issuance alert event");
     }
 
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType: EnrollmentType.API,
+      operation: "issue",
+      actor,
+      actorId
+    });
+
     return {
       status: CertificateRequestStatus.ISSUED,
       certificate: bufferToString(certificate),
@@ -1939,6 +1998,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation: "sign",
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,
@@ -2921,6 +2991,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI renewal alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: renewalResult.profile?.project?.orgId ?? actorOrgId,
+      projectId: renewalResult.originalCert.projectId,
+      profileId: renewalResult.originalCert.profileId ?? undefined,
+      applicationId: renewalResult.originalCert.applicationId ?? undefined,
+      enrollmentType: EnrollmentType.API,
+      operation: "renew",
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,

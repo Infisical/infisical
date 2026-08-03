@@ -3457,7 +3457,8 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -3530,7 +3531,8 @@ export const registerRoutes = async (
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    licenseService
+    licenseService,
+    telemetryService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

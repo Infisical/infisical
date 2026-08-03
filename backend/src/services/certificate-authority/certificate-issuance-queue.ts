@@ -14,9 +14,12 @@ import {
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -176,6 +179,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -203,7 +207,8 @@ export const certificateIssuanceQueueFactory = ({
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  telemetryService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -1200,6 +1205,34 @@ export const certificateIssuanceQueueFactory = ({
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      }
+
+      // External CAs complete asynchronously, so orderCertificate returns PENDING and this job is
+      // where the certificate actually comes into existence. Reported here so external-CA issuance
+      // is counted alongside the synchronous paths in certificate-v3-service.
+      try {
+        const project = await projectDAL.findById(ca.projectId);
+        if (project?.orgId) {
+          // ACME and SCEP fall back to this async path when the profile is backed by an external CA,
+          // so the enrollment method has to come from the profile rather than being assumed to be API.
+          const telemetryProfile = profileId ? await certificateProfileDAL?.findById(profileId) : undefined;
+
+          await telemetryService.sendPostHogEvents({
+            event: PostHogEventTypes.IssueCert,
+            distinctId: `platform/${ca.projectId}`,
+            organizationId: project.orgId,
+            properties: {
+              orgId: project.orgId,
+              projectId: ca.projectId,
+              profileId,
+              applicationId: scopedApplicationId ?? undefined,
+              enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
+              operation: isRenewal ? "renew" : "order"
+            }
+          });
+        }
+      } catch (error) {
+        logger.debug({ error }, "Failed to report async certificate issuance telemetry");
       }
     } catch (error: unknown) {
       if (error instanceof CertificateRequestCancelledError) {

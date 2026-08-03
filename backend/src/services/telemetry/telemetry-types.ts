@@ -154,6 +154,7 @@ export enum PostHogEventTypes {
   CertificateProfileCreated = "Certificate Profile Created",
   CertificateProfileDeleted = "Certificate Profile Deleted",
   PkiApplicationCreated = "PKI Application Created",
+  PkiApplicationUpdated = "PKI Application Updated",
   PkiApplicationDeleted = "PKI Application Deleted",
   PkiApplicationMemberAdded = "PKI Application Member Added",
   PkiApplicationProfileAttached = "PKI Application Profile Attached",
@@ -662,8 +663,16 @@ export type TIssueCertificateEvent = {
     caId?: string;
     certificateTemplateId?: string;
     subscriberId?: string;
-    commonName: string;
+    commonName?: string;
     userAgent?: string;
+    // Set by the profile-based issuance paths (certificate-v3-service and the async issuance
+    // queue). The legacy CA/subscriber routes above predate profiles and leave these unset.
+    orgId?: string;
+    projectId?: string;
+    profileId?: string;
+    applicationId?: string;
+    enrollmentType?: string;
+    operation?: "issue" | "sign" | "order" | "renew";
   };
 };
 
@@ -1297,6 +1306,15 @@ export type TPkiApplicationCreatedEvent = {
   event: PostHogEventTypes.PkiApplicationCreated;
   properties: {
     orgId: string;
+    applicationId?: string;
+  };
+};
+
+export type TPkiApplicationUpdatedEvent = {
+  event: PostHogEventTypes.PkiApplicationUpdated;
+  properties: {
+    orgId: string;
+    applicationId?: string;
   };
 };
 
@@ -1304,6 +1322,7 @@ export type TPkiApplicationDeletedEvent = {
   event: PostHogEventTypes.PkiApplicationDeleted;
   properties: {
     orgId: string;
+    applicationId?: string;
   };
 };
 
@@ -2157,6 +2176,7 @@ export type TPostHogEvent = {
   | TCertificateProfileCreatedEvent
   | TCertificateProfileDeletedEvent
   | TPkiApplicationCreatedEvent
+  | TPkiApplicationUpdatedEvent
   | TPkiApplicationDeletedEvent
   | TPkiApplicationMemberAddedEvent
   | TPkiApplicationProfileAttachedEvent
