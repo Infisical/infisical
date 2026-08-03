@@ -79,7 +79,7 @@ export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormPr
   return (
     <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
       <FieldGroup>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
             <FieldLabel className="sr-only" htmlFor="admin-signup-first-name">
               First Name
