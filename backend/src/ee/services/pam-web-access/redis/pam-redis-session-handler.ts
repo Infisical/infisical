@@ -20,6 +20,31 @@ const COMMAND_TIMEOUT_MS = 30_000;
 // and its relay tunnel open. Bound the graceful close, then force the socket shut.
 const CLEANUP_QUIT_TIMEOUT_MS = 2_000;
 
+// ioredis keeps its own view of the connection's protocol and mode. Driving these
+// through call() corrupts that view: the subscribe family throws inside its data
+// handler and takes the process down, `client reply off` leaves us waiting on a reply
+// that never comes, and hello/monitor/reset/select leave the client out of step with
+// the server. Reject them here rather than letting them reach the socket.
+const BLOCKED_COMMANDS = new Set([
+  "subscribe",
+  "unsubscribe",
+  "psubscribe",
+  "punsubscribe",
+  "ssubscribe",
+  "sunsubscribe",
+  "monitor",
+  "hello",
+  "reset",
+  "select",
+  "client"
+]);
+
+// a single reply is materialized in memory before it is sent, so cap what we format
+const MAX_REPLY_BYTES = 256 * 1024;
+
+// the relay tunnel can accept the socket and then stall, so bound session setup
+const CONNECT_TIMEOUT_MS = 15_000;
+
 const callWithDeadline = async (redisClient: Redis, command: string, args: string[]): Promise<unknown> => {
   let timer: NodeJS.Timeout | undefined;
   try {
@@ -56,9 +81,23 @@ const executeCommand = async (redisClient: Redis, input: string): Promise<{ outp
 
   const [command, ...args] = tokens;
 
+  if (BLOCKED_COMMANDS.has(command.toLowerCase())) {
+    return {
+      output: `(error) ${command.toUpperCase()} is not supported in web access, use the Infisical CLI for this\n`,
+      shouldClose: false
+    };
+  }
+
   try {
     const result = await callWithDeadline(redisClient, command, args);
-    return { output: `${formatRedisReply(result)}\n`, shouldClose: false };
+    const formatted = formatRedisReply(result);
+    if (formatted.length > MAX_REPLY_BYTES) {
+      return {
+        output: `${formatted.slice(0, MAX_REPLY_BYTES)}\n(reply truncated at ${MAX_REPLY_BYTES / 1024}KB)\n`,
+        shouldClose: false
+      };
+    }
+    return { output: `${formatted}\n`, shouldClose: false };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { output: `(error) ${escapeTerminalControlBytes(message)}\n`, shouldClose: false };
@@ -83,11 +122,20 @@ export const handleRedisSession = async (
   });
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      redisClient.once("ready", resolve);
-      redisClient.once("error", reject);
-      redisClient.once("close", () => reject(new Error("Redis connection closed before ready")));
-    });
+    let connectTimer: NodeJS.Timeout | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        connectTimer = setTimeout(
+          () => reject(new Error(`Redis connection timed out after ${CONNECT_TIMEOUT_MS / 1000}s`)),
+          CONNECT_TIMEOUT_MS
+        );
+        redisClient.once("ready", resolve);
+        redisClient.once("error", reject);
+        redisClient.once("close", () => reject(new Error("Redis connection closed before ready")));
+      });
+    } finally {
+      if (connectTimer) clearTimeout(connectTimer);
+    }
   } catch (err) {
     try {
       redisClient.disconnect();
@@ -101,7 +149,7 @@ export const handleRedisSession = async (
 
   sendMessage({
     type: TerminalServerMessageType.Ready,
-    data: `Connected to ${resourceName} (${connectionDetails.host}:${connectionDetails.port}) as ${credentials.username || "default"}\n\n`,
+    data: `Connected to ${resourceName} as ${credentials.username || "default"}\n\n`,
     prompt
   });
 

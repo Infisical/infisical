@@ -8,9 +8,30 @@ const escapeQuote = new RE2(/"/, "g");
 // eslint-disable-next-line no-control-regex
 const controlBytes = new RE2(/[\u0000-\u001f\u007f-\u009f]/, "g");
 
-const toHexEscape = (ch: string): string => `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
+// redis-cli uses the short forms for the common ones and hex for the rest
+const SHORT_ESCAPES: Record<string, string> = {
+  "\n": "\\n",
+  "\r": "\\r",
+  "\t": "\\t",
+  "\b": "\\b",
+  "\f": "\\f"
+};
 
-export const escapeTerminalControlBytes = (str: string): string => str.replace(controlBytes, toHexEscape);
+const toEscape = (ch: string): string => SHORT_ESCAPES[ch] ?? `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
+
+export const escapeTerminalControlBytes = (str: string): string => str.replace(controlBytes, toEscape);
+
+// the reverse of SHORT_ESCAPES, for parsing what the user types
+const INPUT_ESCAPES: Record<string, string> = {
+  n: "\n",
+  r: "\r",
+  t: "\t",
+  b: "\b",
+  f: "\f",
+  a: "\u0007"
+};
+
+const HEX_PAIR = new RE2(/^[0-9a-fA-F]{2}$/);
 
 const escapeRedisString = (str: string): string =>
   escapeTerminalControlBytes(str.replace(escapeBackslash, "\\\\").replace(escapeQuote, '\\"'));
@@ -25,9 +46,17 @@ export const tokenizeRedisInput = (input: string): string[] => {
     const ch = input[i];
 
     if (inQuote) {
-      // inside quotes a backslash escapes the next character, matching redis-cli
+      // matching redis-cli: inside double quotes \n and friends become the byte they
+      // name and \xHH becomes that byte, while single quotes only escape the quote
       if (escaped) {
-        current += ch;
+        if (inQuote === "'") {
+          current += ch === "'" ? ch : `\\${ch}`;
+        } else if (ch === "x" && HEX_PAIR.test(input.slice(i + 1, i + 3))) {
+          current += String.fromCharCode(parseInt(input.slice(i + 1, i + 3), 16));
+          i += 2;
+        } else {
+          current += INPUT_ESCAPES[ch] ?? ch;
+        }
         escaped = false;
       } else if (ch === "\\") {
         escaped = true;

@@ -149,7 +149,7 @@ describe("formatRedisReply", () => {
   });
 
   it("escapes carriage return, bell and null", () => {
-    expect(formatRedisReply("a\rb\u0007c\u0000d")).toBe('"a\\x0db\\x07c\\x00d"');
+    expect(formatRedisReply("a\rb\u0007c\u0000d")).toBe('"a\\rb\\x07c\\x00d"');
   });
 
   it("escapes C1 control bytes", () => {
@@ -158,5 +158,31 @@ describe("formatRedisReply", () => {
 
   it("leaves normal printable text alone", () => {
     expect(formatRedisReply("hello world 123")).toBe('"hello world 123"');
+  });
+
+  it("uses short escapes for newline, tab and carriage return like redis-cli", () => {
+    expect(formatRedisReply("line1\nline2")).toBe('"line1\\nline2"');
+    expect(formatRedisReply("a\tb")).toBe('"a\\tb"');
+  });
+});
+
+describe("round trip: what you type comes back the same way", () => {
+  it("translates \\n on input and renders it back as \\n", () => {
+    const [, , value] = tokenizeRedisInput('SET k "a\\nb"');
+    expect(value).toBe("a\nb");
+    expect(formatRedisReply(value)).toBe('"a\\nb"');
+  });
+
+  it("translates \\t and \\xHH on input", () => {
+    expect(tokenizeRedisInput('SET k "a\\tb"')[2]).toBe("a\tb");
+    expect(tokenizeRedisInput('SET k "a\\x41b"')[2]).toBe("aAb");
+  });
+
+  it("still keeps an escaped quote literal", () => {
+    expect(tokenizeRedisInput('SET k "he said \\"hi\\""')[2]).toBe('he said "hi"');
+  });
+
+  it("single quotes only treat the quote itself as escapable", () => {
+    expect(tokenizeRedisInput("SET k 'a\\nb'")[2]).toBe("a\\nb");
   });
 });
