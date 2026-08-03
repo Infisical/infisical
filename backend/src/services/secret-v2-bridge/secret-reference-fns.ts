@@ -2,10 +2,9 @@ import path from "node:path";
 
 import RE2 from "re2";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";

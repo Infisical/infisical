@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionProjectFolderGrantActions,
@@ -12,8 +13,6 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-
-import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 import { TProjectFolderGrantDALFactory } from "./project-folder-grant-dal";
 import { isCrossProjectEnabled } from "./project-folder-grant-fns";
