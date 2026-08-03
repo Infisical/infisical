@@ -405,8 +405,6 @@ const envSchema = z
     // When true, new checkouts (adding a payment method) and trials on License Server v1 cloud are
     // disallowed, pushing orgs onto License Server v2.
     DISABLE_LICENSE_V1_CLOUD: zodStrBool.default("false"),
-    // CROSS-PROJECT SECRET SHARING
-    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: zpStr(z.string().optional()),
 
     // GENERIC
     STANDALONE_MODE: z
@@ -689,7 +687,6 @@ const envSchema = z
       Boolean(data.HSM_LIB_PATH) && Boolean(data.HSM_PIN) && Boolean(data.HSM_KEY_LABEL) && data.HSM_SLOT !== undefined,
     samlDefaultOrgSlug: data.DEFAULT_SAML_ORG_SLUG,
     SECRET_SCANNING_ORG_WHITELIST: data.SECRET_SCANNING_ORG_WHITELIST?.split(","),
-    CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST: data.CROSS_PROJECT_SECRET_SHARING_ORG_WHITELIST?.split(",") ?? [],
     PARAMS_FOLDER_SECRET_DETECTION_ENABLED: (data.PARAMS_FOLDER_SECRET_DETECTION_PATHS?.length ?? 0) > 0,
     INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID:
       data.INF_APP_CONNECTION_AZURE_DEVOPS_CLIENT_ID || data.INF_APP_CONNECTION_AZURE_CLIENT_ID,
