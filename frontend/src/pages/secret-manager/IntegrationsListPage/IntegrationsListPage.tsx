@@ -4,6 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -82,8 +83,13 @@ export const IntegrationsListPage = () => {
                 Infrastructure Integrations
               </Tab>
               {showNativeIntegrations && (
-                <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                <Tab
+                  variant="project"
+                  value={IntegrationsListPageTabs.NativeIntegrations}
+                  className="gap-2"
+                >
                   Native Integrations
+                  <Badge variant="warning">legacy</Badge>
                 </Tab>
               )}
             </TabList>
