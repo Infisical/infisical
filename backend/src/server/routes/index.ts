@@ -2289,7 +2289,8 @@ export const registerRoutes = async (
     projectDAL,
     orgDAL,
     permissionService,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    licenseService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -2320,7 +2321,8 @@ export const registerRoutes = async (
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -2477,7 +2479,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const integrationService = integrationServiceFactory({
@@ -2493,7 +2496,8 @@ export const registerRoutes = async (
     secretDAL,
     kmsService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const accessTokenQueue = accessTokenQueueServiceFactory({

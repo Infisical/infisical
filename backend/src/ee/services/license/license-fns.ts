@@ -130,7 +130,8 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   pam: null,
   certManager: null,
   secretsTemporaryAccess: null,
-  enterprisePamAccount: null
+  enterprisePamAccount: null,
+  crossProjectSecretSharing: false
 });
 
 export const setupLicenseRequestWithStore = (

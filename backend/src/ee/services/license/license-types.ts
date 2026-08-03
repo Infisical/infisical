@@ -121,6 +121,7 @@ export type TFeatureSet = {
   certManager: null;
   secretsTemporaryAccess: null;
   enterprisePamAccount: null;
+  crossProjectSecretSharing: false;
 };
 
 export type TOrgPlansTableDTO = {

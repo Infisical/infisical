@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -48,6 +49,7 @@ type TIntegrationServiceFactoryDep = {
   secretDAL: Pick<TSecretDALFactory, "findByFolderId">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type TIntegrationServiceFactory = ReturnType<typeof integrationServiceFactory>;
@@ -65,7 +67,8 @@ export const integrationServiceFactory = ({
   kmsService,
   secretDAL,
   projectFolderGrantDAL,
-  orgDAL
+  orgDAL,
+  licenseService
 }: TIntegrationServiceFactoryDep) => {
   const createIntegration = async ({
     app,
@@ -333,6 +336,7 @@ export const integrationServiceFactory = ({
         kmsService,
         projectFolderGrantDAL,
         orgDAL,
+        licenseService,
         actorOrgId
       });
     }
