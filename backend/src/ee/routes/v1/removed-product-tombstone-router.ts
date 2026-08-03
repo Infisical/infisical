@@ -7,14 +7,17 @@ import { readLimit } from "@app/server/config/rateLimiter";
 // 410 Gone with an explanation instead.
 //
 // Deliberately unauthenticated: the response reveals nothing, performs no work, and
-// must reach clients whose tokens are expired or invalid. Remove together with the
-// deprecated permission subjects (see ProjectPermissionV2Schema) in a future
-// breaking release.
-export const registerRemovedProductTombstoneRouter =
-  (message: string) => async (server: FastifyZodProvider) => {
+// must reach clients whose tokens are expired or invalid (inject-identity.ts skips
+// auth injection for these prefixes to guarantee that). Remove together with that
+// exemption and the deprecated permission subjects (see ProjectPermissionV2Schema)
+// in a future breaking release.
+export const registerRemovedProductTombstoneRouter = (message: string) => async (server: FastifyZodProvider) => {
+  // "/" covers the bare prefix (ignoreTrailingSlash is on); "/*" covers every
+  // sub-path the removed routers used to serve.
+  ["/", "/*"].forEach((url) => {
     server.route({
       method: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-      url: "/*",
+      url,
       config: {
         rateLimit: readLimit
       },
@@ -30,4 +33,5 @@ export const registerRemovedProductTombstoneRouter =
         });
       }
     });
-  };
+  });
+};

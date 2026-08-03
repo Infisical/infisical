@@ -1,6 +1,7 @@
 package apiauth
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,6 +25,11 @@ type UnifiedJWTClaims struct {
 	SubOrganizationID uuid.UUID `json:"subOrganizationId,omitempty"`
 	IsMfaVerified     bool      `json:"isMfaVerified,omitempty"`
 	MfaMethod         string    `json:"mfaMethod,omitempty"`
+	// MCP marks access tokens issued by the removed Agent Sentinel (MCP) product.
+	// Kept only so those tokens can be explicitly rejected instead of validating
+	// as full user sessions; json.RawMessage tolerates the historical bool and
+	// object encodings of the claim.
+	MCP json.RawMessage `json:"mcp,omitempty"`
 
 	// Identity JWT fields
 	IdentityID            uuid.UUID     `json:"identityId,omitempty"`
@@ -54,6 +60,7 @@ func (c *UnifiedJWTClaims) ToUserClaims() *UserJWTClaims {
 		SubOrganizationID: c.SubOrganizationID,
 		IsMfaVerified:     c.IsMfaVerified,
 		MfaMethod:         c.MfaMethod,
+		MCP:               c.MCP,
 	}
 }
 
@@ -108,6 +115,9 @@ type UserJWTClaims struct {
 	SubOrganizationID uuid.UUID          `json:"subOrganizationId,omitempty"`
 	IsMfaVerified     bool               `json:"isMfaVerified,omitempty"`
 	MfaMethod         string             `json:"mfaMethod,omitempty"`
+	// See UnifiedJWTClaims.MCP: present only on tokens from the removed Agent
+	// Sentinel (MCP) product, which must be rejected.
+	MCP json.RawMessage `json:"mcp,omitempty"`
 }
 
 // IdentityJWTClaims represents the JWT payload for machine identity access tokens.

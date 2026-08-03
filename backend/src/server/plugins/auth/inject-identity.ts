@@ -134,6 +134,16 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
 
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN: {
+      // Access tokens from the removed Agent Sentinel (MCP) product were signed as
+      // ACCESS_TOKEN with an "mcp" claim and a live token session; without this
+      // guard they would fall through and authenticate as a full user JWT session
+      // despite having been endpoint-scoped.
+      if ("mcp" in decodedToken) {
+        throw new UnauthorizedError({
+          message: "This token was issued for the removed Agent Sentinel (MCP) product and is no longer accepted"
+        });
+      }
+
       if (decodedToken?.oauthClientId) {
         return {
           authMode: AuthMode.OAUTH,
@@ -252,6 +262,14 @@ export const injectIdentity = fp(
 
       // Authentication is handled on a route-level here.
       if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
+        return;
+      }
+
+      // Tombstoned prefixes for the removed SSH / Agent Sentinel products answer
+      // 410 without auth; skip injection so expired or invalid tokens from shipped
+      // clients (the CLI always sends one) still receive the explanatory response
+      // instead of a 401. Remove together with removed-product-tombstone-router.ts.
+      if (pathname.startsWith("/api/v1/ssh/") || pathname.startsWith("/api/v1/ai/mcp/")) {
         return;
       }
 
