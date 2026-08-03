@@ -132,6 +132,8 @@ export const KeyStorePrefixes = {
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
+  TelemetryAuditLogsViewed: (orgId: string, distinctId: string) =>
+    `telemetry-audit-logs-viewed:${orgId}:${distinctId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
   SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
@@ -227,6 +229,7 @@ export const KeyStoreTtls = {
   StepUpMfaAttemptWindowInSeconds: 300, // 5 minutes - rolling window for counting failed step-up attempts
   StepUpMfaLockoutInSeconds: 300, // 5 minutes - temporary lockout after too many failed step-up attempts
   TelemetryGroupIdentifyInSeconds: 3600, // 1 hour
+  TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   TelemetryAggregatedEventInSeconds: 1800, // 30 minutes
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
