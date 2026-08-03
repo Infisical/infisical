@@ -139,6 +139,12 @@ export type VerifySignupInviteDTO = {
   organizationId: string;
 };
 
+export type VerifySignupInviteRes = {
+  message: string;
+  token?: string;
+  organizationName?: string;
+};
+
 export type ResetPasswordDTO = {
   protectedKey: string;
   protectedKeyIV: string;

@@ -12,6 +12,7 @@ import {
   AnimatedCollapse,
   Button,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Field,
@@ -54,12 +55,14 @@ interface UserInfoStepProps {
   onComplete: (orgId?: string) => void;
   email: string;
   isInvite?: boolean;
+  inviteOrganizationName?: string;
 }
 
 export default function UserInfoStep({
   onComplete,
   email,
-  isInvite = false
+  isInvite = false,
+  inviteOrganizationName
 }: UserInfoStepProps): JSX.Element {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -99,7 +102,9 @@ export default function UserInfoStep({
   const isPasswordValidated =
     passwordBreachStatus === "safe" || passwordBreachStatus === "unavailable";
   const canSubmit = isPasswordValidated && !isLoading;
-  const stepTitle = isInvite ? "Set up your account" : t("signup.step3-message");
+  const normalizedInviteOrganizationName = inviteOrganizationName?.trim();
+  const inviteOrganizationLabel = normalizedInviteOrganizationName || "an organization";
+  const stepTitle = t("signup.step3-message");
   const submitLabel = isInvite ? String(t("signup.signup")) : "Continue";
 
   const onSubmit = async (formData: UserInfoFormData) => {
@@ -143,10 +148,32 @@ export default function UserInfoStep({
   return (
     <div className="mx-auto flex w-full flex-col items-center justify-center">
       <AuthPagePanel>
-        <CardHeader className="mb-4 gap-2">
-          <CardTitle className="bg-linear-to-b from-white to-bunker-200 bg-clip-text font-alliance text-2xl font-normal text-transparent">
-            {stepTitle}
+        <CardHeader className={isInvite ? "mb-6 gap-2" : "mb-4 gap-2"}>
+          <CardTitle
+            role="heading"
+            aria-level={1}
+            className="ml-0.5 font-alliance text-2xl font-normal break-words"
+          >
+            {isInvite ? (
+              <>
+                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent opacity-70">
+                  Join
+                </span>
+                <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                  {inviteOrganizationLabel}
+                </span>
+              </>
+            ) : (
+              <span className="bg-linear-to-b from-white to-bunker-200 bg-clip-text text-transparent">
+                {stepTitle}
+              </span>
+            )}
           </CardTitle>
+          {isInvite ? (
+            <CardDescription className="ml-0.5 font-alliance text-base break-words text-accent">
+              Set up your Infisical account
+            </CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

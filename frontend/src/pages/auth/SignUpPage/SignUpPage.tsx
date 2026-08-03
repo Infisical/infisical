@@ -45,6 +45,7 @@ type PendingEmailVerification = {
 export interface SignUpPageProps {
   invite?: {
     email: string;
+    organizationName?: string;
   };
 }
 
@@ -182,7 +183,12 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         );
       case SignupSection.UserInfo:
         return (
-          <UserInfoStep onComplete={handleUserInfoComplete} email={email} isInvite={isInvite} />
+          <UserInfoStep
+            onComplete={handleUserInfoComplete}
+            email={email}
+            isInvite={isInvite}
+            inviteOrganizationName={invite?.organizationName}
+          />
         );
       case SignupSection.ProductSelect:
         return <ProductSelectionStep onComplete={handleProductSelectComplete} />;

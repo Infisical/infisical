@@ -1109,14 +1109,14 @@ export const orgServiceFactory = ({
       });
     }
 
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-
     await tokenService.validateTokenForUser({
       type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
       userId: user.id,
       orgId: orgMembership.scopeOrgId,
       code
     });
+
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
 
     await userDAL.updateById(user.id, {
       isEmailVerified: true
@@ -1125,7 +1125,7 @@ export const orgServiceFactory = ({
     // If user already completed signup, they'll be promoted to Accepted
     // when they authenticate via selectOrganization or processProviderCallback
     if (user.isAccepted) {
-      return { user };
+      return { user, organizationName: organization.name };
     }
 
     const membershipRole = await membershipRoleDAL.findOne({ membershipId: orgMembership.id });
@@ -1133,7 +1133,7 @@ export const orgServiceFactory = ({
       organization.authEnforced &&
       !(organization.bypassOrgAuthEnabled && membershipRole.role === OrgMembershipRole.Admin)
     ) {
-      return { user };
+      return { user, organizationName: organization.name };
     }
 
     const appCfg = getConfig();
@@ -1148,7 +1148,7 @@ export const orgServiceFactory = ({
       }
     );
 
-    return { token, user };
+    return { token, user, organizationName: organization.name };
   };
 
   const getOrgMembership = async ({

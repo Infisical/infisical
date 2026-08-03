@@ -244,12 +244,13 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string(),
-          token: z.string().optional()
+          token: z.string().optional(),
+          organizationName: z.string().describe("Name of the organization associated with the verified invitation")
         })
       }
     },
     handler: async (req) => {
-      const { token } = await server.services.org.verifyUserToOrg({
+      const { token, organizationName } = await server.services.org.verifyUserToOrg({
         orgId: req.body.organizationId,
         code: req.body.code,
         email: req.body.email
@@ -257,7 +258,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully verified email",
-        token
+        token,
+        organizationName
       };
     }
   });

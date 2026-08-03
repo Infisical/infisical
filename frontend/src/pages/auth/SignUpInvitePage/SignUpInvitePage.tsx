@@ -9,9 +9,9 @@ import { CardContent, CardHeader, CardTitle } from "@app/components/v3";
 import { SignUpPage } from "../SignUpPage/SignUpPage";
 
 export const SignupInvitePage = () => {
-  const { inviteEmail, error } = useRouteContext({
+  const { inviteEmail, inviteOrganizationName, error } = useRouteContext({
     from: "/_restrict-login-signup/signupinvite"
-  }) as { inviteEmail?: string; error?: string };
+  }) as { inviteEmail?: string; inviteOrganizationName?: string; error?: string };
 
   if (error) {
     return (
@@ -48,5 +48,7 @@ export const SignupInvitePage = () => {
     );
   }
 
-  return <SignUpPage invite={{ email: inviteEmail ?? "" }} />;
+  return (
+    <SignUpPage invite={{ email: inviteEmail ?? "", organizationName: inviteOrganizationName }} />
+  );
 };
