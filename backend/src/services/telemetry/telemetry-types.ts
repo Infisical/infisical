@@ -665,8 +665,6 @@ export type TIssueCertificateEvent = {
     subscriberId?: string;
     commonName?: string;
     userAgent?: string;
-    // Set by the profile-based issuance paths (certificate-v3-service and the async issuance
-    // queue). The legacy CA/subscriber routes above predate profiles and leave these unset.
     orgId?: string;
     projectId?: string;
     profileId?: string;

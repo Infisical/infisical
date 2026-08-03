@@ -188,8 +188,6 @@ export const processDigiCertPendingValidationRequest = async (
       `DigiCert order issued, attached certificate [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
     );
 
-    // The issuance queue stops at PENDING_VALIDATION for DigiCert, so this is where the certificate
-    // actually comes into existence and therefore where issuance is reported.
     await reportCertificateIssued({
       telemetryService: deps.telemetryService,
       projectDAL: deps.projectDAL,

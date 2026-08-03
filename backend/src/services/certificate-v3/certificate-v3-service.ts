@@ -711,9 +711,6 @@ export const certificateV3ServiceFactory = ({
   licenseService,
   telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
-  // Every modern enrollment protocol (API, ACME, EST, SCEP) funnels through the issuance entry
-  // points in this file, so issuance telemetry is reported here rather than per-route. Only the
-  // actor resolution is local; the event itself is assembled by the shared reporter.
   const $reportCertificateIssued = async ({
     orgId,
     projectId,

@@ -441,9 +441,8 @@ export const certificateIssuanceQueueFactory = ({
       );
     };
 
-    // DigiCert and GoDaddy can finish this job at PENDING_VALIDATION, with the certificate only
-    // arriving later in their polling processors. Those processors report issuance themselves, so
-    // this job must not report anything when it leaves the request pending.
+    // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
+    // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
     let certificateExistsAfterThisJob = true;
 
     try {
@@ -1216,8 +1215,6 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       if (certificateExistsAfterThisJob) {
-        // ACME and SCEP fall back to this async path when the profile is backed by an external CA,
-        // so the enrollment method has to come from the profile rather than being assumed to be API.
         const telemetryProfile = profileId ? await certificateProfileDAL?.findById(profileId) : undefined;
 
         await reportCertificateIssued({

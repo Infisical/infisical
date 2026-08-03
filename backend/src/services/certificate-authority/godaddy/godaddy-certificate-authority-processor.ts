@@ -182,8 +182,6 @@ export const processGoDaddyPendingValidationRequest = async (
         `GoDaddy certificate issued, attached certificate [certificateRequestId=${request.id}] [certificateId=${certificateId}]`
       );
 
-      // The issuance queue always stops at PENDING_VALIDATION for GoDaddy, so this is where the
-      // certificate actually comes into existence and therefore where issuance is reported.
       await reportCertificateIssued({
         telemetryService: deps.telemetryService,
         projectDAL: deps.projectDAL,
