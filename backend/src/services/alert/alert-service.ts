@@ -362,7 +362,6 @@ export const alertServiceFactory = ({
     return $assembleResponse(updated, channels);
   };
 
-
   const $deleteAlertsByFilter = async (filter: Parameters<typeof alertDAL.delete>[0], tx: Knex): Promise<number> => {
     const alerts = await alertDAL.find(filter, { tx });
     const channels = await alertChannelDAL.findByAlertIds(
