@@ -117,7 +117,10 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
         typeBadge={status.label}
         metadata={[
           { label: "Requester", value: request?.requesterName ?? "-" },
-          { label: "Email", value: request?.requesterEmail ?? "-" },
+          // Machine identities have no email; label the actor kind instead
+          request?.machineIdentityId
+            ? { label: "Actor", value: "Machine Identity" }
+            : { label: "Email", value: request?.requesterEmail ?? "-" },
           { label: "Folder", value: request?.folderName ?? "-" },
           ...(request?.host ? [{ label: "Host", value: request.host }] : []),
           {

@@ -218,7 +218,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
     ];
 
     const [accessStatusMap, foldersWithApprovalPolicy, permissionsByAccountId] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval),
       // Resolve every account's effective permissions in one membership fetch
       getAccountPermissionRulesMap(
@@ -857,7 +861,11 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       ...new Set(accountsRequiringApproval.map((a) => a.folderId).filter(Boolean) as string[])
     ];
     const [accessStatusMap, foldersWithApprovalPolicy] = await Promise.all([
-      deps.pamAccessRequestService.getAccessStatusBatch(ctx.actorId, accountIdsRequiringApproval, projectId),
+      deps.pamAccessRequestService.getAccessStatusBatch(
+        { actorId: ctx.actorId, actor: ctx.actor },
+        accountIdsRequiringApproval,
+        projectId
+      ),
       deps.pamAccessRequestService.getFolderPolicyConfigured(folderIdsRequiringApproval)
     ]);
 

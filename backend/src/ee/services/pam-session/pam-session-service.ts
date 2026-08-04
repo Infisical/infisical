@@ -475,14 +475,9 @@ export const pamSessionServiceFactory = ({
     // guided into requesting access (where the request reason is collected) rather than being
     // blocked on a launch reason for a session they cannot start yet.
     if (requiresApproval) {
-      if (!isUserActor) {
-        throw new ForbiddenRequestError({
-          message:
-            "This account is gated behind access-request approval, which machine identities cannot request. Grant the identity access to a non-gated account instead."
-        });
-      }
       const grant = await pamAccessRequestService.checkGrant({
-        userId: actor.actorId,
+        actorId: actor.actorId,
+        actor: actor.actor,
         accountId: account.id,
         accountFolderId: account.folderId,
         projectId
@@ -491,7 +486,11 @@ export const pamSessionServiceFactory = ({
         // Distinguish "no request yet" from "request awaiting review" and from "folder has no
         // approvers", so the CLI can guide the user instead of prompting into a 400
         const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
-          pamAccessRequestService.getAccessStatusBatch(actor.actorId, [account.id], projectId),
+          pamAccessRequestService.getAccessStatusBatch(
+            { actorId: actor.actorId, actor: actor.actor },
+            [account.id],
+            projectId
+          ),
           pamAccessRequestService.getFolderPolicyConfigured(account.folderId ? [account.folderId] : [])
         ]);
         throw new ForbiddenRequestError({

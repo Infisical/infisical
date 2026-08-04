@@ -12,19 +12,19 @@ table) and let the code carry the detail.
 
 All PAM services live under `backend/src/ee/services/pam-*/`:
 
-| Directory | Purpose |
-|---|---|
-| `pam/` | Shared enums, permission helpers (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
-| `pam-folder/` | Folder CRUD + folder-level permission checks |
-| `pam-account/` | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config |
-| `pam-account-template/` | Account templates (type + policies + settings) |
-| `pam-account-rotation/` | Scheduled + on-demand SQL credential rotation |
-| `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP) |
-| `pam-session-recording/` | Recording chunk storage/retrieval + storage providers |
-| `pam-membership/` | Product + resource membership management |
-| `pam-project/` | PAM project bootstrap + resolver |
-| `pam-access-request/` | Folder approval config, access-request lifecycle, chat notifications |
-| `pam-discovery/` | Discovery sources → staged accounts for import |
+| Directory                          | Purpose                                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `pam/`                             | Shared enums, permission helpers (`pam-permission.ts`), validators, policy registry (`pam-policies.ts`), and this file |
+| `pam-folder/`                      | Folder CRUD + folder-level permission checks                                                                           |
+| `pam-account/`                     | Account CRUD, credential encryption, gateway attachment, SSH CA, account-type config                                   |
+| `pam-account-template/`            | Account templates (type + policies + settings)                                                                         |
+| `pam-account-rotation/`            | Scheduled + on-demand SQL credential rotation                                                                          |
+| `pam-session/` + `pam-web-access/` | Session lifecycle and WebSocket session handlers (Postgres/SSH/RDP)                                                    |
+| `pam-session-recording/`           | Recording chunk storage/retrieval + storage providers                                                                  |
+| `pam-membership/`                  | Product + resource membership management                                                                               |
+| `pam-project/`                     | PAM project bootstrap + resolver                                                                                       |
+| `pam-access-request/`              | Folder approval config, access-request lifecycle, chat notifications                                                   |
+| `pam-discovery/`                   | Discovery sources → staged accounts for import                                                                         |
 
 Routes: `backend/src/ee/routes/v1/pam-routers/`. DI wiring: `backend/src/server/routes/index.ts` (narrow
 new deps with `Pick<>`).
@@ -38,15 +38,22 @@ use them instead of re-implementing. Every list/mutation endpoint checks an **ac
 membership. There is **no org-admin fallback**: permission needs project-scoped membership.
 
 Gotchas:
+
 - **Audit logs** are served through the shared org audit-log endpoint but scoped by the PAM model
   (`pam/pam-audit-log-fns.ts`), not the generic project `AuditLogs` permission. Any new account- or
   folder-scoped event **must** put `accountId`/`folderId` in its `eventMetadata`, or it lands in the
   product-level bucket and is hidden from resource viewers.
 - Gated accounts (`requiresApproval`) require `LaunchSessions` **and** a valid approval grant, enforced in
   both the session and web-access services.
-- PAM endpoints accept JWT + identity tokens, including CLI session launch (`POST /pam/sessions/access`);
-  web access stays JWT-only, and MFA/approval-gated accounts reject machine actors. Sessions store
-  `identityId` (not `userId`) for machine actors. Gateway-facing endpoints use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+- PAM endpoints accept JWT + identity tokens, including CLI session launch (`POST /pam/sessions/access`)
+  and raising access requests (`POST /pam/access-requests`); web access stays JWT-only, as does
+  reviewing/revoking (identities are never approvers). MFA-gated accounts still reject machine actors,
+  since no machine can satisfy an OTP. Gateway-facing endpoints use `AuthMode.GATEWAY_ACCESS_TOKEN`.
+- **Actor columns come in pairs, and every lookup must filter the right one.** Sessions use
+  `userId`/`identityId`, approval requests `requesterId`/`machineIdentityId`, grants
+  `granteeUserId`/`granteeMachineIdentityId` — exactly one is set per row. `pam-access-request-service.ts`
+  centralizes this in `actorRequestFilter` / `actorGrantFilter`; use them instead of hardcoding a column,
+  or a machine identity silently reads another actor's rows (or none at all).
 
 ## PAM Project (consolidated + lazy)
 

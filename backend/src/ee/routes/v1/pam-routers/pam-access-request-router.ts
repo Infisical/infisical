@@ -39,7 +39,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.createRequest({
         accountId: req.body.accountId,

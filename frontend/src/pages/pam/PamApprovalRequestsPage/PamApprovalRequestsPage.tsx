@@ -60,7 +60,9 @@ const RequestRow = ({
       <TableCell className="h-[50px]">
         <div className="flex flex-col">
           <span className="text-sm">{request.requesterName}</span>
-          <span className="text-xs text-muted">{request.requesterEmail}</span>
+          <span className="text-xs text-muted">
+            {request.machineIdentityId ? "Machine Identity" : request.requesterEmail}
+          </span>
         </div>
       </TableCell>
       <TableCell className="text-sm">

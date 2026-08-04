@@ -650,6 +650,8 @@ export type TPamAccessRequest = {
   projectId: string;
   policyId: string;
   requesterId: string | null;
+  // Set instead of requesterId when a machine identity raised the request
+  machineIdentityId?: string | null;
   requesterName: string;
   requesterEmail: string;
   type: string;
