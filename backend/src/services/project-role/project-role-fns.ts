@@ -6,8 +6,7 @@ import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
-  projectViewerPermission,
-  sshHostBootstrapPermissions
+  projectViewerPermission
 } from "@app/ee/services/permission/default-roles";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
@@ -32,17 +31,6 @@ export const getPredefinedRoles = ({ projectId, projectType, roleFilter }: TGetP
       description: "Limited read/write role in a project",
       createdAt: new Date(),
       updatedAt: new Date()
-    },
-    {
-      id: uuidv4(),
-      projectId,
-      name: "SSH Host Bootstrapper",
-      slug: ProjectMembershipRole.SshHostBootstrapper,
-      permissions: sshHostBootstrapPermissions,
-      description: "Create and issue SSH Hosts in a project",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      type: ProjectType.SSH
     },
     {
       id: uuidv4(),

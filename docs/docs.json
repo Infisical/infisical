@@ -175,7 +175,9 @@
                       "integrations/app-connections/render",
                       "integrations/app-connections/rundeck",
                       "integrations/app-connections/salesforce",
+                      "integrations/app-connections/servicenow",
                       "integrations/app-connections/snowflake",
+                      "integrations/app-connections/spacelift",
                       "integrations/app-connections/supabase",
                       "integrations/app-connections/teamcity",
                       "integrations/app-connections/terraform-cloud",
@@ -197,7 +199,8 @@
                 "group": "Workflow Integrations",
                 "pages": [
                   "documentation/platform/workflow-integrations/slack-integration",
-                  "documentation/platform/workflow-integrations/microsoft-teams-integration"
+                  "documentation/platform/workflow-integrations/microsoft-teams-integration",
+                  "documentation/platform/workflow-integrations/servicenow-integration"
                 ]
               },
               {
@@ -538,6 +541,8 @@
                       {
                         "group": "SaaS & Platforms",
                         "pages": [
+                          "documentation/platform/secret-rotation/cloudflare-api-token",
+                          "documentation/platform/secret-rotation/cloudflare-r2-access-key",
                           "documentation/platform/secret-rotation/convex-access-key",
                           "documentation/platform/secret-rotation/databricks-service-principal-secret",
                           "documentation/platform/secret-rotation/datadog-application-key-secret",
@@ -630,12 +635,23 @@
                     "group": "Agent Proxy",
                     "pages": [
                       "documentation/platform/agent-proxy/overview",
-                      "documentation/platform/agent-proxy/quickstart",
-                      "documentation/platform/agent-proxy/proxied-services",
-                      "documentation/platform/agent-proxy/deployment",
-                      "documentation/platform/agent-proxy/connecting-agents",
-                      "documentation/platform/agent-proxy/activity-logs",
-                      "documentation/platform/agent-proxy/security"
+                      {
+                        "group": "Quickstart",
+                        "pages": [
+                          "documentation/platform/agent-proxy/quickstart/credentials",
+                          "documentation/platform/agent-proxy/quickstart/local-proxy",
+                          "documentation/platform/agent-proxy/quickstart/standalone-proxy"
+                        ]
+                      },
+                      {
+                        "group": "Reference",
+                        "pages": [
+                          "documentation/platform/agent-proxy/proxied-services",
+                          "documentation/platform/agent-proxy/local-agent-proxy",
+                          "documentation/platform/agent-proxy/standalone-agent-proxy",
+                          "documentation/platform/agent-proxy/activity-logs"
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -733,6 +749,7 @@
                           "integrations/secret-syncs/octopus-deploy",
                           "integrations/secret-syncs/rundeck",
                           "integrations/secret-syncs/teamcity",
+                          "integrations/secret-syncs/spacelift",
                           "integrations/secret-syncs/terraform-cloud",
                           "integrations/secret-syncs/travis-ci"
                         ]
@@ -2824,6 +2841,32 @@
                     ]
                   },
                   {
+                    "group": "Cloudflare API Token",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/create",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/delete",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/get-by-id",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/get-by-name",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/list",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/cloudflare-api-token/update"
+                    ]
+                  },
+                  {
+                    "group": "Cloudflare R2 Access Key",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/create",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/delete",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/get-by-id",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/get-by-name",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/list",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/cloudflare-r2-access-key/update"
+                    ]
+                  },
+                  {
                     "group": "Supabase API Key",
                     "pages": [
                       "api-reference/endpoints/secret-rotations/supabase-api-key/create",
@@ -3396,6 +3439,19 @@
                       "api-reference/endpoints/secret-syncs/snowflake/delete",
                       "api-reference/endpoints/secret-syncs/snowflake/sync-secrets",
                       "api-reference/endpoints/secret-syncs/snowflake/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Spacelift",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/spacelift/list",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-id",
+                      "api-reference/endpoints/secret-syncs/spacelift/get-by-name",
+                      "api-reference/endpoints/secret-syncs/spacelift/create",
+                      "api-reference/endpoints/secret-syncs/spacelift/update",
+                      "api-reference/endpoints/secret-syncs/spacelift/delete",
+                      "api-reference/endpoints/secret-syncs/spacelift/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/spacelift/remove-secrets"
                     ]
                   },
                   {
@@ -4343,6 +4399,54 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/agent-proxy/quickstart",
+      "destination": "/documentation/platform/agent-proxy/quickstart/credentials"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/security",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/deployment",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#deployment"
+    },
+    {
+      "source": "/documentation/platform/agent-proxy/connecting-agents",
+      "destination": "/documentation/platform/agent-proxy/standalone-agent-proxy#the-two-commands"
+    },
+    {
+      "source": "/documentation/platform/ssh",
+      "destination": "/documentation/platform/pam/overview"
+    },
+    {
+      "source": "/documentation/platform/ssh/concepts/ssh-certificates",
+      "destination": "/documentation/platform/pam/guides/ssh-certificate-auth"
+    },
+    {
+      "source": "/documentation/platform/ssh/:slug*",
+      "destination": "/documentation/platform/pam/accounts/ssh"
+    },
+    {
+      "source": "/api-reference/endpoints/ssh/:slug*",
+      "destination": "/documentation/platform/pam/overview"
+    },
+    {
+      "source": "/cli/commands/ssh",
+      "destination": "/cli/commands/pam"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel/activity-logs",
+      "destination": "/documentation/platform/agent-proxy/activity-logs"
+    },
+    {
+      "source": "/documentation/platform/agent-sentinel/:slug*",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
     {
       "source": "/documentation/platform/kms/hsm-integration",
       "destination": "/self-hosting/guides/hsm-integration"

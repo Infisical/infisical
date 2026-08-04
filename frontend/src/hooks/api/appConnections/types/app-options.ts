@@ -341,6 +341,10 @@ export type TNutanixPrismCentralConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NutanixPrismCentral;
 };
 
+export type TSpaceliftConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Spacelift;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -423,7 +427,8 @@ export type TAppConnectionOption =
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
   | TFireworksConnectionOption
-  | TNutanixPrismCentralConnectionOption;
+  | TNutanixPrismCentralConnectionOption
+  | TSpaceliftConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -508,4 +513,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;
   [AppConnection.Fireworks]: TFireworksConnectionOption;
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
+  [AppConnection.Spacelift]: TSpaceliftConnectionOption;
 };

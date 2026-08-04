@@ -53,7 +53,10 @@ Recommended resource allocation based on deployment size. You may require more r
 
 ### Redis
 
-Redis is utilized for session management and background tasks in Infisical.
+Infisical treats Redis as a **required, persistent datastore**. Beyond
+caching, it holds the background job queue, distributed locks, cross-instance coordination state
+for scheduled jobs, and rate-limit counters. An instance refuses to start unless a Redis
+connection is configured, and a running instance is degraded for as long as Redis is unreachable.
 
 <Info>
 **Active-passive** setup is recommended for Redis. **Active-active** setup for Redis has not been tested.
@@ -62,9 +65,19 @@ Redis is utilized for session management and background tasks in Infisical.
 Redis requirements:
 
 - Use Redis versions 6.x or 7.x. We advise upgrading to at least Redis 6.2.
-- Redis Cluster mode is currently not supported; use Redis Standalone, with or without High Availability (HA).
+- Redis Standalone (with or without High Availability) and Redis Sentinel are 
+  supported. See [Redis configuration](/self-hosting/configuration/envars#redis) for the
+  environment variables each mode expects.
 - Redis storage needs are minimal: a setup with 2 vCPU, 4 GB RAM, and 30GB SSD will be sufficient for small deployments.
-- Set cache eviction policy to `noeviction`.
+- Set cache eviction policy to `noeviction`. Because Redis holds queue and coordination state,
+  evicting keys under memory pressure would silently drop work. This setting is required, not a
+  tuning suggestion.
+- Enable persistence (AOF, or RDB snapshots at minimum) and include Redis in your backup strategy.
+  Pending background jobs (secret rotations, syncs, webhook deliveries) live in Redis; a Redis
+  that comes back empty loses them.
+- Because Redis is a hard dependency, give it the same availability target as the Infisical
+  instances themselves. A single unreplicated Redis is a single point of failure for the whole
+  deployment.
 
 ## Supported Web Browsers
 

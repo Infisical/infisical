@@ -211,7 +211,9 @@ describe("SCIM v1 Router", () => {
       });
 
       // Small delay to ensure different createdAt timestamps
-      await new Promise<void>((resolve) => setTimeout(() => resolve(), 50));
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 50);
+      });
 
       await db(TableName.UserAliases).insert({
         userId: user.id,

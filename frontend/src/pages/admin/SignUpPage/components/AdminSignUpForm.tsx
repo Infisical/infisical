@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios from "axios";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
 import {
-  Alert,
-  AlertDescription,
   AnimatedCollapse,
   Button,
   Field,
@@ -22,24 +19,17 @@ import {
   InputGroupInput
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
-import { useCreateAdminUser } from "@app/hooks/api";
 
 import { AdminSignUpFormData, createAdminSignUpSchema } from "../adminSignUpSchema";
 
-type AdminSignUpResult = {
-  token: string;
-  organization: { id: string };
-};
-
 type AdminSignUpFormProps = {
-  onSuccess: (result: AdminSignUpResult) => Promise<void>;
+  defaultValues?: AdminSignUpFormData;
+  onContinue: (values: AdminSignUpFormData) => void;
 };
 
-export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
-  const [formError, setFormError] = useState<string>();
+export const AdminSignUpForm = ({ defaultValues, onContinue }: AdminSignUpFormProps) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { config } = useServerConfig();
-  const { mutateAsync: createAdminUser } = useCreateAdminUser();
   const {
     formState: { errors, isSubmitting, submitCount },
     handleSubmit,
@@ -50,7 +40,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
     resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
     mode: "onChange",
     reValidateMode: "onChange",
-    defaultValues: {
+    defaultValues: defaultValues ?? {
       firstName: "",
       lastName: "",
       email: "",
@@ -66,8 +56,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
   });
   const confirmPassword = watch("confirmPassword");
 
-  const onSubmit = async ({ confirmPassword: _, ...values }: AdminSignUpFormData) => {
-    setFormError(undefined);
+  const onSubmit = async (values: AdminSignUpFormData) => {
     const latestBreachStatus = await validatePassword(values.password);
 
     if (latestBreachStatus === "breached") {
@@ -78,18 +67,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
       return;
     }
 
-    try {
-      const result = await createAdminUser({
-        ...values,
-        lastName: values.lastName || undefined
-      });
-      await onSuccess(result);
-    } catch (error) {
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message
-        : undefined;
-      setFormError(message || "Unable to create the administrator account. Please try again.");
-    }
+    onContinue(values);
   };
 
   const showDangerState = submitCount > 0;
@@ -100,18 +78,14 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
 
   return (
     <form className="flex flex-col gap-4" noValidate onSubmit={handleSubmit(onSubmit)}>
-      {formError && (
-        <Alert variant="danger">
-          <AlertDescription>{formError}</AlertDescription>
-        </Alert>
-      )}
       <FieldGroup>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4">
           <Field data-invalid={showDangerState && Boolean(errors.firstName)}>
             <FieldLabel className="sr-only" htmlFor="admin-signup-first-name">
               First Name
             </FieldLabel>
             <Input
+              variant="outlined"
               {...register("firstName")}
               id="admin-signup-first-name"
               placeholder="First Name"
@@ -127,6 +101,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
               Last Name
             </FieldLabel>
             <Input
+              variant="outlined"
               {...register("lastName")}
               id="admin-signup-last-name"
               placeholder="Last Name"
@@ -143,6 +118,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
             Email
           </FieldLabel>
           <Input
+            variant="outlined"
             {...register("email")}
             id="admin-signup-email"
             type="email"
@@ -153,6 +129,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
           {showDangerState && errors.email ? <FieldError>{errors.email.message}</FieldError> : null}
         </Field>
         <PasswordField
+          variant="outlined"
           id="admin-signup-password"
           value={password}
           policy={config.passwordPolicy}
@@ -168,7 +145,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
         >
           <Field data-invalid={showDangerState && Boolean(errors.confirmPassword)}>
             <FieldLabel htmlFor="admin-signup-confirm-password">Confirm Password</FieldLabel>
-            <InputGroup>
+            <InputGroup variant="outlined">
               <InputGroupInput
                 {...register("confirmPassword")}
                 id="admin-signup-confirm-password"
@@ -216,7 +193,7 @@ export const AdminSignUpForm = ({ onSuccess }: AdminSignUpFormProps) => {
         isPending={isSubmitting}
         isDisabled={!canSubmit}
       >
-        Create Super Admin
+        Continue
       </Button>
     </form>
   );

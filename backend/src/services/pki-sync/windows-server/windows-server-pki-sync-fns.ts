@@ -3,12 +3,21 @@ import RE2 from "re2";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { WinRmRpcEndpoint, WinRmRunCommandResult } from "@app/lib/gateway-v2/winrm-rpc";
+import { logger } from "@app/lib/logger";
 import { executeWinRMGatewayOperation, TWinRMConnection, TWinRMCredentials } from "@app/services/app-connection/winrm";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TSyncMetadata } from "@app/services/certificate-sync/certificate-sync-schemas";
 
 import { exportCertificateForSync, PemCertificateExtension, PkiSyncExportFormat } from "../pki-sync-export-fns";
+import {
+  buildPostSyncCommandPlan,
+  POST_SYNC_COMMAND_TIMEOUT_MS,
+  renderPostSyncCommand,
+  runPostSyncCommand,
+  toPowerShellLiteral,
+  TPostSyncCommandPlan
+} from "../pki-sync-post-sync-command-fns";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";
 import { TWindowsServerPkiSyncConfig } from "./windows-server-pki-sync-types";
 
@@ -29,6 +38,7 @@ type TWindowsServerSyncOptions = {
   includePrivateKey?: boolean;
   canRemoveCertificates?: boolean;
   fileAccessRules?: Array<{ identity: string; access: string }>;
+  postSyncCommand?: string;
 };
 
 const TRAILING_BACKSLASH = new RE2("\\\\+$");
@@ -110,6 +120,36 @@ const reconcileWindowsServerRemovals = async (args: {
   return { removed, failedRemovals };
 };
 
+const runWindowsServerPostSyncCommand = ({
+  syncId,
+  plan,
+  target,
+  gatewayDeps
+}: {
+  syncId: string;
+  plan: TPostSyncCommandPlan;
+  target: ReturnType<typeof buildWinRMTarget>;
+  gatewayDeps: Parameters<typeof executeWinRMGatewayOperation>[1];
+}) =>
+  runPostSyncCommand({
+    syncId,
+    secretsToRedact: [plan.context.pkcs12Password],
+    execute: async () => {
+      const result = await executeWinRMGatewayOperation<WinRmRunCommandResult>(
+        {
+          ...target,
+          endpoint: WinRmRpcEndpoint.RunCommand,
+          params: {
+            command: renderPostSyncCommand(plan.command, plan.context, toPowerShellLiteral),
+            timeoutMs: POST_SYNC_COMMAND_TIMEOUT_MS
+          }
+        },
+        gatewayDeps
+      );
+      return { stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode };
+    }
+  });
+
 export const windowsServerPkiSyncFactory = ({
   certificateSyncDAL,
   gatewayV2Service,
@@ -131,10 +171,10 @@ export const windowsServerPkiSyncFactory = ({
     const failedUploads: Array<{ name: string; error: string }> = [];
     const failedRemovals: Array<{ name: string; error: string }> = [];
     const skippedCertificates: Array<{ name: string; reason: string }> = [];
-    // Paths written for currently-active certificates this run. A renewed cert reuses the same file
-    // name as the cert it replaced, so removal reconciliation must not delete a path that was just
-    // (re)written here, or a renewal would delete its own freshly delivered file.
+    // Paths confirmed on the host this run. Keeps the removal pass from deleting a file a renewal
+    // just rewrote under the same name, and tells the post-sync command what landed.
     const deliveredPaths = new Set<string>();
+    const deliveredCertificates: Array<{ path: string; commonName?: string }> = [];
     const target = buildWinRMTarget(pkiSync);
     let uploaded = 0;
     let removed = 0;
@@ -180,7 +220,6 @@ export const windowsServerPkiSyncFactory = ({
           const fullPath = joinWindowsPath(config.destinationPath, `${baseName}${file.suffix}`);
           files.push({ path: fullPath, contentBase64: file.content.toString("base64") });
           paths.push(fullPath);
-          deliveredPaths.add(fullPath);
         }
 
         await executeWinRMGatewayOperation(
@@ -192,6 +231,8 @@ export const windowsServerPkiSyncFactory = ({
           gatewayDeps
         );
 
+        paths.forEach((deliveredPath) => deliveredPaths.add(deliveredPath));
+        deliveredCertificates.push({ path: paths[0], commonName: certData.commonName ?? undefined });
         if (typeof certificateId === "string") {
           let record = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
           if (!record) {
@@ -213,7 +254,7 @@ export const windowsServerPkiSyncFactory = ({
     }
 
     // Delete files for certificates no longer active and drop their tracking rows.
-    if (canRemoveCertificates) {
+    if (canRemoveCertificates && failedUploads.length === 0) {
       const reconciliation = await reconcileWindowsServerRemovals({
         pkiSync,
         certificateMap,
@@ -224,13 +265,34 @@ export const windowsServerPkiSyncFactory = ({
       });
       removed += reconciliation.removed;
       failedRemovals.push(...reconciliation.failedRemovals);
+    } else if (canRemoveCertificates) {
+      logger.info(
+        `Windows Server PKI sync [syncId=${pkiSync.id}]: skipped certificate removal because ${failedUploads.length} certificate(s) failed to deliver`
+      );
     }
+
+    const postSyncCommandPlan = buildPostSyncCommandPlan({
+      command: options.postSyncCommand,
+      destinationDirectory: config.destinationPath,
+      deliveredPaths,
+      deliveredCertificates,
+      pkcs12Password: format === PkiSyncExportFormat.Pkcs12 ? exportPassword : undefined
+    });
+    const postSyncCommand = postSyncCommandPlan
+      ? await runWindowsServerPostSyncCommand({
+          syncId: pkiSync.id,
+          plan: postSyncCommandPlan,
+          target,
+          gatewayDeps
+        })
+      : undefined;
 
     return {
       uploaded,
       removed: removed > 0 ? removed : undefined,
       failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
       skipped: skippedCertificates.length,
+      postSyncCommand,
       details: {
         failedUploads: failedUploads.length > 0 ? failedUploads : undefined,
         failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,

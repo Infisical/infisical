@@ -93,7 +93,7 @@ const run = async () => {
 
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
   const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
-  const redis = buildRedisFromConfig(envConfig);
+  const redis = buildRedisFromConfig(envConfig, "app");
 
   const server = await main({
     db,

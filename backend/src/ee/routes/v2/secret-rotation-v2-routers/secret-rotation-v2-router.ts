@@ -4,6 +4,8 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { Auth0ClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/auth0-client-secret";
 import { AwsIamUserSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
+import { CloudflareApiTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/cloudflare-api-token";
+import { CloudflareR2AccessKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/cloudflare-r2-access-key";
 import { ConvexAccessKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/convex-access-key";
 import { DatabricksServicePrincipalSecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/databricks-service-principal-secret";
 import { DatadogApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-api-key";
@@ -59,7 +61,9 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   DatadogApiKeyRotationListItemSchema,
   ConvexAccessKeyRotationListItemSchema,
   FireworksApiKeyRotationListItemSchema,
-  SnowflakeUserKeyPairRotationListItemSchema
+  SnowflakeUserKeyPairRotationListItemSchema,
+  CloudflareApiTokenRotationListItemSchema,
+  CloudflareR2AccessKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

@@ -8,10 +8,11 @@ const EmailSchema = z.string().email().min(1).trim().toLowerCase();
 // caught inline instead of failing with a 400 (bad domain) or 500 (too long) from the API.
 const MAX_EMAIL_LENGTH = 255;
 const MAX_DOMAIN_LABEL_LENGTH = 63;
+const MAX_ALLOWED_EMAIL_DOMAINS_LENGTH = 255;
 const DOMAIN_LABEL_REGEX = /^[a-zA-Z0-9-]+$/;
 const TLD_REGEX = /^[a-zA-Z0-9]+$/;
 
-const isValidEmailDomain = (domain: string) => {
+export const isValidEmailDomain = (domain: string) => {
   const labels = domain.split(".");
   if (labels.length < 2) return false;
 
@@ -27,6 +28,51 @@ const isValidEmailDomain = (domain: string) => {
       DOMAIN_LABEL_REGEX.test(label)
   );
 };
+
+const getDomainEntries = (value: string) =>
+  value
+    .split(",")
+    .map((domain) => domain.trim())
+    .filter(Boolean);
+
+const normalizeDomain = (domain: string) => domain.replace(/^@/, "").trim().toLowerCase();
+
+export const normalizeAllowedEmailDomains = (value: string) =>
+  Array.from(new Set(getDomainEntries(value).map(normalizeDomain))).join(", ");
+
+export const allowedEmailDomainsSchema = z
+  .string()
+  .superRefine((value, context) => {
+    const domainEntries = getDomainEntries(value);
+    const invalidDomains = domainEntries.filter(
+      (domain) => !isValidEmailDomain(normalizeDomain(domain))
+    );
+
+    if (value.trim() && !domainEntries.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter at least one valid email domain"
+      });
+    }
+
+    if (invalidDomains.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid email domain${invalidDomains.length > 1 ? "s" : ""}: ${invalidDomains.join(", ")}`
+      });
+    }
+
+    if (normalizeAllowedEmailDomains(value).length > MAX_ALLOWED_EMAIL_DOMAINS_LENGTH) {
+      context.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: MAX_ALLOWED_EMAIL_DOMAINS_LENGTH,
+        inclusive: true,
+        type: "string",
+        message: `Email domains must be ${MAX_ALLOWED_EMAIL_DOMAINS_LENGTH} characters or fewer`
+      });
+    }
+  })
+  .transform(normalizeAllowedEmailDomains);
 
 export const isValidEmail = (email: string) =>
   email.length <= MAX_EMAIL_LENGTH &&

@@ -11,7 +11,8 @@ import { Input } from "./Input";
  * Use the native `type` attribute for browser-native UX (email keyboards, password
  * masking, native date pickers, file selectors). For labels, helper text, and
  * validation errors, compose with `Field` / `FieldLabel` / `FieldDescription` /
- * `FieldError` from `../Field` rather than re-inventing the layout.
+ * `FieldError` from `../Field` rather than re-inventing the layout. Input helper
+ * text inherits `FieldDescription`'s default animated-collapse behavior.
  *
  * The component fills its parent's width by design — let the parent (`Field`,
  * `FieldGroup`, or a custom container) decide how wide the input should be.
@@ -27,6 +28,10 @@ const meta = {
     type: {
       control: "select",
       options: ["text", "email", "password", "number", "date", "url", "search", "tel", "file"]
+    },
+    variant: {
+      control: "select",
+      options: ["default", "outlined"]
     },
     isError: {
       control: "boolean"
@@ -46,6 +51,7 @@ const meta = {
   },
   args: {
     type: "text",
+    variant: "default",
     placeholder: "Enter text...",
     isError: false,
     disabled: false,
@@ -72,6 +78,20 @@ export const Default: Story = {
       description: {
         story:
           "Baseline empty input with placeholder text. Use as the starting point for any text input — toggle `type` in the controls panel for specialised browser UX (email, password, number, date, file, etc.)."
+      }
+    }
+  }
+};
+
+export const Outlined: Story = {
+  args: {
+    variant: "outlined"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default variant for ordinary product forms and search controls."
       }
     }
   }

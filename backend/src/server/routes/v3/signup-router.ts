@@ -2,11 +2,16 @@ import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
+import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
+import { AuthMode } from "@app/services/auth/auth-type";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -45,8 +50,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
-        if (!allowedDomains.includes(domain)) {
+        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain)) {
           throw new ForbiddenRequestError({
             message: `Email with a domain (@${domain}) is not supported`
           });
@@ -202,6 +206,113 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       addAuthOriginDomainCookie(res);
 
       return { message: "Successfully set up account", user, token: accessToken };
+    }
+  });
+
+  server.route({
+    url: "/onboarding",
+    method: "POST",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      operationId: "recordSignupOnboardingV3",
+      body: z.object({
+        selectedProduct: z
+          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam", "exploring"])
+          .optional(),
+        // An empty array means "just exploring".
+        selectedProducts: z
+          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam"])
+          .array()
+          .max(5)
+          .optional(),
+        launchDestination: z
+          .enum(["secret-manager", "cert-manager", "kms", "secret-scanning", "pam", "organization-overview"])
+          .optional(),
+        attributionSource: z.string().trim().max(512).optional()
+      }),
+      response: {
+        200: z.object({
+          message: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const distinctId = getTelemetryDistinctId(req);
+      const organizationId = req.permission.orgId;
+
+      // Persisted for SQL analytics alongside the PostHog events; a DB failure must not
+      // take the telemetry down with it.
+      if (organizationId) {
+        try {
+          await server.services.signup.recordOnboardingResponse({
+            userId: req.permission.id,
+            orgId: organizationId,
+            selectedProducts: req.body.selectedProducts,
+            launchDestination: req.body.launchDestination,
+            attributionSource: req.body.attributionSource
+          });
+        } catch (err) {
+          logger.error(err, "Failed to record signup onboarding response");
+        }
+      }
+
+      if (req.body.selectedProduct) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SignupProductSelected,
+          distinctId,
+          ...(organizationId ? { organizationId } : {}),
+          properties: {
+            product: req.body.selectedProduct
+          }
+        });
+      }
+
+      if (req.body.selectedProducts) {
+        const { selectedProducts } = req.body;
+        const isExploring = selectedProducts.length === 0;
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SignupProductsSubmitted,
+          distinctId,
+          ...(organizationId ? { organizationId } : {}),
+          properties: {
+            products: selectedProducts,
+            productCount: selectedProducts.length,
+            isExploring,
+            $set_once: {
+              signupProducts: selectedProducts,
+              signupProductCount: selectedProducts.length,
+              signupIsExploring: isExploring
+            }
+          }
+        });
+      }
+
+      if (req.body.launchDestination) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SignupLaunchDestinationSelected,
+          distinctId,
+          ...(organizationId ? { organizationId } : {}),
+          properties: {
+            launchDestination: req.body.launchDestination
+          }
+        });
+      }
+
+      if (req.body.attributionSource) {
+        void server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SignupAttributionProvided,
+          distinctId,
+          ...(organizationId ? { organizationId } : {}),
+          properties: {
+            attributionSource: req.body.attributionSource
+          }
+        });
+      }
+
+      return { message: "Onboarding response recorded" };
     }
   });
 };

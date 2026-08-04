@@ -32,11 +32,6 @@ export const pkiSecurityMappings: TFeatureMapping[] = [
     extractV1: (p) => p.pkiCodeSigning
   },
   {
-    v2Key: "ssh_host_groups",
-    v1Field: "sshHostGroups",
-    extractV1: (p) => p.sshHostGroups
-  },
-  {
     v2Key: "hsm",
     v1Field: "hsm",
     extractV1: (p) => p.hsm

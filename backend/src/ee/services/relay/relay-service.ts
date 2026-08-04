@@ -11,6 +11,7 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { constructPemChainFromCerts, prependCertToPemChain } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
@@ -31,9 +32,6 @@ import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionRelayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { createSshCert, createSshKeyPair } from "../ssh/ssh-certificate-authority-fns";
-import { SshCertType } from "../ssh/ssh-certificate-authority-types";
-import { SshCertKeyAlgorithm } from "../ssh-certificate/ssh-certificate-types";
 import { TInstanceRelayConfigDALFactory } from "./instance-relay-config-dal";
 import { TOrgRelayConfigDALFactory } from "./org-relay-config-dal";
 import { RELAY_CONNECTING_GATEWAY_INFO } from "./relay-constants";

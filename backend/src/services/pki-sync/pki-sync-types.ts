@@ -8,6 +8,7 @@ import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-me
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync } from "./pki-sync-enums";
+import { TPostSyncCommandResult } from "./pki-sync-post-sync-command-fns";
 
 export type TPkiSync = {
   id: string;
@@ -98,6 +99,7 @@ export type TPkiSyncSyncResult = {
   removed?: number;
   failedRemovals?: number;
   skipped: number;
+  postSyncCommand?: TPostSyncCommandResult;
   details?: {
     failedUploads?: Array<{ name: string; error: string }>;
     failedRemovals?: Array<{ name: string; error: string }>;

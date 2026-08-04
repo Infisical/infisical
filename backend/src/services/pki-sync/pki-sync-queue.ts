@@ -40,7 +40,8 @@ import { compileCertificateNameSchema } from "./pki-sync-certificate-name-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
-import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns } from "./pki-sync-fns";
+import { enterprisePkiSyncCheck, parsePkiSyncErrorMessage, PkiSyncFns, truncateSyncMessage } from "./pki-sync-fns";
+import { buildPostSyncCommandFailureMessage, TPostSyncCommandResult } from "./pki-sync-post-sync-command-fns";
 import {
   TCertificateMap,
   TPkiSyncImportCertificatesDTO,
@@ -434,7 +435,11 @@ export const pkiSyncQueueFactory = ({
     let isSynced = false;
     let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
+    let postSyncCommandResult: TPostSyncCommandResult | undefined;
     let isFinalAttempt = job.attemptsStarted === job.opts.attempts;
+
+    const configuredPostSyncCommand = (pkiSync.syncOptions as { postSyncCommand?: string } | undefined)
+      ?.postSyncCommand;
 
     try {
       const {
@@ -617,8 +622,16 @@ export const pkiSyncQueueFactory = ({
         }
       }
 
-      if (certSyncFailureCount > 0) {
-        syncMessage = `${certSyncFailureCount} certificate(s) failed to sync to the destination`;
+      postSyncCommandResult = syncResult.postSyncCommand;
+      const reasons = [
+        certSyncFailureCount > 0 ? `${certSyncFailureCount} certificate(s) failed to sync to the destination` : null,
+        postSyncCommandResult?.status === PkiSyncStatus.Failed
+          ? buildPostSyncCommandFailureMessage(postSyncCommandResult)
+          : null
+      ].filter(Boolean);
+
+      if (reasons.length > 0) {
+        syncMessage = truncateSyncMessage(reasons.join(". "));
       }
 
       isSynced = true;
@@ -649,7 +662,8 @@ export const pkiSyncQueueFactory = ({
       }
     } finally {
       const ranAt = new Date();
-      const fullySynced = isSynced && certSyncFailureCount === 0;
+      const postSyncCommandFailed = postSyncCommandResult?.status === PkiSyncStatus.Failed;
+      const fullySynced = isSynced && certSyncFailureCount === 0 && !postSyncCommandFailed;
       const syncStatus = fullySynced ? PkiSyncStatus.Succeeded : PkiSyncStatus.Failed;
 
       await auditLogService.createAuditLog({
@@ -666,7 +680,10 @@ export const pkiSyncQueueFactory = ({
             syncId: pkiSync.id,
             syncMessage,
             jobId: job.id!,
-            jobRanAt: ranAt
+            jobRanAt: ranAt,
+            postSyncCommand: configuredPostSyncCommand
+              ? { command: configuredPostSyncCommand, result: postSyncCommandResult }
+              : undefined
           }
         }
       });

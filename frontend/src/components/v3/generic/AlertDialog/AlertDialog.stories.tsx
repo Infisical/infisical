@@ -156,7 +156,7 @@ export const SmallSize: Story = {
     docs: {
       description: {
         story:
-          'Pass `size="sm"` to `AlertDialogContent` for a compact dialog — header content is center-aligned and footer actions split into a two-column grid. Use for short, single-sentence confirmations.'
+          'Pass `size="sm"` to `AlertDialogContent` for a compact dialog — header content remains left-aligned and footer actions split into a two-column grid. Use for short, single-sentence confirmations.'
       }
     }
   },

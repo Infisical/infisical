@@ -78,11 +78,6 @@ export enum ApiDocsTags {
   PkiSigners = "PKI Signers",
   PkiSubscribers = "PKI Subscribers",
   PkiAcme = "PKI ACME",
-  SshCertificates = "SSH Certificates",
-  SshCertificateAuthorities = "SSH Certificate Authorities",
-  SshCertificateTemplates = "SSH Certificate Templates",
-  SshHosts = "SSH Hosts",
-  SshHostGroups = "SSH Host Groups",
   KmsKeys = "KMS Keys",
   KmsEncryption = "KMS Encryption",
   KmsSigning = "KMS Signing",
@@ -1021,23 +1016,6 @@ export const PROJECTS = {
   LIST_INTEGRATION_AUTHORIZATION: {
     projectId: "The ID of the project to list integration auths for."
   },
-  LIST_SSH_CAS: {
-    projectId: "The ID of the project to list SSH CAs for."
-  },
-  LIST_SSH_HOSTS: {
-    projectId: "The ID of the project to list SSH hosts for."
-  },
-  LIST_SSH_HOST_GROUPS: {
-    projectId: "The ID of the project to list SSH host groups for."
-  },
-  LIST_SSH_CERTIFICATES: {
-    projectId: "The ID of the project to list SSH certificates for.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th SSH certificate.",
-    limit: "The number of SSH certificates to return."
-  },
-  LIST_SSH_CERTIFICATE_TEMPLATES: {
-    projectId: "The ID of the project to list SSH certificate templates for."
-  },
   LIST_CAS: {
     slug: "The slug of the project to list CAs for.",
     status: "The status of the CA to filter by.",
@@ -1944,180 +1922,6 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
-  }
-};
-
-export const SSH_CERTIFICATE_AUTHORITIES = {
-  CREATE: {
-    projectId: "The ID of the project to create the SSH CA in.",
-    friendlyName: "A friendly name for the SSH CA.",
-    keyAlgorithm:
-      "The type of public key algorithm and size, in bits, of the key pair for the SSH CA; required if keySource is internal.",
-    publicKey: "The public key for the SSH CA key pair; required if keySource is external.",
-    privateKey: "The private key for the SSH CA key pair; required if keySource is external.",
-    keySource: "The source of the SSH CA key pair. This can be one of internal or external."
-  },
-  GET: {
-    sshCaId: "The ID of the SSH CA to get."
-  },
-  GET_PUBLIC_KEY: {
-    sshCaId: "The ID of the SSH CA to get the public key for."
-  },
-  UPDATE: {
-    sshCaId: "The ID of the SSH CA to update.",
-    friendlyName: "A friendly name for the SSH CA to update to.",
-    status: "The status of the SSH CA to update to. This can be one of active or disabled."
-  },
-  DELETE: {
-    sshCaId: "The ID of the SSH CA to delete."
-  },
-  GET_CERTIFICATE_TEMPLATES: {
-    sshCaId: "The ID of the SSH CA to get the certificate templates for."
-  },
-  SIGN_SSH_KEY: {
-    certificateTemplateId: "The ID of the SSH certificate template to sign the SSH public key with.",
-    publicKey: "The SSH public key to sign.",
-    certType: "The type of certificate to issue. This can be one of user or host.",
-    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
-    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
-    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key."
-  },
-  ISSUE_SSH_CREDENTIALS: {
-    certificateTemplateId: "The ID of the SSH certificate template to issue the SSH credentials with.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH CA.",
-    certType: "The type of certificate to issue. This can be one of user or host.",
-    principals: "The list of principals (usernames, hostnames) to include in the certificate.",
-    ttl: "The time to live for the certificate such as 1m, 1h, 1d, ... If not specified, the default TTL for the template will be used.",
-    keyId: "The key ID to include in the certificate. If not specified, a default key ID will be generated.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key.",
-    privateKey: "The private key corresponding to the issued SSH certificate.",
-    publicKey: "The public key of the issued SSH certificate."
-  }
-};
-
-export const SSH_CERTIFICATE_TEMPLATES = {
-  GET: {
-    certificateTemplateId: "The ID of the SSH certificate template to get."
-  },
-  CREATE: {
-    sshCaId: "The ID of the SSH CA to associate the certificate template with.",
-    name: "The name of the certificate template.",
-    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    allowedUsers: "The list of allowed users for certificates issued under this template.",
-    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
-    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
-    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
-    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
-  },
-  UPDATE: {
-    certificateTemplateId: "The ID of the SSH certificate template to update.",
-    name: "The name of the certificate template.",
-    ttl: "The default time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    maxTTL: "The maximum time to live for issued certificates such as 1m, 1h, 1d, 1y, ...",
-    allowedUsers: "The list of allowed users for certificates issued under this template.",
-    allowedHosts: "The list of allowed hosts for certificates issued under this template.",
-    allowUserCertificates: "Whether or not to allow user certificates to be issued under this template.",
-    allowHostCertificates: "Whether or not to allow host certificates to be issued under this template.",
-    allowCustomKeyIds: "Whether or not to allow custom key IDs for certificates issued under this template."
-  },
-  DELETE: {
-    certificateTemplateId: "The ID of the SSH certificate template to delete."
-  }
-};
-
-export const SSH_HOST_GROUPS = {
-  GET: {
-    sshHostGroupId: "The ID of the SSH host group to get.",
-    filter: "The filter to apply to the SSH hosts in the SSH host group."
-  },
-  CREATE: {
-    projectId: "The ID of the project to create the SSH host group in.",
-    name: "The name of the SSH host group.",
-    loginMappings:
-      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
-  },
-  UPDATE: {
-    sshHostGroupId: "The ID of the SSH host group to update.",
-    name: "The name of the SSH host group to update to.",
-    loginMappings:
-      "A list of default login mappings to include on each host in the SSH host group. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users in the Infisical SSH project."
-  },
-  DELETE: {
-    sshHostGroupId: "The ID of the SSH host group to delete."
-  },
-  LIST_HOSTS: {
-    offset: "The offset to start from. If you enter 10, it will start from the 10th host",
-    limit: "The number of hosts to return."
-  },
-  ADD_HOST: {
-    sshHostGroupId: "The ID of the SSH host group to add the host to.",
-    hostId: "The ID of the SSH host to add to the SSH host group."
-  },
-  DELETE_HOST: {
-    sshHostGroupId: "The ID of the SSH host group to delete the host from.",
-    hostId: "The ID of the SSH host to delete from the SSH host group."
-  }
-};
-
-export const SSH_HOSTS = {
-  GET: {
-    sshHostId: "The ID of the SSH host to get."
-  },
-  CREATE: {
-    projectId: "The ID of the project to create the SSH host in.",
-    hostname: "The hostname of the SSH host.",
-    alias: "The alias for the SSH host.",
-    userCertTtl: "The time to live for user certificates issued under this host.",
-    hostCertTtl: "The time to live for host certificates issued under this host.",
-    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
-    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
-    loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project.",
-    userSshCaId:
-      "The ID of the SSH CA to use for user certificates. If not specified, the default user SSH CA will be used if it exists.",
-    hostSshCaId:
-      "The ID of the SSH CA to use for host certificates. If not specified, the default host SSH CA will be used if it exists."
-  },
-  UPDATE: {
-    sshHostId: "The ID of the SSH host to update.",
-    hostname: "The hostname of the SSH host to update to.",
-    alias: "The alias for the SSH host to update to.",
-    userCertTtl: "The time to live for user certificates issued under this host to update to.",
-    hostCertTtl: "The time to live for host certificates issued under this host to update to.",
-    loginUser: "A login user on the remote machine (e.g. 'ec2-user', 'deploy', 'admin')",
-    allowedPrincipals: "A list of allowed principals that can log in as the login user.",
-    loginMappings:
-      "A list of login mappings for the SSH host. Each login mapping contains a login user and a list of corresponding allowed principals being usernames of users or groups slugs in the Infisical SSH project."
-  },
-  DELETE: {
-    sshHostId: "The ID of the SSH host to delete."
-  },
-  ISSUE_SSH_CREDENTIALS: {
-    sshHostId: "The ID of the SSH host to issue the SSH credentials for.",
-    loginUser: "The login user to issue the SSH credentials for.",
-    keyAlgorithm: "The type of public key algorithm and size, in bits, of the key pair for the SSH host.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key.",
-    privateKey: "The private key corresponding to the issued SSH certificate.",
-    publicKey: "The public key of the issued SSH certificate."
-  },
-  ISSUE_HOST_CERT: {
-    sshHostId: "The ID of the SSH host to issue the SSH certificate for.",
-    publicKey: "The SSH public key to issue the SSH certificate for.",
-    serialNumber: "The serial number of the issued SSH certificate.",
-    signedKey: "The SSH certificate or signed SSH public key."
-  },
-  GET_USER_CA_PUBLIC_KEY: {
-    sshHostId: "The ID of the SSH host to get the user SSH CA public key for.",
-    publicKey: "The public key of the user SSH CA linked to the SSH host."
-  },
-  GET_HOST_CA_PUBLIC_KEY: {
-    sshHostId: "The ID of the SSH host to get the host SSH CA public key for.",
-    publicKey: "The public key of the host SSH CA linked to the SSH host."
   }
 };
 
@@ -3047,6 +2851,11 @@ export const AppConnections = {
       username:
         "The username used to authenticate with Venafi TPP. Supports formats: 'DOMAIN\\\\username', 'username@domain.com', or local usernames.",
       password: "The password used to authenticate with Venafi TPP."
+    },
+    SPACELIFT: {
+      apiUrl: "The Spacelift API URL to connect with (e.g., 'https://mycorp.app.spacelift.io').",
+      apiKeyId: "The API Key ID used to authenticate with Spacelift.",
+      apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
   }
 };
@@ -3143,6 +2952,10 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
         "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+    },
+    SPACELIFT: {
+      writeOnly:
+        "Whether secrets should be marked as secret in Spacelift. Secret values are only available to Runs and Tasks and are not accessible in the web GUI or through the API."
     }
   },
   DESTINATION_CONFIG: {
@@ -3393,6 +3206,16 @@ export const SecretSyncs = {
     SNOWFLAKE: {
       database: "The name of the Snowflake database to sync secrets to.",
       schema: "The name of the Snowflake schema (within the database) to sync secrets to."
+    },
+    SPACELIFT: {
+      contextId: "The ID of the Spacelift context to sync secrets to.",
+      contextName: "The name of the Spacelift context to sync secrets to.",
+      configType:
+        "The type of config element to create in Spacelift. Either 'environment-variable' for individual environment variables or 'file-mount' for a single .env file mount.",
+      mountPath:
+        "The file path for the mounted file relative to /mnt/workspace/. Required when configType is 'file-mount'. When fileMountFormat is 'secret-per-file', this is the directory path. Example: 'secrets.env' or 'secrets/'.",
+      fileMountFormat:
+        "The format for file mount config elements. Either 'dot-env' (default) to store all secrets in a single .env file, or 'secret-per-file' to create a separate file mount per secret under the mount path directory."
     }
   }
 };
@@ -3574,6 +3397,22 @@ export const SecretRotations = {
     DATADOG_API_KEY: {
       name: "The name for the generated Datadog API key."
     },
+    CLOUDFLARE_API_TOKEN: {
+      name: "The name for the generated Cloudflare API token.",
+      policies:
+        "The access policies to attach to the generated Cloudflare API token. Each policy scopes a set of permission groups to the entire account, to all zones in the account, or to a specific set of zones.",
+      allowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated Cloudflare API token is denied from."
+    },
+    CLOUDFLARE_R2_ACCESS_KEY: {
+      name: "The name for the generated Cloudflare API token that backs the R2 access key.",
+      buckets:
+        "The R2 buckets the generated access key is scoped to. Each entry is a bucket name plus its jurisdiction (default, eu, or fedramp).",
+      accessLevel:
+        "The level of access the generated key has over the selected buckets (object-read for read and list, object-read-write to also write).",
+      allowedIps: "The IP addresses or CIDR blocks the generated R2 access key is restricted to.",
+      disallowedIps: "The IP addresses or CIDR blocks the generated R2 access key is denied from."
+    },
     CONVEX_ACCESS_KEY: {
       namePrefix: "A prefix to use when naming the generated Convex access key."
     },
@@ -3665,6 +3504,14 @@ export const SecretRotations = {
     DATADOG_API_KEY: {
       apiKeyId: "The name of the secret that the rotated Datadog API key ID will be mapped to.",
       apiKey: "The name of the secret that the rotated Datadog API key value will be mapped to."
+    },
+    CLOUDFLARE_API_TOKEN: {
+      tokenId: "The name of the secret that the rotated Cloudflare API token ID will be mapped to.",
+      apiToken: "The name of the secret that the rotated Cloudflare API token value will be mapped to."
+    },
+    CLOUDFLARE_R2_ACCESS_KEY: {
+      accessKeyId: "The name of the secret that the rotated R2 access key ID will be mapped to.",
+      secretAccessKey: "The name of the secret that the rotated R2 secret access key will be mapped to."
     },
     CONVEX_ACCESS_KEY: {
       accessKey: "The name of the secret that the rotated Convex access key will be mapped to."

@@ -2,11 +2,9 @@ import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
+import { createSshCert, createSshKeyPair, getSshPublicKey, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 
 import { TDynamicSecretLeaseConfig } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { createSshCert, createSshKeyPair, getSshPublicKey } from "../../ssh/ssh-certificate-authority-fns";
-import { SshCertType } from "../../ssh/ssh-certificate-authority-types";
-import { SshCertKeyAlgorithm } from "../../ssh-certificate/ssh-certificate-types";
 import { DynamicSecretSshSchema, SshStoredSchema, TDynamicProviderFns } from "./models";
 
 export const SshProvider = (): TDynamicProviderFns => {

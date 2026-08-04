@@ -4,6 +4,8 @@ const middleware = (fileName: string, virtualRoutes: VirtualRouteNode[]) =>
   layout(`middlewares/${fileName}`, virtualRoutes);
 
 const adminRoute = route("/admin", [
+  route("/welcome", "admin/WelcomePage/route.tsx"),
+  route("/setup", "admin/SetupPage/route.tsx"),
   layout("admin-layout", "admin/layout.tsx", [
     index("admin/GeneralPage/route.tsx"),
     route("/encryption", "admin/EncryptionPage/route.tsx"),
@@ -330,21 +332,6 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$pr
   ])
 ]);
 
-const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
-  layout("ai-layout", "ai/layout.tsx", [
-    route("/mcp-servers/$serverId", "ai/MCPServerDetailPage/route.tsx"),
-    route("/mcp-endpoints/$endpointId", "ai/MCPEndpointDetailPage/route.tsx"),
-    route("/overview", "ai/MCPPage/route.tsx"),
-    route("/settings", "ai/SettingsPage/route.tsx"),
-    route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),
-    route("/access-management", "project/AccessControlPage/route-ai.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ai.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ai.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ai.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-ai.tsx")
-  ])
-]);
-
 const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
@@ -356,23 +343,6 @@ const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-kms.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-kms.tsx"),
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-kms.tsx")
-  ])
-]);
-
-const sshRoutes = route("/organizations/$orgId/projects/ssh/$projectId", [
-  layout("ssh-layout", "ssh/layout.tsx", [
-    route("/overview", "ssh/SshHostsPage/route.tsx"),
-    route("/certificates", "ssh/SshCertsPage/route.tsx"),
-    route("/cas", "ssh/SshCasPage/route.tsx"),
-    route("/ca/$caId", "ssh/SshCaByIDPage/route.tsx"),
-    route("/ssh-host-groups/$sshHostGroupId", "ssh/SshHostGroupDetailsByIDPage/route.tsx"),
-    route("/settings", "ssh/SettingsPage/route.tsx"),
-    route("/audit-logs", "project/AuditLogsPage/route-ssh.tsx"),
-    route("/access-management", "project/AccessControlPage/route-ssh.tsx"),
-    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ssh.tsx"),
-    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ssh.tsx"),
-    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ssh.tsx"),
-    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-ssh.tsx")
   ])
 ]);
 
@@ -502,7 +472,7 @@ export const routes = rootRoute("root.tsx", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
     route("/organizations/none", "organization/NoOrgPage/route.tsx"),
-    route("/organization/mcp-endpoint-finalize", "organization/McpEndpointFinalizePage/route.tsx"),
+    route("/organizations/onboarding", "organization/SignupOnboardingPage/route.tsx"),
     route("/organization/oauth-consent", "organization/OauthConsentPage/route.tsx"),
     middleware("inject-org-details.tsx", [
       adminRoute,
@@ -529,10 +499,8 @@ export const routes = rootRoute("root.tsx", [
         secretManagerIntegrationsRedirect,
         certManagerRoutes,
         kmsRoutes,
-        sshRoutes,
         secretScanningRoutes,
-        pamRoutes,
-        aiRoutes
+        pamRoutes
       ])
     ])
   ])

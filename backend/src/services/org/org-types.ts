@@ -96,7 +96,6 @@ export type TUpdateOrgDTO = {
     secretsProductEnabled: boolean;
     pkiProductEnabled: boolean;
     kmsProductEnabled: boolean;
-    sshProductEnabled: boolean;
     scannerProductEnabled: boolean;
     shareSecretsProductEnabled: boolean;
     maxSharedSecretLifetime: number;

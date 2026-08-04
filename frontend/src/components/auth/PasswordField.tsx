@@ -13,7 +13,8 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupInput
+  InputGroupInput,
+  type InputGroupProps
 } from "@app/components/v3";
 import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
@@ -23,9 +24,11 @@ type PasswordFieldProps = {
   policy: TPasswordPolicy;
   breachStatus: PasswordBreachCheckStatus;
   registration: UseFormRegisterReturn;
+  label?: string;
   placeholder?: string;
   error?: ReactHookFormFieldError;
   submitCount: number;
+  variant?: InputGroupProps["variant"];
 };
 
 export const PasswordField = ({
@@ -34,9 +37,11 @@ export const PasswordField = ({
   policy,
   breachStatus,
   registration,
+  label = "Password",
   placeholder,
   error,
-  submitCount
+  submitCount,
+  variant = "default"
 }: PasswordFieldProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,8 +53,8 @@ export const PasswordField = ({
 
   return (
     <Field data-invalid={Boolean(error)}>
-      <FieldLabel htmlFor={id}>Password</FieldLabel>
-      <InputGroup>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <InputGroup variant={variant}>
         <InputGroupInput
           {...registration}
           id={id}

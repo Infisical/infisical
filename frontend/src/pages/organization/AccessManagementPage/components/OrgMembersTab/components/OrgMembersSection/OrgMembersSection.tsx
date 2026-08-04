@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BanIcon, TrashIcon, UserPlusIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -22,7 +21,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DocumentationLinkBadge
+  DocumentationLinkBadge,
+  SelectedActionBar
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -153,49 +153,36 @@ export const OrgMembersSection = () => {
 
   return (
     <>
-      <div
-        className={twMerge(
-          "h-0 shrink-0 overflow-hidden transition-all",
-          selectedMemberIds.length > 0 && "mb-2 h-16"
-        )}
+      <SelectedActionBar
+        selectedCount={selectedMemberIds.length}
+        onClearSelection={() => setSelectedMemberIds([])}
       >
-        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
-          <div className="mr-2 text-sm">{selectedMemberIds.length} Selected</div>
-          <button
-            type="button"
-            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
-            onClick={() => setSelectedMemberIds([])}
-          >
-            Unselect All
-          </button>
-          <OrgPermissionCan
-            I={OrgPermissionActions.Delete}
-            a={OrgPermissionSubjects.Member}
-            renderTooltip
-          >
-            {(isAllowed) => (
-              <Button
-                variant="danger"
-                className="ml-2"
-                onClick={() => {
-                  const selectedOrgMemberships = members.filter((member) =>
-                    selectedMemberIds.includes(member.id)
-                  );
+        <OrgPermissionCan
+          I={OrgPermissionActions.Delete}
+          a={OrgPermissionSubjects.Member}
+          renderTooltip
+        >
+          {(isAllowed) => (
+            <Button
+              variant="danger"
+              onClick={() => {
+                const selectedOrgMemberships = members.filter((member) =>
+                  selectedMemberIds.includes(member.id)
+                );
 
-                  if (!selectedOrgMemberships.length) return;
+                if (!selectedOrgMemberships.length) return;
 
-                  handlePopUpOpen("removeMembers", { selectedOrgMemberships });
-                }}
-                isDisabled={!isAllowed}
-                size="xs"
-              >
-                <TrashIcon />
-                Delete
-              </Button>
-            )}
-          </OrgPermissionCan>
-        </div>
-      </div>
+                handlePopUpOpen("removeMembers", { selectedOrgMemberships });
+              }}
+              isDisabled={!isAllowed}
+              size="xs"
+            >
+              <TrashIcon />
+              Delete
+            </Button>
+          )}
+        </OrgPermissionCan>
+      </SelectedActionBar>
       <Card>
         <CardHeader>
           <CardTitle>

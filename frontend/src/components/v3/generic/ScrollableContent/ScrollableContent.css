@@ -1,0 +1,168 @@
+.scrollable-content-viewport {
+  --scrollable-content-edge-size: 2rem;
+  --scrollable-content-size-max-height: clamp(12rem, calc(100dvh - 24rem), 28rem);
+
+  container-name: scrollable-content;
+  container-type: scroll-state;
+  max-height: var(--scrollable-content-max-height, var(--scrollable-content-size-max-height));
+  scrollbar-color: color-mix(in srgb, var(--color-foreground) 24%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.scrollable-content-viewport[data-size="sm"] {
+  --scrollable-content-size-max-height: clamp(8rem, calc(100dvh - 32rem), 16rem);
+}
+
+.scrollable-content-viewport[data-size="md"] {
+  --scrollable-content-size-max-height: clamp(10rem, calc(100dvh - 28rem), 22rem);
+}
+
+.scrollable-content-scroller {
+  position: absolute;
+  left: 50%;
+  z-index: 20;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 150ms ease-in-out,
+    visibility 150ms ease-in-out;
+}
+
+.scrollable-content-scroller[data-scroll-direction="up"] {
+  top: 0;
+  translate: -50% -50%;
+}
+
+.scrollable-content-scroller[data-scroll-direction="down"] {
+  bottom: 0;
+  translate: -50% 50%;
+}
+
+[data-slot="scrollable-content"][data-scrollable-top="true"]
+  > .scrollable-content-scroller[data-scroll-direction="up"],
+[data-slot="scrollable-content"][data-scrollable-bottom="true"]
+  > .scrollable-content-scroller[data-scroll-direction="down"] {
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.scrollable-content-viewport[data-edge-behavior="fade"][data-scrollable-top="true"][data-scrollable-bottom="true"] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--scrollable-content-edge-size),
+    black calc(100% - var(--scrollable-content-edge-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--scrollable-content-edge-size),
+    black calc(100% - var(--scrollable-content-edge-size)),
+    transparent
+  );
+}
+
+.scrollable-content-viewport[data-edge-behavior="fade"][data-scrollable-top="true"][data-scrollable-bottom="false"] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    black var(--scrollable-content-edge-size)
+  );
+  mask-image: linear-gradient(to bottom, transparent, black var(--scrollable-content-edge-size));
+}
+
+.scrollable-content-viewport[data-edge-behavior="fade"][data-scrollable-top="false"][data-scrollable-bottom="true"] {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--scrollable-content-edge-size)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - var(--scrollable-content-edge-size)),
+    transparent
+  );
+}
+
+.scrollable-content-viewport::-webkit-scrollbar {
+  width: 0.25rem;
+}
+
+.scrollable-content-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollable-content-viewport::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-foreground) 24%, transparent);
+}
+
+.scrollable-content-edge {
+  position: sticky;
+  z-index: 10;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+}
+
+.scrollable-content-edge::before {
+  position: absolute;
+  right: 0;
+  left: 0;
+  content: "";
+}
+
+.scrollable-content-edge[data-edge="top"] {
+  top: 0;
+}
+
+.scrollable-content-edge[data-edge="bottom"] {
+  top: 100%;
+}
+
+.scrollable-content-viewport[data-edge-behavior="border"] .scrollable-content-edge::before {
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.scrollable-content-viewport[data-edge-behavior="border"]
+  .scrollable-content-edge[data-edge="top"]::before {
+  top: 0;
+}
+
+.scrollable-content-viewport[data-edge-behavior="border"]
+  .scrollable-content-edge[data-edge="bottom"]::before {
+  bottom: 0;
+}
+
+@container scrollable-content scroll-state(scrollable: top) {
+  .scrollable-content-edge[data-edge="top"] {
+    opacity: 1;
+  }
+}
+
+@container scrollable-content scroll-state(scrollable: bottom) {
+  .scrollable-content-edge[data-edge="bottom"] {
+    opacity: 1;
+  }
+}
+
+@supports not (container-type: scroll-state) {
+  .scrollable-content-viewport[data-scrollable-top="true"]
+    .scrollable-content-edge[data-edge="top"],
+  .scrollable-content-viewport[data-scrollable-bottom="true"]
+    .scrollable-content-edge[data-edge="bottom"] {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollable-content-edge,
+  .scrollable-content-scroller {
+    transition: none;
+  }
+}

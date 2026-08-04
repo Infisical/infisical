@@ -41,7 +41,7 @@ export const buildMeteredFeatures = ({
   usageCounterDAL,
   isCloud
 }: TBuildMeteredFeaturesDep): TMeteredFeature[] => [
-  { feature: IdentitiesMeter, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(orgId) },
+  { feature: IdentitiesMeter, count: (orgId) => licenseDAL.countOrgUsersAndIdentities(isCloud ? orgId : null) },
   { feature: InternalCas, count: (orgId) => usageCounterDAL.countInternalCas(orgId) },
   { feature: ActiveCerts, count: (orgId) => usageCounterDAL.countActiveCerts(orgId) },
   {

@@ -1,0 +1,188 @@
+---
+title: "ServiceNow Integration"
+description: "Route Infisical access requests through ServiceNow approval flows."
+---
+
+<Info>
+  The ServiceNow integration is opt-in and only available on Enterprise plans.
+  Contact [sales@infisical.com](mailto:sales@infisical.com) to opt-in and gain access to the ServiceNow Integration.
+</Info>
+
+The ServiceNow integration hands the approval decision for an Infisical [access request](/documentation/platform/access-controls/access-requests) to ServiceNow. Instead of approving in Infisical, your approvers review the request in ServiceNow, where it inherits the governance you already run there: multi-step routing, group approvals, delegation, CAB review, notifications, and audit history.
+
+Infisical stays the enforcement point. It creates the request, waits for ServiceNow to return a decision, and grants or denies the access itself. ServiceNow never touches your secrets.
+
+## How it works
+
+1. A user requests access in Infisical to an environment and secret path.
+2. The request matches an access policy configured with the **ServiceNow** approver type.
+3. Infisical creates an Infisical Access Request record on your ServiceNow instance over the ServiceNow app connection.
+4. A ServiceNow flow you own routes that record to the right approvers.
+5. When the flow reaches a decision, its final step calls the **Infisical - Notify Decision** action, which sends the decision back to Infisical using a machine identity.
+6. Infisical grants the access on approval, or closes the request on rejection.
+
+If ServiceNow never returns a decision, the request expires in Infisical according to the policy's request expiration setting. Access is never granted by default.
+
+## What you need
+
+- A Secrets Management project on Infisical with Access Requests available.
+- A ServiceNow instance where you can install a scoped application, create users, and use Flow Designer.
+- Network reachability in both directions: Infisical must reach your ServiceNow instance, and your ServiceNow instance must reach your Infisical URL.
+
+## Setup
+
+<Steps>
+  <Step title="Install the Infisical application on your ServiceNow instance">
+    Install the application package provided by Infisical. Once installed, an **Infisical** application menu appears in the navigator with these modules:
+
+    - **Access Requests**: every request Infisical has sent.
+    - **Pending Requests**: requests awaiting a decision.
+    - **Identity Mappings**: which Infisical credential the app uses to send decisions back.
+    - **Admin Console**: a single-page view of the above.
+
+    The application also installs four roles:
+
+    | Role | Grants |
+    | --- | --- |
+    | `x_infis_approvals.admin` | Full configuration access, including identity mappings. |
+    | `x_infis_approvals.approver` | View and decide on access requests. |
+    | `x_infis_approvals.viewer` | Read-only access to requests and their audit trail. |
+    | `x_infis_approvals.secret-manager-integration` | API-only role used by Infisical to create requests. |
+
+    Assign `x_infis_approvals.admin` to complete the rest of this setup, and `x_infis_approvals.approver` to your approver groups.
+
+  </Step>
+
+  <Step title="Connect Infisical to ServiceNow">
+    Create a ServiceNow integration user, then create a **ServiceNow Connection** in Infisical using that user's credentials. Follow the [ServiceNow Connection](/integrations/app-connections/servicenow) guide.
+
+    This connection is how Infisical writes requests into ServiceNow. It is deliberately one-directional: the integration user can create and read access request records and nothing else.
+
+  </Step>
+
+  <Step title="Create a machine identity for decision callbacks">
+    ServiceNow needs its own credential to send decisions back to Infisical.
+
+    In Infisical, go to **Organization Access Control > Identities** and create a machine identity, for example `servicenow-approvals`.
+
+    Configure it with **Universal Auth** and generate a Client ID and Client Secret. Save both, the secret is shown only once.
+
+    Next, give the identity permission to submit decisions:
+
+    1. In your Secrets Management project, go to **Access Control > Project Roles** and create a role such as `servicenow-external-reviewer`.
+    2. Grant it the **External Review** permission on **Approval Requests**.
+    3. Add the machine identity to the project with that role.
+
+    <Note>
+      **External Review** only allows submitting an approve or reject decision on
+      requests Infisical has already sent to ServiceNow. It does not allow reading
+      secrets, and it does not allow creating or modifying policies.
+    </Note>
+
+  </Step>
+
+  <Step title="Store the Infisical credential in ServiceNow">
+    In ServiceNow, create a Connection and Credential alias from the **Infisical - Universal Auth** template that ships with the application. Provide:
+
+    - **Infisical URL**: your Infisical base URL, for example `https://app.infisical.com`, or your self-hosted URL.
+    - **Client ID**: the Universal Auth Client ID from the previous step.
+    - **Client Secret**: the Universal Auth Client Secret.
+    - **Infisical Identity ID**: the ID of the machine identity.
+
+    The Client Secret is stored in the ServiceNow credential store, not in an application table. At decision time the app exchanges the Client ID and Secret for a short-lived Infisical token, so no long-lived token sits on the instance.
+
+    Saving the alias automatically creates a row under **Infisical > Identity Mappings** that maps the identity ID to the alias. The app uses this mapping to pick the right credential when it sends a decision, which is what lets one instance serve several Infisical organizations or projects. You can edit the mapping later, or clear its Active flag to stop decisions from being sent through it.
+
+  </Step>
+
+  <Step title="Build the approval flow">
+    Approval routing is entirely yours to define in Flow Designer. Infisical does not dictate approvers, steps, or SLAs.
+
+    The fastest path is to clone the included template:
+
+    1. Go to **All > Process Automation > Flow Designer**.
+    2. Open **Infisical - Sequential Approval Template** and click **Copy Flow**.
+    3. Adjust the trigger condition. The trigger is a record created on **Infisical Access Request [x_infis_approvals_access_request]**, and the condition is what decides which requests this flow owns, for example `Environment is prod` or `Secret Path contains /payments`.
+    4. Fill in the approvers on each **Ask for Approval** step, along with the number of approvals required.
+    5. Confirm that every branch, approved and rejected alike, ends with an **Update Record** action setting **State**, followed by the **Infisical - Notify Decision** action.
+    6. Activate the flow.
+
+    The **Infisical - Notify Decision** action takes two inputs:
+
+    | Input | Value |
+    | --- | --- |
+    | **Access Request** | The trigger record. |
+    | **Decision** | `approved` or `rejected`. |
+
+    It returns Success and Message outputs, which you can branch on to raise an incident or notify an admin if the callback fails.
+
+    <Warning>
+      Every terminal branch of your flow must call **Infisical - Notify Decision**.
+      A branch that ends without it leaves the request pending in Infisical until it
+      expires, and the requester gets no answer.
+    </Warning>
+
+    Building from scratch instead of cloning works the same way: trigger on record creation, route with **Ask for Approval** steps, and finish each branch with **Infisical - Notify Decision**. Keep trigger conditions mutually exclusive across flows, otherwise two flows will both route the same request and approvers will see duplicates.
+
+  </Step>
+
+  <Step title="Enable ServiceNow approvals on an access policy">
+    In your Secrets Management project, go to **Approvals > Policies** and create or edit an **Access Policy**. Set:
+
+    - **Approver Type**: **ServiceNow**.
+    - **ServiceNow Connection**: the connection created in step 2.
+    - **Review Identity**: the machine identity created in step 3. Infisical includes this identity's ID on every request so ServiceNow can resolve the matching identity mapping.
+    - **Environments** and **Secret Path**: what this policy governs, as with any access policy.
+    - **Request Expiration**: how long a request may sit in ServiceNow before Infisical closes it.
+
+    Requests matching this policy are now routed to ServiceNow. Policies without the ServiceNow approver type keep using in-app approvers, so you can move one environment at a time.
+
+  </Step>
+</Steps>
+
+## What ServiceNow receives
+
+Each request becomes one **Infisical Access Request** record, numbered `INFAR<number>`:
+
+| Field                     | Contents                                                                    |
+| ------------------------- | --------------------------------------------------------------------------- |
+| Request Type              | The kind of access requested. During beta this is always **Secret Access**. |
+| Requestor Email           | The Infisical user who made the request.                                    |
+| Project Name / Project ID | The Infisical project the request targets.                                  |
+| Environment               | The environment slug, for example `prod`.                                   |
+| Secret Path               | The folder path being requested.                                            |
+| Permissions               | The permissions requested, for example `read`.                              |
+| Duration Type / Duration  | Temporary with a duration, or permanent.                                    |
+| Justification             | The reason the requester supplied.                                          |
+| Infisical Request ID      | The Infisical request this record corresponds to.                           |
+| State                     | Where the request stands, see below.                                        |
+
+The record is a read-only mirror of the request. Editing the fields in ServiceNow does not change what Infisical grants; only the decision sent back matters.
+
+### States
+
+| State               | Meaning                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| Pending Approval    | Waiting on your flow.                                              |
+| Approved / Rejected | Your flow reached a decision.                                      |
+| Notifying Infisical | The decision is being sent back.                                   |
+| Completed           | Infisical acknowledged the approval.                               |
+| Callback Failed     | The decision could not be delivered. See the Callback Error field. |
+| Expired             | Closed without a decision.                                         |
+
+## Auditing
+
+Both sides keep their own record. In ServiceNow, the access request record carries the full approval history, including who approved at each step and when, through the standard approval and audit tables. In Infisical, the request and the resulting access grant appear in the project's audit log along with the decision received from ServiceNow.
+
+## Troubleshooting
+
+| Symptom                                     | Cause and fix                                                                                                                                                                             |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Requests never appear in ServiceNow         | The policy is not set to the ServiceNow approver type, or the environment and secret path on the policy do not match the request. Check the Infisical audit log for the delivery attempt. |
+| Record created but nothing happens          | No active flow matches the record. Verify your flow is activated and its trigger condition matches the record's field values.                                                             |
+| Approvers see duplicate approvals           | Two flows match the same record. Make the trigger conditions mutually exclusive and deactivate the one you no longer want.                                                                |
+| State stuck at Notifying Infisical          | The callback is in flight or the flow errored mid-step. Check the flow's execution details.                                                                                               |
+| Callback Failed: no active identity mapping | The request's identity ID has no active row under Infisical > Identity Mappings**. Confirm the **Review Identity\*\* on the policy matches the identity ID in the mapping.                |
+| Callback Failed with HTTP 401 or 403    | The machine identity is not a member of the project, or is missing the External Review permission on Approval Requests.                                                                   |
+| Callback Failed with a connection error     | The ServiceNow instance cannot reach your Infisical URL. Check the URL on the alias and any outbound firewall rules on the instance.                                                      |
+| Request expired before approval             | The policy's request expiration elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA.                                                                     |

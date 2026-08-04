@@ -8,13 +8,11 @@ import {
   Button,
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
+  FieldFeedback,
   FieldGroup,
   FieldLabel,
   FieldTitle,
@@ -31,6 +29,7 @@ import {
   TextArea
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
+import { allowedEmailDomainsSchema } from "@app/helpers/email";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
 enum SignUpModes {
@@ -40,7 +39,7 @@ enum SignUpModes {
 
 const formSchema = z.object({
   signUpMode: z.nativeEnum(SignUpModes),
-  allowedSignUpDomain: z.string().optional().nullable(),
+  allowedSignUpDomain: allowedEmailDomainsSchema.optional().nullable(),
   trustSamlEmails: z.boolean(),
   trustLdapEmails: z.boolean(),
   trustOidcEmails: z.boolean(),
@@ -108,12 +107,6 @@ export const GeneralPageForm = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Instance Settings</CardTitle>
-        <CardDescription>
-          Configure signups, authentication defaults, trusted identities, and instance notices.
-        </CardDescription>
-      </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <FieldGroup>
@@ -148,7 +141,7 @@ export const GeneralPageForm = () => {
                 defaultValue=""
                 name="allowedSignUpDomain"
                 render={({ field, fieldState: { error } }) => (
-                  <Field className="max-w-sm">
+                  <Field className="max-w-sm" data-invalid={Boolean(error)}>
                     <FieldLabel htmlFor="allowed-signup-domains">Allowed email domains</FieldLabel>
                     <InputGroup>
                       <InputGroupAddon>
@@ -157,12 +150,17 @@ export const GeneralPageForm = () => {
                       <InputGroupInput
                         id="allowed-signup-domains"
                         {...field}
+                        aria-describedby="allowed-signup-domains-feedback"
+                        isError={Boolean(error)}
                         value={field.value || ""}
                         placeholder="gmail.com, aws.com, redhat.com"
                       />
                     </InputGroup>
-                    <FieldDescription>Leave blank to allow any email domain.</FieldDescription>
-                    <FieldError>{error?.message}</FieldError>
+                    <FieldFeedback
+                      id="allowed-signup-domains-feedback"
+                      description="Leave blank to allow any email domain."
+                      error={error?.message}
+                    />
                   </Field>
                 )}
               />

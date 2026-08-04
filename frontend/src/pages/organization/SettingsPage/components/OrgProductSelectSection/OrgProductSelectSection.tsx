@@ -20,10 +20,6 @@ export const OrgProductSelectSection = () => {
       name: "KMS",
       enabled: true
     },
-    sshProductEnabled: {
-      name: "SSH",
-      enabled: true
-    },
     scannerProductEnabled: {
       name: "Scanner",
       enabled: true

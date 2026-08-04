@@ -16,11 +16,13 @@ import {
   UserActor
 } from "@app/ee/services/audit-log/audit-log-types";
 import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
+import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -33,6 +35,10 @@ export enum PostHogEventTypes {
   SecretDeleted = "secrets deleted",
   AdminInit = "admin initialization",
   UserSignedUp = "User Signed Up",
+  SignupProductSelected = "Signup Product Selected",
+  SignupProductsSubmitted = "Signup Products Submitted",
+  SignupLaunchDestinationSelected = "Signup Launch Destination Selected",
+  SignupAttributionProvided = "Signup Attribution Provided",
   UserLoginV2 = "User Login V2",
   SecretRotated = "secrets rotated",
   SecretScannerFull = "historical cloud secret scan",
@@ -56,10 +62,6 @@ export enum PostHogEventTypes {
   TelemetryInstanceStats = "Self Hosted Instance Stats",
   SecretRequestCreated = "Secret Request Created",
   SecretRequestDeleted = "Secret Request Deleted",
-  SignSshKey = "Sign SSH Key",
-  IssueSshCreds = "Issue SSH Credentials",
-  IssueSshHostUserCert = "Issue SSH Host User Certificate",
-  IssueSshHostHostCert = "Issue SSH Host Host Certificate",
   SignCert = "Sign PKI Certificate",
   IssueCert = "Issue PKI Certificate",
   InvalidateCache = "Invalidate Cache",
@@ -75,6 +77,7 @@ export enum PostHogEventTypes {
   AccessApprovalRequestCreated = "Access Approval Request Created",
   AccessApprovalRequestReviewed = "Access Approval Request Reviewed",
   SecretSyncCreated = "Secret Sync Created",
+  SecretSyncUpdated = "Secret Sync Updated",
   SecretSyncDeleted = "Secret Sync Deleted",
   DynamicSecretCreated = "Dynamic Secret Created",
   DynamicSecretDeleted = "Dynamic Secret Deleted",
@@ -93,6 +96,7 @@ export enum PostHogEventTypes {
   AppConnectionCreated = "App Connection Created",
   AppConnectionDeleted = "App Connection Deleted",
   SecretRotationV2Created = "Secret Rotation V2 Created",
+  SecretRotationV2Updated = "Secret Rotation V2 Updated",
   SecretRotationV2Deleted = "Secret Rotation V2 Deleted",
   SecretRotationV2Executed = "Secret Rotation V2 Executed",
   GatewayCertExchanged = "Gateway Cert Exchanged",
@@ -149,6 +153,7 @@ export enum PostHogEventTypes {
   CertificateProfileCreated = "Certificate Profile Created",
   CertificateProfileDeleted = "Certificate Profile Deleted",
   PkiApplicationCreated = "PKI Application Created",
+  PkiApplicationUpdated = "PKI Application Updated",
   PkiApplicationDeleted = "PKI Application Deleted",
   PkiApplicationMemberAdded = "PKI Application Member Added",
   PkiApplicationProfileAttached = "PKI Application Profile Attached",
@@ -223,6 +228,9 @@ export enum PostHogEventTypes {
   KmipClientDeleted = "KMIP Client Deleted",
   KmipOperation = "KMIP Operation",
 
+  // Audit Logs
+  AuditLogsViewed = "Audit Logs Viewed",
+
   // Audit Log Streams
   AuditLogStreamCreated = "Audit Log Stream Created",
   AuditLogStreamUpdated = "Audit Log Stream Updated",
@@ -262,7 +270,10 @@ export enum PostHogEventTypes {
   DynamicSecretLeaseRevoked = "Dynamic Secret Lease Revoked",
   SecretApprovalPolicyUpdated = "Secret Approval Policy Updated",
   AccessApprovalPolicyUpdated = "Access Approval Policy Updated",
-  SecretRotationV2Failed = "Secret Rotation V2 Failed"
+  SecretRotationV2Failed = "Secret Rotation V2 Failed",
+
+  // Agent Proxy
+  ProxiedServiceCreated = "Proxied Service Created"
 }
 
 export type TSecretModifiedEvent = {
@@ -316,6 +327,45 @@ export type TUserSignedUpEvent = {
     email: string;
     attributionSource?: string;
     signupMethod?: string;
+  };
+};
+
+export type TSignupProductSelectedEvent = {
+  event: PostHogEventTypes.SignupProductSelected;
+  properties: {
+    product: string;
+  };
+};
+
+/**
+ * One summary event per signup (TSignupProductSelectedEvent is the per-product breakdown).
+ * $set_once mirrors the selection onto the person record for cohorting.
+ */
+export type TSignupProductsSubmittedEvent = {
+  event: PostHogEventTypes.SignupProductsSubmitted;
+  properties: {
+    products: string[];
+    productCount: number;
+    isExploring: boolean;
+    $set_once: {
+      signupProducts: string[];
+      signupProductCount: number;
+      signupIsExploring: boolean;
+    };
+  };
+};
+
+export type TSignupLaunchDestinationSelectedEvent = {
+  event: PostHogEventTypes.SignupLaunchDestinationSelected;
+  properties: {
+    launchDestination: string;
+  };
+};
+
+export type TSignupAttributionProvidedEvent = {
+  event: PostHogEventTypes.SignupAttributionProvided;
+  properties: {
+    attributionSource: string;
   };
 };
 
@@ -526,13 +576,12 @@ export type TTelemetryInstanceStatsEvent = {
     customProjectRoles: number;
     customOrgRoles: number;
     kmipClients: number;
-    sshHosts: number;
-    sshCertificateAuthorities: number;
-    sshCertificates: number;
     pamResources: number;
     pamAccounts: number;
     accessApprovalPolicies: number;
     honeyTokens: number;
+    proxiedServices: number;
+    proxiedServicesUsedLast7Days: number;
     integrationBreakdown: Record<string, number>;
     projectTypeBreakdown: Record<string, number>;
     secretSyncBreakdown: Record<string, number>;
@@ -558,44 +607,6 @@ export type TSecretRequestDeletedEvent = {
   };
 };
 
-export type TSignSshKeyEvent = {
-  event: PostHogEventTypes.SignSshKey;
-  properties: {
-    certificateTemplateId: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshCredsEvent = {
-  event: PostHogEventTypes.IssueSshCreds;
-  properties: {
-    certificateTemplateId: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshHostUserCertEvent = {
-  event: PostHogEventTypes.IssueSshHostUserCert;
-  properties: {
-    sshHostId: string;
-    hostname: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
-export type TIssueSshHostHostCertEvent = {
-  event: PostHogEventTypes.IssueSshHostHostCert;
-  properties: {
-    sshHostId: string;
-    hostname: string;
-    principals: string[];
-    userAgent?: string;
-  };
-};
-
 export type TSignCertificateEvent = {
   event: PostHogEventTypes.SignCert;
   properties: {
@@ -613,8 +624,14 @@ export type TIssueCertificateEvent = {
     caId?: string;
     certificateTemplateId?: string;
     subscriberId?: string;
-    commonName: string;
+    commonName?: string;
     userAgent?: string;
+    orgId?: string;
+    projectId?: string;
+    profileId?: string;
+    applicationId?: string;
+    enrollmentType?: string;
+    operation?: CertificateIssuanceOperation;
   };
 };
 
@@ -826,6 +843,20 @@ export type TSecretSyncCreatedEvent = {
   properties: {
     syncDestination: string;
     syncId: string;
+    orgId: string;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    isAutoSyncEnabled: boolean;
+  };
+};
+
+export type TSecretSyncUpdatedEvent = {
+  event: PostHogEventTypes.SecretSyncUpdated;
+  properties: {
+    syncDestination: string;
+    syncId: string;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -838,6 +869,7 @@ export type TSecretSyncDeletedEvent = {
   properties: {
     syncDestination: string;
     syncId: string;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -924,6 +956,18 @@ export type TSecretRotationV2CreatedEvent = {
   properties: {
     rotationId: string;
     type: SecretRotation;
+    projectId: string;
+    environment: string;
+    secretPath: string;
+  };
+};
+
+export type TSecretRotationV2UpdatedEvent = {
+  event: PostHogEventTypes.SecretRotationV2Updated;
+  properties: {
+    rotationId: string;
+    type: SecretRotation;
+    orgId: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -1248,6 +1292,15 @@ export type TPkiApplicationCreatedEvent = {
   event: PostHogEventTypes.PkiApplicationCreated;
   properties: {
     orgId: string;
+    applicationId?: string;
+  };
+};
+
+export type TPkiApplicationUpdatedEvent = {
+  event: PostHogEventTypes.PkiApplicationUpdated;
+  properties: {
+    orgId: string;
+    applicationId?: string;
   };
 };
 
@@ -1255,6 +1308,7 @@ export type TPkiApplicationDeletedEvent = {
   event: PostHogEventTypes.PkiApplicationDeleted;
   properties: {
     orgId: string;
+    applicationId?: string;
   };
 };
 
@@ -1735,6 +1789,21 @@ export type TKmipOperationEvent = {
   };
 };
 
+export type TAuditLogsViewedEvent = {
+  event: PostHogEventTypes.AuditLogsViewed;
+  properties: {
+    orgId: string;
+    projectId?: string;
+    resultCount: number;
+    dateRangeStart?: string;
+    dateRangeEnd?: string;
+    // Only the non-sensitive actor type is included; the actor id is already
+    // carried by the event's distinctId. Sending the full actor object would
+    // export identity auth metadata (OIDC claims, AWS ARN/account) to PostHog.
+    actorType?: string;
+  };
+};
+
 // Audit Log Stream event
 export type TAuditLogStreamCreatedEvent = {
   event: PostHogEventTypes.AuditLogStreamCreated;
@@ -1982,6 +2051,20 @@ export type TSecretRotationV2FailedEvent = {
   };
 };
 
+export type TProxiedServiceCreatedEvent = {
+  event: PostHogEventTypes.ProxiedServiceCreated;
+  properties: {
+    projectId: string;
+    headerRewriteCount: number;
+    substitutionCount: number;
+    substitutionSurfaces: ProxiedServiceSubstitutionSurface[];
+    hostPatternCount: number;
+    usesDynamicSecret: boolean;
+    usesBasicAuth: boolean;
+    isEnabled: boolean;
+  };
+};
+
 export type TPostHogEvent = {
   distinctId: string;
   organizationId?: string;
@@ -1996,10 +2079,24 @@ export type TPostHogEvent = {
    * person record is suppressed.
    */
   anonymous?: boolean;
+  /**
+   * Optional per-event deduplication. When set, the event is captured at most
+   * once per `key` within `ttlSeconds` (enforced atomically via the key store).
+   * Use for events fired on read/poll-heavy paths (e.g. Audit Logs Viewed) to
+   * avoid flooding while still marking the actor active for the window.
+   */
+  dedup?: {
+    key: string;
+    ttlSeconds: number;
+  };
 } & (
   | TSecretModifiedEvent
   | TAdminInitEvent
   | TUserSignedUpEvent
+  | TSignupProductSelectedEvent
+  | TSignupProductsSubmittedEvent
+  | TSignupLaunchDestinationSelectedEvent
+  | TSignupAttributionProvidedEvent
   | TUserLoginV2Event
   | TSecretScannerEvent
   | TUserOrgInvitedEvent
@@ -2017,10 +2114,6 @@ export type TPostHogEvent = {
   | TTelemetryInstanceStatsEvent
   | TSecretRequestCreatedEvent
   | TSecretRequestDeletedEvent
-  | TSignSshKeyEvent
-  | TIssueSshCredsEvent
-  | TIssueSshHostUserCertEvent
-  | TIssueSshHostHostCertEvent
   | TSignCertificateEvent
   | TIssueCertificateEvent
   | TInvalidateCacheEvent
@@ -2036,6 +2129,7 @@ export type TPostHogEvent = {
   | TAccessApprovalRequestCreatedEvent
   | TAccessApprovalRequestReviewedEvent
   | TSecretSyncCreatedEvent
+  | TSecretSyncUpdatedEvent
   | TSecretSyncDeletedEvent
   | TDynamicSecretCreatedEvent
   | TDynamicSecretDeletedEvent
@@ -2054,6 +2148,7 @@ export type TPostHogEvent = {
   | TAppConnectionCreatedEvent
   | TAppConnectionDeletedEvent
   | TSecretRotationV2CreatedEvent
+  | TSecretRotationV2UpdatedEvent
   | TSecretRotationV2DeletedEvent
   | TSecretRotationV2ExecutedEvent
   | TGatewayCertExchangedEvent
@@ -2090,6 +2185,7 @@ export type TPostHogEvent = {
   | TCertificateProfileCreatedEvent
   | TCertificateProfileDeletedEvent
   | TPkiApplicationCreatedEvent
+  | TPkiApplicationUpdatedEvent
   | TPkiApplicationDeletedEvent
   | TPkiApplicationMemberAddedEvent
   | TPkiApplicationProfileAttachedEvent
@@ -2150,6 +2246,7 @@ export type TPostHogEvent = {
   | TKmipClientUpdatedEvent
   | TKmipClientDeletedEvent
   | TKmipOperationEvent
+  | TAuditLogsViewedEvent
   | TAuditLogStreamCreatedEvent
   | TAuditLogStreamUpdatedEvent
   | TAuditLogStreamDeletedEvent
@@ -2179,4 +2276,5 @@ export type TPostHogEvent = {
   | TSecretApprovalPolicyUpdatedEvent
   | TAccessApprovalPolicyUpdatedEvent
   | TSecretRotationV2FailedEvent
+  | TProxiedServiceCreatedEvent
 );

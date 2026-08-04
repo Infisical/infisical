@@ -101,6 +101,29 @@ export const Default: Story = {
   )
 };
 
+export const Outlined: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Detached outline treatment for selected onboarding and authentication flows. Use the default trigger variant for ordinary product forms."
+      }
+    }
+  },
+  render: () => (
+    <Select>
+      <SelectTrigger variant="outlined" className="w-full">
+        <SelectValue placeholder="Choose an environment" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="dev">Development</SelectItem>
+        <SelectItem value="staging">Staging</SelectItem>
+        <SelectItem value="prod">Production</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+};
+
 export const SizeSmall: Story = {
   name: "Size: Small",
   parameters: {

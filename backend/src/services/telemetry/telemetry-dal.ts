@@ -57,13 +57,12 @@ export const telemetryDALFactory = (db: TDbClient) => {
         customProjectRoles,
         customOrgRoles,
         kmipClients,
-        sshHosts,
-        sshCertificateAuthorities,
-        sshCertificates,
         pamResources,
         pamAccounts,
         accessApprovalPolicies,
-        honeyTokens
+        honeyTokens,
+        proxiedServices,
+        proxiedServicesUsedLast7Days
       ] = await Promise.all([
         (async () => {
           const result = (await db(TableName.Users).where({ isGhost: false }).count().first())?.count as string;
@@ -106,13 +105,21 @@ export const telemetryDALFactory = (db: TDbClient) => {
           return parseInt(result || "0", 10);
         })(),
         countTable(db, TableName.KmipClient),
-        countTable(db, TableName.SshHost),
-        countTable(db, TableName.SshCertificateAuthority),
-        countTable(db, TableName.SshCertificate),
         countTable(db, TableName.PamResource),
         countTable(db, TableName.PamAccount),
         countTable(db, TableName.AccessApprovalPolicy),
-        countTable(db, TableName.HoneyToken)
+        countTable(db, TableName.HoneyToken),
+        countTable(db, TableName.ProxiedService),
+        (async () => {
+          const result = (
+            await db(TableName.ProxiedService)
+              .whereNotNull("lastUsedAt")
+              .whereRaw(`"lastUsedAt" > NOW() - INTERVAL '7 days'`)
+              .count()
+              .first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })()
       ]);
 
       // Per-type identity auth method breakdown
@@ -240,13 +247,12 @@ export const telemetryDALFactory = (db: TDbClient) => {
         customProjectRoles,
         customOrgRoles,
         kmipClients,
-        sshHosts,
-        sshCertificateAuthorities,
-        sshCertificates,
         pamResources,
         pamAccounts,
         accessApprovalPolicies,
         honeyTokens,
+        proxiedServices,
+        proxiedServicesUsedLast7Days,
         integrationBreakdown,
         projectTypeBreakdown,
         secretSyncBreakdown,

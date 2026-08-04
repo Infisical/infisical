@@ -180,6 +180,10 @@ export type AddUserToOrgDTO = {
   inviteeEmails: string[];
   organizationRoleSlug: string;
   organizationId: string;
+  /** Signup-created projects the invitees get member access to. */
+  projectIds?: string[];
+  /** Also grant invitees member access to the org's PAM product. */
+  grantPamAccess?: boolean;
 };
 
 export type CreateAPIKeyRes = {

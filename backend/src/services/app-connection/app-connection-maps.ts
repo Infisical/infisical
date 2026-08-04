@@ -82,6 +82,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.LiteLLM]: "LiteLLM",
   [AppConnection.Fireworks]: "Fireworks",
   [AppConnection.NutanixPrismCentral]: "Nutanix Prism Central",
+  [AppConnection.Spacelift]: "Spacelift",
   [AppConnection.MicrosoftIntune]: "Microsoft Intune"
 };
 
@@ -167,5 +168,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.LiteLLM]: AppConnectionPlanType.Regular,
   [AppConnection.Fireworks]: AppConnectionPlanType.Regular,
   [AppConnection.NutanixPrismCentral]: AppConnectionPlanType.Regular,
+  [AppConnection.Spacelift]: AppConnectionPlanType.Regular,
   [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise
 };

@@ -14,10 +14,6 @@ import { TPkiAlert } from "../pkiAlerts/types";
 import { pkiApplicationKeys } from "../pkiApplications/queries";
 import { TPkiCollection } from "../pkiCollections/types";
 import { TPkiSubscriber } from "../pkiSubscriber/types";
-import { TSshCertificate, TSshCertificateAuthority } from "../sshCa/types";
-import { TSshCertificateTemplate } from "../sshCertificateTemplates/types";
-import { TSshHost } from "../sshHost/types";
-import { TSshHostGroup } from "../sshHostGroup/types";
 import { userKeys } from "../users/query-keys";
 import { TWorkspaceUser } from "../users/types";
 import {
@@ -38,7 +34,6 @@ import {
   TGetMembershipPermissionAuditResponse,
   TGetUpgradeProjectStatusDTO,
   TMyPendingProjectAccessRequestsResponse,
-  TProjectSshConfig,
   TSearchProjectsDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
@@ -98,7 +93,7 @@ export const useGetUpgradeProjectStatus = ({
   });
 };
 
-const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
+export const fetchUserWorkspaces = async (includeRoles?: boolean, type?: ProjectType | "all") => {
   const { data } = await apiRequest.get<{ projects: Project[] }>("/api/v1/projects", {
     params: {
       includeRoles,
@@ -769,67 +764,6 @@ export const useListWorkspaceCertificateTemplates = ({ projectId }: { projectId:
   });
 };
 
-export const useListWorkspaceSshCertificates = ({
-  offset,
-  limit,
-  projectId
-}: {
-  offset: number;
-  limit: number;
-  projectId: string;
-}) => {
-  return useQuery({
-    queryKey: projectKeys.specificProjectSshCertificates({
-      offset,
-      limit,
-      projectId
-    }),
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit)
-      });
-
-      const { data } = await apiRequest.get<{
-        certificates: TSshCertificate[];
-        totalCount: number;
-      }>(`/api/v1/projects/${projectId}/ssh-certificates`, {
-        params
-      });
-      return data;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshCas = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshCas(projectId),
-    queryFn: async () => {
-      const {
-        data: { cas }
-      } = await apiRequest.get<{ cas: Omit<TSshCertificateAuthority, "publicKey">[] }>(
-        `/api/v1/projects/${projectId}/ssh-cas`
-      );
-      return cas;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshHosts = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshHosts(projectId),
-    queryFn: async () => {
-      const {
-        data: { hosts }
-      } = await apiRequest.get<{ hosts: TSshHost[] }>(`/api/v1/projects/${projectId}/ssh-hosts`);
-      return hosts;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
 export const useListWorkspacePkiSubscribers = (projectId: string) => {
   return useQuery({
     queryKey: projectKeys.getProjectPkiSubscribers(projectId),
@@ -840,34 +774,6 @@ export const useListWorkspacePkiSubscribers = (projectId: string) => {
         `/api/v1/projects/${projectId}/pki-subscribers`
       );
       return subscribers;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshHostGroups = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshHostGroups(projectId),
-    queryFn: async () => {
-      const {
-        data: { groups }
-      } = await apiRequest.get<{ groups: (TSshHostGroup & { hostCount: number })[] }>(
-        `/api/v1/projects/${projectId}/ssh-host-groups`
-      );
-      return groups;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useListWorkspaceSshCertificateTemplates = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshCertificateTemplates(projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ certificateTemplates: TSshCertificateTemplate[] }>(
-        `/api/v1/projects/${projectId}/ssh-certificate-templates`
-      );
-      return data;
     },
     enabled: Boolean(projectId)
   });
@@ -894,20 +800,6 @@ export const useGetWorkspaceWorkflowIntegrationConfig = ({
 
           throw err;
         });
-
-      return data;
-    },
-    enabled: Boolean(projectId)
-  });
-};
-
-export const useGetProjectSshConfig = (projectId: string) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectSshConfig(projectId),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<TProjectSshConfig>(
-        `/api/v1/projects/${projectId}/ssh-config`
-      );
 
       return data;
     },
