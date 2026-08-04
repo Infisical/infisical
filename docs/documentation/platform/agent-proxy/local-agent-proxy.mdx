@@ -332,11 +332,6 @@ Without `--log-file` you still see problems: warnings and errors print to your t
 
     The same pattern applies to any tool with a config-directory override.
   </Accordion>
-  <Accordion title="The agent asks me to log in again inside the sandbox">
-    The keychain is blocked, so an agent that keeps its login there cannot read it inside the sandbox. An agent that keeps it in a file is fine, since its state directory stays readable: Claude Code starts already signed in when `~/.claude/.credentials.json` exists.
-
-    Check for that file first. If your agent is keychain-backed, pass a token in with `--pass-env ANTHROPIC_API_KEY` instead of re-opening the keychain.
-  </Accordion>
   <Accordion title="Everything is passthrough, nothing is brokered">
     No proxied service matched the host. Check the [host pattern](/documentation/platform/agent-proxy/proxied-services#host-patterns) against the exact hostname the agent calls, that the service is enabled, and that you are pointed at the folder the service lives in.
   </Accordion>
