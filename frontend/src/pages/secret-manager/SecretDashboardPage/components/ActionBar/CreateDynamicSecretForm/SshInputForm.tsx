@@ -22,9 +22,9 @@ import {
   Tag
 } from "@app/components/v2";
 import { useCreateDynamicSecret, useGetSshCaPublicKey } from "@app/hooks/api";
+import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/dynamicSecret/constants";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { SshCertKeyAlgorithm, sshCertKeyAlgorithms } from "@app/hooks/api/sshCa/constants";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 

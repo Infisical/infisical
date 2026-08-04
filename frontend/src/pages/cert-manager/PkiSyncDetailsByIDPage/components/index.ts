@@ -5,3 +5,4 @@ export { PkiSyncDestinationSection } from "./PkiSyncDestinationSection";
 export { PkiSyncDetailsSection } from "./PkiSyncDetailsSection";
 export { PkiSyncFieldMappingsSection } from "./PkiSyncFieldMappingsSection";
 export { PkiSyncOptionsSection } from "./PkiSyncOptionsSection";
+export { PkiSyncPostSyncCommandSection } from "./PkiSyncPostSyncCommandSection";

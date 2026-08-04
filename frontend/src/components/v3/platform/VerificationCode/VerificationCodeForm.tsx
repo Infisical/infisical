@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { AnimatedCollapse } from "../../generic/AnimatedCollapse";
 import { Button } from "../../generic/Button";
@@ -53,7 +53,7 @@ type VerificationCodeFormProps = {
   name: string;
   onChange: (value: string) => void;
   onSubmit: () => void | Promise<void>;
-  submitLabel?: ReactNode;
+  submitVariant?: React.ComponentProps<typeof Button>["variant"];
   value: string;
 };
 
@@ -66,18 +66,33 @@ export const VerificationCodeForm = ({
   name,
   onChange,
   onSubmit,
-  submitLabel = "Verify",
+  submitVariant = "project",
   value
 }: VerificationCodeFormProps) => {
   const isComplete = value.trim().length === fields;
   const hasError = Boolean(error);
   const [hasChangedSinceError, setHasChangedSinceError] = useState(false);
+  const [hasAttemptedVerification, setHasAttemptedVerification] = useState(false);
+  const [hasFailedVerification, setHasFailedVerification] = useState(false);
+  const onSubmitRef = useRef(onSubmit);
+
+  useEffect(() => {
+    onSubmitRef.current = onSubmit;
+  }, [onSubmit]);
 
   useEffect(() => {
     if (hasError && !isPending) {
       setHasChangedSinceError(false);
+      setHasFailedVerification(true);
     }
   }, [hasError, isPending]);
+
+  useEffect(() => {
+    if (hasAttemptedVerification || !isComplete || isDisabled || isPending) return;
+
+    setHasAttemptedVerification(true);
+    onSubmitRef.current();
+  }, [hasAttemptedVerification, isComplete, isDisabled, isPending]);
 
   const handleChange = (nextValue: string) => {
     if (hasError) setHasChangedSinceError(true);
@@ -102,18 +117,20 @@ export const VerificationCodeForm = ({
           value={value}
           isError={hasError && !hasChangedSinceError}
         />
-        {error && <FieldError>{error}</FieldError>}
+        <div className="min-h-4.5">
+          {error && <FieldError className="mt-0">{error}</FieldError>}
+        </div>
       </div>
-      <AnimatedCollapse isOpen={isComplete || Boolean(isPending)} contentClassName="px-1">
+      <AnimatedCollapse isOpen={hasFailedVerification}>
         <Button
           type="submit"
-          variant="project"
+          variant={submitVariant}
           size="lg"
           isFullWidth
           isPending={isPending}
           isDisabled={!isComplete || isDisabled || isPending}
         >
-          {submitLabel}
+          Retry
         </Button>
       </AnimatedCollapse>
       {children}

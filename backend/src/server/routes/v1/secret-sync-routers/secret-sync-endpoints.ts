@@ -231,6 +231,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           properties: {
             syncDestination: destination,
             syncId: secretSync.id,
+            orgId: req.permission.orgId,
             projectId: secretSync.projectId,
             environment: secretSync.environment?.slug ?? "",
             secretPath: secretSync.folder?.path ?? "/",
@@ -283,6 +284,23 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
         { ...req.body, syncId, destination },
         req.permission
       )) as T;
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretSyncUpdated,
+          organizationId: req.permission.orgId,
+          distinctId: getTelemetryDistinctId(req),
+          properties: {
+            syncDestination: destination,
+            syncId: secretSync.id,
+            orgId: req.permission.orgId,
+            projectId: secretSync.projectId,
+            environment: secretSync.environment?.slug ?? "",
+            secretPath: secretSync.folder?.path ?? "/",
+            isAutoSyncEnabled: secretSync.isAutoSyncEnabled
+          }
+        })
+        .catch(() => {});
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -344,6 +362,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           properties: {
             syncDestination: destination,
             syncId,
+            orgId: req.permission.orgId,
             projectId: secretSync.projectId,
             environment: secretSync.environment?.slug ?? "",
             secretPath: secretSync.folder?.path ?? "/",

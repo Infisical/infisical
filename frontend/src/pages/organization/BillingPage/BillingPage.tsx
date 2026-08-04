@@ -3,14 +3,27 @@ import { useTranslation } from "react-i18next";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
-import { OrgPermissionBillingActions, OrgPermissionSubjects, useServerConfig } from "@app/context";
+import {
+  OrgPermissionBillingActions,
+  OrgPermissionSubjects,
+  useServerConfig,
+  useSubscription
+} from "@app/context";
 
 import { BillingV2Page } from "../BillingV2Page";
 import { BillingTabGroup } from "./components";
+import { OfflineBillingPage } from "./OfflineBillingPage";
 
 export const BillingPage = () => {
   const { t } = useTranslation();
   const { config } = useServerConfig();
+  const { subscription } = useSubscription();
+
+  // Offline (air-gapped) licenses can't reach the license server, so neither billing surface can load;
+  // short-circuit to the offline page (no API calls) before mounting either.
+  if (subscription?.isOffline) {
+    return <OfflineBillingPage />;
+  }
 
   if (config.licenseServerV2Enabled) {
     return <BillingV2Page />;

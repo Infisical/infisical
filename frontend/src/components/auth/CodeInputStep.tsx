@@ -13,6 +13,9 @@ import { useSendVerificationEmail, useVerifySignupEmailVerificationCode } from "
 
 import SecurityClient from "../utilities/SecurityClient";
 import { AuthPagePanel } from "./AuthPagePanel";
+import { waitForMinimumAuthVerificationLoading } from "./authTiming";
+
+const MAX_SIGNUP_VERIFICATION_ATTEMPTS = 3;
 
 interface CodeInputStepProps {
   email: string;
@@ -33,12 +36,15 @@ export default function CodeInputStep({
   const {
     mutateAsync: verifyCode,
     isPending: isVerifying,
-    isError: isCodeError
+    reset: resetVerificationCode
   } = useVerifySignupEmailVerificationCode();
 
   const { t } = useTranslation();
 
   const [code, setCode] = useState("");
+  const [isCompletingVerification, setIsCompletingVerification] = useState(false);
+  const [verificationError, setVerificationError] = useState<unknown>();
+  const [triesLeft, setTriesLeft] = useState(MAX_SIGNUP_VERIFICATION_ATTEMPTS);
 
   const [, forceRender] = useState(0);
 
@@ -52,14 +58,43 @@ export default function CodeInputStep({
   }, []);
 
   const remainingCooldown = Math.max(0, Math.ceil((resendCooldownEndTime - Date.now()) / 1000));
+  const isInvalidTokenError =
+    axios.isAxiosError(verificationError) &&
+    verificationError.response?.data?.error === "InvalidToken";
+  let verificationErrorMessage = t("signup.step2-code-error");
+  if (isInvalidTokenError && triesLeft === 0) {
+    verificationErrorMessage = t("signup.step2-code-error-exhausted");
+  } else if (isInvalidTokenError) {
+    verificationErrorMessage = t(
+      triesLeft === 1 ? "signup.step2-code-error-tries-singular" : "signup.step2-code-error-tries",
+      { triesLeft }
+    );
+  }
 
   const handleVerify = async () => {
-    const { token } = await verifyCode({ email, code });
-    SecurityClient.setSignupToken(token);
-    onComplete();
+    const verificationStartedAt = Date.now();
+    setIsCompletingVerification(true);
+
+    try {
+      const { token } = await verifyCode({ email, code });
+      await waitForMinimumAuthVerificationLoading(verificationStartedAt);
+      SecurityClient.setSignupToken(token);
+      onComplete();
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.error === "InvalidToken") {
+        setTriesLeft((current) => Math.max(0, current - 1));
+      }
+      setVerificationError(error);
+    } finally {
+      setIsCompletingVerification(false);
+    }
   };
 
   const handleResend = async () => {
+    setVerificationError(undefined);
+    setTriesLeft(MAX_SIGNUP_VERIFICATION_ATTEMPTS);
+    resetVerificationCode();
+
     try {
       const { cooldownSeconds } = await resendEmail({ email });
       onResendCooldownChange(Date.now() + cooldownSeconds * 1000);
@@ -96,9 +131,8 @@ export default function CodeInputStep({
             value={code}
             onChange={setCode}
             onSubmit={handleVerify}
-            submitLabel={String(t("signup.verify"))}
-            isPending={isVerifying}
-            error={isCodeError ? t("signup.step2-code-error") : undefined}
+            isPending={isVerifying || isCompletingVerification}
+            error={verificationError ? verificationErrorMessage : undefined}
           >
             <VerificationCodeResend
               isResending={isResending}

@@ -1,4 +1,8 @@
-export { matchesAllowedEmailDomain } from "./email-domain-matcher";
+export {
+  AllowedEmailDomainsSchema,
+  matchesAllowedEmailDomain,
+  normalizeAllowedEmailDomains
+} from "./email-domain-matcher";
 export type { TValidatedHost } from "./safe-request";
 export { buildSsrfSafeAgent, safeRequest } from "./safe-request";
 export { isDisposableEmail, isValidEmailDomain, sanitizeEmail, validateEmail } from "./validate-email";

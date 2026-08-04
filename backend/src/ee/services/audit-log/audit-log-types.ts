@@ -25,10 +25,6 @@ import {
   TUpdateSecretScanningDataSourceDTO,
   TUpdateSecretScanningFindingDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
-import { SshCaStatus, SshCertType } from "@app/ee/services/ssh/ssh-certificate-authority-types";
-import { SshCertKeyAlgorithm } from "@app/ee/services/ssh-certificate/ssh-certificate-types";
-import { SshCertTemplateStatus } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-types";
-import { TLoginMapping } from "@app/ee/services/ssh-host/ssh-host-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -47,6 +43,7 @@ import {
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
+import { TPostSyncCommandResult } from "@app/services/pki-sync/pki-sync-post-sync-command-fns";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
   TCreateSecretSyncDTO,
@@ -361,32 +358,8 @@ export enum EventType {
   SECRET_APPROVAL_CLOSED = "secret-approval-closed",
   SECRET_APPROVAL_REOPENED = "secret-approval-reopened",
   SECRET_APPROVAL_REQUEST_REVIEW = "secret-approval-request-review",
-  SIGN_SSH_KEY = "sign-ssh-key",
-  ISSUE_SSH_CREDS = "issue-ssh-creds",
-  CREATE_SSH_CA = "create-ssh-certificate-authority",
-  GET_SSH_CA = "get-ssh-certificate-authority",
-  UPDATE_SSH_CA = "update-ssh-certificate-authority",
-  DELETE_SSH_CA = "delete-ssh-certificate-authority",
-  GET_SSH_CA_CERTIFICATE_TEMPLATES = "get-ssh-certificate-authority-certificate-templates",
-  CREATE_SSH_CERTIFICATE_TEMPLATE = "create-ssh-certificate-template",
-  UPDATE_SSH_CERTIFICATE_TEMPLATE = "update-ssh-certificate-template",
-  DELETE_SSH_CERTIFICATE_TEMPLATE = "delete-ssh-certificate-template",
-  GET_SSH_CERTIFICATE_TEMPLATE = "get-ssh-certificate-template",
   GET_AZURE_AD_TEMPLATES = "get-azure-ad-templates",
   GET_ADCS_TEMPLATES = "get-adcs-templates",
-  GET_SSH_HOST = "get-ssh-host",
-  CREATE_SSH_HOST = "create-ssh-host",
-  UPDATE_SSH_HOST = "update-ssh-host",
-  DELETE_SSH_HOST = "delete-ssh-host",
-  ISSUE_SSH_HOST_USER_CERT = "issue-ssh-host-user-cert",
-  ISSUE_SSH_HOST_HOST_CERT = "issue-ssh-host-host-cert",
-  GET_SSH_HOST_GROUP = "get-ssh-host-group",
-  CREATE_SSH_HOST_GROUP = "create-ssh-host-group",
-  UPDATE_SSH_HOST_GROUP = "update-ssh-host-group",
-  DELETE_SSH_HOST_GROUP = "delete-ssh-host-group",
-  GET_SSH_HOST_GROUP_HOSTS = "get-ssh-host-group-hosts",
-  ADD_HOST_TO_SSH_HOST_GROUP = "add-host-to-ssh-host-group",
-  REMOVE_HOST_FROM_SSH_HOST_GROUP = "remove-host-from-ssh-host-group",
   CREATE_CA = "create-certificate-authority",
   GET_CA = "get-certificate-authority",
   GET_CAS = "get-certificate-authorities",
@@ -529,9 +502,6 @@ export enum EventType {
   DELETE_SLACK_INTEGRATION = "delete-slack-integration",
   GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "get-project-workflow-integration-config",
   UPDATE_PROJECT_WORKFLOW_INTEGRATION_CONFIG = "update-project-workflow-integration-config",
-
-  GET_PROJECT_SSH_CONFIG = "get-project-ssh-config",
-  UPDATE_PROJECT_SSH_CONFIG = "update-project-ssh-config",
   INTEGRATION_SYNCED = "integration-synced",
   CREATE_CMEK = "create-cmek",
   UPDATE_CMEK = "update-cmek",
@@ -792,33 +762,6 @@ export enum EventType {
   PASS_ACME_CHALLENGE = "pass-acme-challenge",
   ATTEMPT_ACME_CHALLENGE = "attempt-acme-challenge",
   FAIL_ACME_CHALLENGE = "fail-acme-challenge",
-
-  // MCP Endpoints
-  MCP_ENDPOINT_CREATE = "mcp-endpoint-create",
-  MCP_ENDPOINT_UPDATE = "mcp-endpoint-update",
-  MCP_ENDPOINT_DELETE = "mcp-endpoint-delete",
-  MCP_ENDPOINT_GET = "mcp-endpoint-get",
-  MCP_ENDPOINT_LIST = "mcp-endpoint-list",
-  MCP_ENDPOINT_LIST_TOOLS = "mcp-endpoint-list-tools",
-  MCP_ENDPOINT_ENABLE_TOOL = "mcp-endpoint-enable-tool",
-  MCP_ENDPOINT_DISABLE_TOOL = "mcp-endpoint-disable-tool",
-  MCP_ENDPOINT_BULK_UPDATE_TOOLS = "mcp-endpoint-bulk-update-tools",
-  MCP_ENDPOINT_OAUTH_CLIENT_REGISTER = "mcp-endpoint-oauth-client-register",
-  MCP_ENDPOINT_OAUTH_AUTHORIZE = "mcp-endpoint-oauth-authorize",
-  MCP_ENDPOINT_CONNECT = "mcp-endpoint-connect",
-  MCP_ENDPOINT_SAVE_USER_CREDENTIAL = "mcp-endpoint-save-user-credential",
-
-  // MCP Servers
-  MCP_SERVER_CREATE = "mcp-server-create",
-  MCP_SERVER_UPDATE = "mcp-server-update",
-  MCP_SERVER_DELETE = "mcp-server-delete",
-  MCP_SERVER_GET = "mcp-server-get",
-  MCP_SERVER_LIST = "mcp-server-list",
-  MCP_SERVER_LIST_TOOLS = "mcp-server-list-tools",
-  MCP_SERVER_SYNC_TOOLS = "mcp-server-sync-tools",
-
-  // MCP Activity Logs
-  MCP_ACTIVITY_LOG_LIST = "mcp-activity-log-list",
 
   // Dynamic Secrets
   CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
@@ -2742,243 +2685,6 @@ interface SecretApprovalRequestReview {
   };
 }
 
-interface SignSshKey {
-  type: EventType.SIGN_SSH_KEY;
-  metadata: {
-    certificateTemplateId: string;
-    certType: SshCertType;
-    principals: string[];
-    ttl: string;
-    keyId: string;
-  };
-}
-
-interface IssueSshCreds {
-  type: EventType.ISSUE_SSH_CREDS;
-  metadata: {
-    certificateTemplateId: string;
-    keyAlgorithm: SshCertKeyAlgorithm;
-    certType: SshCertType;
-    principals: string[];
-    ttl: string;
-    keyId: string;
-  };
-}
-
-interface CreateSshCa {
-  type: EventType.CREATE_SSH_CA;
-  metadata: {
-    sshCaId: string;
-    friendlyName: string;
-  };
-}
-
-interface GetSshCa {
-  type: EventType.GET_SSH_CA;
-  metadata: {
-    sshCaId: string;
-    friendlyName: string;
-  };
-}
-
-interface UpdateSshCa {
-  type: EventType.UPDATE_SSH_CA;
-  metadata: {
-    sshCaId: string;
-    friendlyName: string;
-    status: SshCaStatus;
-  };
-}
-
-interface DeleteSshCa {
-  type: EventType.DELETE_SSH_CA;
-  metadata: {
-    sshCaId: string;
-    friendlyName: string;
-  };
-}
-
-interface GetSshCaCertificateTemplates {
-  type: EventType.GET_SSH_CA_CERTIFICATE_TEMPLATES;
-  metadata: {
-    sshCaId: string;
-    friendlyName: string;
-  };
-}
-
-interface CreateSshCertificateTemplate {
-  type: EventType.CREATE_SSH_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    sshCaId: string;
-    name: string;
-    ttl: string;
-    maxTTL: string;
-    allowedUsers: string[];
-    allowedHosts: string[];
-    allowUserCertificates: boolean;
-    allowHostCertificates: boolean;
-    allowCustomKeyIds: boolean;
-  };
-}
-
-interface GetSshCertificateTemplate {
-  type: EventType.GET_SSH_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-  };
-}
-
-interface UpdateSshCertificateTemplate {
-  type: EventType.UPDATE_SSH_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    sshCaId: string;
-    name: string;
-    status: SshCertTemplateStatus;
-    ttl: string;
-    maxTTL: string;
-    allowedUsers: string[];
-    allowedHosts: string[];
-    allowUserCertificates: boolean;
-    allowHostCertificates: boolean;
-    allowCustomKeyIds: boolean;
-  };
-}
-
-interface DeleteSshCertificateTemplate {
-  type: EventType.DELETE_SSH_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-  };
-}
-
-interface CreateSshHost {
-  type: EventType.CREATE_SSH_HOST;
-  metadata: {
-    sshHostId: string;
-    hostname: string;
-    alias: string | null;
-    userCertTtl: string;
-    hostCertTtl: string;
-    loginMappings: TLoginMapping[];
-    userSshCaId: string;
-    hostSshCaId: string;
-  };
-}
-
-interface UpdateSshHost {
-  type: EventType.UPDATE_SSH_HOST;
-  metadata: {
-    sshHostId: string;
-    hostname?: string;
-    alias?: string | null;
-    userCertTtl?: string;
-    hostCertTtl?: string;
-    loginMappings?: TLoginMapping[];
-    userSshCaId?: string;
-    hostSshCaId?: string;
-  };
-}
-
-interface DeleteSshHost {
-  type: EventType.DELETE_SSH_HOST;
-  metadata: {
-    sshHostId: string;
-    hostname: string;
-  };
-}
-
-interface GetSshHost {
-  type: EventType.GET_SSH_HOST;
-  metadata: {
-    sshHostId: string;
-    hostname: string;
-  };
-}
-
-interface IssueSshHostUserCert {
-  type: EventType.ISSUE_SSH_HOST_USER_CERT;
-  metadata: {
-    sshHostId: string;
-    hostname: string;
-    loginUser: string;
-    principals: string[];
-    ttl: string;
-  };
-}
-
-interface IssueSshHostHostCert {
-  type: EventType.ISSUE_SSH_HOST_HOST_CERT;
-  metadata: {
-    sshHostId: string;
-    hostname: string;
-    serialNumber: string;
-    principals: string[];
-    ttl: string;
-  };
-}
-
-interface GetSshHostGroupEvent {
-  type: EventType.GET_SSH_HOST_GROUP;
-  metadata: {
-    sshHostGroupId: string;
-    name: string;
-  };
-}
-
-interface CreateSshHostGroupEvent {
-  type: EventType.CREATE_SSH_HOST_GROUP;
-  metadata: {
-    sshHostGroupId: string;
-    name: string;
-    loginMappings: TLoginMapping[];
-  };
-}
-
-interface UpdateSshHostGroupEvent {
-  type: EventType.UPDATE_SSH_HOST_GROUP;
-  metadata: {
-    sshHostGroupId: string;
-    name?: string;
-    loginMappings?: TLoginMapping[];
-  };
-}
-
-interface DeleteSshHostGroupEvent {
-  type: EventType.DELETE_SSH_HOST_GROUP;
-  metadata: {
-    sshHostGroupId: string;
-    name: string;
-  };
-}
-
-interface GetSshHostGroupHostsEvent {
-  type: EventType.GET_SSH_HOST_GROUP_HOSTS;
-  metadata: {
-    sshHostGroupId: string;
-    name: string;
-  };
-}
-
-interface AddHostToSshHostGroupEvent {
-  type: EventType.ADD_HOST_TO_SSH_HOST_GROUP;
-  metadata: {
-    sshHostGroupId: string;
-    sshHostId: string;
-    hostname: string;
-  };
-}
-
-interface RemoveHostFromSshHostGroupEvent {
-  type: EventType.REMOVE_HOST_FROM_SSH_HOST_GROUP;
-  metadata: {
-    sshHostGroupId: string;
-    sshHostId: string;
-    hostname: string;
-  };
-}
-
 interface CreateGroupEvent {
   type: EventType.CREATE_GROUP;
   metadata: {
@@ -4322,24 +4028,6 @@ interface GetProjectWorkflowIntegrationConfig {
   };
 }
 
-interface GetProjectSshConfig {
-  type: EventType.GET_PROJECT_SSH_CONFIG;
-  metadata: {
-    id: string;
-    projectId: string;
-  };
-}
-
-interface UpdateProjectSshConfig {
-  type: EventType.UPDATE_PROJECT_SSH_CONFIG;
-  metadata: {
-    id: string;
-    projectId: string;
-    defaultUserSshCaId?: string | null;
-    defaultHostSshCaId?: string | null;
-  };
-}
-
 interface IntegrationSyncedEvent {
   type: EventType.INTEGRATION_SYNCED;
   metadata: {
@@ -4813,6 +4501,7 @@ interface CreatePkiSyncEvent {
     applicationId?: string;
     connectionId?: string;
     hasCredentials?: boolean;
+    hasPostSyncCommand?: boolean;
   };
 }
 
@@ -4822,6 +4511,7 @@ interface UpdatePkiSyncEvent {
     pkiSyncId: string;
     name: string;
     applicationId?: string;
+    hasPostSyncCommand?: boolean;
   };
 }
 
@@ -4842,6 +4532,7 @@ interface PkiSyncSyncCertificatesEvent {
     syncMessage: string | null;
     jobId: string;
     jobRanAt: Date;
+    postSyncCommand?: { command: string; result?: TPostSyncCommandResult };
   };
 }
 
@@ -5698,7 +5389,6 @@ interface OrgUpdateEvent {
     secretsProductEnabled?: boolean;
     pkiProductEnabled?: boolean;
     kmsProductEnabled?: boolean;
-    sshProductEnabled?: boolean;
     scannerProductEnabled?: boolean;
     shareSecretsProductEnabled?: boolean;
   };
@@ -6659,195 +6349,6 @@ interface FailAcmeChallengeEvent {
   };
 }
 
-interface McpEndpointCreateEvent {
-  type: EventType.MCP_ENDPOINT_CREATE;
-  metadata: {
-    endpointId: string;
-    name: string;
-    description?: string;
-    serverIds: string[];
-  };
-}
-
-interface McpEndpointUpdateEvent {
-  type: EventType.MCP_ENDPOINT_UPDATE;
-  metadata: {
-    endpointId: string;
-    name?: string;
-    description?: string;
-    serverIds?: string[];
-    piiRequestFiltering?: boolean;
-    piiResponseFiltering?: boolean;
-    piiEntityTypes?: string;
-  };
-}
-
-interface McpEndpointDeleteEvent {
-  type: EventType.MCP_ENDPOINT_DELETE;
-  metadata: {
-    endpointId: string;
-    name: string;
-  };
-}
-
-interface McpEndpointGetEvent {
-  type: EventType.MCP_ENDPOINT_GET;
-  metadata: {
-    endpointId: string;
-    name: string;
-  };
-}
-
-interface McpEndpointListEvent {
-  type: EventType.MCP_ENDPOINT_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface McpEndpointListToolsEvent {
-  type: EventType.MCP_ENDPOINT_LIST_TOOLS;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    toolCount: number;
-  };
-}
-
-interface McpEndpointEnableToolEvent {
-  type: EventType.MCP_ENDPOINT_ENABLE_TOOL;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    serverToolId: string;
-    toolName: string;
-  };
-}
-
-interface McpEndpointDisableToolEvent {
-  type: EventType.MCP_ENDPOINT_DISABLE_TOOL;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    serverToolId: string;
-    toolName: string;
-  };
-}
-
-interface McpEndpointBulkUpdateToolsEvent {
-  type: EventType.MCP_ENDPOINT_BULK_UPDATE_TOOLS;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    toolsUpdated: number;
-  };
-}
-
-interface McpEndpointOAuthClientRegisterEvent {
-  type: EventType.MCP_ENDPOINT_OAUTH_CLIENT_REGISTER;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    clientId: string;
-    clientName: string;
-  };
-}
-
-interface McpEndpointOAuthAuthorizeEvent {
-  type: EventType.MCP_ENDPOINT_OAUTH_AUTHORIZE;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    clientId: string;
-  };
-}
-
-interface McpEndpointConnectEvent {
-  type: EventType.MCP_ENDPOINT_CONNECT;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    userId: string;
-  };
-}
-
-interface McpEndpointSaveUserCredentialEvent {
-  type: EventType.MCP_ENDPOINT_SAVE_USER_CREDENTIAL;
-  metadata: {
-    endpointId: string;
-    endpointName: string;
-    serverId: string;
-    serverName: string;
-  };
-}
-
-interface McpServerCreateEvent {
-  type: EventType.MCP_SERVER_CREATE;
-  metadata: {
-    serverId: string;
-    name: string;
-    url: string;
-    credentialMode: string;
-    authMethod: string;
-  };
-}
-
-interface McpServerUpdateEvent {
-  type: EventType.MCP_SERVER_UPDATE;
-  metadata: {
-    serverId: string;
-    name: string;
-  };
-}
-
-interface McpServerDeleteEvent {
-  type: EventType.MCP_SERVER_DELETE;
-  metadata: {
-    serverId: string;
-    name: string;
-  };
-}
-
-interface McpServerGetEvent {
-  type: EventType.MCP_SERVER_GET;
-  metadata: {
-    serverId: string;
-    name: string;
-  };
-}
-
-interface McpServerListEvent {
-  type: EventType.MCP_SERVER_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
-interface McpServerListToolsEvent {
-  type: EventType.MCP_SERVER_LIST_TOOLS;
-  metadata: {
-    serverId: string;
-    serverName: string;
-    toolCount: number;
-  };
-}
-
-interface McpServerSyncToolsEvent {
-  type: EventType.MCP_SERVER_SYNC_TOOLS;
-  metadata: {
-    serverId: string;
-    serverName: string;
-    toolCount: number;
-  };
-}
-
-interface McpActivityLogListEvent {
-  type: EventType.MCP_ACTIVITY_LOG_LIST;
-  metadata: {
-    count: number;
-  };
-}
-
 interface GetDynamicSecretLeaseEvent {
   type: EventType.GET_DYNAMIC_SECRET_LEASE;
   metadata: {
@@ -7672,23 +7173,6 @@ export type Event =
   | SecretApprovalClosed
   | SecretApprovalRequest
   | SecretApprovalReopened
-  | SignSshKey
-  | IssueSshCreds
-  | CreateSshCa
-  | GetSshCa
-  | UpdateSshCa
-  | DeleteSshCa
-  | GetSshCaCertificateTemplates
-  | CreateSshCertificateTemplate
-  | UpdateSshCertificateTemplate
-  | GetSshCertificateTemplate
-  | DeleteSshCertificateTemplate
-  | CreateSshHost
-  | UpdateSshHost
-  | DeleteSshHost
-  | GetSshHost
-  | IssueSshHostUserCert
-  | IssueSshHostHostCert
   | CreateCa
   | GetCa
   | GetCAs
@@ -7815,8 +7299,6 @@ export type Event =
   | GetSlackIntegration
   | UpdateProjectWorkflowIntegrationConfig
   | GetProjectWorkflowIntegrationConfig
-  | GetProjectSshConfig
-  | UpdateProjectSshConfig
   | IntegrationSyncedEvent
   | CreateCmekEvent
   | UpdateCmekEvent
@@ -7857,13 +7339,6 @@ export type Event =
   | TestHsmConnectorEvent
   | CreateGitHubAppEvent
   | DeleteGitHubAppEvent
-  | GetSshHostGroupEvent
-  | CreateSshHostGroupEvent
-  | UpdateSshHostGroupEvent
-  | DeleteSshHostGroupEvent
-  | GetSshHostGroupHostsEvent
-  | AddHostToSshHostGroupEvent
-  | RemoveHostFromSshHostGroupEvent
   | CreateSharedSecretEvent
   | DeleteSharedSecretEvent
   | ReadSharedSecretEvent
@@ -8087,27 +7562,6 @@ export type Event =
   | PassedAcmeChallengeEvent
   | AttemptAcmeChallengeEvent
   | FailAcmeChallengeEvent
-  | McpEndpointCreateEvent
-  | McpEndpointUpdateEvent
-  | McpEndpointDeleteEvent
-  | McpEndpointGetEvent
-  | McpEndpointListEvent
-  | McpEndpointListToolsEvent
-  | McpEndpointEnableToolEvent
-  | McpEndpointDisableToolEvent
-  | McpEndpointBulkUpdateToolsEvent
-  | McpEndpointOAuthClientRegisterEvent
-  | McpEndpointOAuthAuthorizeEvent
-  | McpEndpointConnectEvent
-  | McpEndpointSaveUserCredentialEvent
-  | McpServerCreateEvent
-  | McpServerUpdateEvent
-  | McpServerDeleteEvent
-  | McpServerGetEvent
-  | McpServerListEvent
-  | McpServerListToolsEvent
-  | McpServerSyncToolsEvent
-  | McpActivityLogListEvent
   | CreateDynamicSecretEvent
   | UpdateDynamicSecretEvent
   | DeleteDynamicSecretEvent

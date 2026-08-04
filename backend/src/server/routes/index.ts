@@ -6,11 +6,6 @@ import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
-import {
-  registerMcpEndpointAuthServerMetadataRouter,
-  registerMcpEndpointMetadataRouter,
-  registerRfc9728ProtectedResourceMetadataRouter
-} from "@app/ee/routes/ai/mcp-endpoint-metadata-router";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -28,16 +23,6 @@ import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
-import { aiMcpActivityLogDALFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-dal";
-import { aiMcpActivityLogServiceFactory } from "@app/ee/services/ai-mcp-activity-log/ai-mcp-activity-log-service";
-import { aiMcpEndpointDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-dal";
-import { aiMcpEndpointServerDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-server-dal";
-import { aiMcpEndpointServerToolDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-server-tool-dal";
-import { aiMcpEndpointServiceFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-service";
-import { aiMcpServerDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-dal";
-import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
-import { aiMcpServerToolDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-tool-dal";
-import { aiMcpServerUserCredentialDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-user-credential-dal";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
@@ -102,7 +87,9 @@ import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-d
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
 import { licenseDALFactory } from "@app/ee/services/license/license-dal";
+import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { licenseServiceFactory } from "@app/ee/services/license/license-service";
+import { LicenseType } from "@app/ee/services/license/license-types";
 import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
@@ -200,20 +187,6 @@ import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/s
 import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
-import { sshCertificateAuthorityDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-dal";
-import { sshCertificateAuthoritySecretDALFactory } from "@app/ee/services/ssh/ssh-certificate-authority-secret-dal";
-import { sshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh-certificate-authority-service";
-import { sshCertificateBodyDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-body-dal";
-import { sshCertificateDALFactory } from "@app/ee/services/ssh-certificate/ssh-certificate-dal";
-import { sshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-dal";
-import { sshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
-import { sshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
-import { sshHostLoginUserMappingDALFactory } from "@app/ee/services/ssh-host/ssh-host-login-user-mapping-dal";
-import { sshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
-import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-user-dal";
-import { sshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
-import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
-import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
 import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
@@ -271,6 +244,7 @@ import {
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
+import { signupOnboardingResponseDALFactory } from "@app/services/auth/auth-signup-onboarding-dal";
 import { authSignupServiceFactory } from "@app/services/auth/auth-signup-service";
 import { mfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
@@ -461,7 +435,6 @@ import { projectCleanupQueueFactory } from "@app/services/project/project-cleanu
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { projectQueueFactory } from "@app/services/project/project-queue";
 import { projectServiceFactory } from "@app/services/project/project-service";
-import { projectSshConfigDALFactory } from "@app/services/project/project-ssh-config-dal";
 import { projectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { projectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { projectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -608,6 +581,7 @@ export const registerRoutes = async (
   const userDAL = userDALFactory(db);
   const userAliasDAL = userAliasDALFactory(db);
   const authDAL = authDALFactory(db);
+  const signupOnboardingResponseDAL = signupOnboardingResponseDALFactory(db);
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
   const orgMembershipDAL = orgMembershipDALFactory(db);
@@ -617,7 +591,6 @@ export const registerRoutes = async (
 
   const projectDAL = projectDALFactory(db);
   const projectAccessRequestDAL = projectAccessRequestDALFactory(db);
-  const projectSshConfigDAL = projectSshConfigDALFactory(db);
   const projectMembershipDAL = projectMembershipDALFactory(db);
   const projectEnvDAL = projectEnvDALFactory(db);
   const projectKeyDAL = projectKeyDALFactory(db);
@@ -721,17 +694,6 @@ export const registerRoutes = async (
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
   const emailDomainDAL = emailDomainDALFactory(db);
 
-  const sshCertificateDAL = sshCertificateDALFactory(db);
-  const sshCertificateBodyDAL = sshCertificateBodyDALFactory(db);
-  const sshCertificateAuthorityDAL = sshCertificateAuthorityDALFactory(db);
-  const sshCertificateAuthoritySecretDAL = sshCertificateAuthoritySecretDALFactory(db);
-  const sshCertificateTemplateDAL = sshCertificateTemplateDALFactory(db);
-  const sshHostDAL = sshHostDALFactory(db);
-  const sshHostLoginUserDAL = sshHostLoginUserDALFactory(db);
-  const sshHostLoginUserMappingDAL = sshHostLoginUserMappingDALFactory(db);
-  const sshHostGroupDAL = sshHostGroupDALFactory(db);
-  const sshHostGroupMembershipDAL = sshHostGroupMembershipDALFactory(db);
-
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
@@ -811,9 +773,15 @@ export const registerRoutes = async (
     permissionService
   });
 
+  // Offline (air-gapped) licenses are stored in LICENSE_KEY too, but must never reach the license
+  // server. The v2 client is left dormant for them so no billing/entitlement read can transmit the
+  // signed license credential; usage reporting + its cron are disabled below for the same reason.
+  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
+  const isOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+
   // License Server v2 client SDK. Coexists with licenseService during migration - getFeature()
   // is the single read primitive; falls back to feature defaults until the server is configured.
-  const licenseClient = licenseClientFactory({ envConfig, keyStore });
+  const licenseClient = licenseClientFactory({ envConfig, keyStore, isOffline: isOfflineLicense });
 
   // Created before licenseService so the latter can emit the v2 user-seat meter from its
   // updateSubscriptionOrgMemberCount chokepoint.
@@ -835,7 +803,7 @@ export const registerRoutes = async (
   const usageCounterDAL = usageCounterDALFactory(db);
   const meteredFeatures = buildMeteredFeatures({ licenseDAL, usageCounterDAL, isCloud: envConfig.isCloud });
   meteredFeatures.forEach(({ feature, count }) => licenseClient.registerCounter(feature, count));
-  const usageReporter = buildUsageReporter(envConfig);
+  const usageReporter = isOfflineLicense ? null : buildUsageReporter(envConfig);
   let usageSource = "self-hosted";
   if (envConfig.isCloud) {
     usageSource = "cloud";
@@ -844,12 +812,12 @@ export const registerRoutes = async (
     queueService,
     cronJob,
     keyStore,
-    orgDAL,
     licenseService,
     usageMeteringService,
     meteredFeatures,
     usageReporter,
     isCloud: envConfig.isCloud,
+    isOffline: isOfflineLicense,
     source: usageSource
   });
 
@@ -1475,7 +1443,8 @@ export const registerRoutes = async (
     orgDAL,
     orgService,
     loginService,
-    emailDomainDAL
+    emailDomainDAL,
+    signupOnboardingResponseDAL
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -1672,54 +1641,6 @@ export const registerRoutes = async (
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
 
-  const aiMcpServerDAL = aiMcpServerDALFactory(db);
-
-  const sshCertificateAuthorityService = sshCertificateAuthorityServiceFactory({
-    sshCertificateAuthorityDAL,
-    sshCertificateAuthoritySecretDAL,
-    sshCertificateTemplateDAL,
-    sshCertificateDAL,
-    sshCertificateBodyDAL,
-    kmsService,
-    permissionService
-  });
-
-  const sshCertificateTemplateService = sshCertificateTemplateServiceFactory({
-    sshCertificateTemplateDAL,
-    sshCertificateAuthorityDAL,
-    permissionService
-  });
-
-  const sshHostService = sshHostServiceFactory({
-    userDAL,
-    groupDAL,
-    userGroupMembershipDAL,
-    projectDAL,
-    projectSshConfigDAL,
-    sshCertificateAuthorityDAL,
-    sshCertificateAuthoritySecretDAL,
-    sshCertificateDAL,
-    sshCertificateBodyDAL,
-    sshHostDAL,
-    sshHostLoginUserDAL,
-    sshHostLoginUserMappingDAL,
-    permissionService,
-    kmsService
-  });
-
-  const sshHostGroupService = sshHostGroupServiceFactory({
-    projectDAL,
-    sshHostDAL,
-    sshHostGroupDAL,
-    sshHostGroupMembershipDAL,
-    sshHostLoginUserDAL,
-    sshHostLoginUserMappingDAL,
-    userDAL,
-    permissionService,
-    licenseService,
-    groupDAL
-  });
-
   const certificateAuthorityCrlService = certificateAuthorityCrlServiceFactory({
     certificateAuthorityDAL,
     certificateAuthorityCrlDAL,
@@ -1907,7 +1828,6 @@ export const registerRoutes = async (
     appConnectionDAL,
     dynamicSecretDAL,
     identityKubernetesAuthDAL,
-    aiMcpServerDAL,
     pkiDiscoveryConfigDAL,
     resourceAuthMethodService
   });
@@ -2178,7 +2098,6 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
-    projectSshConfigDAL,
     projectQueue: projectQueueService,
     userDAL,
     projectEnvDAL,
@@ -2191,12 +2110,6 @@ export const registerRoutes = async (
     certificateDAL,
     pkiAlertDAL,
     pkiCollectionDAL,
-    sshCertificateAuthorityDAL,
-    sshCertificateAuthoritySecretDAL,
-    sshCertificateDAL,
-    sshCertificateTemplateDAL,
-    sshHostDAL,
-    sshHostGroupDAL,
     keyStore,
     kmsService,
     certificateTemplateDAL,
@@ -2278,7 +2191,8 @@ export const registerRoutes = async (
     projectDAL,
     orgDAL,
     permissionService,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    licenseService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -2309,7 +2223,8 @@ export const registerRoutes = async (
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
@@ -2466,7 +2381,8 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     folderCommitService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const integrationService = integrationServiceFactory({
@@ -2482,7 +2398,8 @@ export const registerRoutes = async (
     secretDAL,
     kmsService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const accessTokenQueue = accessTokenQueueServiceFactory({
@@ -3322,7 +3239,8 @@ export const registerRoutes = async (
     usageMeteringService,
     hsmConnectorService,
     certificateAuthoritySecretDAL,
-    licenseService
+    licenseService,
+    telemetryService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3446,7 +3364,8 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    telemetryService
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
@@ -3519,7 +3438,8 @@ export const registerRoutes = async (
     pkiAlertV2Queue,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    licenseService
+    licenseService,
+    telemetryService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -3537,7 +3457,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     kmsService,
     resourceMetadataDAL,
-    digicertFns: digicertCaFns
+    digicertFns: digicertCaFns,
+    projectDAL,
+    telemetryService
   });
 
   const digicertRevocationSyncQueue = digicertRevocationSyncQueueFactory({
@@ -3558,7 +3480,9 @@ export const registerRoutes = async (
     appConnectionDAL,
     kmsService,
     resourceMetadataDAL,
-    godaddyFns: godaddyCaFns
+    godaddyFns: godaddyCaFns,
+    projectDAL,
+    telemetryService
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
@@ -3815,6 +3739,7 @@ export const registerRoutes = async (
     auditLogService,
     secretScanningV2DAL,
     queueService,
+    cronJob,
     projectDAL,
     projectMembershipDAL,
     smtpService,
@@ -3832,46 +3757,6 @@ export const registerRoutes = async (
     secretScanningV2Queue,
     kmsService,
     appConnectionDAL
-  });
-
-  const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
-  const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
-  const aiMcpActivityLogDAL = aiMcpActivityLogDALFactory(db);
-  const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
-  const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
-  const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
-
-  const aiMcpServerService = aiMcpServerServiceFactory({
-    aiMcpServerDAL,
-    aiMcpServerToolDAL,
-    aiMcpServerUserCredentialDAL,
-    kmsService,
-    keyStore,
-    permissionService,
-    gatewayV2DAL,
-    gatewayV2Service
-  });
-
-  const aiMcpActivityLogService = aiMcpActivityLogServiceFactory({
-    aiMcpActivityLogDAL,
-    permissionService
-  });
-
-  const aiMcpEndpointService = aiMcpEndpointServiceFactory({
-    aiMcpEndpointDAL,
-    aiMcpEndpointServerDAL,
-    aiMcpEndpointServerToolDAL,
-    aiMcpServerDAL,
-    aiMcpServerToolDAL,
-    aiMcpServerUserCredentialDAL,
-    aiMcpServerService,
-    kmsService,
-    keyStore,
-    authTokenService: tokenService,
-    aiMcpActivityLogService,
-    userDAL,
-    permissionService,
-    gatewayV2Service
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -4023,10 +3908,6 @@ export const registerRoutes = async (
     certificateV3: certificateV3Service,
     certificateRequest: certificateRequestService,
     certificateEstV3: certificateEstV3Service,
-    sshCertificateAuthority: sshCertificateAuthorityService,
-    sshCertificateTemplate: sshCertificateTemplateService,
-    sshHost: sshHostService,
-    sshHostGroup: sshHostGroupService,
     certificateAuthority: certificateAuthorityService,
     internalCertificateAuthority: internalCertificateAuthorityService,
     caSigningConfig: caSigningConfigService,
@@ -4130,9 +4011,6 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,
-    aiMcpServer: aiMcpServerService,
-    aiMcpEndpoint: aiMcpEndpointService,
-    aiMcpActivityLog: aiMcpActivityLogService,
     approvalPolicy: approvalPolicyService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
@@ -4280,13 +4158,6 @@ export const registerRoutes = async (
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
   await server.register(registerPkiScepRouter, { prefix: "/scep" });
-  await server.register(registerMcpEndpointMetadataRouter, { prefix: "/mcp-endpoints" });
-  await server.register(registerMcpEndpointAuthServerMetadataRouter, {
-    prefix: "/.well-known/oauth-authorization-server"
-  });
-  await server.register(registerRfc9728ProtectedResourceMetadataRouter, {
-    prefix: "/.well-known/oauth-protected-resource"
-  });
 
   // register routes for v1
   await server.register(

@@ -28,7 +28,6 @@ const (
 	ActionProjectTypeSecretManager      ActionProjectType = "secret-manager"
 	ActionProjectTypeCertificateManager ActionProjectType = "certificate-manager"
 	ActionProjectTypeKMS                ActionProjectType = "kms"
-	ActionProjectTypeSSH                ActionProjectType = "ssh"
 	ActionProjectTypeSecretScanning     ActionProjectType = "secret-scanning"
 	ActionProjectTypeAny                ActionProjectType = "any"
 )

@@ -9,6 +9,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AUTH0_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./auth0-client-secret";
 import { AWS_IAM_USER_SECRET_ROTATION_LIST_OPTION } from "./aws-iam-user-secret";
 import { AZURE_CLIENT_SECRET_ROTATION_LIST_OPTION } from "./azure-client-secret";
+import { CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION } from "./cloudflare-api-token";
+import { CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION } from "./cloudflare-r2-access-key";
 import { CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION } from "./convex-access-key";
 import { DATABRICKS_SERVICE_PRINCIPAL_SECRET_ROTATION_LIST_OPTION } from "./databricks-service-principal-secret";
 import { DATADOG_API_KEY_ROTATION_LIST_OPTION } from "./datadog-api-key";
@@ -79,7 +81,9 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.DatadogApiKey]: DATADOG_API_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.ConvexAccessKey]: CONVEX_ACCESS_KEY_ROTATION_LIST_OPTION,
   [SecretRotation.FireworksApiKey]: FIREWORKS_API_KEY_ROTATION_LIST_OPTION,
-  [SecretRotation.SnowflakeUserKeyPair]: SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION
+  [SecretRotation.SnowflakeUserKeyPair]: SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION,
+  [SecretRotation.CloudflareApiToken]: CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION,
+  [SecretRotation.CloudflareR2AccessKey]: CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {

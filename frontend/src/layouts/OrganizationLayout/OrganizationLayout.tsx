@@ -49,7 +49,7 @@ export const OrganizationLayout = () => {
             <div
               className={twMerge(
                 "flex-1 overflow-x-hidden bg-bunker-800 dark:scheme-dark",
-                isInsideProject ? "overflow-y-hidden" : "overflow-y-auto px-12 pt-10 pb-4"
+                isInsideProject ? "overflow-y-hidden" : "overflow-y-auto px-6 py-10 md:px-12"
               )}
             >
               <Outlet />

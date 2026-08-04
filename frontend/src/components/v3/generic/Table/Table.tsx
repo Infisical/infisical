@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 
 import { cn } from "@app/components/v3/utils";
@@ -91,12 +89,30 @@ function TableHead({
       data-slot="table-head"
       className={cn(
         "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent select-none [&:has([role=checkbox])]:pr-0",
-        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg]:size-4",
+        "has-[>svg]:cursor-pointer [&>svg]:ml-1 [&>svg]:inline-block [&>svg:not([class*='size-'])]:size-4",
         isTruncatable && "truncate",
         className
       )}
       {...props}
     />
+  );
+}
+
+function TableHeadLabel({
+  className,
+  children,
+  trailing,
+  ...props
+}: React.ComponentProps<"div"> & { trailing?: React.ReactNode }) {
+  return (
+    <div
+      data-slot="table-head-label"
+      className={cn("flex min-w-0 items-center gap-1", className)}
+      {...props}
+    >
+      <span className="min-w-0 truncate">{children}</span>
+      {trailing}
+    </div>
   );
 }
 
@@ -131,4 +147,14 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   );
 }
 
-export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow };
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableHeadLabel,
+  TableRow
+};

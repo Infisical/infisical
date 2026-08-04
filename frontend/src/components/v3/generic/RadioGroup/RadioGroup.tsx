@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 
@@ -34,7 +32,7 @@ function RadioGroupItem({ className, isError, ...props }: RadioGroupItemProps) {
         "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         "aria-invalid:border-danger aria-invalid:ring-danger/40",
         "hover:border-foreground/30",
-        "data-[state=checked]:border-foreground/25 data-[state=checked]:bg-foreground/75",
+        "data-[state=checked]:border-primary data-[state=checked]:bg-primary",
         className
       )}
       {...props}
@@ -43,7 +41,7 @@ function RadioGroupItem({ className, isError, ...props }: RadioGroupItemProps) {
         data-slot="radio-group-indicator"
         className="flex size-4 items-center justify-center"
       >
-        <span className="size-2 rounded-full bg-background" />
+        <span className="size-2 rounded-full bg-black" />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   );

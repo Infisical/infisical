@@ -35,8 +35,6 @@ func buildProjectPermissionRules(roles []roleWithPermissions) ([]gocasl.JSONRule
 			allRules = append(allRules, project.ViewerPermissions...)
 		case project.RoleNoAccess:
 			allRules = append(allRules, project.NoAccessPermissions...)
-		case project.RoleSshHostBootstrapper:
-			allRules = append(allRules, project.SshHostBootstrapPermissions...)
 		case project.RoleKmsCryptographicOperator:
 			allRules = append(allRules, project.CryptographicOperatorPermissions...)
 		case project.RoleCustom:

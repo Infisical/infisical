@@ -7,7 +7,10 @@ import {
   TableName,
   TSecretScanningDataSources
 } from "@app/db/schemas";
-import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningFindingStatus,
+  SecretScanningScanStatus
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { DatabaseError } from "@app/lib/errors";
 import {
   buildFindFilter,
@@ -428,6 +431,43 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // Reads the primary: the caller writes these rows straight after, and a replica that still shows
+  // a just-completed scan as in-progress would have it reaped.
+  const findStuckScans = async (startedBefore: Date, limit: number, tx?: Knex) => {
+    try {
+      const scans = await (tx || db)(TableName.SecretScanningScan)
+        .where(`${TableName.SecretScanningScan}.status`, SecretScanningScanStatus.Scanning)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.SecretScanningScan}.scanningStartedAt`, "<", startedBefore)
+            // Rows written before `scanningStartedAt` existed, or by a pod still running an older
+            // image mid-deploy, fall back to their creation time so they're reaped too.
+            .orWhere((nullStartedAt) => {
+              void nullStartedAt
+                .whereNull(`${TableName.SecretScanningScan}.scanningStartedAt`)
+                .andWhere(`${TableName.SecretScanningScan}.createdAt`, "<", startedBefore);
+            });
+        })
+        .join(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningResource}.id`,
+          `${TableName.SecretScanningScan}.resourceId`
+        )
+        .select(selectAllTableCols(TableName.SecretScanningScan))
+        .select(
+          db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"),
+          db.ref("type").withSchema(TableName.SecretScanningResource).as("resourceType"),
+          db.ref("dataSourceId").withSchema(TableName.SecretScanningResource)
+        )
+        .orderBy(`${TableName.SecretScanningScan}.createdAt`, "asc")
+        .limit(limit);
+
+      return scans;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Stuck - Secret Scanning Scan" });
+    }
+  };
+
   const findScansByDataSourceId = async (dataSourceId: string, tx?: Knex) => {
     try {
       const scans = await (tx || db.replicaNode())(TableName.SecretScanningScan)
@@ -464,7 +504,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     scans: {
       ...scanOrm,
       findWithDetailsByDataSourceId: findScansWithDetailsByDataSourceId,
-      findByDataSourceId: findScansByDataSourceId
+      findByDataSourceId: findScansByDataSourceId,
+      findStuck: findStuckScans
     },
     findings: findingOrm,
     configs: configOrm

@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import { cva, type VariantProps } from "cva";
 import { AlertCircle, Check } from "lucide-react";

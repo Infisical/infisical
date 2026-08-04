@@ -1,11 +1,48 @@
 import { z } from "zod";
 
+/**
+ * Knex's `t.string(col)` maps to `varchar(255)`, which is what every PKI table uses for its
+ * free-form text columns. Validate against the same bound at the API edge so an over-long value
+ * fails as a 422 ValidationFailure instead of reaching Postgres and surfacing as a `22001`
+ * (string_data_right_truncation) wrapped in a 500.
+ */
+export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
+
+/**
+ * Free-form description of a PKI resource. Bounded to the `varchar(255)` description column shared
+ * by pki_certificate_profiles, pki_certificate_policies, pki_syncs, and
+ * pki_discovery_configs.
+ */
+export const pkiDescriptionSchema = z
+  .string()
+  .trim()
+  .max(PKI_TEXT_COLUMN_MAX_LENGTH, `Description cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters`);
+
+/**
+ * A single X.509 subject attribute (CN, O, OU, C, ST, L). Every column these land in —
+ * certificate_requests, certificates, internal_certificate_authorities — is `varchar(255)`.
+ */
+export const subjectAttributeSchema = z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH);
+
 export const domainComponentSchema = z
   .string()
   .trim()
   .min(1, "Domain component cannot be empty")
   .max(255)
   .refine((value) => !value.includes(","), { message: "Domain component cannot contain a comma" });
+
+/**
+ * Domain components are persisted comma-joined into a single `varchar(255)` column
+ * (certificate_requests.domainComponents, certificates.subjectDomainComponents), so the combined
+ * length is what has to fit — bounding each component individually is not enough.
+ */
+export const domainComponentsSchema = z
+  .array(domainComponentSchema)
+  .max(50)
+  .refine(
+    (components) => components.join(",").length <= PKI_TEXT_COLUMN_MAX_LENGTH,
+    `Domain components cannot exceed ${PKI_TEXT_COLUMN_MAX_LENGTH} characters in total`
+  );
 
 export enum CertificateRequestStatus {
   PENDING_APPROVAL = "pending_approval",
@@ -14,6 +51,13 @@ export enum CertificateRequestStatus {
   ISSUED = "issued",
   FAILED = "failed",
   REJECTED = "rejected"
+}
+
+export enum CertificateIssuanceOperation {
+  ISSUE = "issue",
+  SIGN = "sign",
+  ORDER = "order",
+  RENEW = "renew"
 }
 
 export enum CertSubjectAlternativeNameType {

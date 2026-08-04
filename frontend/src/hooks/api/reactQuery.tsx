@@ -95,6 +95,16 @@ export const onRequestError = (
 ) => {
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
+    const handledErrorCodes = mutation?.meta?.handledErrorCodes;
+
+    if (
+      typeof serverResponse?.error === "string" &&
+      Array.isArray(handledErrorCodes) &&
+      handledErrorCodes.includes(serverResponse.error)
+    ) {
+      return;
+    }
+
     if (serverResponse?.error === ApiErrorTypes.ValidationError) {
       if (mutation?.meta?.skipValidationToast) {
         return;

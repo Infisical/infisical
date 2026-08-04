@@ -234,14 +234,6 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               identityName: z.string()
             })
           ),
-          mcpServers: z.array(
-            z.object({
-              id: z.string(),
-              name: z.string(),
-              projectId: z.string(),
-              projectName: z.string()
-            })
-          ),
           pkiDiscoveryConfigs: z.array(
             z.object({
               id: z.string(),

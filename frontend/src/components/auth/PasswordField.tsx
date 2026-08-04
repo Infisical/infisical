@@ -24,6 +24,7 @@ type PasswordFieldProps = {
   policy: TPasswordPolicy;
   breachStatus: PasswordBreachCheckStatus;
   registration: UseFormRegisterReturn;
+  label?: string;
   placeholder?: string;
   error?: ReactHookFormFieldError;
   submitCount: number;
@@ -36,6 +37,7 @@ export const PasswordField = ({
   policy,
   breachStatus,
   registration,
+  label = "Password",
   placeholder,
   error,
   submitCount,
@@ -51,7 +53,7 @@ export const PasswordField = ({
 
   return (
     <Field data-invalid={Boolean(error)}>
-      <FieldLabel htmlFor={id}>Password</FieldLabel>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <InputGroup variant={variant}>
         <InputGroupInput
           {...registration}

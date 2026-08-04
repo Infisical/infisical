@@ -105,5 +105,10 @@ export const coreMappings: TFeatureMapping[] = [
     v2Key: "enterprise_pam_account",
     v1Field: "enterprisePamAccount",
     extractV1: (p) => p.enterprisePamAccount
+  },
+  {
+    v2Key: "cross_project_secret_sharing",
+    v1Field: "crossProjectSecretSharing",
+    extractV1: (p) => p.crossProjectSecretSharing
   }
 ];

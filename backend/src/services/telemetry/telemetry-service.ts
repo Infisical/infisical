@@ -38,7 +38,8 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 // in the grouping key so each unique value produces its own aggregated event with the
 // property as a flat string — enabling clean PostHog breakdowns.
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
-  [PostHogEventTypes.PkiSyncExecuted]: ["destination"]
+  [PostHogEventTypes.PkiSyncExecuted]: ["destination"],
+  [PostHogEventTypes.IssueCert]: ["enrollmentType", "operation"]
 };
 
 // Bucket configuration
@@ -298,6 +299,20 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     if (!postHog) return;
+
+    // Per-event deduplication: only the first caller within the TTL window proceeds.
+    // Used to throttle read/poll-heavy events (e.g. Audit Logs Viewed) so a single
+    // actor generates at most one event per window while still being marked active.
+    // Placed after the `!postHog` guard so instances with telemetry disabled never
+    // touch Redis.
+    if (event.dedup) {
+      try {
+        const wasSet = await keyStore.setItemWithExpiryNX(event.dedup.key, event.dedup.ttlSeconds, "1");
+        if (!wasSet) return;
+      } catch (error) {
+        logger.error(error, `Failed to check telemetry dedup cache for event=${event.event}`);
+      }
+    }
 
     // Resolve org name: prefer explicit value, fall back to request context
     const resolvedOrgName = event.organizationName ?? requestContext.get(RequestContextKey.OrgName);

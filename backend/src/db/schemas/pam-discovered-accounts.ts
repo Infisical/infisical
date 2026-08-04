@@ -18,7 +18,9 @@ export const PamDiscoveredAccountsSchema = z.object({
   encryptedDetails: zodBuffer,
   importedAccountId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  isStale: z.boolean().default(false),
+  lastDiscoveredAt: z.date().nullable().optional()
 });
 
 export type TPamDiscoveredAccounts = z.infer<typeof PamDiscoveredAccountsSchema>;

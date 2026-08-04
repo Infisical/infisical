@@ -1,9 +1,31 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { cva, type VariantProps } from "cva";
 
 import { cn } from "../../utils";
+import { AnimatedCollapse } from "../AnimatedCollapse";
 import { Label } from "../Label";
 import { Separator } from "../Separator";
+
+const hasRenderableContent = (content: React.ReactNode): boolean => {
+  if (Array.isArray(content)) {
+    return content.some(hasRenderableContent);
+  }
+
+  return (
+    content !== null && content !== undefined && typeof content !== "boolean" && content !== ""
+  );
+};
+
+const useRetainedContent = (content: React.ReactNode) => {
+  const hasContent = hasRenderableContent(content);
+  const retainedContent = useRef<React.ReactNode>(hasContent ? content : null);
+
+  if (hasContent) {
+    retainedContent.current = content;
+  }
+
+  return { hasContent, retainedContent: retainedContent.current };
+};
 
 function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   return (
@@ -92,7 +114,7 @@ function FieldContent({ className, ...props }: React.ComponentProps<"div">) {
 
 const fieldLabelVariants = cva(
   cn(
-    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border text-xs leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50",
+    "group/field-label peer/field-label flex w-fit items-center gap-1.5 border-border leading-snug text-accent transition-colors duration-75 group-data-[invalid=true]/field:text-danger group-data-[disabled=true]/field:opacity-50",
     "has-[>[data-slot=field]]:cursor-pointer has-[>[data-slot=field]]:rounded-md",
     "has-[>[data-slot=field]]:border has-[>[data-slot=field]]:bg-transparent has-[>[data-slot=field]]:hover:bg-container-hover [&>*]:data-[slot=field]:p-2.5 [&>svg]:size-3",
     "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col",
@@ -110,10 +132,15 @@ const fieldLabelVariants = cva(
         "sub-org":
           "has-[[data-state=checked]]:border-sub-org/30 has-[[data-state=checked]]:bg-sub-org/5!",
         pam: "has-[[data-state=checked]]:border-product-pam/30 has-[[data-state=checked]]:bg-product-pam/5!"
+      },
+      size: {
+        default: "text-xs",
+        sm: "text-sm font-normal text-label"
       }
     },
     defaultVariants: {
-      variant: "default"
+      variant: "default",
+      size: "default"
     }
   }
 );
@@ -121,12 +148,13 @@ const fieldLabelVariants = cva(
 function FieldLabel({
   className,
   variant,
+  size,
   ...props
 }: React.ComponentProps<typeof Label> & VariantProps<typeof fieldLabelVariants>) {
   return (
     <Label
       data-slot="field-label"
-      className={cn(fieldLabelVariants({ variant }), className)}
+      className={cn(fieldLabelVariants({ variant, size }), className)}
       {...props}
     />
   );
@@ -145,17 +173,27 @@ function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
+type FieldDescriptionProps = React.ComponentProps<"p"> & {
+  isOpen?: boolean;
+};
+
+function FieldDescription({ children, className, isOpen, ...props }: FieldDescriptionProps) {
+  const { hasContent, retainedContent } = useRetainedContent(children);
+
   return (
-    <p
-      data-slot="field-description"
-      className={cn(
-        "mt-0.5 text-left text-xs leading-snug font-normal text-muted group-has-[[data-orientation=horizontal]]/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
-        "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground",
-        className
-      )}
-      {...props}
-    />
+    <AnimatedCollapse isOpen={isOpen ?? hasContent} variant="subtle">
+      <p
+        data-slot="field-description"
+        className={cn(
+          "text-left text-2xs leading-snug font-normal text-muted",
+          "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-foreground",
+          className
+        )}
+        {...props}
+      >
+        {retainedContent}
+      </p>
+    </AnimatedCollapse>
   );
 }
 
@@ -191,14 +229,12 @@ function FieldSeparator({
   );
 }
 
-function FieldError({
-  className,
-  children,
-  errors,
-  ...props
-}: React.ComponentProps<"div"> & {
+type FieldErrorProps = React.ComponentProps<"div"> & {
   errors?: Array<{ message?: string } | undefined>;
-}) {
+  isOpen?: boolean;
+};
+
+function FieldError({ className, children, errors, isOpen, ...props }: FieldErrorProps) {
   const content = useMemo(() => {
     if (children) {
       return children;
@@ -232,20 +268,19 @@ function FieldError({
       </ul>
     );
   }, [children, errors]);
-
-  if (!content) {
-    return null;
-  }
+  const { hasContent, retainedContent } = useRetainedContent(content);
 
   return (
-    <div
-      role="alert"
-      data-slot="field-error"
-      className={cn("mt-0.5 text-xs leading-snug font-normal text-danger", className)}
-      {...props}
-    >
-      {content}
-    </div>
+    <AnimatedCollapse isOpen={isOpen ?? hasContent} variant="subtle">
+      <div
+        role="alert"
+        data-slot="field-error"
+        className={cn("mt-0.5 text-xs leading-snug font-normal text-danger", className)}
+        {...props}
+      >
+        {retainedContent}
+      </div>
+    </AnimatedCollapse>
   );
 }
 
@@ -253,7 +288,9 @@ export {
   Field,
   FieldContent,
   FieldDescription,
+  type FieldDescriptionProps,
   FieldError,
+  type FieldErrorProps,
   FieldGroup,
   FieldLabel,
   FieldLegend,

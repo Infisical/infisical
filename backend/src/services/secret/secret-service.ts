@@ -3812,7 +3812,8 @@ export const secretServiceFactory = ({
 
     if (secretRefMap.size === 0) return revokedSecretIds;
 
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
       return revokedSecretIds;
     }
 

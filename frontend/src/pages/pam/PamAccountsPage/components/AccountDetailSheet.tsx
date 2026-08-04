@@ -76,6 +76,7 @@ import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
+import { AccountStaleBadge } from "../../components/AccountStaleBadge";
 import { PamMemberKind, PamMembershipScope, PamMemberSource } from "../../components/memberEnums";
 import {
   formatDetailDate,
@@ -941,6 +942,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
       title={account?.name}
       subtitle={folderSubtitle}
       typeBadge={typeInfo?.name}
+      badges={<AccountStaleBadge isStale={Boolean(account?.isStale)} />}
       icon={
         accountType ? (
           <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">

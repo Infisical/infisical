@@ -319,6 +319,22 @@ export const registerSecretRotationEndpoints = <
         }
       });
 
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.SecretRotationV2Updated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            rotationId: secretRotation.id,
+            type,
+            orgId: req.permission.orgId,
+            projectId: secretRotation.projectId,
+            environment: secretRotation.environment.slug,
+            secretPath: secretRotation.folder.path
+          }
+        })
+        .catch((err) => logger.error(err, "Failed to send SecretRotationV2Updated telemetry event"));
+
       return { secretRotation };
     }
   });

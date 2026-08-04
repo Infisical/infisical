@@ -15,7 +15,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="w-[28rem] max-w-[calc(100vw-2rem)]">
+      <div className="w-full max-w-md">
         <Story />
       </div>
     )

@@ -37,6 +37,7 @@ import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
 import {
   AcmeCertificateAuthorityFns,
   castDbEntryToAcmeCertificateAuthority
@@ -73,7 +74,10 @@ import {
   AzureAdCsCertificateAuthorityFns,
   castDbEntryToAzureAdCsCertificateAuthority
 } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
-import { TUpdateAzureAdCsCertificateAuthorityDTO } from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
+import {
+  TCreateAzureAdCsCertificateAuthorityDTO,
+  TUpdateAzureAdCsCertificateAuthorityDTO
+} from "./azure-ad-cs/azure-ad-cs-certificate-authority-types";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
@@ -132,6 +136,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
@@ -162,6 +167,7 @@ export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateA
 export const certificateAuthorityServiceFactory = ({
   certificateAuthorityDAL,
   projectDAL,
+  telemetryService,
   permissionService,
   internalCertificateAuthorityService,
   appConnectionDAL,
@@ -381,9 +387,12 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (type === CaType.AZURE_AD_CS) {
-      throw new BadRequestError({
-        message:
-          "Creating new Azure ADCS (Web Enrollment) certificate authorities is no longer supported. Use the Microsoft ADCS connection instead."
+      return azureAdCsFns.createCertificateAuthority({
+        name,
+        projectId,
+        configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
+        status,
+        actor
       });
     }
 
@@ -1414,7 +1423,9 @@ export const certificateAuthorityServiceFactory = ({
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
-              godaddyFns
+              godaddyFns,
+              projectDAL,
+              telemetryService
             },
             certificateRequest
           )
@@ -1426,7 +1437,9 @@ export const certificateAuthorityServiceFactory = ({
               certificateRequestDAL,
               certificateRequestService,
               resourceMetadataDAL,
-              digicertFns
+              digicertFns,
+              projectDAL,
+              telemetryService
             },
             certificateRequest
           );

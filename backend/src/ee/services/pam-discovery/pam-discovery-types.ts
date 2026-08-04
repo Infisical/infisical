@@ -27,6 +27,7 @@ export type TDiscoveryScanResult = {
   dependencies: TDiscoveredDependency[];
   // Machines whose dependency sweep completed, so reconciliation only prunes what it actually re-checked.
   scannedDependencyMachines: string[];
+  scannedAccountMachines: string[];
 };
 
 export type TPamDiscoveryProvider = {

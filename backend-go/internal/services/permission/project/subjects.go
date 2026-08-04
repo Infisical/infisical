@@ -386,59 +386,6 @@ func (s WebhooksSubject) SubjectType() string { return SubWebhooks }
 func (s WebhooksSubject) GetField(string) any { return nil }
 
 // ===========================
-// SSH
-// ===========================
-
-const SubSshCertificateAuthorities = "ssh-certificate-authorities"
-
-// SshCertificateAuthoritiesSubject — "ssh-certificate-authorities"
-type SshCertificateAuthoritiesSubject struct{}
-
-func (s SshCertificateAuthoritiesSubject) SubjectType() string { return SubSshCertificateAuthorities }
-func (s SshCertificateAuthoritiesSubject) GetField(string) any { return nil }
-
-const SubSshCertificates = "ssh-certificates"
-
-// SshCertificatesSubject — "ssh-certificates"
-type SshCertificatesSubject struct{}
-
-func (s SshCertificatesSubject) SubjectType() string { return SubSshCertificates }
-func (s SshCertificatesSubject) GetField(string) any { return nil }
-
-const SubSshCertificateTemplates = "ssh-certificate-templates"
-
-// SshCertificateTemplatesSubject — "ssh-certificate-templates"
-type SshCertificateTemplatesSubject struct{}
-
-func (s SshCertificateTemplatesSubject) SubjectType() string { return SubSshCertificateTemplates }
-func (s SshCertificateTemplatesSubject) GetField(string) any { return nil }
-
-const SubSshHosts = "ssh-hosts"
-
-// SshHostSubject — "ssh-hosts"
-type SshHostSubject struct {
-	Hostname string
-}
-
-func (s SshHostSubject) SubjectType() string { return SubSshHosts }
-func (s SshHostSubject) GetField(f string) any {
-	switch f {
-	case "hostname":
-		return s.Hostname
-	default:
-		return nil
-	}
-}
-
-const SubSshHostGroups = "ssh-host-groups"
-
-// SshHostGroupsSubject — "ssh-host-groups"
-type SshHostGroupsSubject struct{}
-
-func (s SshHostGroupsSubject) SubjectType() string { return SubSshHostGroups }
-func (s SshHostGroupsSubject) GetField(string) any { return nil }
-
-// ===========================
 // PKI / Certificates
 // ===========================
 
@@ -684,43 +631,6 @@ func (s AppConnectionSubject) GetField(f string) any {
 		return nil
 	}
 }
-
-// ===========================
-// MCP
-// ===========================
-
-const SubMcpEndpoints = "mcp-endpoints"
-
-// McpEndpointSubject — "mcp-endpoints"
-type McpEndpointSubject struct {
-	Name string
-}
-
-func (s McpEndpointSubject) SubjectType() string { return SubMcpEndpoints }
-func (s McpEndpointSubject) GetField(f string) any {
-	switch f {
-	case "name":
-		return s.Name
-	default:
-		return nil
-	}
-}
-
-const SubMcpServers = "mcp-servers"
-
-// McpServersSubject — "mcp-servers"
-type McpServersSubject struct{}
-
-func (s McpServersSubject) SubjectType() string { return SubMcpServers }
-func (s McpServersSubject) GetField(string) any { return nil }
-
-const SubMcpActivityLogs = "mcp-activity-logs"
-
-// McpActivityLogsSubject — "mcp-activity-logs"
-type McpActivityLogsSubject struct{}
-
-func (s McpActivityLogsSubject) SubjectType() string { return SubMcpActivityLogs }
-func (s McpActivityLogsSubject) GetField(string) any { return nil }
 
 // ===========================
 // PAM

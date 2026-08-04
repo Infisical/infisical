@@ -13,7 +13,8 @@ import {
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  pkiDescriptionSchema
 } from "@app/services/certificate-common/certificate-constants";
 import { certificatePolicyResponseSchema } from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -179,7 +180,7 @@ const policyBasicConstraintsSchema = z
 const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1).optional().describe(openApiHidden()),
   name: slugSchema({ min: 1, max: 255, field: "Name" }),
-  description: z.string().max(1000).optional(),
+  description: pkiDescriptionSchema.optional(),
   subject: z.array(policySubjectSchema).nullish(),
   sans: z.array(policySanSchema).nullish(),
   keyUsages: policyKeyUsagesSchema.nullish(),
@@ -191,7 +192,7 @@ const createCertificatePolicySchema = z.object({
 
 const updateCertificatePolicySchema = z.object({
   name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
-  description: z.string().max(1000).optional(),
+  description: pkiDescriptionSchema.optional(),
   subject: z.array(policySubjectSchema).nullish(),
   sans: z.array(policySanSchema).nullish(),
   keyUsages: policyKeyUsagesSchema.nullish(),

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { FingerprintIcon, PlusIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
 
-import { ContentLoader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -15,12 +14,15 @@ import {
   AlertDialogTitle,
   AlertTitle,
   Button,
+  Field,
+  FieldLabel,
   Input,
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Skeleton
 } from "@app/components/v3";
 import { useGetWebAuthnCredentials, useRegisterPasskey } from "@app/hooks/api/webauthn";
 
@@ -32,7 +34,7 @@ type Props = {
 };
 
 export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
-  const { data, isPending } = useGetWebAuthnCredentials();
+  const { data, isPending, isError, refetch } = useGetWebAuthnCredentials();
   const credentials = data?.credentials ?? [];
   const { registerPasskey, isRegistering } = useRegisterPasskey();
   const { removePasskey, isBusy: isRemoving } = useRemovePasskey();
@@ -84,15 +86,17 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
           </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end">
+              <Field className="flex-1">
+                <FieldLabel htmlFor="new-passkey-name">Passkey name</FieldLabel>
                 <Input
+                  id="new-passkey-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="New passkey name (optional)"
                 />
-              </div>
-              <Button variant="org" isPending={isRegistering} onClick={handleAdd}>
+              </Field>
+              <Button variant="neutral" isPending={isRegistering} onClick={handleAdd}>
                 <PlusIcon /> Add
               </Button>
             </div>
@@ -111,9 +115,24 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
               </Alert>
             )}
 
-            {isPending ? (
-              <ContentLoader />
-            ) : (
+            {isPending && (
+              <div className="flex flex-col gap-2" aria-label="Loading passkeys">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full" />
+              </div>
+            )}
+            {!isPending && isError && (
+              <Alert variant="danger">
+                <TriangleAlertIcon />
+                <AlertTitle>Passkeys could not be loaded</AlertTitle>
+                <AlertDescription>
+                  <Button size="sm" variant="outline" onClick={() => refetch()}>
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            {!isPending && !isError && (
               <div className="flex flex-col gap-2">
                 {credentials.length === 0 && (
                   <p className="rounded-lg border border-border bg-container p-4 text-center text-sm text-muted">
@@ -123,12 +142,12 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
                 {credentials.map((credential) => (
                   <div
                     key={credential.id}
-                    className="flex items-center justify-between rounded-lg border border-border bg-container p-3"
+                    className="flex flex-col items-stretch justify-between gap-3 rounded-lg border border-border bg-container p-3 sm:flex-row sm:items-center"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <FingerprintIcon className="text-muted" />
-                      <div>
-                        <p className="text-sm text-foreground">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-foreground">
                           {credential.name || "Unnamed passkey"}
                         </p>
                         <p className="text-xs text-muted">
@@ -141,6 +160,7 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
                     <Button
                       variant="danger"
                       size="sm"
+                      className="self-end sm:self-auto"
                       onClick={() =>
                         setCredentialToRemove({
                           id: credential.id,
@@ -160,7 +180,7 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
 
       <AlertDialog
         open={credentialToRemove !== null}
-        onOpenChange={(open) => !open && setCredentialToRemove(null)}
+        onOpenChange={(open) => !open && !isRemoving && setCredentialToRemove(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -170,8 +190,15 @@ export const PasskeyManagerDialog = ({ isOpen, onOpenChange }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isRemoving} onClick={handleDelete}>
+            <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isRemoving}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDelete();
+              }}
+            >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>

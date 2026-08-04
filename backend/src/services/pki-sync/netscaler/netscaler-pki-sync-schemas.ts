@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 import {
   BasePkiSyncOptionsSchema,
@@ -31,7 +32,7 @@ export const NetScalerPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateNetScalerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: NetScalerPkiSyncConfigSchema,
   syncOptions: NetScalerPkiSyncOptionsSchema,
@@ -44,7 +45,7 @@ export const CreateNetScalerPkiSyncSchema = z.object({
 
 export const UpdateNetScalerPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: NetScalerPkiSyncConfigSchema.optional(),
   syncOptions: NetScalerPkiSyncOptionsSchema.optional(),

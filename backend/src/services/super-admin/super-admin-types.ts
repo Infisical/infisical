@@ -5,6 +5,7 @@ export type TAdminSignUpDTO = {
   password: string;
   lastName?: string;
   firstName: string;
+  organizationName?: string;
   ip: string;
   userAgent: string;
 };
@@ -67,6 +68,10 @@ export enum LoginMethod {
   SAML = "saml",
   LDAP = "ldap",
   OIDC = "oidc"
+}
+
+export enum SuperAdminErrorCode {
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
 }
 
 export enum CacheType {

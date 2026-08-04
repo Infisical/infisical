@@ -7,8 +7,7 @@ import {
   projectAdminPermissions,
   projectMemberPermissions,
   projectNoAccessPermissions,
-  projectViewerPermission,
-  sshHostBootstrapPermissions
+  projectViewerPermission
 } from "@app/ee/services/permission/default-roles";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -147,17 +146,6 @@ export const newProjectRoleFactory = ({
         createdAt: new Date(),
         updatedAt: new Date(),
         projectId
-      },
-      {
-        id: uuidv4(),
-        name: "SSH Host Bootstrapper",
-        slug: ProjectMembershipRole.SshHostBootstrapper,
-        permissions: sshHostBootstrapPermissions,
-        description: "Create and issue SSH Hosts in a project",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        projectId,
-        type: ProjectType.SSH
       },
       {
         id: uuidv4(),

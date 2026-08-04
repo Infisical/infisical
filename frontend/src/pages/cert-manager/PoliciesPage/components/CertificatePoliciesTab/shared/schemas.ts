@@ -86,7 +86,7 @@ export const policySchema = z.object({
   description: z
     .string()
     .trim()
-    .max(1000, "Description must be less than 1000 characters")
+    .max(255, "Description must be less than 255 characters")
     .optional(),
   basicConstraints: uiBasicConstraintsSchema.optional(),
   attributes: z.array(uiAttributeSchema).optional(),
@@ -135,7 +135,7 @@ export const apiPolicySchema = z.object({
   description: z
     .string()
     .trim()
-    .max(1000, "Description must be less than 1000 characters")
+    .max(255, "Description must be less than 255 characters")
     .optional(),
   subject: z.array(apiSubjectSchema).optional(),
   sans: z.array(apiSanSchema).optional(),

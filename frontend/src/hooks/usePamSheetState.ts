@@ -10,7 +10,8 @@ export enum PamSheetTab {
   General = "general",
   Rotation = "rotation",
   Dependencies = "dependencies",
-  Approvals = "approvals"
+  Approvals = "approvals",
+  Stale = "stale"
 }
 
 export const pamSheetSearchParams = z.object({

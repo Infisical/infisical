@@ -15,7 +15,6 @@ import {
 import { TMeteredFeature } from "@app/services/license-client/usage/usage-counters";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { isV2SelfHostedLicenseKey } from "../license/license-fns";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
@@ -390,9 +389,7 @@ export const licenseV2ServiceFactory = ({
 
     return { planTier: plan.tier, quantities, declaredUsage };
   };
-  // A self-hosted v2 license is managed out-of-band: the billing surface is read-only. Self-serve
-  // mutations don't need an explicit guard here, the self-hosted license client rejects them itself.
-  const isSelfHostedLicense = isV2SelfHostedLicenseKey(envConfig.LICENSE_KEY ?? "");
+  const isSelfHostedLicense = Boolean(envConfig.LICENSE_KEY);
 
   const ensureBillingRead = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
     const { permission } = await permissionService.getOrgPermission({
