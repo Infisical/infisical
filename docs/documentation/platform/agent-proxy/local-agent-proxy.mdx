@@ -262,6 +262,20 @@ Add back what the sweep took, one variable at a time:
 
 A placeholder wins over a variable of the same name from your own environment, and `--set-env` wins over everything, including a placeholder.
 
+### Your agent's own sandbox is a separate thing
+
+Several agents sandbox themselves. Claude Code, for one, has a sandboxed Bash tool that restricts the commands it runs, using the same operating system features `run` does. That is a different layer from this one, with its own settings, and it is worth knowing how the two interact because the failures look identical from inside.
+
+`run` wraps the whole agent process before it starts, so its restrictions apply to the agent, every command the agent runs, and every child of those commands. An agent cannot lift them for itself: the operating system hands them down and offers no way to hand them back.
+
+That has a practical consequence you will probably meet. An agent that finds a file unreadable often assumes its own sandbox is responsible and retries the command outside it. Claude Code calls this `dangerouslyDisableSandbox`, and other harnesses have an equivalent. The retry is honest about what it does, and it does not help here: the command runs outside the agent's own sandbox and stays inside this one, so it fails the same way twice. When you see a denial repeat itself after an unsandboxed retry, the deny list on this page is what you are looking at, not the agent's.
+
+<Note>
+  On macOS the agent's own sandbox usually cannot start at all under `run`, because a second Seatbelt profile cannot be applied inside the first. Agents normally warn and carry on with their own layer off, which loses you nothing: the boundary that protects your credentials is this one, and it is fully in force. If your agent is configured to refuse to start when its sandbox is unavailable, that setting will stop it from launching here, so turn it off for sessions you run behind the proxy.
+</Note>
+
+An agent's sandbox settings are still worth configuring for the sessions you run **without** `run`, where they are the only boundary you have.
+
 ## Certificates and the macOS keychain prompt
 
 For the proxy to apply credentials to HTTPS requests it terminates TLS, so the agent has to trust the certificates it presents. `run` uses a **self-signed local root**, generated on your machine; it never involves your organization's root CA, and the private key stays on the parent side of the sandbox. Leaf certificates are minted per hostname from it.
@@ -302,11 +316,11 @@ infisical secrets agent-proxy run -e dev --log-file=/tmp/broker.log -- claude
 tail -f /tmp/broker.log
 ```
 
-Every request records a decision: `brokered` (a service matched and a credential was applied), `passthrough` (no service matched, forwarded untouched), `blocked` (rejected by `--unmatched-host=block`), or `error`. Records carry the same fields as in [Activity Logs](/documentation/platform/agent-proxy/activity-logs), written in the human-readable console format.
+Every request records a decision: `brokered` (a service matched and a credential was applied), `passthrough` (no service matched, forwarded untouched), `blocked` (rejected by `--unmatched-host=block`), `canceled` (the agent hung up before the request finished), or `error`. Records carry the same fields as in [Activity Logs](/documentation/platform/agent-proxy/activity-logs), written in the human-readable console format.
 
 Without `--log-file` you still see problems: warnings and errors print to your terminal, including a credential the proxy had to skip and a dropped authorization. What you lose is the per-request trail, so reach for `--log-file` when you need to see what happened on a specific request.
 
-`passthrough` is the one decision left out by default, and it is usually the bulk of an agent's traffic, so a log stays small. `--log-level debug` adds it, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
+`passthrough` and `canceled` are the two decisions left out by default. Passthrough is usually the bulk of an agent's traffic, so leaving it out keeps a log small, and a cancellation means the agent hung up rather than that anything failed. `--log-level debug` adds both, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
 
 <Note>
   A path you pass to `--log-file` is appended to on every run and never rotated for you, so rotate it with `logrotate` (`copytruncate`) if you keep one around.
@@ -331,6 +345,11 @@ Without `--log-file` you still see problems: warnings and errors print to your t
     ```
 
     The same pattern applies to any tool with a config-directory override.
+  </Accordion>
+  <Accordion title="The agent asks me to log in again inside the sandbox">
+    The keychain is blocked, so an agent that keeps its own login there cannot read it inside the sandbox. An agent that keeps it in a file under its state directory is unaffected, since those directories stay readable and writable. Claude Code, for instance, starts already signed in when `~/.claude/.credentials.json` is present.
+
+    Where your agent stores its login is up to the agent, so check for that file first. If it is keychain-backed, pass a token through the environment rather than re-opening the keychain, for example `--pass-env ANTHROPIC_API_KEY`. That name matches the secret-shaped sweep, so it has to be passed through explicitly.
   </Accordion>
   <Accordion title="Everything is passthrough, nothing is brokered">
     No proxied service matched the host. Check the [host pattern](/documentation/platform/agent-proxy/proxied-services#host-patterns) against the exact hostname the agent calls, that the service is enabled, and that you are pointed at the folder the service lives in.

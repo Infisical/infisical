@@ -17,12 +17,12 @@ Each request is logged with these fields (plus the standard `time`, `level`, and
 | Field | Meaning |
 | --- | --- |
 | `event` | Always `agent-proxy.request`, so activity is easy to filter from other logs |
-| `decision` | `brokered`, `passthrough`, `blocked`, or `error` |
+| `decision` | `brokered`, `passthrough`, `blocked`, `canceled`, or `error` |
 | `agentId` / `agentName` | Who made the request: the agent's machine identity behind a standalone proxy, or your own account (or `token`) on a local proxy |
 | `projectId` / `environment` / `secretPath` | The folder the request was scoped to |
 | `serviceName` / `serviceId` | The matched proxied service (omitted when none matched) |
 | `method` / `host` / `port` / `path` | The request line, before substitution (so `path` shows the placeholder) |
-| `status` | Upstream status on `brokered` / `passthrough`; `403` on `blocked`; `502` on `error` |
+| `status` | Upstream status on `brokered` / `passthrough`; `403` on `blocked`; `502` on `error`; omitted on `canceled`, where no response was ever returned |
 | `credentials` | What was injected: each entry's secret key (or, for a dynamic secret, its name and output field), and the header or surfaces it landed in |
 
 Written out, two records look like this:
@@ -38,14 +38,17 @@ Written out, two records look like this:
 
 ## Log levels
 
-Each decision is logged at a level, so `--log-level` controls how much you see: the default `info` hides passthrough, `debug` shows everything, `warn` shows only blocked and errors.
+Each decision is logged at a level, so `--log-level` controls how much you see: the default `info` hides passthrough and canceled requests, `debug` shows everything, `warn` shows only blocked and errors.
 
 | decision | level |
 | --- | --- |
 | `passthrough` | debug |
+| `canceled` | debug |
 | `brokered` | info |
 | `blocked` | warn |
 | `error` | error |
+
+`canceled` means the agent hung up before the request finished, which happens whenever you interrupt a prompt or the agent exits with calls in flight. Nothing failed, and there was no one left to return a response to, so these sit at debug alongside passthrough and stay off your terminal. A request that genuinely failed, because the upstream was unreachable or permissions could not be resolved, is still an `error`.
 
 ## Where the records go
 

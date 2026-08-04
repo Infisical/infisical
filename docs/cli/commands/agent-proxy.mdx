@@ -334,7 +334,7 @@ $ infisical secrets agent-proxy start --port 17322 --unmatched-host=block
   </Accordion>
 
   <Accordion title="--log-level">
-    Controls how much is logged. Each [activity decision](/documentation/platform/agent-proxy/activity-logs) maps to a level (`passthrough`=debug, `brokered`=info, `blocked`=warn, `error`=error), so this doubles as the activity filter: `debug` shows everything, the default `info` hides passthrough, `warn` shows only blocked and errors.
+    Controls how much is logged. Each [activity decision](/documentation/platform/agent-proxy/activity-logs) maps to a level (`passthrough`=debug, `canceled`=debug, `brokered`=info, `blocked`=warn, `error`=error), so this doubles as the activity filter: `debug` shows everything, the default `info` hides passthrough and canceled requests, `warn` shows only blocked and errors.
 
     ```bash
     # Example
