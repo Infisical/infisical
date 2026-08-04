@@ -42,9 +42,12 @@ export const NativeIntegrationDeprecationTemplate = ({
               <strong>{projects.length}</strong> projects in <strong>{orgName}</strong> still use native integrations.
             </>
           )}{" "}
-          Native Integrations are being retired on <strong>{deprecationDate}</strong>. Secret Syncs are the new,
-          recommended way to sync secrets to third-party services, offering more features and supporting all the same
-          services. Your existing integrations keep working until then.
+          Native Integrations are being retired on <strong>{deprecationDate}</strong> and you can learn more about it on{" "}
+          <BaseLink href="https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration">
+            Migrating Native Integrations
+          </BaseLink>
+          . Secret Syncs are the new, recommended way to sync secrets to third-party services, offering more features
+          and supporting all the same services. Your existing integrations keep working until then.
         </Text>
       </Section>
       <Section className="mb-[28px]">
@@ -64,7 +67,7 @@ export const NativeIntegrationDeprecationTemplate = ({
         ))}
       </Section>
       <Section className="text-center">
-        <BaseButton href="https://infisical.com/docs/integrations/secret-syncs/overview">
+        <BaseButton href="https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration">
           Migrate to Secret Syncs
         </BaseButton>
       </Section>

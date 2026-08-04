@@ -1,6 +1,6 @@
 import { groupBy, unique } from "@app/lib/fn";
 
-export const NATIVE_INTEGRATION_DEPRECATION_DATE = "February 1, 2027";
+export const NATIVE_INTEGRATION_DEPRECATION_DATE = "August 5, 2027";
 
 /**
  * Returned by the create-integration endpoint, which is closed ahead of the deprecation date. Kept next to the date so
@@ -9,7 +9,7 @@ export const NATIVE_INTEGRATION_DEPRECATION_DATE = "February 1, 2027";
  */
 export const NATIVE_INTEGRATION_DEPRECATION_MESSAGE =
   `Native Integrations are being retired on ${NATIVE_INTEGRATION_DEPRECATION_DATE} and new ones can no longer be created. ` +
-  `Use Secret Syncs instead: https://infisical.com/docs/integrations/secret-syncs/overview. ` +
+  `Use Secret Syncs instead: https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration. ` +
   `If the service you need isn't available as a Secret Sync, contact team@infisical.com. ` +
   `Your existing integrations keep working until then.`;
 

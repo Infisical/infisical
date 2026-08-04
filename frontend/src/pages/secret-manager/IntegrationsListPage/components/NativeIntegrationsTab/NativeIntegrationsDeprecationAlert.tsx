@@ -18,10 +18,18 @@ export const NativeIntegrationsDeprecationAlert = () => {
       <TriangleAlertIcon />
       <AlertTitle>Migrate to Secret Syncs</AlertTitle>
       <AlertDescription className="inline">
-        Native Integrations are being retired on {NATIVE_INTEGRATION_DEPRECATION_DATE}. Secret Syncs
-        are the new, recommended way to sync secrets to third-party services, offering more features
-        and supporting all the same services. Your existing integrations keep working until then. Go
-        to{" "}
+        Native Integrations are being retired on{" "}
+        <a
+          href="https://infisical.com/docs/integrations/secret-syncs/native-integrations-migration"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          {NATIVE_INTEGRATION_DEPRECATION_DATE}
+        </a>
+        . Secret Syncs are the new, recommended way to sync secrets to third-party services,
+        offering more features and supporting all the same services. Your existing integrations keep
+        working until then. Go to{" "}
         <Link
           to={ROUTE_PATHS.SecretManager.IntegrationsListPage.path}
           params={{ orgId: currentOrg.id, projectId: currentProject.id }}
