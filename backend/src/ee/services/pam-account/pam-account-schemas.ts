@@ -54,6 +54,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
     icon: "Postgres.png",
+    connectionStringSchemes: ["postgres", "postgresql"],
     connectionDetails: z.object({
       host: z.string().trim().min(1).max(255),
       port: z.coerce.number(),
@@ -626,6 +627,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
       name: string;
       icon: string;
       requiresGateway?: boolean;
+      connectionStringSchemes?: readonly string[];
       connectionDetails: z.ZodTypeAny;
       credentials: z.ZodTypeAny;
       sanitizedCredentials: z.ZodTypeAny;
@@ -852,6 +854,13 @@ export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean
   return config?.requiresGateway !== false;
 };
 
+const accountTypeConnectionStringSchemes = (accountType: PamAccountType): string[] | undefined => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
+    | { connectionStringSchemes?: readonly string[] }
+    | undefined;
+  return config?.connectionStringSchemes ? [...config.connectionStringSchemes] : undefined;
+};
+
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;
   gatewayId?: string | null;
@@ -933,6 +942,8 @@ export const PamAccountTypeMetadataSchema = z.object({
   supportsWebAccess: z.boolean(),
   requiresGateway: z.boolean(),
   supportsDependencies: z.boolean(),
+
+  connectionStringSchemes: z.array(z.string()).optional(),
   connectionFields: z.array(PamFieldDescriptorSchema),
   credentialFields: z.array(PamFieldDescriptorSchema),
   applicablePolicies: z.array(PamPolicyDescriptorSchema)
@@ -1090,6 +1101,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     supportsWebAccess: webAccessSupportedTypes.has(type),
     requiresGateway: accountTypeRequiresGateway(type),
     supportsDependencies: isWindowsRotatableType(type),
+    connectionStringSchemes: accountTypeConnectionStringSchemes(type),
     connectionFields: fieldsFromSchema(config.connectionDetails, config.ui),
     credentialFields: fieldsFromSchema(config.credentials, config.ui),
     applicablePolicies: getApplicablePolicies(type)

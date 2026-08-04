@@ -81,6 +81,12 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("only advertises connection string schemes for types that accept them", () => {
+    expect(byType.get(PamAccountType.Postgres)?.connectionStringSchemes).toEqual(["postgres", "postgresql"]);
+    expect(byType.get(PamAccountType.MySQL)?.connectionStringSchemes).toBeUndefined();
+    expect(byType.get(PamAccountType.SSH)?.connectionStringSchemes).toBeUndefined();
+  });
+
   test("derives MySQL connection and credential fields from the schema", () => {
     const mysql = byType.get(PamAccountType.MySQL);
     expect(mysql).toBeDefined();

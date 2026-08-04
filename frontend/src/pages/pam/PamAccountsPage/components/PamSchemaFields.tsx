@@ -21,10 +21,17 @@ import { PamPasswordInput } from "./PamPasswordInput";
 
 type NamePrefix = "connectionDetails" | "credentials";
 
+export type TSmartPaste = {
+  fieldKey: string;
+  hint: string;
+  onPaste: (text: string) => boolean;
+};
+
 type Props = {
   control: Control<TAccountFormValues>;
   namePrefix: NamePrefix;
   fields: TPamFieldDescriptor[];
+  smartPaste?: TSmartPaste;
 };
 
 const RequiredMark = () => <span className="text-product-pam">*</span>;
@@ -49,6 +56,7 @@ type FieldProps = {
   field: ControllerRenderProps<TAccountFormValues>;
   descriptor: TPamFieldDescriptor;
   isError: boolean;
+  smartPaste?: TSmartPaste;
 };
 
 const fieldValueAsString = (value: unknown): string => {
@@ -57,7 +65,7 @@ const fieldValueAsString = (value: unknown): string => {
   return String(value);
 };
 
-const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
+const FieldWidget = ({ field, descriptor, isError, smartPaste }: FieldProps) => {
   if (descriptor.secret) {
     return (
       <PamPasswordInput
@@ -109,12 +117,29 @@ const FieldWidget = ({ field, descriptor, isError }: FieldProps) => {
   }
 
   return (
-    <Input value={fieldValueAsString(field.value)} onChange={field.onChange} isError={isError} />
+    <Input
+      value={fieldValueAsString(field.value)}
+      onChange={field.onChange}
+      isError={isError}
+      placeholder={smartPaste?.hint}
+      onPaste={
+        smartPaste &&
+        ((e) => {
+          const { value, selectionStart, selectionEnd } = e.currentTarget;
+          const isReplacingWholeValue =
+            !value || (selectionStart === 0 && selectionEnd === value.length);
+          if (!isReplacingWholeValue) return;
+
+          const text = e.clipboardData.getData("text");
+          if (text.trim() && smartPaste.onPaste(text)) e.preventDefault();
+        })
+      }
+    />
   );
 };
 
 // Renders connection/credential fields from backend-supplied metadata
-export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
+export const PamSchemaFields = ({ control, namePrefix, fields, smartPaste }: Props) => {
   const values = (useWatch({ control, name: namePrefix }) ?? {}) as Record<string, unknown>;
   const visibleFields = fields.filter(
     (field) => !field.showWhen || values[field.showWhen.field] === field.showWhen.equals
@@ -149,7 +174,12 @@ export const PamSchemaFields = ({ control, namePrefix, fields }: Props) => {
                   <FieldTooltip text={descriptor.tooltip} />
                 </FieldLabel>
                 <FieldContent>
-                  <FieldWidget field={field} descriptor={descriptor} isError={!!fieldState.error} />
+                  <FieldWidget
+                    field={field}
+                    descriptor={descriptor}
+                    isError={!!fieldState.error}
+                    smartPaste={smartPaste?.fieldKey === descriptor.key ? smartPaste : undefined}
+                  />
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>

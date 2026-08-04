@@ -168,6 +168,7 @@ export type TPamAccountTypeMetadata = {
   supportsWebAccess: boolean;
   requiresGateway: boolean;
   supportsDependencies: boolean;
+  connectionStringSchemes?: string[];
   connectionFields: TPamFieldDescriptor[];
   credentialFields: TPamFieldDescriptor[];
   applicablePolicies: TPamPolicyDescriptor[];
