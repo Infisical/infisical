@@ -3,10 +3,15 @@ import RE2 from "re2";
 const escapeBackslash = new RE2(/\\/, "g");
 const escapeQuote = new RE2(/"/, "g");
 
-// C0 and C1 control bytes. Stored values reach an xterm session that would otherwise
-// act on them, so render them printable the way redis-cli does.
+// CRLF is only a line ending, so normalize it and let the newline through
+const crlf = new RE2(/\r\n/, "g");
+
+// every control byte except tab and newline. A reply reaches an xterm session that
+// would otherwise act on it: ESC starts an escape sequence, and a lone CR returns to
+// column zero, letting a reply overwrite the line above it. Tab and newline are safe
+// and keep multi-line replies such as INFO readable.
 // eslint-disable-next-line no-control-regex
-const controlBytes = new RE2(/[\u0000-\u001f\u007f-\u009f]/, "g");
+const controlBytes = new RE2(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/, "g");
 
 // redis-cli uses the short forms for the common ones and hex for the rest
 const SHORT_ESCAPES: Record<string, string> = {
@@ -19,7 +24,8 @@ const SHORT_ESCAPES: Record<string, string> = {
 
 const toEscape = (ch: string): string => SHORT_ESCAPES[ch] ?? `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`;
 
-export const escapeTerminalControlBytes = (str: string): string => str.replace(controlBytes, toEscape);
+export const escapeTerminalControlBytes = (str: string): string =>
+  str.replace(crlf, "\n").replace(controlBytes, toEscape);
 
 // the reverse of SHORT_ESCAPES, for parsing what the user types
 const INPUT_ESCAPES: Record<string, string> = {

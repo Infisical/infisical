@@ -160,17 +160,31 @@ describe("formatRedisReply", () => {
     expect(formatRedisReply("hello world 123")).toBe('"hello world 123"');
   });
 
-  it("uses short escapes for newline, tab and carriage return like redis-cli", () => {
-    expect(formatRedisReply("line1\nline2")).toBe('"line1\\nline2"');
-    expect(formatRedisReply("a\tb")).toBe('"a\\tb"');
+  it("lets newline and tab through so multi-line replies stay readable", () => {
+    expect(formatRedisReply("line1\nline2")).toBe('"line1\nline2"');
+    expect(formatRedisReply("a\tb")).toBe('"a\tb"');
+  });
+
+  it("normalizes CRLF to a single newline", () => {
+    expect(formatRedisReply("a\r\nb")).toBe('"a\nb"');
+  });
+
+  it("escapes a lone CR, which could otherwise overwrite the line above", () => {
+    expect(formatRedisReply("a\rb")).toBe('"a\\rb"');
+  });
+
+  it("still escapes ESC and other control bytes", () => {
+    expect(formatRedisReply("a\u001b[2Jb")).toBe('"a\\x1b[2Jb"');
+    expect(formatRedisReply("a\u0007b")).toBe('"a\\x07b"');
+    expect(formatRedisReply("a\u0000b")).toBe('"a\\x00b"');
   });
 });
 
 describe("round trip: what you type comes back the same way", () => {
-  it("translates \\n on input and renders it back as \\n", () => {
+  it("translates \\n on input and keeps it as a real newline coming back", () => {
     const [, , value] = tokenizeRedisInput('SET k "a\\nb"');
     expect(value).toBe("a\nb");
-    expect(formatRedisReply(value)).toBe('"a\\nb"');
+    expect(formatRedisReply(value)).toBe('"a\nb"');
   });
 
   it("translates \\t and \\xHH on input", () => {
