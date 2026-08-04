@@ -4,7 +4,7 @@
   "name": "Infisical",
   "colors": {
     "primary": "#26272b",
-    "light": "#97b31d",
+    "light": "#EFFF33",
     "dark": "#A1B659"
   },
   "styling": {
@@ -4188,10 +4188,6 @@
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
-  },
-  "appearance": {
-    "default": "light",
-    "strict": true
   },
   "background": {
     "color": {
