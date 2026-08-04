@@ -347,7 +347,9 @@ Without `--log-file` you still see problems: warnings and errors print to your t
   <Accordion title="The agent cannot read a file it needs">
     It is probably in a denied credential path. Re-open just that file with `--allow-read <path>`. Reach for `--no-sandbox` last, not first.
 
-    Agents that have a sandbox of their own often blame it for the denial and run the command again with that sandbox off, which changes nothing here: this sandbox still applies, and the command fails the same way. If your agent is set to refuse to start when its own sandbox is unavailable, turn that setting off, since it cannot start one inside this one on macOS.
+    Some agents run a sandbox of their own inside this one, and a denied file looks the same in both. Faced with one, an agent will often assume its own sandbox is too strict and run the command a second time with that sandbox switched off. That does not help: this sandbox is still in force, so the command fails exactly as it did the first time.
+
+    On macOS an agent usually cannot start its own sandbox at all under `run`, because macOS does not allow a second sandbox inside an existing one. Most agents warn about it and carry on without it, which costs you nothing, since this sandbox is the one protecting your credentials. If your agent is set to quit when its sandbox is unavailable, switch that off before you run it here.
   </Accordion>
 </AccordionGroup>
 
