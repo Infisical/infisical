@@ -1,13 +1,15 @@
 import { z } from "zod";
 
 import { SecretValidationRulesSchema } from "@app/db/schemas";
+import { DynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers/models";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SECRET_VALIDATION_RULES } from "@app/lib/api-docs";
 
 import {
   ConstraintTarget,
   ConstraintType,
-  DynamicSecretRuleProvider,
-  SecretRotationRuleProvider,
+  // DynamicSecretRuleProvider,
+  // SecretRotationRuleProvider,
   SecretValidationRuleType,
   TSecretValidationRuleInputs
 } from "./secret-validation-rule-types";
@@ -46,17 +48,6 @@ const preventValueReuseRangeRefinement = (c: z.infer<typeof baseConstraintSchema
   return Number.isInteger(num) && num >= 1 && num <= MAX_PREVENT_VALUE_REUSE_VERSIONS;
 };
 
-export const constraintSchema = baseConstraintSchema
-  .refine(valueRequiredRefinement, { message: "Value is required", path: ["value"] })
-  .refine(preventValueReuseTargetRefinement, {
-    message: "No value reuse constraint can only apply to secret values",
-    path: ["appliesTo"]
-  })
-  .refine(preventValueReuseRangeRefinement, {
-    message: `Prevent value reuse version count must be between 1 and ${MAX_PREVENT_VALUE_REUSE_VERSIONS}`,
-    path: ["value"]
-  });
-
 const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) => {
   const allowedTargets =
     ruleType === SecretValidationRuleType.StaticSecrets ? STATIC_RULE_TARGETS : GENERATED_RULE_TARGETS;
@@ -94,7 +85,7 @@ export const staticSecretsInputsSchema = z.object({
 
 export const dynamicSecretsInputsSchema = z.object({
   providers: z
-    .array(z.nativeEnum(DynamicSecretRuleProvider))
+    .array(z.nativeEnum(DynamicSecretProviders))
     .min(1, "Select at least one provider")
     .describe(SECRET_VALIDATION_RULES.RULE.dynamicSecretProviders),
   constraints: z
@@ -105,7 +96,7 @@ export const dynamicSecretsInputsSchema = z.object({
 
 export const secretRotationsInputsSchema = z.object({
   providers: z
-    .array(z.nativeEnum(SecretRotationRuleProvider))
+    .array(z.nativeEnum(SecretRotation))
     .min(1, "Select at least one provider")
     .describe(SECRET_VALIDATION_RULES.RULE.secretRotationProviders),
   constraints: z

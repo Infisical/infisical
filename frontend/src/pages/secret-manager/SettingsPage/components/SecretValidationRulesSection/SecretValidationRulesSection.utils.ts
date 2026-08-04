@@ -243,8 +243,7 @@ export const ruleFormSchema = z.object({
   description: z.string().max(500).optional(),
   environment: z.string().nullable().default(null),
   folderPath: z.string().min(1, "Folder path is required").default("/**"),
-  // Constraints (and providers for generated-credential rules) sit directly on
-  // the enforcement object, matching the API shape — no nested `inputs` wrapper.
+  // Mirrors the API rule config shape (see backend `SecretValidationRuleSchema`).
   enforcement: z.discriminatedUnion("type", [
     z.object({ type: z.literal(RuleType.StaticSecrets), ...staticSecretsInputsSchema.shape }),
     z.object({ type: z.literal(RuleType.DynamicSecrets), ...dynamicSecretsInputsSchema.shape }),

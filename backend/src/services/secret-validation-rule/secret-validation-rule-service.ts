@@ -38,10 +38,7 @@ import {
 // type-specific fields flattened alongside `type`. Selecting explicitly keeps
 // `encryptedInputs` (and any column added later) out of responses rather than
 // relying on the response schema to strip it.
-const $toRuleRecord = (
-  rule: TSecretValidationRules,
-  inputs: TSecretValidationRuleInputs
-): TSecretValidationRuleRecord =>
+const $toRuleRecord = (rule: TSecretValidationRules, inputs: TSecretValidationRuleInputs) =>
   ({
     id: rule.id,
     name: rule.name,
@@ -52,7 +49,7 @@ const $toRuleRecord = (
     isActive: rule.isActive,
     createdAt: rule.createdAt,
     updatedAt: rule.updatedAt,
-    type: rule.type as SecretValidationRuleType,
+    type: rule.type,
     ...inputs
   }) as TSecretValidationRuleRecord;
 
@@ -156,10 +153,11 @@ export const secretValidationRuleServiceFactory = ({
       );
     }
 
-    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: ruleInputsEncryptor, decryptor: ruleInputsDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
     const existingRules = await secretValidationRuleDAL.find({ projectId });
     checkForOverlappingRules({
@@ -178,11 +176,6 @@ export const secretValidationRuleServiceFactory = ({
           JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
         )
       }))
-    });
-
-    const { encryptor: ruleInputsEncryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
     });
 
     const { cipherTextBlob: encryptedRuleInputs } = ruleInputsEncryptor({
@@ -241,27 +234,21 @@ export const secretValidationRuleServiceFactory = ({
       }
     }
 
-    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: ruleInputsEncryptor, decryptor: ruleInputsDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
 
-    const decryptedExistingRuleInputs = ruleInputsDecryptor({
-      cipherTextBlob: existingRule.encryptedInputs
-    });
-
-    // `rule` carries `type` alongside the per-type fields, so an update either
-    // replaces the whole config or leaves the stored one untouched. Only the
-    // fields other than `type` are stored in `encryptedInputs`.
+    // An update either replaces the whole config or leaves the stored one
+    // untouched. `type` has its own column and the per-type input schemas strip
+    // it, so the incoming config can go straight in — only the per-type input
+    // fields reach the blob.
     const ruleType = rule?.type ?? existingRule.type;
-    let ruleInputs: unknown;
-    if (rule) {
-      const { type, ...inputsFromRule } = rule;
-      ruleInputs = inputsFromRule;
-    } else {
-      ruleInputs = JSON.parse(decryptedExistingRuleInputs.toString()) as unknown;
-    }
-    const parsedInputs = parseSecretValidationRuleInputs(ruleType, ruleInputs);
+    const parsedInputs = parseSecretValidationRuleInputs(
+      ruleType,
+      rule ?? (JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown)
+    );
 
     if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
       assertConstraintsProduceSafePasswords(
@@ -292,34 +279,19 @@ export const secretValidationRuleServiceFactory = ({
       excludeRuleId: ruleId
     });
 
-    let updatedRuleInputs: Buffer | undefined;
-
-    if (rule) {
-      const { encryptor: ruleInputsEncryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-
-      const { cipherTextBlob: encryptedRuleInputs } = ruleInputsEncryptor({
-        plainText: Buffer.from(JSON.stringify(parsedInputs))
-      });
-      updatedRuleInputs = encryptedRuleInputs;
-    }
+    // The rule config moves as a unit: `type` and the re-encrypted inputs are
+    // written together, or neither is.
+    const encryptedInputs = rule
+      ? ruleInputsEncryptor({ plainText: Buffer.from(JSON.stringify(parsedInputs)) }).cipherTextBlob
+      : undefined;
 
     const updatedRule = await secretValidationRuleDAL.updateById(ruleId, {
+      ...dto,
       ...(envId !== undefined && { envId }),
-      ...(Boolean(updatedRuleInputs) && { encryptedInputs: updatedRuleInputs }),
-      ...(rule && { type: rule.type }),
-      ...dto
+      ...(rule && { type: rule.type, encryptedInputs })
     });
 
-    return $toRuleRecord(
-      updatedRule,
-      parseSecretValidationRuleInputs(
-        updatedRule.type,
-        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: updatedRule.encryptedInputs }).toString()) as unknown
-      )
-    );
+    return $toRuleRecord(updatedRule, parsedInputs);
   };
 
   const deleteRule = async ({
@@ -387,6 +359,8 @@ export const secretValidationRuleServiceFactory = ({
     const rules = await secretValidationRuleDAL.find({ projectId, isActive: true });
     if (!rules.length) return;
 
+    // Secret values and rule inputs share the SecretManager data key, so one
+    // cipher pair serves both — this runs on every secret write.
     const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
@@ -400,16 +374,11 @@ export const secretValidationRuleServiceFactory = ({
       canExpandValue: () => true
     });
 
-    const { decryptor: ruleInputsDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
-
     const parsedRules = rules.map((r) => ({
       ...r,
       inputs: parseSecretValidationRuleInputs(
         r.type,
-        JSON.parse(ruleInputsDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
+        JSON.parse(secretManagerDecryptor({ cipherTextBlob: r.encryptedInputs }).toString()) as unknown
       )
     }));
 

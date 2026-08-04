@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  CopyIcon,
   EllipsisVerticalIcon,
   InfoIcon,
   PencilIcon,
@@ -73,15 +74,13 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  SecretValidationRuleType,
+  TSecretValidationRuleConfig,
   useCreateSecretValidationRule,
   useDeleteSecretValidationRule,
   useListSecretValidationRules,
   useUpdateSecretValidationRule
 } from "@app/hooks/api/secretValidationRules";
-import {
-  SecretValidationRuleType,
-  TSecretValidationRuleConfig
-} from "@app/hooks/api/secretValidationRules/types";
 
 import { ConstraintCard } from "./ConstraintCard";
 import {
@@ -584,7 +583,7 @@ export const SecretValidationRulesSection = () => {
         enforcement: {
           type: editingRule.type as string as RuleType,
           constraints: editingRule.constraints,
-          ...("providers" in editingRule ? { providers: editingRule.providers } : {})
+          ...("providers" in editingRule && { providers: editingRule.providers })
         }
       } as Partial<TRuleForm>)
     : undefined;
@@ -718,6 +717,18 @@ export const SecretValidationRulesSection = () => {
                           </IconButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigator.clipboard.writeText(rule.id);
+                              createNotification({
+                                text: "Rule ID copied to clipboard",
+                                type: "success"
+                              });
+                            }}
+                          >
+                            <CopyIcon className="mr-2 size-4" />
+                            Copy Rule ID
+                          </DropdownMenuItem>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
                             a={ProjectPermissionSub.Settings}
