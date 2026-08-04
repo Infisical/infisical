@@ -493,7 +493,8 @@ export const NetworkingAuthMethodForm = ({
                     </TooltipTrigger>
                     <TooltipContent className="max-w-md">
                       The PEM-encoded CA certificate that issued the Kubernetes API server&apos;s
-                      TLS certificate. Required for TLS certificate verification to take effect.
+                      TLS certificate. Needed whenever the server uses a certificate the system
+                      trust store does not recognise, which is the usual case for a cluster CA.
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>

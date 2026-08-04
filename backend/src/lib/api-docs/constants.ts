@@ -3807,7 +3807,7 @@ export const GATEWAYS = {
     kubernetesHost:
       "The URL of the Kubernetes API server that Infisical reviews the gateway's service account token against (e.g. https://my-cluster.example.com:6443).",
     caCertificate:
-      "The PEM-encoded CA certificate of the Kubernetes API server. Required to verify the API server's TLS certificate. Write-only: never returned by the API.",
+      "The PEM-encoded CA certificate that issued the Kubernetes API server's TLS certificate. Required when the API server uses a certificate the system trust store does not recognise, which is the usual case for a cluster CA.",
     tokenReviewerJwt:
       "A long-lived service account token with the system:auth-delegator ClusterRole used to submit TokenReview requests. Omit to have the gateway's own token act as the reviewer. Write-only: never returned by the API.",
     allowedNamespaces:
@@ -3817,7 +3817,7 @@ export const GATEWAYS = {
     allowedAudience:
       "The audience the gateway's service account token must carry. Leave empty to skip the audience check.",
     verifyTlsCertificate:
-      "Whether to verify the Kubernetes API server's TLS certificate. Only takes effect when a CA certificate is configured."
+      "Whether to verify the Kubernetes API server's TLS certificate. Verified against the CA certificate when one is configured, otherwise against the system trust store."
   },
   LOGIN: {
     gatewayId: "The ID of the gateway logging in (AWS and Kubernetes methods only).",

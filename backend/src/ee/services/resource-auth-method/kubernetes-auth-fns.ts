@@ -1,14 +1,13 @@
 import { isIP } from "node:net";
 
 import { AxiosError } from "axios";
-import https from "https";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   handleAxiosError,
   KubernetesAuthErrorContext
@@ -39,12 +38,6 @@ export const assertKubernetesHostAllowed = async (kubernetesHost: string) => {
   }
 };
 
-// Verification is impossible without a CA, since cluster CAs are in no public trust store.
-export const resolveEffectiveVerifyTlsCertificate = (caCertificate: string, storedVerify: boolean) => {
-  if (!caCertificate.length) return false;
-  return storedVerify;
-};
-
 // Surfaces a bad host or reviewer when the config is saved rather than when a gateway later
 // fails to start. Makes network calls, so call it outside a transaction.
 export const validateKubernetesConfigReachable = async ({
@@ -59,12 +52,10 @@ export const validateKubernetesConfigReachable = async ({
   verifyTlsCertificate: boolean;
 }) => {
   const host = kubernetesHost.startsWith("https://") ? kubernetesHost : `https://${kubernetesHost}`;
-  const effectiveVerify = resolveEffectiveVerifyTlsCertificate(caCertificate ?? "", verifyTlsCertificate);
-
   await validateKubernetesHostConnectivity({
     kubernetesHost: host,
     caCert: caCertificate,
-    verifyTlsCertificate: effectiveVerify
+    verifyTlsCertificate
   });
 
   if (tokenReviewerJwt) {
@@ -72,7 +63,7 @@ export const validateKubernetesConfigReachable = async ({
       kubernetesHost: host,
       tokenReviewerJwt,
       caCert: caCertificate,
-      verifyTlsCertificate: effectiveVerify
+      verifyTlsCertificate
     });
   }
 };
@@ -113,7 +104,7 @@ export const reviewServiceAccountToken = async ({
 
   let review: TCreateTokenReviewResponse;
   try {
-    const res = await request.post<TCreateTokenReviewResponse>(
+    const res = await safeRequest.post<TCreateTokenReviewResponse>(
       `${baseUrl}/apis/authentication.k8s.io/v1/tokenreviews`,
       {
         apiVersion: "authentication.k8s.io/v1",
@@ -132,11 +123,11 @@ export const reviewServiceAccountToken = async ({
         },
         signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
         timeout: TOKEN_REVIEW_TIMEOUT_MS,
-        httpsAgent: new https.Agent({
-          ca: caCertificate || undefined,
-          rejectUnauthorized: resolveEffectiveVerifyTlsCertificate(caCertificate, verifyTlsCertificate),
-          servername: toServerName(kubernetesHost)
-        })
+        // safeRequest pins the connection to the addresses it validated, so a hostname that
+        // re-resolves to a private address between config time and login cannot be reached.
+        ca: caCertificate || undefined,
+        rejectUnauthorized: verifyTlsCertificate,
+        servername: toServerName(kubernetesHost)
       }
     );
     review = res.data;

@@ -166,7 +166,7 @@ This guide covers everything you need to deploy and configure Infisical Gateways
         | **Allowed Namespaces** | Namespaces whose service accounts may authenticate as this gateway. Supports `*` wildcards. |
         | **Allowed Service Account Names** | Service account names that may authenticate as this gateway. Supports `*` wildcards. |
         | **Allowed Audience** | Optional. The audience the token must carry. |
-        | **CA Certificate** | Optional, but required to verify the API server's TLS certificate. |
+        | **CA Certificate** | The CA that issued the API server's certificate. Needed unless that certificate is already trusted by the public trust store, which for a cluster CA it will not be. |
         | **Token Reviewer JWT** | Optional. A token with the `system:auth-delegator` ClusterRole. Leave empty to let the gateway's own service account review its token, which the Helm chart configures by default. |
 
         At least one of **Allowed Namespaces** or **Allowed Service Account Names** must be set, so that not every pod in the cluster can enroll as the gateway.

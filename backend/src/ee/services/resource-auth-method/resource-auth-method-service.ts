@@ -443,16 +443,40 @@ export const resourceAuthMethodServiceFactory = ({
     let encryptedKubernetesSecrets: TEncryptedKubernetesSecrets = {};
     if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
       await assertKubernetesHostAllowed(authMethod.kubernetesHost);
-      // A stored reviewer is left alone; it was already checked when it was set.
-      await validateKubernetesConfigReachable({
-        kubernetesHost: authMethod.kubernetesHost,
-        caCertificate: authMethod.caCertificate,
-        tokenReviewerJwt: authMethod.tokenReviewerJwt,
-        verifyTlsCertificate: authMethod.verifyTlsCertificate
-      });
 
       // Switching in from another method has no stored secret to preserve, so omitted means null.
       const isMethodChange = previousMethod !== ResourceAuthMethodType.Kubernetes;
+
+      // Validate against the credentials that will actually be stored. An omitted secret keeps the
+      // stored one, so validating with only what this request carried would check a different
+      // config than the one a gateway later logs in with.
+      let effectiveCa = authMethod.caCertificate;
+      let effectiveReviewer = authMethod.tokenReviewerJwt;
+      if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
+        const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
+        const needsCa = effectiveCa === undefined && stored?.encryptedKubernetesCaCertificate;
+        const needsReviewer = effectiveReviewer === undefined && stored?.encryptedKubernetesTokenReviewerJwt;
+        if (stored && (needsCa || needsReviewer)) {
+          const { decryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.Organization,
+            orgId: actor.orgId
+          });
+          if (needsCa && stored.encryptedKubernetesCaCertificate) {
+            effectiveCa = decryptor({ cipherTextBlob: stored.encryptedKubernetesCaCertificate }).toString();
+          }
+          if (needsReviewer && stored.encryptedKubernetesTokenReviewerJwt) {
+            effectiveReviewer = decryptor({ cipherTextBlob: stored.encryptedKubernetesTokenReviewerJwt }).toString();
+          }
+        }
+      }
+
+      await validateKubernetesConfigReachable({
+        kubernetesHost: authMethod.kubernetesHost,
+        caCertificate: effectiveCa,
+        tokenReviewerJwt: effectiveReviewer,
+        verifyTlsCertificate: authMethod.verifyTlsCertificate
+      });
+
       encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.orgId, {
         caCertificate: authMethod.caCertificate ?? (isMethodChange ? "" : undefined),
         tokenReviewerJwt: authMethod.tokenReviewerJwt ?? (isMethodChange ? "" : undefined)
