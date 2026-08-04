@@ -264,21 +264,21 @@ A placeholder wins over a variable of the same name from your own environment, a
 
 ### Agents that sandbox themselves
 
-Some agents come with a sandbox of their own. Claude Code restricts the shell commands it runs, and other agents offer something similar, often built on the same operating system features `run` uses. That layer is configured in the agent and is independent of this one.
+Some agents have a sandbox of their own. Claude Code limits the shell commands it runs, and other agents do something similar. That sandbox is set up inside the agent, separately from this one.
 
-The sandbox on this page is the one that protects your credentials. `run` applies it to the agent process before the agent starts, and the operating system extends it to every command the agent runs and everything those commands spawn. No setting inside the agent can widen it.
+This is the sandbox that protects your credentials. `run` applies it to the agent process before the agent starts, and the operating system extends it to everything the agent runs. No setting inside the agent can widen it.
 
-Knowing which layer you are looking at matters when a command fails, because both produce the same `operation not permitted`:
+Both sandboxes fail the same way, with `operation not permitted`, so it helps to know which one you are looking at:
 
-- An agent that hits a denied path often reads it as its own sandbox being too strict, and reruns the command with that sandbox turned off. In Claude Code this is `dangerouslyDisableSandbox`.
-- The rerun leaves the agent's own sandbox, not this one, so the command fails exactly as before.
-- A denial that survives one of those retries comes from the deny list above. Open the specific file with `--allow-read` if the agent genuinely needs it.
+- An agent that hits a denied path often assumes its own sandbox is at fault and runs the command again with that sandbox off. Claude Code calls this `dangerouslyDisableSandbox`.
+- The second try leaves the agent's sandbox, not this one, so it fails again.
+- A denial that survives the retry comes from the deny list above. If the agent really needs the file, open it with `--allow-read`.
 
 <Note>
-  On macOS an agent's own sandbox usually cannot start under `run`, because a second Seatbelt profile cannot be applied inside the first. Agents normally warn and continue without it, and nothing is lost, since this sandbox is unaffected. If yours is set to refuse to start when its sandbox is unavailable, turn that setting off for sessions you run behind the proxy.
+  On macOS an agent's own sandbox usually cannot start under `run`, because macOS does not allow one sandbox inside another. Agents normally warn and carry on without it, and nothing is lost, since this sandbox still applies. If your agent is set to refuse to start without its sandbox, turn that off.
 </Note>
 
-An agent's own sandbox is still worth configuring for the sessions you run **without** `run`, where it is the only boundary in place.
+Configure your agent's own sandbox for the sessions you run **without** `run`, where it is your only boundary.
 
 ## Certificates and the macOS keychain prompt
 
@@ -324,7 +324,7 @@ Every request records a decision: `brokered` (a service matched and a credential
 
 Without `--log-file` you still see problems: warnings and errors print to your terminal, including a credential the proxy had to skip and a dropped authorization. What you lose is the per-request trail, so reach for `--log-file` when you need to see what happened on a specific request.
 
-`passthrough` and `canceled` are the two decisions left out by default. Passthrough is usually the bulk of an agent's traffic, so leaving it out keeps a log small, and a cancellation means the agent hung up rather than that anything failed. `--log-level debug` adds both, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
+`passthrough` and `canceled` are left out by default. Passthrough is usually most of an agent's traffic, so leaving it out keeps a log small, and a cancellation just means the agent hung up. `--log-level debug` adds both, which is useful when you are working out why a host is not being brokered and noisy the rest of the time.
 
 <Note>
   A path you pass to `--log-file` is appended to on every run and never rotated for you, so rotate it with `logrotate` (`copytruncate`) if you keep one around.
@@ -351,9 +351,9 @@ Without `--log-file` you still see problems: warnings and errors print to your t
     The same pattern applies to any tool with a config-directory override.
   </Accordion>
   <Accordion title="The agent asks me to log in again inside the sandbox">
-    The keychain is blocked, so an agent that keeps its own login there cannot read it inside the sandbox. An agent that keeps it in a file under its state directory is unaffected, since those directories stay readable and writable. Claude Code, for instance, starts already signed in when `~/.claude/.credentials.json` is present.
+    The keychain is blocked, so an agent that keeps its login there cannot read it inside the sandbox. An agent that keeps it in a file is fine, since its state directory stays readable: Claude Code starts already signed in when `~/.claude/.credentials.json` exists.
 
-    Where your agent stores its login is up to the agent, so check for that file first. If it is keychain-backed, pass a token through the environment rather than re-opening the keychain, for example `--pass-env ANTHROPIC_API_KEY`. That name matches the secret-shaped sweep, so it has to be passed through explicitly.
+    Check for that file first. If your agent is keychain-backed, pass a token in with `--pass-env ANTHROPIC_API_KEY` instead of re-opening the keychain.
   </Accordion>
   <Accordion title="Everything is passthrough, nothing is brokered">
     No proxied service matched the host. Check the [host pattern](/documentation/platform/agent-proxy/proxied-services#host-patterns) against the exact hostname the agent calls, that the service is enabled, and that you are pointed at the folder the service lives in.

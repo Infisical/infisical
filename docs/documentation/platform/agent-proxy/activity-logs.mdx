@@ -48,7 +48,7 @@ Each decision is logged at a level, so `--log-level` controls how much you see: 
 | `blocked` | warn |
 | `error` | error |
 
-`canceled` means the agent hung up before the request finished, which happens whenever you interrupt a prompt or the agent exits with calls in flight. Nothing failed, and there was no one left to return a response to, so these sit at debug alongside passthrough and stay off your terminal. A request that genuinely failed, because the upstream was unreachable or permissions could not be resolved, is still an `error`.
+`canceled` means the agent hung up before the request finished, which happens when you interrupt a prompt or the agent exits mid-request. Nothing failed and there was nobody left to answer, so these stay at debug and off your terminal. A request that really failed, an unreachable upstream or permissions that could not be resolved, is still an `error`.
 
 ## Where the records go
 
