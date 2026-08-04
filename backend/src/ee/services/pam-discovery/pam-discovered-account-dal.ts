@@ -50,7 +50,8 @@ export const pamDiscoveredAccountDALFactory = (db: TDbClient) => {
   };
 
   // Imported accounts this source no longer finds in the environment, joined to the managed account for its
-  // current name/folder (the review surface for blocked accounts). Staged rows are never stale (they're deleted).
+  // current name/folder. Informational: nothing about these accounts is blocked, this is just the review surface
+  // for cleaning them up. Never-imported rows are deleted rather than flagged, so staged rows aren't stale.
   const listStale = async (
     discoverySourceId: string,
     { search, offset, limit }: { search?: string; offset?: number; limit?: number } = {}

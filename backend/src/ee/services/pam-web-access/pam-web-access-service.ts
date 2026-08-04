@@ -190,10 +190,6 @@ export const pamWebAccessServiceFactory = ({
       }
     );
 
-    if (account.isStale) {
-      throw new ForbiddenRequestError({ message: "This account is no longer available in the environment" });
-    }
-
     let grantRemainingMs: number | null = null;
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({

@@ -76,6 +76,7 @@ import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
+import { AccountStaleBadge } from "../../components/AccountStaleBadge";
 import { PamMemberKind, PamMembershipScope, PamMemberSource } from "../../components/memberEnums";
 import {
   formatDetailDate,
@@ -108,7 +109,7 @@ type ResolvedMember = {
 };
 
 // Maps each accessibility issue to the tab where it can be resolved
-const ISSUE_TO_TAB: Partial<Record<PamAccountAccessibilityIssue, PamSheetTab>> = {
+const ISSUE_TO_TAB: Record<PamAccountAccessibilityIssue, PamSheetTab> = {
   [PamAccountAccessibilityIssue.NoCredential]: PamSheetTab.Configuration,
   [PamAccountAccessibilityIssue.NoGateway]: PamSheetTab.Advanced,
   [PamAccountAccessibilityIssue.NoRecordingConfig]: PamSheetTab.Advanced,
@@ -862,9 +863,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
   );
 
   const tabsWithIssues = new Set(
-    (account?.accessibilityIssues ?? [])
-      .map((issue) => ISSUE_TO_TAB[issue])
-      .filter((t): t is PamSheetTab => Boolean(t))
+    (account?.accessibilityIssues ?? []).map((issue) => ISSUE_TO_TAB[issue])
   );
 
   const conn = (account?.connectionDetails ?? {}) as Record<string, unknown>;
@@ -943,6 +942,7 @@ export const AccountDetailSheet = ({ isOpen, accountId, onOpenChange }: Props) =
       title={account?.name}
       subtitle={folderSubtitle}
       typeBadge={typeInfo?.name}
+      badges={<AccountStaleBadge isStale={Boolean(account?.isStale)} />}
       icon={
         accountType ? (
           <div className="mb-4 flex size-16 items-center justify-center rounded-lg border border-border bg-container">

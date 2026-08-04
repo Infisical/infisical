@@ -400,10 +400,10 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
 
   server.route({
     method: "GET",
-    url: "/:sourceId/unavailable-accounts",
+    url: "/:sourceId/stale-accounts",
     schema: {
-      operationId: "listPamUnavailableAccounts",
-      description: "List imported accounts a PAM discovery source no longer finds in the environment",
+      operationId: "listPamStaleAccounts",
+      description: "List imported accounts the discovery source's latest scan no longer found in the environment",
       tags: [ApiDocsTags.PamDiscovery],
       params: z.object({ sourceId: z.string().uuid() }),
       querystring: z.object({

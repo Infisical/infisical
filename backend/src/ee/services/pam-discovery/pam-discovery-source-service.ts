@@ -722,9 +722,6 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           if (!discovered || discovered.discoverySourceId !== sourceId) {
             throw new NotFoundError({ message: "Discovered account not found" });
           }
-          if (discovered.isStale) {
-            throw new BadRequestError({ message: "This account is no longer available in the environment" });
-          }
           if (discovered.importedAccountId) {
             // Already imported. Re-run the idempotent backfill so a retry heals a prior import whose backfill
             // didn't complete (the three writes aren't one transaction), rather than stranding still-staged deps.

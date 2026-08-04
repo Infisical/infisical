@@ -61,7 +61,6 @@ export const accountAccessibilitySql = (accountTable: string, templateTable: str
           "${templateTable}"."settings"->'recordingS3Config'
         ) is not null
       ))
-    and not ${staleAccountExistsSql(accountTable)}
   )`;
 
 type TPamAccountTemplateInheritedFields = {
@@ -247,9 +246,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .whereNotNull(`${TableName.PamAccount}.nextRotationAt`)
       .where(`${TableName.PamAccount}.nextRotationAt`, "<=", now)
       .whereIn(`${TableName.PamAccountTemplate}.type`, ROTATABLE_TYPE_VALUES)
-      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'rotation'->>'enabled' = 'true'`)
-      // a stale account (deleted/disabled in the environment) must not keep getting rotated
-      .whereRaw(`not ${staleAccountExistsSql(TableName.PamAccount)}`);
+      .whereRaw(`"${TableName.PamAccountTemplate}"."settings"->'rotation'->>'enabled' = 'true'`);
 
   // Only ready accounts get a nextRotationAt, so every due row here is already rotation-ready.
   const findAccountsToRotate = async (now: Date, limit: number, tx?: Knex): Promise<TPamAccountDetail[]> => {

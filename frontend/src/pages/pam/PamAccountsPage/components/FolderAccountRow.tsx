@@ -8,6 +8,7 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
+import { AccountStaleBadge } from "../../components/AccountStaleBadge";
 import { PamAccountRow } from "../../components/PamAccountRow";
 import { AccountAccessibilityBadgeWithPermission } from "./AccountAccessibilityBadgeWithPermission";
 import { AccountActionsMenu } from "./AccountActionsMenu";
@@ -75,10 +76,13 @@ export const FolderAccountRow = ({
       onRequestAccess={() => onRequestAccess(launchableAccount)}
       indented
       accessibilityBadge={
-        <AccountAccessibilityBadgeWithPermission
-          canEdit={can(PamResourcePermissionActions.EditAccounts)}
-          issues={account.accessibilityIssues}
-        />
+        <>
+          <AccountAccessibilityBadgeWithPermission
+            canEdit={can(PamResourcePermissionActions.EditAccounts)}
+            issues={account.accessibilityIssues}
+          />
+          <AccountStaleBadge isStale={account.isStale} />
+        </>
       }
       actions={
         <AccountActionsMenu

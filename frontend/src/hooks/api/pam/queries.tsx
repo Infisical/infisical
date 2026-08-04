@@ -40,7 +40,7 @@ import {
   TPamResourceRole,
   TPamRotationCandidateGroup,
   TPamSession,
-  TPamUnavailableAccount
+  TPamStaleAccount
 } from "./types";
 
 // Resolves the org's PAM project, creating it on first access (lazy bootstrap on the backend).
@@ -96,10 +96,10 @@ export const pamKeys = {
     sourceId: string,
     params?: { search?: string; offset?: number; limit?: number }
   ) => [...pamKeys.discovery(), "discovered", sourceId, params] as const,
-  listUnavailableAccounts: (
+  listStaleAccounts: (
     sourceId: string,
     params?: { search?: string; offset?: number; limit?: number }
-  ) => [...pamKeys.discovery(), "unavailable", sourceId, params] as const,
+  ) => [...pamKeys.discovery(), "stale", sourceId, params] as const,
   accountRotation: (accountId: string) => [...pamKeys.account(), "rotation", accountId] as const,
   accountDependencies: (accountId: string) =>
     [...pamKeys.account(), "dependencies", accountId] as const,
@@ -206,6 +206,8 @@ export type TPamAccountListItem = {
   recordingConnectionId: string | null;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
+  isStale: boolean;
   requiresApproval: boolean;
   requireReason: boolean;
   accessStatus: PamAccessStatus;
@@ -567,17 +569,17 @@ export const useListPamDiscoveredAccounts = (
   });
 };
 
-export const useListPamUnavailableAccounts = (
+export const useListPamStaleAccounts = (
   sourceId: string,
   params?: { search?: string; offset?: number; limit?: number }
 ) => {
   return useQuery({
-    queryKey: pamKeys.listUnavailableAccounts(sourceId, params),
+    queryKey: pamKeys.listStaleAccounts(sourceId, params),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
-        accounts: TPamUnavailableAccount[];
+        accounts: TPamStaleAccount[];
         totalCount: number;
-      }>(`/api/v1/pam/discovery-sources/${sourceId}/unavailable-accounts`, { params });
+      }>(`/api/v1/pam/discovery-sources/${sourceId}/stale-accounts`, { params });
       return data;
     },
     enabled: Boolean(sourceId),

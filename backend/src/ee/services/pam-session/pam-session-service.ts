@@ -436,10 +436,6 @@ export const pamSessionServiceFactory = ({
       actor
     );
 
-    if (account.isStale) {
-      throw new ForbiddenRequestError({ message: "This account is no longer available in the environment" });
-    }
-
     const trimmedReason = reason?.trim() || null;
 
     if (policy.requireMfa) {

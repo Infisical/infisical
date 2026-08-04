@@ -75,7 +75,7 @@ export const PAM_TEMPLATE_TABS: PamResourceTab[] = [
 
 export const PAM_DISCOVERY_TABS: PamResourceTab[] = [
   { value: PamSheetTab.General, label: "Staged Accounts", icon: FolderOpen },
-  { value: PamSheetTab.Unavailable, label: "Unavailable", icon: TriangleAlert },
+  { value: PamSheetTab.Stale, label: "Stale Accounts", icon: TriangleAlert },
   { value: PamSheetTab.Runs, label: "Runs", icon: History },
   { value: PamSheetTab.Configuration, label: "Configuration", icon: Settings }
 ];

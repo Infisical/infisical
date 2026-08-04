@@ -98,8 +98,12 @@ Current types: Active Directory and Unix.
 **Staleness (Windows).** After a completed scan, discovered accounts it no longer finds are reconciled:
 never-imported ones are deleted, imported ones are flagged stale (reappearing self-heals). Only accounts in a
 re-checked scope are touched, so an unreachable host can't mass-flag (same guardrail as dependency pruning). A
-managed account's staleness is derived from its discovered row (not stored on the account); a stale one becomes
-an accessibility issue — blocked from rotation and session launch — and is listed on the source's Unavailable tab.
+managed account's staleness is derived from its discovered row (not stored on the account) and is **purely
+informational** — it is deliberately *not* an accessibility issue and gates nothing: rotation (scheduled and
+on-demand), session launch, web access, and import all behave exactly as they do for a non-stale account. The
+only surfaces are `isStale` on the account and the source's Stale Accounts tab (`GET
+/pam/discovery-sources/:sourceId/stale-accounts`), so an admin can decide whether to delete it. Don't add a
+staleness check to a code path; if the target is really gone, the operation's own failure is the signal.
 
 ## Credential Rotation
 

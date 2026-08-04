@@ -931,9 +931,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       ResourcePermissionPamResourceActions.ManageRotation,
       ctx
     );
-    if (account.isStale) {
-      throw new BadRequestError({ message: "This account is no longer available in the environment" });
-    }
     const readiness = getRotationReadiness({
       accountId: account.id,
       accountType: account.accountType,
@@ -1018,7 +1015,6 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   } | null> => {
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account) return null;
-    if (account.isStale) return null;
     const rotation = getRotationConfig(account.templateSettings);
     if (!rotation?.enabled) return null;
     const result = await runRotation(account);

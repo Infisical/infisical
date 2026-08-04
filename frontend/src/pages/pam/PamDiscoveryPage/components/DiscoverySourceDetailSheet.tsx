@@ -56,7 +56,7 @@ import {
   useListPamDiscoveryRuns,
   useListPamDiscoverySources,
   useListPamDiscoveryTypes,
-  useListPamUnavailableAccounts,
+  useListPamStaleAccounts,
   usePamAccountTypeMap,
   useTriggerPamDiscoveryScan,
   useUpdatePamDiscoverySource
@@ -380,11 +380,11 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   const [debouncedStaleSearch] = useDebounce(staleSearch);
   const [stalePage, setStalePage] = useState(1);
   const [stalePerPage, setStalePerPage] = useState(() =>
-    getUserTablePreference("pamUnavailableAccountsTable", PreferenceKey.PerPage, 20)
+    getUserTablePreference("pamStaleAccountsTable", PreferenceKey.PerPage, 20)
   );
   const staleOffset = (stalePage - 1) * stalePerPage;
-  const { data: { accounts: unavailable = [], totalCount: unavailableTotal = 0 } = {} } =
-    useListPamUnavailableAccounts(sourceId ?? "", {
+  const { data: { accounts: stale = [], totalCount: staleTotal = 0 } = {} } =
+    useListPamStaleAccounts(sourceId ?? "", {
       search: debouncedStaleSearch,
       offset: staleOffset,
       limit: stalePerPage
@@ -407,7 +407,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
         queryKey: [...pamKeys.discovery(), "discovered", sourceId ?? ""]
       });
       queryClient.invalidateQueries({
-        queryKey: [...pamKeys.discovery(), "unavailable", sourceId ?? ""]
+        queryKey: [...pamKeys.discovery(), "stale", sourceId ?? ""]
       });
       // A scan reconciles dependencies onto managed accounts, so refresh account views (their dependency
       // lists are keyed under pamKeys.account()) which the discovery scan otherwise never invalidates.
@@ -585,18 +585,17 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
   );
 
   const sq = staleSearch.trim().toLowerCase();
-  const visibleUnavailable = sq
-    ? unavailable.filter((a) => a.name.toLowerCase().includes(sq))
-    : unavailable;
+  const visibleStale = sq ? stale.filter((a) => a.name.toLowerCase().includes(sq)) : stale;
 
-  const unavailableTab: ReactNode = (
+  const staleTab: ReactNode = (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-base">Unavailable Accounts</CardTitle>
+          <CardTitle className="text-base">Stale Accounts</CardTitle>
           <CardDescription>
-            Imported accounts the latest scan no longer finds in the environment. Rotation and
-            access are blocked until they are rediscovered.
+            Imported accounts the latest scan no longer found in the environment. They keep working
+            as normal, including rotation and access, so review them and delete the ones that are
+            really gone.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -611,13 +610,13 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
             />
           </InputGroup>
 
-          {unavailableTotal === 0 ? (
+          {staleTotal === 0 ? (
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>
                   {debouncedStaleSearch
                     ? "No accounts match your search."
-                    : "No unavailable accounts. Everything imported is still present in the environment."}
+                    : "No stale accounts. The latest scan found everything imported from this source."}
                 </EmptyTitle>
               </EmptyHeader>
             </Empty>
@@ -633,7 +632,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleUnavailable.map((account) => {
+                  {visibleStale.map((account) => {
                     const typeDetails = accountTypeMap[account.accountType as PamAccountType];
                     return (
                       <TableRow key={account.id}>
@@ -641,10 +640,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                           <Link
                             to="/organizations/$orgId/pam/accounts"
                             params={{ orgId: currentOrg.id }}
-                            search={{
-                              accountId: account.accountId,
-                              folderId: account.folderId ?? undefined
-                            }}
+                            search={{ accountId: account.accountId }}
                             className="hover:underline"
                           >
                             <HighlightText text={account.name} highlight={staleSearch} />
@@ -677,7 +673,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
               </Table>
 
               <Pagination
-                count={unavailableTotal}
+                count={staleTotal}
                 page={stalePage}
                 perPage={stalePerPage}
                 onChangePage={setStalePage}
@@ -685,7 +681,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
                   setStalePerPage(newPerPage);
                   setStalePage(1);
                   setUserTablePreference(
-                    "pamUnavailableAccountsTable",
+                    "pamStaleAccountsTable",
                     PreferenceKey.PerPage,
                     newPerPage
                   );
@@ -797,7 +793,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
 
   const tabContent: Partial<Record<PamSheetTab, ReactNode>> = {
     [PamSheetTab.General]: stagedTab,
-    [PamSheetTab.Unavailable]: unavailableTab,
+    [PamSheetTab.Stale]: staleTab,
     [PamSheetTab.Runs]: runsTab,
     [PamSheetTab.Configuration]: source ? (
       <ConfigurationTab source={source} onDirtyChange={setIsFormDirty} />

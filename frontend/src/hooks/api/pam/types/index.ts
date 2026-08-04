@@ -74,8 +74,9 @@ export type TPamDiscoveredAccount = {
   dependencies: TPamDependency[];
 };
 
-// an imported account a source no longer finds in the environment (rotation + access blocked)
-export type TPamUnavailableAccount = {
+// an imported account the source's latest scan no longer found. Informational only: nothing about the
+// managed account is blocked, it's listed so an admin can decide whether to delete it.
+export type TPamStaleAccount = {
   id: string;
   accountId: string;
   name: string;
@@ -184,8 +185,7 @@ export enum PamAccountAccessibilityIssue {
   NoGateway = "no-gateway",
   NoRecordingConfig = "no-recording-config",
   NoCredential = "no-credential",
-  NoApprovalConfig = "no-approval-config",
-  Stale = "stale"
+  NoApprovalConfig = "no-approval-config"
 }
 
 export const accountTypeRequiresRecording = (type: PamAccountType): boolean =>
@@ -215,6 +215,8 @@ export type TPamAccount = {
   credentials: Record<string, unknown>;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
+  isStale: boolean;
   createdAt: string;
   updatedAt: string;
 };
