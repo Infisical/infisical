@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { TriangleAlertIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { NATIVE_INTEGRATION_DEPRECATION_DATE } from "@app/const/nativeIntegrationDeprecation";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -89,7 +91,17 @@ export const IntegrationsListPage = () => {
                   className="gap-2"
                 >
                   Native Integrations
-                  <Badge variant="warning">legacy</Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <TriangleAlertIcon className="size-3.5 text-warning" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Native Integrations are being retired on {NATIVE_INTEGRATION_DEPRECATION_DATE}
+                      . Migrate to Secret Syncs.
+                    </TooltipContent>
+                  </Tooltip>
                 </Tab>
               )}
             </TabList>
