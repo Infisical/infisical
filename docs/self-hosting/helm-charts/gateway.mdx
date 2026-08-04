@@ -161,9 +161,6 @@ gateway:
       gatewayId: ""
 
     # Kubernetes enrollment settings (method=kubernetes).
-    # The gateway authenticates with the projected service account token of its own pod, so no
-    # credential needs to be distributed. Requires serviceAccount.createAsAuthDelegator (default)
-    # unless a separate token reviewer is configured on the gateway in Infisical.
     kubernetes:
       # Required when method=kubernetes. Gateway ID from the Infisical UI.
       gatewayId: ""
