@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import * as React from "react";
 import { CheckboxIndicator, Root as CheckboxPrimitive } from "@radix-ui/react-checkbox";
 import { cva, VariantProps } from "cva";

@@ -35,6 +35,7 @@ import {
   TTrialResult,
   TTrialsResponse
 } from "./license-client-types";
+import { TLicenseTokenProvider } from "./license-token-provider";
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
 // no org_id is carried. The global catalog is org-independent and shared by both backends.
@@ -361,76 +362,81 @@ export const licenseServerBackend = (
 const notSupportedOnSelfHosted = (operation: string) => (): Promise<never> =>
   Promise.reject(new Error(`license operation "${operation}" is not supported for self-hosted licenses`));
 
-// Backend for a self-hosted License Server v2 license. Unlike the cloud backend it authenticates with
-// the raw license key as a bearer token (not a minted RS256 service JWT) and is single-tenant: the key
+// Backend for a self-hosted License Server v2 license. Unlike the cloud backend (which mints an RS256
+// service JWT), it exchanges the license key for a short-lived JWT at the token endpoint and sends that
+// as the bearer — the same convention both self-hosted key formats now follow. Single-tenant: the key
 // identifies the license, so entitlement/subscription reads carry no org_id. Only the read + usage +
 // refresh endpoints the self-hosted contract exposes are implemented; everything billing-related throws.
 export const licenseServerSelfHostedBackend = (
   serverUrl: string,
-  licenseKey: string,
+  tokenProvider: TLicenseTokenProvider,
   region?: string
-): TLicenseClientBackend => ({
-  fetchEntitlements: async (): Promise<TEntitlementsResponse> => {
-    const url = new URL(ENTITLEMENTS_PATH, serverUrl);
-    if (region) {
-      url.searchParams.set("region", region);
+): TLicenseClientBackend => {
+  // GET with the exchanged JWT; on a 401 (token expired mid-flight) drop the cache and retry once.
+  const authedGet = async (url: URL): Promise<Response> => {
+    const send = async () =>
+      fetch(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${await tokenProvider.getToken()}` },
+        redirect: "manual"
+      });
+    const res = await send();
+    if (res.status !== 401) {
+      return res;
     }
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${licenseKey}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return entitlementsResponseSchema.parse(body);
-  },
+    tokenProvider.invalidate();
+    return send();
+  };
 
-  fetchCatalog: async (): Promise<TCatalogResponse> => {
-    const url = new URL(PRODUCTS_PATH, serverUrl);
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${licenseKey}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return catalogResponseSchema.parse(body);
-  },
+  return {
+    fetchEntitlements: async (): Promise<TEntitlementsResponse> => {
+      const url = new URL(ENTITLEMENTS_PATH, serverUrl);
+      if (region) {
+        url.searchParams.set("region", region);
+      }
+      const res = await authedGet(url);
+      await throwIfResponseError(res);
+      const body: unknown = await res.json();
+      return entitlementsResponseSchema.parse(body);
+    },
 
-  // The license's subscription/contract view. A 404 (no contract yet) degrades to "no subscription".
-  fetchSubscription: async (): Promise<TSubscriptionResponse | null> => {
-    const url = new URL(SUBSCRIPTION_PATH, serverUrl);
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${licenseKey}` },
-      redirect: "manual"
-    });
-    if (res.status === 404) {
-      return null;
-    }
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    const parsed = subscriptionResponseSchema.safeParse(body);
-    if (!parsed.success) {
-      logger.error({ err: parsed.error }, "license-client: /subscription failed schema validation (self-hosted)");
-      return null;
-    }
-    if (!parsed.data.status) {
-      return null;
-    }
-    return parsed.data;
-  },
+    fetchCatalog: async (): Promise<TCatalogResponse> => {
+      const res = await authedGet(new URL(PRODUCTS_PATH, serverUrl));
+      await throwIfResponseError(res);
+      const body: unknown = await res.json();
+      return catalogResponseSchema.parse(body);
+    },
 
-  fetchCloudPlan: notSupportedOnSelfHosted("fetchCloudPlan"),
-  fetchBillingProfile: notSupportedOnSelfHosted("fetchBillingProfile"),
-  createPortalSession: notSupportedOnSelfHosted("createPortalSession"),
-  previewSubscriptionChange: notSupportedOnSelfHosted("previewSubscriptionChange"),
-  buyProduct: notSupportedOnSelfHosted("buyProduct"),
-  removeProduct: notSupportedOnSelfHosted("removeProduct"),
-  changeCommitments: notSupportedOnSelfHosted("changeCommitments"),
-  startTrial: notSupportedOnSelfHosted("startTrial"),
-  cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
-  fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
-  cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
-  resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
-});
+    // The license's subscription/contract view. A 404 (no contract yet) degrades to "no subscription".
+    fetchSubscription: async (): Promise<TSubscriptionResponse | null> => {
+      const res = await authedGet(new URL(SUBSCRIPTION_PATH, serverUrl));
+      if (res.status === 404) {
+        return null;
+      }
+      await throwIfResponseError(res);
+      const body: unknown = await res.json();
+      const parsed = subscriptionResponseSchema.safeParse(body);
+      if (!parsed.success) {
+        logger.error({ err: parsed.error }, "license-client: /subscription failed schema validation (self-hosted)");
+        return null;
+      }
+      if (!parsed.data.status) {
+        return null;
+      }
+      return parsed.data;
+    },
+
+    fetchCloudPlan: notSupportedOnSelfHosted("fetchCloudPlan"),
+    fetchBillingProfile: notSupportedOnSelfHosted("fetchBillingProfile"),
+    createPortalSession: notSupportedOnSelfHosted("createPortalSession"),
+    previewSubscriptionChange: notSupportedOnSelfHosted("previewSubscriptionChange"),
+    buyProduct: notSupportedOnSelfHosted("buyProduct"),
+    removeProduct: notSupportedOnSelfHosted("removeProduct"),
+    changeCommitments: notSupportedOnSelfHosted("changeCommitments"),
+    startTrial: notSupportedOnSelfHosted("startTrial"),
+    cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
+    fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
+    cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
+    resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
+  };
+};

@@ -9,7 +9,6 @@ export const BillingPlanRows = {
   CustomAlerts: { name: "Custom alerts", field: "customAlerts" },
   AuditLogs: { name: "Audit logs", field: "auditLogs" },
   SamlSSO: { name: "SAML SSO", field: "samlSSO" },
-  SshHostGroups: { name: "SSH Host Groups", field: "sshHostGroups" },
   Hsm: { name: "Hardware Security Module (HSM)", field: "hsm" },
   OidcSSO: { name: "OIDC SSO", field: "oidcSSO" },
   SecretApproval: { name: "Secret approvals", field: "secretApproval" },

@@ -15,6 +15,7 @@ import {
   TStartTrialPayload,
   TSubscriptionPreviewPayload
 } from "./license-client-types";
+import { createSelfHostedTokenProvider } from "./license-token-provider";
 
 type TLicenseClientFactoryDep = {
   envConfig: Pick<
@@ -22,28 +23,48 @@ type TLicenseClientFactoryDep = {
     | "LICENSE_SERVER_V2_MODE"
     | "LICENSE_SERVER_V2_URL"
     | "LICENSE_SERVER_V2_SERVICE_KEY"
+    | "LICENSE_SERVER_URL"
     | "LICENSE_KEY"
     | "INTERNAL_REGION"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
+  // Offline (air-gapped) licenses must never contact the license server; the SDK stays dormant for them.
+  isOffline?: boolean;
 };
 
 export type TLicenseClientFactory = ReturnType<typeof licenseClientFactory>;
 
-// Mirrors SELF_HOSTED_V2_LICENSE_KEY_PREFIX in ee/license-fns; inlined to avoid a services -> ee
-// runtime import cycle (license-client <- license-service <- license-fns).
-const SELF_HOSTED_V2_LICENSE_KEY_PREFIX = "infisical_lk_";
-
 // Returns null (SDK dormant -> getFeature serves fallbacks) unless the kill switch is on and either a
-// self-hosted v2 license key or the cloud service key (plus server URL) is configured.
-const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicenseClientBackend | null => {
-  if (envConfig.LICENSE_SERVER_V2_MODE === "off") {
+// self-hosted license key or the cloud service key (plus server URL) is configured.
+const buildBackend = (
+  envConfig: TLicenseClientFactoryDep["envConfig"],
+  isOffline: boolean
+): TLicenseClientBackend | null => {
+  // An offline (air-gapped) license lives in LICENSE_KEY, but transmitting it would violate the
+  // air-gap and leak the signed credential — keep the SDK dormant so no read can POST it to the server.
+  if (isOffline) {
     return null;
   }
 
-  const serverUrl = envConfig.LICENSE_SERVER_V2_URL;
+  const licenseKey = envConfig.LICENSE_KEY;
+  if (licenseKey) {
+    if (!envConfig.LICENSE_SERVER_URL) {
+      logger.warn(
+        "license-client: self-hosted key set but LICENSE_SERVER_URL (token endpoint) is missing; serving feature fallbacks"
+      );
+      return null;
+    }
+    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl: envConfig.LICENSE_SERVER_URL });
+    return licenseServerSelfHostedBackend(envConfig.LICENSE_SERVER_URL, tokenProvider, envConfig.INTERNAL_REGION);
+  }
+
+  // Self-hosted sets only LICENSE_SERVER_URL (that one host now serves both the token endpoint and the
+  // v2 API after the DNS switch); cloud sets LICENSE_SERVER_V2_URL. Accept either as the v2 API base.
+  const serverUrl = envConfig.LICENSE_SERVER_V2_URL || envConfig.LICENSE_SERVER_URL;
   if (!serverUrl) {
-    logger.warn("license-client: enabled but LICENSE_SERVER_V2_URL is missing; serving feature fallbacks");
+    logger.warn(
+      "license-client: enabled but neither LICENSE_SERVER_V2_URL nor LICENSE_SERVER_URL is set; serving feature fallbacks"
+    );
     return null;
   }
 
@@ -60,13 +81,6 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
     return null;
   }
 
-  // A self-hosted v2 license authenticates with its own key as a bearer token; the cloud path mints an
-  // RS256 service JWT from the service key instead.
-  const licenseKey = envConfig.LICENSE_KEY;
-  if (licenseKey?.startsWith(SELF_HOSTED_V2_LICENSE_KEY_PREFIX)) {
-    return licenseServerSelfHostedBackend(serverUrl, licenseKey, envConfig.INTERNAL_REGION);
-  }
-
   const signingKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
   if (!signingKey) {
     logger.warn("license-client: enabled but LICENSE_SERVER_V2_SERVICE_KEY is missing; serving feature fallbacks");
@@ -77,8 +91,8 @@ const buildBackend = (envConfig: TLicenseClientFactoryDep["envConfig"]): TLicens
   return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
-export const licenseClientFactory = ({ envConfig, keyStore }: TLicenseClientFactoryDep) => {
-  const backend = buildBackend(envConfig);
+export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }: TLicenseClientFactoryDep) => {
+  const backend = buildBackend(envConfig, isOffline);
   const resolver = backend ? entitlementResolverFactory({ keyStore, backend }) : null;
 
   const getEntitlements = async (org: TEntitlementOrg) => {

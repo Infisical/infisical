@@ -28,6 +28,10 @@ const meta = {
       control: "select",
       options: ["default", "info", "success", "warning", "danger", "project", "org", "sub-org"]
     },
+    appearance: {
+      control: "select",
+      options: ["default", "borderless"]
+    },
     children: {
       table: {
         disable: true
@@ -57,6 +61,26 @@ export const Default: Story = {
       description: {
         story:
           "Use this variant for neutral informational messages that do not warrant a semantic tone."
+      }
+    }
+  },
+  render: (args) => (
+    <Alert {...args}>
+      <AlertTitle>Your changes have been saved.</AlertTitle>
+      <AlertDescription>The new configuration will apply on the next sync.</AlertDescription>
+    </Alert>
+  )
+};
+
+export const Borderless: Story = {
+  name: "Appearance: Borderless",
+  args: {
+    appearance: "borderless"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Use this appearance for alerts that should not render a border."
       }
     }
   },

@@ -23,6 +23,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
+import { hasPostgresErrorCode, PostgresErrorCode } from "@app/lib/errors/postgres";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { coreHttpErrorCounter, rateLimitExceededCounter } from "@app/lib/telemetry/metrics";
 
@@ -199,12 +200,24 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         error: error.name
       });
     } else if (error instanceof DatabaseError) {
-      void res.status(HttpStatusCodes.InternalServerError).send({
-        reqId: req.id,
-        statusCode: HttpStatusCodes.InternalServerError,
-        message: "Something went wrong",
-        error: error.name
-      });
+      // A value that overflows its varchar(n) column is bad input, not a server fault. Route-level Zod
+      // schemas are the intended guard, but where one is missing or drifts from the column width this
+      // keeps the response a validation failure instead of an opaque 500.
+      if (hasPostgresErrorCode(error, PostgresErrorCode.StringDataRightTruncation)) {
+        void res.status(HttpStatusCodes.UnprocessableContent).send({
+          reqId: req.id,
+          statusCode: HttpStatusCodes.UnprocessableContent,
+          error: "ValidationFailure",
+          message: "One or more field values exceed the maximum length allowed for this resource"
+        });
+      } else {
+        void res.status(HttpStatusCodes.InternalServerError).send({
+          reqId: req.id,
+          statusCode: HttpStatusCodes.InternalServerError,
+          message: "Something went wrong",
+          error: error.name
+        });
+      }
     } else if (error instanceof InternalServerError) {
       void res.status(HttpStatusCodes.InternalServerError).send({
         reqId: req.id,

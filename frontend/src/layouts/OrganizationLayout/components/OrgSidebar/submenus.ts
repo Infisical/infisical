@@ -5,7 +5,6 @@ import {
   Cog,
   FileCheck,
   FileKey,
-  FileText,
   HardDrive,
   IdCardLanyard,
   Layers,
@@ -14,7 +13,6 @@ import {
   Plug,
   ScanSearch,
   Search,
-  Server,
   Shield,
   Tag,
   User,
@@ -129,18 +127,5 @@ export const SECRET_SCANNING_SETTINGS_SUBMENU: Submenu = {
   items: [
     { label: "General", icon: Cog, tab: "general" },
     { label: "Scanning Settings", icon: ScanSearch, tab: "scanning-settings" }
-  ]
-};
-
-// --- AI submenus ---
-
-export const MCP_SUBMENU: Submenu = {
-  title: "MCP",
-  pathSuffix: "overview",
-  defaultTab: "mcp-endpoints",
-  items: [
-    { label: "MCP Endpoints", icon: Server, tab: "mcp-endpoints" },
-    { label: "MCP Servers", icon: HardDrive, tab: "mcp-servers" },
-    { label: "Activity Logs", icon: FileText, tab: "activity-logs" }
   ]
 };

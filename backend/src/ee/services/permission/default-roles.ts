@@ -21,7 +21,6 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionKmipActions,
-  ProjectPermissionMcpEndpointActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
@@ -39,7 +38,6 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
-  ProjectPermissionSshHostActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import {
@@ -71,13 +69,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.IpAllowList,
     ProjectPermissionSub.PkiAlerts,
     ProjectPermissionSub.PkiCollections,
-    ProjectPermissionSub.CertificateInventoryViews,
-    ProjectPermissionSub.SshCertificateAuthorities,
-    ProjectPermissionSub.SshCertificates,
-    ProjectPermissionSub.SshCertificateTemplates,
-    ProjectPermissionSub.SshHostGroups,
-    ProjectPermissionSub.McpServers,
-    ProjectPermissionSub.McpActivityLogs
+    ProjectPermissionSub.CertificateInventoryViews
   ].forEach((el) => {
     can(
       [
@@ -174,17 +166,6 @@ const buildAdminPermissionRules = () => {
   can(
     [ProjectPermissionCommitsActions.Read, ProjectPermissionCommitsActions.PerformRollback],
     ProjectPermissionSub.Commits
-  );
-
-  can(
-    [
-      ProjectPermissionSshHostActions.Edit,
-      ProjectPermissionSshHostActions.Read,
-      ProjectPermissionSshHostActions.Create,
-      ProjectPermissionSshHostActions.Delete,
-      ProjectPermissionSshHostActions.IssueHostCert
-    ],
-    ProjectPermissionSub.SshHosts
   );
 
   can(
@@ -307,7 +288,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionPkiSyncActions.Read,
       ProjectPermissionPkiSyncActions.SyncCertificates,
       ProjectPermissionPkiSyncActions.ImportCertificates,
-      ProjectPermissionPkiSyncActions.RemoveCertificates
+      ProjectPermissionPkiSyncActions.RemoveCertificates,
+      ProjectPermissionPkiSyncActions.SetPostSyncCommand
     ],
     ProjectPermissionSub.PkiSyncs
   );
@@ -427,17 +409,6 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionHoneyTokenActions.Revoke
     ],
     ProjectPermissionSub.HoneyTokens
-  );
-
-  can(
-    [
-      ProjectPermissionMcpEndpointActions.Read,
-      ProjectPermissionMcpEndpointActions.Connect,
-      ProjectPermissionMcpEndpointActions.Create,
-      ProjectPermissionMcpEndpointActions.Edit,
-      ProjectPermissionMcpEndpointActions.Delete
-    ],
-    ProjectPermissionSub.McpEndpoints
   );
 
   can(
@@ -584,7 +555,10 @@ const buildMemberPermissionRules = () => {
 
   can([ProjectPermissionHoneyTokenActions.Read], ProjectPermissionSub.HoneyTokens);
 
-  can([ProjectPermissionProxiedServiceActions.Read], ProjectPermissionSub.ProxiedServices);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
 
   can(
     [
@@ -629,12 +603,6 @@ const buildMemberPermissionRules = () => {
     [ProjectPermissionApplicationActions.Read, ProjectPermissionApplicationActions.List],
     ProjectPermissionSub.Application
   );
-
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificates);
-  can([ProjectPermissionActions.Create], ProjectPermissionSub.SshCertificates);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.SshCertificateTemplates);
-
-  can([ProjectPermissionSshHostActions.Read], ProjectPermissionSub.SshHosts);
 
   can(
     [
@@ -700,10 +668,6 @@ const buildMemberPermissionRules = () => {
     ProjectPermissionSub.HsmConnectors
   );
 
-  can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
-
   can([ProjectPermissionApprovalRequestActions.Create], ProjectPermissionSub.ApprovalRequests);
 
   return rules;
@@ -730,7 +694,10 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
   can(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
-  can(ProjectPermissionProxiedServiceActions.Read, ProjectPermissionSub.ProxiedServices);
+  can(
+    [ProjectPermissionProxiedServiceActions.Read, ProjectPermissionProxiedServiceActions.ReportUsage],
+    ProjectPermissionSub.ProxiedServices
+  );
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -743,8 +710,6 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
   can(ProjectPermissionCertificatePolicyActions.Read, ProjectPermissionSub.CertificatePolicies);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificateTemplates);
   can(ProjectPermissionSecretSyncActions.Read, ProjectPermissionSub.SecretSyncs);
   can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
   can(
@@ -779,26 +744,11 @@ const buildViewerPermissionRules = () => {
     ProjectPermissionSub.SecretEventSubscriptions
   );
 
-  can([ProjectPermissionMcpEndpointActions.Read], ProjectPermissionSub.McpEndpoints);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpServers);
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.McpActivityLogs);
-
   return rules;
 };
 
 const buildNoAccessProjectPermission = () => {
   const { rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-  return rules;
-};
-
-const buildSshHostBootstrapPermissionRules = () => {
-  const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-
-  can(
-    [ProjectPermissionSshHostActions.Create, ProjectPermissionSshHostActions.IssueHostCert],
-    ProjectPermissionSub.SshHosts
-  );
-
   return rules;
 };
 
@@ -825,9 +775,6 @@ export const projectAdminPermissions = buildAdminPermissionRules();
 export const projectMemberPermissions = buildMemberPermissionRules();
 export const projectViewerPermission = buildViewerPermissionRules();
 export const projectNoAccessPermissions = buildNoAccessProjectPermission();
-
-// SSH
-export const sshHostBootstrapPermissions = buildSshHostBootstrapPermissionRules();
 
 // KMS
 export const cryptographicOperatorPermissions = buildCryptographicOperatorPermissionRules();
@@ -897,7 +844,8 @@ const buildApplicationAdminPermissionRules = () => {
       ResourcePermissionPkiSyncActions.Delete,
       ResourcePermissionPkiSyncActions.SyncCertificates,
       ResourcePermissionPkiSyncActions.ImportCertificates,
-      ResourcePermissionPkiSyncActions.RemoveCertificates
+      ResourcePermissionPkiSyncActions.RemoveCertificates,
+      ResourcePermissionPkiSyncActions.SetPostSyncCommand
     ],
     ResourcePermissionSub.PkiSyncs
   );

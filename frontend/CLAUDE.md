@@ -28,13 +28,13 @@ Each page directory has a `route.tsx` that defines its route:
 createFileRoute(path)({ component, validateSearch: zodValidator(schema), beforeLoad })
 ```
 
-Route middleware chain: root → `authenticate` → `inject-org-details` → org-layout → product-specific layouts (secret-manager-layout, cert-manager-layout, kms-layout, ssh-layout, etc.).
+Route middleware chain: root → `authenticate` → `inject-org-details` → org-layout → product-specific layouts (secret-manager-layout, cert-manager-layout, kms-layout, etc.).
 
 Middleware pages in `src/pages/middlewares/`: `authenticate.tsx` (auth guard + redirect), `inject-org-details.tsx` (org context), `restrict-login-signup.tsx` (prevents auth pages when logged in).
 
 ### Pages / Views / Components Hierarchy
 
-- **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, ssh, pam, organization, project, admin, auth, ai). Each has `route.tsx` + page component + local `components/`.
+- **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, pam, secret-scanning, organization, project, admin, auth). Each has `route.tsx` + page component + local `components/`.
 - **`src/views/`** — Reusable page-level UI composed into multiple pages. Pages import views with configuration props.
 - **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components). **Always use v3 components for new code.** Only use v2 components when a v3 equivalent does not exist.
 - **`src/components/v2/`** — Legacy shared UI components built on Radix UI primitives + Tailwind. Uses `cva` (class-variance-authority) for variants and `tailwind-merge` for class conflict resolution. Being superseded by v3 — do not use for new features if a v3 alternative exists.
@@ -54,6 +54,8 @@ The `QueryClient` sets these global defaults for all queries:
 - **`staleTime: 60_000`** (60 seconds) — data fetched within the last 60s is considered fresh and won't be refetched on component mount/remount. This prevents redundant API calls during normal page navigation. Queries that need real-time data (e.g., identity auth configs, dynamic secret leases) override this with `staleTime: 0`.
 - **`refetchOnWindowFocus: false`** — queries do not refetch when the browser tab regains focus.
 - **`retry: 1`** — failed queries retry once.
+
+Mutation failures are reported globally by `MutationCache.onError` using the server error message. Do not add another error `createNotification` in a mutation `catch` or `onError`, because it produces duplicate toasts. Local error handling may still restore optimistic state, keep a dialog open, or perform other control flow without displaying a second notification.
 
 When adding new queries, consider whether the default 60s staleTime is appropriate:
 - For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
@@ -76,7 +78,7 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 ### Layouts
 
-13 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `CertManagerLayout`, `KmsLayout`, `SshLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
 
 ## Conventions
 

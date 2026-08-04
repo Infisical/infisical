@@ -219,6 +219,10 @@ import {
   SanitizedSnowflakeConnectionSchema,
   SnowflakeConnectionListItemSchema
 } from "@app/services/app-connection/snowflake";
+import {
+  SanitizedSpaceliftConnectionSchema,
+  SpaceliftConnectionListItemSchema
+} from "@app/services/app-connection/spacelift";
 import { SanitizedSshConnectionSchema, SshConnectionListItemSchema } from "@app/services/app-connection/ssh";
 import {
   SanitizedSupabaseConnectionSchema,
@@ -340,7 +344,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
-  ...SanitizedNutanixPrismCentralConnectionSchema.options
+  ...SanitizedNutanixPrismCentralConnectionSchema.options,
+  ...SanitizedSpaceliftConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -425,7 +430,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,
-  NutanixPrismCentralConnectionListItemSchema
+  NutanixPrismCentralConnectionListItemSchema,
+  SpaceliftConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

@@ -117,7 +117,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">Kubernetes Auth</span>
                         <Badge variant="neutral">{resources?.kubernetesAuths.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.kubernetesAuths.map((auth, idx) => (
                           <ResourceRow
                             key={auth.id}
@@ -141,7 +141,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">PKI Discovery</span>
                         <Badge variant="neutral">{resources?.pkiDiscoveryConfigs.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.pkiDiscoveryConfigs.map((r, idx) => (
                           <ResourceRow
                             key={r.id}
@@ -160,7 +160,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">App Connections</span>
                         <Badge variant="neutral">{resources?.appConnections.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.appConnections.map((r, idx) => (
                           <ResourceRow
                             key={r.id}
@@ -179,7 +179,7 @@ export const PoolConnectedResourcesDrawer = ({ isOpen, onOpenChange, poolId, poo
                         <span className="flex-1">Dynamic Secrets</span>
                         <Badge variant="neutral">{resources?.dynamicSecrets.length}</Badge>
                       </AccordionTrigger>
-                      <AccordionContent className="p-0">
+                      <AccordionContent className="group-data-[variant=default]/accordion:p-0">
                         {resources?.dynamicSecrets.map((r, idx) => (
                           <ResourceRow
                             key={r.id}

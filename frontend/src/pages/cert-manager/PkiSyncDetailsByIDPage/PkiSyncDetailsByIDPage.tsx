@@ -33,7 +33,8 @@ import {
   PkiSyncDestinationSection,
   PkiSyncDetailsSection,
   PkiSyncFieldMappingsSection,
-  PkiSyncOptionsSection
+  PkiSyncOptionsSection,
+  PkiSyncPostSyncCommandSection
 } from "./components";
 
 const PageContent = () => {
@@ -136,6 +137,7 @@ const PageContent = () => {
                     <PkiSyncDetailsSection pkiSync={pkiSync} />
                     <PkiSyncDestinationSection pkiSync={pkiSync} />
                     <PkiSyncFieldMappingsSection pkiSync={pkiSync} />
+                    <PkiSyncPostSyncCommandSection pkiSync={pkiSync} />
                   </DetailGroup>
                   <PkiSyncOptionsSection pkiSync={pkiSync} />
                 </CardContent>

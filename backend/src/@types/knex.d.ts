@@ -20,27 +20,6 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
-  TAiMcpActivityLogs,
-  TAiMcpActivityLogsInsert,
-  TAiMcpActivityLogsUpdate,
-  TAiMcpEndpoints,
-  TAiMcpEndpointServers,
-  TAiMcpEndpointServersInsert,
-  TAiMcpEndpointServersUpdate,
-  TAiMcpEndpointServerTools,
-  TAiMcpEndpointServerToolsInsert,
-  TAiMcpEndpointServerToolsUpdate,
-  TAiMcpEndpointsInsert,
-  TAiMcpEndpointsUpdate,
-  TAiMcpServers,
-  TAiMcpServersInsert,
-  TAiMcpServersUpdate,
-  TAiMcpServerTools,
-  TAiMcpServerToolsInsert,
-  TAiMcpServerToolsUpdate,
-  TAiMcpServerUserCredentials,
-  TAiMcpServerUserCredentialsInsert,
-  TAiMcpServerUserCredentialsUpdate,
   TAlertChannelMemberships,
   TAlertChannelMembershipsInsert,
   TAlertChannelMembershipsUpdate,
@@ -490,9 +469,6 @@ import {
   TProjectSplitBackfillIds,
   TProjectSplitBackfillIdsInsert,
   TProjectSplitBackfillIdsUpdate,
-  TProjectSshConfigs,
-  TProjectSshConfigsInsert,
-  TProjectSshConfigsUpdate,
   TProjectsUpdate,
   TProjectTemplateGroupMemberships,
   TProjectTemplateGroupMembershipsInsert,
@@ -659,39 +635,12 @@ import {
   TServiceTokens,
   TServiceTokensInsert,
   TServiceTokensUpdate,
+  TSignupOnboardingResponses,
+  TSignupOnboardingResponsesInsert,
+  TSignupOnboardingResponsesUpdate,
   TSlackIntegrations,
   TSlackIntegrationsInsert,
   TSlackIntegrationsUpdate,
-  TSshCertificateAuthorities,
-  TSshCertificateAuthoritiesInsert,
-  TSshCertificateAuthoritiesUpdate,
-  TSshCertificateAuthoritySecrets,
-  TSshCertificateAuthoritySecretsInsert,
-  TSshCertificateAuthoritySecretsUpdate,
-  TSshCertificateBodies,
-  TSshCertificateBodiesInsert,
-  TSshCertificateBodiesUpdate,
-  TSshCertificates,
-  TSshCertificatesInsert,
-  TSshCertificatesUpdate,
-  TSshCertificateTemplates,
-  TSshCertificateTemplatesInsert,
-  TSshCertificateTemplatesUpdate,
-  TSshHostGroupMemberships,
-  TSshHostGroupMembershipsInsert,
-  TSshHostGroupMembershipsUpdate,
-  TSshHostGroups,
-  TSshHostGroupsInsert,
-  TSshHostGroupsUpdate,
-  TSshHostLoginUserMappings,
-  TSshHostLoginUserMappingsInsert,
-  TSshHostLoginUserMappingsUpdate,
-  TSshHostLoginUsers,
-  TSshHostLoginUsersInsert,
-  TSshHostLoginUsersUpdate,
-  TSshHosts,
-  TSshHostsInsert,
-  TSshHostsUpdate,
   TSuperAdmin,
   TSuperAdminInsert,
   TSuperAdminUpdate,
@@ -881,52 +830,6 @@ declare module "knex/types/tables" {
       TUserSecretActivationUpdate
     >;
     [TableName.Groups]: KnexOriginal.CompositeTableType<TGroups, TGroupsInsert, TGroupsUpdate>;
-    [TableName.SshHostGroup]: KnexOriginal.CompositeTableType<
-      TSshHostGroups,
-      TSshHostGroupsInsert,
-      TSshHostGroupsUpdate
-    >;
-    [TableName.SshHostGroupMembership]: KnexOriginal.CompositeTableType<
-      TSshHostGroupMemberships,
-      TSshHostGroupMembershipsInsert,
-      TSshHostGroupMembershipsUpdate
-    >;
-    [TableName.SshHost]: KnexOriginal.CompositeTableType<TSshHosts, TSshHostsInsert, TSshHostsUpdate>;
-    [TableName.SshCertificateAuthority]: KnexOriginal.CompositeTableType<
-      TSshCertificateAuthorities,
-      TSshCertificateAuthoritiesInsert,
-      TSshCertificateAuthoritiesUpdate
-    >;
-    [TableName.SshCertificateAuthoritySecret]: KnexOriginal.CompositeTableType<
-      TSshCertificateAuthoritySecrets,
-      TSshCertificateAuthoritySecretsInsert,
-      TSshCertificateAuthoritySecretsUpdate
-    >;
-    [TableName.SshCertificateTemplate]: KnexOriginal.CompositeTableType<
-      TSshCertificateTemplates,
-      TSshCertificateTemplatesInsert,
-      TSshCertificateTemplatesUpdate
-    >;
-    [TableName.SshCertificate]: KnexOriginal.CompositeTableType<
-      TSshCertificates,
-      TSshCertificatesInsert,
-      TSshCertificatesUpdate
-    >;
-    [TableName.SshCertificateBody]: KnexOriginal.CompositeTableType<
-      TSshCertificateBodies,
-      TSshCertificateBodiesInsert,
-      TSshCertificateBodiesUpdate
-    >;
-    [TableName.SshHostLoginUser]: KnexOriginal.CompositeTableType<
-      TSshHostLoginUsers,
-      TSshHostLoginUsersInsert,
-      TSshHostLoginUsersUpdate
-    >;
-    [TableName.SshHostLoginUserMapping]: KnexOriginal.CompositeTableType<
-      TSshHostLoginUserMappings,
-      TSshHostLoginUserMappingsInsert,
-      TSshHostLoginUserMappingsUpdate
-    >;
     [TableName.CertificateAuthority]: KnexOriginal.CompositeTableType<
       TCertificateAuthorities,
       TCertificateAuthoritiesInsert,
@@ -1166,13 +1069,13 @@ declare module "knex/types/tables" {
       TIncidentContactsUpdate
     >;
     [TableName.UserAction]: KnexOriginal.CompositeTableType<TUserActions, TUserActionsInsert, TUserActionsUpdate>;
+    [TableName.SignupOnboardingResponse]: KnexOriginal.CompositeTableType<
+      TSignupOnboardingResponses,
+      TSignupOnboardingResponsesInsert,
+      TSignupOnboardingResponsesUpdate
+    >;
     [TableName.SuperAdmin]: KnexOriginal.CompositeTableType<TSuperAdmin, TSuperAdminInsert, TSuperAdminUpdate>;
     [TableName.Project]: KnexOriginal.CompositeTableType<TProjects, TProjectsInsert, TProjectsUpdate>;
-    [TableName.ProjectSshConfig]: KnexOriginal.CompositeTableType<
-      TProjectSshConfigs,
-      TProjectSshConfigsInsert,
-      TProjectSshConfigsUpdate
-    >;
     [TableName.Environment]: KnexOriginal.CompositeTableType<
       TProjectEnvironments,
       TProjectEnvironmentsInsert,
@@ -1906,37 +1809,6 @@ declare module "knex/types/tables" {
       TUserMfaRecoveryCodes,
       TUserMfaRecoveryCodesInsert,
       TUserMfaRecoveryCodesUpdate
-    >;
-    [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
-    [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<
-      TAiMcpServerTools,
-      TAiMcpServerToolsInsert,
-      TAiMcpServerToolsUpdate
-    >;
-    [TableName.AiMcpEndpoint]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpoints,
-      TAiMcpEndpointsInsert,
-      TAiMcpEndpointsUpdate
-    >;
-    [TableName.AiMcpEndpointServer]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpointServers,
-      TAiMcpEndpointServersInsert,
-      TAiMcpEndpointServersUpdate
-    >;
-    [TableName.AiMcpEndpointServerTool]: KnexOriginal.CompositeTableType<
-      TAiMcpEndpointServerTools,
-      TAiMcpEndpointServerToolsInsert,
-      TAiMcpEndpointServerToolsUpdate
-    >;
-    [TableName.AiMcpServerUserCredential]: KnexOriginal.CompositeTableType<
-      TAiMcpServerUserCredentials,
-      TAiMcpServerUserCredentialsInsert,
-      TAiMcpServerUserCredentialsUpdate
-    >;
-    [TableName.AiMcpActivityLog]: KnexOriginal.CompositeTableType<
-      TAiMcpActivityLogs,
-      TAiMcpActivityLogsInsert,
-      TAiMcpActivityLogsUpdate
     >;
     [TableName.ApprovalPolicies]: KnexOriginal.CompositeTableType<
       TApprovalPolicies,

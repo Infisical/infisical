@@ -1,10 +1,15 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
 import { CopyPlus, FolderInputIcon, TagsIcon, TrashIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  Button,
+  SelectedActionBar,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -93,8 +98,6 @@ export const SelectionPanel = ({
   const userAvailableEnvs = currentProject?.environments || [];
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
   const { mutateAsync: createCommit } = useCreateCommit();
-
-  const isMultiSelectActive = selectedCount > 0;
 
   // user should have the ability to delete secrets/folders in at least one of the envs
   const shouldShowDelete = userAvailableEnvs.some((env) =>
@@ -368,91 +371,72 @@ export const SelectionPanel = ({
 
   return (
     <>
-      <div
-        className={twMerge(
-          "mb-2 h-0 shrink-0 overflow-hidden transition-all",
-          isMultiSelectActive && "h-16"
+      <SelectedActionBar selectedCount={selectedCount} onClearSelection={resetSelectedEntries}>
+        {selectedKeysCount > 0 && (
+          <Tooltip open={isTagActionDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isTagActionDisabled}
+                variant="project"
+                onClick={() => handlePopUpOpen("bulkTagSecrets")}
+                size="xs"
+              >
+                <TagsIcon />
+                Add Tags
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Access denied</TooltipContent>
+          </Tooltip>
         )}
-      >
-        <div className="mt-3.5 flex items-center rounded-md border border-border bg-card p-2 pl-4 text-foreground">
-          <div className="mr-2 text-sm">{selectedCount} Selected</div>
-          <button
-            type="button"
-            className="mt-0.5 mr-auto text-xs text-accent underline-offset-2 hover:underline"
-            onClick={resetSelectedEntries}
-          >
-            Unselect All
-          </button>
-          {selectedKeysCount > 0 && (
-            <Tooltip open={isTagActionDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isTagActionDisabled}
-                  variant="project"
-                  className="ml-2"
-                  onClick={() => handlePopUpOpen("bulkTagSecrets")}
-                  size="xs"
-                >
-                  <TagsIcon />
-                  Add Tags
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Access denied</TooltipContent>
-            </Tooltip>
-          )}
-          {shouldShowMove && (
-            <Tooltip open={isMoveDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isMoveDisabled}
-                  variant="project"
-                  className="ml-2"
-                  onClick={() => handlePopUpOpen("bulkMoveSecrets")}
-                  size="xs"
-                >
-                  <FolderInputIcon />
-                  Move
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{moveDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
-          {shouldShowBulkDuplicate && (
-            <Tooltip open={isDuplicateDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isDuplicateDisabled}
-                  variant="project"
-                  className="ml-2"
-                  onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
-                  size="xs"
-                >
-                  <CopyPlus />
-                  Duplicate
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{duplicateDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
-          {shouldShowDelete && (
-            <Tooltip open={isDeleteDisabled ? undefined : false}>
-              <TooltipTrigger>
-                <Button
-                  isDisabled={isDeleteDisabled}
-                  variant="danger"
-                  className="ml-2"
-                  onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-                  size="xs"
-                >
-                  <TrashIcon />
-                  Delete
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{deleteDisabledReason}</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-      </div>
+        {shouldShowMove && (
+          <Tooltip open={isMoveDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isMoveDisabled}
+                variant="project"
+                onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                size="xs"
+              >
+                <FolderInputIcon />
+                Move
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{moveDisabledReason}</TooltipContent>
+          </Tooltip>
+        )}
+        {shouldShowBulkDuplicate && (
+          <Tooltip open={isDuplicateDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isDuplicateDisabled}
+                variant="project"
+                onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
+                size="xs"
+              >
+                <CopyPlus />
+                Duplicate
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{duplicateDisabledReason}</TooltipContent>
+          </Tooltip>
+        )}
+        {shouldShowDelete && (
+          <Tooltip open={isDeleteDisabled ? undefined : false}>
+            <TooltipTrigger>
+              <Button
+                isDisabled={isDeleteDisabled}
+                variant="danger"
+                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                size="xs"
+              >
+                <TrashIcon />
+                Delete
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{deleteDisabledReason}</TooltipContent>
+          </Tooltip>
+        )}
+      </SelectedActionBar>
       <MoveSecretsModal
         isOpen={popUp.bulkMoveSecrets.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("bulkMoveSecrets", isOpen)}

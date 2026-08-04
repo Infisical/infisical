@@ -31,8 +31,7 @@ import {
   projectViewerPermission,
   signerAdminPermissions,
   signerAuditorPermissions,
-  signerOperatorPermissions,
-  sshHostBootstrapPermissions
+  signerOperatorPermissions
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -40,6 +39,7 @@ import { withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { objectify } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -133,8 +133,6 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
             return projectViewerPermission;
           case ProjectMembershipRole.NoAccess:
             return projectNoAccessPermissions;
-          case ProjectMembershipRole.SshHostBootstrapper:
-            return sshHostBootstrapPermissions;
           case ProjectMembershipRole.KmsCryptographicOperator:
             return cryptographicOperatorPermissions;
           case ProjectMembershipRole.Custom: {
@@ -143,10 +141,12 @@ const buildProjectPermissionRules = (projectUserRoles: TBuildProjectPermissionDT
             );
           }
           default:
-            throw new NotFoundError({
-              name: "ProjectRoleInvalid",
-              message: `Project role '${role}' not found`
-            });
+            // Membership rows can still hold role slugs whose products were removed
+            // (e.g. "ssh-host-bootstrapper"). Contribute no rules instead of failing
+            // the whole permission build, so the actor's other roles keep working;
+            // backend-go skips unknown slugs the same way.
+            logger.warn(`buildProjectPermissionRules: unknown project role slug, granting no rules [role=${role}]`);
+            return [];
         }
       })
       .reduce((prev, curr) => prev.concat(curr), [] as RawRuleOf<MongoAbility<ProjectPermissionSet>>[])

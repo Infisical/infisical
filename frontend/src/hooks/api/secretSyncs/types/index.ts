@@ -40,6 +40,7 @@ import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
 import { TRundeckSync } from "./rundeck-sync";
 import { TSnowflakeSync } from "./snowflake-sync";
+import { TSpaceliftSync } from "./spacelift-sync";
 import { TSupabaseSync } from "./supabase";
 import { TTeamCitySync } from "./teamcity-sync";
 import { TTerraformCloudSync } from "./terraform-cloud-sync";
@@ -106,7 +107,8 @@ export type TSecretSync =
   | TTriggerDevSync
   | THasuraCloudSync
   | TQoverySync
-  | TCloud66Sync;
+  | TCloud66Sync
+  | TSpaceliftSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

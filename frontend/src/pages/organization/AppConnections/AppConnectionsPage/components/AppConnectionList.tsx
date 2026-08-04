@@ -72,10 +72,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
-  const visibleOptions = useMemo(
-    () => (appConnectionOptions ?? []).filter((option) => option.app !== AppConnection.AzureADCS),
-    [appConnectionOptions]
-  );
+  const visibleOptions = useMemo(() => appConnectionOptions ?? [], [appConnectionOptions]);
 
   const handleSelect = (app: AppConnection) => {
     if (APP_CONNECTION_MAP[app].enterprise && !subscription.enterpriseAppConnections) {

@@ -2,9 +2,10 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 import { CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING } from "./cloudflare-custom-certificate-pki-sync-constants";
 
@@ -15,6 +16,7 @@ export const CloudflareCustomCertificatePkiSyncConfigSchema = z.object({
 // API-facing schema - only exposes user-configurable options
 export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
+  postSyncCommand: PostSyncCommandSchema,
   certificateNameSchema: z
     .string()
     .trim()
@@ -48,7 +50,7 @@ export const CloudflareCustomCertificatePkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema,
   syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema,
@@ -61,7 +63,7 @@ export const CreateCloudflareCustomCertificatePkiSyncSchema = z.object({
 
 export const UpdateCloudflareCustomCertificatePkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: CloudflareCustomCertificatePkiSyncConfigSchema.optional(),
   syncOptions: CloudflareCustomCertificatePkiSyncOptionsSchema.optional(),

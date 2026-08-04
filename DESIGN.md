@@ -123,16 +123,17 @@ font or substitute one role for another:
   brand-forward microcopy. It does not replace `font-mono` and should not be
   used for code editors, data tables, IDs, logs, or secret values.
 
-| Role             | Class                                                                     | Notes                                                              |
-| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Page title (h1)  | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
-| Page description | `text-mineshaft-300`                                                      | Sits under the title, `mt-1.5`                                     |
-| Card title       | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
-| Card description | `text-sm text-accent`                                                     |                                                                    |
-| Body             | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
-| Label / meta     | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
-| Badge            | `text-xs` (auto, via `Badge`)                                             | Never override                                                     |
-| Button           | `text-sm` (md/sm/lg), `text-xs` (xs)                                      | Auto via `Button` sizing                                           |
+| Role                    | Class                                                                     | Notes                                                              |
+| ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
+| Page description        | `text-mineshaft-300`                                                      | Sits under the title, `mt-1.5`                                     |
+| Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
+| Card description        | `text-sm text-accent`                                                     |                                                                    |
+| Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
+| Label / meta            | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
+| Field helper / feedback | `text-2xs leading-snug`                                                   | Defaults via `FieldDescription` and `FieldFeedback`                |
+| Badge                   | `text-xs` (auto, via `Badge`)                                             | Never override                                                     |
+| Button                  | `text-sm` (md/sm/lg), `text-xs` (xs)                                      | Auto via `Button` sizing                                           |
 
 On brand-forward surfaces, a short phrase may use the `text-highlight`
 utility to create the solid project-yellow text block. Keep the phrase short,

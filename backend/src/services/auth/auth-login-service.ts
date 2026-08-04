@@ -32,7 +32,7 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
-import { sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -844,8 +844,7 @@ export const authLoginServiceFactory = ({
 
       if (serverCfg?.allowedSignUpDomain) {
         const domain = email.split("@")[1];
-        const allowedDomains = serverCfg.allowedSignUpDomain.split(",").map((e) => e.trim());
-        if (!allowedDomains.includes(domain))
+        if (!matchesAllowedEmailDomain(email, serverCfg.allowedSignUpDomain))
           throw new BadRequestError({
             message: `Email with a domain (@${domain}) is not supported`,
             name: "Oauth 2 login"

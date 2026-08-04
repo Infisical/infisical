@@ -2,8 +2,9 @@ import { useState } from "react";
 import { CircleAlertIcon, PowerIcon, ShieldCheckIcon } from "lucide-react";
 
 import { MFA_METHOD_ICONS, MFA_METHOD_LABELS, RecoveryCodesView } from "@app/components/mfa/setup";
-import { ContentLoader } from "@app/components/v2";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -12,19 +13,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertTitle,
   Badge,
   Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DocumentationLinkBadge,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Separator,
+  Skeleton
 } from "@app/components/v3";
 import { useGetOrganizations, useGetUser } from "@app/hooks/api";
 import { MfaMethod } from "@app/hooks/api/auth/types";
@@ -39,18 +47,32 @@ import { useChangePreferredMfa } from "./useChangePreferredMfa";
 import { useDisableMfa } from "./useDisableMfa";
 import { useEnableMfa } from "./useEnableMfa";
 
-const LEARN_MORE_URL = "https://infisical.com/docs/documentation/platform/mfa";
-
 export const MFASection = () => {
-  const { data: user, isPending } = useGetUser();
-  const { changePreferredMfa } = useChangePreferredMfa();
+  const { data: user, isPending, isError: isUserError, refetch: refetchUser } = useGetUser();
+  const { changePreferredMfa, isBusy: isChangingPreferred } = useChangePreferredMfa();
   const { isBusy: isEnabling, enableMfa } = useEnableMfa();
   const { isBusy: isDisabling, disableMfa } = useDisableMfa();
-  const { data: totpConfiguration } = useGetUserTotpConfiguration();
-  const { data: webAuthnData } = useGetWebAuthnCredentials();
+  const {
+    data: totpConfiguration,
+    isError: isTotpError,
+    refetch: refetchTotp
+  } = useGetUserTotpConfiguration();
+  const {
+    data: webAuthnData,
+    isError: isWebAuthnError,
+    refetch: refetchWebAuthn
+  } = useGetWebAuthnCredentials();
   const webAuthnCredentials = webAuthnData?.credentials ?? [];
-  const { data: organizations = [] } = useGetOrganizations();
-  const { data: serverDetails } = useFetchServerStatus();
+  const {
+    data: organizations = [],
+    isError: isOrganizationsError,
+    refetch: refetchOrganizations
+  } = useGetOrganizations();
+  const {
+    data: serverDetails,
+    isError: isServerError,
+    refetch: refetchServer
+  } = useFetchServerStatus();
 
   const isMfaEnforced = organizations.some((org) => org.enforceMfa);
   const isEmailMfaAvailable = Boolean(serverDetails?.emailConfigured);
@@ -68,18 +90,58 @@ export const MFASection = () => {
     setHasAcknowledgedCodes(false);
   };
 
+  if (isUserError || isTotpError || isWebAuthnError || isOrganizationsError || isServerError) {
+    return (
+      <Alert variant="danger">
+        <CircleAlertIcon />
+        <AlertTitle>Two-factor authentication settings could not be loaded</AlertTitle>
+        <AlertDescription>
+          <p>Check your connection and try again.</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              Promise.all([
+                refetchUser(),
+                refetchTotp(),
+                refetchWebAuthn(),
+                refetchOrganizations(),
+                refetchServer()
+              ])
+            }
+          >
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (isPending || !user) {
-    return <ContentLoader />;
+    return (
+      <Card aria-label="Loading two-factor authentication settings">
+        <Skeleton className="h-6 w-64" />
+        <Skeleton className="h-4 w-full max-w-2xl" />
+        <Skeleton className="h-24 w-full" />
+      </Card>
+    );
   }
 
   if (user.authMethods?.includes(AuthMethod.LDAP)) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
-        <p className="mt-1 text-sm text-muted">
-          Two-factor authentication is managed by your identity provider for LDAP accounts.
-        </p>
-      </div>
+      <Card role="region" aria-labelledby="two-factor-authentication-title">
+        <CardHeader>
+          <h2
+            id="two-factor-authentication-title"
+            className="font-alliance text-lg leading-none font-semibold"
+          >
+            Two-Factor Authentication
+          </h2>
+          <CardDescription>
+            Two-factor authentication is managed by your identity provider for LDAP accounts.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
@@ -113,13 +175,13 @@ export const MFASection = () => {
   // step-up flow as viewing recovery codes) before it goes through.
   const handleDisable = () => disableMfa(() => setIsDisableOpen(false));
 
-  const banner = (
-    <div className="p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-medium text-foreground">Two-factor Authentication</h2>
-          <DocumentationLinkBadge href={LEARN_MORE_URL} />
-        </div>
+  const header = (
+    <CardHeader className="p-6">
+      <h2
+        id="two-factor-authentication-title"
+        className="flex flex-wrap items-center gap-1.5 font-alliance text-lg leading-none font-semibold"
+      >
+        Two-Factor Authentication
         {user.isMfaEnabled ? (
           <Badge variant="success">
             <ShieldCheckIcon /> Enabled
@@ -129,92 +191,110 @@ export const MFASection = () => {
             <CircleAlertIcon /> Not enabled
           </Badge>
         )}
-      </div>
-      <p className="mt-2 max-w-2xl text-sm text-muted">
+      </h2>
+      <CardDescription>
         {user.isMfaEnabled
-          ? "Two-factor authentication is protecting your account. Manage your methods and recovery options below."
+          ? "Manage your methods and recovery options."
           : "Two-factor authentication adds an additional layer of security to your account by requiring more than just a password to sign in."}
-      </p>
+      </CardDescription>
+    </CardHeader>
+  );
 
-      <div className="mt-6 border-t border-border pt-6">
-        <p className="text-sm font-medium text-foreground">Preferred 2FA method</p>
-        <p className="mb-3 text-sm text-muted">
-          Set the method used first when signing in to Infisical.
-        </p>
-        <div className="max-w-xs">
-          <Select
-            value={selectedMethod}
-            onValueChange={(value) => handlePreferredMethodChange(value as MfaMethod)}
+  const preferredMethodSection = (
+    <section className="grid gap-4" aria-labelledby="preferred-2fa-method-title">
+      <CardHeader>
+        <div className="flex items-center gap-4">
+          <h3
+            id="preferred-2fa-method-title"
+            className="shrink-0 font-alliance text-sm font-semibold"
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a method" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableMethods.map((method) => {
-                const Icon = MFA_METHOD_ICONS[method];
-                return (
-                  <SelectItem key={method} value={method}>
-                    <span className="flex items-center gap-2">
-                      <Icon />
-                      {MFA_METHOD_LABELS[method]}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+            Preferred 2FA method
+          </h3>
+          <Separator className="flex-1" />
         </div>
+        <CardDescription>Set the method used first when signing in to Infisical.</CardDescription>
+      </CardHeader>
+      <div className="max-w-xs">
+        <Select
+          value={selectedMethod}
+          onValueChange={(value) => handlePreferredMethodChange(value as MfaMethod)}
+          disabled={isChangingPreferred || availableMethods.length === 0}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a method" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableMethods.map((method) => {
+              const Icon = MFA_METHOD_ICONS[method];
+              return (
+                <SelectItem key={method} value={method}>
+                  <span className="flex items-center gap-2">
+                    <Icon />
+                    {MFA_METHOD_LABELS[method]}
+                  </span>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
+    </section>
+  );
 
-      <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-6">
+  let footerDescription =
+    "Set up an authenticator app or passkey below to enable two-factor authentication. Email codes are unavailable because SMTP is not configured for this instance.";
+
+  if (user.isMfaEnabled) {
+    footerDescription = isMfaEnforced
+      ? "Your organization requires two-factor authentication, so it can't be disabled."
+      : "Turning this off keeps your configured methods, but your recovery codes are invalidated.";
+  } else if (canEnable) {
+    footerDescription =
+      "Choose your preferred method above, then enable two-factor authentication.";
+  }
+
+  const footer = (
+    <CardFooter className="min-h-8 flex-wrap justify-between gap-8 border-t border-neutral/15 bg-neutral/5 p-4 pl-6">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-muted">{footerDescription}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
         {user.isMfaEnabled ? (
-          <>
-            <p className="text-sm text-muted">
-              {isMfaEnforced
-                ? "Your organization requires two-factor authentication, so it can't be disabled."
-                : "Turning this off keeps your configured methods, but your recovery codes are invalidated."}
-            </p>
-            <Button
-              variant="danger"
-              isDisabled={isMfaEnforced}
-              onClick={() => setIsDisableOpen(true)}
-            >
-              <PowerIcon /> Disable two-factor authentication
-            </Button>
-          </>
+          <Button
+            variant="danger"
+            isDisabled={isMfaEnforced}
+            onClick={() => setIsDisableOpen(true)}
+          >
+            <PowerIcon /> Disable 2FA
+          </Button>
         ) : (
-          <>
-            <p className="text-sm text-muted">
-              {canEnable
-                ? "Choose your preferred method above, then enable two-factor authentication."
-                : "Set up an authenticator app or passkey below to enable two-factor authentication. Email codes are unavailable because SMTP is not configured for this instance."}
-            </p>
-            <Button
-              variant="org"
-              isDisabled={isEnabling || !canEnable}
-              onClick={() => setIsEnableOpen(true)}
-            >
-              <ShieldCheckIcon /> Enable two-factor authentication
-            </Button>
-          </>
+          <Button
+            variant="neutral"
+            isDisabled={isEnabling || !canEnable}
+            onClick={() => setIsEnableOpen(true)}
+          >
+            <ShieldCheckIcon /> Enable two-factor authentication
+          </Button>
         )}
       </div>
-    </div>
+    </CardFooter>
   );
 
   return (
     <>
-      <div className="mb-6 rounded-lg border border-border bg-card">
-        {banner}
-        <div className="mx-6 border-t border-border" />
-        <MfaMethodsCard />
-        {hasRecoveryCodes && (
-          <>
-            <div className="mx-6 border-t border-border" />
-            <RecoveryOptionsCard />
-          </>
-        )}
-      </div>
+      <Card
+        className="gap-0 overflow-hidden p-0"
+        role="region"
+        aria-labelledby="two-factor-authentication-title"
+      >
+        {header}
+        <CardContent className="flex flex-col gap-6 px-6 pb-6">
+          <MfaMethodsCard />
+          {hasRecoveryCodes && <RecoveryOptionsCard />}
+          {preferredMethodSection}
+        </CardContent>
+        {footer}
+      </Card>
 
       <AlertDialog open={isEnableOpen} onOpenChange={setIsEnableOpen}>
         <AlertDialogContent>
@@ -228,14 +308,17 @@ export const MFASection = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="org" isPending={isEnabling} onClick={handleEnable}>
+            <AlertDialogAction variant="neutral" isPending={isEnabling} onClick={handleEnable}>
               Enable
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isDisableOpen} onOpenChange={setIsDisableOpen}>
+      <AlertDialog
+        open={isDisableOpen}
+        onOpenChange={(open) => !isDisabling && setIsDisableOpen(open)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Disable two-factor authentication?</AlertDialogTitle>
@@ -246,8 +329,15 @@ export const MFASection = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isDisabling} onClick={handleDisable}>
+            <AlertDialogCancel isDisabled={isDisabling}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={isDisabling}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDisable();
+              }}
+            >
               Disable
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -273,7 +363,7 @@ export const MFASection = () => {
               they are shown.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div className="max-h-80 overflow-y-auto">
             <RecoveryCodesView
               recoveryCodes={newRecoveryCodes ?? []}
               acknowledgment={{

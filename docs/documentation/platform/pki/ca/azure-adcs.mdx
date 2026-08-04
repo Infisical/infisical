@@ -1,6 +1,6 @@
 ---
-title: "Microsoft AD CS"
-description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (ADCS) with Infisical."
+title: "Azure ADCS (Web Enrollment)"
+description: "Learn how to issue and manage certificates using Microsoft Active Directory Certificate Services (AD CS) over HTTPS web enrollment."
 ---
 
 Issue and manage certificates using Microsoft Active Directory Certificate Services (ADCS) for enterprise-grade certificate management integrated with your existing Windows infrastructure.
@@ -31,7 +31,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
 
       <Step title="Create New Azure ADCS Certificate Authority">
         Click **Create CA** and configure:
-        - **Type**: Choose **Active Directory Certificate Services (AD CS)**
+        - **Type**: Choose **Azure ADCS (Web Enrollment)**
         - **Name**: Friendly name for this CA (e.g., "Production ADCS CA")
         - **App Connection**: Choose your ADCS connection from the dropdown
       </Step>
@@ -172,8 +172,8 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
           <Step title="Open the Install Certificate Modal">
             Press **Install CA Certificate** on the intermediate CA. Select **External CA (Automated)** and press **Choose Integration**.
           </Step>
-          <Step title="Select Azure AD CS">
-            Choose **Azure AD CS** as the integration provider.
+          <Step title="Select Azure ADCS (Web Enrollment)">
+            Choose **Azure ADCS (Web Enrollment)** as the integration provider.
           </Step>
           <Step title="Configure Signing Details">
             Configure the following:
@@ -271,7 +271,7 @@ Infisical supports two ways to use AD CS: as an **External CA** for direct certi
       <Tab title="Infisical UI">
         Navigate to the CA details page and press the **Renew CA** button.
 
-        The renewal modal will confirm that this CA is configured to use Azure AD CS for signing. Press **Renew via AD CS** to submit a new CSR to AD CS and install the renewed certificate.
+        The renewal modal will confirm that this CA is configured to use Azure ADCS for signing. Press **Renew via ADCS** to submit a new CSR to ADCS and install the renewed certificate.
       </Tab>
       <Tab title="API">
         To manually renew an AD CS-signed CA, re-trigger the install flow via the API.

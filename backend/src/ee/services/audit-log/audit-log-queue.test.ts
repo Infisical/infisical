@@ -11,7 +11,8 @@ const mockConfig = {
   CLICKHOUSE_AUDIT_LOG_TABLE_NAME: "audit_logs",
   CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS: {},
   AUDIT_LOG_STREAMS_ENABLED: false,
-  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false
+  DISABLE_POSTGRES_AUDIT_LOG_STORAGE: false,
+  QUEUE_WORKERS_ENABLED: true
 };
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -52,9 +53,10 @@ const collectResult = (payloads: Record<string, unknown>[], lastId = "9-0") => (
   lastId
 });
 
-const createHarness = async ({ clickhouse = false, streamsEnabled = false } = {}) => {
+const createHarness = async ({ clickhouse = false, streamsEnabled = false, queueWorkersEnabled = true } = {}) => {
   mockConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = clickhouse;
   mockConfig.AUDIT_LOG_STREAMS_ENABLED = streamsEnabled;
+  mockConfig.QUEUE_WORKERS_ENABLED = queueWorkersEnabled;
 
   const startHandlers = new Map<string, (job?: unknown) => Promise<void>>();
   const queueService = {
@@ -134,6 +136,22 @@ const pushedEntry = (keyStore: { streamAdd: { mock: { calls: unknown[][] } } }) 
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("audit-log-queue construction", () => {
+  test("registers the batch scheduler when queue workers are enabled", async () => {
+    const { queueService } = await createHarness();
+
+    expect(queueService.upsertJobScheduler).toHaveBeenCalledTimes(1);
+  });
+
+  test("skips scheduler registration when queue workers are disabled", async () => {
+    // A pod with workers disabled never initializes the queue, and upsertJobScheduler throws on a
+    // missing queue; the factory must branch instead of crashing the boot.
+    const { queueService } = await createHarness({ queueWorkersEnabled: false });
+
+    expect(queueService.upsertJobScheduler).not.toHaveBeenCalled();
+  });
 });
 
 describe("audit-log-queue pushToLog", () => {

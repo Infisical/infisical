@@ -55,7 +55,7 @@ function Empty({
     <div
       data-slot="empty"
       className={cn(
-        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md bg-container p-6 text-center text-balance text-foreground shadow-inner md:p-12",
+        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-md bg-container p-6 text-center text-foreground shadow-inner md:p-12",
         frame === "none" && "border-dashed border-border",
         hasFrame && "relative transition-colors duration-200 hover:bg-container-hover",
         className
@@ -141,10 +141,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-content"
-      className={cn(
-        "flex w-full max-w-sm min-w-0 flex-col items-center gap-4 text-sm text-balance",
-        className
-      )}
+      className={cn("flex w-full max-w-sm min-w-0 flex-col items-center gap-4 text-sm", className)}
       {...props}
     />
   );

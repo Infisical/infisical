@@ -92,7 +92,8 @@ export const secretImportServiceFactory = ({
     if (!crossProject.length) return imports.map((imp) => ({ ...imp, isAccessRevoked: false }));
 
     // If org-level toggle is disabled, strip cross-project imports entirely
-    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
       return imports
         .filter((imp) => imp.importEnv.projectId === projectId)
         .map((imp) => ({ ...imp, isAccessRevoked: false }));
@@ -153,7 +154,8 @@ export const secretImportServiceFactory = ({
     const isCrossProjectImport = sourceProjectId !== projectId;
 
     if (isCrossProjectImport) {
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
         throw new ForbiddenRequestError({
           message: "Cross-project secret sharing is not enabled for this organization"
         });
@@ -911,6 +913,7 @@ export const secretImportServiceFactory = ({
         projectFolderGrantDAL,
         actorOrgId,
         orgDAL,
+        licenseService,
         kmsService
       });
 
@@ -1047,7 +1050,8 @@ export const secretImportServiceFactory = ({
     let crossProjItems = importedBy.filter((el) => el.projectSlug);
 
     if (crossProjItems.length) {
-      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL))) {
+      const plan = await licenseService.getPlan(actorOrgId);
+      if (!(await isCrossProjectEnabled(actorOrgId, orgDAL, plan))) {
         crossProjItems = [];
       } else {
         const targetProjectIds = crossProjItems

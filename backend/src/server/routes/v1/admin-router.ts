@@ -13,6 +13,7 @@ import { LicenseType } from "@app/ee/services/license/license-types";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { AllowedEmailDomainsSchema } from "@app/lib/validator";
 import { PASSWORD_POLICY, PasswordPolicyConfigSchema, PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { invalidateCacheLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -22,7 +23,6 @@ import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
-import { canUseCrossProjectSecretSharing } from "@app/services/project-folder-grant/project-folder-grant-fns";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
@@ -51,6 +51,7 @@ const SanitizedSuperAdminSchema = z.object({
   trustSamlEmails: z.boolean().nullish(),
   trustLdapEmails: z.boolean().nullish(),
   trustOidcEmails: z.boolean().nullish(),
+  onboardingCompleted: z.boolean().optional(),
   adminIdentityIds: z.string().array().nullable().optional(),
   fipsEnabled: z.boolean().optional(),
   isMigrationModeOn: z.boolean().optional(),
@@ -94,6 +95,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const orgId = req.auth?.orgId ?? "";
 
       const latestAvailableVersion = await server.services.updateCheck.getAvailableUpdateVersion();
+      const plan = await server.services.license.getPlan(orgId);
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -113,7 +115,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             pageFrameContent: config.pageFrameContent,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             licenseServerV2Enabled: serverEnvs.LICENSE_SERVER_V2_MODE === "on",
-            isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId),
+            isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
             latestAvailableVersion
           }
         };
@@ -131,7 +133,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
-          isCrossProjectSecretSharingEnabled: canUseCrossProjectSecretSharing(orgId),
+          isCrossProjectSecretSharingEnabled: plan.crossProjectSecretSharing,
           latestAvailableVersion
         }
       };
@@ -148,10 +150,11 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       operationId: "updateAdminConfig",
       body: z.object({
         allowSignUp: z.boolean().optional(),
-        allowedSignUpDomain: z.string().optional().nullable(),
+        allowedSignUpDomain: AllowedEmailDomainsSchema.optional().nullable(),
         trustSamlEmails: z.boolean().optional(),
         trustLdapEmails: z.boolean().optional(),
         trustOidcEmails: z.boolean().optional(),
+        onboardingCompleted: z.boolean().optional(),
         defaultAuthOrgId: z.string().optional().nullable(),
         enabledLoginMethods: z
           .nativeEnum(LoginMethod)
@@ -640,7 +643,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         email: z.string().email().trim(),
         password: PasswordPolicySchema,
         firstName: z.string().trim().min(1),
-        lastName: z.string().trim().optional()
+        lastName: z.string().trim().optional(),
+        organizationName: GenericResourceNameSchema.optional()
       }),
       response: {
         200: z.object({

@@ -176,6 +176,8 @@ import { salesforceConnectionService } from "./salesforce/salesforce-connection-
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
+import { ValidateSpaceliftConnectionCredentialsSchema } from "./spacelift";
+import { spaceliftConnectionService } from "./spacelift/spacelift-connection-service";
 import { ValidateSshConnectionCredentialsSchema } from "./ssh";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
 import { supabaseConnectionService } from "./supabase/supabase-connection-service";
@@ -302,7 +304,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
-  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema
+  [AppConnection.NutanixPrismCentral]: ValidateNutanixPrismCentralConnectionCredentialsSchema,
+  [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1410,6 +1413,7 @@ export const appConnectionServiceFactory = ({
       connectAppConnectionById,
       gatewayV2Service,
       gatewayPoolService
-    )
+    ),
+    spacelift: spaceliftConnectionService(connectAppConnectionById)
   };
 };

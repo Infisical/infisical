@@ -1,10 +1,10 @@
-/* eslint-disable react/prop-types */
-
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+
+const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-lg max-w-[calc(100%-2rem)]";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -55,7 +55,8 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg duration-200 outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          "fixed top-[50%] left-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border border-border bg-popover p-6 text-foreground shadow-lg duration-200 outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          DIALOG_CONTENT_WIDTH_CLASSNAME,
           className
         )}
         onPointerDownOutside={(e) => {
@@ -87,7 +88,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn("flex flex-col gap-2 text-left text-balance", className)}
       {...props}
     />
   );
@@ -97,7 +98,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+      className={cn("flex flex-row flex-wrap justify-end gap-2", className)}
       {...props}
     />
   );
@@ -128,6 +129,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DIALOG_CONTENT_WIDTH_CLASSNAME,
   DialogClose,
   DialogContent,
   DialogDescription,

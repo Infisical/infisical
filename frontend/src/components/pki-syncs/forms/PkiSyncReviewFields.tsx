@@ -66,6 +66,8 @@ export const PkiSyncReviewFields = () => {
 
   const destinationName = PKI_SYNC_MAP[destination].name;
   const selectedCertificates = getSelectedCertificates(certificateIds);
+  const postSyncCommand =
+    syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
 
   return (
     <div className="mb-4 flex flex-col gap-6">
@@ -176,6 +178,16 @@ export const PkiSyncReviewFields = () => {
           })}
         </div>
       </div>
+      {postSyncCommand && (
+        <div className="flex flex-col gap-3">
+          <div className="w-full border-b border-mineshaft-600">
+            <span className="text-sm text-mineshaft-300">Post-Sync Command</span>
+          </div>
+          <pre className="thin-scrollbar overflow-x-auto rounded-sm bg-mineshaft-600 p-2 font-mono text-xs whitespace-pre-wrap text-mineshaft-200">
+            {postSyncCommand}
+          </pre>
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         <div className="w-full border-b border-border">
           <span className="text-sm text-muted">Details</span>

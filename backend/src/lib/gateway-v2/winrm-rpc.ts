@@ -4,6 +4,7 @@ export enum WinRmRpcEndpoint {
   Test = "/v1/test-connection",
   DeliverFiles = "/v1/deliver-files",
   RemoveFiles = "/v1/remove-files",
+  RunCommand = "/v1/run-command",
   EnumerateAccounts = "/v1/enumerate-accounts",
   EnumerateDependencies = "/v1/enumerate-dependencies",
   RotateCredential = "/v1/rotate-credential",
@@ -31,6 +32,7 @@ export type WinRmRpcRequestBody = {
 export type WinRmTestResult = { ok: boolean };
 export type WinRmDeliverResult = { delivered: number };
 export type WinRmRemoveResult = { removed: number };
+export type WinRmRunCommandResult = { stdout: string; stderr: string; exitCode: number };
 
 export type WinRmRpcSuccess<T> = { ok: true; status: number; result: T };
 export type WinRmRpcFailure = { ok: false; status: number; errorMessage: string };

@@ -4,7 +4,6 @@ export enum ProjectMembershipRole {
   Custom = "custom",
   Viewer = "viewer",
   NoAccess = "no-access",
-  SshHostBootstrapper = "ssh-host-bootstrapper",
   KmsCryptographicOperator = "cryptographic-operator"
 }
 

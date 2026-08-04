@@ -256,6 +256,11 @@ import {
   SnowflakeConnectionMethod,
   validateSnowflakeConnectionCredentials
 } from "./snowflake";
+import {
+  getSpaceliftConnectionListItem,
+  SpaceliftConnectionMethod,
+  validateSpaceliftConnectionCredentials
+} from "./spacelift";
 import { getSshConnectionListItem, SshConnectionMethod, validateSshConnectionCredentials } from "./ssh";
 import {
   getSupabaseConnectionListItem,
@@ -417,7 +422,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getQoveryConnectionListItem(),
     getLiteLLMConnectionListItem(),
     getFireworksConnectionListItem(),
-    getNutanixPrismCentralConnectionListItem()
+    getNutanixPrismCentralConnectionListItem(),
+    getSpaceliftConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -432,8 +438,6 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.CertificateManager:
           return PKI_APP_CONNECTIONS.includes(option.app);
         case ProjectType.KMS:
-          return false;
-        case ProjectType.SSH:
           return false;
         case ProjectType.PAM:
           return false;
@@ -671,7 +675,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.LiteLLM]: validateLiteLLMConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Fireworks]: validateFireworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.NutanixPrismCentral]:
-      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator
+      validateNutanixPrismCentralConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -727,6 +732,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case DatadogConnectionMethod.Token:
       return "API Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
+    case SpaceliftConnectionMethod.ApiKeySecret:
       return "API Key & Secret";
     case AzureDnsConnectionMethod.ClientSecret:
     case AzureEntraIdConnectionMethod.ClientSecret:
@@ -939,7 +945,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Qovery]: platformManagedCredentialsNotSupported,
   [AppConnection.LiteLLM]: platformManagedCredentialsNotSupported,
   [AppConnection.Fireworks]: platformManagedCredentialsNotSupported,
-  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported
+  [AppConnection.NutanixPrismCentral]: platformManagedCredentialsNotSupported,
+  [AppConnection.Spacelift]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

@@ -56,13 +56,6 @@ describe("extractAuth — OAuth access token classification", () => {
     expect(result.authMode).toBe(AuthMode.JWT);
   });
 
-  test("the MCP marker takes precedence over the OAuth marker", async () => {
-    const token = sign({ ...baseAccessClaims, mcp: { endpointId: "ep-1" }, oauthClientId: "oauth_client_abc" });
-    const result = await extractAuth(makeReq(`Bearer ${token}`), AUTH_SECRET);
-
-    expect(result.authMode).toBe(AuthMode.MCP_JWT);
-  });
-
   test("a service token is still detected by its st. prefix, never as OAuth", async () => {
     const result = await extractAuth(makeReq("Bearer st.some-service-token"), AUTH_SECRET);
 

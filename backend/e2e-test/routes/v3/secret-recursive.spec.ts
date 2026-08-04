@@ -12,8 +12,38 @@ describe("Secret Recursive Testing", async () => {
     { name: "deep22", path: "/deep2", expectedSecretCount: 1 }
   ];
 
+  // Top-level folder of every fixture path. Deleting these cascades to their
+  // descendants, so they're the only ids cleanup needs.
+  //
+  // Some are created *implicitly*: `createFolder` auto-creates missing parents,
+  // so asking for folder "deep22" at path "/deep2" also creates "/deep2" — and
+  // that id is never returned to us. Deriving roots from the fixture paths
+  // (rather than only recording folders created at "/") is what stops those
+  // from being orphaned in the shared project's prod environment, where this
+  // very spec asserts on exact recursive secret counts.
+  const rootFolderNames = [
+    ...new Set(folderAndSecretNames.map(({ name, path }) => (path === "/" ? name : path.split("/").filter(Boolean)[0])))
+  ];
+
   beforeAll(async () => {
     const rootFolderIds: string[] = [];
+
+    // Create the implicit roots up front so cleanup has an id for each. Roots a
+    // fixture entry already creates at "/" are skipped — creating them twice
+    // would fail on the duplicate name.
+    const explicitRootNames = new Set(folderAndSecretNames.filter(({ path }) => path === "/").map(({ name }) => name));
+    for (const name of rootFolderNames.filter((n) => !explicitRootNames.has(n))) {
+      // eslint-disable-next-line no-await-in-loop
+      const createdRoot = await createFolder({
+        authToken: jwtAuthToken,
+        environmentSlug: "prod",
+        workspaceId: projectId,
+        secretPath: "/",
+        name
+      });
+      rootFolderIds.push(createdRoot.id);
+    }
+
     for (const folder of folderAndSecretNames) {
       // eslint-disable-next-line no-await-in-loop
       const createdFolder = await createFolder({
@@ -51,13 +81,19 @@ describe("Secret Recursive Testing", async () => {
         )
       );
 
-      await deleteSecretV2({
-        authToken: jwtAuthToken,
-        secretPath: "/",
-        workspaceId: projectId,
-        environmentSlug: "prod",
-        key: folderAndSecretNames[0].name
-      });
+      await Promise.all(
+        folderAndSecretNames
+          .filter(({ path }) => path === "/")
+          .map(({ name }) =>
+            deleteSecretV2({
+              authToken: jwtAuthToken,
+              secretPath: "/",
+              workspaceId: projectId,
+              environmentSlug: "prod",
+              key: name
+            })
+          )
+      );
     };
   });
 

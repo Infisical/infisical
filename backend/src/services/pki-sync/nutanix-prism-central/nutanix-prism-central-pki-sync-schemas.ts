@@ -2,8 +2,9 @@ import { z } from "zod";
 
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PkiSyncSchema } from "@app/services/pki-sync/pki-sync-schemas";
+import { PkiSyncSchema, PostSyncCommandSchema } from "@app/services/pki-sync/pki-sync-schemas";
 
 export const NutanixPrismCentralPkiSyncConfigSchema = z.object({
   clusterId: z.string().min(1, "Cluster ID is required"),
@@ -12,7 +13,8 @@ export const NutanixPrismCentralPkiSyncConfigSchema = z.object({
 
 export const NutanixPrismCentralPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.literal(false).default(false),
-  canRemoveCertificates: z.literal(false).default(false)
+  canRemoveCertificates: z.literal(false).default(false),
+  postSyncCommand: PostSyncCommandSchema
 });
 
 export const NutanixPrismCentralPkiSyncSchema = PkiSyncSchema.extend({
@@ -23,7 +25,7 @@ export const NutanixPrismCentralPkiSyncSchema = PkiSyncSchema.extend({
 
 export const CreateNutanixPrismCentralPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: NutanixPrismCentralPkiSyncConfigSchema,
   syncOptions: NutanixPrismCentralPkiSyncOptionsSchema.optional().default({
@@ -39,7 +41,7 @@ export const CreateNutanixPrismCentralPkiSyncSchema = z.object({
 
 export const UpdateNutanixPrismCentralPkiSyncSchema = z.object({
   name: z.string().trim().min(1).max(256).optional(),
-  description: z.string().optional(),
+  description: pkiDescriptionSchema.optional(),
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: NutanixPrismCentralPkiSyncConfigSchema.optional(),
   syncOptions: NutanixPrismCentralPkiSyncOptionsSchema.optional(),

@@ -34,18 +34,16 @@ type MethodRowProps = {
 };
 
 const MethodRow = ({ icon: Icon, title, description, badge, action }: MethodRowProps) => (
-  <div className="flex items-center justify-between gap-4 py-3">
-    <div className="flex items-start gap-3">
-      <Icon className="mt-0.5 text-muted" />
-      <div>
-        <div className="flex items-center gap-2">
-          <p className="text-sm text-foreground">{title}</p>
-          {badge}
-        </div>
-        <p className="text-xs text-muted">{description}</p>
-      </div>
+  <div className="grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0.5 py-3 sm:grid-cols-[1.5rem_minmax(0,1fr)_auto]">
+    <Icon className="row-span-2 row-start-1 size-6 text-muted" />
+    <div className="col-start-2 row-start-1 flex min-w-0 items-center gap-2">
+      <p className="text-sm text-foreground">{title}</p>
+      {badge}
     </div>
-    <div className="shrink-0">{action}</div>
+    <p className="col-start-2 row-start-2 text-sm text-muted">{description}</p>
+    <div className="col-start-2 row-start-3 justify-self-end sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:self-center">
+      {action}
+    </div>
   </div>
 );
 
@@ -72,8 +70,7 @@ export const MfaMethodsCard = () => {
   const handleRemoveTotp = () => removeTotp(() => setIsRemoveTotpOpen(false));
 
   return (
-    <div className="p-6">
-      <h3 className="mb-2 text-sm font-medium text-foreground">Two-factor methods</h3>
+    <section aria-label="Two-factor authentication methods">
       <div className="divide-y divide-border">
         <MethodRow
           icon={MFA_METHOD_ICONS[MfaMethod.EMAIL]}
@@ -144,7 +141,10 @@ export const MfaMethodsCard = () => {
 
       <PasskeyManagerDialog isOpen={isPasskeyManagerOpen} onOpenChange={setIsPasskeyManagerOpen} />
 
-      <AlertDialog open={isRemoveTotpOpen} onOpenChange={setIsRemoveTotpOpen}>
+      <AlertDialog
+        open={isRemoveTotpOpen}
+        onOpenChange={(open) => !isRemovingTotp && setIsRemoveTotpOpen(open)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove authenticator app?</AlertDialogTitle>
@@ -153,17 +153,20 @@ export const MfaMethodsCard = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={isRemovingTotp}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               isPending={isRemovingTotp}
-              onClick={handleRemoveTotp}
+              onClick={(event) => {
+                event.preventDefault();
+                handleRemoveTotp();
+              }}
             >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </section>
   );
 };
