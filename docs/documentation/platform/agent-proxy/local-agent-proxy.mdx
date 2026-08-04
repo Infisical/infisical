@@ -139,7 +139,7 @@ A per-run `0700` temporary directory holds the only things that touch disk:
 
 ## The sandbox
 
-The sandbox is on by default, and it is what makes brokering safe when the proxy and the agent share a machine. Its restrictions are deliberate, and a few are surprising the first time, so this is the part worth reading before you use `run` for real work.
+The sandbox is on by default, and it is what makes brokering safe when the proxy and the agent share a machine. `run` applies it to the agent process before the agent starts, and the operating system extends it to every command the agent runs, so nothing inside the agent can lift it, including an agent's own sandbox settings. Its restrictions are deliberate, and a few are surprising the first time, so this is the part worth reading before you use `run` for real work.
 
 ```text
                                   |
@@ -262,24 +262,6 @@ Add back what the sweep took, one variable at a time:
 
 A placeholder wins over a variable of the same name from your own environment, and `--set-env` wins over everything, including a placeholder.
 
-### Agents that sandbox themselves
-
-Some agents have a sandbox of their own. Claude Code limits the shell commands it runs, and other agents do something similar. That sandbox is set up inside the agent, separately from this one.
-
-This is the sandbox that protects your credentials. `run` applies it to the agent process before the agent starts, and the operating system extends it to everything the agent runs. No setting inside the agent can widen it.
-
-Both sandboxes fail the same way, with `operation not permitted`, so it helps to know which one you are looking at:
-
-- An agent that hits a denied path often assumes its own sandbox is at fault and runs the command again with that sandbox off. Claude Code calls this `dangerouslyDisableSandbox`.
-- The second try leaves the agent's sandbox, not this one, so it fails again.
-- A denial that survives the retry comes from the deny list above. If the agent really needs the file, open it with `--allow-read`.
-
-<Note>
-  On macOS an agent's own sandbox usually cannot start under `run`, because macOS does not allow one sandbox inside another. Agents normally warn and carry on without it, and nothing is lost, since this sandbox still applies. If your agent is set to refuse to start without its sandbox, turn that off.
-</Note>
-
-Configure your agent's own sandbox for the sessions you run **without** `run`, where it is your only boundary.
-
 ## Certificates and the macOS keychain prompt
 
 For the proxy to apply credentials to HTTPS requests it terminates TLS, so the agent has to trust the certificates it presents. `run` uses a **self-signed local root**, generated on your machine; it never involves your organization's root CA, and the private key stays on the parent side of the sandbox. Leaf certificates are minted per hostname from it.
@@ -369,6 +351,8 @@ Without `--log-file` you still see problems: warnings and errors print to your t
   </Accordion>
   <Accordion title="The agent cannot read a file it needs">
     It is probably in a denied credential path. Re-open just that file with `--allow-read <path>`. Reach for `--no-sandbox` last, not first.
+
+    Agents that have a sandbox of their own often blame it for the denial and run the command again with that sandbox off, which changes nothing here: this sandbox still applies, and the command fails the same way. If your agent is set to refuse to start when its own sandbox is unavailable, turn that setting off, since it cannot start one inside this one on macOS.
   </Accordion>
 </AccordionGroup>
 
