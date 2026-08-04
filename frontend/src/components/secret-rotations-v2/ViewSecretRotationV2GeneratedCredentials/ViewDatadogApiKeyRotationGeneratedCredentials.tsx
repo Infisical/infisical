@@ -26,12 +26,16 @@ export const ViewDatadogApiKeyRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="API Key ID">{inactiveCredentials?.apiKeyId}</CredentialDisplay>
-          <CredentialDisplay isSensitive label="API Key">
-            {inactiveCredentials?.apiKey}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="API Key ID">
+              {inactiveCredentials?.apiKeyId}
+            </CredentialDisplay>
+            <CredentialDisplay isSensitive label="API Key">
+              {inactiveCredentials?.apiKey}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

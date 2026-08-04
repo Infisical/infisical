@@ -1,13 +1,23 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faTriangleExclamation, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
+import { Loader2Icon, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, Modal, ModalContent, Spinner } from "@app/components/v2";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldLabel
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { projectKeys, useGetWorkspaceById, useMigrateProjectToV3 } from "@app/hooks/api";
@@ -78,8 +88,8 @@ export const SecretV2MigrationSection = () => {
   return (
     <div className="mt-4 flex max-w-2xl flex-col rounded-lg border border-primary/50 bg-primary/10 px-6 py-5">
       {isUpgrading && (
-        <div className="bg-opacity-80 absolute top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-bunker-500">
-          <Spinner size="lg" className="text-primary" />
+        <div className="fixed top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-background/80">
+          <Loader2Icon className="size-8 animate-spin text-primary" />
           <div className="ml-4 flex flex-col space-y-1">
             <div className="text-3xl font-medium">Please wait</div>
             <span className="inline-block">Upgrading secrets engine...</span>
@@ -87,105 +97,116 @@ export const SecretV2MigrationSection = () => {
         </div>
       )}
       <div className="mb-4 flex items-start gap-2">
-        <FontAwesomeIcon icon={faWarning} size="xl" className="mt-1 text-primary" />
+        <TriangleAlertIcon className="mt-1 size-5 text-primary" />
         <p className="text-xl font-medium">Upgrade secrets engine version</p>
       </div>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+      <p className="mx-1 mb-4 leading-7 text-muted">
         Your existing workflows to fetch secrets will continue to work. However, viewing secrets on
         the UI requires you to upgrade your project&apos;s secrets engine version.
       </p>
-      <p className="mx-1 mb-4 leading-7 text-mineshaft-100">
+      <p className="mx-1 mb-4 leading-7 text-muted">
         Upgrading is free and enables the use of Infisical&apos;s new secrets engine, which is 10x
         faster and allows you to encrypt secrets with your own KMS provider.
       </p>
-      <p className="mx-1 mb-6 leading-7 text-mineshaft-100">
+      <p className="mx-1 mb-6 leading-7 text-muted">
         The upgrade takes only 1-2 minutes and will not cause any downtime.
       </p>
       <Button
         onClick={() => handlePopUpOpen("migrationInfo")}
         isDisabled={!isAdmin || isUpgrading}
-        isLoading={migrateProjectToV3.isPending}
+        isPending={migrateProjectToV3.isPending}
         className="w-full"
       >
         {isAdmin ? "Upgrade Secrets Engine" : "Upgrade requires admin privilege"}
       </Button>
       {didProjectUpgradeFailed && (
-        <p className="mt-2 text-sm leading-7 text-red-400">
-          <FontAwesomeIcon icon={faTriangleExclamation} className="mr-2" />
+        <p className="mt-2 flex items-center gap-2 text-sm leading-7 text-danger">
+          <TriangleAlertIcon className="size-3.5" />
           Secrets engine upgrade unsuccessful. For assistance, please contact the Infisical support
           team.
         </p>
       )}
-      <Modal
-        isOpen={popUp.migrationInfo.isOpen}
+      <Dialog
+        open={popUp.migrationInfo.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("migrationInfo", isOpen)}
       >
-        <ModalContent
-          title="Upgrade Checklist"
-          subTitle="To ensure smooth transition, please ensure the following requirements are met before upgrading this project."
-        >
-          <div>
-            <form onSubmit={handleSubmit(handleMigrationSecretV2)}>
-              <div className="flex flex-col space-y-4">
-                <Controller
-                  control={control}
-                  name="isCLIChecked"
-                  defaultValue={false}
-                  render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upgrade Checklist</DialogTitle>
+            <DialogDescription>
+              To ensure smooth transition, please ensure the following requirements are met before
+              upgrading this project.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(handleMigrationSecretV2)}>
+            <div className="flex flex-col space-y-4">
+              <Controller
+                control={control}
+                name="isCLIChecked"
+                defaultValue={false}
+                render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
+                  <Field orientation="horizontal">
                     <Checkbox
                       id="is-cli-checked"
                       isChecked={value}
                       onCheckedChange={onChange}
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
-                    >
+                    />
+                    <FieldLabel htmlFor="is-cli-checked" className="cursor-pointer">
                       Infisical CLI version is v0.25.0 or above.
-                    </Checkbox>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="isOperatorChecked"
-                  defaultValue={false}
-                  render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
+                    </FieldLabel>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="isOperatorChecked"
+                defaultValue={false}
+                render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
+                  <Field orientation="horizontal">
                     <Checkbox
                       id="is-operator-checked"
                       isChecked={value}
                       onCheckedChange={onChange}
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
-                    >
+                    />
+                    <FieldLabel htmlFor="is-operator-checked" className="cursor-pointer">
                       Infisical Kubernetes Operator version is v0.7.0 or above.
-                    </Checkbox>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="shouldCloseOpenApprovals"
-                  defaultValue={false}
-                  render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
+                    </FieldLabel>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="shouldCloseOpenApprovals"
+                defaultValue={false}
+                render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
+                  <Field orientation="horizontal">
                     <Checkbox
                       id="is-approvals-checked"
                       isChecked={value}
                       onCheckedChange={onChange}
                       onBlur={onBlur}
                       isError={Boolean(error?.message)}
-                    >
+                    />
+                    <FieldLabel htmlFor="is-approvals-checked" className="cursor-pointer">
                       Close/merge all open approval/access requests.
-                    </Checkbox>
-                  )}
-                />
-              </div>
-              <div className="mt-8 flex space-x-4">
-                <Button type="submit">Confirm Upgrade</Button>
-                <Button variant="outline_bg" onClick={() => handlePopUpToggle("migrationInfo")}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </div>
-        </ModalContent>
-      </Modal>
+                    </FieldLabel>
+                  </Field>
+                )}
+              />
+            </div>
+            <DialogFooter className="mt-8">
+              <Button variant="outline" onClick={() => handlePopUpToggle("migrationInfo")} type="button">
+                Cancel
+              </Button>
+              <Button type="submit">Confirm Upgrade</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

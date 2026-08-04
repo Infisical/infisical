@@ -1,15 +1,22 @@
 import { ReactNode } from "react";
-import { faRotate } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { LoaderCircleIcon, RefreshCwIcon } from "lucide-react";
 
 import { ViewAuth0ClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAuth0ClientSecretRotationGeneratedCredentials";
 import { ViewAzureClientSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewAzureClientSecretRotationGeneratedCredentials";
 import { ViewConvexAccessKeyRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewConvexAccessKeyRotationGeneratedCredentials";
 import { ViewDatabricksServicePrincipalSecretRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewDatabricksServicePrincipalSecretRotationGeneratedCredentials";
 import { ViewLdapPasswordRotationGeneratedCredentials } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/ViewLdapPasswordRotationGeneratedCredentials";
-import { Modal, ModalContent, Spinner } from "@app/components/v2";
-import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   IS_ROTATION_DUAL_CREDENTIALS,
@@ -64,8 +71,8 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-mineshaft-500" />
-        <p className="mt-4 text-sm text-mineshaft-400">Loading generated credentials...</p>
+        <LoaderCircleIcon className="size-8 animate-spin text-accent" />
+        <p className="mt-4 text-sm text-muted">Loading generated credentials...</p>
       </div>
     );
   }
@@ -73,7 +80,7 @@ const Content = ({ secretRotation }: ContentProps) => {
   if (!generatedCredentialsResponse) {
     return (
       <div className="flex w-full justify-center">
-        <p className="text-sm text-red">No generated credentials found for this rotation.</p>
+        <p className="text-sm text-danger">No generated credentials found for this rotation.</p>
       </div>
     );
   }
@@ -262,29 +269,29 @@ const Content = ({ secretRotation }: ContentProps) => {
     <div className="flex flex-col gap-y-4">
       {Component}
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && (
-        <NoticeBannerV2 title={`${appName} Retired Credentials Behavior`}>
-          <p className="text-sm text-mineshaft-300">
+        <Alert variant="warning">
+          <AlertTitle>{appName} Retired Credentials Behavior</AlertTitle>
+          <AlertDescription>
             Due to {SECRET_ROTATION_MAP[type].name} Rotations utilizing a single credential set,
             retired credentials will not be able to authenticate with {appName} during their{" "}
             <a
               target="_blank"
               href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
               rel="noopener noreferrer"
-              className="underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
+              className="underline decoration-primary underline-offset-2 hover:text-foreground"
             >
               inactive period
             </a>
             . This is a limitation of {appName} and cannot be rectified by Infisical.
-          </p>
-        </NoticeBannerV2>
+          </AlertDescription>
+        </Alert>
       )}
       {nextRotationAt && (
-        <div className="flex items-center gap-x-1.5 text-sm text-mineshaft-200">
-          <FontAwesomeIcon icon={faRotate} className="text-mineshaft-400" />
+        <div className="flex items-center gap-x-1.5 text-sm text-foreground">
+          <RefreshCwIcon className="size-3.5 text-muted" />
           <span>
             Next rotation occurs on: {format(nextRotationAt, "MM/dd/yyyy")} at{" "}
-            {format(nextRotationAt, "h:mm aa")}{" "}
-            <span className="text-mineshaft-300">(Local Time)</span>
+            {format(nextRotationAt, "h:mm aa")} <span className="text-muted">(Local Time)</span>
           </span>
         </div>
       )}
@@ -302,16 +309,18 @@ export const ViewSecretRotationV2GeneratedCredentialsModal = ({
   const rotationType = SECRET_ROTATION_MAP[secretRotation.type].name;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent
         onOpenAutoFocus={(event) => {
           event.preventDefault();
         }}
-        title="Generated Credentials"
-        subTitle={`View the current and retired ${rotationType}.`}
       >
+        <DialogHeader>
+          <DialogTitle>Generated Credentials</DialogTitle>
+          <DialogDescription>View the current and retired {rotationType}.</DialogDescription>
+        </DialogHeader>
         <Content secretRotation={secretRotation} />
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

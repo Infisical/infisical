@@ -2,7 +2,7 @@ import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { SecretDashboardPathBreadcrumb } from "@app/components/navigation/SecretDashboardPathBreadcrumb";
+import { SecretPathBreadcrumb } from "@app/components/navigation/SecretPathBreadcrumb";
 import { BreadcrumbTypes } from "@app/components/v2";
 
 import { RollbackPreviewTab } from "./RollbackPreviewTab";
@@ -33,11 +33,13 @@ export const Route = createFileRoute(
           links: context.project.environments.map((el) => ({
             label: el.name,
             link: linkOptions({
-              to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
+              to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
               params: {
                 orgId: params.orgId,
-                projectId: params.projectId,
-                envSlug: el.slug
+                projectId: params.projectId
+              },
+              search: {
+                environments: [el.slug]
               }
             })
           }))
@@ -45,7 +47,7 @@ export const Route = createFileRoute(
         ...secretPathSegments.map((_, index) => ({
           type: BreadcrumbTypes.Component,
           component: () => (
-            <SecretDashboardPathBreadcrumb
+            <SecretPathBreadcrumb
               secretPathSegments={secretPathSegments}
               selectedPathSegmentIndex={index}
               environmentSlug={params.environment}

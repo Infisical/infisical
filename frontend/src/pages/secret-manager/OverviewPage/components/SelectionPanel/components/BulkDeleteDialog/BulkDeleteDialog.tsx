@@ -25,7 +25,7 @@ import {
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
-import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
+import { CollapsibleSecretImports } from "@app/components/secrets/CollapsibleSecretImports";
 
 import { EntryType } from "../../SelectionPanel";
 

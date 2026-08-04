@@ -26,12 +26,14 @@ export const ViewRedisCredentialsRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Username">{inactiveCredentials?.username}</CredentialDisplay>
-          <CredentialDisplay isSensitive label="Password">
-            {inactiveCredentials?.password}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Username">{inactiveCredentials?.username}</CredentialDisplay>
+            <CredentialDisplay isSensitive label="Password">
+              {inactiveCredentials?.password}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

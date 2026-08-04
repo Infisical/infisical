@@ -22,9 +22,11 @@ export const ViewConvexAccessKeyRotationGeneratedCredentials = ({
         </CredentialDisplay>
       }
       inactiveCredentials={
-        <CredentialDisplay isSensitive label="Access Key">
-          {inactiveCredentials?.accessKey}
-        </CredentialDisplay>
+        inactiveCredentials ? (
+          <CredentialDisplay isSensitive label="Access Key">
+            {inactiveCredentials?.accessKey}
+          </CredentialDisplay>
+        ) : undefined
       }
     />
   );

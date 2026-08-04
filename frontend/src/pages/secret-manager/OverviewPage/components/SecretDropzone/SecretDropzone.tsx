@@ -112,23 +112,27 @@ export const SecretDropzone = ({ onParsedSecrets, onAddSecret }: Props) => {
               <div className="absolute z-20 flex flex-row justify-center gap-3">
                 <Tooltip open={!isAllowed ? undefined : false}>
                   <TooltipTrigger>
-                    <Button
-                      variant="outline"
-                      isDisabled={!isAllowed}
-                      onClick={() => setIsPasteOpen(true)}
-                    >
-                      <ClipboardPasteIcon />
-                      Paste Secrets
-                    </Button>
+                    <span className="inline-flex">
+                      <Button
+                        variant="outline"
+                        isDisabled={!isAllowed}
+                        onClick={() => setIsPasteOpen(true)}
+                      >
+                        <ClipboardPasteIcon />
+                        Paste Secrets
+                      </Button>
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent>Access Denied</TooltipContent>
                 </Tooltip>
                 <Tooltip open={!isAllowed ? undefined : false}>
                   <TooltipTrigger>
-                    <Button variant="project" isDisabled={!isAllowed} onClick={onAddSecret}>
-                      <PlusIcon />
-                      Add a New Secret
-                    </Button>
+                    <span className="inline-flex">
+                      <Button variant="project" isDisabled={!isAllowed} onClick={onAddSecret}>
+                        <PlusIcon />
+                        Add a New Secret
+                      </Button>
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent>Access Denied</TooltipContent>
                 </Tooltip>

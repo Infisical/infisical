@@ -169,7 +169,9 @@ function StepperStep({
   const labels = (
     <div className="flex min-w-0 flex-col gap-0.5">
       <span className={cn(titleVariants({ status: computedStatus }))}>{title}</span>
-      {description ? <span className="text-xs leading-snug text-muted">{description}</span> : null}
+      {description ? (
+        <span className="text-left text-2xs leading-snug font-normal text-muted">{description}</span>
+      ) : null}
     </div>
   );
 

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "../Button";
 import { Input } from "../Input";
 import { Label } from "../Label";
+import { DiscardChangesAlert, useUnsavedChangesGuard } from "../UnsavedChangesGuard";
 import {
   Sheet,
   SheetClose,
@@ -289,4 +291,82 @@ export const ScrollableContent: Story = {
       </SheetContent>
     </Sheet>
   )
+};
+
+/**
+ * Keep `Sheet` dumb. Compose discard confirmation at the call site with
+ * `useUnsavedChangesGuard` + sibling `DiscardChangesAlert`.
+ */
+export const WithUnsavedChangesGuard: Story = {
+  name: "Example: Unsaved Changes Guard",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Recommended pattern for dirty forms: keep `Sheet` as a presentation primitive. Track dirty state in the parent, pass a guarded `onOpenChange` into `Sheet`, and render `DiscardChangesAlert` as a sibling. Cancel / Esc / overlay / X all go through the same guard; successful submits call `onOpenChange(false)` directly to bypass it."
+      }
+    }
+  },
+  render: function UnsavedChangesGuardExample() {
+    const [open, setOpen] = useState(false);
+    const [name, setName] = useState("Scott Wilson");
+    const [isDirty, setIsDirty] = useState(false);
+
+    const { onOpenChange, requestClose, discardAlertProps } = useUnsavedChangesGuard({
+      isDirty,
+      onOpenChange: (nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setName("Scott Wilson");
+          setIsDirty(false);
+        }
+      }
+    });
+
+    return (
+      <>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetTrigger asChild>
+            <Button variant="outline">Edit profile</Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Edit profile</SheetTitle>
+              <SheetDescription>
+                Change the name, then try Cancel, Esc, overlay click, or the X.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="guarded-sheet-name">Name</Label>
+                <Input
+                  id="guarded-sheet-name"
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setIsDirty(event.target.value !== "Scott Wilson");
+                  }}
+                />
+              </div>
+            </div>
+            <SheetFooter>
+              <Button type="button" variant="ghost" onClick={requestClose}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setIsDirty(false);
+                  setOpen(false);
+                }}
+              >
+                Save changes
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+        <DiscardChangesAlert {...discardAlertProps} />
+      </>
+    );
+  }
 };

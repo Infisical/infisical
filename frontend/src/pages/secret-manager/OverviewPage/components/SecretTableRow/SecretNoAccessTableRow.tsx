@@ -1,6 +1,5 @@
 import { LockIcon } from "lucide-react";
 
-import { Blur } from "@app/components/v2/Blur";
 import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -24,7 +23,9 @@ export const SecretNoAccessTableRow = ({ environments = [], count }: Props) => {
             </Tooltip>
           </TableCell>
           <TableCell className="sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover">
-            <Blur className="pl-0" />
+            <div className="flex w-80 grow items-center py-1 pr-2 pl-0" tabIndex={0} role="button">
+              <span className="blur-sm">xxxxxxxxxxxx</span>
+            </div>
           </TableCell>
           {environments.map(({ slug }, i) => {
             return (

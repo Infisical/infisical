@@ -277,27 +277,29 @@ export const SecretImportTableRow = ({
         {importItem.lastReplicated && (
           <Tooltip>
             <TooltipTrigger>
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {!isSingleEnvView ? (
-                importItem.isReplicationSuccess ? (
-                  <InfoIcon className="text-accent" />
-                ) : (
-                  <TriangleAlertIcon className="text-danger" />
-                )
-              ) : (
-                <div
-                  className={twMerge(
-                    "flex w-7 justify-center opacity-100",
-                    !importItem.isReplicationSuccess && "text-danger"
-                  )}
-                >
-                  {importItem.isReplicationSuccess ? (
-                    <InfoIcon className="size-4 text-accent" />
+              <span className="inline-flex">
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {!isSingleEnvView ? (
+                  importItem.isReplicationSuccess ? (
+                    <InfoIcon className="text-accent" />
                   ) : (
-                    <TriangleAlertIcon className="size-4" />
-                  )}
-                </div>
-              )}
+                    <TriangleAlertIcon className="text-danger" />
+                  )
+                ) : (
+                  <div
+                    className={twMerge(
+                      "flex w-7 justify-center opacity-100",
+                      !importItem.isReplicationSuccess && "text-danger"
+                    )}
+                  >
+                    {importItem.isReplicationSuccess ? (
+                      <InfoIcon className="size-4 text-accent" />
+                    ) : (
+                      <TriangleAlertIcon className="size-4" />
+                    )}
+                  </div>
+                )}
+              </span>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <div className="flex flex-col gap-1">

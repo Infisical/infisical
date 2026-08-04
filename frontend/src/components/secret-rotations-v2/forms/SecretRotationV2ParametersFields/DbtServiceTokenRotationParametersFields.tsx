@@ -1,22 +1,26 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Badge,
   Button,
+  Field,
+  FieldError,
+  FieldLabel,
   FilterableSelect,
-  FormControl,
-  FormLabel,
   IconButton,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { TDbtProject, useDbtConnectionListProjects } from "@app/hooks/api/appConnections/dbt";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
@@ -71,17 +75,16 @@ export const DbtServiceTokenRotationParametersFields = () => {
         control={control}
         name="parameters.tokenName"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            tooltipText="Enter a name for the service token to be created."
-            isError={Boolean(error?.message)}
-            errorText={error?.message}
-            label="Service Token Name"
-          >
-            <Input {...field} placeholder="infisical-service-token" />
-          </FormControl>
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabelWithTooltip tooltip="Enter a name for the service token to be created.">
+              Service Token Name
+            </FieldLabelWithTooltip>
+            <Input {...field} placeholder="infisical-service-token" isError={Boolean(error)} />
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
-      <FormLabel label="Permission Grants" />
+      <FieldLabel>Permission Grants</FieldLabel>
       <div
         className={twMerge(
           "mb-3 flex w-full flex-col space-y-2",
@@ -91,49 +94,48 @@ export const DbtServiceTokenRotationParametersFields = () => {
         {permissionGrantsFields.fields.map(({ id: roleFieldId }, i) => (
           <div key={roleFieldId} className="flex items-end space-x-2">
             <div className="w-80">
-              {i === 0 && <span className="text-xs text-mineshaft-400">Permission set</span>}
+              {i === 0 && <span className="text-xs text-muted">Permission set</span>}
               <Controller
                 control={control}
                 name={`parameters.permissionGrants.${i}.permissionSet`}
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0"
-                  >
+                  <Field data-invalid={Boolean(error)}>
                     <Select
-                      className="w-80"
-                      position="popper"
-                      dropdownContainerClassName="max-h-72"
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(nextValue) => {
+                        // Radix Select can emit a spurious empty onValueChange while options mount.
+                        if (!nextValue || nextValue === field.value) return;
+                        field.onChange(nextValue);
+                      }}
                     >
-                      {Object.entries(DBT_PERMISSION_SET_MAP).map(
-                        ([permissionSet, { label, isEnterpriseOnly }]) => (
-                          <SelectItem key={permissionSet} value={permissionSet}>
-                            <div className="flex items-center gap-2">
-                              {label}
-                              {isEnterpriseOnly && <Badge variant="info">DBT Enterprise</Badge>}
-                            </div>
-                          </SelectItem>
-                        )
-                      )}
+                      <SelectTrigger className="w-80" isError={Boolean(error)}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-72">
+                        {Object.entries(DBT_PERMISSION_SET_MAP).map(
+                          ([permissionSet, { label, isEnterpriseOnly }]) => (
+                            <SelectItem key={permissionSet} value={permissionSet}>
+                              <div className="flex items-center gap-2">
+                                {label}
+                                {isEnterpriseOnly && <Badge variant="info">DBT Enterprise</Badge>}
+                              </div>
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
                     </Select>
-                  </FormControl>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
             </div>
             <div className="grow">
-              {i === 0 && <FormLabel label="Projects" className="text-xs text-mineshaft-400" />}
+              {i === 0 && <FieldLabel className="text-xs text-muted">Projects</FieldLabel>}
               <Controller
                 control={control}
                 name={`parameters.permissionGrants.${i}.projectId`}
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <FormControl
-                    isError={Boolean(error?.message)}
-                    errorText={error?.message}
-                    className="mb-0 w-full"
-                  >
+                render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+                  <Field className="w-full" data-invalid={Boolean(error)}>
                     <FilterableSelect
                       isLoading={isProjectsPending && Boolean(connectionId)}
                       isDisabled={!connectionId}
@@ -143,20 +145,24 @@ export const DbtServiceTokenRotationParametersFields = () => {
                         typeof option.id === "undefined" ? option.id : option.id.toString()
                       }
                       value={selectableProjects?.find((p) => p.id === value) ?? undefined}
+                      onBlur={onBlur}
                       onChange={(option) => {
                         const v = (option as SingleValue<TDbtProject>)?.id;
                         onChange(v ? Number(v) : undefined);
                       }}
+                      isError={Boolean(error)}
                     />
-                  </FormControl>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
             </div>
 
             <IconButton
-              ariaLabel="delete key"
+              type="button"
+              aria-label="Delete grant"
               className="bottom-0.5 h-9"
-              variant="outline_bg"
+              variant="outline"
               onClick={() => {
                 const roles = getValues("parameters.permissionGrants");
                 if (roles && roles?.length > 1) {
@@ -168,15 +174,15 @@ export const DbtServiceTokenRotationParametersFields = () => {
                 }
               }}
             >
-              <FontAwesomeIcon icon={faTrash} />
+              <TrashIcon />
             </IconButton>
           </div>
         ))}
         <div>
           <Button
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            type="button"
             size="xs"
-            variant="outline_bg"
+            variant="outline"
             onClick={() =>
               permissionGrantsFields.append({
                 permissionSet: DbtPermissionsSet.AccountAdmin,
@@ -184,6 +190,7 @@ export const DbtServiceTokenRotationParametersFields = () => {
               })
             }
           >
+            <PlusIcon />
             Add grant
           </Button>
         </div>

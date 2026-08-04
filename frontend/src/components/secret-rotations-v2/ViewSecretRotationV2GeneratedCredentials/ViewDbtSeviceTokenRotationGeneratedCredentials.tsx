@@ -23,21 +23,25 @@ export const ViewDbtServiceTokenRotationGeneratedCredentials = ({
           <CredentialDisplay label="Token ID">
             {(activeCredentials?.tokenId || "")?.toString()}
           </CredentialDisplay>
-          <CredentialDisplay label="Service Token">
+          <CredentialDisplay isSensitive label="Service Token">
             {activeCredentials?.serviceToken}
           </CredentialDisplay>
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Token Name">{inactiveCredentials?.tokenName}</CredentialDisplay>
-          <CredentialDisplay label="Token ID">
-            {(inactiveCredentials?.tokenId || "")?.toString()}
-          </CredentialDisplay>
-          <CredentialDisplay label="Service Token">
-            {inactiveCredentials?.serviceToken}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Token Name">
+              {inactiveCredentials?.tokenName}
+            </CredentialDisplay>
+            <CredentialDisplay label="Token ID">
+              {(inactiveCredentials?.tokenId || "")?.toString()}
+            </CredentialDisplay>
+            <CredentialDisplay isSensitive label="Service Token">
+              {inactiveCredentials?.serviceToken}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

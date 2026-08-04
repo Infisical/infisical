@@ -5,7 +5,7 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
   PendingChanges,
   PendingSecretUpdate
-} from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
+} from "@app/pages/secret-manager/shared/secretBatch.store";
 
 import { commitKeys } from "../folderCommits/queries";
 import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";

@@ -23,9 +23,11 @@ export const ViewSupabaseApiKeyRotationGeneratedCredentials = ({
         </CredentialDisplay>
       }
       inactiveCredentials={
-        <CredentialDisplay isSensitive label="API Key">
-          {inactiveCredentials?.apiKey}
-        </CredentialDisplay>
+        inactiveCredentials ? (
+          <CredentialDisplay isSensitive label="API Key">
+            {inactiveCredentials?.apiKey}
+          </CredentialDisplay>
+        ) : undefined
       }
     />
   );

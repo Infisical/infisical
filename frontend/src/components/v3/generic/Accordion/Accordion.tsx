@@ -55,7 +55,7 @@ function AccordionTrigger({
           "disabled:pointer-events-none disabled:opacity-50",
           "cursor-pointer",
           // Default variant
-          "group-data-[variant=default]/accordion:min-h-12 group-data-[variant=default]/accordion:gap-4 group-data-[variant=default]/accordion:bg-container group-data-[variant=default]/accordion:px-4",
+          "group-data-[variant=default]/accordion:h-9 group-data-[variant=default]/accordion:gap-2 group-data-[variant=default]/accordion:bg-container group-data-[variant=default]/accordion:px-3",
           "group-data-[variant=default]/accordion:hover:bg-container-hover",
           "group-data-[variant=default]/accordion:data-[state=open]:bg-container-hover",
           "group-data-[variant=default]/accordion:[&[data-state=open]>[data-slot=accordion-chevron]]:rotate-180",
@@ -94,7 +94,7 @@ function AccordionContent({
     >
       <div
         className={cn(
-          "group-data-[variant=default]/accordion:p-6",
+          "group-data-[variant=default]/accordion:border-t group-data-[variant=default]/accordion:border-border group-data-[variant=default]/accordion:p-3",
           "group-data-[variant=ghost]/accordion:pt-2 group-data-[variant=ghost]/accordion:pb-4",
           className
         )}

@@ -39,7 +39,7 @@ const switchVariants = cva(
       }
     },
     defaultVariants: {
-      variant: "outline"
+      variant: "project"
     }
   }
 );

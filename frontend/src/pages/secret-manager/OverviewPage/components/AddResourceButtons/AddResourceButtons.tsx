@@ -78,15 +78,17 @@ export function AddResourceButtons({
         {(isAllowed) => (
           <Tooltip open={!isAllowed ? undefined : false}>
             <TooltipTrigger>
-              <Button
-                className="rounded-r-none"
-                isDisabled={!isAllowed}
-                variant="project"
-                onClick={onAddSecret}
-              >
-                <PlusIcon />
-                Add Secret
-              </Button>
+              <span className="inline-flex">
+                <Button
+                  className="rounded-r-none"
+                  isDisabled={!isAllowed}
+                  variant="project"
+                  onClick={onAddSecret}
+                >
+                  <PlusIcon />
+                  Add Secret
+                </Button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>Access Denied</TooltipContent>
           </Tooltip>
@@ -106,7 +108,7 @@ export function AddResourceButtons({
           >
             {(isAllowed) => (
               <Tooltip open={!isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem onClick={onAddFolder} isDisabled={!isAllowed}>
                     <FolderIcon className="text-folder" />
                     Add Folder
@@ -117,7 +119,7 @@ export function AddResourceButtons({
             )}
           </ProjectPermissionCan>
           <Tooltip open={!isDyanmicSecretAvailable ? undefined : false}>
-            <TooltipTrigger className="block w-full">
+            <TooltipTrigger asChild={false} className="block w-full">
               <DropdownMenuItem
                 onClick={onAddDyanamicSecret}
                 isDisabled={!isDyanmicSecretAvailable}
@@ -129,7 +131,7 @@ export function AddResourceButtons({
             <TooltipContent side="left">Access restricted</TooltipContent>
           </Tooltip>
           <Tooltip open={!isSecretRotationAvailable ? undefined : false}>
-            <TooltipTrigger className="block w-full">
+            <TooltipTrigger asChild={false} className="block w-full">
               <DropdownMenuItem
                 onClick={onAddSecretRotation}
                 isDisabled={!isSecretRotationAvailable}
@@ -146,7 +148,7 @@ export function AddResourceButtons({
           >
             {(isAllowed) => (
               <Tooltip open={!isHoneyTokenAvailable || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     onClick={onAddHoneyToken}
                     isDisabled={!isHoneyTokenAvailable || !isAllowed}
@@ -167,7 +169,7 @@ export function AddResourceButtons({
           >
             {(isAllowed) => (
               <Tooltip open={!isSingleEnvSelected || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     onClick={onAddProxiedService}
                     isDisabled={!isSingleEnvSelected || !isAllowed}
@@ -187,7 +189,7 @@ export function AddResourceButtons({
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Bulk</DropdownMenuLabel>
           <Tooltip open={!isSecretImportAvailable || !isSingleEnvSelected ? undefined : false}>
-            <TooltipTrigger className="block w-full">
+            <TooltipTrigger asChild={false} className="block w-full">
               <DropdownMenuItem
                 onClick={onAddSecretImport}
                 isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
@@ -208,7 +210,7 @@ export function AddResourceButtons({
           >
             {(isAllowed) => (
               <Tooltip open={!isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem onClick={onImportSecrets} isDisabled={!isAllowed}>
                     <UploadIcon className="text-accent" />
                     Upload Secrets
@@ -224,7 +226,7 @@ export function AddResourceButtons({
           >
             {(isAllowed) => (
               <Tooltip open={!isReplicateSecretsAvailable || !isAllowed ? undefined : false}>
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     onClick={onReplicateSecrets}
                     isDisabled={!isReplicateSecretsAvailable || !isAllowed}
@@ -268,7 +270,7 @@ export function AddResourceButtons({
                       !isAllowed || !isSingleEnvSelected || !hasVaultConnection ? undefined : false
                     }
                   >
-                    <TooltipTrigger className="block w-full">
+                    <TooltipTrigger asChild={false} className="block w-full">
                       <DropdownMenuItem
                         onClick={onImportFromVault}
                         isDisabled={!isAllowed || !isSingleEnvSelected || !hasVaultConnection}
@@ -312,7 +314,7 @@ export function AddResourceButtons({
                         : false
                     }
                   >
-                    <TooltipTrigger className="block w-full">
+                    <TooltipTrigger asChild={false} className="block w-full">
                       <DropdownMenuItem
                         onClick={onImportFromDoppler}
                         isDisabled={!isAllowed || !isSingleEnvSelected || !hasDopplerConnection}

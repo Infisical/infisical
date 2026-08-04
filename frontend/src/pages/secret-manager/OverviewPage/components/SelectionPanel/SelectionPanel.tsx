@@ -375,15 +375,17 @@ export const SelectionPanel = ({
         {selectedKeysCount > 0 && (
           <Tooltip open={isTagActionDisabled ? undefined : false}>
             <TooltipTrigger>
-              <Button
-                isDisabled={isTagActionDisabled}
-                variant="project"
-                onClick={() => handlePopUpOpen("bulkTagSecrets")}
-                size="xs"
-              >
-                <TagsIcon />
-                Add Tags
-              </Button>
+              <span className="inline-flex">
+                <Button
+                  isDisabled={isTagActionDisabled}
+                  variant="project"
+                  onClick={() => handlePopUpOpen("bulkTagSecrets")}
+                  size="xs"
+                >
+                  <TagsIcon />
+                  Add Tags
+                </Button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>Access denied</TooltipContent>
           </Tooltip>
@@ -391,15 +393,17 @@ export const SelectionPanel = ({
         {shouldShowMove && (
           <Tooltip open={isMoveDisabled ? undefined : false}>
             <TooltipTrigger>
-              <Button
-                isDisabled={isMoveDisabled}
-                variant="project"
-                onClick={() => handlePopUpOpen("bulkMoveSecrets")}
-                size="xs"
-              >
-                <FolderInputIcon />
-                Move
-              </Button>
+              <span className="inline-flex">
+                <Button
+                  isDisabled={isMoveDisabled}
+                  variant="project"
+                  onClick={() => handlePopUpOpen("bulkMoveSecrets")}
+                  size="xs"
+                >
+                  <FolderInputIcon />
+                  Move
+                </Button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>{moveDisabledReason}</TooltipContent>
           </Tooltip>
@@ -407,15 +411,17 @@ export const SelectionPanel = ({
         {shouldShowBulkDuplicate && (
           <Tooltip open={isDuplicateDisabled ? undefined : false}>
             <TooltipTrigger>
-              <Button
-                isDisabled={isDuplicateDisabled}
-                variant="project"
-                onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
-                size="xs"
-              >
-                <CopyPlus />
-                Duplicate
-              </Button>
+              <span className="inline-flex">
+                <Button
+                  isDisabled={isDuplicateDisabled}
+                  variant="project"
+                  onClick={() => handlePopUpOpen("bulkDuplicateSecrets")}
+                  size="xs"
+                >
+                  <CopyPlus />
+                  Duplicate
+                </Button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>{duplicateDisabledReason}</TooltipContent>
           </Tooltip>
@@ -423,15 +429,17 @@ export const SelectionPanel = ({
         {shouldShowDelete && (
           <Tooltip open={isDeleteDisabled ? undefined : false}>
             <TooltipTrigger>
-              <Button
-                isDisabled={isDeleteDisabled}
-                variant="danger"
-                onClick={() => handlePopUpOpen("bulkDeleteEntries")}
-                size="xs"
-              >
-                <TrashIcon />
-                Delete
-              </Button>
+              <span className="inline-flex">
+                <Button
+                  isDisabled={isDeleteDisabled}
+                  variant="danger"
+                  onClick={() => handlePopUpOpen("bulkDeleteEntries")}
+                  size="xs"
+                >
+                  <TrashIcon />
+                  Delete
+                </Button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>{deleteDisabledReason}</TooltipContent>
           </Tooltip>

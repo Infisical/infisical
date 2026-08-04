@@ -26,8 +26,12 @@ function Tooltip({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Root
   );
 }
 
-function TooltipTrigger({ ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+function TooltipTrigger({
+  asChild = true,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  // Default asChild so TooltipTrigger does not wrap Button/IconButton in a nested <button>.
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" asChild={asChild} {...props} />;
 }
 
 function TooltipContent({

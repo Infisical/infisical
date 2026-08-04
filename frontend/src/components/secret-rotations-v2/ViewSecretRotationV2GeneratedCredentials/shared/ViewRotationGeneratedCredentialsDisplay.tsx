@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
-import { faCheck, faClockRotateLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { CheckIcon, HistoryIcon } from "lucide-react";
 
 type Props = {
   activeCredentials: ReactNode;
@@ -14,35 +13,35 @@ export const ViewRotationGeneratedCredentialsDisplay = ({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-100">
-            <FontAwesomeIcon icon={faCheck} className="mr-1.5 text-green" />
+        <div className="w-full border-b border-border">
+          <span className="flex items-center gap-1.5 text-sm text-foreground">
+            <CheckIcon className="size-3.5 text-success" />
             Current Credentials
           </span>
         </div>
-        <p className="text-sm text-mineshaft-300">
+        <p className="text-sm text-muted">
           The active credential set currently mapped to the rotation secrets.
         </p>
-        <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
+        <div className="flex flex-col gap-x-8 gap-y-2 rounded-md border border-border bg-container p-2">
           {activeCredentials}
         </div>
       </div>
-      {inactiveCredentials && (
+      {inactiveCredentials ? (
         <div className="flex flex-col gap-2">
-          <div className="w-full border-b border-mineshaft-600">
-            <span className="text-sm text-mineshaft-100">
-              <FontAwesomeIcon icon={faClockRotateLeft} className="mr-1.5 text-yellow" />
+          <div className="w-full border-b border-border">
+            <span className="flex items-center gap-1.5 text-sm text-foreground">
+              <HistoryIcon className="size-3.5 text-warning" />
               Retired Credentials
             </span>
           </div>
-          <p className="text-sm text-mineshaft-300">
+          <p className="text-sm text-muted">
             The retired credential set that will be revoked during the next rotation cycle.
           </p>
-          <div className="flex flex-col gap-x-8 gap-y-2 rounded-sm border border-mineshaft-600 bg-mineshaft-700 p-2">
+          <div className="flex flex-col gap-x-8 gap-y-2 rounded-md border border-border bg-container p-2">
             {inactiveCredentials}
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 };

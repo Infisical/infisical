@@ -1,13 +1,24 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faLock, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { LockIcon, TriangleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, ModalClose, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  DialogClose,
+  Field,
+  FieldError,
+  FieldLabel,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -131,66 +142,79 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
 
   const currentSecretValue = watch("key");
 
+  const showWhitespaceWarning =
+    !isReadOnly &&
+    !isOverriden &&
+    currentSecretValue?.trim()?.includes(" ") &&
+    currentSecretValue?.trim() !== secretKey;
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)}>
       <Controller
         name="key"
         control={control}
         render={({ field, fieldState: { error } }) => (
-          <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
-            <Input
-              rightIcon={
-                isReadOnly || isOverriden ? (
-                  <Tooltip className="w-full max-w-72" content="Read only">
-                    <FontAwesomeIcon icon={faLock} />
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="rename-secret-key">Name</FieldLabel>
+            <InputGroup>
+              <InputGroupInput
+                id="rename-secret-key"
+                autoComplete="off"
+                readOnly={isReadOnly || secrets.filter(Boolean).length === 0}
+                onInput={(e) => {
+                  if (currentProject?.autoCapitalization) {
+                    e.currentTarget.value = e.currentTarget.value.toUpperCase();
+                  }
+                }}
+                disabled={isOverriden}
+                placeholder={error?.message}
+                isError={Boolean(error)}
+                {...field}
+              />
+              {(isReadOnly || isOverriden) && (
+                <InputGroupAddon align="inline-end">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <LockIcon className="size-4" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-72">Read only</TooltipContent>
                   </Tooltip>
-                ) : (
-                  currentSecretValue?.trim()?.includes(" ") &&
-                  currentSecretValue?.trim() !== secretKey && (
-                    <Tooltip
-                      className="w-full max-w-72"
-                      content={
-                        <div>
-                          Secret key contains whitespaces.
-                          <br />
-                          <br /> If this is the desired format, you need to provide it as{" "}
-                          <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
-                            {encodeURIComponent(secretKey.trim())}
-                          </code>{" "}
-                          when making API requests.
-                        </div>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faWarning} className="text-yellow-600" />
-                    </Tooltip>
-                  )
-                )
-              }
-              autoComplete="off"
-              isReadOnly={isReadOnly || secrets.filter(Boolean).length === 0}
-              autoCapitalization={currentProject?.autoCapitalization}
-              isDisabled={isOverriden}
-              placeholder={error?.message}
-              isError={Boolean(error)}
-              {...field}
-            />
-          </FormControl>
+                </InputGroupAddon>
+              )}
+              {showWhitespaceWarning && (
+                <InputGroupAddon align="inline-end">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TriangleAlertIcon className="size-4 text-warning" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-72">
+                      <div>
+                        Secret key contains whitespaces.
+                        <br />
+                        <br /> If this is the desired format, you need to provide it as{" "}
+                        <code className="rounded-md bg-container px-1 py-0.5">
+                          {encodeURIComponent(secretKey.trim())}
+                        </code>{" "}
+                        when making API requests.
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </InputGroupAddon>
+              )}
+            </InputGroup>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
       />
-      <div className="mt-8 flex items-center">
-        <Button
-          className="mr-4"
-          type="submit"
-          isDisabled={isSubmitting || !isDirty}
-          isLoading={isSubmitting}
-        >
+      <div className="mt-8 flex items-center gap-4">
+        <Button type="submit" isDisabled={isSubmitting || !isDirty} isPending={isSubmitting}>
           Update Name
         </Button>
-        <ModalClose asChild>
-          <Button variant="plain" colorSchema="secondary">
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
             Cancel
           </Button>
-        </ModalClose>
+        </DialogClose>
       </div>
     </form>
   );

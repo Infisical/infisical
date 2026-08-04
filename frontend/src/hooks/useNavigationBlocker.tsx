@@ -4,7 +4,7 @@ import { useBlocker } from "@tanstack/react-router";
 import {
   BatchContext,
   useBatchModeActions
-} from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
+} from "@app/pages/secret-manager/shared/secretBatch.store";
 
 type TNavigationBlockerReturn = {
   isBlocked: boolean;

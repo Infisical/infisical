@@ -2,12 +2,11 @@ import { ClipboardCheckIcon, CopyIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { SecretInput } from "@app/components/v2";
-import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { IconButton, SecretInput, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import { HIDDEN_SECRET_VALUE } from "@app/components/secrets/constants";
 
 type Props = {
   secretKey: string;

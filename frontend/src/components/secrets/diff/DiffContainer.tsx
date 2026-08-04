@@ -23,7 +23,7 @@ export const DiffContainer = ({
       <div
         className={twMerge(
           "relative thin-scrollbar overflow-x-auto rounded-md border border-border p-2",
-          "bg-bunker-800/60",
+          "bg-container",
           variant && variant === "added" && "border-success/45",
           variant && variant === "removed" && "border-danger/45",
           className
@@ -39,7 +39,7 @@ export const DiffContainer = ({
       ref={containerRef}
       className={twMerge(
         "relative max-h-96 thin-scrollbar overflow-x-auto overflow-y-auto rounded-md border border-border p-2",
-        "bg-bunker-800/60",
+        "bg-container",
         variant && variant === "added" && "border-success/45",
         variant && variant === "removed" && "border-danger/45",
         className

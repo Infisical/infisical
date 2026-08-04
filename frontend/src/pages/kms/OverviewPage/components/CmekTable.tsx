@@ -356,7 +356,7 @@ export const CmekTable = () => {
                   >
                     {(isAllowed) => (
                       <Tooltip open={!isAllowed ? undefined : false}>
-                        <TooltipTrigger className="block w-full">
+                        <TooltipTrigger asChild={false} className="block w-full">
                           <DropdownMenuItem
                             onClick={() => handlePopUpOpen("importKeys")}
                             isDisabled={!isAllowed}

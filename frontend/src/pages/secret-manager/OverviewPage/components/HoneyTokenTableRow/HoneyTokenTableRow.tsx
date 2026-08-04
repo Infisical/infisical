@@ -265,7 +265,7 @@ export const HoneyTokenTableRow = ({
                 isSelected && "!hidden",
                 isTriggered && "text-red",
                 !isTriggered && !isAllRevoked && "text-yellow",
-                isAllRevoked && "text-mineshaft-400"
+                isAllRevoked && "text-muted"
               )}
             />
           )}

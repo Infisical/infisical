@@ -1,9 +1,8 @@
-import { faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { LockIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { computeWordDiff, isSingleLine } from "@app/components/utilities/diff";
-import { Tag, Tooltip } from "@app/components/v2";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 import { DiffContainer } from "./DiffContainer";
 import { MultiLineDiff } from "./MultiLineDiff";
@@ -102,9 +101,9 @@ export const TagsDiffRenderer = ({
         const isAdded = !isOldVersion && !isInOther;
 
         return (
-          <Tag
+          <div
             className={twMerge(
-              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-mineshaft-900/60 py-0.5 text-xs",
+              "flex w-min items-center space-x-1.5 rounded border bg-card/60 px-2 py-0.5 text-xs",
               isRemoved && "border-danger/35 bg-danger/20",
               isAdded && "border-success/35 bg-success/20",
               !isRemoved && !isAdded && "border-border"
@@ -113,7 +112,7 @@ export const TagsDiffRenderer = ({
           >
             {color && <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />}
             <div className="text-xs text-foreground">{slug}</div>
-          </Tag>
+          </div>
         );
       })}
     </div>
@@ -140,7 +139,7 @@ export const MetadataDiffRenderer = ({
   const otherMetaByValue = new Map(otherMetadata?.map((m) => [m.value, m.key]) ?? []);
 
   return (
-    <div className="mt-1 flex flex-wrap gap-1.5 text-sm text-mineshaft-300">
+    <div className="mt-1 flex flex-wrap gap-1.5 text-sm text-muted">
       {metadata.map((el) => {
         const keyExistsInOther = otherMetaByKey.has(el.key);
         const otherDataForKey = otherMetaByKey.get(el.key);
@@ -179,7 +178,7 @@ export const MetadataDiffRenderer = ({
 
         const valueBgClass = twMerge(
           valueHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30"),
-          !valueHighlighted && "bg-mineshaft-900/60"
+          !valueHighlighted && "bg-card/60"
         );
 
         const lockIconClass = twMerge(
@@ -191,35 +190,50 @@ export const MetadataDiffRenderer = ({
 
         return (
           <div key={el.key} className="flex items-center">
-            <Tag
-              size="xs"
-              className={twMerge("mr-0 flex items-center rounded-r-none", borderClass, keyBgClass)}
+            <div
+              className={twMerge(
+                "flex items-center rounded-l px-1 py-0.5 text-xs",
+                borderClass,
+                keyBgClass
+              )}
             >
               {el.isEncrypted && (
-                <Tooltip content="This value is encrypted">
-                  <FontAwesomeIcon icon={faLock} size="xs" className={lockIconClass} />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <LockIcon className={twMerge("size-3", lockIconClass)} />
+                  </TooltipTrigger>
+                  <TooltipContent>This value is encrypted</TooltipContent>
                 </Tooltip>
               )}
-              <Tooltip className="max-w-lg break-words whitespace-normal" content={el.key}>
-                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
+                    {el.key}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg break-words whitespace-normal">
                   {el.key}
-                </div>
+                </TooltipContent>
               </Tooltip>
-            </Tag>
-            <Tag
-              size="xs"
+            </div>
+            <div
               className={twMerge(
-                "mr-0 flex items-center !rounded-l-none border-l-0 pl-1",
+                "flex items-center rounded-r border-l-0 px-1 py-0.5 text-xs",
                 borderClass,
                 valueBgClass
               )}
             >
-              <Tooltip className="max-w-lg break-words whitespace-normal" content={el.value}>
-                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
+                    {el.value}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg break-words whitespace-normal">
                   {el.value}
-                </div>
+                </TooltipContent>
               </Tooltip>
-            </Tag>
+            </div>
           </div>
         );
       })}

@@ -19,39 +19,38 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { WsTag } from "@app/hooks/api/tags/types";
-import { RowType } from "@app/pages/secret-manager/OverviewPage/OverviewPage";
+import { RowType } from "@app/pages/secret-manager/OverviewPage/types";
 
 import { ResourceFilterMenuContent, type ResourceTypeOption } from "./ResourceFilterMenuContent";
 
-// Use string literals to avoid circular dependency with OverviewPage at module init time
 const OVERVIEW_RESOURCE_TYPES: ResourceTypeOption[] = [
-  { type: "folder", label: "Folders", icon: <FolderIcon className="text-folder" /> },
+  { type: RowType.Folder, label: "Folders", icon: <FolderIcon className="text-folder" /> },
   {
-    type: "dynamic",
+    type: RowType.DynamicSecret,
     label: "Dynamic Secrets",
     icon: <FingerprintIcon className="text-dynamic-secret" />
   },
   {
-    type: "rotation",
+    type: RowType.SecretRotation,
     label: "Secret Rotations",
     icon: <RefreshCwIcon className="text-secret-rotation" />
   },
   {
-    type: "import",
+    type: RowType.SecretImport,
     label: "Secret Imports",
     icon: <ImportIcon className="text-import" />
   },
   {
-    type: "honeyToken",
+    type: RowType.HoneyToken,
     label: "Honey Tokens",
     icon: <HexagonIcon className="text-yellow-700" />
   },
   {
-    type: "proxiedService",
+    type: RowType.ProxiedService,
     label: "Proxied Services",
     icon: <ChevronsLeftRightEllipsisIcon className="text-proxied-service" />
   },
-  { type: "secret", label: "Secrets", icon: <KeyIcon className="text-accent" /> }
+  { type: RowType.Secret, label: "Secrets", icon: <KeyIcon className="text-accent" /> }
 ];
 
 type Props = {
@@ -77,16 +76,16 @@ export function ResourceFilter({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="outline-0">
-        <Tooltip>
-          <TooltipTrigger asChild>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
             <IconButton className="relative" size="md" variant={isActive ? "project" : "outline"}>
               <FilterIcon />
             </IconButton>
-          </TooltipTrigger>
-          <TooltipContent>Filter resources</TooltipContent>
-        </Tooltip>
-      </DropdownMenuTrigger>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Filter resources</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <ResourceFilterMenuContent
           resourceTypes={OVERVIEW_RESOURCE_TYPES}

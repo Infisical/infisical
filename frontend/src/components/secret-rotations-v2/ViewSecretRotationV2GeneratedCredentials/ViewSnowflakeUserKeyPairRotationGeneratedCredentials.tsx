@@ -26,12 +26,16 @@ export const ViewSnowflakeUserKeyPairRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Public Key">{inactiveCredentials?.publicKey}</CredentialDisplay>
-          <CredentialDisplay isSensitive label="Private Key">
-            {inactiveCredentials?.privateKey}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Public Key">
+              {inactiveCredentials?.publicKey}
+            </CredentialDisplay>
+            <CredentialDisplay isSensitive label="Private Key">
+              {inactiveCredentials?.privateKey}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

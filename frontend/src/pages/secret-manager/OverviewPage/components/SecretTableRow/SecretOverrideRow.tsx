@@ -12,7 +12,6 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +23,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   IconButton,
+  InfisicalSecretInput,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -34,7 +34,7 @@ import { useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { SecretType } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import { HIDDEN_SECRET_VALUE } from "@app/components/secrets/constants";
 
 type Props = {
   secretName: string;

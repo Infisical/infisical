@@ -1,0 +1,93 @@
+import { Link } from "@tanstack/react-router";
+import { CheckIcon, CopyIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
+
+import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { useOrganization } from "@app/context";
+import { useTimedReset } from "@app/hooks";
+
+import { createNotification } from "../notifications";
+
+type Props = {
+  secretPathSegments: string[];
+  selectedPathSegmentIndex: number;
+  environmentSlug: string;
+  projectId: string;
+  disableCopy?: boolean;
+};
+
+export const SecretPathBreadcrumb = ({
+  secretPathSegments,
+  selectedPathSegmentIndex,
+  environmentSlug,
+  projectId,
+  disableCopy
+}: Props) => {
+  const { currentOrg } = useOrganization();
+  const [, isCopying, setIsCopying] = useTimedReset({
+    initialState: false
+  });
+
+  const newSecretPath = `/${secretPathSegments.slice(0, selectedPathSegmentIndex + 1).join("/")}`;
+  const isLastItem = secretPathSegments.length === selectedPathSegmentIndex + 1;
+  const folderName = secretPathSegments.at(selectedPathSegmentIndex);
+
+  return (
+    <div className="flex items-center space-x-3">
+      {isLastItem && !disableCopy ? (
+        <div className="group flex items-center space-x-2">
+          <span
+            className={twMerge(
+              "text-sm transition-all",
+              isCopying ? "text-foreground" : "text-muted"
+            )}
+          >
+            {folderName}
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                aria-label="copy secret path"
+                onClick={() => {
+                  if (isCopying) return;
+                  setIsCopying(true);
+                  navigator.clipboard.writeText(newSecretPath);
+
+                  createNotification({
+                    text: "Copied secret path to clipboard",
+                    type: "info"
+                  });
+                }}
+                className="relative right-2 opacity-0 transition duration-75 group-hover:opacity-100"
+              >
+                {isCopying ? <CheckIcon /> : <CopyIcon />}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Copy secret path</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <Link
+          to="/organizations/$orgId/projects/secret-management/$projectId/overview"
+          params={{
+            orgId: currentOrg.id,
+            projectId
+          }}
+          search={(query) => ({
+            ...query,
+            secretPath: newSecretPath,
+            environments: [environmentSlug]
+          })}
+          className={twMerge(
+            "text-sm transition-all hover:text-primary",
+            isCopying && "text-primary"
+          )}
+        >
+          {folderName}
+        </Link>
+      )}
+    </div>
+  );
+};

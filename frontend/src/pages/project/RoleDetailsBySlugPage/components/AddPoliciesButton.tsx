@@ -54,7 +54,7 @@ const VaultImportControls = ({ projectId, isDisabled, onOpenModal }: VaultImport
 
   return (
     <Tooltip open={!canUseAppConnectionImport ? undefined : false}>
-      <TooltipTrigger className="block w-full">
+      <TooltipTrigger asChild={false} className="block w-full">
         <DropdownMenuItem onClick={() => onOpenModal(vaultAppConnections)} isDisabled={isDisabled}>
           <DownloadIcon />
           Add from HashiCorp Vault

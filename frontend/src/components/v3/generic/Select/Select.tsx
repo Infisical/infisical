@@ -76,36 +76,33 @@ const selectTriggerVariants = cva(
   }
 );
 
-type SelectTriggerProps = React.ComponentProps<typeof SelectPrimitive.Trigger> &
+type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> &
   VariantProps<typeof selectTriggerVariants> & {
     size?: "sm" | "default";
     isError?: boolean;
   };
 
-function SelectTrigger({
-  className,
-  size = "default",
-  variant = "default",
-  isError,
-  children,
-  ...props
-}: SelectTriggerProps) {
-  return (
-    <SelectPrimitive.Trigger
-      data-slot="select-trigger"
-      data-size={size}
-      data-variant={variant}
-      aria-invalid={isError}
-      className={cn(selectTriggerVariants({ variant, className }))}
-      {...props}
-    >
-      {children}
-      <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="pointer-events-none size-4 text-accent" />
-      </SelectPrimitive.Icon>
-    </SelectPrimitive.Trigger>
-  );
-}
+const SelectTrigger = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
+  SelectTriggerProps
+>(({ className, size = "default", variant = "default", isError, children, ...props }, ref) => (
+  <SelectPrimitive.Trigger
+    ref={ref}
+    data-slot="select-trigger"
+    data-size={size}
+    data-variant={variant}
+    aria-invalid={isError}
+    className={cn(selectTriggerVariants({ variant, className }))}
+    {...props}
+  >
+    {children}
+    <SelectPrimitive.Icon asChild>
+      <ChevronDownIcon className="pointer-events-none size-4 text-accent" />
+    </SelectPrimitive.Icon>
+  </SelectPrimitive.Trigger>
+));
+
+SelectTrigger.displayName = "SelectTrigger";
 
 function SelectContent({
   className,
@@ -186,7 +183,11 @@ function SelectItem({
       </span>
       <div className="flex flex-col">
         <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-        {description && <span className="text-xs font-normal text-accent">{description}</span>}
+        {description && (
+          <span className="text-left text-2xs leading-snug font-normal text-muted">
+            {description}
+          </span>
+        )}
       </div>
     </SelectPrimitive.Item>
   );

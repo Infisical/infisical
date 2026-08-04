@@ -48,7 +48,7 @@ import {
   type ResourceTypeOption
 } from "@app/pages/secret-manager/OverviewPage/components/ResourceFilter";
 import { QuickSearchSecretRotationItem } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput/components/QuickSearchSecretRotationItem";
-import { RowType } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.types";
+import { RowType } from "@app/pages/secret-manager/OverviewPage/types";
 
 import { QuickSearchDynamicSecretItem } from "./QuickSearchDynamicSecretItem";
 import { QuickSearchEnvTable } from "./QuickSearchEnvTable";

@@ -25,12 +25,14 @@ export const ViewAuth0ClientSecretRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Client ID">{inactiveCredentials?.clientId}</CredentialDisplay>
-          <CredentialDisplay isSensitive label="Client Secret">
-            {inactiveCredentials?.clientSecret}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Client ID">{inactiveCredentials?.clientId}</CredentialDisplay>
+            <CredentialDisplay isSensitive label="Client Secret">
+              {inactiveCredentials?.clientSecret}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

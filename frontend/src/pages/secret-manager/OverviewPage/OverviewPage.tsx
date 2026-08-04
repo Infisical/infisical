@@ -27,6 +27,12 @@ import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
 
 import {
+  CreateDynamicSecretForm,
+  CreateDynamicSecretLease,
+  DynamicSecretLease,
+  EditDynamicSecretForm
+} from "@app/components/dynamic-secrets";
+import {
   CreateHoneyTokenModal,
   EditHoneyTokenModal,
   HoneyTokenDetailsDrawer,
@@ -48,12 +54,10 @@ import { ReconcileLocalAccountRotationModal } from "@app/components/secret-rotat
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import {
-  Button as ButtonV2,
-  DeleteActionModal,
-  Modal,
-  ModalContent,
-  PageHeader
-} from "@app/components/v2";
+  HIDDEN_SECRET_VALUE,
+  HIDDEN_SECRET_VALUE_API_MASK
+} from "@app/components/secrets/constants";
+import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDialog,
@@ -72,9 +76,11 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  DeleteConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DropdownMenu,
@@ -200,28 +206,20 @@ import {
 } from "@app/hooks/utils";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
-
-import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
-import { CreateSecretImportForm } from "../SecretDashboardPage/components/ActionBar/CreateSecretImportForm";
-import { DopplerSecretImportModal } from "../SecretDashboardPage/components/ActionBar/DopplerSecretImportModal";
-import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
-import { ReplicateFolderFromBoard } from "../SecretDashboardPage/components/ActionBar/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
-import { VaultSecretImportModal } from "../SecretDashboardPage/components/ActionBar/VaultSecretImportModal";
-import { CommitForm } from "../SecretDashboardPage/components/CommitForm";
-import { CreateDynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/CreateDynamicSecretLease";
-import { DynamicSecretLease } from "../SecretDashboardPage/components/DynamicSecretListView/DynamicSecretLease";
-import { EditDynamicSecretForm } from "../SecretDashboardPage/components/DynamicSecretListView/EditDynamicSecretForm";
-import {
-  HIDDEN_SECRET_VALUE,
-  HIDDEN_SECRET_VALUE_API_MASK
-} from "../SecretDashboardPage/components/SecretListView/SecretItem";
+import { CommitForm } from "@app/pages/secret-manager/shared/CommitForm";
+import { CreateSecretImportForm } from "@app/pages/secret-manager/shared/CreateSecretImportForm";
+import { DopplerSecretImportModal } from "@app/pages/secret-manager/shared/DopplerSecretImportModal";
+import { FolderForm } from "@app/pages/secret-manager/shared/FolderForm";
+import { ReplicateFolderFromBoard } from "@app/pages/secret-manager/shared/ReplicateFolderFromBoard/ReplicateFolderFromBoard";
 import {
   PendingChanges,
   PendingFolderUpdate,
   StoreProvider,
   useBatchMode,
   useBatchModeActions
-} from "../SecretDashboardPage/SecretMainPage.store";
+} from "@app/pages/secret-manager/shared/secretBatch.store";
+import { VaultSecretImportModal } from "@app/pages/secret-manager/shared/VaultSecretImportModal";
+
 import { AddResourceButtons } from "./components/AddResourceButtons/AddResourceButtons";
 import { CreateSecretForm } from "./components/CreateSecretForm";
 import { InviteMembersModal } from "./components/InviteMembersModal";
@@ -247,6 +245,7 @@ import {
   SecretSyncStatusBadgeOverview,
   SecretTableRow
 } from "./components";
+import { EntryType, RowType } from "./types";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -254,23 +253,6 @@ type TParsedFolderEnv = Record<
   Record<string, { value: string; comments: string[]; secretPath?: string }>
 >;
 type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
-
-export enum EntryType {
-  FOLDER = "folder",
-  SECRET = "secret",
-  SECRET_ROTATION = "secretRotation",
-  HONEY_TOKEN = "honeyToken"
-}
-
-export enum RowType {
-  Folder = "folder",
-  DynamicSecret = "dynamic",
-  Secret = "secret",
-  SecretRotation = "rotation",
-  SecretImport = "import",
-  HoneyToken = "honeyToken",
-  ProxiedService = "proxiedService"
-}
 
 type Filter = {
   [key in RowType]: boolean;
@@ -2563,7 +2545,7 @@ const OverviewPageContent = () => {
 
   if (!isProjectV3)
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
@@ -2579,16 +2561,16 @@ const OverviewPageContent = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto mb-18 max-w-8xl text-mineshaft-50 dark:scheme-dark">
+      <div className="relative mx-auto mb-18 max-w-8xl text-foreground dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
             scope={ProjectType.SecretManager}
             title="Project Overview"
             description={
-              <p className="text-md text-bunker-300">
+              <p className="text-md text-muted">
                 Inject your secrets using
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-muted underline decoration-border underline-offset-3 duration-200 hover:text-foreground hover:decoration-primary-600"
                   href="https://infisical.com/docs/cli/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2597,7 +2579,7 @@ const OverviewPageContent = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-muted underline decoration-border underline-offset-3 duration-200 hover:text-foreground hover:decoration-primary-600"
                   href="https://infisical.com/docs/api-reference/overview/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2606,7 +2588,7 @@ const OverviewPageContent = () => {
                 </a>
                 ,
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-muted underline decoration-border underline-offset-3 duration-200 hover:text-foreground hover:decoration-primary-600"
                   href="https://infisical.com/docs/sdks/overview"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2615,7 +2597,7 @@ const OverviewPageContent = () => {
                 </a>
                 , and
                 <a
-                  className="ml-1 text-mineshaft-200 underline decoration-mineshaft-400/65 underline-offset-3 duration-200 hover:text-mineshaft-100 hover:decoration-primary-600"
+                  className="ml-1 text-muted underline decoration-border underline-offset-3 duration-200 hover:text-foreground hover:decoration-primary-600"
                   href="https://infisical.com/docs/documentation/getting-started/introduction"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -3052,7 +3034,7 @@ const OverviewPageContent = () => {
                                     >
                                       {(isAllowed) => (
                                         <Tooltip open={!isAllowed ? undefined : false}>
-                                          <TooltipTrigger className="block w-full">
+                                          <TooltipTrigger asChild={false} className="block w-full">
                                             <DropdownMenuItem
                                               isDisabled={!isAllowed}
                                               onClick={() =>
@@ -3552,91 +3534,61 @@ const OverviewPageContent = () => {
         environments={userAvailableDynamicSecretEnvs}
         secretPath={secretPath}
       />
-      <Modal
+      <DynamicSecretLease
         isOpen={popUp.dynamicSecretLeases.isOpen}
         onOpenChange={(state) => handlePopUpToggle("dynamicSecretLeases", state)}
-      >
-        <ModalContent
-          title={
-            <div className="flex items-center space-x-2">
-              <p>Dynamic secret leases</p>
-              <Badge variant="neutral">{dynamicSecretLeaseData?.name}</Badge>
-            </div>
-          }
-          subTitle="Revoke or renew your secret leases"
-          className="max-w-3xl"
-        >
-          {dynamicSecretLeaseData && (
-            <DynamicSecretLease
-              dynamicSecret={dynamicSecretLeaseData}
-              onClickNewLease={() =>
-                handlePopUpOpen("createDynamicSecretLease", dynamicSecretLeaseData)
-              }
-              onClose={() => handlePopUpClose("dynamicSecretLeases")}
-              projectSlug={projectSlug}
-              key={dynamicSecretLeaseData.id}
-              dynamicSecretName={dynamicSecretLeaseData.name}
-              secretPath={secretPath}
-              environment={dynamicSecretLeaseData.environment}
-            />
-          )}
-        </ModalContent>
-      </Modal>
-      <Modal
+        dynamicSecret={dynamicSecretLeaseData}
+        onClickNewLease={() =>
+          handlePopUpOpen("createDynamicSecretLease", dynamicSecretLeaseData)
+        }
+        onClose={() => handlePopUpClose("dynamicSecretLeases")}
+        projectSlug={projectSlug}
+        dynamicSecretName={dynamicSecretLeaseData?.name ?? ""}
+        secretPath={secretPath}
+        environment={dynamicSecretLeaseData?.environment ?? ""}
+      />
+      <EditDynamicSecretForm
         isOpen={popUp.editDynamicSecret.isOpen}
-        onOpenChange={(state) => handlePopUpToggle("editDynamicSecret", state)}
-      >
-        <ModalContent title="Edit dynamic secret" className="max-w-3xl">
-          <EditDynamicSecretForm
-            onClose={() => handlePopUpClose("editDynamicSecret")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <Modal
+        onOpenChange={(isOpen) => handlePopUpToggle("editDynamicSecret", isOpen)}
+        projectSlug={projectSlug}
+        dynamicSecretName={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
+        }
+        secretPath={secretPath}
+        environment={
+          (popUp.editDynamicSecret?.data as TDynamicSecret & { environment: string })?.environment
+        }
+      />
+      <CreateDynamicSecretLease
         isOpen={popUp.createDynamicSecretLease.isOpen}
         onOpenChange={(state) => handlePopUpToggle("createDynamicSecretLease", state)}
-      >
-        <ModalContent title="Provision lease">
-          <CreateDynamicSecretLease
-            provider={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.type
-            }
-            onClose={() => handlePopUpClose("createDynamicSecretLease")}
-            projectSlug={projectSlug}
-            dynamicSecretName={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.name
-            }
-            secretPath={secretPath}
-            environment={
-              (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
-                ?.environment
-            }
-          />
-        </ModalContent>
-      </Modal>
-      <DeleteActionModal
+        provider={
+          (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })?.type
+        }
+        onClose={() => handlePopUpClose("createDynamicSecretLease")}
+        projectSlug={projectSlug}
+        dynamicSecretName={
+          (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })?.name
+        }
+        secretPath={secretPath}
+        environment={
+          (popUp.createDynamicSecretLease?.data as TDynamicSecret & { environment: string })
+            ?.environment
+        }
+      />
+      <DeleteConfirmDialog
         isOpen={popUp.deleteDynamicSecret.isOpen}
-        deleteKey={
-          (popUp.deleteDynamicSecret?.data as TDynamicSecret & { environment: string })?.name
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteDynamicSecret", isOpen)}
+        confirmKey={
+          (popUp.deleteDynamicSecret?.data as TDynamicSecret & { environment: string })?.name ?? ""
         }
         title={
           (popUp.deleteDynamicSecret?.data as { isForced?: boolean })?.isForced
             ? "Do you want to force delete this dynamic secret?"
             : "Do you want to delete this dynamic secret?"
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteDynamicSecret", isOpen)}
-        onDeleteApproved={handleDynamicSecretDelete}
+        isPending={deleteDynamicSecret.isPending}
+        onConfirm={handleDynamicSecretDelete}
       />
       <AlertDialog
         open={popUp.deleteSecretImport.isOpen}
@@ -3824,42 +3776,23 @@ const OverviewPageContent = () => {
         projectId={projectId}
         secretPath={secretPath}
       />
-      <Modal
-        isOpen={popUp?.confirmReplicateUpload?.isOpen}
+      <Dialog
+        open={popUp?.confirmReplicateUpload?.isOpen}
         onOpenChange={(open) => handlePopUpToggle("confirmReplicateUpload", open)}
       >
-        <ModalContent
-          title="Confirm Secret Upload"
-          footerContent={[
-            <ButtonV2
-              isLoading={isReplicateSubmitting}
-              isDisabled={isReplicateSubmitting}
-              colorSchema={isReplicateNonConflicting ? "primary" : "danger"}
-              key="overwrite-btn"
-              onClick={handleSaveReplicateImport}
-            >
-              {isReplicateNonConflicting ? "Upload" : "Overwrite"}
-            </ButtonV2>,
-            <ButtonV2
-              key="keep-old-btn"
-              className="ml-4"
-              onClick={() => handlePopUpClose("confirmReplicateUpload")}
-              variant="outline_bg"
-              isDisabled={isReplicateSubmitting}
-            >
-              Cancel
-            </ButtonV2>
-          ]}
-        >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Secret Upload</DialogTitle>
+          </DialogHeader>
           {isReplicateNonConflicting ? (
             <div>
               Are you sure you want to import {replicateCreateCount} secret
               {replicateCreateCount > 1 ? "s" : ""} to this environment?
             </div>
           ) : (
-            <div className="flex flex-col text-gray-300">
+            <div className="flex flex-col text-muted">
               <div>Your project already contains the following {replicateUpdateCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
+              <div className="mt-2 text-sm text-muted">
                 {(popUp?.confirmReplicateUpload?.data as TSecOverwriteOpt)?.update
                   ?.map((sec) => sec.secretKey)
                   .join(", ")}
@@ -3874,8 +3807,25 @@ const OverviewPageContent = () => {
               </div>
             </div>
           )}
-        </ModalContent>
-      </Modal>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => handlePopUpClose("confirmReplicateUpload")}
+              isDisabled={isReplicateSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              isPending={isReplicateSubmitting}
+              isDisabled={isReplicateSubmitting}
+              variant={isReplicateNonConflicting ? "outline" : "danger"}
+              onClick={handleSaveReplicateImport}
+            >
+              {isReplicateNonConflicting ? "Upload" : "Overwrite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <VaultSecretImportModal
         isOpen={popUp.importFromVault.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}

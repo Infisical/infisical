@@ -27,14 +27,16 @@ export const ViewSalesforceOauthCredentialsRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay isSensitive label="Consumer Key">
-            {inactiveCredentials?.consumerKey}
-          </CredentialDisplay>
-          <CredentialDisplay isSensitive label="Consumer Secret">
-            {inactiveCredentials?.consumerSecret}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay isSensitive label="Consumer Key">
+              {inactiveCredentials?.consumerKey}
+            </CredentialDisplay>
+            <CredentialDisplay isSensitive label="Consumer Secret">
+              {inactiveCredentials?.consumerSecret}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

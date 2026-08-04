@@ -1,5 +1,17 @@
+import { type ReactNode } from "react";
+import { InfoIcon } from "lucide-react";
+
 import { AppConnectionOption } from "@app/components/app-connections";
-import { FilterableSelect, FormControl } from "@app/components/v2";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { useGetVaultNamespaces } from "@app/hooks/api/migration/queries";
 
@@ -15,6 +27,24 @@ type Props = {
 
 export const defaultVaultConnectionId = (appConnections: TAvailableAppConnection[]) =>
   appConnections.length === 1 ? appConnections[0].id : null;
+
+const FieldLabelWithTooltip = ({
+  children,
+  tooltip
+}: {
+  children: ReactNode;
+  tooltip: string;
+}) => (
+  <FieldLabel>
+    {children}
+    <Tooltip>
+      <TooltipTrigger>
+        <InfoIcon className="mb-0.5 inline-block size-3 text-accent" />
+      </TooltipTrigger>
+      <TooltipContent className="max-w-64">{tooltip}</TooltipContent>
+    </Tooltip>
+  </FieldLabel>
+);
 
 export const VaultConnectionAndNamespaceFields = ({
   appConnections,
@@ -34,12 +64,11 @@ export const VaultConnectionAndNamespaceFields = ({
   return (
     <>
       {hasAppConnections && (
-        <FormControl
-          label="App Connection"
-          className="mb-4"
-          tooltipText="Select the HashiCorp Vault app connection to use for this import."
-        >
-          <>
+        <Field>
+          <FieldLabelWithTooltip tooltip="Select the HashiCorp Vault app connection to use for this import.">
+            App Connection
+          </FieldLabelWithTooltip>
+          <FieldContent>
             <FilterableSelect
               value={appConnections.find((conn) => conn.id === connectionId) ?? null}
               onChange={(value) => {
@@ -51,18 +80,18 @@ export const VaultConnectionAndNamespaceFields = ({
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
               placeholder="Select app connection..."
-              className="w-full"
               components={{ Option: AppConnectionOption }}
             />
-            <p className="mt-1 text-xs text-mineshaft-400">
-              Project-scoped HashiCorp Vault app connections available to you
-            </p>
-          </>
-        </FormControl>
+          </FieldContent>
+          <FieldDescription>
+            Project-scoped HashiCorp Vault app connections available to you
+          </FieldDescription>
+        </Field>
       )}
 
-      <FormControl label="Namespace" className="mb-4" tooltipText={namespaceTooltip}>
-        <>
+      <Field>
+        <FieldLabelWithTooltip tooltip={namespaceTooltip}>Namespace</FieldLabelWithTooltip>
+        <FieldContent>
           <FilterableSelect
             value={namespaces?.find((ns) => ns.name === namespace) ?? null}
             onChange={(value) => {
@@ -77,11 +106,10 @@ export const VaultConnectionAndNamespaceFields = ({
             placeholder={
               needsConnection ? "Select an app connection first..." : "Select namespace..."
             }
-            className="w-full"
           />
-          <p className="mt-1 text-xs text-mineshaft-400">{namespaceHelpText}</p>
-        </>
-      </FormControl>
+        </FieldContent>
+        <FieldDescription>{namespaceHelpText}</FieldDescription>
+      </Field>
     </>
   );
 };

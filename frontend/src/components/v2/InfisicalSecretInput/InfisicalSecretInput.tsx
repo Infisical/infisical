@@ -86,7 +86,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const { currentProject } = useProject();
     const projectId = currentProject?.id || "";
-    const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path });
+    const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.OverviewPage.path });
     const { permission } = useProjectPermission();
 
     const [debouncedValue] = useDebounce(value, 100);
@@ -443,17 +443,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         }
 
         navigate({
-          to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+          to: ROUTE_PATHS.SecretManager.OverviewPage.path,
           params: {
-            projectId,
-            envSlug: environmentSlug
+            projectId
           },
           search: (prev) => ({
             ...prev,
             secretPath: segment === environmentSlug ? "/" : folderPath,
             search: segment === secretName ? secretName : prev.search,
             filterBy: segment === secretName ? "secret" : prev.filterBy,
-            tags: ""
+            environments: [environmentSlug]
           })
         });
       },

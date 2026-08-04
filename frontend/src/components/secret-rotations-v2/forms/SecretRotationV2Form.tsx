@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
-import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -9,7 +8,12 @@ import { SecretRotationV2DetailsFields } from "@app/components/secret-rotations-
 import { SecretRotationV2ParametersFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ParametersFields";
 import { SecretRotationV2ReviewFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2ReviewFields";
 import { SecretRotationV2SecretsMappingFields } from "@app/components/secret-rotations-v2/forms/SecretRotationV2SecretsMappingFields";
-import { Button } from "@app/components/v2";
+import {
+  SecretRotationSheetFooter,
+  SecretRotationSheetScrollArea
+} from "@app/components/secret-rotations-v2/SecretRotationSheet";
+import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useProject } from "@app/context";
 import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
@@ -29,6 +33,9 @@ type Props = {
   onComplete: (secretRotation: TSecretRotationV2) => void;
   type: SecretRotation;
   onCancel: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+  /** When true, fill the sheet body instead of constraining modal height. */
+  isSheet?: boolean;
   secretPath: string;
   environment?: string;
   environments?: ProjectEnv[];
@@ -61,6 +68,8 @@ export const SecretRotationV2Form = ({
   type,
   onComplete,
   onCancel,
+  onDirtyChange,
+  isSheet = false,
   environment: envSlug,
   secretPath,
   secretRotation,
@@ -73,6 +82,7 @@ export const SecretRotationV2Form = ({
   const { name: rotationType } = SECRET_ROTATION_MAP[type];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const [hasDirtyBaseline, setHasDirtyBaseline] = useState(false);
 
   const { rotationOption } = useSecretRotationV2Option(type);
 
@@ -94,11 +104,36 @@ export const SecretRotationV2Form = ({
           },
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
-          ...((rotationOption?.template as object) ?? {}), // can't infer type since we don't know which specific type it is
+          ...((rotationOption?.template as object) ?? {}),
           ...(initialFormData as object)
         }) as Partial<TSecretRotationV2Form>,
+    // Step Next uses trigger(), which never sets isSubmitted — so reValidateMode alone
+    // never runs. mode must be onChange from init (RHF freezes the mode flags at create).
+    mode: "onChange",
     reValidateMode: "onChange"
   });
+
+  // Re-baseline after mount-time control sync (e.g. Radix Select) so prefills aren't dirty.
+  // Don't report dirty until that baseline lands — otherwise a close during the gap false-trips.
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      formMethods.reset(formMethods.getValues());
+      setHasDirtyBaseline(true);
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [formMethods]);
+
+  const isFormDirty =
+    hasDirtyBaseline && (formMethods.formState.isDirty || selectedTabIndex > 0);
+  useEffect(() => {
+    onDirtyChange?.(isFormDirty);
+    return () => onDirtyChange?.(false);
+  }, [isFormDirty, onDirtyChange]);
 
   const onSubmit = async ({ environment, connection, ...formData }: TSecretRotationV2Form) => {
     const mutation = secretRotation
@@ -165,68 +200,73 @@ export const SecretRotationV2Form = ({
     return isEnabled;
   };
 
+  const selectedTab = FORM_TABS[selectedTabIndex].key;
+
   return (
-    <form className="flex max-h-[70vh] flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col">
-        <FormProvider {...formMethods}>
-          <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-            <Tab.List className="-pb-1 mb-6 w-full flex-shrink-0 border-b-2 border-mineshaft-600">
-              {FORM_TABS.map((tab, index) => (
-                <Tab
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const isEnabled = await isTabEnabled(index);
-                    setSelectedTabIndex((prev) => (isEnabled ? index : prev));
-                  }}
-                  className={({ selected }) =>
-                    `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
-                      selected
-                        ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                        : "text-bunker-300"
-                    }`
-                  }
-                  key={tab.key}
-                >
-                  {index + 1}. {tab.name}
-                </Tab>
-              ))}
-            </Tab.List>
-            <Tab.Panels className="min-h-0 thin-scrollbar flex-1 overflow-y-auto">
-              <Tab.Panel>
+    <FormProvider {...formMethods}>
+      <form
+        className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", !isSheet && "max-h-[70vh]")}
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <Tabs
+          value={selectedTab}
+          onValueChange={async (value) => {
+            const index = FORM_TABS.findIndex((tab) => tab.key === value);
+            if (index < 0) return;
+            const isEnabled = await isTabEnabled(index);
+            if (isEnabled) setSelectedTabIndex(index);
+          }}
+          className="flex min-h-0 flex-1 flex-col gap-0"
+        >
+          <TabsList variant="project" className="mx-6 mt-4 w-auto shrink-0 justify-start">
+            {FORM_TABS.map((tab, index) => (
+              <TabsTrigger
+                key={tab.key}
+                value={tab.key}
+                className={index > selectedTabIndex ? "opacity-40" : undefined}
+              >
+                {index + 1}. {tab.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <SecretRotationSheetScrollArea>
+            <div className="space-y-3 p-6">
+              <TabsContent value="configuration" className="mt-0">
                 <SecretRotationV2ConfigurationFields
                   isUpdate={Boolean(secretRotation)}
                   environments={environments}
                 />
-              </Tab.Panel>
-              <Tab.Panel>
+              </TabsContent>
+              <TabsContent value="parameters" className="mt-0">
                 <SecretRotationV2ParametersFields />
-              </Tab.Panel>
-              <Tab.Panel>
+              </TabsContent>
+              <TabsContent value="secretsMapping" className="mt-0">
                 <SecretRotationV2SecretsMappingFields />
-              </Tab.Panel>
-              <Tab.Panel>
+              </TabsContent>
+              <TabsContent value="details" className="mt-0">
                 <SecretRotationV2DetailsFields />
-              </Tab.Panel>
-              <Tab.Panel>
+              </TabsContent>
+              <TabsContent value="review" className="mt-0">
                 <SecretRotationV2ReviewFields />
-              </Tab.Panel>
-            </Tab.Panels>
-          </Tab.Group>
-        </FormProvider>
-      </div>
-      <div className="flex w-full flex-shrink-0 flex-row-reverse justify-between gap-4 pt-4">
-        <Button
-          onClick={handleNext}
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-          colorSchema="secondary"
-        >
-          {isFinalStep ? `${secretRotation ? "Update" : "Create"} Secret Rotation` : "Next"}
-        </Button>
-        <Button onClick={handlePrev} colorSchema="secondary">
-          Back
-        </Button>
-      </div>
-    </form>
+              </TabsContent>
+            </div>
+          </SecretRotationSheetScrollArea>
+        </Tabs>
+        <SecretRotationSheetFooter>
+          <Button type="button" variant="ghost" className="mr-auto" onClick={handlePrev}>
+            Back
+          </Button>
+          <Button
+            type="button"
+            variant="project"
+            onClick={handleNext}
+            isPending={isSubmitting}
+            isDisabled={isSubmitting}
+          >
+            {isFinalStep ? `${secretRotation ? "Update" : "Create"} Secret Rotation` : "Next"}
+          </Button>
+        </SecretRotationSheetFooter>
+      </form>
+    </FormProvider>
   );
 };

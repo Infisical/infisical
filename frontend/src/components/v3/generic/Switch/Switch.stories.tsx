@@ -60,7 +60,7 @@ export const Outline: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant for general switch toggles."
+        story: "Use this variant for subtle, unscoped toggles."
       }
     }
   }
@@ -180,7 +180,7 @@ export const Project: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant for project scope toggles."
+        story: "Default variant. Use for general and project-scope toggles."
       }
     }
   }

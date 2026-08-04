@@ -18,11 +18,14 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Modal, ModalContent } from "@app/components/v2";
 import {
   Badge,
   Button,
   Checkbox,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -44,7 +47,7 @@ import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import { HIDDEN_SECRET_VALUE } from "@app/components/secrets/constants";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -475,19 +478,19 @@ export const SecretTableRow = ({
         </TableRow>
       )}
       {!isSingleEnvView && (
-        <Modal
-          isOpen={isEditSecretNameOpen}
-          onOpenChange={(isOpen) => setIsEditSecretNameOpen(isOpen)}
-        >
-          <ModalContent title="Edit Secret Name">
+        <Dialog open={isEditSecretNameOpen} onOpenChange={(isOpen) => setIsEditSecretNameOpen(isOpen)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Secret Name</DialogTitle>
+            </DialogHeader>
             <SecretRenameForm
               secretKey={secretKey}
               environments={environments}
               secretPath={secretPath}
               getSecretByKey={getSecretByKey}
             />
-          </ModalContent>
-        </Modal>
+          </DialogContent>
+        </Dialog>
       )}
       {!isSingleEnvView && isFormExpanded && (
         <TableRow>

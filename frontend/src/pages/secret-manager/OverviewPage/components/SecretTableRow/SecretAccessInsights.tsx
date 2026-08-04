@@ -305,9 +305,11 @@ function AddMemberPopover({
     return (
       <Tooltip>
         <TooltipTrigger>
-          <Button variant="project" isDisabled aria-label="Add user to project">
-            <UserPlusIcon /> Grant Organization User Access
-          </Button>
+          <span className="inline-flex">
+            <Button variant="project" isDisabled aria-label="Add user to project">
+              <UserPlusIcon /> Grant Organization User Access
+            </Button>
+          </span>
         </TooltipTrigger>
         <TooltipContent>
           You do not have permission to add members to this project and manage their permissions
@@ -792,7 +794,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                         <DropdownMenuContent align="end">
                           {row.onEdit && (
                             <Tooltip open={row.canEdit ? false : undefined}>
-                              <TooltipTrigger>
+                              <TooltipTrigger asChild={false}>
                                 <DropdownMenuItem
                                   isDisabled={!row.canEdit}
                                   onClick={() => row.onEdit?.()}

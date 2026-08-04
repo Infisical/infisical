@@ -1,3 +1,4 @@
+import type { FocusEventHandler, Ref } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { GlobeIcon, Layers3Icon, type LucideIcon, ServerIcon } from "lucide-react";
@@ -34,6 +35,10 @@ type Props = {
   isRequired?: boolean;
   placeholder?: string;
   isError?: boolean;
+  inputId?: string;
+  ariaDescribedBy?: string;
+  triggerRef?: Ref<HTMLButtonElement>;
+  onBlur?: FocusEventHandler<HTMLButtonElement>;
   noGatewayLabel?: string;
   noGatewayIcon?: LucideIcon;
 };
@@ -52,6 +57,10 @@ export const GatewayPicker = ({
   isRequired,
   placeholder,
   isError,
+  inputId,
+  ariaDescribedBy,
+  triggerRef,
+  onBlur,
   noGatewayLabel = "Internet Gateway",
   noGatewayIcon: NoGatewayIcon = GlobeIcon
 }: Props) => {
@@ -76,6 +85,9 @@ export const GatewayPicker = ({
   }
 
   const handleChange = (v: string) => {
+    // Radix Select can emit a spurious empty onValueChange while options mount.
+    if (!v || v === selectValue) return;
+
     if (v === "internet") {
       onChange({ gatewayId: null, gatewayPoolId: null });
     } else if (v.startsWith("pool:")) {
@@ -98,7 +110,14 @@ export const GatewayPicker = ({
 
   return (
     <Select value={selectValue} onValueChange={handleChange} disabled={isDisabled || isLoading}>
-      <SelectTrigger className={className ?? "w-full"} isError={isError}>
+      <SelectTrigger
+        ref={triggerRef}
+        id={inputId}
+        className={className ?? "w-full"}
+        isError={isError}
+        aria-describedby={ariaDescribedBy}
+        onBlur={onBlur}
+      >
         <SelectValue placeholder={placeholder ?? "Select gateway..."} />
       </SelectTrigger>
       <SelectContent position="popper" className="z-[70]">

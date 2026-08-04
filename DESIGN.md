@@ -131,7 +131,7 @@ font or substitute one role for another:
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
 | Label / meta            | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
-| Field helper / feedback | `text-2xs leading-snug`                                                   | Defaults via `FieldDescription` and `FieldFeedback`                |
+| Field helper / feedback | `text-2xs leading-snug text-muted`                                        | Defaults via `FieldDescription` and `FieldFeedback`. Also used by Select item and Stepper descriptions. |
 | Badge                   | `text-xs` (auto, via `Badge`)                                             | Never override                                                     |
 | Button                  | `text-sm` (md/sm/lg), `text-xs` (xs)                                      | Auto via `Button` sizing                                           |
 

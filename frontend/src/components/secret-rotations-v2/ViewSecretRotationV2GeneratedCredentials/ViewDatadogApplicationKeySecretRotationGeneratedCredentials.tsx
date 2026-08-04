@@ -28,14 +28,16 @@ export const ViewDatadogApplicationKeySecretRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Application Key ID">
-            {inactiveCredentials?.applicationKeyId}
-          </CredentialDisplay>
-          <CredentialDisplay isSensitive label="Application Key">
-            {inactiveCredentials?.applicationKey}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Application Key ID">
+              {inactiveCredentials?.applicationKeyId}
+            </CredentialDisplay>
+            <CredentialDisplay isSensitive label="Application Key">
+              {inactiveCredentials?.applicationKey}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

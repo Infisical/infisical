@@ -465,7 +465,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               >
                                 {(isAllowed) => (
                                   <Tooltip>
-                                    <TooltipTrigger className="block w-full">
+                                    <TooltipTrigger asChild={false} className="block w-full">
                                       <DropdownMenuItem
                                         isDisabled={!isAllowed}
                                         onClick={(evt) => {

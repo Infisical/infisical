@@ -12,7 +12,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { CsvDelimiter } from "@app/components/utilities/parseSecrets";
-import { FormLabel } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -21,6 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  FieldLabel,
   Select,
   SelectContent,
   SelectItem,
@@ -167,15 +167,15 @@ const MATRIX_ROWS: MatrixRow[] = [
       <div className="flex flex-col gap-1.5">
         <p>
           Separate multiple tag slugs with either{" "}
-          <code className="rounded bg-bunker-400/30 px-1">,</code> or{" "}
-          <code className="rounded bg-bunker-400/30 px-1">;</code> — whichever is <em>not</em> your
+          <code className="rounded bg-container px-1">,</code> or{" "}
+          <code className="rounded bg-container px-1">;</code> — whichever is <em>not</em> your
           CSV&apos;s column delimiter.
         </p>
         <p>
           Detected column delimiter:{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{formatDelimiter(outer)}</code>, so use{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{sep}</code> (e.g.{" "}
-          <code className="rounded bg-bunker-400/30 px-1">prod{sep}api</code>).
+          <code className="rounded bg-container px-1">{formatDelimiter(outer)}</code>, so use{" "}
+          <code className="rounded bg-container px-1">{sep}</code> (e.g.{" "}
+          <code className="rounded bg-container px-1">prod{sep}api</code>).
         </p>
         <p>Missing tags are auto-created if you have permission.</p>
       </div>
@@ -188,16 +188,16 @@ const MATRIX_ROWS: MatrixRow[] = [
     hint: (sep, outer) => (
       <div className="flex flex-col gap-1.5">
         <p>
-          Provide <code className="rounded bg-bunker-400/30 px-1">key=value</code> pairs separated
-          by either <code className="rounded bg-bunker-400/30 px-1">,</code> or{" "}
-          <code className="rounded bg-bunker-400/30 px-1">;</code> — whichever is <em>not</em> your
+          Provide <code className="rounded bg-container px-1">key=value</code> pairs separated
+          by either <code className="rounded bg-container px-1">,</code> or{" "}
+          <code className="rounded bg-container px-1">;</code> — whichever is <em>not</em> your
           CSV&apos;s column delimiter.
         </p>
         <p>
           Detected column delimiter:{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{formatDelimiter(outer)}</code>, so use{" "}
-          <code className="rounded bg-bunker-400/30 px-1">{sep}</code> (e.g.{" "}
-          <code className="rounded bg-bunker-400/30 px-1">owner=team-a{sep}tier=p0</code>).
+          <code className="rounded bg-container px-1">{formatDelimiter(outer)}</code>, so use{" "}
+          <code className="rounded bg-container px-1">{sep}</code> (e.g.{" "}
+          <code className="rounded bg-container px-1">owner=team-a{sep}tier=p0</code>).
         </p>
       </div>
     )
@@ -208,9 +208,9 @@ const MATRIX_ROWS: MatrixRow[] = [
     icon: <WrapTextIcon />,
     hint: () => (
       <>
-        Truthy cells (<code className="rounded bg-bunker-400/30 px-1">true</code>,{" "}
-        <code className="rounded bg-bunker-400/30 px-1">1</code>,{" "}
-        <code className="rounded bg-bunker-400/30 px-1">yes</code>) enable multi-line encoding;
+        Truthy cells (<code className="rounded bg-container px-1">true</code>,{" "}
+        <code className="rounded bg-container px-1">1</code>,{" "}
+        <code className="rounded bg-container px-1">yes</code>) enable multi-line encoding;
         anything else leaves it disabled.
       </>
     )
@@ -376,11 +376,11 @@ const CsvColumnMapContent = ({
           <thead>
             <tr className="text-left">
               <th>
-                <FormLabel tooltipClassName="max-w-sm" label="Import Column" />
+                <FieldLabel className="max-w-sm">Import Column</FieldLabel>
               </th>
               <th />
               <th className="whitespace-nowrap">
-                <FormLabel label="Resulting Import" />
+                <FieldLabel>Resulting Import</FieldLabel>
               </th>
             </tr>
           </thead>

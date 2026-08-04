@@ -28,14 +28,16 @@ export const ViewAwsIamUserSecretRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Access Key ID">
-            {inactiveCredentials?.accessKeyId}
-          </CredentialDisplay>
-          <CredentialDisplay isSensitive label="Secret Access Key">
-            {inactiveCredentials?.secretAccessKey}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Access Key ID">
+              {inactiveCredentials?.accessKeyId}
+            </CredentialDisplay>
+            <CredentialDisplay isSensitive label="Secret Access Key">
+              {inactiveCredentials?.secretAccessKey}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

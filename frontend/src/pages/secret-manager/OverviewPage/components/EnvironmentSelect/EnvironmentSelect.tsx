@@ -122,18 +122,20 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <Tooltip open={isDisabled ? undefined : false}>
           <TooltipTrigger>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={isOpen}
-                disabled={isDisabled}
-                className="w-[180px] justify-between"
-              >
-                <span className="truncate">{label}</span>
-                <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
+            <span className="inline-flex">
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isOpen}
+                  disabled={isDisabled}
+                  className="w-[180px] justify-between"
+                >
+                  <span className="truncate">{label}</span>
+                  <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+            </span>
           </TooltipTrigger>
           <TooltipContent>Save or discard pending changes to switch environments</TooltipContent>
         </Tooltip>

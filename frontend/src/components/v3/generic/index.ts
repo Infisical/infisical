@@ -44,3 +44,4 @@ export * from "./Tabs";
 export * from "./TextArea";
 export * from "./Toast";
 export * from "./Tooltip";
+export * from "./UnsavedChangesGuard";

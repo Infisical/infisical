@@ -1,6 +1,13 @@
 import { Controller, useFormContext } from "react-hook-form";
 
-import { FormControl, Input, TextArea } from "@app/components/v2";
+import {
+  Field,
+  FieldError,
+  FieldFeedback,
+  FieldLabel,
+  Input,
+  TextArea
+} from "@app/components/v3";
 
 import { TSecretRotationV2Form } from "./schemas";
 
@@ -8,44 +15,56 @@ export const SecretRotationV2DetailsFields = () => {
   const { control } = useFormContext<TSecretRotationV2Form>();
 
   return (
-    <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Provide a name and description for this Secret Rotation.
-      </p>
+    <div className="space-y-4">
+      <p className="text-sm text-muted">Provide a name and description for this Secret Rotation.</p>
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            helperText="Must be slug-friendly"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Name"
-          >
-            <Input autoFocus value={value} onChange={onChange} placeholder="my-secret-rotation" />
-          </FormControl>
+        render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="secret-rotation-name">Name</FieldLabel>
+            <Input
+              ref={ref}
+              id="secret-rotation-name"
+              autoFocus
+              value={value}
+              onBlur={onBlur}
+              onChange={onChange}
+              placeholder="my-secret-rotation"
+              isError={Boolean(error)}
+              aria-describedby="secret-rotation-name-feedback"
+            />
+            <FieldFeedback
+              id="secret-rotation-name-feedback"
+              description="Must be slug-friendly"
+              error={error?.message}
+            />
+          </Field>
         )}
         control={control}
         name="name"
       />
       <Controller
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            isOptional
-            errorText={error?.message}
-            label="Description"
-          >
+        render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
+          <Field data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="secret-rotation-description">
+              Description <span className="font-normal text-muted">(optional)</span>
+            </FieldLabel>
             <TextArea
+              ref={ref}
+              id="secret-rotation-description"
               value={value ?? ""}
+              onBlur={onBlur}
               onChange={onChange}
               placeholder="Describe the purpose of this rotation..."
-              className="resize-none!"
+              className="resize-none"
               rows={4}
+              aria-invalid={Boolean(error)}
             />
-          </FormControl>
+            <FieldError>{error?.message}</FieldError>
+          </Field>
         )}
         control={control}
         name="description"
       />
-    </>
+    </div>
   );
 };

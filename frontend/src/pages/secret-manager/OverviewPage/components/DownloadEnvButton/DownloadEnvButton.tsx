@@ -59,15 +59,17 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
   return (
     <Tooltip>
       <TooltipTrigger>
-        <IconButton
-          variant="outline"
-          size="md"
-          isDisabled={environments.length !== 1}
-          onClick={handleSecretDownload}
-          isPending={isDownloading}
-        >
-          <DownloadIcon />
-        </IconButton>
+        <span className="inline-flex">
+          <IconButton
+            variant="outline"
+            size="md"
+            isDisabled={environments.length !== 1}
+            onClick={handleSecretDownload}
+            isPending={isDownloading}
+          >
+            <DownloadIcon />
+          </IconButton>
+        </span>
       </TooltipTrigger>
       <TooltipContent>
         {environments.length !== 1

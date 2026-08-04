@@ -4,9 +4,9 @@ import { faChevronDown, faChevronUp } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Panel } from "@xyflow/react";
 
+import { MetadataForm } from "@app/components/MetadataForm";
 import { Button, FormLabel, IconButton, Input, Select, SelectItem } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
-import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 import { ViewMode } from "../types";
 

@@ -35,8 +35,6 @@ import {
   ResolvedSecretValuePopover,
   SecretReferenceTree
 } from "@app/components/secrets/SecretReferenceDetails";
-import { Input, Modal, ModalContent } from "@app/components/v2";
-import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +46,11 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -62,7 +65,8 @@ import {
   FieldContent,
   FieldLabel,
   IconButton,
-  Input as V3Input,
+  InfisicalSecretInput,
+  Input,
   Popover,
   PopoverAnchor,
   PopoverContent,
@@ -93,9 +97,9 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
-import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
-import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
-import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
+import { CollapsibleSecretImports } from "@app/components/secrets/CollapsibleSecretImports";
+import { HIDDEN_SECRET_VALUE } from "@app/components/secrets/constants";
+import { useBatchStoreApi } from "@app/pages/secret-manager/shared/secretBatch.store";
 
 import { DuplicateSecretModal } from "./DuplicateSecretModal";
 import { SecretAccessInsights } from "./SecretAccessInsights";
@@ -631,7 +635,7 @@ export const SecretEditTableRow = ({
         });
       }
 
-      // Reset form to mark as clean (like SecretDashboardPage's auto-save)
+      // Reset form to mark as clean after auto-save
       const resetKey = effectiveKeyDirty ? watchedKey || secretName : secretName;
       reset({
         value: watchedValue,
@@ -925,15 +929,18 @@ export const SecretEditTableRow = ({
       render={({ field, fieldState: { error } }) => (
         <Input
           autoComplete="off"
-          isReadOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
-          autoCapitalization={currentProject?.autoCapitalization}
-          variant="plain"
+          readOnly={isPendingDelete || isImportedSecret || isManagedSecret || !canEditSecretValue}
+          onInput={(e) => {
+            if (currentProject?.autoCapitalization) {
+              e.currentTarget.value = e.currentTarget.value.toUpperCase();
+            }
+          }}
           placeholder={error?.message || "Secret name"}
           isError={Boolean(error)}
           {...field}
           value={field.value ?? ""}
           className={twMerge(
-            "w-full px-0 text-foreground placeholder:text-red-500 focus:ring-transparent",
+            "w-full border-none bg-transparent px-0 text-foreground shadow-none placeholder:text-danger focus-visible:ring-0",
             isPendingDelete && "text-danger/75 line-through"
           )}
           onBlur={(e) => {
@@ -975,7 +982,7 @@ export const SecretEditTableRow = ({
                 Type <span className="font-bold">{secretName}</span> to confirm
               </FieldLabel>
               <FieldContent>
-                <V3Input
+                <Input
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
                   placeholder={`Type ${secretName} here`}
@@ -1474,7 +1481,7 @@ export const SecretEditTableRow = ({
             </Tooltip>
             <DropdownMenuContent
               align="end"
-              className="min-w-[200px] [&_[data-variant=default]]:text-mineshaft-100 [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
+              className="min-w-[200px] [&_[data-variant=default]]:text-muted [&_[data-variant=default]:focus]:text-foreground [&_svg:not([class*='size-'])]:!size-3"
               onCloseAutoFocus={(e) => {
                 e.preventDefault();
                 if (pendingAnnotation === "comment") setIsCommentOpen(true);
@@ -1509,7 +1516,7 @@ export const SecretEditTableRow = ({
                     {comment ? "View Comment" : "Add Comment"}
                   </DropdownMenuItem>
                   <Tooltip open={!canReadTags ? undefined : false} disableHoverableContent>
-                    <TooltipTrigger className="block w-full">
+                    <TooltipTrigger asChild={false} className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5 text-xs"
                         isDisabled={!canReadTags}
@@ -1527,7 +1534,7 @@ export const SecretEditTableRow = ({
                     open={!secretId || isPendingCreate ? undefined : false}
                     disableHoverableContent
                   >
-                    <TooltipTrigger className="block w-full">
+                    <TooltipTrigger asChild={false} className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5 text-xs"
                         isDisabled={!secretId || isPendingCreate}
@@ -1555,7 +1562,7 @@ export const SecretEditTableRow = ({
                 open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
                 disableHoverableContent
               >
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
                     onClick={() => setIsSecretReferenceOpen(true)}
@@ -1582,7 +1589,7 @@ export const SecretEditTableRow = ({
                     }
                     disableHoverableContent
                   >
-                    <TooltipTrigger className="block w-full">
+                    <TooltipTrigger asChild={false} className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5 text-xs"
                         onClick={() => setIsVersionHistoryOpen(true)}
@@ -1614,7 +1621,7 @@ export const SecretEditTableRow = ({
                 open={isPendingBatchChange || isImportedSecret || isCreatable ? undefined : false}
                 disableHoverableContent
               >
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
                     onClick={() => {
@@ -1651,7 +1658,7 @@ export const SecretEditTableRow = ({
                 }
                 disableHoverableContent
               >
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuCheckboxItem
                     checked={Boolean(skipMultilineEncoding)}
                     disabled={
@@ -1691,7 +1698,7 @@ export const SecretEditTableRow = ({
                 }
                 disableHoverableContent
               >
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
                     onClick={() => onAddOverride?.()}
@@ -1732,7 +1739,7 @@ export const SecretEditTableRow = ({
                 }
                 disableHoverableContent
               >
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
                     isDisabled={
@@ -1775,7 +1782,7 @@ export const SecretEditTableRow = ({
                 open={isPendingBatchChange || isManagedSecret || isCreatable ? undefined : false}
                 disableHoverableContent
               >
-                <TooltipTrigger className="block w-full">
+                <TooltipTrigger asChild={false} className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5 text-xs"
                     onClick={() => handlePopUpOpen("duplicateSecret")}
@@ -1817,7 +1824,7 @@ export const SecretEditTableRow = ({
                     }
                     disableHoverableContent
                   >
-                    <TooltipTrigger className="block w-full">
+                    <TooltipTrigger asChild={false} className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5 text-xs"
                         onClick={toggleModal}
@@ -1855,21 +1862,22 @@ export const SecretEditTableRow = ({
           </DropdownMenu>
         </div>
       )}
-      <Modal isOpen={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
-        <ModalContent
-          className="max-w-3xl"
-          title="Secret Reference Details"
-          subTitle="Visual breakdown of secrets referenced by this secret."
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+      <Dialog open={isSecretReferenceOpen} onOpenChange={setIsSecretReferenceOpen}>
+        <DialogContent className="max-w-3xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Secret Reference Details</DialogTitle>
+            <DialogDescription>
+              Visual breakdown of secrets referenced by this secret.
+            </DialogDescription>
+          </DialogHeader>
           <SecretReferenceTree
             secretPath={secretPath}
             environment={environment}
             secretKey={secretName}
             onClose={() => setIsSecretReferenceOpen(false)}
           />
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
       <Sheet open={isVersionHistoryOpen} onOpenChange={setIsVersionHistoryOpen}>
         <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="gap-y-0" side="right">
           <SheetHeader>
@@ -1962,7 +1970,7 @@ export const SecretEditTableRow = ({
                 Type <span className="font-bold">confirm</span> to proceed
               </FieldLabel>
               <FieldContent>
-                <V3Input
+                <Input
                   value={editConfirmation}
                   onChange={(e) => setEditConfirmation(e.target.value)}
                   placeholder="Type confirm here"

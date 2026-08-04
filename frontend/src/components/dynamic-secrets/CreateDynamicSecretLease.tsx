@@ -1,0 +1,1121 @@
+import { ReactNode, useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import FileSaver from "file-saver";
+import { AnimatePresence, motion } from "framer-motion";
+import { CheckIcon, ClockIcon, CopyIcon, DownloadIcon, Loader2Icon, XIcon } from "lucide-react";
+import ms from "ms";
+import { z } from "zod";
+
+import { TtlFieldLabel } from "@app/components/dynamic-secrets/shared/TtlFieldLabel";
+import { createNotification } from "@app/components/notifications";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Input,
+  SecretInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useTimedReset, useToggle } from "@app/hooks";
+import { useCreateDynamicSecretLease } from "@app/hooks/api";
+import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+
+const OutputDisplay = ({
+  value,
+  label,
+  helperText
+}: {
+  value: string;
+  label: string;
+  helperText?: ReactNode;
+}) => {
+  const [copyText, isCopying, setCopyText] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
+
+  return (
+    <div className="relative">
+      <Field className="grow">
+        <FieldLabel>{label}</FieldLabel>
+        <SecretInput
+          isReadOnly
+          value={value}
+          containerClassName="text-label hover:border-primary-400/50 border border-border bg-container px-2 py-1.5"
+        />
+        <FieldDescription>{helperText}</FieldDescription>
+      </Field>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <IconButton
+            aria-label="Copy to clipboard"
+            variant="ghost"
+            size="md"
+            className="absolute top-7 right-2"
+            onClick={() => {
+              navigator.clipboard.writeText(value as string);
+              setCopyText("Copied");
+            }}
+          >
+            {isCopying ? <CheckIcon /> : <CopyIcon />}
+          </IconButton>
+        </TooltipTrigger>
+        <TooltipContent>{copyText}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+};
+
+const TotpOutputDisplay = ({
+  totp,
+  remainingSeconds,
+  triggerLeaseRegeneration
+}: {
+  totp: string;
+  remainingSeconds: number;
+  triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>;
+}) => {
+  const [remainingTime, setRemainingTime] = useState(remainingSeconds);
+  const [shouldShowRegenerate, setShouldShowRegenerate] = useToggle(false);
+
+  useEffect(() => {
+    setRemainingTime(remainingSeconds);
+    setShouldShowRegenerate.off();
+
+    // Set up countdown interval
+    const intervalId = setInterval(() => {
+      setRemainingTime((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(intervalId);
+          setShouldShowRegenerate.on();
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    // Cleanup interval on unmount or when totp changes
+    return () => clearInterval(intervalId);
+  }, [totp, remainingSeconds]);
+
+  return (
+    <div className="h-36">
+      <OutputDisplay label="Time-based one-time password" value={totp} />
+      {remainingTime > 0 ? (
+        <div
+          className={`ml-2 flex items-center text-sm ${
+            remainingTime < 10 ? "text-danger" : "text-warning"
+          } transition-colors duration-500`}
+        >
+          <ClockIcon className="mr-1 size-3.5" />
+          <span>
+            Expires in {remainingTime} {remainingTime > 1 ? "seconds" : "second"}
+          </span>
+        </div>
+      ) : (
+        <div className="ml-2 flex items-center text-sm text-danger">
+          <ClockIcon className="mr-1 size-3.5" />
+          Expired
+        </div>
+      )}
+      {shouldShowRegenerate && (
+        <Button variant="outline" className="mt-2" onClick={() => triggerLeaseRegeneration({})}>
+          Regenerate
+        </Button>
+      )}
+    </div>
+  );
+};
+
+const renderOutputForm = (
+  provider: DynamicSecretProviders,
+  data: unknown,
+  triggerLeaseRegeneration: (details: { ttl?: string }) => Promise<void>
+) => {
+  if (
+    provider === DynamicSecretProviders.SqlDatabase ||
+    provider === DynamicSecretProviders.Cassandra ||
+    provider === DynamicSecretProviders.MongoAtlas ||
+    provider === DynamicSecretProviders.MongoDB ||
+    provider === DynamicSecretProviders.Vertica ||
+    provider === DynamicSecretProviders.SapAse ||
+    provider === DynamicSecretProviders.AzureSqlDatabase ||
+    provider === DynamicSecretProviders.Clickhouse ||
+    provider === DynamicSecretProviders.Milvus
+  ) {
+    const { DB_PASSWORD, DB_USERNAME } = data as { DB_USERNAME: string; DB_PASSWORD: string };
+    return (
+      <div>
+        <OutputDisplay label="Database User" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Database Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.AwsIam) {
+    const { USERNAME, ACCESS_KEY, SECRET_ACCESS_KEY, SESSION_TOKEN } = data as {
+      ACCESS_KEY: string;
+      SECRET_ACCESS_KEY: string;
+      USERNAME?: string;
+      SESSION_TOKEN?: string;
+    };
+    return (
+      <div>
+        {USERNAME && <OutputDisplay label="AWS IAM Username" value={USERNAME} />}
+        <OutputDisplay label="AWS IAM Access Key" value={ACCESS_KEY} />
+        <OutputDisplay label="AWS IAM Secret Key" value={SECRET_ACCESS_KEY} />
+        {SESSION_TOKEN && <OutputDisplay label="AWS IAM Session Token" value={SESSION_TOKEN} />}
+        <div className="mt-2 text-xs text-muted">
+          Important: Copy these credentials now. You will not be able to see them again after you
+          close the modal.
+        </div>
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Redis) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Redis Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Redis Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (
+    provider === DynamicSecretProviders.AwsElastiCache ||
+    provider === DynamicSecretProviders.AwsMemoryDb
+  ) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Cluster Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Cluster Password"
+          value={DB_PASSWORD}
+          helperText={
+            <div className="space-y-4">
+              <p>
+                Important: Copy these credentials now. You will not be able to see them again after
+                you close the modal.
+              </p>
+              <p className="font-medium">
+                Please note that it may take a few minutes before the credentials are available for
+                use.
+              </p>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.RabbitMq) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.ElasticSearch) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.AzureEntraId) {
+    const { email, password } = data as {
+      email: string;
+      password: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Email" value={email} />
+        <OutputDisplay
+          label="Password"
+          value={password}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Ldap) {
+    const { USERNAME, PASSWORD, DN_ARRAY } = data as {
+      USERNAME: string;
+      PASSWORD: string;
+      DN_ARRAY: string[];
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+        <Field className="grow">
+          <FieldLabel>DNs</FieldLabel>
+          <SecretInput
+            isReadOnly
+            isVisible
+            value={JSON.stringify(DN_ARRAY)}
+            containerClassName="text-label hover:border-primary-400/50 border border-border bg-container px-2 py-1.5"
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  if (
+    provider === DynamicSecretProviders.SapHana ||
+    provider === DynamicSecretProviders.Snowflake
+  ) {
+    const { DB_USERNAME, DB_PASSWORD } = data as {
+      DB_USERNAME: string;
+      DB_PASSWORD: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={DB_USERNAME} />
+        <OutputDisplay
+          label="Password"
+          value={DB_PASSWORD}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Kubernetes) {
+    const { TOKEN } = data as { TOKEN: string };
+
+    return (
+      <div>
+        <OutputDisplay
+          label="Service Account JWT"
+          value={TOKEN}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Totp) {
+    const { TOTP, TIME_REMAINING } = data as {
+      TOTP: string;
+      TIME_REMAINING: number;
+    };
+
+    return (
+      <TotpOutputDisplay
+        totp={TOTP}
+        remainingSeconds={TIME_REMAINING}
+        triggerLeaseRegeneration={triggerLeaseRegeneration}
+      />
+    );
+  }
+
+  if (provider === DynamicSecretProviders.GcpIam) {
+    const { TOKEN, SERVICE_ACCOUNT_EMAIL } = data as {
+      SERVICE_ACCOUNT_EMAIL: string;
+      TOKEN: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Service Account Email" value={SERVICE_ACCOUNT_EMAIL} />
+        <OutputDisplay
+          label="Token"
+          value={TOKEN}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Github) {
+    const { TOKEN } = data as {
+      TOKEN: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay
+          label="Token"
+          value={TOKEN}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Couchbase) {
+    const { username, password } = data as {
+      username: string;
+      password: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Username" value={username} />
+        <OutputDisplay
+          label="Password"
+          value={password}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.IbmApiConnect) {
+    const { CLIENT_ID, CLIENT_SECRET } = data as {
+      CLIENT_ID: string;
+      CLIENT_SECRET: string;
+    };
+
+    return (
+      <div>
+        <OutputDisplay label="Client ID" value={CLIENT_ID} />
+        <OutputDisplay
+          label="Client Secret"
+          value={CLIENT_SECRET}
+          helperText="Important: Copy these credentials now. You will not be able to see them again after you close the modal."
+        />
+      </div>
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Tailscale) {
+    const { KEY_ID, AUTH_KEY, CLIENT_ID, CLIENT_SECRET, FEDERATED_CREDENTIAL_ID, AUDIENCE } =
+      data as {
+        KEY_ID?: string;
+        AUTH_KEY?: string;
+        CLIENT_ID?: string;
+        CLIENT_SECRET?: string;
+        FEDERATED_CREDENTIAL_ID?: string;
+        AUDIENCE?: string;
+      };
+
+    return (
+      <div>
+        {KEY_ID && <OutputDisplay label="Key ID" value={KEY_ID} />}
+        {AUTH_KEY && <OutputDisplay label="Auth Key" value={AUTH_KEY} />}
+        {CLIENT_ID && <OutputDisplay label="Client ID" value={CLIENT_ID} />}
+        {CLIENT_SECRET && <OutputDisplay label="Client Secret" value={CLIENT_SECRET} />}
+        {FEDERATED_CREDENTIAL_ID && (
+          <OutputDisplay label="Federated Credential ID" value={FEDERATED_CREDENTIAL_ID} />
+        )}
+        {AUDIENCE && <OutputDisplay label="Audience" value={AUDIENCE} />}
+        <div className="mt-2 text-xs text-muted">
+          Important: Copy these credentials now. You will not be able to see them again after you
+          close the modal.
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+const kubernetesFormSchema = z.object({
+  ttl: z
+    .string()
+    .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional(),
+  namespace: z.string().optional()
+});
+
+type TKubernetesForm = z.infer<typeof kubernetesFormSchema>;
+
+const CreateKubernetesDynamicSecretLease = ({
+  onClose,
+  projectSlug,
+  dynamicSecretName,
+  provider,
+  secretPath,
+  environment
+}: Props) => {
+  const {
+    control,
+    formState: { isSubmitting },
+    handleSubmit
+  } = useForm<TKubernetesForm>({
+    resolver: zodResolver(kubernetesFormSchema),
+    defaultValues: {
+      ttl: "1h"
+    }
+  });
+
+  const createDynamicSecretLease = useCreateDynamicSecretLease();
+
+  const handleDynamicSecretLeaseCreate = async ({ ttl, namespace }: TKubernetesForm) => {
+    if (createDynamicSecretLease.isPending) return;
+    await createDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      config: {
+        namespace: namespace || undefined
+      },
+      provider
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully leased dynamic secret"
+    });
+  };
+
+  const handleLeaseRegeneration = async (data: { ttl?: string }) => {
+    handleDynamicSecretLeaseCreate(data);
+  };
+
+  const isOutputMode = Boolean(createDynamicSecretLease?.data);
+
+  return (
+    <div>
+      <AnimatePresence>
+        {!isOutputMode && (
+          <motion.div
+            key="lease-input"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            <form onSubmit={handleSubmit(handleDynamicSecretLeaseCreate)}>
+              <Controller
+                control={control}
+                name="namespace"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="lease-namespace">Namespace</FieldLabel>
+                    <Input id="lease-namespace" {...field} isError={Boolean(error)} />
+                    <FieldDescription>
+                      The Kubernetes namespace to lease the dynamic secret to. If not specified, the
+                      first namespace defined in the configuration will be used.
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="ttl"
+                defaultValue="1h"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <TtlFieldLabel htmlFor="lease-ttl" label="Default TTL" />
+                    <Input id="lease-ttl" {...field} isError={Boolean(error)} />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <DialogFooter className="mt-4">
+                <Button variant="ghost" onClick={onClose} type="button">
+                  Cancel
+                </Button>
+                <Button type="submit" isPending={isSubmitting}>
+                  Submit
+                </Button>
+              </DialogFooter>
+            </form>
+          </motion.div>
+        )}
+        {isOutputMode && (
+          <motion.div
+            key="lease-output"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            {renderOutputForm(
+              provider,
+              createDynamicSecretLease.data?.data,
+              handleLeaseRegeneration
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const sshFormSchema = z.object({
+  ttl: z
+    .string()
+    .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional(),
+  principals: z.array(z.string().trim().min(1)).min(1, "At least one principal is required")
+});
+
+type TSshForm = z.infer<typeof sshFormSchema>;
+
+const SshLeaseOutput = ({
+  data,
+  firstPrincipal
+}: {
+  data: { PRIVATE_KEY: string; SIGNED_KEY: string };
+  firstPrincipal: string;
+}) => {
+  const [copyTextPrivateKey, isCopyingPrivateKey, setCopyTextPrivateKey] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
+  const [copyTextSignedKey, isCopyingSignedKey, setCopyTextSignedKey] = useTimedReset<string>({
+    initialState: "Copy to clipboard"
+  });
+
+  const downloadTxtFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    FileSaver.saveAs(blob, filename);
+  };
+
+  const chmodCommand = "chmod 600 key.pem";
+  const sshCommand = `ssh -i key.pem -o CertificateFile=cert.pub ${firstPrincipal}@<hostname>`;
+
+  const copyCommand = (cmd: string) => {
+    navigator.clipboard.writeText(cmd);
+    createNotification({ text: "Command copied to clipboard", type: "info" });
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium">Private Key</h2>
+        <div className="flex">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="copy icon"
+                variant="outline"
+                className="group relative"
+                onClick={() => {
+                  navigator.clipboard.writeText(data.PRIVATE_KEY);
+                  setCopyTextPrivateKey("Copied");
+                }}
+              >
+                {isCopyingPrivateKey ? <CheckIcon /> : <CopyIcon />}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{copyTextPrivateKey}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="download icon"
+                variant="outline"
+                className="group relative ml-2"
+                onClick={() => downloadTxtFile("key.pem", data.PRIVATE_KEY)}
+              >
+                <DownloadIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>Download key.pem</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-label">
+        <p className="mr-4 break-all whitespace-pre-wrap">{data.PRIVATE_KEY}</p>
+      </div>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-medium">Signed Certificate</h2>
+        <div className="flex">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="copy icon"
+                variant="outline"
+                className="group relative"
+                onClick={() => {
+                  navigator.clipboard.writeText(data.SIGNED_KEY);
+                  setCopyTextSignedKey("Copied");
+                }}
+              >
+                {isCopyingSignedKey ? <CheckIcon /> : <CopyIcon />}
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>{copyTextSignedKey}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label="download icon"
+                variant="outline"
+                className="group relative ml-2"
+                onClick={() => downloadTxtFile("cert.pub", data.SIGNED_KEY)}
+              >
+                <DownloadIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent>Download cert.pub</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+      <div className="mb-6 max-h-32 thin-scrollbar overflow-auto rounded-md bg-foreground/10 p-2 text-base text-label">
+        <p className="mr-4 break-all whitespace-pre-wrap">{data.SIGNED_KEY}</p>
+      </div>
+      <div className="flex flex-col gap-4">
+        <div>
+          <FieldLabel>Set private key permissions</FieldLabel>
+          <div className="flex gap-2">
+            <Input value={chmodCommand} disabled />
+            <IconButton
+              aria-label="copy"
+              variant="outline"
+              onClick={() => copyCommand(chmodCommand)}
+              className="w-10"
+            >
+              <CopyIcon />
+            </IconButton>
+          </div>
+        </div>
+        <div>
+          <FieldLabel>Connect to the target host</FieldLabel>
+          <div className="flex gap-2">
+            <Input value={sshCommand} disabled />
+            <IconButton
+              aria-label="copy"
+              variant="outline"
+              onClick={() => copyCommand(sshCommand)}
+              className="w-10"
+            >
+              <CopyIcon />
+            </IconButton>
+          </div>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-muted">
+        Important: Copy or download these credentials now. You will not be able to see them again
+        after you close the modal.
+      </p>
+    </div>
+  );
+};
+
+const CreateSshDynamicSecretLease = ({
+  onClose,
+  projectSlug,
+  dynamicSecretName,
+  provider,
+  secretPath,
+  environment
+}: Props) => {
+  const {
+    control,
+    formState: { isSubmitting },
+    handleSubmit,
+    setValue,
+    watch
+  } = useForm<TSshForm>({
+    resolver: zodResolver(sshFormSchema),
+    defaultValues: {
+      ttl: "1h",
+      principals: []
+    }
+  });
+
+  const [principalInput, setPrincipalInput] = useState("");
+  const createDynamicSecretLease = useCreateDynamicSecretLease();
+  const principals = watch("principals");
+
+  const handleAddPrincipal = () => {
+    const trimmed = principalInput.trim();
+    if (trimmed && !principals.includes(trimmed)) {
+      setValue("principals", [...principals, trimmed], { shouldValidate: true });
+    }
+    setPrincipalInput("");
+  };
+
+  const handleRemovePrincipal = (idx: number) => {
+    setValue(
+      "principals",
+      principals.filter((_: string, i: number) => i !== idx),
+      { shouldValidate: true }
+    );
+  };
+
+  const handleDynamicSecretLeaseCreate = async ({ ttl, principals: reqPrincipals }: TSshForm) => {
+    if (createDynamicSecretLease.isPending) return;
+    await createDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      config: {
+        principals: reqPrincipals
+      },
+      provider
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully leased dynamic secret"
+    });
+  };
+
+  const isOutputMode = Boolean(createDynamicSecretLease?.data);
+
+  return (
+    <div>
+      <AnimatePresence>
+        {!isOutputMode && (
+          <motion.div
+            key="lease-input"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            <form onSubmit={handleSubmit(handleDynamicSecretLeaseCreate)}>
+              <Controller
+                control={control}
+                name="principals"
+                render={({ fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel>Principals</FieldLabel>
+                    <FieldContent className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={principalInput}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setPrincipalInput(e.target.value)
+                          }
+                          placeholder="Enter principal name..."
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddPrincipal();
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddPrincipal}
+                          isDisabled={!principalInput.trim()}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      {principals.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {principals.map((principal: string, idx: number) => (
+                            <Badge key={principal} variant="neutral" className="gap-1 pr-1">
+                              {principal}
+                              <button
+                                type="button"
+                                aria-label={`Remove ${principal}`}
+                                className="rounded-xs hover:bg-foreground/10"
+                                onClick={() => handleRemovePrincipal(idx)}
+                              >
+                                <XIcon className="size-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </FieldContent>
+                    <FieldDescription>
+                      The usernames to embed in the certificate (must be from the allowed list)
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="ttl"
+                defaultValue="1h"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <TtlFieldLabel htmlFor="ssh-lease-ttl" label="Default TTL" />
+                    <Input id="ssh-lease-ttl" {...field} isError={Boolean(error)} />
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <DialogFooter className="mt-4">
+                <Button variant="ghost" onClick={onClose} type="button">
+                  Cancel
+                </Button>
+                <Button type="submit" isPending={isSubmitting}>
+                  Submit
+                </Button>
+              </DialogFooter>
+            </form>
+          </motion.div>
+        )}
+        {isOutputMode && (
+          <motion.div
+            key="lease-output"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            <SshLeaseOutput
+              data={
+                createDynamicSecretLease.data?.data as { PRIVATE_KEY: string; SIGNED_KEY: string }
+              }
+              firstPrincipal={principals[0]}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const formSchema = z.object({
+  ttl: z
+    .string()
+    .refine((val) => ms(val) > 0, "TTL must be a positive number")
+    .optional()
+});
+
+type TForm = z.infer<typeof formSchema>;
+
+type Props = {
+  onClose: () => void;
+  dynamicSecretName: string;
+  provider: DynamicSecretProviders;
+  projectSlug: string;
+  environment: string;
+  secretPath: string;
+};
+
+const PROVIDERS_WITH_AUTOGENERATE_SUPPORT = [DynamicSecretProviders.Totp];
+
+const CreateDynamicSecretLeaseContent = ({
+  onClose,
+  projectSlug,
+  dynamicSecretName,
+  provider,
+  secretPath,
+  environment
+}: Props) => {
+  const {
+    control,
+    formState: { isSubmitting },
+    handleSubmit
+  } = useForm<TForm>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      ttl: "1h"
+    }
+  });
+  const [isPreloading, setIsPreloading] = useToggle(
+    PROVIDERS_WITH_AUTOGENERATE_SUPPORT.includes(provider)
+  );
+
+  const createDynamicSecretLease = useCreateDynamicSecretLease();
+
+  const handleDynamicSecretLeaseCreate = async ({ ttl }: TForm) => {
+    if (createDynamicSecretLease.isPending) return;
+    await createDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      provider
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully leased dynamic secret"
+    });
+
+    setIsPreloading.off();
+  };
+
+  const handleLeaseRegeneration = async (data: { ttl?: string }) => {
+    setIsPreloading.on();
+    handleDynamicSecretLeaseCreate(data);
+  };
+
+  useEffect(() => {
+    if (provider === DynamicSecretProviders.Totp) {
+      handleDynamicSecretLeaseCreate({});
+    }
+  }, [provider]);
+
+  if (provider === DynamicSecretProviders.Kubernetes) {
+    return (
+      <CreateKubernetesDynamicSecretLease
+        onClose={onClose}
+        projectSlug={projectSlug}
+        dynamicSecretName={dynamicSecretName}
+        provider={provider}
+        secretPath={secretPath}
+        environment={environment}
+      />
+    );
+  }
+
+  if (provider === DynamicSecretProviders.Ssh) {
+    return (
+      <CreateSshDynamicSecretLease
+        onClose={onClose}
+        projectSlug={projectSlug}
+        dynamicSecretName={dynamicSecretName}
+        provider={provider}
+        secretPath={secretPath}
+        environment={environment}
+      />
+    );
+  }
+
+  const isOutputMode = Boolean(createDynamicSecretLease?.data);
+
+  if (isPreloading) {
+    return (
+      <div className="flex h-40 items-center justify-center">
+        <Loader2Icon className="size-8 animate-spin text-muted" />
+      </div>
+    );
+  }
+
+  // Github tokens are fixed to 1 hour
+  const fixedTtl = provider === DynamicSecretProviders.Github;
+
+  return (
+    <div>
+      <AnimatePresence>
+        {!isOutputMode && (
+          <motion.div
+            key="lease-input"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            <form onSubmit={handleSubmit(handleDynamicSecretLeaseCreate)}>
+              <Controller
+                control={control}
+                name="ttl"
+                defaultValue="1h"
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <TtlFieldLabel htmlFor="dynamic-secret-lease-ttl" label="Default TTL" />
+                    <Input
+                      id="dynamic-secret-lease-ttl"
+                      {...field}
+                      disabled={fixedTtl}
+                      isError={Boolean(error)}
+                    />
+                    <FieldDescription>
+                      {fixedTtl ? `This provider has a fixed TTL of ${field.value}` : undefined}
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+              <DialogFooter className="mt-4">
+                <Button variant="ghost" onClick={onClose} type="button">
+                  Cancel
+                </Button>
+                <Button type="submit" isPending={isSubmitting}>
+                  Submit
+                </Button>
+              </DialogFooter>
+            </form>
+          </motion.div>
+        )}
+        {isOutputMode && (
+          <motion.div
+            key="lease-output"
+            transition={{ duration: 0.1 }}
+            initial={{ opacity: 0, translateX: 30 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            exit={{ opacity: 0, translateX: 30 }}
+          >
+            {renderOutputForm(
+              provider,
+              createDynamicSecretLease.data?.data,
+              handleLeaseRegeneration
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export const CreateDynamicSecretLease = ({
+  isOpen,
+  onOpenChange,
+  ...props
+}: Props & { isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) => {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Provision lease</DialogTitle>
+        </DialogHeader>
+        <CreateDynamicSecretLeaseContent {...props} />
+      </DialogContent>
+    </Dialog>
+  );
+};

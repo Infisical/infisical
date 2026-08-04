@@ -32,7 +32,7 @@ function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
     <fieldset
       data-slot="field-set"
       className={cn(
-        "m-0 flex min-w-0 flex-col gap-4 border-0 p-0 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3",
+        "m-0 flex min-w-0 flex-col gap-4 border-0 p-0 has-[[data-slot=field-legend][data-variant=label]]:gap-2",
         className
       )}
       {...props}
@@ -50,7 +50,8 @@ function FieldLegend({
       data-slot="field-legend"
       data-variant={variant}
       className={cn(
-        "mb-1.5 font-medium text-foreground data-[variant=label]:text-sm data-[variant=legend]:text-base",
+        // <legend> is excluded from fieldset flex gap in most browsers — margin owns the space below it.
+        "mb-4 font-medium text-foreground data-[variant=label]:mb-2 data-[variant=label]:text-sm data-[variant=legend]:text-base",
         className
       )}
       {...props}

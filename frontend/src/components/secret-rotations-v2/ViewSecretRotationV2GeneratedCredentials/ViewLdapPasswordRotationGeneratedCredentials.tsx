@@ -25,12 +25,14 @@ export const ViewLdapPasswordRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="DN/UPN">{inactiveCredentials?.dn}</CredentialDisplay>
-          <CredentialDisplay isSensitive label="Password">
-            {inactiveCredentials?.password}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="DN/UPN">{inactiveCredentials?.dn}</CredentialDisplay>
+            <CredentialDisplay isSensitive label="Password">
+              {inactiveCredentials?.password}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

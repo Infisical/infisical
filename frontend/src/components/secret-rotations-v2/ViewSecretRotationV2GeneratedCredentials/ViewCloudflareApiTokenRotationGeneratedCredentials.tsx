@@ -26,12 +26,14 @@ export const ViewCloudflareApiTokenRotationGeneratedCredentials = ({
         </>
       }
       inactiveCredentials={
-        <>
-          <CredentialDisplay label="Token ID">{inactiveCredentials?.tokenId}</CredentialDisplay>
-          <CredentialDisplay isSensitive label="API Token">
-            {inactiveCredentials?.apiToken}
-          </CredentialDisplay>
-        </>
+        inactiveCredentials ? (
+          <>
+            <CredentialDisplay label="Token ID">{inactiveCredentials?.tokenId}</CredentialDisplay>
+            <CredentialDisplay isSensitive label="API Token">
+              {inactiveCredentials?.apiToken}
+            </CredentialDisplay>
+          </>
+        ) : undefined
       }
     />
   );

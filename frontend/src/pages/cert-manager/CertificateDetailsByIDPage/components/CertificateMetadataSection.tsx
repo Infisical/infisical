@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
+import { MetadataForm } from "@app/components/MetadataForm";
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
 import {
@@ -30,7 +31,6 @@ import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
-import { MetadataForm } from "@app/pages/secret-manager/SecretDashboardPage/components/DynamicSecretListView/MetadataForm";
 
 type Props = {
   certificateId: string;
