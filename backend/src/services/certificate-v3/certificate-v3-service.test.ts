@@ -17,6 +17,7 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertIncludeType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
@@ -25,6 +26,7 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
@@ -55,6 +57,10 @@ vi.mock("../certificate-authority/certificate-authority-fns", () => ({
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
+
+  const mockTelemetryService = {
+    sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
+  };
 
   const mockCertificateDAL: Pick<
     TCertificateDALFactory,
@@ -279,7 +285,8 @@ describe("CertificateV3Service", () => {
       },
       licenseService: {
         getPlan: vi.fn().mockResolvedValue({ pkiPqc: true })
-      }
+      },
+      telemetryService: mockTelemetryService
     });
   });
 
@@ -455,6 +462,18 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("privateKey");
       expect(result).toHaveProperty("serialNumber", "123456");
       expect(result).toHaveProperty("certificateId", "cert-123");
+
+      expect(mockTelemetryService.sendPostHogEvents).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: PostHogEventTypes.IssueCert,
+          properties: expect.objectContaining({
+            profileId,
+            projectId: "project-123",
+            enrollmentType: EnrollmentType.API,
+            operation: CertificateIssuanceOperation.ISSUE
+          })
+        })
+      );
     });
 
     it("should correctly map camelCase key usages to snake_case before validation", async () => {
@@ -910,6 +929,16 @@ describe("CertificateV3Service", () => {
       expect(result).toHaveProperty("serialNumber", "789012");
       expect(result).toHaveProperty("certificateId", "cert-456");
       expect(result).not.toHaveProperty("privateKey");
+
+      expect(mockTelemetryService.sendPostHogEvents).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: PostHogEventTypes.IssueCert,
+          properties: expect.objectContaining({
+            enrollmentType: EnrollmentType.API,
+            operation: CertificateIssuanceOperation.SIGN
+          })
+        })
+      );
     });
 
     it("should throw ForbiddenRequestError when profile is not configured for API enrollment", async () => {

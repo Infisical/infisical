@@ -59,10 +59,12 @@ import { TPkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-a
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
   mapExtendedKeyUsageToLegacy,
@@ -86,6 +88,7 @@ import {
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -174,6 +177,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -702,8 +706,53 @@ export const certificateV3ServiceFactory = ({
   pkiAlertV2Queue,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
-  licenseService
+  licenseService,
+  telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
+  const $reportCertificateIssued = async ({
+    orgId,
+    projectId,
+    profileId,
+    applicationId,
+    enrollmentType,
+    operation,
+    actor,
+    actorId
+  }: {
+    orgId?: string;
+    projectId: string;
+    profileId?: string | null;
+    applicationId?: string | null;
+    enrollmentType: EnrollmentType;
+    operation: CertificateIssuanceOperation;
+    actor?: ActorType;
+    actorId?: string;
+  }) => {
+    let distinctId: string | undefined;
+    try {
+      if (actor === ActorType.USER && actorId) {
+        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+        distinctId = user?.username ?? user?.email;
+      } else if (actor === ActorType.IDENTITY && actorId) {
+        distinctId = `identity-${actorId}`;
+      }
+    } catch (error) {
+      logger.debug({ error }, "Failed to resolve distinctId for certificate issuance telemetry");
+    }
+
+    await reportCertificateIssued({
+      telemetryService,
+      projectDAL,
+      orgId,
+      projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation,
+      distinctId
+    });
+  };
+
   const $resolveApplicationIdForProfile = async (
     profile: {
       id: string;
@@ -1268,6 +1317,17 @@ export const certificateV3ServiceFactory = ({
         logger.debug("Failed to queue PKI issuance alert event");
       }
 
+      await $reportCertificateIssued({
+        orgId: profile.project?.orgId ?? actorOrgId,
+        projectId: profile.projectId,
+        profileId,
+        applicationId,
+        enrollmentType: EnrollmentType.API,
+        operation: CertificateIssuanceOperation.ISSUE,
+        actor,
+        actorId
+      });
+
       return {
         status: CertificateRequestStatus.ISSUED,
         certificate: selfSignedResult.certificate.toString("utf8"),
@@ -1490,6 +1550,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType: EnrollmentType.API,
+      operation: CertificateIssuanceOperation.ISSUE,
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,
@@ -1939,6 +2010,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI issuance alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: profile.project?.orgId ?? actorOrgId,
+      projectId: profile.projectId,
+      profileId,
+      applicationId,
+      enrollmentType,
+      operation: CertificateIssuanceOperation.SIGN,
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,
@@ -2921,6 +3003,17 @@ export const certificateV3ServiceFactory = ({
     } catch {
       logger.debug("Failed to queue PKI renewal alert event");
     }
+
+    await $reportCertificateIssued({
+      orgId: renewalResult.profile?.project?.orgId ?? actorOrgId,
+      projectId: renewalResult.originalCert.projectId,
+      profileId: renewalResult.originalCert.profileId ?? undefined,
+      applicationId: renewalResult.originalCert.applicationId ?? undefined,
+      enrollmentType: EnrollmentType.API,
+      operation: CertificateIssuanceOperation.RENEW,
+      actor,
+      actorId
+    });
 
     return {
       status: CertificateRequestStatus.ISSUED,

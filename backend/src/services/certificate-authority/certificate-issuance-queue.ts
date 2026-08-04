@@ -14,20 +14,23 @@ import {
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import { CertificateIssuanceOperation, CertKeyAlgorithm } from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
 import { CertificateRequestCancelledError } from "../certificate-common/certificate-request-errors";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   DigiCertExternalMetadataSchema,
   GoDaddyExternalMetadataSchema
@@ -176,6 +179,7 @@ type TCertificateIssuanceQueueFactoryDep = {
   apiEnrollmentConfigDAL?: Pick<TApiEnrollmentConfigDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TCertificateIssuanceQueueFactory = ReturnType<typeof certificateIssuanceQueueFactory>;
@@ -203,7 +207,8 @@ export const certificateIssuanceQueueFactory = ({
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  telemetryService
 }: TCertificateIssuanceQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -435,6 +440,10 @@ export const certificateIssuanceQueueFactory = ({
         current.status !== CertificateRequestStatus.PENDING_VALIDATION
       );
     };
+
+    // DigiCert and GoDaddy attach the certificate later in their processors, so a pending order
+    // must not be reported as issued. Tracked here rather than re-read: the replica lags the write.
+    let certificateExistsAfterThisJob = true;
 
     try {
       logger.info(`Processing certificate issuance job for [certificateId=${certificateId}] [caId=${caId}]`);
@@ -950,12 +959,14 @@ export const certificateIssuanceQueueFactory = ({
               `DigiCert order issued immediately (pre-validated domains), attached certificate [certificateRequestId=${certificateRequestId}] [certificateId=${attachedCertificateId}]`
             );
           } catch (finaliseError) {
+            certificateExistsAfterThisJob = false;
             logger.error(
               finaliseError,
               `DigiCert immediate finalisation failed, will be retried by polling queue [certificateRequestId=${certificateRequestId}]`
             );
           }
         } else {
+          certificateExistsAfterThisJob = false;
           await setPending(`DigiCert is processing the request — order #${digicertResult.metadata.digicert.orderId}`);
           logger.info(
             `DigiCert order placed, awaiting validation [certificateRequestId=${certificateRequestId}] [orderId=${digicertResult.metadata.digicert.orderId}]`
@@ -1038,6 +1049,7 @@ export const certificateIssuanceQueueFactory = ({
           return;
         }
 
+        certificateExistsAfterThisJob = false;
         await setPending(
           `GoDaddy is processing the request — certificate ${godaddyResult.metadata.godaddy.certificateId}`
         );
@@ -1200,6 +1212,20 @@ export const certificateIssuanceQueueFactory = ({
         });
       } catch {
         logger.debug("Failed to queue PKI alert event for async certificate issuance");
+      }
+
+      if (certificateExistsAfterThisJob) {
+        const telemetryProfile = profileId ? await certificateProfileDAL?.findById(profileId) : undefined;
+
+        await reportCertificateIssued({
+          telemetryService,
+          projectDAL,
+          projectId: ca.projectId,
+          profileId,
+          applicationId: scopedApplicationId,
+          enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
+          operation: isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
+        });
       }
     } catch (error: unknown) {
       if (error instanceof CertificateRequestCancelledError) {
