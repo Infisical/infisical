@@ -1,0 +1,208 @@
+---
+title: "Migrating from Native Integrations"
+sidebarTitle: "Migrating from Native Integrations"
+description: "Learn why Native Integrations are being retired and how to move to Secret Syncs without interrupting your deployments."
+---
+
+Native Integrations were Infisical's original way of pushing secrets to third-party services.
+They have been replaced by [Secret Syncs](/integrations/secret-syncs/overview), which cover the
+same services with more control over how secrets are named, updated, and removed.
+
+<Warning>
+    Native Integrations are being retired on **February 1, 2027**. Your existing integrations keep
+    syncing until then, and new Native Integrations can no longer be created. Reading, updating,
+    deleting, and manually syncing your existing integrations all keep working until the cutoff.
+
+    Every Native Integration you rely on has a Secret Sync equivalent today, so you can migrate at
+    your own pace before the retirement date.
+</Warning>
+
+## Why Secret Syncs
+
+A Native Integration bundled the credential and the destination into a single object. Each one
+stored its own copy of your provider credentials, scoped to one project, and each provider
+supported a different subset of options depending on when it was written. That made behavior hard
+to predict: whether Infisical would delete a secret in your destination, or whether you could
+prefix your keys, depended on which provider you had picked.
+
+Secret Syncs separate the credential from the sync. An
+[App Connection](/integrations/app-connections/overview) holds the credential at the organization
+level, and any number of Secret Syncs reuse it. Every sync then exposes the same set of options,
+whichever service it targets.
+
+
+The three differences that matter most in day-to-day use:
+
+**Key Schemas.** Native Integrations let you bolt a prefix or suffix onto your secret names, and
+only for a few providers. A [Key Schema](/integrations/secret-syncs/overview#key-schemas) is a
+template, so you decide exactly how keys are named in the destination. It also scopes what
+Infisical manages: any secret in the destination that does not match the schema is left alone, so
+a sync can share a destination with secrets managed elsewhere.
+
+**App Connections.** A Native Integration's credentials belonged to one project. Rotating a token
+meant re-authorizing every project that used it. An
+[App Connection](/integrations/app-connections/overview) is created once for the organization,
+reused by every sync that needs it, and has its own permissions and credential rotation.
+
+**Deleting secrets in the destination.** Native Integrations could only remove secrets from
+GitHub, so for every other provider a secret deleted in Infisical stayed behind in the
+destination. Secret Syncs remove secrets on every destination but one, and **Disable Secret
+Deletion** lets you opt out where you manage some secrets by hand.
+
+
+Below is a table with some more differences
+
+| | Native Integration | Secret Sync |
+| --- | --- | --- |
+| **Credentials** | One copy per project, per provider. Not reusable, no rotation. | An [App Connection](/integrations/app-connections/overview) shared across syncs and projects, with credential rotation |
+| **Private networks** | Not supported | Reach self-hosted destinations through a [Gateway](/documentation/platform/gateways/overview) |
+| **Secret naming** | A prefix or suffix, available for only a handful of providers | [Key Schemas](/integrations/secret-syncs/overview#key-schemas) on every destination, using `{{secretKey}}` and `{{environment}}` |
+| **Protecting hand-managed destination secrets** | Handled differently by each provider, or not at all | **Disable Secret Deletion**, on every destination |
+
+
+
+## How to migrate
+
+A Secret Sync and a Native Integration can point at the same destination at the same time. Both
+write the same values from the same source, so running them side by side is safe and gives you a
+window to confirm the new sync works before you remove anything.
+
+The walkthrough below uses GitHub as the example. The same approach applies to every service.
+
+
+
+<Steps>
+    <Step title="Record your current configuration">
+        Open your GitHub Native Integration and note what it targets, so you can match it exactly:
+
+        - The **environment** and **secret path** it syncs from.
+        - Its **scope**, and the organization, repository, or repository environment it writes to.
+        - Its **visibility**, if it is scoped to an organization.
+        - Any value in **Append Secret Names with**.
+        - Whether **Delete secrets from GitHub that are not in Infisical** is enabled.
+
+        {/* SCREENSHOT: The GitHub Native Integration detail page with scope, target, and secret
+            suffix visible. Save to /images/secret-syncs/native-integrations/native-github-config.png
+            and replace this comment with:
+            ![Native GitHub integration configuration](/images/secret-syncs/native-integrations/native-github-config.png) */}
+    </Step>
+
+    <Step title="Create a GitHub Connection">
+        Follow [GitHub Connection](/integrations/app-connections/github) to create the connection.
+
+        You only need to do this once per organization. Every GitHub Secret Sync you create from
+        here on can reuse the same connection, in any project.
+    </Step>
+
+    <Step title="Start a new GitHub Sync">
+        Navigate to **Project** > **Integrations**, select the **Secret Syncs** tab, click
+        **Add Sync**, and choose **GitHub**.
+
+        For the **Source**, enter the same **environment** and **secret path** you recorded in
+        step 1. Matching the source is what makes the two run in parallel: both send the same
+        secrets to the same place.
+
+        {/* SCREENSHOT: The GitHub Sync source step, with the environment and secret path matching
+            the Native Integration. Save to /images/secret-syncs/native-integrations/github-source.png
+            and replace this comment with:
+            ![Configure Source](/images/secret-syncs/native-integrations/github-source.png) */}
+    </Step>
+
+    <Step title="Match the destination">
+        Set the **Scope** to the same scope your Native Integration used, then fill in the same
+        organization, repository, or repository environment. If you are syncing to an organization,
+        set the same **Visibility**.
+
+        The scope names are the same three options, so this is a direct mapping. See
+        [GitHub Sync](/integrations/secret-syncs/github) for the full field reference.
+
+        {/* SCREENSHOT: The GitHub Sync destination step, pointing at the same organization and
+            repository as the Native Integration.
+            Save to /images/secret-syncs/native-integrations/github-destination.png and replace this
+            comment with:
+            ![Configure Destination](/images/secret-syncs/native-integrations/github-destination.png) */}
+    </Step>
+
+    <Step title="Configure the sync options for a parallel run">
+        This is the step that keeps the migration safe.
+
+        - **Key Schema**: To write the same secret names your Native Integration wrote, use
+          `{{secretKey}}` with no additions. If your Native Integration appended a suffix such as
+          `_PROD`, mirror it as `{{secretKey}}_PROD`. Matching the names is what makes the sync
+          overwrite the same GitHub secrets rather than create a second set alongside them.
+        - **Disable Secret Deletion**: Leave this **on** for the parallel run.
+        - **Auto-Sync Enabled**: Leave this on, so the sync picks up changes the same way your
+          Native Integration did.
+
+        <Warning>
+            Turn on **Disable Secret Deletion** before you create the sync. Native GitHub
+            integrations do not delete secrets unless you explicitly enabled it, so your repository
+            may hold secrets that were added by hand or left behind by an earlier integration.
+            Without this option, the sync's **Overwrite Destination Secrets** behavior removes every
+            secret matching the Key Schema that is not in Infisical.
+        </Warning>
+
+        {/* SCREENSHOT: The GitHub Sync options step, with an unmodified secret-key Key Schema and
+            Disable Secret Deletion enabled.
+            Save to /images/secret-syncs/native-integrations/github-options.png and replace this
+            comment with:
+            ![Configure Options](/images/secret-syncs/native-integrations/github-options.png) */}
+    </Step>
+
+    <Step title="Name and create the sync">
+        Give the sync a name that makes its purpose obvious, then review the configuration and click
+        **Create Sync**. If Auto-Sync is enabled, it starts syncing immediately.
+    </Step>
+
+    <Step title="Verify the sync">
+        Confirm the sync reports a successful status, then open your repository's secrets in GitHub
+        and check that the values are present and current. Change a secret in Infisical and confirm
+        the change reaches GitHub.
+
+        Leave both the sync and the Native Integration running for as long as you want to watch
+        them. They write the same values, so there is no conflict.
+
+        {/* SCREENSHOT: The GitHub Sync detail page showing a successful sync status and the synced
+            secrets. Save to /images/secret-syncs/native-integrations/github-verified.png and replace
+            this comment with:
+            ![Verify the sync](/images/secret-syncs/native-integrations/github-verified.png) */}
+    </Step>
+
+    <Step title="Remove the Native Integration">
+        Once you are satisfied the sync is doing the job, delete the Native Integration.
+
+        <Warning>
+            Do not enable **Delete secrets from GitHub** while removing the Native Integration. Your
+            new Secret Sync now manages those secrets, and deleting them on the way out would remove
+            them from your repository.
+        </Warning>
+    </Step>
+
+    <Step title="Tighten up, optionally">
+        With Infisical as the only writer, you can adopt a namespaced Key Schema such as
+        `INFISICAL_{{secretKey}}` to make it obvious which secrets Infisical manages, and turn
+        **Disable Secret Deletion** back off so secrets deleted in Infisical are also removed from
+        GitHub.
+
+        Changing the Key Schema changes the secret names in GitHub, so update anything that reads
+        them first.
+    </Step>
+</Steps>
+
+
+## Migrating other services
+
+The recipe is the same for every service: create the App Connection, create a Secret Sync with the
+same source and destination, match the secret naming with a Key Schema, enable **Disable Secret
+Deletion** for the parallel run, verify, then remove the Native Integration. See the Secret Syncs
+section in the navigation bar for the field reference for your destination.
+
+Some destinations can read secrets back, which GitHub cannot. For those, **Initial Sync Behavior**
+lets you pull what is already in the destination into Infisical before anything is overwritten,
+choosing whether Infisical or the destination wins on a conflict. If your Native Integration has
+drifted from Infisical, importing first is the safer starting point.
+
+<Note>
+    If you need help planning a migration, or the service you use is not yet available as a Secret
+    Sync, contact us at support@infisical.com.
+</Note>

@@ -3,7 +3,6 @@ import { Outlet } from "@tanstack/react-router";
 import { useProjectPermission } from "@app/context";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
-import { NativeIntegrationsMigrationBanner } from "../ProjectLayout/components/NativeIntegrationsMigrationBanner";
 
 export const SecretManagerLayout = () => {
   const { assumedPrivilegeDetails } = useProjectPermission();
@@ -11,7 +10,6 @@ export const SecretManagerLayout = () => {
   return (
     <div className="flex h-full w-full flex-col overflow-x-hidden">
       {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
-      <NativeIntegrationsMigrationBanner />
       <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4">
         <Outlet />
       </div>

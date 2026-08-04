@@ -722,6 +722,7 @@
                     "pages": [
                       "integrations/secret-syncs/overview",
                       "integrations/secret-syncs",
+                      "integrations/secret-syncs/native-integrations",
                       {
                         "group": "Cloud Providers",
                         "pages": [
