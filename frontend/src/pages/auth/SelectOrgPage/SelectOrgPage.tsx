@@ -1,4 +1,13 @@
-import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useRouteContext, useRouter, useSearch } from "@tanstack/react-router";
@@ -19,13 +28,11 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-  ScrollableContent
+  ScrollableContent,
+  VerificationCodeHeader
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { SessionStorageKeys } from "@app/const";
@@ -44,41 +51,42 @@ import { setAuthToken } from "@app/hooks/api/reactQuery";
 import { navigateUserToOrg } from "../LoginPage/Login.utils";
 import { getSsoEnforcementError } from "./SelectOrg.utils";
 
-const OrgCard = ({
-  name,
-  label,
-  joinedAt,
-  onClick,
-  footer
-}: {
+type OrgCardProps = {
   name: string;
   label?: string;
   joinedAt?: string | null;
   onClick: () => void;
   footer?: ReactNode;
-}) => (
-  <div className="overflow-hidden rounded-lg border border-border bg-card">
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Login to ${name}`}
-      className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
-    >
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-foreground">{name}</span>
-        {(label || joinedAt) && (
-          <span className="block text-sm leading-relaxed text-muted">
-            {label}
-            {label && joinedAt && " · "}
-            {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d, yyyy")}</>}
-          </span>
-        )}
-      </span>
-      <ArrowRight className="size-4 self-center text-muted transition-all group-hover:translate-x-0.5 group-hover:text-foreground" />
-    </button>
-    {footer}
-  </div>
+};
+
+const OrgCard = forwardRef<HTMLButtonElement, OrgCardProps>(
+  ({ name, label, joinedAt, onClick, footer }, ref) => (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <button
+        ref={ref}
+        type="button"
+        onClick={onClick}
+        aria-label={`Login to ${name}`}
+        className="group grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 text-left transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium text-foreground">{name}</span>
+          {(label || joinedAt) && (
+            <span className="block text-sm leading-relaxed text-muted">
+              {label}
+              {label && joinedAt && " · "}
+              {joinedAt && <>Member since {format(new Date(joinedAt), "MMM d, yyyy")}</>}
+            </span>
+          )}
+        </span>
+        <ArrowRight className="size-4 self-center text-muted transition-all group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </button>
+      {footer}
+    </div>
+  )
 );
+
+OrgCard.displayName = "OrgCard";
 
 // Mirrors the step transition on the server admin onboarding (OnboardingPageLayout)
 type ViewTransitionContext = {
@@ -157,6 +165,22 @@ export const SelectOrgPage = () => {
     direction: viewDirection,
     prefersReducedMotion: Boolean(prefersReducedMotion)
   };
+
+  // A view switch unmounts the focused control, dropping keyboard focus to <body>.
+  // Focus the drilled-into org's card on entry and restore the originating
+  // "View sub-organizations" control on return.
+  const rootOrgCardRef = useRef<HTMLButtonElement | null>(null);
+  const subOrgStripRefs = useRef(new Map<string, HTMLButtonElement>());
+  const returnFocusOrgIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (selectedRootOrg) {
+      rootOrgCardRef.current?.focus();
+    } else if (returnFocusOrgIdRef.current) {
+      subOrgStripRefs.current.get(returnFocusOrgIdRef.current)?.focus();
+      returnFocusOrgIdRef.current = null;
+    }
+  }, [selectedRootOrg]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -336,7 +360,17 @@ export const SelectOrgPage = () => {
                 !isSearching && org.subOrganizations.length > 0 ? (
                   <button
                     type="button"
-                    onClick={() => setSelectedRootOrg(org)}
+                    ref={(el) => {
+                      if (el) {
+                        subOrgStripRefs.current.set(org.id, el);
+                      } else {
+                        subOrgStripRefs.current.delete(org.id);
+                      }
+                    }}
+                    onClick={() => {
+                      returnFocusOrgIdRef.current = org.id;
+                      setSelectedRootOrg(org);
+                    }}
                     aria-label={`View sub-organizations of ${org.name}`}
                     className="flex w-full cursor-pointer items-center gap-1.5 border-t border-border bg-container px-4 py-2 text-left text-xs text-muted transition-colors hover:bg-container-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
                   >
@@ -375,6 +409,7 @@ export const SelectOrgPage = () => {
     return (
       <div className="flex flex-col gap-3">
         <OrgCard
+          ref={rootOrgCardRef}
           name={selectedRootOrg.name}
           label="Root organization"
           joinedAt={selectedRootOrg.userJoinedAt}
@@ -441,28 +476,20 @@ export const SelectOrgPage = () => {
         <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Helmet>
       <AuthPagePanel>
-        <CardHeader className="mb-6 gap-2">
-          <p className="font-jetbrains-mono text-xs tracking-[0.02em] text-project uppercase">
-            Select organization
-          </p>
-          <CardTitle className="font-alliance text-3xl leading-tight font-normal">
-            Choose your organization
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Signed in as <span className="text-foreground">{user.username}</span>{" "}
-            <span className="whitespace-nowrap">
-              <span aria-hidden="true">· </span>
-              <button
-                aria-label={`Sign out ${user.username}`}
-                className="cursor-pointer text-project underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
-                onClick={handleLogout}
-                type="button"
-              >
-                Sign out
-              </button>
-            </span>
-          </CardDescription>
-        </CardHeader>
+        <VerificationCodeHeader
+          title="Choose your organization as"
+          recipient={user.username}
+          action={
+            <button
+              aria-label={`Sign out ${user.username}`}
+              className="shrink-0 cursor-pointer text-sm text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
+              onClick={handleLogout}
+              type="button"
+            >
+              Sign out
+            </button>
+          }
+        />
 
         <div className="flex flex-col gap-4">
           <InputGroup variant="outlined">
@@ -502,6 +529,7 @@ export const SelectOrgPage = () => {
                           <BreadcrumbLink asChild>
                             <button
                               type="button"
+                              className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                               onClick={() => {
                                 setSelectedRootOrg(null);
                                 setSearchTerm("");
@@ -524,6 +552,9 @@ export const SelectOrgPage = () => {
                       outline={false}
                       containerClassName="min-h-0 flex-1"
                       className="h-full"
+                      // The list is full of focusable cards, so the scroll region
+                      // itself doesn't need to be a tab stop
+                      tabIndex={-1}
                     >
                       {renderSubOrgContent()}
                     </ScrollableContent>
@@ -535,6 +566,9 @@ export const SelectOrgPage = () => {
                     outline={false}
                     containerClassName={listHeightClass}
                     className="h-full"
+                    // The list is full of focusable cards, so the scroll region
+                    // itself doesn't need to be a tab stop
+                    tabIndex={-1}
                   >
                     {renderListContent()}
                   </ScrollableContent>
