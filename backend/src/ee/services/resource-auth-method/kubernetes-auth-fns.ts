@@ -14,10 +14,6 @@ import {
 } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-error-handlers";
 import { extractK8sUsername } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-fns";
 import { TCreateTokenReviewResponse } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
-import {
-  validateKubernetesHostConnectivity,
-  validateTokenReviewerPermissions
-} from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 
 const TOKEN_REVIEW_TIMEOUT_MS = 10_000;
 // A TokenReview response is a few KB; the largest part is the echoed token, itself capped at 8KB
@@ -27,6 +23,16 @@ const TOKEN_REVIEW_MAX_RESPONSE_BYTES = 64 * 1024;
 // The host is operator-supplied and the backend POSTs to it on every login, so without this an
 // org admin could use the auth config to reach hosts inside our own network. Does a DNS lookup,
 // so call it outside a transaction.
+// Undefined for a bare IP: SNI carries host names only, so an IP host is matched on IP SANs.
+const toServerName = (kubernetesHost: string) => {
+  let servername = new RE2("^https?://").replace(kubernetesHost, "");
+  const lastColonIndex = servername.lastIndexOf(":");
+  if (lastColonIndex !== -1) {
+    servername = servername.substring(0, lastColonIndex);
+  }
+  return isIP(servername) ? undefined : servername;
+};
+
 export const assertKubernetesHostAllowed = async (kubernetesHost: string) => {
   const url = kubernetesHost.startsWith("https://") ? kubernetesHost : `https://${kubernetesHost}`;
   try {
@@ -55,30 +61,74 @@ export const validateKubernetesConfigReachable = async ({
   verifyTlsCertificate: boolean;
 }) => {
   const host = kubernetesHost.startsWith("https://") ? kubernetesHost : `https://${kubernetesHost}`;
-  await validateKubernetesHostConnectivity({
-    kubernetesHost: host,
-    caCert: caCertificate,
-    verifyTlsCertificate
+
+  // Fresh per call: the abort signal must not be shared between the two requests.
+  const requestConfig = () => ({
+    ca: caCertificate || undefined,
+    rejectUnauthorized: verifyTlsCertificate,
+    servername: toServerName(kubernetesHost),
+    timeout: TOKEN_REVIEW_TIMEOUT_MS,
+    signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
+    maxContentLength: TOKEN_REVIEW_MAX_RESPONSE_BYTES,
+    validateStatus: () => true
   });
 
-  if (tokenReviewerJwt) {
-    await validateTokenReviewerPermissions({
-      kubernetesHost: host,
-      tokenReviewerJwt,
-      caCert: caCertificate,
-      verifyTlsCertificate
+  const classify = (err: unknown, context: KubernetesAuthErrorContext) => {
+    if (err instanceof BadRequestError) return err;
+    if (err instanceof AxiosError) return handleAxiosError(err, { kubernetesHost: host }, context);
+    return new BadRequestError({
+      message: `Failed to reach the Kubernetes API server at ${host}: ${(err as Error).message}`
+    });
+  };
+
+  let versionStatus: number;
+  try {
+    const res = await safeRequest.get(`${host}/version`, requestConfig());
+    versionStatus = res.status;
+  } catch (err) {
+    throw classify(err, KubernetesAuthErrorContext.KubernetesHost);
+  }
+  if (versionStatus >= 500) {
+    throw new BadRequestError({
+      message: `Kubernetes API server at ${host} returned ${versionStatus}. Verify the host is correct and healthy.`
     });
   }
-};
 
-// Undefined for a bare IP: SNI carries host names only, so an IP host is matched on IP SANs.
-const toServerName = (kubernetesHost: string) => {
-  let servername = new RE2("^https?://").replace(kubernetesHost, "");
-  const lastColonIndex = servername.lastIndexOf(":");
-  if (lastColonIndex !== -1) {
-    servername = servername.substring(0, lastColonIndex);
+  if (!tokenReviewerJwt) return;
+
+  let review: { status: number; data: unknown };
+  try {
+    review = await safeRequest.post(
+      `${host}/apis/authentication.k8s.io/v1/tokenreviews`,
+      {
+        apiVersion: "authentication.k8s.io/v1",
+        kind: "TokenReview",
+        spec: { token: "test-token-for-permission-validation" }
+      },
+      {
+        ...requestConfig(),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenReviewerJwt}` }
+      }
+    );
+  } catch (err) {
+    throw classify(err, KubernetesAuthErrorContext.KubernetesApiServer);
   }
-  return isIP(servername) ? undefined : servername;
+
+  if (review.status === 401) {
+    throw new BadRequestError({
+      message: "The token reviewer JWT is invalid or expired. Provide a valid service account token."
+    });
+  }
+  if (review.status === 403) {
+    throw new BadRequestError({
+      message:
+        "The token reviewer JWT cannot perform TokenReviews. Ensure its service account has the 'system:auth-delegator' ClusterRole binding."
+    });
+  }
+  if (review.status >= 400) {
+    const message = (review.data as { message?: string })?.message ?? `HTTP ${review.status}`;
+    throw new BadRequestError({ message: `Kubernetes API server rejected the token review check: ${message}` });
+  }
 };
 
 type TReviewServiceAccountTokenInput = {
