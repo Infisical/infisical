@@ -2,6 +2,17 @@ import { groupBy, unique } from "@app/lib/fn";
 
 export const NATIVE_INTEGRATION_DEPRECATION_DATE = "February 1, 2027";
 
+/**
+ * Returned by the create-integration endpoint, which is closed ahead of the deprecation date. Kept next to the date so
+ * the API says the same thing as the in-product notices; the UI copy lives in
+ * frontend/src/pages/secret-manager/IntegrationsListPage/components/NativeIntegrationsTab/NativeIntegrationsCreationBlockedModal.tsx.
+ */
+export const NATIVE_INTEGRATION_DEPRECATION_MESSAGE =
+  `Native Integrations are being retired on ${NATIVE_INTEGRATION_DEPRECATION_DATE} and new ones can no longer be created. ` +
+  `Use Secret Syncs instead: https://infisical.com/docs/integrations/secret-syncs/overview. ` +
+  `If the service you need isn't available as a Secret Sync, contact team@infisical.com. ` +
+  `Your existing integrations keep working until then.`;
+
 export type TIntegrationProjectRow = {
   projectId: string;
   projectName: string;
