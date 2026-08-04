@@ -1,15 +1,13 @@
 import { z } from "zod";
 
 import { SecretValidationRulesSchema } from "@app/db/schemas";
-import { DynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers/models";
-import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { SECRET_VALIDATION_RULES } from "@app/lib/api-docs";
 
 import {
   ConstraintTarget,
   ConstraintType,
-  // DynamicSecretRuleProvider,
-  // SecretRotationRuleProvider,
+  DynamicSecretRuleProvider,
+  SecretRotationRuleProvider,
   SecretValidationRuleType,
   TSecretValidationRuleInputs
 } from "./secret-validation-rule-types";
@@ -85,7 +83,7 @@ export const staticSecretsInputsSchema = z.object({
 
 export const dynamicSecretsInputsSchema = z.object({
   providers: z
-    .array(z.nativeEnum(DynamicSecretProviders))
+    .array(z.nativeEnum(DynamicSecretRuleProvider))
     .min(1, "Select at least one provider")
     .describe(SECRET_VALIDATION_RULES.RULE.dynamicSecretProviders),
   constraints: z
@@ -96,7 +94,7 @@ export const dynamicSecretsInputsSchema = z.object({
 
 export const secretRotationsInputsSchema = z.object({
   providers: z
-    .array(z.nativeEnum(SecretRotation))
+    .array(z.nativeEnum(SecretRotationRuleProvider))
     .min(1, "Select at least one provider")
     .describe(SECRET_VALIDATION_RULES.RULE.secretRotationProviders),
   constraints: z
