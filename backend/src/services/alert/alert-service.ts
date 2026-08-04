@@ -362,15 +362,19 @@ export const alertServiceFactory = ({
     return $assembleResponse(updated, channels);
   };
 
-  const $deleteAlerts = async (alertIds: string[], tx: Knex): Promise<number> => {
-    if (alertIds.length === 0) return 0;
 
-    const channels = await alertChannelDAL.findByAlertIds(alertIds, tx);
-    await alertDAL.delete({ $in: { id: alertIds } }, tx);
+  const $deleteAlertsByFilter = async (filter: Parameters<typeof alertDAL.delete>[0], tx: Knex): Promise<number> => {
+    const alerts = await alertDAL.find(filter, { tx });
+    const channels = await alertChannelDAL.findByAlertIds(
+      alerts.map((alert) => alert.id),
+      tx
+    );
+
+    const deleted = await alertDAL.delete(filter, tx);
     if (channels.length > 0) {
       await alertChannelDAL.delete({ $in: { id: [...new Set(channels.map((channel) => channel.id))] } }, tx);
     }
-    return alertIds.length;
+    return deleted.length;
   };
 
   const deleteAlert = async (
@@ -394,7 +398,7 @@ export const alertServiceFactory = ({
       dto
     );
 
-    await alertDAL.transaction((tx) => $deleteAlerts([alert.id], tx));
+    await alertDAL.transaction((tx) => $deleteAlertsByFilter({ id: alert.id }, tx));
 
     return {
       id: alert.id,
@@ -410,13 +414,7 @@ export const alertServiceFactory = ({
     filter: { orgId?: string; projectId?: string; resourceType: string; resourceId: string },
     tx?: Knex
   ): Promise<number> => {
-    const run = async (trx: Knex) => {
-      const alerts = await alertDAL.find(filter, { tx: trx });
-      return $deleteAlerts(
-        alerts.map((alert) => alert.id),
-        trx
-      );
-    };
+    const run = (trx: Knex) => $deleteAlertsByFilter(filter, trx);
 
     return tx ? run(tx) : alertDAL.transaction(run);
   };

@@ -24,6 +24,9 @@ const buildService = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;
   resourceScopeThrows?: boolean;
   duplicateExists?: boolean;
+  // Runs right after a find() has taken its snapshot, to stand in for a concurrent transaction
+  // committing between two statements of ours.
+  afterFindAlerts?: (alerts: Map<string, Record<string, unknown>>) => void;
 }) => {
   const permissionCalls: TAlertPermissionInput[] = [];
   const provider: IResourceAlertProvider = {
@@ -91,14 +94,20 @@ const buildService = (opts?: {
       deleteById: async (id: string) => alerts.delete(id),
       find: async (filter: Record<string, unknown>) => {
         findFilters.push(filter);
-        return [...alerts.values()].filter((row) =>
+        const rows = [...alerts.values()].filter((row) =>
           Object.entries(filter).every(([key, value]) => value === undefined || row[key] === value)
         );
+        opts?.afterFindAlerts?.(alerts);
+        return rows;
       },
-      delete: async (filter: { $in?: { id?: string[] } }) => {
-        const ids = filter.$in?.id ?? [];
-        ids.forEach((id) => alerts.delete(id));
-        return [];
+      delete: async (filter: Record<string, unknown> & { $in?: { id?: string[] } }) => {
+        const { $in: inFilter, ...equality } = filter;
+        const removed = [...alerts.values()].filter((row) => {
+          if (inFilter?.id && !inFilter.id.includes(row.id as string)) return false;
+          return Object.entries(equality).every(([key, value]) => value === undefined || row[key] === value);
+        });
+        removed.forEach((row) => alerts.delete(row.id as string));
+        return removed;
       }
     },
     alertChannelDAL: {
@@ -496,6 +505,76 @@ describe("alert service", () => {
     expect(deleted).toBe(3);
     expect(alerts.size).toBe(0);
     expect(channels.size).toBe(0);
+  });
+
+  test("deleteAlertsForDeletedResource reaps an alert created between the find and the delete", async () => {
+    let raced = false;
+    const { service, alerts, channels } = buildService({
+      afterFindAlerts: (rows) => {
+        if (raced) return;
+        raced = true;
+        // Another transaction created an alert on the same resource and committed after our find took
+        // its snapshot. Reaping by the ids the find returned would leave this row dangling, so the
+        // delete has to run off the resource filter instead.
+        rows.set("alert-race", {
+          id: "alert-race",
+          orgId: "org-1",
+          projectId: null,
+          resourceType: RESOURCE_TYPE,
+          resourceId: "ident-1",
+          eventType: "test.resource.expiration"
+        });
+      }
+    });
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+
+    const deleted = await service.deleteAlertsForDeletedResource({
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(raced).toBe(true);
+    expect(deleted).toBe(2);
+    expect(alerts.size).toBe(0);
+    expect(channels.size).toBe(0);
+  });
+
+  test("deleteAlertsForResource reaps an alert created in scope between the find and the delete", async () => {
+    let raced = false;
+    const { service, alerts } = buildService({
+      afterFindAlerts: (rows) => {
+        if (raced) return;
+        raced = true;
+        rows.set("alert-race", {
+          id: "alert-race",
+          orgId: "org-1",
+          projectId: "proj-1",
+          resourceType: RESOURCE_TYPE,
+          resourceId: "ident-1",
+          eventType: "test.resource.expiration"
+        });
+        // Out of the reaped scope, so it must survive even though it races the same way.
+        rows.set("alert-other-project", {
+          id: "alert-other-project",
+          orgId: "org-1",
+          projectId: "proj-2",
+          resourceType: RESOURCE_TYPE,
+          resourceId: "ident-1",
+          eventType: "test.resource.expiration"
+        });
+      }
+    });
+    await service.createAlert({ ...validCreate, resourceId: "ident-1" });
+
+    const deleted = await service.deleteAlertsForResource({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: RESOURCE_TYPE,
+      resourceId: "ident-1"
+    });
+
+    expect(deleted).toBe(1);
+    expect([...alerts.keys()].sort()).toEqual(["alert-1", "alert-other-project"]);
   });
 
   test("deleteAlertsForDeletedResource spares other resources and other resource types", async () => {
