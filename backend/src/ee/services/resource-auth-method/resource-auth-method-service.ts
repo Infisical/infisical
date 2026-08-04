@@ -5,6 +5,8 @@ import { OrganizationActionScope } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TKmipServerDALFactory } from "../kmip-server/kmip-server-dal";
@@ -18,6 +20,13 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TResourceAwsAuthDALFactory } from "./aws-auth-dal";
 import { validateAllowlists, verifyStsAndExtractCaller } from "./aws-auth-fns";
+import { TResourceKubernetesAuthDALFactory } from "./kubernetes-auth-dal";
+import {
+  assertKubernetesHostAllowed,
+  reviewServiceAccountToken,
+  validateKubernetesAllowlists,
+  validateKubernetesConfigReachable
+} from "./kubernetes-auth-fns";
 import { TResourceAuthMethodDALFactory } from "./resource-auth-method-dal";
 import {
   assertGatewayResource,
@@ -35,8 +44,11 @@ import {
 import {
   TAuthMethodView,
   TAwsAuthMethodConfig,
+  TEncryptedKubernetesSecrets,
   TGetAuthMethodDTO,
+  TKubernetesAuthMethodConfig,
   TLoginWithAwsDTO,
+  TLoginWithKubernetesDTO,
   TLoginWithTokenDTO,
   TMintTokenDTO,
   TRevokeTokenDTO,
@@ -56,7 +68,9 @@ const $generateEnrollmentToken = () => {
 type TResourceAuthMethodServiceFactoryDep = {
   resourceAuthMethodDAL: TResourceAuthMethodDALFactory;
   resourceAwsAuthDAL: TResourceAwsAuthDALFactory;
+  resourceKubernetesAuthDAL: TResourceKubernetesAuthDALFactory;
   resourceTokenAuthDAL: TResourceTokenAuthDALFactory;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById" | "updateById">;
   relayDAL: Pick<TRelayDALFactory, "findById" | "updateById">;
   kmipServerDAL: Pick<TKmipServerDALFactory, "findById" | "updateById">;
@@ -96,7 +110,9 @@ type TBasicResource = { id: string; name: string; orgId: string | null; identity
 export const resourceAuthMethodServiceFactory = ({
   resourceAuthMethodDAL,
   resourceAwsAuthDAL,
+  resourceKubernetesAuthDAL,
   resourceTokenAuthDAL,
+  kmsService,
   gatewayV2DAL,
   relayDAL,
   kmipServerDAL,
@@ -222,6 +238,38 @@ export const resourceAuthMethodServiceFactory = ({
       };
     }
 
+    if (registry.method === ResourceAuthMethodType.Kubernetes) {
+      const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+      if (!config) {
+        throw new NotFoundError({ message: `Kubernetes auth config missing for ${resource.type}` });
+      }
+
+      let caCertificate = "";
+      if (config.encryptedKubernetesCaCertificate && loaded.orgId) {
+        const { decryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.Organization,
+          orgId: loaded.orgId
+        });
+        caCertificate = decryptor({ cipherTextBlob: config.encryptedKubernetesCaCertificate }).toString();
+      }
+
+      return {
+        method: ResourceAuthMethodType.Kubernetes,
+        config: {
+          id: config.id,
+          kubernetesHost: config.kubernetesHost,
+          allowedNamespaces: config.allowedNamespaces,
+          allowedNames: config.allowedNames,
+          allowedAudience: config.allowedAudience,
+          verifyTlsCertificate: config.verifyTlsCertificate,
+          caCertificate,
+          hasTokenReviewerJwt: Boolean(config.encryptedKubernetesTokenReviewerJwt),
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt
+        }
+      };
+    }
+
     if (registry.method === ResourceAuthMethodType.Token) {
       return {
         method: ResourceAuthMethodType.Token,
@@ -296,6 +344,33 @@ export const resourceAuthMethodServiceFactory = ({
     return Boolean(pending);
   };
 
+  // Call before opening a transaction: the KMS round-trip must not hold a pool connection.
+  const encryptKubernetesSecrets = async (
+    orgId: string,
+    config: Pick<TKubernetesAuthMethodConfig, "caCertificate" | "tokenReviewerJwt">
+  ): Promise<TEncryptedKubernetesSecrets> => {
+    if (config.caCertificate === undefined && config.tokenReviewerJwt === undefined) {
+      return {};
+    }
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+
+    const encrypt = (value: string | undefined) => {
+      if (value === undefined) return undefined;
+      if (value === "") return null;
+      return encryptor({ plainText: Buffer.from(value) }).cipherTextBlob;
+    };
+
+    return {
+      ...(config.caCertificate !== undefined && {
+        encryptedKubernetesCaCertificate: encrypt(config.caCertificate)
+      }),
+      ...(config.tokenReviewerJwt !== undefined && {
+        encryptedKubernetesTokenReviewerJwt: encrypt(config.tokenReviewerJwt)
+      })
+    };
+  };
+
   const initAtCreate = async (
     {
       resource,
@@ -304,6 +379,10 @@ export const resourceAuthMethodServiceFactory = ({
       resource: ResourceRef;
       authMethod:
         | { method: typeof ResourceAuthMethodType.Aws; config: TAwsAuthMethodConfig }
+        | {
+            method: typeof ResourceAuthMethodType.Kubernetes;
+            config: TKubernetesAuthMethodConfig & TEncryptedKubernetesSecrets;
+          }
         | { method: typeof ResourceAuthMethodType.Token };
     },
     tx: Knex
@@ -319,6 +398,21 @@ export const resourceAuthMethodServiceFactory = ({
           stsEndpoint: authMethod.config.stsEndpoint,
           allowedPrincipalArns: authMethod.config.allowedPrincipalArns,
           allowedAccountIds: authMethod.config.allowedAccountIds
+        },
+        tx
+      );
+    }
+    if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+      await resourceKubernetesAuthDAL.create(
+        {
+          authMethodId: registry.id,
+          kubernetesHost: authMethod.config.kubernetesHost,
+          allowedNamespaces: authMethod.config.allowedNamespaces,
+          allowedNames: authMethod.config.allowedNames,
+          allowedAudience: authMethod.config.allowedAudience,
+          verifyTlsCertificate: authMethod.config.verifyTlsCertificate,
+          encryptedKubernetesCaCertificate: authMethod.config.encryptedKubernetesCaCertificate ?? null,
+          encryptedKubernetesTokenReviewerJwt: authMethod.config.encryptedKubernetesTokenReviewerJwt ?? null
         },
         tx
       );
@@ -346,6 +440,25 @@ export const resourceAuthMethodServiceFactory = ({
     const current = await resourceAuthMethodDAL.findOne(registryFilter);
     const previousMethod = current?.method ?? null;
 
+    let encryptedKubernetesSecrets: TEncryptedKubernetesSecrets = {};
+    if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+      await assertKubernetesHostAllowed(authMethod.kubernetesHost);
+      // A stored reviewer is left alone; it was already checked when it was set.
+      await validateKubernetesConfigReachable({
+        kubernetesHost: authMethod.kubernetesHost,
+        caCertificate: authMethod.caCertificate,
+        tokenReviewerJwt: authMethod.tokenReviewerJwt,
+        verifyTlsCertificate: authMethod.verifyTlsCertificate
+      });
+
+      // Switching in from another method has no stored secret to preserve, so omitted means null.
+      const isMethodChange = previousMethod !== ResourceAuthMethodType.Kubernetes;
+      encryptedKubernetesSecrets = await encryptKubernetesSecrets(actor.orgId, {
+        caCertificate: authMethod.caCertificate ?? (isMethodChange ? "" : undefined),
+        tokenReviewerJwt: authMethod.tokenReviewerJwt ?? (isMethodChange ? "" : undefined)
+      });
+    }
+
     await resourceAuthMethodDAL.transaction(async (tx) => {
       // 1. Upsert registry row to the new method.
       let registryRow = current;
@@ -362,6 +475,13 @@ export const resourceAuthMethodServiceFactory = ({
         current
       ) {
         await resourceAwsAuthDAL.delete({ authMethodId: current.id }, tx);
+      }
+      if (
+        previousMethod === ResourceAuthMethodType.Kubernetes &&
+        authMethod.method !== ResourceAuthMethodType.Kubernetes &&
+        current
+      ) {
+        await resourceKubernetesAuthDAL.delete({ authMethodId: current.id }, tx);
       }
       if (
         previousMethod === ResourceAuthMethodType.Token &&
@@ -391,6 +511,36 @@ export const resourceAuthMethodServiceFactory = ({
               stsEndpoint: authMethod.stsEndpoint,
               allowedPrincipalArns: authMethod.allowedPrincipalArns,
               allowedAccountIds: authMethod.allowedAccountIds
+            },
+            tx
+          );
+        }
+      }
+
+      if (authMethod.method === ResourceAuthMethodType.Kubernetes) {
+        const sharedFields = {
+          kubernetesHost: authMethod.kubernetesHost,
+          allowedNamespaces: authMethod.allowedNamespaces,
+          allowedNames: authMethod.allowedNames,
+          allowedAudience: authMethod.allowedAudience,
+          verifyTlsCertificate: authMethod.verifyTlsCertificate
+        };
+
+        const existingKubernetes = await resourceKubernetesAuthDAL.findOne({ authMethodId: registryRow.id }, tx);
+        if (existingKubernetes) {
+          await resourceKubernetesAuthDAL.updateById(
+            existingKubernetes.id,
+            { ...sharedFields, ...encryptedKubernetesSecrets },
+            tx
+          );
+        } else {
+          await resourceKubernetesAuthDAL.create(
+            {
+              authMethodId: registryRow.id,
+              ...sharedFields,
+              encryptedKubernetesCaCertificate: encryptedKubernetesSecrets.encryptedKubernetesCaCertificate ?? null,
+              encryptedKubernetesTokenReviewerJwt:
+                encryptedKubernetesSecrets.encryptedKubernetesTokenReviewerJwt ?? null
             },
             tx
           );
@@ -462,7 +612,7 @@ export const resourceAuthMethodServiceFactory = ({
     }
     if (loaded.identityId) {
       throw new BadRequestError({
-        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS or Token auth instead.`
+        message: `Identity-bound ${resourceLabel.toLowerCase()}s cannot be revoked directly. Create a new ${resourceLabel.toLowerCase()} with AWS, Kubernetes, or Token auth instead.`
       });
     }
 
@@ -479,7 +629,7 @@ export const resourceAuthMethodServiceFactory = ({
     return {
       resourceName: loaded.name,
       orgId: loaded.orgId,
-      method: registry.method as "aws" | "token"
+      method: registry.method as "aws" | "kubernetes" | "token"
     };
   };
 
@@ -543,6 +693,83 @@ export const resourceAuthMethodServiceFactory = ({
       config,
       principalArn: Arn,
       accountId: Account
+    };
+  };
+
+  const loginWithKubernetes = async ({ resource, jwt }: TLoginWithKubernetesDTO) => {
+    const resourceLabel = RESOURCE_LABEL[resource.type];
+    const loaded = await $loadResource(resource);
+    if (!loaded || !loaded.orgId) {
+      throw new UnauthorizedError({ message: `Invalid ${resourceLabel.toLowerCase()} credentials` });
+    }
+    const resourceName = loaded.name;
+    const resourceOrgId = loaded.orgId;
+
+    const registry = await resourceAuthMethodDAL.findOne($registryFilter(resource));
+    if (!registry || registry.method !== ResourceAuthMethodType.Kubernetes) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for Kubernetes authentication`,
+        detail: { reasonCode: "method_mismatch", resourceId: resource.id, orgId: resourceOrgId }
+      });
+    }
+
+    const config = await resourceKubernetesAuthDAL.findOne({ authMethodId: registry.id });
+    if (!config) {
+      throw new UnauthorizedError({
+        message: `${resourceLabel} is not configured for Kubernetes authentication`,
+        detail: { reasonCode: "config_missing", resourceId: resource.id, orgId: resourceOrgId }
+      });
+    }
+
+    const errorContext = { resourceId: resource.id, orgId: resourceOrgId, resourceName };
+
+    let caCertificate = "";
+    let tokenReviewerJwt = "";
+    if (config.encryptedKubernetesCaCertificate || config.encryptedKubernetesTokenReviewerJwt) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: resourceOrgId
+      });
+      if (config.encryptedKubernetesCaCertificate) {
+        caCertificate = decryptor({ cipherTextBlob: config.encryptedKubernetesCaCertificate }).toString();
+      }
+      if (config.encryptedKubernetesTokenReviewerJwt) {
+        tokenReviewerJwt = decryptor({ cipherTextBlob: config.encryptedKubernetesTokenReviewerJwt }).toString();
+      }
+    }
+
+    const { namespace, serviceAccountName, audiences } = await reviewServiceAccountToken({
+      jwt,
+      kubernetesHost: config.kubernetesHost,
+      caCertificate,
+      tokenReviewerJwt,
+      verifyTlsCertificate: config.verifyTlsCertificate,
+      allowedAudience: config.allowedAudience,
+      errorContext
+    });
+
+    validateKubernetesAllowlists({
+      namespace,
+      serviceAccountName,
+      audiences,
+      allowedNamespaces: config.allowedNamespaces,
+      allowedNames: config.allowedNames,
+      allowedAudience: config.allowedAudience,
+      errorContext
+    });
+
+    const refreshedTokenVersion = await $bumpTokenVersion(resource);
+
+    const accessToken = $mintJwt(resource, resourceOrgId, refreshedTokenVersion);
+
+    return {
+      accessToken,
+      resourceId: resource.id,
+      resourceName,
+      orgId: resourceOrgId,
+      configId: config.id,
+      namespace,
+      serviceAccountName
     };
   };
 
@@ -618,11 +845,15 @@ export const resourceAuthMethodServiceFactory = ({
     getByKmipServerId,
     loadView,
     canRevoke,
+    assertKubernetesHostAllowed,
+    validateKubernetesConfigReachable,
+    encryptKubernetesSecrets,
     initAtCreate,
     setMethod,
     mintToken,
     revokeAccess,
     loginWithAws,
+    loginWithKubernetes,
     loginWithToken
   };
 };

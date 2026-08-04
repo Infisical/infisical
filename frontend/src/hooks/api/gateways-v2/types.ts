@@ -24,6 +24,19 @@ export type GatewayAwsAuthConfig = {
   updatedAt: string;
 };
 
+export type GatewayKubernetesAuthConfig = {
+  id: string;
+  kubernetesHost: string;
+  allowedNamespaces: string;
+  allowedNames: string;
+  allowedAudience: string;
+  verifyTlsCertificate: boolean;
+  caCertificate: string;
+  hasTokenReviewerJwt: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type GatewayTokenAuthConfig = Record<string, never>;
 
 export type GatewayIdentityAuthConfig = {
@@ -33,6 +46,7 @@ export type GatewayIdentityAuthConfig = {
 
 export type GatewayAuthMethodView =
   | { method: "aws"; config: GatewayAwsAuthConfig }
+  | { method: "kubernetes"; config: GatewayKubernetesAuthConfig }
   | { method: "token"; config: GatewayTokenAuthConfig }
   | { method: "identity"; config: GatewayIdentityAuthConfig };
 
@@ -46,6 +60,17 @@ export type SettableAuthMethodInput =
       stsEndpoint?: string;
       allowedPrincipalArns: string;
       allowedAccountIds: string;
+    }
+  | {
+      method: "kubernetes";
+      kubernetesHost: string;
+      caCertificate?: string;
+      // Write-only. Omitted means "keep the stored value"; an empty string clears it.
+      tokenReviewerJwt?: string;
+      allowedNamespaces: string;
+      allowedNames: string;
+      allowedAudience?: string;
+      verifyTlsCertificate?: boolean;
     }
   | { method: "token" };
 

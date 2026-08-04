@@ -1,3 +1,7 @@
+## 1.3.0 (August 4, 2026)
+* Added Kubernetes auth enrollment (`gateway.enrollment.method: kubernetes`). The gateway authenticates with the projected service account token of its own pod, so no enrollment token or cloud credential needs to be distributed to the cluster.
+* Added `gateway.enrollment.kubernetes.gatewayId` and `gateway.enrollment.kubernetes.serviceAccountTokenPath`.
+
 ## 1.2.0 (July 17, 2026)
 * Added `extraEnv` for injecting additional environment variables into the gateway container.
 * Added `extraEnvFrom` for loading environment variables from Secrets or ConfigMaps.

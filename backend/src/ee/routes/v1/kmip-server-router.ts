@@ -4,6 +4,7 @@ import { KmipServersSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { validateAccountIds, validatePrincipalArns } from "@app/ee/services/resource-auth-method/aws-auth-validators";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -38,28 +39,6 @@ const hostnamesOrIpsField = validateAltNamesField.refine(
   (val) => val.length <= 4096,
   "Hostnames or IPs must be at most 4096 characters"
 );
-
-const AwsAuthMethodConfigSchema = z.object({
-  id: z.string().uuid(),
-  stsEndpoint: z.string(),
-  allowedPrincipalArns: z.string(),
-  allowedAccountIds: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date()
-});
-
-const TokenAuthMethodConfigSchema = z.object({});
-
-const IdentityAuthMethodConfigSchema = z.object({
-  identityId: z.string(),
-  identityName: z.string().nullable()
-});
-
-const AuthMethodViewSchema = z.discriminatedUnion("method", [
-  z.object({ method: z.literal(ResourceAuthMethodType.Aws), config: AwsAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Token), config: TokenAuthMethodConfigSchema }),
-  z.object({ method: z.literal(ResourceAuthMethodType.Identity), config: IdentityAuthMethodConfigSchema })
-]);
 
 const KmipServerWithAuthMethodSchema = SanitizedKmipServerSchema.extend({
   authMethod: AuthMethodViewSchema

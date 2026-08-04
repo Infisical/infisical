@@ -115,14 +115,16 @@ export const assertKmipServerResource = (resource: { type: string }, methodName:
 
 // All auth method values surfaced anywhere in the system.
 //
-//   - 'aws' / 'token' — stored in resource_auth_methods.method, settable via the API.
-//   - 'identity'      — legacy state, derived from gateways_v2.identityId. Returned in
-//                       the API view but never stored in the registry and never
-//                       accepted as input to set/mint operations. The "settable" subset
-//                       is enforced by the discriminated TSetAuthMethodInput type
-//                       (which only accepts aws/token), not by this enum-like const.
+//   - 'aws' / 'kubernetes' / 'token': stored in resource_auth_methods.method and settable
+//     via the API.
+//   - 'identity': legacy state, derived from gateways_v2.identityId. Returned in the API
+//     view but never stored in the registry and never accepted as input to set/mint
+//     operations. The "settable" subset is enforced by the discriminated
+//     TSetAuthMethodInput type (which only accepts aws/kubernetes/token), not by this
+//     enum-like const.
 export const ResourceAuthMethodType = {
   Aws: "aws",
+  Kubernetes: "kubernetes",
   Token: "token",
   Identity: "identity"
 } as const;

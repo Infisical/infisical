@@ -37,7 +37,7 @@ import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-co
 import { TRelayDALFactory } from "../relay/relay-dal";
 import { TRelayServiceFactory } from "../relay/relay-service";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { TAwsAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
+import { TAwsAuthMethodConfig, TKubernetesAuthMethodConfig } from "../resource-auth-method/resource-auth-method-types";
 import {
   DEFAULT_HEARTBEAT_TTL,
   GATEWAY_ACTOR_OID,
@@ -67,7 +67,13 @@ type TGatewayV2ServiceFactoryDep = {
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
-    "initAtCreate" | "loadView" | "mintToken" | "loginWithToken"
+    | "initAtCreate"
+    | "loadView"
+    | "mintToken"
+    | "loginWithToken"
+    | "encryptKubernetesSecrets"
+    | "assertKubernetesHostAllowed"
+    | "validateKubernetesConfigReachable"
   >;
 };
 
@@ -1186,7 +1192,10 @@ export const gatewayV2ServiceFactory = ({
     actorType: ActorType;
     actorAuthMethod: ActorAuthMethod;
     name: string;
-    authMethod: { method: "aws"; config: TAwsAuthMethodConfig } | { method: "token" };
+    authMethod:
+      | { method: "aws"; config: TAwsAuthMethodConfig }
+      | { method: "kubernetes"; config: TKubernetesAuthMethodConfig }
+      | { method: "token" };
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: actorType,
@@ -1201,6 +1210,26 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionGatewayActions.CreateGateways,
       OrgPermissionSubjects.Gateway
     );
+
+    // The host check (DNS) and the secret encryption (possibly an external KMS) both reach
+    // the network, so they run before the transaction is opened rather than inside it.
+    let authMethodArg = authMethod;
+    if (authMethod.method === "kubernetes") {
+      await resourceAuthMethodService.assertKubernetesHostAllowed(authMethod.config.kubernetesHost);
+      await resourceAuthMethodService.validateKubernetesConfigReachable({
+        kubernetesHost: authMethod.config.kubernetesHost,
+        caCertificate: authMethod.config.caCertificate,
+        tokenReviewerJwt: authMethod.config.tokenReviewerJwt,
+        verifyTlsCertificate: authMethod.config.verifyTlsCertificate
+      });
+      authMethodArg = {
+        method: authMethod.method,
+        config: {
+          ...authMethod.config,
+          ...(await resourceAuthMethodService.encryptKubernetesSecrets(orgId, authMethod.config))
+        }
+      };
+    }
 
     const gateway = await gatewayV2DAL.transaction(async (tx) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -1227,7 +1256,10 @@ export const gatewayV2ServiceFactory = ({
         throw err;
       }
 
-      await resourceAuthMethodService.initAtCreate({ resource: { type: "gateway", id: created.id }, authMethod }, tx);
+      await resourceAuthMethodService.initAtCreate(
+        { resource: { type: "gateway", id: created.id }, authMethod: authMethodArg },
+        tx
+      );
 
       return created;
     });

@@ -1175,7 +1175,7 @@ export type TResourceAuthMethodEvent = {
     resourceType: "gateway";
     resourceId: string;
     orgId: string;
-    method: "aws" | "token";
+    method: "aws" | "kubernetes" | "token";
   };
 };
 

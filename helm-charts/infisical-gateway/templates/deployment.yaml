@@ -1,5 +1,10 @@
 {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
 {{- $usePVC := and .Values.persistence.enabled (or .Values.gateway.enrollment.method .Values.persistence.existingClaim) }}
+{{- if eq .Values.gateway.enrollment.method "kubernetes" }}
+  {{- if not .Values.serviceAccount.automount }}
+    {{- fail "serviceAccount.automount must be true when gateway.enrollment.method is 'kubernetes'. The gateway authenticates with the projected service account token of its own pod." }}
+  {{- end }}
+{{- end }}
 {{- if eq .Values.gateway.enrollment.method "token" }}
   {{- if not .Values.persistence.enabled }}
     {{- fail "persistence.enabled must be true when gateway.enrollment.method is 'token'. The enrollment token is single-use and credentials must persist across pod restarts." }}
@@ -104,6 +109,12 @@ spec:
             {{- end }}
             {{- if eq .Values.gateway.enrollment.method "aws" }}
             - --gateway-id={{ required "gateway.enrollment.aws.gatewayId is required when gateway.enrollment.method is 'aws'" .Values.gateway.enrollment.aws.gatewayId }}
+            {{- end }}
+            {{- if eq .Values.gateway.enrollment.method "kubernetes" }}
+            - --gateway-id={{ required "gateway.enrollment.kubernetes.gatewayId is required when gateway.enrollment.method is 'kubernetes'" .Values.gateway.enrollment.kubernetes.gatewayId }}
+            {{- if .Values.gateway.enrollment.kubernetes.serviceAccountTokenPath }}
+            - --service-account-token-path={{ .Values.gateway.enrollment.kubernetes.serviceAccountTokenPath }}
+            {{- end }}
             {{- end }}
             {{- if .Values.gateway.relayName }}
             - --target-relay-name={{ .Values.gateway.relayName }}
