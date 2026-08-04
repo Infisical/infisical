@@ -54,6 +54,7 @@ export enum ApiDocsTags {
   DynamicSecrets = "Dynamic Secrets",
   SecretImports = "Secret Imports",
   SecretRotations = "Secret Rotations",
+  SecretValidationRules = "Secret Validation Rules",
   ProxiedServices = "Proxied Services",
   IdentitySpecificPrivilegesV1 = "Identity Specific Privileges",
   IdentitySpecificPrivilegesV2 = "Identity Specific Privileges V2",
@@ -4038,6 +4039,38 @@ export const SECRET_VALIDATION_RULES = {
     dynamicSecretProviders:
       "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
     secretRotationProviders:
-      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here.",
+    appliesTo: "What the constraint checks: the secret key, the secret value, or the generated password.",
+    constraintType:
+      "The kind of check this constraint performs, e.g. `min-length`, `regex-pattern`, `required-prefix`.",
+    constraintValue:
+      "The value the constraint is checked against — e.g. the minimum length, the regex pattern, or the required prefix/suffix string."
+  },
+  LIST: {
+    projectId: "The ID of the project to list secret validation rules for."
+  },
+  CREATE: {
+    projectId: "The ID of the project to create the secret validation rule in.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to apply the rule to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce."
+  },
+  UPDATE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to update.",
+    name: "The name of the secret validation rule.",
+    description: "An optional description of the secret validation rule.",
+    environmentSlug:
+      "The slug of the environment this rule is scoped to. Omit to leave the current scope unchanged; pass `null` to make the rule apply to every environment in the project.",
+    secretPath: "The secret path this rule is scoped to.",
+    rule: "The rule configuration: which secret type it targets and the constraints to enforce. Replaces the existing configuration as a whole — omit to leave it untouched.",
+    isActive: "Whether the secret validation rule is active."
+  },
+  DELETE: {
+    projectId: "The ID of the project the secret validation rule belongs to.",
+    ruleId: "The ID of the secret validation rule to delete."
   }
 } as const;

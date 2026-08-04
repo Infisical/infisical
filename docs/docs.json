@@ -2922,6 +2922,15 @@
                 ]
               },
               {
+                "group": "Secret Validation Rules",
+                "pages": [
+                  "api-reference/endpoints/secret-validation-rules/list",
+                  "api-reference/endpoints/secret-validation-rules/create",
+                  "api-reference/endpoints/secret-validation-rules/update",
+                  "api-reference/endpoints/secret-validation-rules/delete"
+                ]
+              },
+              {
                 "group": "Secret Syncs",
                 "pages": [
                   "api-reference/endpoints/secret-syncs/list",

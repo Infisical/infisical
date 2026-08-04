@@ -29,9 +29,9 @@ const GENERATED_RULE_TARGETS = new Set<ConstraintTarget>([ConstraintTarget.Gener
 const GENERATED_RULE_DISALLOWED_CONSTRAINTS = new Set<ConstraintType>([ConstraintType.PreventValueReuse]);
 
 const baseConstraintSchema = z.object({
-  type: z.nativeEnum(ConstraintType),
-  appliesTo: z.nativeEnum(ConstraintTarget),
-  value: z.string()
+  type: z.nativeEnum(ConstraintType).describe(SECRET_VALIDATION_RULES.RULE.constraintType),
+  appliesTo: z.nativeEnum(ConstraintTarget).describe(SECRET_VALIDATION_RULES.RULE.appliesTo),
+  value: z.string().describe(SECRET_VALIDATION_RULES.RULE.constraintValue)
 });
 
 const valueRequiredRefinement = (c: z.infer<typeof baseConstraintSchema>) =>
