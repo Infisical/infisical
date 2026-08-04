@@ -1,6 +1,6 @@
 image:
   repository: infisical/cli
-  tag: "0.43.84"
+  tag: "0.43.118"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.

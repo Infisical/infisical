@@ -107,7 +107,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 | `persistence.size` | `5Gi` | PVC size. |
 | `persistence.existingClaim` | `""` | Use an existing PVC. |
 | `image.repository` | `infisical/cli` | Container image. |
-| `image.tag` | `"0.43.84"` | Image tag. |
+| `image.tag` | `"0.43.118"` | Image tag. |
 | `resources.requests.cpu` | `100m` | CPU request. |
 | `resources.requests.memory` | `128Mi` | Memory request. |
 | `resources.limits.cpu` | `500m` | CPU limit. |
@@ -126,7 +126,7 @@ helm uninstall infisical-gateway --namespace infisical-gateway
 ```yaml
 image:
   repository: infisical/cli
-  tag: "0.43.84"
+  tag: "0.43.118"
   pullPolicy: IfNotPresent
 
 # Machine identity flow: name of the K8s Secret containing env vars like INFISICAL_AUTH_METHOD, etc.
