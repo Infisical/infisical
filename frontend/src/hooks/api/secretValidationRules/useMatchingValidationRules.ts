@@ -45,8 +45,10 @@ export const useMatchingValidationRules = ({
       if (rule.type !== type) return false;
       if (rule.envId && rule.envId !== envId) return false;
       if (!picomatch.isMatch(secretPath, rule.secretPath, { strictSlashes: false })) return false;
-      const inputs = rule.inputs as TDynamicSecretsInputs | TSecretRotationsInputs;
-      return inputs.providers?.includes(provider as never);
+      // `rule.type !== type` compares against a variable, so TS can't narrow the
+      // union here — only generated-credential arms reach this point.
+      const generatedRule = rule as TDynamicSecretsInputs | TSecretRotationsInputs;
+      return generatedRule.providers?.includes(provider as never);
     });
   }, [rules, type, provider, environmentSlug, secretPath, currentProject.environments]);
 

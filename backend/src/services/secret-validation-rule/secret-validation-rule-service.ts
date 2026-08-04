@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import picomatch from "picomatch";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, TSecretValidationRules } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { NotFoundError } from "@app/lib/errors";
@@ -29,9 +29,32 @@ import {
   TDynamicSecretsInputs,
   TListSecretValidationRulesDTO,
   TSecretRotationsInputs,
+  TSecretValidationRuleInputs,
   TSecretValidationRuleRecord,
   TUpdateSecretValidationRuleDTO
 } from "./secret-validation-rule-types";
+
+// Builds the API-facing rule record: the selected row fields plus the rule's
+// type-specific fields flattened alongside `type`. Selecting explicitly keeps
+// `encryptedInputs` (and any column added later) out of responses rather than
+// relying on the response schema to strip it.
+const $toRuleRecord = (
+  rule: TSecretValidationRules,
+  inputs: TSecretValidationRuleInputs
+): TSecretValidationRuleRecord =>
+  ({
+    id: rule.id,
+    name: rule.name,
+    description: rule.description,
+    projectId: rule.projectId,
+    envId: rule.envId,
+    secretPath: rule.secretPath,
+    isActive: rule.isActive,
+    createdAt: rule.createdAt,
+    updatedAt: rule.updatedAt,
+    type: rule.type as SecretValidationRuleType,
+    ...inputs
+  }) as TSecretValidationRuleRecord;
 
 type TSecretValidationRuleServiceFactoryDep = {
   secretValidationRuleDAL: TSecretValidationRuleDALFactory;
@@ -78,16 +101,14 @@ export const secretValidationRuleServiceFactory = ({
       projectId
     });
 
-    const finalRules = (rules || []).map(
-      (rule) =>
-        ({
-          ...rule,
-          type: rule.type as SecretValidationRuleType,
-          inputs: parseSecretValidationRuleInputs(
-            rule.type,
-            JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
-          )
-        }) as TSecretValidationRuleRecord
+    const finalRules = (rules || []).map((rule) =>
+      $toRuleRecord(
+        rule,
+        parseSecretValidationRuleInputs(
+          rule.type,
+          JSON.parse(ruleInputsDecryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
+        )
+      )
     );
 
     return finalRules;
@@ -103,8 +124,7 @@ export const secretValidationRuleServiceFactory = ({
     description,
     environmentSlug,
     secretPath,
-    type,
-    inputs
+    rule: { type, ...inputs }
   }: TCreateSecretValidationRuleDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -179,11 +199,7 @@ export const secretValidationRuleServiceFactory = ({
       encryptedInputs: encryptedRuleInputs
     });
 
-    return {
-      ...rule,
-      type: rule.type as SecretValidationRuleType,
-      inputs: parsedInputs
-    } as TSecretValidationRuleRecord;
+    return $toRuleRecord(rule, parsedInputs);
   };
 
   const updateRule = async ({
@@ -194,7 +210,7 @@ export const secretValidationRuleServiceFactory = ({
     projectId,
     ruleId,
     environmentSlug,
-    inputs,
+    rule,
     ...dto
   }: TUpdateSecretValidationRuleDTO) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -234,8 +250,17 @@ export const secretValidationRuleServiceFactory = ({
       cipherTextBlob: existingRule.encryptedInputs
     });
 
-    const ruleType = dto.type ?? existingRule.type;
-    const ruleInputs = inputs ?? (JSON.parse(decryptedExistingRuleInputs.toString()) as unknown);
+    // `rule` carries `type` alongside the per-type fields, so an update either
+    // replaces the whole config or leaves the stored one untouched. Only the
+    // fields other than `type` are stored in `encryptedInputs`.
+    const ruleType = rule?.type ?? existingRule.type;
+    let ruleInputs: unknown;
+    if (rule) {
+      const { type, ...inputsFromRule } = rule;
+      ruleInputs = inputsFromRule;
+    } else {
+      ruleInputs = JSON.parse(decryptedExistingRuleInputs.toString()) as unknown;
+    }
     const parsedInputs = parseSecretValidationRuleInputs(ruleType, ruleInputs);
 
     if (ruleType === SecretValidationRuleType.DynamicSecrets || ruleType === SecretValidationRuleType.SecretRotations) {
@@ -269,7 +294,7 @@ export const secretValidationRuleServiceFactory = ({
 
     let updatedRuleInputs: Buffer | undefined;
 
-    if (inputs) {
+    if (rule) {
       const { encryptor: ruleInputsEncryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
@@ -284,17 +309,17 @@ export const secretValidationRuleServiceFactory = ({
     const updatedRule = await secretValidationRuleDAL.updateById(ruleId, {
       ...(envId !== undefined && { envId }),
       ...(Boolean(updatedRuleInputs) && { encryptedInputs: updatedRuleInputs }),
+      ...(rule && { type: rule.type }),
       ...dto
     });
 
-    return {
-      ...updatedRule,
-      type: updatedRule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(
+    return $toRuleRecord(
+      updatedRule,
+      parseSecretValidationRuleInputs(
         updatedRule.type,
         JSON.parse(ruleInputsDecryptor({ cipherTextBlob: updatedRule.encryptedInputs }).toString()) as unknown
       )
-    } as TSecretValidationRuleRecord;
+    );
   };
 
   const deleteRule = async ({
@@ -326,14 +351,13 @@ export const secretValidationRuleServiceFactory = ({
     });
 
     await secretValidationRuleDAL.deleteById(ruleId);
-    return {
-      ...existingRule,
-      type: existingRule.type as SecretValidationRuleType,
-      inputs: parseSecretValidationRuleInputs(
+    return $toRuleRecord(
+      existingRule,
+      parseSecretValidationRuleInputs(
         existingRule.type,
         JSON.parse(ruleInputsDecryptor({ cipherTextBlob: existingRule.encryptedInputs }).toString()) as unknown
       )
-    } as TSecretValidationRuleRecord;
+    );
   };
 
   /**

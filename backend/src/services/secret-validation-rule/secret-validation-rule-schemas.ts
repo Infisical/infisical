@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretValidationRulesSchema } from "@app/db/schemas";
+import { SECRET_VALIDATION_RULES } from "@app/lib/api-docs";
 
 import {
   ConstraintTarget,
@@ -85,24 +86,50 @@ const buildConstraintSchemaForRuleType = (ruleType: SecretValidationRuleType) =>
 };
 
 export const staticSecretsInputsSchema = z.object({
-  constraints: z.array(buildConstraintSchemaForRuleType(SecretValidationRuleType.StaticSecrets)).min(1)
+  constraints: z
+    .array(buildConstraintSchemaForRuleType(SecretValidationRuleType.StaticSecrets))
+    .min(1)
+    .describe(SECRET_VALIDATION_RULES.RULE.constraints)
 });
 
 export const dynamicSecretsInputsSchema = z.object({
-  providers: z.array(z.nativeEnum(DynamicSecretRuleProvider)).min(1, "Select at least one provider"),
-  constraints: z.array(buildConstraintSchemaForRuleType(SecretValidationRuleType.DynamicSecrets)).min(1)
+  providers: z
+    .array(z.nativeEnum(DynamicSecretRuleProvider))
+    .min(1, "Select at least one provider")
+    .describe(SECRET_VALIDATION_RULES.RULE.dynamicSecretProviders),
+  constraints: z
+    .array(buildConstraintSchemaForRuleType(SecretValidationRuleType.DynamicSecrets))
+    .min(1)
+    .describe(SECRET_VALIDATION_RULES.RULE.constraints)
 });
 
 export const secretRotationsInputsSchema = z.object({
-  providers: z.array(z.nativeEnum(SecretRotationRuleProvider)).min(1, "Select at least one provider"),
-  constraints: z.array(buildConstraintSchemaForRuleType(SecretValidationRuleType.SecretRotations)).min(1)
+  providers: z
+    .array(z.nativeEnum(SecretRotationRuleProvider))
+    .min(1, "Select at least one provider")
+    .describe(SECRET_VALIDATION_RULES.RULE.secretRotationProviders),
+  constraints: z
+    .array(buildConstraintSchemaForRuleType(SecretValidationRuleType.SecretRotations))
+    .min(1)
+    .describe(SECRET_VALIDATION_RULES.RULE.constraints)
 });
 
-// Discriminated union for create/update request bodies
-export const SecretValidationRuleInputSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(SecretValidationRuleType.StaticSecrets), inputs: staticSecretsInputsSchema }),
-  z.object({ type: z.literal(SecretValidationRuleType.DynamicSecrets), inputs: dynamicSecretsInputsSchema }),
-  z.object({ type: z.literal(SecretValidationRuleType.SecretRotations), inputs: secretRotationsInputsSchema })
+// Discriminated union for create request bodies / API responses.
+// Constraints (and providers for generated-credential rules) sit directly on
+// the rule object — there is no nested `inputs` wrapper at the HTTP boundary.
+export const SecretValidationRuleSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal(SecretValidationRuleType.StaticSecrets).describe(SECRET_VALIDATION_RULES.RULE.type),
+    ...staticSecretsInputsSchema.shape
+  }),
+  z.object({
+    type: z.literal(SecretValidationRuleType.DynamicSecrets).describe(SECRET_VALIDATION_RULES.RULE.type),
+    ...dynamicSecretsInputsSchema.shape
+  }),
+  z.object({
+    type: z.literal(SecretValidationRuleType.SecretRotations).describe(SECRET_VALIDATION_RULES.RULE.type),
+    ...secretRotationsInputsSchema.shape
+  })
 ]);
 
 // Map of type → inputs schema, used for runtime parsing
@@ -123,4 +150,4 @@ export const parseSecretValidationRuleInputs = (type: string, inputs: unknown) =
 export const SecretValidationRuleResponseSchema = SecretValidationRulesSchema.omit({
   type: true,
   encryptedInputs: true
-}).and(SecretValidationRuleInputSchema);
+}).and(SecretValidationRuleSchema);

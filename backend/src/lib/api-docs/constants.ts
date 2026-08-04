@@ -4029,3 +4029,15 @@ export const RELAYS = {
     token: "The one-time enrollment token previously issued for this relay (token method only)."
   }
 } as const;
+
+export const SECRET_VALIDATION_RULES = {
+  RULE: {
+    type: "The kind of secret the rule applies to. Determines which fields the rule accepts and where the constraints are enforced: `static-secrets` constraints run on write, while `dynamic-secrets` and `secret-rotations` constraints shape the generated password.",
+    constraints:
+      "The constraints enforced by this rule. Each constraint names what it checks (`type`), what it applies to (`appliesTo`), and its `value` — e.g. the minimum character count for `min-length` or the pattern for `regex-pattern`.",
+    dynamicSecretProviders:
+      "The dynamic secret providers this rule applies to. A lease is only constrained when its provider is listed here.",
+    secretRotationProviders:
+      "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
+  }
+} as const;

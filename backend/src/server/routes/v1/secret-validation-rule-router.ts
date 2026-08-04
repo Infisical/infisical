@@ -6,10 +6,9 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
-  SecretValidationRuleInputSchema,
-  SecretValidationRuleResponseSchema
+  SecretValidationRuleResponseSchema,
+  SecretValidationRuleSchema
 } from "@app/services/secret-validation-rule/secret-validation-rule-schemas";
-import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretValidationRuleRouter = async (server: FastifyZodProvider) => {
@@ -57,7 +56,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         description: z.string().trim().max(500).nullable().optional(),
         environmentSlug: z.string().trim().min(1).optional(),
         secretPath: z.string().trim().min(1),
-        rule: SecretValidationRuleInputSchema
+        rule: SecretValidationRuleSchema
       }),
       response: {
         200: z.object({
@@ -77,8 +76,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         description: req.body.description,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
-        type: req.body.rule.type,
-        inputs: req.body.rule.inputs
+        rule: req.body.rule
       });
 
       await server.services.auditLog.createAuditLog({
@@ -125,13 +123,10 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
         description: z.string().trim().max(500).nullable().optional(),
         environmentSlug: z.string().trim().min(1).nullable().optional(),
         secretPath: z.string().trim().min(1).optional(),
-        type: z.nativeEnum(SecretValidationRuleType).optional(),
-        // Inputs are validated strictly in the service against the resolved
-        // rule type via `parseSecretValidationRuleInputs`. We can't pick the
-        // right schema here because `type` and `inputs` are sibling fields,
-        // so a union over the per-type input schemas would silently strip
-        // fields (e.g. `providers`) whenever a sibling member also matched.
-        inputs: z.object({}).passthrough().optional(),
+        // The rule config is replaced as a whole when supplied — `type` and the
+        // per-type fields have to move together for the discriminant to be
+        // meaningful. Omit it to leave the stored config untouched.
+        rule: SecretValidationRuleSchema.optional(),
         isActive: z.boolean().optional()
       }),
       response: {
@@ -160,7 +155,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
           metadata: {
             ruleId: req.params.ruleId,
             name: req.body.name,
-            type: req.body.type,
+            type: req.body.rule?.type,
             environmentSlug: req.body.environmentSlug,
             secretPath: req.body.secretPath,
             isActive: req.body.isActive

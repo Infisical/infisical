@@ -78,7 +78,10 @@ import {
   useListSecretValidationRules,
   useUpdateSecretValidationRule
 } from "@app/hooks/api/secretValidationRules";
-import { SecretValidationRuleType } from "@app/hooks/api/secretValidationRules/types";
+import {
+  SecretValidationRuleType,
+  TSecretValidationRuleConfig
+} from "@app/hooks/api/secretValidationRules/types";
 
 import { ConstraintCard } from "./ConstraintCard";
 import {
@@ -115,7 +118,7 @@ const ProviderMultiSelect = <T extends string>({
       <label className="text-xs font-medium text-muted">{label}</label>
       <Controller
         control={control}
-        name="enforcement.inputs.providers"
+        name="enforcement.providers"
         render={({ field }) => {
           const selected = options.filter((opt) =>
             (field.value as T[] | undefined)?.includes(opt.value)
@@ -168,9 +171,7 @@ const RuleFormContent = ({
       folderPath: "/**",
       enforcement: {
         type: RuleType.StaticSecrets,
-        inputs: {
-          constraints: []
-        }
+        constraints: []
       }
     }
   });
@@ -183,10 +184,10 @@ const RuleFormContent = ({
 
   const { fields, append, remove, replace } = useFieldArray({
     control,
-    name: "enforcement.inputs.constraints"
+    name: "enforcement.constraints"
   });
 
-  const watchedConstraints = form.watch("enforcement.inputs.constraints");
+  const watchedConstraints = form.watch("enforcement.constraints");
   const watchedRuleType = form.watch("enforcement.type");
   const isGeneratedCredentialRule =
     watchedRuleType === RuleType.DynamicSecrets || watchedRuleType === RuleType.SecretRotations;
@@ -277,7 +278,7 @@ const RuleFormContent = ({
                       onChange(next);
                       replace([]);
                       if (next !== RuleType.StaticSecrets) {
-                        form.setValue("enforcement.inputs.providers" as never, [] as never, {
+                        form.setValue("enforcement.providers" as never, [] as never, {
                           shouldDirty: true,
                           shouldValidate: false
                         });
@@ -305,7 +306,7 @@ const RuleFormContent = ({
                 control={control}
                 error={
                   // discriminated form types: providers only exists on this arm
-                  (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
+                  (errors.enforcement as { providers?: { message?: string } } | undefined)
                     ?.providers?.message
                 }
               />
@@ -316,7 +317,7 @@ const RuleFormContent = ({
                 options={SECRET_ROTATION_PROVIDER_OPTIONS}
                 control={control}
                 error={
-                  (errors.enforcement?.inputs as { providers?: { message?: string } } | undefined)
+                  (errors.enforcement as { providers?: { message?: string } } | undefined)
                     ?.providers?.message
                 }
               />
@@ -453,11 +454,11 @@ const RuleFormContent = ({
             {fields.length === 0 && (
               <div className="rounded-md border border-dashed border-border py-8 text-center">
                 <p className="text-sm text-muted">No constraints added yet</p>
-                {(errors.enforcement?.inputs?.constraints?.root?.message ||
-                  errors.enforcement?.inputs?.constraints?.message) && (
+                {(errors.enforcement?.constraints?.root?.message ||
+                  errors.enforcement?.constraints?.message) && (
                   <p className="mt-1 text-xs text-danger">
-                    {errors.enforcement?.inputs?.constraints?.root?.message ||
-                      errors.enforcement?.inputs?.constraints?.message}
+                    {errors.enforcement?.constraints?.root?.message ||
+                      errors.enforcement?.constraints?.message}
                   </p>
                 )}
               </div>
@@ -470,11 +471,11 @@ const RuleFormContent = ({
             </div>
 
             {fields.length > 0 &&
-              (errors.enforcement?.inputs?.constraints?.root?.message ||
-                errors.enforcement?.inputs?.constraints?.message) && (
+              (errors.enforcement?.constraints?.root?.message ||
+                errors.enforcement?.constraints?.message) && (
                 <p className="mt-1 text-xs text-danger">
-                  {errors.enforcement?.inputs?.constraints?.root?.message ||
-                    errors.enforcement?.inputs?.constraints?.message}
+                  {errors.enforcement?.constraints?.root?.message ||
+                    errors.enforcement?.constraints?.message}
                 </p>
               )}
           </div>
@@ -536,6 +537,13 @@ export const SecretValidationRulesSection = () => {
   const handleClose = () => setSheetState({ open: false });
 
   const handleSubmit = async (data: TRuleForm, isActive?: boolean) => {
+    // The form mirrors the API rule config field-for-field; only the enum
+    // identity differs (local `RuleType` vs `SecretValidationRuleType`).
+    const rule = {
+      ...data.enforcement,
+      type: data.enforcement.type as string as SecretValidationRuleType
+    } as TSecretValidationRuleConfig;
+
     if (sheetState.open && sheetState.mode === "edit") {
       await updateRule.mutateAsync({
         projectId: currentProject.id,
@@ -545,8 +553,7 @@ export const SecretValidationRulesSection = () => {
         isActive,
         environmentSlug: data.environment ?? null,
         secretPath: data.folderPath,
-        type: data.enforcement.type as string as SecretValidationRuleType,
-        inputs: data.enforcement.inputs
+        rule
       });
       createNotification({ text: "Rule updated", type: "success" });
     } else {
@@ -556,10 +563,7 @@ export const SecretValidationRulesSection = () => {
         description: data.description,
         environmentSlug: data.environment ?? undefined,
         secretPath: data.folderPath,
-        rule: {
-          type: data.enforcement.type as string as SecretValidationRuleType,
-          inputs: data.enforcement.inputs
-        }
+        rule
       });
       createNotification({ text: "Rule created", type: "success" });
     }
@@ -579,7 +583,8 @@ export const SecretValidationRulesSection = () => {
         folderPath: editingRule.secretPath,
         enforcement: {
           type: editingRule.type as string as RuleType,
-          inputs: editingRule.inputs
+          constraints: editingRule.constraints,
+          ...("providers" in editingRule ? { providers: editingRule.providers } : {})
         }
       } as Partial<TRuleForm>)
     : undefined;
