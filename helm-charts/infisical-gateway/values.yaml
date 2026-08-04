@@ -1,7 +1,5 @@
 image:
   repository: infisical/cli
-  # gateway.enrollment.method=kubernetes needs a CLI that understands --enroll-method=kubernetes.
-  # Override this with a release that contains it until the default below is bumped.
   tag: "0.43.84"
   pullPolicy: IfNotPresent
 

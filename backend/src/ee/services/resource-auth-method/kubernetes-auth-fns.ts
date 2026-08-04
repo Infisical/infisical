@@ -20,6 +20,9 @@ import {
 } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-validators";
 
 const TOKEN_REVIEW_TIMEOUT_MS = 10_000;
+// A TokenReview response is a few KB; the largest part is the echoed token, itself capped at 8KB
+// by the route schema. Bounded so an operator-supplied host cannot make us buffer an arbitrary body.
+const TOKEN_REVIEW_MAX_RESPONSE_BYTES = 64 * 1024;
 
 // The host is operator-supplied and the backend POSTs to it on every login, so without this an
 // org admin could use the auth config to reach hosts inside our own network. Does a DNS lookup,
@@ -123,6 +126,7 @@ export const reviewServiceAccountToken = async ({
         },
         signal: AbortSignal.timeout(TOKEN_REVIEW_TIMEOUT_MS),
         timeout: TOKEN_REVIEW_TIMEOUT_MS,
+        maxContentLength: TOKEN_REVIEW_MAX_RESPONSE_BYTES,
         // safeRequest pins the connection to the addresses it validated, so a hostname that
         // re-resolves to a private address between config time and login cannot be reached.
         ca: caCertificate || undefined,
