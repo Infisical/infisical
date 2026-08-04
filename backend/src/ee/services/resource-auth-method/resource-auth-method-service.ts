@@ -454,6 +454,21 @@ export const resourceAuthMethodServiceFactory = ({
       let effectiveReviewer = authMethod.tokenReviewerJwt;
       if (!isMethodChange && current && (effectiveCa === undefined || effectiveReviewer === undefined)) {
         const stored = await resourceKubernetesAuthDAL.findOne({ authMethodId: current.id });
+        // The reviewer token is a live cluster credential and the probe sends it as a bearer
+        // token, so it must never travel to an endpoint it was not validated against. Someone with
+        // edit access could otherwise point the host at a server they control, omit the write-only
+        // field, and read the stored token off the wire.
+        if (
+          stored?.encryptedKubernetesTokenReviewerJwt &&
+          effectiveReviewer === undefined &&
+          stored.kubernetesHost !== authMethod.kubernetesHost
+        ) {
+          throw new BadRequestError({
+            message:
+              "Re-enter the token reviewer JWT when changing the Kubernetes host, or send an empty value to remove it. The stored token is never sent to a different host."
+          });
+        }
+
         const needsCa = effectiveCa === undefined && stored?.encryptedKubernetesCaCertificate;
         const needsReviewer = effectiveReviewer === undefined && stored?.encryptedKubernetesTokenReviewerJwt;
         if (stored && (needsCa || needsReviewer)) {
