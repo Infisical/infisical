@@ -251,6 +251,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         recordingConnectionId: a.recordingConnectionId,
         isAccessible: isAccessible && accessibilityIssues.length === 0,
         accessibilityIssues,
+        isStale: a.isStale,
         requiresApproval,
         requireReason,
         accessStatus: requiresApproval ? (statusEntry?.accessStatus ?? PamAccessStatus.None) : PamAccessStatus.None,
@@ -303,6 +304,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       connectionDetails,
       credentials,
       ...computeAccessibility(account),
+      isStale: account.isStale,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     };

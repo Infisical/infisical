@@ -74,6 +74,18 @@ export type TPamDiscoveredAccount = {
   dependencies: TPamDependency[];
 };
 
+// an imported account the source's latest scan no longer found. Informational only: nothing about the
+// managed account is blocked, it's listed so an admin can decide whether to delete it.
+export type TPamStaleAccount = {
+  id: string;
+  accountId: string;
+  name: string;
+  folderId: string | null;
+  folderName: string | null;
+  accountType: PamAccountType;
+  lastDiscoveredAt: string | null;
+};
+
 export type TPamAccountDependency = TPamDependency & {
   data: Record<string, unknown> | null;
   rotationStatus: PamRotationStatus | null;
@@ -203,6 +215,8 @@ export type TPamAccount = {
   credentials: Record<string, unknown>;
   isAccessible: boolean;
   accessibilityIssues: PamAccountAccessibilityIssue[];
+  // the latest discovery scan didn't find it. Informational only, nothing about the account is blocked.
+  isStale: boolean;
   createdAt: string;
   updatedAt: string;
 };

@@ -55,6 +55,7 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   accessibilityIssues: z
     .array(z.nativeEnum(PamAccountAccessibilityIssue))
     .describe("Reasons the account cannot launch a session, if any"),
+  isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account."),
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   accessStatus: z.nativeEnum(PamAccessStatus).describe("Current approval status for the caller"),
@@ -72,7 +73,8 @@ const accountDetailVariants = Object.entries(ACCOUNT_TYPE_CONFIGS).map(([account
     isAccessible: z.boolean().describe("Whether the account is fully provisioned to launch a session"),
     accessibilityIssues: z
       .array(z.nativeEnum(PamAccountAccessibilityIssue))
-      .describe("Reasons the account cannot launch a session, if any")
+      .describe("Reasons the account cannot launch a session, if any"),
+    isStale: z.boolean().describe("Whether the discovery source's latest scan no longer found this account.")
   })
 );
 
