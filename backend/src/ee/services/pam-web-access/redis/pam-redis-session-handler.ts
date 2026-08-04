@@ -12,19 +12,11 @@ import {
 import { escapeTerminalControlBytes, formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
 import { RedisClientMessageSchema, RedisClientMessageType } from "./pam-redis-ws-types";
 
-// commands run one at a time, so a blocking call like `BLPOP key 0` would otherwise
-// stall the session with no feedback. Bound the wait and report it instead.
 const COMMAND_TIMEOUT_MS = 30_000;
 
-// quit() queues behind an in-flight command, so a blocked call would keep the client
-// and its relay tunnel open. Bound the graceful close, then force the socket shut.
 const CLEANUP_QUIT_TIMEOUT_MS = 2_000;
 
-// ioredis keeps its own view of the connection's protocol and mode. Driving these
-// through call() corrupts that view: the subscribe family throws inside its data
-// handler and takes the process down, `client reply off` leaves us waiting on a reply
-// that never comes, and hello/monitor/reset/select leave the client out of step with
-// the server. Reject them here rather than letting them reach the socket.
+// these put the connection into a mode ioredis cannot follow
 const BLOCKED_COMMANDS = new Set([
   "subscribe",
   "unsubscribe",
@@ -39,10 +31,8 @@ const BLOCKED_COMMANDS = new Set([
   "client"
 ]);
 
-// a single reply is materialized in memory before it is sent, so cap what we format
 const MAX_REPLY_BYTES = 256 * 1024;
 
-// the relay tunnel can accept the socket and then stall, so bound session setup
 const CONNECT_TIMEOUT_MS = 15_000;
 
 const callWithDeadline = async (redisClient: Redis, command: string, args: string[]): Promise<unknown> => {

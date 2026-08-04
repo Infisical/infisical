@@ -3,17 +3,12 @@ import RE2 from "re2";
 const escapeBackslash = new RE2(/\\/, "g");
 const escapeQuote = new RE2(/"/, "g");
 
-// CRLF is only a line ending, so normalize it and let the newline through
 const crlf = new RE2(/\r\n/, "g");
 
-// every control byte except tab and newline. A reply reaches an xterm session that
-// would otherwise act on it: ESC starts an escape sequence, and a lone CR returns to
-// column zero, letting a reply overwrite the line above it. Tab and newline are safe
-// and keep multi-line replies such as INFO readable.
+// all control bytes except tab and newline, which are safe to render
 // eslint-disable-next-line no-control-regex
 const controlBytes = new RE2(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/, "g");
 
-// redis-cli uses the short forms for the common ones and hex for the rest
 const SHORT_ESCAPES: Record<string, string> = {
   "\n": "\\n",
   "\r": "\\r",
@@ -27,7 +22,6 @@ const toEscape = (ch: string): string => SHORT_ESCAPES[ch] ?? `\\x${ch.charCodeA
 export const escapeTerminalControlBytes = (str: string): string =>
   str.replace(crlf, "\n").replace(controlBytes, toEscape);
 
-// the reverse of SHORT_ESCAPES, for parsing what the user types
 const INPUT_ESCAPES: Record<string, string> = {
   n: "\n",
   r: "\r",
@@ -52,8 +46,6 @@ export const tokenizeRedisInput = (input: string): string[] => {
     const ch = input[i];
 
     if (inQuote) {
-      // matching redis-cli: inside double quotes \n and friends become the byte they
-      // name and \xHH becomes that byte, while single quotes only escape the quote
       if (escaped) {
         if (inQuote === "'") {
           current += ch === "'" ? ch : `\\${ch}`;
