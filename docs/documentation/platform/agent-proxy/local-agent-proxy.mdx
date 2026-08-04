@@ -262,19 +262,23 @@ Add back what the sweep took, one variable at a time:
 
 A placeholder wins over a variable of the same name from your own environment, and `--set-env` wins over everything, including a placeholder.
 
-### Your agent's own sandbox is a separate thing
+### Agents that sandbox themselves
 
-Several agents sandbox themselves. Claude Code, for one, has a sandboxed Bash tool that restricts the commands it runs, using the same operating system features `run` does. That is a different layer from this one, with its own settings, and it is worth knowing how the two interact because the failures look identical from inside.
+Some agents come with a sandbox of their own. Claude Code restricts the shell commands it runs, and other agents offer something similar, often built on the same operating system features `run` uses. That layer is configured in the agent and is independent of this one.
 
-`run` wraps the whole agent process before it starts, so its restrictions apply to the agent, every command the agent runs, and every child of those commands. An agent cannot lift them for itself: the operating system hands them down and offers no way to hand them back.
+The sandbox on this page is the one that protects your credentials. `run` applies it to the agent process before the agent starts, and the operating system extends it to every command the agent runs and everything those commands spawn. No setting inside the agent can widen it.
 
-That has a practical consequence you will probably meet. An agent that finds a file unreadable often assumes its own sandbox is responsible and retries the command outside it. Claude Code calls this `dangerouslyDisableSandbox`, and other harnesses have an equivalent. The retry is honest about what it does, and it does not help here: the command runs outside the agent's own sandbox and stays inside this one, so it fails the same way twice. When you see a denial repeat itself after an unsandboxed retry, the deny list on this page is what you are looking at, not the agent's.
+Knowing which layer you are looking at matters when a command fails, because both produce the same `operation not permitted`:
+
+- An agent that hits a denied path often reads it as its own sandbox being too strict, and reruns the command with that sandbox turned off. In Claude Code this is `dangerouslyDisableSandbox`.
+- The rerun leaves the agent's own sandbox, not this one, so the command fails exactly as before.
+- A denial that survives one of those retries comes from the deny list above. Open the specific file with `--allow-read` if the agent genuinely needs it.
 
 <Note>
-  On macOS the agent's own sandbox usually cannot start at all under `run`, because a second Seatbelt profile cannot be applied inside the first. Agents normally warn and carry on with their own layer off, which loses you nothing: the boundary that protects your credentials is this one, and it is fully in force. If your agent is configured to refuse to start when its sandbox is unavailable, that setting will stop it from launching here, so turn it off for sessions you run behind the proxy.
+  On macOS an agent's own sandbox usually cannot start under `run`, because a second Seatbelt profile cannot be applied inside the first. Agents normally warn and continue without it, and nothing is lost, since this sandbox is unaffected. If yours is set to refuse to start when its sandbox is unavailable, turn that setting off for sessions you run behind the proxy.
 </Note>
 
-An agent's sandbox settings are still worth configuring for the sessions you run **without** `run`, where they are the only boundary you have.
+An agent's own sandbox is still worth configuring for the sessions you run **without** `run`, where it is the only boundary in place.
 
 ## Certificates and the macOS keychain prompt
 
