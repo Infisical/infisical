@@ -10,7 +10,6 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  Label,
   Switch
 } from "@app/components/v3";
 import { useScopeVariant } from "@app/hooks";
@@ -121,18 +120,12 @@ export const ChannelCard = ({
             control={control}
             name={`channels.${index}.enabled`}
             render={({ field }) => (
-              <Label
-                htmlFor={`channel-${index}-enabled`}
-                className="cursor-pointer text-xs font-normal text-muted"
-              >
-                Enabled
-                <Switch
-                  id={`channel-${index}-enabled`}
-                  variant={scopeVariant}
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </Label>
+              <Switch
+                aria-label={`Toggle ${channelLabel} channel`}
+                variant={scopeVariant}
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
             )}
           />
           {canRemove && (
@@ -142,19 +135,6 @@ export const ChannelCard = ({
           )}
         </div>
       </div>
-
-      <Field>
-        <FieldLabel htmlFor={`channel-${index}-name`}>Name</FieldLabel>
-        <FieldContent>
-          <Input
-            id={`channel-${index}-name`}
-            placeholder="Notify on-call"
-            isError={Boolean(channelErrors?.name)}
-            {...register(`channels.${index}.name`)}
-          />
-          <FieldError errors={[channelErrors?.name]} />
-        </FieldContent>
-      </Field>
 
       {channelType === AlertChannelType.Email && (
         <Field>

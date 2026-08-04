@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FieldLabel
+  Label
 } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
@@ -28,7 +28,8 @@ type Props = {
 
 const buildNewChannel = (channelType: AlertChannelType): TChannelForm => ({
   channelType,
-  name: "",
+  // The name input was dropped from the design; new channels are named after their type.
+  name: ALERT_CHANNEL_TYPE_LABELS[channelType],
   enabled: true,
   recipients: [] as { principalType: AlertPrincipalType; principalId: string }[],
   webhookUrl: "",
@@ -48,10 +49,10 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <FieldLabel>
+        <div className="flex flex-col gap-1">
+          <Label>
             Channels <span className="text-danger">*</span>
-          </FieldLabel>
+          </Label>
           <span className="text-xs text-muted">Add at least one delivery channel.</span>
         </div>
         <DropdownMenu>
