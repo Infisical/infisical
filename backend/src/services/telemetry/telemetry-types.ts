@@ -22,6 +22,7 @@ import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/se
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMethod } from "@app/services/auth/auth-type";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -670,7 +671,7 @@ export type TIssueCertificateEvent = {
     profileId?: string;
     applicationId?: string;
     enrollmentType?: string;
-    operation?: "issue" | "sign" | "order" | "renew";
+    operation?: CertificateIssuanceOperation;
   };
 };
 
