@@ -17,6 +17,7 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertIncludeType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
@@ -469,7 +470,7 @@ describe("CertificateV3Service", () => {
             profileId,
             projectId: "project-123",
             enrollmentType: EnrollmentType.API,
-            operation: "issue"
+            operation: CertificateIssuanceOperation.ISSUE
           })
         })
       );
@@ -934,7 +935,7 @@ describe("CertificateV3Service", () => {
           event: PostHogEventTypes.IssueCert,
           properties: expect.objectContaining({
             enrollmentType: EnrollmentType.API,
-            operation: "sign"
+            operation: CertificateIssuanceOperation.SIGN
           })
         })
       );
