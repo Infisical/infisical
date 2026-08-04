@@ -64,6 +64,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
   mapExtendedKeyUsageToLegacy,
@@ -87,10 +88,7 @@ import {
   validateAlgorithmCompatibility,
   validateCaSupport
 } from "../certificate-common/certificate-issuance-utils";
-import {
-  reportCertificateIssued,
-  TCertificateIssuanceOperation
-} from "../certificate-common/certificate-telemetry-fns";
+import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -726,7 +724,7 @@ export const certificateV3ServiceFactory = ({
     profileId?: string | null;
     applicationId?: string | null;
     enrollmentType: EnrollmentType;
-    operation: TCertificateIssuanceOperation;
+    operation: CertificateIssuanceOperation;
     actor?: ActorType;
     actorId?: string;
   }) => {
@@ -1325,7 +1323,7 @@ export const certificateV3ServiceFactory = ({
         profileId,
         applicationId,
         enrollmentType: EnrollmentType.API,
-        operation: "issue",
+        operation: CertificateIssuanceOperation.ISSUE,
         actor,
         actorId
       });
@@ -1559,7 +1557,7 @@ export const certificateV3ServiceFactory = ({
       profileId,
       applicationId,
       enrollmentType: EnrollmentType.API,
-      operation: "issue",
+      operation: CertificateIssuanceOperation.ISSUE,
       actor,
       actorId
     });
@@ -2019,7 +2017,7 @@ export const certificateV3ServiceFactory = ({
       profileId,
       applicationId,
       enrollmentType,
-      operation: "sign",
+      operation: CertificateIssuanceOperation.SIGN,
       actor,
       actorId
     });
@@ -3012,7 +3010,7 @@ export const certificateV3ServiceFactory = ({
       profileId: renewalResult.originalCert.profileId ?? undefined,
       applicationId: renewalResult.originalCert.applicationId ?? undefined,
       enrollmentType: EnrollmentType.API,
-      operation: "renew",
+      operation: CertificateIssuanceOperation.RENEW,
       actor,
       actorId
     });

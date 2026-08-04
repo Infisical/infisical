@@ -10,7 +10,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 
-import { CertificateRequestStatus } from "../../certificate-common/certificate-constants";
+import { CertificateIssuanceOperation, CertificateRequestStatus } from "../../certificate-common/certificate-constants";
 import { reportCertificateIssued } from "../../certificate-common/certificate-telemetry-fns";
 import { TCertificateRequestDALFactory } from "../../certificate-request/certificate-request-dal";
 import {
@@ -195,7 +195,7 @@ export const processDigiCertPendingValidationRequest = async (
       profileId: request.profileId,
       applicationId: request.applicationId,
       enrollmentType: EnrollmentType.API,
-      operation: parsed.digicert.isRenewal ? "renew" : "order"
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
     });
 
     return { status: CertificateRequestStatus.ISSUED, certificateId, orderStatus };

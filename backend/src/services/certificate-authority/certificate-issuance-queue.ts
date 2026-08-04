@@ -24,7 +24,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
+import { CertificateIssuanceOperation, CertKeyAlgorithm } from "../certificate-common/certificate-constants";
 import {
   calculateFinalRenewBeforeDays,
   resolveEffectiveApiConfig
@@ -1224,7 +1224,7 @@ export const certificateIssuanceQueueFactory = ({
           profileId,
           applicationId: scopedApplicationId,
           enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
-          operation: isRenewal ? "renew" : "order"
+          operation: isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
         });
       }
     } catch (error: unknown) {

@@ -1,15 +1,14 @@
 import { logger } from "@app/lib/logger";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-
-export type TCertificateIssuanceOperation = "issue" | "sign" | "order" | "renew";
 
 export type TReportCertificateIssuedDTO = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectId: string;
   enrollmentType: string;
-  operation: TCertificateIssuanceOperation;
+  operation: CertificateIssuanceOperation;
   profileId?: string | null;
   applicationId?: string | null;
   orgId?: string;
@@ -32,7 +31,11 @@ export const reportCertificateIssued = async ({
 }: TReportCertificateIssuedDTO) => {
   try {
     const resolvedOrgId = orgId || (projectDAL ? (await projectDAL.findById(projectId))?.orgId : undefined);
-    if (!resolvedOrgId) return;
+    // orgId is non-nullable on a project, so this only happens if the project was deleted mid-issuance.
+    if (!resolvedOrgId) {
+      logger.warn(`Skipping certificate issuance telemetry, project not found [projectId=${projectId}]`);
+      return;
+    }
 
     await telemetryService.sendPostHogEvents({
       event: PostHogEventTypes.IssueCert,
