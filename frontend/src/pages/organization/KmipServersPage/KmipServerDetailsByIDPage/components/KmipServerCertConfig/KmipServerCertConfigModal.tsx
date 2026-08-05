@@ -81,7 +81,7 @@ export const KmipServerCertConfigModal = ({ isOpen, onOpenChange, kmipServer }: 
       await updateKmipServer({
         kmipServerId: kmipServer.id,
         hostnamesOrIps: form.hostnamesOrIps,
-        ttl: form.ttl || undefined,
+        ttl: form.ttl || null,
         keyAlgorithm: form.keyAlgorithm
       });
       createNotification({

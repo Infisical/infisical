@@ -228,7 +228,10 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       params: z.object({ kmipServerId: z.string().uuid() }),
       body: z.object({
         hostnamesOrIps: hostnamesOrIpsField.optional(),
-        ttl: ttlField.optional(),
+        ttl: ttlField
+          .nullable()
+          .optional()
+          .describe("Validity period of the server certificate. Pass null to clear a custom TTL and use the default."),
         keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
         authMethod: SettableAuthMethodInputSchema.optional()
       }),
