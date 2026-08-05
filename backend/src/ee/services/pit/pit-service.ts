@@ -29,6 +29,7 @@ import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/se
 import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { shouldApplyPolicy } from "../secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "../secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "../secret-approval-request/secret-approval-request-service";
 
@@ -624,10 +625,7 @@ export const pitServiceFactory = ({
     message: string;
     changes: TProcessNewCommitRawDTO;
   }) => {
-    const policy =
-      actor === ActorType.USER
-        ? await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath)
-        : undefined;
+    const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(projectId, environment, secretPath);
     const secretMutationEvents: Event[] = [];
 
     const project = await projectDAL.findById(projectId);
@@ -769,7 +767,7 @@ export const pitServiceFactory = ({
         folderChanges.delete.push(...deletedFolders.folders.map((folder) => folder.id));
       }
 
-      if (policy) {
+      if (shouldApplyPolicy(policy, actor)) {
         // When a policy exists, secret changes go through approval workflow
         // but folder changes should still be committed immediately since they're not affected by approval policies
         let commitId: string | undefined;

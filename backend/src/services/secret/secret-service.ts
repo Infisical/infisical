@@ -24,6 +24,7 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
@@ -182,19 +183,6 @@ export const secretServiceFactory = ({
   orgDAL,
   projectFolderGrantDAL
 }: TSecretServiceFactoryDep) => {
-  // Returns true when a secret approval policy should be enforced for the current actor.
-  // A policy is not enforced when:
-  //   1. No policy exists for the path/env
-  //   2. The actor is a machine identity and the policy allows bypass
-  const shouldApplyPolicy = (
-    policy: Awaited<ReturnType<typeof secretApprovalPolicyService.getSecretApprovalPolicy>>,
-    actorType: ActorType
-  ): policy is NonNullable<typeof policy> => {
-    if (!policy) return false;
-    if (actorType === ActorType.IDENTITY && policy.bypassForMachineIdentities) return false;
-    return true;
-  };
-
   const getSecretReference = async (projectId: string) => {
     // if bot key missing means e2e still exist
     const projectBot = await projectBotService.getBotKey(projectId).catch(() => null);

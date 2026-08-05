@@ -15,6 +15,7 @@ import {
 } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
@@ -1701,7 +1702,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
   let destinationSecretIdByKey: Record<string, string | undefined> = {};
 
-  if (destinationFolderPolicy && actor === ActorType.USER) {
+  if (shouldApplyPolicy(destinationFolderPolicy, actor)) {
     // if secret approval policy exists for destination, we create the secret approval request
     const localSecretsIds = decryptedDestinationSecrets.map(({ id }) => id);
     const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
@@ -1908,7 +1909,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     sourceFolder.path
   );
 
-  if (sourceFolderPolicy && actor === ActorType.USER) {
+  if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
     // if secret approval policy exists for source, we create the secret approval request
     const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
     const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
