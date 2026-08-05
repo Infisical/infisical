@@ -1123,6 +1123,7 @@
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/mongodb",
+                      "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/ssh",
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",

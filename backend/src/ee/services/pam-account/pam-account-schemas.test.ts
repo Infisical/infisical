@@ -115,6 +115,38 @@ describe("buildPamAccountTypeMetadata", () => {
     });
   });
 
+  test("derives Redis connection and credential fields from the schema", () => {
+    const redis = byType.get(PamAccountType.Redis);
+    expect(redis).toBeDefined();
+    expect(redis?.name).toBe("Redis");
+    expect(redis?.supportsWebAccess).toBe(false);
+
+    expect(redis?.connectionFields.map((f) => f.key)).toEqual([
+      "host",
+      "port",
+      "sslEnabled",
+      "sslRejectUnauthorized",
+      "sslCertificate"
+    ]);
+    expect(fieldByKey(redis!.connectionFields, "port")).toMatchObject({
+      widget: "number",
+      required: true,
+      defaultValue: 6379
+    });
+
+    expect(fieldByKey(redis!.credentialFields, "username")).toMatchObject({
+      widget: "text",
+      required: true,
+      secret: false,
+      defaultValue: "default"
+    });
+    expect(fieldByKey(redis!.credentialFields, "password")).toMatchObject({
+      widget: "password",
+      secret: true,
+      required: false
+    });
+  });
+
   test("derives Kubernetes connection and credential fields from the schema", () => {
     const k8s = byType.get(PamAccountType.Kubernetes);
     expect(k8s).toBeDefined();
