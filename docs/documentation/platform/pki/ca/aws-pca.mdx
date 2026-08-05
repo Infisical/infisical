@@ -105,7 +105,7 @@ See the [AWS Connection](/integrations/app-connections/aws) page for full setup 
 
 ## Issuing CA Certificates
 
-Certificates from AWS Private CA can be issued with `CA:TRUE`, the same as with an [Internal CA](/documentation/platform/pki/ca/private-ca). Set **Basic Constraints** to allow CA certificates on the [Certificate Policy](/documentation/platform/pki/settings/policies), then tick **Issue as Certificate Authority** when requesting one.
+To issue a certificate with `CA:TRUE`, set **Basic Constraints** to allow CA certificates on the [Certificate Policy](/documentation/platform/pki/settings/policies), then tick **Issue as Certificate Authority** when requesting one.
 
 AWS Private CA applies its own rules to CA certificates:
 
