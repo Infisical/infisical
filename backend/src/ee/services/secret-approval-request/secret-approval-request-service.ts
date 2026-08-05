@@ -1598,9 +1598,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          ...(actor === ActorType.IDENTITY
-            ? { committerIdentityId: actorId }
-            : { committerUserId: actorId })
+          ...(actor === ActorType.IDENTITY ? { committerIdentityId: actorId } : { committerUserId: actorId })
         },
         tx
       );
@@ -2117,9 +2115,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          ...(actor === ActorType.IDENTITY
-            ? { committerIdentityId: actorId }
-            : { committerUserId: actorId }),
+          ...(actor === ActorType.IDENTITY ? { committerIdentityId: actorId } : { committerUserId: actorId }),
           commitMessage
         },
         tx

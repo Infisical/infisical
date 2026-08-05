@@ -436,7 +436,7 @@ export const SecretApprovalRequest = () => {
                   const committerName = committerUser
                     ? [committerUser.firstName, committerUser.lastName].filter(Boolean).join(" ") ||
                       committerUser.email
-                    : committerIdentity?.name ?? null;
+                    : (committerIdentity?.name ?? null);
 
                   let statusDisplay: {
                     label: string;
@@ -514,9 +514,7 @@ export const SecretApprovalRequest = () => {
                             {committerUser && committerUserId === userSession.id && (
                               <Badge variant="neutral">You</Badge>
                             )}
-                            {committerIdentity && (
-                              <Badge variant="neutral">Machine</Badge>
-                            )}
+                            {committerIdentity && <Badge variant="neutral">Machine</Badge>}
                           </div>
                         ) : (
                           <span className="text-muted">Deleted User</span>

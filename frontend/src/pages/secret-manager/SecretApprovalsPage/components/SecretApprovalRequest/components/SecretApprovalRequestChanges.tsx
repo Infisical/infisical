@@ -534,9 +534,7 @@ export const SecretApprovalRequestChanges = ({
                     {committerUser.firstName} ({committerUser.email})
                   </>
                 ) : committerIdentity ? (
-                  <>
-                    {committerIdentity.name} (Machine Identity)
-                  </>
+                  <>{committerIdentity.name} (Machine Identity)</>
                 ) : (
                   "Deleted User"
                 )}
