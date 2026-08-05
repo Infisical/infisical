@@ -1590,7 +1590,9 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId
+          ...(actor === ActorType.IDENTITY
+            ? { committerIdentityId: actorId }
+            : { committerUserId: actorId })
         },
         tx
       );
@@ -1667,7 +1669,10 @@ export const secretApprovalRequestServiceFactory = ({
     });
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
-    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const user =
+      actor === ActorType.IDENTITY
+        ? undefined
+        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
@@ -1683,7 +1688,7 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user.email as string,
+            userEmail: user?.email ?? "machine-identity",
             environment: env.name,
             secretPath,
             projectId,
@@ -1715,7 +1720,7 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,
@@ -1745,8 +1750,8 @@ export const secretApprovalRequestServiceFactory = ({
     updateMode = SecretUpdateMode.FailOnNotFound,
     trx: providedTx
   }: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex }) => {
-    if (actor === ActorType.SERVICE || actor === ActorType.IDENTITY)
-      throw new BadRequestError({ message: "Cannot use service token or machine token over protected branches" });
+    if (actor === ActorType.SERVICE)
+      throw new BadRequestError({ message: "Cannot use service token over protected branches" });
 
     const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
       actor,
@@ -2104,7 +2109,9 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          committerUserId: actorId,
+          ...(actor === ActorType.IDENTITY
+            ? { committerIdentityId: actorId }
+            : { committerUserId: actorId }),
           commitMessage
         },
         tx
@@ -2165,7 +2172,10 @@ export const secretApprovalRequestServiceFactory = ({
       ? await executeApprovalRequestCreation(providedTx)
       : await secretApprovalRequestDAL.transaction(executeApprovalRequestCreation);
 
-    const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const user =
+      actor === ActorType.IDENTITY
+        ? undefined
+        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
 
     const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
@@ -2179,7 +2189,7 @@ export const secretApprovalRequestServiceFactory = ({
         notification: {
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
-            userEmail: user.email as string,
+            userEmail: user?.email ?? "machine-identity",
             environment: env.name,
             secretPath,
             projectId,
@@ -2211,7 +2221,7 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user.username ?? user.email ?? actorId,
+        distinctId: user?.username ?? user?.email ?? actorId,
         organizationId: actorOrgId,
         properties: {
           requestId: secretApprovalRequest.id,

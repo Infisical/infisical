@@ -45,6 +45,8 @@ type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
   committerUserFirstName: string | null;
   committerUserLastName: string | null;
   committerUserUsername: string | null;
+  committerIdentityId: string | null;
+  committerIdentityName: string | null;
   reviewerId: string | null;
   reviewerUserId: string | null;
   reviewerStatus: string | null;
@@ -106,6 +108,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         db(TableName.Users).as("committerUser"),
         `${TableName.SecretApprovalRequest}.committerUserId`,
         `committerUser.id`
+      )
+      .leftJoin(
+        db(TableName.Identity).as("committerIdentity"),
+        `${TableName.SecretApprovalRequest}.committerIdentityId`,
+        `committerIdentity.id`
       )
       .leftJoin(
         TableName.SecretApprovalPolicyApprover,
@@ -210,6 +217,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         tx.ref("username").withSchema("committerUser").as("committerUserUsername"),
         tx.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
         tx.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+        tx.ref("id").withSchema("committerIdentity").as("committerIdentityId"),
+        tx.ref("name").withSchema("committerIdentity").as("committerIdentityName"),
         tx.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
         tx.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
         tx.ref("comment").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerComment"),
@@ -258,6 +267,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
                 username: el.committerUserUsername
+              }
+            : null,
+          committerIdentity: el.committerIdentityId
+            ? {
+                identityId: el.committerIdentityId,
+                name: el.committerIdentityName
               }
             : null,
           policy: {
@@ -492,6 +507,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `committerUser.id`
         )
         .leftJoin(
+          db(TableName.Identity).as("committerIdentity"),
+          `${TableName.SecretApprovalRequest}.committerIdentityId`,
+          `committerIdentity.id`
+        )
+        .leftJoin(
           TableName.SecretApprovalRequestReviewer,
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SecretApprovalRequestReviewer}.requestId`
@@ -503,7 +523,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .where(
           stripUndefinedInWhere({
-            projectId,
+            [`${TableName.Environment}.projectId` as "projectId"]: projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
             committerUserId: committer
@@ -539,7 +559,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
-          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+          db.ref("id").withSchema("committerIdentity").as("committerIdentityId"),
+          db.ref("name").withSchema("committerIdentity").as("committerIdentityName")
         )
         .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
@@ -563,6 +585,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             ])
             .orWhereRaw(`?? ilike ?`, [
               db.ref("email").withSchema("committerUser"),
+              `%${sanitizeSqlLikeString(search)}%`
+            ])
+            .orWhereRaw(`?? ilike ?`, [
+              db.ref("name").withSchema("committerIdentity"),
               `%${sanitizeSqlLikeString(search)}%`
             ])
             .orWhereILike(`${TableName.Environment}.name`, `%${sanitizeSqlLikeString(search)}%`)
@@ -608,6 +634,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
                 username: el.committerUserUsername!
+              }
+            : null,
+          committerIdentity: el.committerIdentityId
+            ? {
+                identityId: el.committerIdentityId,
+                name: el.committerIdentityName
               }
             : null
         }),
@@ -707,6 +739,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           `committerUser.id`
         )
         .leftJoin(
+          db(TableName.Identity).as("committerIdentity"),
+          `${TableName.SecretApprovalRequest}.committerIdentityId`,
+          `committerIdentity.id`
+        )
+        .leftJoin(
           TableName.SecretApprovalRequestReviewer,
           `${TableName.SecretApprovalRequest}.id`,
           `${TableName.SecretApprovalRequestReviewer}.requestId`
@@ -718,7 +755,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .where(
           stripUndefinedInWhere({
-            projectId,
+            [`${TableName.Environment}.projectId` as "projectId"]: projectId,
             [`${TableName.Environment}.slug` as "slug"]: environment,
             [`${TableName.SecretApprovalRequest}.status`]: status,
             committerUserId: committer
@@ -757,7 +794,9 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
-          db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
+          db.ref("lastName").withSchema("committerUser").as("committerUserLastName"),
+          db.ref("id").withSchema("committerIdentity").as("committerIdentityId"),
+          db.ref("name").withSchema("committerIdentity").as("committerIdentityName")
         )
         .as("inner");
 
@@ -773,6 +812,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             ])
             .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), `%${sanitizeSqlLikeString(search)}%`])
             .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${sanitizeSqlLikeString(search)}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerIdentityName"), `%${sanitizeSqlLikeString(search)}%`])
             .orWhereILike(`environmentName`, `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike(`environment`, `%${sanitizeSqlLikeString(search)}%`)
             .orWhereILike(`policySecretPath`, `%${sanitizeSqlLikeString(search)}%`)
@@ -847,6 +887,12 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 firstName: el.committerUserFirstName,
                 lastName: el.committerUserLastName,
                 username: el.committerUserUsername!
+              }
+            : null,
+          committerIdentity: el.committerIdentityId
+            ? {
+                identityId: el.committerIdentityId,
+                name: el.committerIdentityName
               }
             : null
         }),

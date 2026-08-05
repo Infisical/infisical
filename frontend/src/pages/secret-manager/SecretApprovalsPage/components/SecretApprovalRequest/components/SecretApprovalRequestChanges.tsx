@@ -350,6 +350,7 @@ export const SecretApprovalRequestChanges = ({
   const changesStatusAlert = getChangesStatusAlert();
 
   const committerUser = secretApprovalRequestDetails?.committerUser;
+  const committerIdentity = secretApprovalRequestDetails?.committerIdentity;
   const environmentName = secretApprovalRequestDetails
     ? (currentProject?.environments.find(
         (env) => env.slug === secretApprovalRequestDetails.environment
@@ -531,6 +532,10 @@ export const SecretApprovalRequestChanges = ({
                 {committerUser ? (
                   <>
                     {committerUser.firstName} ({committerUser.email})
+                  </>
+                ) : committerIdentity ? (
+                  <>
+                    {committerIdentity.name} (Machine Identity)
                   </>
                 ) : (
                   "Deleted User"
