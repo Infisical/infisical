@@ -2750,7 +2750,10 @@ export const registerRoutes = async (
 
   const productInsightsService = productInsightsServiceFactory({
     permissionService,
-    licenseService
+    licenseService,
+    orgDAL,
+    identityOrgMembershipDAL,
+    dynamicSecretLeaseDAL
   });
 
   // DAILY
