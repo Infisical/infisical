@@ -35,7 +35,8 @@ export const selectClassNames: ClassNamesConfig<unknown, boolean, GroupBase<unkn
   noOptionsMessage: () => "text-muted p-2 text-sm",
   loadingMessage: () => "text-muted p-2 text-sm",
   group: () => "pb-1",
-  groupHeading: () => "px-2 pt-2 pb-1 text-xs font-medium text-muted"
+  groupHeading: () => "px-2 pt-2 pb-1 text-xs font-medium text-muted",
+  menuPortal: () => "react-select-menu-portal"
 };
 
 export const selectStyles: StylesConfig<unknown, boolean, GroupBase<unknown>> = {

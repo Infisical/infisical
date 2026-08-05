@@ -6,6 +6,11 @@ import { cn } from "../../utils";
 
 const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-lg max-w-[calc(100%-2rem)]";
 
+const isAllowedOutsideInteraction = (target: EventTarget | null) =>
+  Boolean(
+    (target as HTMLElement)?.closest?.("[data-sonner-toast], .react-select-menu-portal")
+  );
+
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
 }
@@ -43,6 +48,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   onPointerDownOutside,
+  onInteractOutside,
   overlayClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
@@ -60,12 +66,18 @@ function DialogContent({
           className
         )}
         onPointerDownOutside={(e) => {
-          // Keep the dialog open when a toast rendered above it is clicked.
-          if ((e.target as HTMLElement)?.closest?.("[data-sonner-toast]")) {
+          if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
           onPointerDownOutside?.(e);
+        }}
+        onInteractOutside={(e) => {
+          if (isAllowedOutsideInteraction(e.target)) {
+            e.preventDefault();
+            return;
+          }
+          onInteractOutside?.(e);
         }}
         {...props}
       >
