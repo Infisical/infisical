@@ -107,11 +107,11 @@ See the [AWS Connection](/integrations/app-connections/aws) page for full setup 
 
 To issue a certificate with `CA:TRUE`, set **Basic Constraints** to allow CA certificates on the [Certificate Policy](/documentation/platform/pki/settings/policies), then tick **Issue as Certificate Authority** when requesting one.
 
-AWS Private CA applies its own rules to CA certificates:
+AWS Private CA adds a few constraints:
 
-- **Path length is required**, and must be between `0` and `3`. There is no unlimited option.
+- **Path length is required** on the request, and must be between `0` and `3`. There is no unlimited option.
 - **Key usages are set by AWS** to digital signature, certificate signing and CRL signing, overriding the profile.
-- The CA must be general-purpose, and its own path length must leave room beneath it.
+- The private CA in AWS must be in general-purpose mode, and its own path length must allow another CA beneath it.
 
 ## Troubleshooting
 
