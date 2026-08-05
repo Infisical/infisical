@@ -2,6 +2,10 @@
   border-radius: 0 !important;
 }
 
+.chat-assistant-floating-input {
+  display: none !important;
+}
+
 #navbar .max-w-8xl {
   max-width: 100%;
   border-bottom: 1px solid #ebebeb;
@@ -65,6 +69,10 @@
   background-color: #FDFFE5;
   padding-bottom: 10px;
   padding-top: 10px;
+}
+
+#page-context-menu button:hover {
+  background-color: #F3F4F6;
 }
 
 #content-area .mt-8 .block{
@@ -138,6 +146,10 @@
 .dark #header {
   background-color: #292B16;
   border-left-color: #DCEB30;
+}
+
+.dark #page-context-menu button:hover {
+  background-color: #343434;
 }
 
 .dark #content-area .mt-8 .block {

@@ -50,7 +50,7 @@ export const getMissingRequiredFields = (
   fields
     .filter((field) => {
       if (field.widget === PamFieldWidget.Boolean || !isFieldVisible(field, values)) return false;
-      if (!field.required && !field.secret) return false;
+      if (!field.required && !(field.secret && !field.optional)) return false;
       const value = values[field.key];
       return value === undefined || value === null || String(value).trim() === "";
     })
