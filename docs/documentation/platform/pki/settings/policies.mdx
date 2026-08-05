@@ -73,7 +73,7 @@ Control what X.509 distinguished name attributes can appear in certificates:
 | Country | C | `US` |
 | State/Province | ST | `California` |
 | Locality | L | `San Francisco` |
-| Domain Component | DC | `example` |
+| Domain Component | DC | `corp,example,com` |
 
 For each attribute, configure enforcement:
 
@@ -90,11 +90,19 @@ For each attribute, configure enforcement:
 </AccordionGroup>
 
 <Note>
-  Domain Component (DC) support is for requests that use DC attributes explicitly. Each DC value is
-  matched independently against the Domain Component rule (like a Subject Alternative Name),
-  separately from the Common Name. A subject can carry more than one domain component (for example
-  `CN=host, DC=auth, DC=example, DC=app`), so allow the labels your requests use, such as `auth`,
-  `example`, and `app`, or a pattern like `*`.
+  Domain Component (DC) support is for requests that use DC attributes explicitly, separately from the
+  Common Name. Domain components form an ordered chain in the distinguished name, so a DC rule
+  constrains whole sequences rather than individual labels:
+
+  - Enter the full sequence in distinguished name order, separated by commas. `corp,example,com`
+    matches `CN=host,DC=corp,DC=example,DC=com`.
+  - A request matches a sequence only when its components line up position by position, so the same
+    labels in another order are rejected. Requests are read in distinguished name order whichever way
+    the client encoded the name, so a CSR from Windows, Active Directory or Intune matches the same
+    rule as one from OpenSSL.
+  - Wildcards apply within a single component. `*,example,com` matches any three-component sequence
+    ending in `example`, `com`.
+  - Add one rule per sequence you want to accept, deny, or require.
 </Note>
 
 Once you define subject attribute rules, only the attribute types you explicitly include are permitted — any other attribute in a request will be rejected. An empty configuration forbids all subject attributes; leave the section unconfigured to allow any attribute.

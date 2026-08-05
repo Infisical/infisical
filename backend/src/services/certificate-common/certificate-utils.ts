@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
@@ -78,12 +79,7 @@ export const bufferToString = (data: Buffer | string): string => {
 
 export const buildCertificateSubjectFromTemplate = (
   request: Record<string, unknown>,
-  templateAttributes?: Array<{
-    type: string;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>
+  templateAttributes?: TSubjectRule[]
 ): Record<string, string | undefined> => {
   const subject: Record<string, string> = {};
   const attributeMap: Record<string, string> = {

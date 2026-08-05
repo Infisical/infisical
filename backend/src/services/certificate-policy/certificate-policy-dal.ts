@@ -10,6 +10,7 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 
+import { normalizeSubjectRules } from "./certificate-policy-fns";
 import { TCertificatePolicy, TCertificatePolicyInsert, TCertificatePolicyUpdate } from "./certificate-policy-types";
 
 export type TCertificatePolicyDALFactory = ReturnType<typeof certificatePolicyDALFactory>;
@@ -74,6 +75,10 @@ export const certificatePolicyDALFactory = (db: TDbClient) => {
         parsed[field] = undefined;
       }
     });
+
+    if (parsed.subject !== undefined) {
+      parsed.subject = normalizeSubjectRules(parsed.subject);
+    }
 
     return parsed as TCertificatePolicy;
   };

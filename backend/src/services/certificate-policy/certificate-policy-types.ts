@@ -14,13 +14,30 @@ export interface TBasicConstraints {
   maxPathLength?: number; // -1 = unlimited, 0+ = specific limit, undefined = not constrained
 }
 
+export type TSingleValuedSubjectAttributeType = Exclude<
+  CertSubjectAttributeType,
+  CertSubjectAttributeType.DOMAIN_COMPONENT
+>;
+
+export interface TSingleValuedSubjectRule {
+  type: TSingleValuedSubjectAttributeType;
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
+}
+
+/** Each entry is one ordered sequence of per-component patterns, matched position by position. */
+export interface TDomainComponentSubjectRule {
+  type: CertSubjectAttributeType.DOMAIN_COMPONENT;
+  allowed?: string[][];
+  required?: string[][];
+  denied?: string[][];
+}
+
+export type TSubjectRule = TSingleValuedSubjectRule | TDomainComponentSubjectRule;
+
 export interface TTemplateV2Policy {
-  subject?: Array<{
-    type: CertSubjectAttributeType;
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: CertSubjectAlternativeNameType;
     allowed?: string[];

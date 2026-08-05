@@ -24,11 +24,20 @@ import {
 } from "../certificate-common/certificate-constants";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
+  formatDomainComponentSequence,
+  isDomainComponentRule,
+  isWildcardPattern,
+  matchesNormalizedPattern,
+  validateDomainComponentsAgainstRule
+} from "./certificate-policy-fns";
+import {
   TCertificatePolicy,
   TCertificatePolicyInsert,
   TCertificatePolicyUpdate,
   TCertificateRequest,
-  TPolicyValidationResult
+  TPolicyValidationResult,
+  TSingleValuedSubjectRule,
+  TSubjectRule
 } from "./certificate-policy-types";
 
 type TCertificatePolicyServiceFactoryDep = {
@@ -40,11 +49,7 @@ export const certificatePolicyServiceFactory = ({
   certificatePolicyDAL,
   permissionService
 }: TCertificatePolicyServiceFactoryDep) => {
-  const consolidateAttributeArray = <
-    T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
-  >(
-    attributes: T[]
-  ): T[] => {
+  const consolidateAttributeArray = <T extends { type: string }>(attributes: T[]): T[] => {
     const consolidated = new Map<string, T>();
 
     attributes.forEach((attr) => {
@@ -85,9 +90,7 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
-  const validateSubjectAttributePolicy = (
-    subjectAttributes: Array<{ type: string; allowed?: string[]; required?: string[]; denied?: string[] }>
-  ) => {
+  const validateSubjectAttributePolicy = (subjectAttributes: TSubjectRule[]) => {
     if (!subjectAttributes || subjectAttributes.length === 0) return;
 
     // Validate each subject attribute policy
@@ -99,12 +102,17 @@ export const certificatePolicyServiceFactory = ({
         });
       }
 
-      // Check for duplicate values within arrays
-      const arrays = [
-        { name: "allowed", values: attr.allowed },
-        { name: "required", values: attr.required },
-        { name: "denied", values: attr.denied }
-      ];
+      const arrays = isDomainComponentRule(attr)
+        ? [
+            { name: "allowed", values: attr.allowed?.map(formatDomainComponentSequence) },
+            { name: "required", values: attr.required?.map(formatDomainComponentSequence) },
+            { name: "denied", values: attr.denied?.map(formatDomainComponentSequence) }
+          ]
+        : [
+            { name: "allowed", values: attr.allowed },
+            { name: "required", values: attr.required },
+            { name: "denied", values: attr.denied }
+          ];
 
       for (const { name, values } of arrays) {
         if (values && values.length > 0) {
@@ -171,20 +179,6 @@ export const certificatePolicyServiceFactory = ({
 
     const randomSlug = slugify(alphaNumericNanoId(12));
     return randomSlug;
-  };
-
-  const isWildcardPattern = (value: string): boolean => {
-    return value.includes("*");
-  };
-
-  const createWildcardRegex = (pattern: string): RegExp => {
-    const wildcardRegex = new RE2(/\*/g);
-    const withPlaceholder = pattern.replace(wildcardRegex, "__WILDCARD__");
-    const escapeRegex = new RE2(/[.+?^${}()|[\]\\]/g);
-    const escaped = withPlaceholder.replace(escapeRegex, "\\$&");
-    const placeholderRegex = new RE2(/__WILDCARD__/g);
-    const regexPattern = escaped.replace(placeholderRegex, ".*");
-    return new RE2(`^${regexPattern}$`);
   };
 
   const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
@@ -292,19 +286,7 @@ export const certificatePolicyServiceFactory = ({
     const normalizedValue = normalize(value);
 
     for (const allowedValue of allowedValues) {
-      const normalizedAllowed = normalize(allowedValue);
-      if (isWildcardPattern(allowedValue)) {
-        try {
-          const regex = createWildcardRegex(normalizedAllowed);
-          if (regex.test(normalizedValue)) {
-            return { isValid: true };
-          }
-        } catch (error) {
-          if (normalizedAllowed === normalizedValue) {
-            return { isValid: true };
-          }
-        }
-      } else if (normalizedAllowed === normalizedValue) {
+      if (matchesNormalizedPattern(normalizedValue, normalize(allowedValue))) {
         return { isValid: true };
       }
     }
@@ -343,9 +325,8 @@ export const certificatePolicyServiceFactory = ({
     if (request.locality) requestAttributes.set(CertSubjectAttributeType.LOCALITY, request.locality);
 
     if (subjectPolicies) {
-      // Domain components are multi-valued and are validated separately below (like SANs).
       const singleValuedPolicies = subjectPolicies.filter(
-        (attrPolicy) => attrPolicy.type !== CertSubjectAttributeType.DOMAIN_COMPONENT
+        (attrPolicy): attrPolicy is TSingleValuedSubjectRule => !isDomainComponentRule(attrPolicy)
       );
       for (const attrPolicy of singleValuedPolicies) {
         const requestValue = requestAttributes.get(attrPolicy.type);
@@ -408,52 +389,22 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    const domainComponentPolicy = subjectPolicies?.find(
-      (attrPolicy) => attrPolicy.type === CertSubjectAttributeType.DOMAIN_COMPONENT
-    );
+    const domainComponentPolicy = subjectPolicies?.find(isDomainComponentRule);
     const requestDomainComponents = request.domainComponents ?? [];
-    const dcFieldName = CertSubjectAttributeType.DOMAIN_COMPONENT;
     if (domainComponentPolicy) {
-      if (!options?.skipRequired && domainComponentPolicy.required && domainComponentPolicy.required.length > 0) {
-        for (const requiredValue of domainComponentPolicy.required) {
-          const hasMatch = requestDomainComponents.some(
-            (dc) => validateValueAgainstConstraints(dc, [requiredValue], dcFieldName).isValid
-          );
-          if (!hasMatch) {
-            errors.push(`Required ${dcFieldName} matching pattern '${requiredValue}' not found in request`);
-          }
-        }
-      }
-
-      if (domainComponentPolicy.denied && domainComponentPolicy.denied.length > 0) {
-        for (const dc of requestDomainComponents) {
-          if (validateValueAgainstConstraints(dc, domainComponentPolicy.denied, dcFieldName).isValid) {
-            errors.push(`${dcFieldName} value '${dc}' is denied by template policy`);
-          }
-        }
-      }
-
-      if (domainComponentPolicy.allowed && domainComponentPolicy.allowed.length > 0 && requestDomainComponents.length) {
-        for (const dc of requestDomainComponents) {
-          const satisfiesRequired =
-            domainComponentPolicy.required && domainComponentPolicy.required.length > 0
-              ? domainComponentPolicy.required.some(
-                  (requiredValue) => validateValueAgainstConstraints(dc, [requiredValue], dcFieldName).isValid
-                )
-              : false;
-
-          if (!satisfiesRequired) {
-            const validation = validateValueAgainstConstraints(dc, domainComponentPolicy.allowed, dcFieldName);
-            if (!validation.isValid && validation.error) {
-              errors.push(validation.error);
-            }
-          }
-        }
-      }
+      errors.push(
+        ...validateDomainComponentsAgainstRule({
+          requestDomainComponents,
+          rule: domainComponentPolicy,
+          skipRequired: options?.skipRequired
+        })
+      );
     } else if (subjectPolicies && requestDomainComponents.length > 0) {
       // A subject policy is defined but has no domain_component rule, so DCs aren't
       // permitted. When no subject policy is defined at all, every subject attribute is allowed.
-      errors.push(`${dcFieldName} is not allowed by template policy (not defined in template)`);
+      errors.push(
+        `${CertSubjectAttributeType.DOMAIN_COMPONENT} is not allowed by template policy (not defined in template)`
+      );
     }
 
     // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);

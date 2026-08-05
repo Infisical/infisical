@@ -100,7 +100,7 @@ import {
   removeRootCaFromChain,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
-import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import { TCertificateRequest, TSubjectRule } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
@@ -599,12 +599,7 @@ const processSelfSignedCertificate = async ({
     notAfter?: Date;
   };
   policy?: {
-    subject?: Array<{
-      type: string;
-      allowed?: string[];
-      required?: string[];
-      denied?: string[];
-    }>;
+    subject?: TSubjectRule[];
     sans?: Array<{
       type: string;
       allowed?: string[];

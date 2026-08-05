@@ -1,19 +1,24 @@
 import { CertPolicyState } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
+export type TSingleValuedSubjectRule = {
+  type: "common_name" | "organization" | "country" | "state" | "locality" | "organizational_unit";
+  allowed?: string[];
+  required?: string[];
+  denied?: string[];
+};
+
+/** Each entry is one ordered sequence of patterns, matched position by position. */
+export type TDomainComponentSubjectRule = {
+  type: "domain_component";
+  allowed?: string[][];
+  required?: string[][];
+  denied?: string[][];
+};
+
+export type TSubjectRule = TSingleValuedSubjectRule | TDomainComponentSubjectRule;
+
 export type TCertificatePolicyRule = {
-  subject?: Array<{
-    type:
-      | "common_name"
-      | "organization"
-      | "country"
-      | "state"
-      | "locality"
-      | "organizational_unit"
-      | "domain_component";
-    allowed?: string[];
-    required?: string[];
-    denied?: string[];
-  }>;
+  subject?: TSubjectRule[];
   sans?: Array<{
     type: "dns_name" | "ip_address" | "email" | "uri" | "upn";
     allowed?: string[];

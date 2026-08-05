@@ -27,7 +27,7 @@ import {
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
-import { TCertificateRequest } from "@app/services/certificate-policy/certificate-policy-types";
+import { TCertificateRequest, TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -359,12 +359,7 @@ export const certificateApprovalServiceFactory = (
       notAfter?: Date;
     };
     policy?: {
-      subject?: Array<{
-        type: string;
-        allowed?: string[];
-        required?: string[];
-        denied?: string[];
-      }>;
+      subject?: TSubjectRule[];
       sans?: Array<{
         type: string;
         allowed?: string[];

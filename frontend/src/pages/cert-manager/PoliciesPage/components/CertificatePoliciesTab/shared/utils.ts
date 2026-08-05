@@ -7,6 +7,20 @@ import {
   UsageState
 } from "./certificate-constants";
 
+/** A sequence is edited as comma-separated text and sent as the ordered array the API takes. */
+export const parseDomainComponentSequence = (value: string): string[] =>
+  value
+    .split(",")
+    .map((component) => component.trim())
+    .filter(Boolean);
+
+export const formatDomainComponentSequence = (sequence: string[]): string => sequence.join(",");
+
+export const isValidDomainComponentSequence = (value: string): boolean => {
+  const components = value.split(",");
+  return components.length > 0 && components.every((component) => component.trim().length > 0);
+};
+
 export const formatUsageName = (usage: string): string => {
   if (Object.values(CertKeyUsageType).includes(usage as CertKeyUsageType)) {
     return formatKeyUsage(usage as CertKeyUsageType);

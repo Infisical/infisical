@@ -11,12 +11,16 @@ import {
   CertSubjectAttributeType,
   formatSubjectAttributeType
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { formatDomainComponentSequence } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/utils";
 
 import { RuleList } from "./RuleList";
 
 type Props = {
   policy: TCertificatePolicy;
 };
+
+const toRuleValues = (values?: Array<string | string[]>): string[] | undefined =>
+  values?.map((value) => (Array.isArray(value) ? formatDomainComponentSequence(value) : value));
 
 export const PolicySubjectRulesSection = ({ policy }: Props) => {
   if (!policy.subject) {
@@ -53,9 +57,9 @@ export const PolicySubjectRulesSection = ({ policy }: Props) => {
                 <div className="text-sm font-medium text-foreground">
                   {formatSubjectAttributeType(rule.type as CertSubjectAttributeType)}
                 </div>
-                <RuleList label="Allowed" values={rule.allowed} />
-                <RuleList label="Required" values={rule.required} />
-                <RuleList label="Denied" values={rule.denied} />
+                <RuleList label="Allowed" values={toRuleValues(rule.allowed)} />
+                <RuleList label="Required" values={toRuleValues(rule.required)} />
+                <RuleList label="Denied" values={toRuleValues(rule.denied)} />
               </div>
             ))}
           </DetailGroup>

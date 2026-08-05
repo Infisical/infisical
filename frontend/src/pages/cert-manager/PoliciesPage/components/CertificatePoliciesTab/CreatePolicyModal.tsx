@@ -2,7 +2,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Info, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -16,6 +16,7 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  IconButton,
   Input,
   Select,
   SelectContent,
@@ -30,7 +31,10 @@ import {
   StepperList,
   StepperStep,
   Switch,
-  TextArea
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject, useSubscription } from "@app/context";
 import {
@@ -63,11 +67,20 @@ import {
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
-import { PolicyFormData, policySchema } from "./shared";
+import {
+  formatDomainComponentSequence,
+  isValidDomainComponentSequence,
+  parseDomainComponentSequence,
+  PolicyFormData,
+  policySchema
+} from "./shared";
 
 export type FormData = PolicyFormData;
 
+type AttributeRow = NonNullable<FormData["attributes"]>[number];
 type AttributeTransform = NonNullable<TCertificatePolicyRule["subject"]>[0];
+type DomainComponentTransform = Extract<AttributeTransform, { type: "domain_component" }>;
+type SingleValuedAttributeTransform = Exclude<AttributeTransform, DomainComponentTransform>;
 type SanTransform = NonNullable<TCertificatePolicyRule["sans"]>[0];
 type KeyUsagesTransform = TCertificatePolicyRule["keyUsages"];
 type ExtendedKeyUsagesTransform = TCertificatePolicyRule["extendedKeyUsages"];
@@ -111,6 +124,15 @@ const SAN_INCLUDE_LABELS: Record<(typeof SAN_INCLUDE_OPTIONS)[number], string> =
   mandatory: "Require",
   optional: "Allow",
   prohibit: "Deny"
+};
+
+const SUBJECT_INCLUDE_RULE_KEYS: Record<
+  CertSubjectAttributeInclude,
+  "required" | "allowed" | "denied"
+> = {
+  [CertSubjectAttributeInclude.REQUIRED]: "required",
+  [CertSubjectAttributeInclude.OPTIONAL]: "allowed",
+  [CertSubjectAttributeInclude.PROHIBIT]: "denied"
 };
 
 const USAGE_POLICY_OPTIONS = [
@@ -193,6 +215,34 @@ const STEPS = [
       "By default, validity and CA capability are unrestricted. Enable a restriction to cap the maximum validity period or control whether certificates can act as a CA, including path length limits."
   }
 ] as const;
+
+const DomainComponentHelp = () => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <IconButton variant="ghost" size="xs" aria-label="Domain component format">
+        <Info className="size-4" />
+      </IconButton>
+    </TooltipTrigger>
+    <TooltipContent side="top" align="start" className="max-w-80 py-2">
+      <p>
+        Domain components form an ordered chain. Enter the components most specific first, separated
+        by commas.
+      </p>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+        <dt className="text-muted">Value</dt>
+        <dd className="font-mono">corp,example,com</dd>
+        <dt className="text-muted">Matches</dt>
+        <dd className="font-mono">DC=corp,DC=example,DC=com</dd>
+        <dt className="text-muted">Rejects</dt>
+        <dd className="font-mono">DC=com,DC=example,DC=corp</dd>
+      </dl>
+      <p className="mt-2">
+        A <span className="font-mono">*</span> matches a single component:{" "}
+        <span className="font-mono">*,internal,example,com</span>.
+      </p>
+    </TooltipContent>
+  </Tooltip>
+);
 
 const DurationInput = ({
   field,
@@ -326,39 +376,30 @@ export const CreatePolicyModal = ({
     if (step > 0) setStep((s) => s - 1);
   };
 
+  const toAttributeRows = (
+    type: CertSubjectAttributeType,
+    values: Array<string | string[]> | undefined,
+    include: CertSubjectAttributeInclude
+  ): AttributeRow[] =>
+    Array.isArray(values)
+      ? values.map((value) => ({
+          type,
+          include,
+          value: [Array.isArray(value) ? formatDomainComponentSequence(value) : value]
+        }))
+      : [];
+
   const convertApiToUiFormat = (policyData: TCertificatePolicy): FormData => {
-    const attributes: FormData["attributes"] = [];
-    if (policyData.subject && Array.isArray(policyData.subject)) {
-      policyData.subject.forEach((subj) => {
-        if (subj.required && Array.isArray(subj.required)) {
-          subj.required.forEach((requiredValue) => {
-            attributes.push({
-              type: subj.type as CertSubjectAttributeType,
-              include: CertSubjectAttributeInclude.REQUIRED,
-              value: [requiredValue]
-            });
-          });
-        }
-        if (subj.allowed && Array.isArray(subj.allowed)) {
-          subj.allowed.forEach((allowedValue) => {
-            attributes.push({
-              type: subj.type as CertSubjectAttributeType,
-              include: CertSubjectAttributeInclude.OPTIONAL,
-              value: [allowedValue]
-            });
-          });
-        }
-        if (subj.denied && Array.isArray(subj.denied)) {
-          subj.denied.forEach((deniedValue) => {
-            attributes.push({
-              type: subj.type as CertSubjectAttributeType,
-              include: CertSubjectAttributeInclude.PROHIBIT,
-              value: [deniedValue]
-            });
-          });
-        }
-      });
-    }
+    const attributes: FormData["attributes"] = Array.isArray(policyData.subject)
+      ? policyData.subject.flatMap((subj) => {
+          const type = subj.type as CertSubjectAttributeType;
+          return [
+            ...toAttributeRows(type, subj.required, CertSubjectAttributeInclude.REQUIRED),
+            ...toAttributeRows(type, subj.allowed, CertSubjectAttributeInclude.OPTIONAL),
+            ...toAttributeRows(type, subj.denied, CertSubjectAttributeInclude.PROHIBIT)
+          ];
+        })
+      : [];
 
     const subjectAlternativeNames: FormData["subjectAlternativeNames"] = [];
     if (policyData.sans && Array.isArray(policyData.sans)) {
@@ -586,8 +627,24 @@ export const CreatePolicyModal = ({
     }
   };
 
+  const mergeRuleValues = <TValue extends string | string[]>(
+    existing: TValue[] | undefined,
+    incoming: TValue[] | undefined
+  ): TValue[] => {
+    const merged = new Map<string, TValue>();
+    [...(existing || []), ...(incoming || [])].forEach((value) => {
+      merged.set(Array.isArray(value) ? formatDomainComponentSequence(value) : value, value);
+    });
+    return Array.from(merged.values());
+  };
+
   const consolidateByType = <
-    T extends { type: string; allowed?: string[]; required?: string[]; denied?: string[] }
+    T extends {
+      type: string;
+      allowed?: Array<string | string[]>;
+      required?: Array<string | string[]>;
+      denied?: Array<string | string[]>;
+    }
   >(
     items: T[]
   ): T[] => {
@@ -598,9 +655,9 @@ export const CreatePolicyModal = ({
       if (existing) {
         const mergedItem = {
           ...item,
-          allowed: [...new Set([...(existing.allowed || []), ...(item.allowed || [])])],
-          required: [...new Set([...(existing.required || []), ...(item.required || [])])],
-          denied: [...new Set([...(existing.denied || []), ...(item.denied || [])])]
+          allowed: mergeRuleValues(existing.allowed, item.allowed),
+          required: mergeRuleValues(existing.required, item.required),
+          denied: mergeRuleValues(existing.denied, item.denied)
         } as T;
 
         if (mergedItem.allowed?.length === 0) delete mergedItem.allowed;
@@ -618,18 +675,25 @@ export const CreatePolicyModal = ({
 
   const transformToApiFormat = (data: FormData) => {
     const subjectRaw =
-      data.attributes?.map((attr) => {
-        const result: AttributeTransform = { type: attr.type };
-        if (attr.value && attr.value.length > 0) {
-          if (attr.include === CertSubjectAttributeInclude.REQUIRED) {
-            result.required = attr.value;
-          } else if (attr.include === CertSubjectAttributeInclude.OPTIONAL) {
-            result.allowed = attr.value;
-          } else if (attr.include === CertSubjectAttributeInclude.PROHIBIT) {
-            result.denied = attr.value;
-          }
+      data.attributes?.map((attr): AttributeTransform => {
+        const ruleKey = SUBJECT_INCLUDE_RULE_KEYS[attr.include];
+
+        if (attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT) {
+          const sequences = (attr.value || [])
+            .map(parseDomainComponentSequence)
+            .filter((sequence) => sequence.length > 0);
+
+          return {
+            type: attr.type,
+            ...(sequences.length > 0 ? { [ruleKey]: sequences } : {})
+          } as DomainComponentTransform;
         }
-        return result;
+
+        const values = attr.value || [];
+        return {
+          type: attr.type,
+          ...(values.length > 0 ? { [ruleKey]: values } : {})
+        } as SingleValuedAttributeTransform;
       }) || [];
 
     const sansRaw =
@@ -728,6 +792,22 @@ export const CreatePolicyModal = ({
     if (hasEmptyAttributeValues || hasEmptySanValues) {
       createNotification({
         text: "All configured subject or SAN values must be non-empty. Use wildcards (*) if needed.",
+        type: "error"
+      });
+      return;
+    }
+
+    const hasInvalidDomainComponentSequence =
+      restrictSubject &&
+      data.attributes?.some(
+        (attr) =>
+          attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT &&
+          attr.value?.some((value) => !isValidDomainComponentSequence(value))
+      );
+
+    if (hasInvalidDomainComponentSequence) {
+      createNotification({
+        text: "Every domain component in a sequence must be non-empty, for example corp,example,com.",
         type: "error"
       });
       return;
@@ -1105,52 +1185,71 @@ export const CreatePolicyModal = ({
                       )}
                       {watchedAttributes.map((attr, index) => (
                         // eslint-disable-next-line react/no-array-index-key
-                        <div key={`attr-${index}`} className="flex items-start gap-2">
-                          <Select
-                            value={attr.type}
-                            onValueChange={(value) => {
-                              const next = [...watchedAttributes];
-                              next[index] = { ...attr, type: value as CertSubjectAttributeType };
-                              setValue("attributes", next);
-                              markCustomPreset();
-                            }}
-                          >
-                            <SelectTrigger className="w-52">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {ATTRIBUTE_TYPE_LABELS[type]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={attr.include}
-                            onValueChange={(value) => {
-                              const next = [...watchedAttributes];
-                              next[index] = {
-                                ...attr,
-                                include: value as (typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number]
-                              };
-                              setValue("attributes", next);
-                              markCustomPreset();
-                            }}
-                          >
-                            <SelectTrigger className="w-28">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent position="popper">
-                              {SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {SUBJECT_ATTRIBUTE_LABELS[type]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div key={`attr-${index}`} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={attr.type}
+                              onValueChange={(value) => {
+                                const next = [...watchedAttributes];
+                                next[index] = { ...attr, type: value as CertSubjectAttributeType };
+                                setValue("attributes", next);
+                                markCustomPreset();
+                              }}
+                            >
+                              <SelectTrigger className="min-w-0 flex-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {SUBJECT_ATTRIBUTE_TYPE_OPTIONS.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {ATTRIBUTE_TYPE_LABELS[type]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={attr.include}
+                              onValueChange={(value) => {
+                                const next = [...watchedAttributes];
+                                next[index] = {
+                                  ...attr,
+                                  include:
+                                    value as (typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number]
+                                };
+                                setValue("attributes", next);
+                                markCustomPreset();
+                              }}
+                            >
+                              <SelectTrigger className="w-32 shrink-0">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent position="popper">
+                                {SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {SUBJECT_ATTRIBUTE_LABELS[type]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT && (
+                              <DomainComponentHelp />
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0"
+                              onClick={() => removeAttribute(index)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
                           <Input
-                            placeholder="Pattern/Value (use * for wildcards)"
+                            placeholder={
+                              attr.type === CertSubjectAttributeType.DOMAIN_COMPONENT
+                                ? "corp,example,com"
+                                : "Pattern/Value (use * for wildcards)"
+                            }
                             value={attr.value?.[0] || ""}
                             onChange={(e) => {
                               const next = [...watchedAttributes];
@@ -1161,16 +1260,8 @@ export const CreatePolicyModal = ({
                               setValue("attributes", next);
                               markCustomPreset();
                             }}
-                            className="flex-1"
+                            className="w-full"
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttribute(index)}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
                         </div>
                       ))}
                       <Button type="button" variant="outline" size="sm" onClick={addAttribute}>

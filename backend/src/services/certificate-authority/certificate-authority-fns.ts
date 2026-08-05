@@ -50,18 +50,18 @@ export const assertCaInProfileProject = (ca: { projectId: string }, profile: { p
 export const createDistinguishedName = (parts: TDNParts) => {
   // Build JSON array for x509.Name - the library handles all RFC 4514 escaping
   const jsonName: Array<{ [type: string]: string[] }> = [];
+
+  if (parts.domainComponents) {
+    for (const dc of [...parts.domainComponents].reverse()) {
+      if (dc) jsonName.push({ DC: [dc] });
+    }
+  }
   if (parts.country) jsonName.push({ C: [parts.country] });
   if (parts.organization) jsonName.push({ O: [parts.organization] });
   if (parts.ou) jsonName.push({ OU: [parts.ou] });
   if (parts.province) jsonName.push({ ST: [parts.province] });
   if (parts.commonName) jsonName.push({ CN: [parts.commonName] });
   if (parts.locality) jsonName.push({ L: [parts.locality] });
-  // DC is multi-valued and ordered; emit one RDN per value in the given order (after CN, AD-style).
-  if (parts.domainComponents) {
-    for (const dc of parts.domainComponents) {
-      if (dc) jsonName.push({ DC: [dc] });
-    }
-  }
 
   // Create Name object from JSON and convert to properly escaped string
   const name = new x509.Name(jsonName);
@@ -78,13 +78,38 @@ const getNameField = (name: x509.Name, field: string): string | undefined => {
   return values.length > 0 ? values[values.length - 1] : undefined;
 };
 
+const DOMAIN_COMPONENT_RDN_KEYS = new Set(["DC", "0.9.2342.19200300.100.1.25"]);
+
+/** Reads a DC chain in display order, whichever direction the DN encoded it in. */
+const extractDomainComponentsInDisplayOrder = (name: x509.Name): string[] | undefined => {
+  const rdns = name.toJSON();
+  const domainComponents: string[] = [];
+  let lastDomainComponentIndex = -1;
+  let lastOtherAttributeIndex = -1;
+
+  rdns.forEach((rdn, index) => {
+    const isDomainComponent = Object.keys(rdn).some((key) => DOMAIN_COMPONENT_RDN_KEYS.has(key));
+    if (isDomainComponent) {
+      lastDomainComponentIndex = index;
+      Object.entries(rdn).forEach(([key, values]) => {
+        if (DOMAIN_COMPONENT_RDN_KEYS.has(key)) domainComponents.push(...values);
+      });
+    } else {
+      lastOtherAttributeIndex = index;
+    }
+  });
+
+  if (domainComponents.length === 0) return undefined;
+
+  const isEncodedRootFirst = lastOtherAttributeIndex === -1 || lastDomainComponentIndex < lastOtherAttributeIndex;
+  return isEncodedRootFirst ? domainComponents.reverse() : domainComponents;
+};
+
 /**
  * Extract DN parts directly from an x509 Name object.
  * This is the preferred method as it uses the library's built-in RFC 4514 parsing.
  */
 export const extractDnParts = (name: x509.Name): TDNParts => {
-  // DC is multi-valued (ordered); keep all values rather than the last-wins single-value helper.
-  const domainComponents = name.getField("DC");
   return {
     country: getNameField(name, "C"),
     organization: getNameField(name, "O"),
@@ -92,7 +117,7 @@ export const extractDnParts = (name: x509.Name): TDNParts => {
     province: getNameField(name, "ST"),
     commonName: getNameField(name, "CN"),
     locality: getNameField(name, "L"),
-    domainComponents: domainComponents.length > 0 ? domainComponents : undefined
+    domainComponents: extractDomainComponentsInDisplayOrder(name)
   };
 };
 
