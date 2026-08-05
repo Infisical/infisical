@@ -49,6 +49,10 @@ Redis accounts let you manage access to your Redis databases. Users connect thro
 
     Type `quit` or `exit` to end the session.
 
+    Two differences from `redis-cli`:
+    - Long replies are shortened. The first 256KB is shown, followed by a truncation notice. A reply over 8MB closes the session, so use the CLI for data that size.
+    - Commands that stream results or change how the connection behaves (`SUBSCRIBE`, `PSUBSCRIBE`, `MONITOR`, `SELECT`, `CLIENT`, `HELLO`) are not available. Use the CLI for those.
+
   </Tab>
   <Tab title="CLI">
     The CLI starts a local proxy that you connect to with your preferred Redis client.

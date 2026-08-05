@@ -10,6 +10,7 @@ import {
   TSessionHandlerResult
 } from "../pam-web-access-types";
 import { escapeTerminalControlBytes, formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
+import { createReplyBudget, TReplyBudget } from "./pam-redis-reply-budget";
 import { RedisClientMessageSchema, RedisClientMessageType } from "./pam-redis-ws-types";
 
 const COMMAND_TIMEOUT_MS = 30_000;
@@ -33,6 +34,9 @@ const BLOCKED_COMMANDS = new Set([
 
 const MAX_REPLY_BYTES = 256 * 1024;
 
+// a reply costs ~3x its size to receive, and one user may hold several sessions
+const MAX_WIRE_BYTES = 8 * 1024 * 1024;
+
 const CONNECT_TIMEOUT_MS = 15_000;
 
 const callWithDeadline = async (redisClient: Redis, command: string, args: string[]): Promise<unknown> => {
@@ -52,7 +56,11 @@ const callWithDeadline = async (redisClient: Redis, command: string, args: strin
   }
 };
 
-const executeCommand = async (redisClient: Redis, input: string): Promise<{ output: string; shouldClose: boolean }> => {
+const executeCommand = async (
+  redisClient: Redis,
+  budget: TReplyBudget,
+  input: string
+): Promise<{ output: string; shouldClose: boolean }> => {
   const trimmed = input.trim();
 
   if (trimmed.length === 0) {
@@ -79,6 +87,7 @@ const executeCommand = async (redisClient: Redis, input: string): Promise<{ outp
   }
 
   try {
+    budget.arm();
     const result = await callWithDeadline(redisClient, command, args);
     const formatted = formatRedisReply(result);
     if (formatted.length > MAX_REPLY_BYTES) {
@@ -89,6 +98,7 @@ const executeCommand = async (redisClient: Redis, input: string): Promise<{ outp
     }
     return { output: `${formatted}\n`, shouldClose: false };
   } catch (err) {
+    if (budget.exceeded()) return { output: "", shouldClose: false };
     const message = err instanceof Error ? err.message : String(err);
     return { output: `(error) ${escapeTerminalControlBytes(message)}\n`, shouldClose: false };
   }
@@ -103,6 +113,8 @@ export const handleRedisSession = async (
   const connectionDetails = params.connectionDetails as { host: string; port: number };
   const credentials = params.credentials as { username?: string };
 
+  const budget = createReplyBudget(MAX_WIRE_BYTES);
+
   const redisClient = new Redis({
     host: "localhost",
     port: relayPort,
@@ -110,6 +122,8 @@ export const handleRedisSession = async (
     reconnectOnError: () => false,
     retryStrategy: () => null
   });
+
+  budget.attach(redisClient);
 
   try {
     let connectTimer: NodeJS.Timeout | undefined;
@@ -175,7 +189,7 @@ export const handleRedisSession = async (
         }
 
         if (message.type === RedisClientMessageType.Input) {
-          const result = await executeCommand(redisClient, message.data);
+          const result = await executeCommand(redisClient, budget, message.data);
 
           if (result.shouldClose) {
             sendSessionEnd(SessionEndReason.UserQuit);
@@ -202,15 +216,17 @@ export const handleRedisSession = async (
   });
 
   // Tunnel drop detection
+  const endReason = () => (budget.exceeded() ? SessionEndReason.ReplyTooLarge : resolveEndReason(isNearSessionExpiry));
+
   redisClient.on("error", (err) => {
     logger.error(err, "Redis connection error");
-    sendSessionEnd(resolveEndReason(isNearSessionExpiry));
+    sendSessionEnd(endReason());
     onCleanup();
     socket.close();
   });
 
   redisClient.on("close", () => {
-    sendSessionEnd(resolveEndReason(isNearSessionExpiry));
+    sendSessionEnd(endReason());
     onCleanup();
     socket.close();
   });

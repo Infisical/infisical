@@ -11,7 +11,8 @@ export enum SessionEndReason {
   SetupFailed = "Failed to establish connection",
   IdleTimeout = "Session closed due to inactivity",
   SessionLimitReached = "Maximum concurrent sessions reached",
-  ApprovalRevoked = "Your approved access is no longer active"
+  ApprovalRevoked = "Your approved access is no longer active",
+  ReplyTooLarge = "The reply was too large to read safely. Use the Infisical CLI for data this size"
 }
 
 export enum TerminalServerMessageType {
