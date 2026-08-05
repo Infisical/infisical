@@ -122,7 +122,7 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<
     TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+    "getPlan" | "updateSubscriptionOrgMemberCount" | "cancelOrgSubscription"
   >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -672,23 +672,16 @@ export const orgServiceFactory = ({
   const createOrganization = async (
     {
       userId,
-      userEmail,
       orgName
     }: {
       userId?: string;
       orgName: string;
-      userEmail?: string | null;
     },
     trx?: Knex
   ) => {
-    const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
-
     const createOrg = async (tx: Knex) => {
       // akhilmhdh: for now this is auto created. in future we can input from user and for previous users just modifiy
-      const org = await orgDAL.create(
-        { name: orgName, customerId, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) },
-        tx
-      );
+      const org = await orgDAL.create({ name: orgName, slug: slugify(`${orgName}-${alphaNumericNanoId(4)}`) }, tx);
       if (userId) {
         const membership = await orgDAL.createMembership(
           {
@@ -804,10 +797,6 @@ export const orgServiceFactory = ({
 
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
 
-      if (deletedOrg.customerId) {
-        await licenseService.removeOrgCustomer(deletedOrg.customerId);
-      }
-
       // Generate new tokens without the organization ID present
       const user = await userDAL.findById(userId, tx);
       const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
@@ -830,6 +819,10 @@ export const orgServiceFactory = ({
         }
       };
     });
+
+    // After commit: the org is gone, so stop it billing. Never throws, so a License Server outage can't
+    // fail a deletion that already succeeded, and it stays out of the transaction.
+    await licenseService.cancelOrgSubscription(orgId);
 
     return response;
   };
