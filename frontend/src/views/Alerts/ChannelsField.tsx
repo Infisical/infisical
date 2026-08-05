@@ -26,10 +26,9 @@ type Props = {
   resourceId?: string | null;
 };
 
-const buildNewChannel = (channelType: AlertChannelType): TChannelForm => ({
+const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelForm => ({
   channelType,
-  // The name input was dropped from the design; new channels are named after their type.
-  name: ALERT_CHANNEL_TYPE_LABELS[channelType],
+  name,
   enabled: true,
   recipients: [] as { principalType: AlertPrincipalType; principalId: string }[],
   webhookUrl: "",
@@ -41,10 +40,23 @@ const buildNewChannel = (channelType: AlertChannelType): TChannelForm => ({
 export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) => {
   const {
     control,
+    getValues,
     formState: { errors }
   } = useFormContext<TAlertForm>();
   const { fields, append, remove } = useFieldArray({ control, name: "channels" });
   const rootError = errors.channels?.message || errors.channels?.root?.message;
+
+  // The name input was dropped from the design; new channels are named after their type,
+  // suffixed to stay unique so multiples remain distinguishable (e.g. in Terraform).
+  const appendChannel = (channelType: AlertChannelType) => {
+    const takenNames = new Set((getValues("channels") ?? []).map((channel) => channel.name));
+    const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
+    let name = baseName;
+    for (let suffix = 2; takenNames.has(name); suffix += 1) {
+      name = `${baseName} ${suffix}`;
+    }
+    append(buildNewChannel(channelType, name));
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -71,7 +83,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
             {Object.values(AlertChannelType).map((type) => {
               const Icon = getChannelIcon(type);
               return (
-                <DropdownMenuItem key={type} onClick={() => append(buildNewChannel(type))}>
+                <DropdownMenuItem key={type} onClick={() => appendChannel(type)}>
                   <Icon className="size-4" />
                   {ALERT_CHANNEL_TYPE_LABELS[type]}
                 </DropdownMenuItem>

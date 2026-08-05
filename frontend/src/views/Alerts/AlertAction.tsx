@@ -66,7 +66,9 @@ const formatConditionSummary = (alert: TAlert): string => {
 
 const formatChannelSummary = (alert: TAlert): string =>
   Object.values(AlertChannelType)
-    .filter((type) => alert.channels.some((channel) => channel.channelType === type))
+    .filter((type) =>
+      alert.channels.some((channel) => channel.channelType === type && channel.enabled)
+    )
     .map((type) => ALERT_CHANNEL_TYPE_LABELS[type])
     .join(", ");
 
@@ -111,6 +113,8 @@ export const AlertAction = ({
     try {
       await deleteAlert.mutateAsync({ alertId: existingAlert.id });
       createNotification({ text: "Successfully deleted alert", type: "success" });
+      // Programmatic close bypasses the dialog's onOpenChange reset.
+      setDeleteConfirmation("");
       handlePopUpToggle("deleteAlert", false);
     } catch {
       // MutationCache reports request errors globally; keep the dialog open.
@@ -174,7 +178,9 @@ export const AlertAction = ({
           </div>
           {!readOnly &&
             renderPermissionGate((isAllowed) => (
-              <>
+              // Single element (not a fragment): the denied-state gate wraps this in a
+              // tooltip trigger via asChild, which needs one ref-accepting child.
+              <div>
                 <div className="flex items-center justify-between border-t border-border px-4 py-3">
                   <Label htmlFor="alert-quick-enable" className="cursor-pointer font-normal">
                     Enabled
@@ -212,7 +218,7 @@ export const AlertAction = ({
                     Remove Alert
                   </Button>
                 </div>
-              </>
+              </div>
             ))}
         </PopoverContent>
       </Popover>
