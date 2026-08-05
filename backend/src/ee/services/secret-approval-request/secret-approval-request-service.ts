@@ -1272,7 +1272,15 @@ export const secretApprovalRequestServiceFactory = ({
             username: secretApprovalRequest.committerUser?.username ?? ""
           }
         }
-      : undefined;
+      : secretApprovalRequest.committerIdentity
+        ? {
+            type: ActorType.IDENTITY,
+            metadata: {
+              identityId: secretApprovalRequest.committerIdentity.identityId,
+              name: secretApprovalRequest.committerIdentity.name
+            }
+          }
+        : undefined;
 
     const secretMutationEvents: Event[] = [];
 
