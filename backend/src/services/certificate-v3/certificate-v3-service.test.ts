@@ -696,6 +696,135 @@ describe("CertificateV3Service", () => {
       });
     });
 
+    // Exercises the self-signed issuance branch (real key generation), which passes a different
+    // certificate record (certificateData) into the same permission subject as the CA branch.
+    describe("read-private-key permission scoping (self-signed issuance)", () => {
+      const profileId = "self-signed-profile-123";
+
+      const mockProfile = {
+        id: profileId,
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.SELF_SIGNED,
+        caId: null,
+        certificatePolicyId: "policy-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        slug: "self-signed-profile",
+        description: "Self-signed profile",
+        apiConfigId: "api-config-legacy"
+      };
+
+      const mockPolicy = {
+        id: "policy-123",
+        name: "Test Policy",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        projectId: "project-123",
+        description: "Test policy",
+        signatureAlgorithm: { defaultAlgorithm: "RSA-SHA256" },
+        keyAlgorithm: { defaultKeyType: "RSA_2048" },
+        attributes: [
+          {
+            type: CertSubjectAttributeType.COMMON_NAME,
+            include: CertIncludeType.OPTIONAL,
+            value: ["example.com"]
+          }
+        ]
+      };
+
+      const mockCertRecord = {
+        id: "cert-123",
+        serialNumber: "123456",
+        status: "ACTIVE",
+        commonName: "test.example.com",
+        friendlyName: "Test Cert",
+        altNames: "",
+        projectId: "project-123",
+        caId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        notBefore: new Date(),
+        notAfter: new Date(),
+        source: "issued",
+        keySource: "infisical"
+      };
+
+      const grantPermission = (rules: any) => {
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
+          permission: createMongoAbility<ProjectPermissionSet>(rules)
+        });
+      };
+
+      beforeEach(() => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+        vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        });
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy as any);
+        vi.mocked(mockCertificateDAL.create).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord as any);
+        vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(undefined as any)
+        );
+      });
+
+      it("returns the private key when read-private-key is granted unconditionally", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          { action: ProjectPermissionCertificateActions.ReadPrivateKey, subject: ProjectPermissionSub.Certificates }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
+
+      it("omits the private key when the read-private-key condition does not match the issued certificate", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { commonName: "not-the-issued-name.invalid" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeUndefined();
+      });
+
+      it("returns the private key when the read-private-key condition matches the issued certificate", async () => {
+        grantPermission([
+          { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates,
+            conditions: { commonName: "test.example.com" }
+          }
+        ]);
+
+        const result = await service.issueCertificateFromProfile({
+          profileId,
+          certificateRequest: mockCertificateRequest,
+          ...mockActor
+        });
+
+        expect(result.privateKey).toBeDefined();
+      });
+    });
+
     it("should correctly map camelCase key usages to snake_case before validation", async () => {
       const profileId = "profile-123";
       const mockProfile = {
