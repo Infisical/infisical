@@ -29,7 +29,7 @@ import FileSaver from "file-saver";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification, type NotificationType } from "@app/components/notifications";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
@@ -77,7 +77,6 @@ import {
   useCreateFolder,
   useCreateSecretBatch,
   useDeleteSecretBatch,
-  useMoveSecrets,
   useUpdateSecretBatch
 } from "@app/hooks/api";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
@@ -92,8 +91,15 @@ import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
-import { ApiErrorTypes, SecretType, TApiErrors, WsTag } from "@app/hooks/api/types";
+import {
+  ApiErrorTypes,
+  SecretType,
+  SecretV3RawSanitized,
+  TApiErrors,
+  WsTag
+} from "@app/hooks/api/types";
 import { SecretSearchInput } from "@app/pages/secret-manager/OverviewPage/components/SecretSearchInput";
+import { MoveSecretsModal } from "@app/pages/secret-manager/OverviewPage/components/SelectionPanel/components";
 
 import {
   PendingFolderCreate,
@@ -109,7 +115,6 @@ import { ReplicateFolderFromBoard } from "./ReplicateFolderFromBoard/ReplicateFo
 import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
-import { MoveSecretsModal } from "./MoveSecretsModal";
 import { VaultSecretImportModal } from "./VaultSecretImportModal";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
@@ -190,7 +195,6 @@ export const ActionBar = ({
   const { openPopUp } = usePopUpAction();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteBatchSecretV3 } = useDeleteSecretBatch();
-  const { mutateAsync: moveSecrets } = useMoveSecrets();
   const { mutateAsync: updateSecretBatch, isPending: isUpdatingSecrets } = useUpdateSecretBatch({
     options: { onSuccess: undefined }
   });
@@ -203,6 +207,18 @@ export const ActionBar = ({
 
   const selectedSecrets = useSelectedSecrets();
   const { reset: resetSelectedSecret } = useSelectedSecretActions();
+  const selectedSecretsForMove = useMemo(
+    () =>
+      Object.values(selectedSecrets).reduce<Record<string, Record<string, SecretV3RawSanitized>>>(
+        (accumulator, secret) => {
+          accumulator[secret.key] = { [environment]: secret };
+          return accumulator;
+        },
+        {}
+      ),
+    [environment, selectedSecrets]
+  );
+  const currentEnvironment = currentProject?.environments.find(({ slug }) => slug === environment);
   const isManagedSecretSelected = Object.values(selectedSecrets).some(
     (secret) => secret.isRotatedSecret || secret.isHoneyTokenSecret
   );
@@ -348,55 +364,6 @@ export const ActionBar = ({
       type: "success",
       text: "Successfully deleted secrets"
     });
-  };
-
-  const handleSecretsMove = async ({
-    destinationEnvironment,
-    destinationSecretPath,
-    shouldOverwrite
-  }: {
-    destinationEnvironment: string;
-    destinationSecretPath: string;
-    shouldOverwrite: boolean;
-  }) => {
-    try {
-      const secretsToMove = Object.values(selectedSecrets);
-      const { isDestinationUpdated, isSourceUpdated } = await moveSecrets({
-        shouldOverwrite,
-        sourceEnvironment: environment,
-        sourceSecretPath: secretPath,
-        destinationEnvironment,
-        destinationSecretPath,
-        projectId,
-        projectSlug: currentProject.slug,
-        secretIds: secretsToMove.map((sec) => sec.id)
-      });
-
-      let notificationMessage = "";
-      let notificationType: NotificationType = "info";
-
-      if (isDestinationUpdated && isSourceUpdated) {
-        notificationMessage = "Successfully moved selected secrets";
-        notificationType = "success";
-      } else if (isDestinationUpdated) {
-        notificationMessage =
-          "Successfully created secrets in destination. A secret approval request has been generated for the source.";
-      } else if (isSourceUpdated) {
-        notificationMessage = "A secret approval request has been generated in the destination";
-      } else {
-        notificationMessage =
-          "A secret approval request has been generated in both the source and the destination.";
-      }
-
-      createNotification({
-        type: notificationType,
-        text: notificationMessage
-      });
-
-      resetSelectedSecret();
-    } catch (error) {
-      console.error(error);
-    }
   };
 
   // Replicate Secrets Logic
@@ -1269,15 +1236,21 @@ export const ActionBar = ({
           )
         }
       />
-      <MoveSecretsModal
-        popUp={popUp}
-        handlePopUpToggle={handlePopUpToggle}
-        onMoveApproved={handleSecretsMove}
-        secretsToMove={Object.values(selectedSecrets).map((s) => ({ id: s.id, key: s.key }))}
-        environment={environment}
-        secretPath={secretPath}
-        projectId={projectId}
-      />
+      {currentEnvironment && (
+        <MoveSecretsModal
+          isOpen={popUp.moveSecrets.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("moveSecrets", isOpen)}
+          environments={currentProject.environments}
+          visibleEnvs={[currentEnvironment]}
+          projectId={projectId}
+          projectSlug={currentProject.slug}
+          sourceSecretPath={secretPath}
+          secrets={selectedSecretsForMove}
+          rotations={{}}
+          folders={{}}
+          onComplete={resetSelectedSecret}
+        />
+      )}
       <ReplicateFolderFromBoard
         isOpen={popUp.replicateFolder.isOpen}
         onToggle={(isOpen) => handlePopUpToggle("replicateFolder", isOpen)}
