@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SecretsUsageInsightsSchema } from "@app/ee/services/product-insights/product-insights-schemas";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -29,6 +30,15 @@ export const registerProductInsightsRouter = async (server: FastifyZodProvider) 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE,
+          metadata: usageInsights
+        }
       });
 
       return { usageInsights };

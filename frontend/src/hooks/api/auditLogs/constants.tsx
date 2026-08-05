@@ -291,6 +291,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION]: "View Secrets Duplication Insights",
   [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS]:
     "View Secrets Management Resource Counts Insights",
+  [EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE]: "View Secrets Management Usage Insights",
 
   [EventType.CREATE_PROJECT_ROLE]: "Create Project Role",
   [EventType.UPDATE_PROJECT_ROLE]: "Update Project Role",

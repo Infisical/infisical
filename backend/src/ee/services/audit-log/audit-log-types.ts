@@ -681,6 +681,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
 
   CREATE_AUDIT_REPORT = "create-audit-report",
   GET_AUDIT_REPORTS = "get-audit-reports",
@@ -5520,6 +5521,15 @@ interface ViewSecretManagementInsightsCountsEvent {
   };
 }
 
+interface ViewSecretManagementInsightsUsageEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE;
+  metadata: {
+    activeLeases: number;
+    users: number;
+    identities: number;
+  };
+}
+
 interface CreateAuditReportEvent {
   type: EventType.CREATE_AUDIT_REPORT;
   metadata: {
@@ -7470,6 +7480,7 @@ export type Event =
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
+  | ViewSecretManagementInsightsUsageEvent
   | CreateAuditReportEvent
   | GetAuditReportsEvent
   | GetAuditReportEvent
