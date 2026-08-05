@@ -1,3 +1,5 @@
+import { Redis } from "ioredis";
+
 import { logger } from "@app/lib/logger";
 
 import { parseClientMessage, resolveEndReason } from "../pam-web-access-fns";
@@ -8,16 +10,13 @@ import {
   TSessionHandlerResult
 } from "../pam-web-access-types";
 import { escapeTerminalControlBytes, formatRedisReply, tokenizeRedisInput } from "./pam-redis-formatter";
-import { connectRespClient, TRespClient } from "./pam-redis-resp";
 import { RedisClientMessageSchema, RedisClientMessageType } from "./pam-redis-ws-types";
 
 const COMMAND_TIMEOUT_MS = 30_000;
 
-const CONNECT_TIMEOUT_MS = 15_000;
+const CLEANUP_QUIT_TIMEOUT_MS = 2_000;
 
-const MAX_REPLY_BYTES = 256 * 1024;
-
-// these turn the connection into something other than one reply per command
+// these put the connection into a mode ioredis cannot follow
 const BLOCKED_COMMANDS = new Set([
   "subscribe",
   "unsubscribe",
@@ -27,13 +26,33 @@ const BLOCKED_COMMANDS = new Set([
   "sunsubscribe",
   "monitor",
   "hello",
+  "reset",
+  "select",
   "client"
 ]);
 
-const executeCommand = async (
-  client: TRespClient,
-  input: string
-): Promise<{ output: string; shouldClose: boolean }> => {
+const MAX_REPLY_BYTES = 256 * 1024;
+
+const CONNECT_TIMEOUT_MS = 15_000;
+
+const callWithDeadline = async (redisClient: Redis, command: string, args: string[]): Promise<unknown> => {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      redisClient.call(command, ...args),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`command timed out after ${COMMAND_TIMEOUT_MS / 1000}s`)),
+          COMMAND_TIMEOUT_MS
+        );
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+const executeCommand = async (redisClient: Redis, input: string): Promise<{ output: string; shouldClose: boolean }> => {
   const trimmed = input.trim();
 
   if (trimmed.length === 0) {
@@ -60,13 +79,15 @@ const executeCommand = async (
   }
 
   try {
-    const { reply, truncated } = await client.command(command, args, {
-      deadlineMs: COMMAND_TIMEOUT_MS,
-      budgetBytes: MAX_REPLY_BYTES
-    });
-    const formatted = formatRedisReply(reply);
-    const notice = truncated ? `\n(reply truncated at ${MAX_REPLY_BYTES / 1024}KB)` : "";
-    return { output: `${formatted}${notice}\n`, shouldClose: false };
+    const result = await callWithDeadline(redisClient, command, args);
+    const formatted = formatRedisReply(result);
+    if (formatted.length > MAX_REPLY_BYTES) {
+      return {
+        output: `${formatted.slice(0, MAX_REPLY_BYTES)}\n(reply truncated at ${MAX_REPLY_BYTES / 1024}KB)\n`,
+        shouldClose: false
+      };
+    }
+    return { output: `${formatted}\n`, shouldClose: false };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { output: `(error) ${escapeTerminalControlBytes(message)}\n`, shouldClose: false };
@@ -82,7 +103,37 @@ export const handleRedisSession = async (
   const connectionDetails = params.connectionDetails as { host: string; port: number };
   const credentials = params.credentials as { username?: string };
 
-  const client = await connectRespClient({ port: relayPort, connectTimeoutMs: CONNECT_TIMEOUT_MS });
+  const redisClient = new Redis({
+    host: "localhost",
+    port: relayPort,
+    maxRetriesPerRequest: 0,
+    reconnectOnError: () => false,
+    retryStrategy: () => null
+  });
+
+  try {
+    let connectTimer: NodeJS.Timeout | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        connectTimer = setTimeout(
+          () => reject(new Error(`Redis connection timed out after ${CONNECT_TIMEOUT_MS / 1000}s`)),
+          CONNECT_TIMEOUT_MS
+        );
+        redisClient.once("ready", resolve);
+        redisClient.once("error", reject);
+        redisClient.once("close", () => reject(new Error("Redis connection closed before ready")));
+      });
+    } finally {
+      if (connectTimer) clearTimeout(connectTimer);
+    }
+  } catch (err) {
+    try {
+      redisClient.disconnect();
+    } catch {
+      /* ignore */
+    }
+    throw err;
+  }
 
   const prompt = `${connectionDetails.host}:${connectionDetails.port}> `;
 
@@ -92,7 +143,7 @@ export const handleRedisSession = async (
     prompt
   });
 
-  logger.info({ sessionId }, `Redis web access session established [sessionId=${sessionId}]`);
+  logger.info({ sessionId }, "Redis web access session established");
 
   // Sequential message processing to prevent concurrent command issues
   let processingPromise = Promise.resolve();
@@ -115,12 +166,16 @@ export const handleRedisSession = async (
             sendSessionEnd(SessionEndReason.UserQuit);
             onCleanup();
             socket.close();
+            return;
+          }
+          if (message.data === "clear-buffer") {
+            return;
           }
           return;
         }
 
         if (message.type === RedisClientMessageType.Input) {
-          const result = await executeCommand(client, message.data);
+          const result = await executeCommand(redisClient, message.data);
 
           if (result.shouldClose) {
             sendSessionEnd(SessionEndReason.UserQuit);
@@ -137,7 +192,7 @@ export const handleRedisSession = async (
         }
       })
       .catch((err) => {
-        logger.error(err, `Error processing Redis message [sessionId=${sessionId}]`);
+        logger.error(err, "Error processing Redis message");
         sendMessage({
           type: TerminalServerMessageType.Output,
           data: "Internal error\n",
@@ -147,8 +202,14 @@ export const handleRedisSession = async (
   });
 
   // Tunnel drop detection
-  client.onClose((err) => {
-    logger.info({ sessionId }, `Redis connection closed [sessionId=${sessionId}] [reason=${err.message}]`);
+  redisClient.on("error", (err) => {
+    logger.error(err, "Redis connection error");
+    sendSessionEnd(resolveEndReason(isNearSessionExpiry));
+    onCleanup();
+    socket.close();
+  });
+
+  redisClient.on("close", () => {
     sendSessionEnd(resolveEndReason(isNearSessionExpiry));
     onCleanup();
     socket.close();
@@ -156,7 +217,20 @@ export const handleRedisSession = async (
 
   return {
     cleanup: async () => {
-      client.close();
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        await Promise.race([
+          redisClient.quit(),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, CLEANUP_QUIT_TIMEOUT_MS);
+          })
+        ]);
+      } catch (err) {
+        logger.debug(err, "Error closing Redis client");
+      } finally {
+        if (timer) clearTimeout(timer);
+        redisClient.disconnect();
+      }
     }
   };
 };

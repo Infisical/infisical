@@ -140,15 +140,6 @@ describe("formatRedisReply", () => {
     expect(result).toBe('"hello"');
   });
 
-  it("formats an error inside an array the way redis-cli does", () => {
-    const result = formatRedisReply(["OK", new Error("WRONGTYPE wrong kind of value"), "v"]);
-    expect(result).toBe('1) "OK"\n2) (error) WRONGTYPE wrong kind of value\n3) "v"');
-  });
-
-  it("escapes control bytes in a nested error message", () => {
-    expect(formatRedisReply([new Error("bad\u001b[2Jvalue")])).toBe("1) (error) bad\\x1b[2Jvalue");
-  });
-
   it("formats bigint", () => {
     expect(formatRedisReply(BigInt(999))).toBe("(integer) 999");
   });

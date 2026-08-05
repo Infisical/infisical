@@ -103,10 +103,6 @@ export const formatRedisReply = (reply: unknown, indent: number = 0): string => 
     return `${prefix}"${escapeRedisString(reply.toString())}"`;
   }
 
-  if (reply instanceof Error) {
-    return `${prefix}(error) ${escapeTerminalControlBytes(reply.message)}`;
-  }
-
   if (Array.isArray(reply)) {
     if (reply.length === 0) {
       return `${prefix}(empty array)`;
